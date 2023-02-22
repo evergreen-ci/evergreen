@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -248,7 +248,7 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 }
 
 func parseGithubErrorResponse(resp *github.Response) error {
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ResponseReadError{err.Error()}
 	}
@@ -494,7 +494,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 		if err != nil {
 			return nil, err
 		}
-		req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+		req.Body = io.NopCloser(bytes.NewReader(jsonBytes))
 	}
 
 	// check if there is an oauth token, if there is make sure it is a valid oauthtoken
@@ -605,7 +605,7 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 	if resp == nil {
 		return nil, errors.New("invalid github response")
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
@@ -633,7 +633,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 		return "", errors.New("invalid github response")
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", ResponseReadError{err.Error()}
 	}
@@ -701,7 +701,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 		defer resp.Body.Close()
 		if err != nil {
 			var respBody []byte
-			respBody, err = ioutil.ReadAll(resp.Body)
+			respBody, err = io.ReadAll(resp.Body)
 			if err != nil {
 				return nil, false, ResponseReadError{err.Error()}
 			}

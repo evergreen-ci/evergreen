@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -194,7 +193,7 @@ func TestGetSSHOptions(t *testing.T) {
 		},
 		"IncludesMultipleIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			keyName := "key_file"
-			keyFile, err := ioutil.TempFile(settings.SSHKeyDirectory, keyName)
+			keyFile, err := os.CreateTemp(settings.SSHKeyDirectory, keyName)
 			require.NoError(t, err)
 			assert.NoError(t, keyFile.Close())
 			defer func() {

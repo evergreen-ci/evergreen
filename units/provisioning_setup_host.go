@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -341,7 +340,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	startAt := time.Now()
 
 	// create a temp file for the script
-	file, err := ioutil.TempFile("", filepath.Base(dstPath))
+	file, err := os.CreateTemp("", filepath.Base(dstPath))
 	if err != nil {
 		return "", errors.Wrap(err, "creating temporary script file")
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -119,7 +119,7 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 		_ = grip.GetSender().Close()
 	}()
 
-	payload, err := ioutil.ReadAll(r.Body)
+	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task response body").Error()))
 		w.WriteHeader(http.StatusInternalServerError)

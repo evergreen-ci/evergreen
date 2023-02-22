@@ -3,7 +3,7 @@ package model
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -65,7 +65,7 @@ func (s *ParserProjectS3Storage) FindOneByID(ctx context.Context, id string) (*P
 	}
 	defer r.Close()
 
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading parser project '%s'", id)
 	}

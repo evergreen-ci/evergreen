@@ -15,7 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -197,10 +197,10 @@ func escapeGQLQuery(in string) string {
 
 func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t *testing.T) {
 	return func(t *testing.T) {
-		dataFile, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "data.json"))
+		dataFile, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "data.json"))
 		require.NoError(t, err)
 
-		resultsFile, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "results.json"))
+		resultsFile, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "results.json"))
 		require.NoError(t, err)
 
 		var testData map[string]json.RawMessage
@@ -229,7 +229,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 		setup(t, state)
 		for _, testCase := range tests.Tests {
 			singleTest := func(t *testing.T) {
-				f, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
+				f, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
 				require.NoError(t, err)
 				jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 				body := bytes.NewBuffer([]byte(jsonQuery))
@@ -241,7 +241,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				r.Header.Add("content-type", "application/json")
 				resp, err := client.Do(r)
 				require.NoError(t, err)
-				b, err := ioutil.ReadAll(resp.Body)
+				b, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
 
 				// Remove apollo tracing data from test responses

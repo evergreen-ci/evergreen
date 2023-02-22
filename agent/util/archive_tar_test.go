@@ -2,7 +2,7 @@ package util
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -45,7 +45,7 @@ func TestArchiveExtract(t *testing.T) {
 			f, err := os.Open(filepath.Join(outputDir, "artifacts", "dir1", "dir2", "testfile.txt"))
 			So(err, ShouldBeNil)
 			defer f.Close()
-			data, err := ioutil.ReadAll(f)
+			data, err := io.ReadAll(f)
 			So(err, ShouldBeNil)
 			So(string(data), ShouldEqual, "test\n")
 		})
@@ -57,7 +57,7 @@ func TestMakeArchive(t *testing.T) {
 		testDir := getDirectoryOfFile()
 		logger := logging.NewGrip("test.archive")
 
-		outputFile, err := ioutil.TempFile("", "artifacts_test_out.tar.gz")
+		outputFile, err := os.CreateTemp("", "artifacts_test_out.tar.gz")
 		require.NoError(t, err)
 		defer func() {
 			assert.NoError(t, os.RemoveAll(outputFile.Name()))
@@ -81,7 +81,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 		testDir := getDirectoryOfFile()
 		logger := logging.NewGrip("test.archive")
 
-		outputFile, err := ioutil.TempFile("", "artifacts_test_out.tar.gz")
+		outputFile, err := os.CreateTemp("", "artifacts_test_out.tar.gz")
 		require.NoError(t, err)
 		require.NoError(t, outputFile.Close())
 		defer func() {
@@ -115,7 +115,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 		// Dereference symlinks
 		exists = utility.FileExists(filepath.Join(outputDir, "dir1", "dir2", "my_symlink.txt"))
 		So(exists, ShouldBeTrue)
-		contents, err := ioutil.ReadFile(filepath.Join(outputDir, "dir1", "dir2", "my_symlink.txt"))
+		contents, err := os.ReadFile(filepath.Join(outputDir, "dir1", "dir2", "my_symlink.txt"))
 		So(err, ShouldBeNil)
 		So(strings.Trim(string(contents), "\r\n\t "), ShouldEqual, "Hello, World")
 	})

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -60,7 +60,7 @@ func makeBaseSNS(env evergreen.Environment, queue amboy.Queue) baseSNS {
 func (sns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 	sns.messageType = r.Header.Get("x-amz-sns-message-type")
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return errors.Wrap(err, " reading body")
 	}

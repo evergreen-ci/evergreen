@@ -1,7 +1,7 @@
 package service
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,7 +19,7 @@ func TestGetDockerfile(t *testing.T) {
 	getDockerfile(w, req)
 
 	resp := w.Result()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	assert.NoError(err)
 
 	parts := []string{

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -283,7 +283,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 	h.user = MustHaveUser(ctx)
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "reading JSON request body")
 	}
@@ -645,7 +645,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "reading request body")
 	}
@@ -891,7 +891,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	params := r.URL.Query()
 
 	// body is optional
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &h.opts); err != nil {
 			return errors.Wrap(err, "unmarshalling JSON request body into version options")
@@ -995,7 +995,7 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	h.taskName = gimlet.GetVars(r)["task_name"]
 	// body is optional
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &h.opts); err != nil {
 			return errors.Wrap(err, "reading project task options from JSON request body")

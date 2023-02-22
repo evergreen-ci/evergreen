@@ -3,7 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -61,7 +61,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 		APIKey:        "testapikey",
 		User:          "testuser",
 	}
-	settingsFile, err := ioutil.TempFile("", "settings")
+	settingsFile, err := os.CreateTemp("", "settings")
 	s.Require().NoError(err)
 	settingsBytes, err := yaml.Marshal(settings)
 	s.Require().NoError(err)
@@ -136,7 +136,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
@@ -189,7 +189,7 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
@@ -237,7 +237,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
@@ -295,7 +295,7 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
@@ -352,7 +352,7 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	s.NoError(deleteCommitQueueItem(s.ctx, s.client, validId))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, fmt.Sprintf("Item '%s' deleted", validId))

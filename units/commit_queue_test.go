@@ -2,7 +2,7 @@ package units
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -48,7 +48,7 @@ func TestCommitQueueJob(t *testing.T) {
 func (s *commitQueueSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	var err error
-	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
+	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
 	s.Require().Len(s.prBody, 24745)
 

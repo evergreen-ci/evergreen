@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -172,5 +171,5 @@ func main() {
 		grip.EmergencyFatal(err)
 	}
 	jsonBytes, _ := json.MarshalIndent(generate, "", "  ")
-	grip.Error(ioutil.WriteFile(jsonFilename, jsonBytes, 0644))
+	grip.Error(os.WriteFile(jsonFilename, jsonBytes, 0644))
 }

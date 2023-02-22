@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -457,7 +456,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		}
 
 		// read in the patched config file
-		data, err := ioutil.ReadFile(localConfigPath)
+		data, err := os.ReadFile(localConfigPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading patched config file")
 		}

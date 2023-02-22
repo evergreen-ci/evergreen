@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,7 +42,7 @@ func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*h
 				return nil, err
 			}
 			r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
-			r.Body = ioutil.NopCloser(bytes.NewReader(out))
+			r.Body = io.NopCloser(bytes.NewReader(out))
 		}
 	}
 
@@ -122,7 +121,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		}
 	}
 
-	r, err := c.createRequest(info, ioutil.NopCloser(bytes.NewReader(out)))
+	r, err := c.createRequest(info, io.NopCloser(bytes.NewReader(out)))
 	if err != nil {
 		return nil, err
 	}

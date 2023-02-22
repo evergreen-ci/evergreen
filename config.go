@@ -3,7 +3,6 @@ package evergreen
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -287,7 +286,7 @@ func (c *Settings) ValidateAndDefault() error {
 
 // NewSettings builds an in-memory representation of the given settings file.
 func NewSettings(filename string) (*Settings, error) {
-	configData, err := ioutil.ReadFile(filename)
+	configData, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

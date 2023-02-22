@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -103,7 +103,7 @@ func TestCommandFileLogging(t *testing.T) {
 	// verify log contents
 	f, err := os.Open(fmt.Sprintf("%s/%s/%s/task.log", tmpDirName, taskLogDirectory, "shell.exec"))
 	require.NoError(err)
-	bytes, err := ioutil.ReadAll(f)
+	bytes, err := io.ReadAll(f)
 	assert.NoError(f.Close())
 	require.NoError(err)
 	assert.Contains(string(bytes), "hello world")
@@ -118,7 +118,7 @@ func TestCommandFileLogging(t *testing.T) {
 	// verify uploaded log contents
 	f, err = os.Open(fmt.Sprintf("%s/logs/%s/%d/%s/task.log", tmpDirName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, "shell.exec"))
 	require.NoError(err)
-	bytes, err = ioutil.ReadAll(f)
+	bytes, err = io.ReadAll(f)
 	assert.NoError(f.Close())
 	require.NoError(err)
 	assert.Contains(string(bytes), "hello world")

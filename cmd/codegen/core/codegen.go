@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"go/importer"
 	"go/types"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -220,7 +220,7 @@ func dbField(gqlDefinition ast.FieldDefinition) string {
 // getTemplate is a utility function that takes a filepath (relative to the directory of this file)
 // and returns a parsed go template from it
 func getTemplate(file string) (*template.Template, error) {
-	f, err := ioutil.ReadFile(filepath.Join(pathPrefix, file))
+	f, err := os.ReadFile(filepath.Join(pathPrefix, file))
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,7 +51,7 @@ func TestS3PullExecute(t *testing.T) {
 		"PullsTaskDirectoryFromS3": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
-			tmpFile, err := ioutil.TempFile(taskDir, "file")
+			tmpFile, err := os.CreateTemp(taskDir, "file")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
@@ -65,14 +64,14 @@ func TestS3PullExecute(t *testing.T) {
 			c.WorkingDir = t.TempDir()
 
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			pulledContent, err := ioutil.ReadFile(filepath.Join(c.WorkingDir, filepath.Base(tmpFile.Name())))
+			pulledContent, err := os.ReadFile(filepath.Join(c.WorkingDir, filepath.Base(tmpFile.Name())))
 			require.NoError(t, err)
 			assert.Equal(t, pulledContent, fileContent)
 		},
 		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
-			tmpFile, err := ioutil.TempFile(taskDir, "file")
+			tmpFile, err := os.CreateTemp(taskDir, "file")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
@@ -86,7 +85,7 @@ func TestS3PullExecute(t *testing.T) {
 			c.ExcludeFilter = ".*"
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
 
-			files, err := ioutil.ReadDir(c.WorkingDir)
+			files, err := os.ReadDir(c.WorkingDir)
 			require.NoError(t, err)
 			assert.Empty(t, files)
 		},
@@ -94,7 +93,7 @@ func TestS3PullExecute(t *testing.T) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 
-			require.NoError(t, ioutil.WriteFile(filepath.Join(taskDir, "foo"), []byte("bar"), 0777))
+			require.NoError(t, os.WriteFile(filepath.Join(taskDir, "foo"), []byte("bar"), 0777))
 
 			c.WorkingDir = t.TempDir()
 

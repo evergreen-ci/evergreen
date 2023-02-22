@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +33,7 @@ type Commit struct {
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
 func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
-	handle, err := ioutil.TempFile("", utility.RandomString())
+	handle, err := os.CreateTemp("", utility.RandomString())
 	if err != nil {
 		return nil, errors.New("Unable to create local patch file")
 	}
@@ -187,7 +186,7 @@ func GetDiffsFromMboxPatch(patchContent string) (string, error) {
 
 // getCommitsFromMboxPatch returns commit information from an mbox patch
 func getCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
-	tmpDir, err := ioutil.TempDir("", "patch_summaries_by_commit")
+	tmpDir, err := os.MkdirTemp("", "patch_summaries_by_commit")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating temporary directory")
 	}
@@ -200,7 +199,7 @@ func getCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
 	}
 
 	commits := []Commit{}
-	files, err := ioutil.ReadDir(tmpDir)
+	files, err := os.ReadDir(tmpDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem listing split patches")
 	}
@@ -235,7 +234,7 @@ func getCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
 			commitMessage = fmt.Sprintf("%s...", commitMessage)
 		}
 
-		patchBytes, err := ioutil.ReadFile(patchFile)
+		patchBytes, err := os.ReadFile(patchFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem reading patch file")
 		}

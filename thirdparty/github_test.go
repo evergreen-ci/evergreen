@@ -3,10 +3,11 @@ package thirdparty
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -272,7 +273,7 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 func TestValidatePR(t *testing.T) {
 	assert := assert.New(t)
 
-	prBody, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
+	prBody, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
 	assert.NoError(err)
 	assert.Len(prBody, 24745)
 	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
@@ -298,7 +299,7 @@ func TestParseGithubErrorResponse(t *testing.T) {
 	resp := &github.Response{
 		Response: &http.Response{
 			StatusCode: http.StatusNotFound,
-			Body:       ioutil.NopCloser(strings.NewReader(fmt.Sprintf(`{"message": "%s", "documentation_url": "%s"}`, message, url))),
+			Body:       io.NopCloser(strings.NewReader(fmt.Sprintf(`{"message": "%s", "documentation_url": "%s"}`, message, url))),
 		},
 	}
 
