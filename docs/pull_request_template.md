@@ -1,4 +1,4 @@
-[EVG-<number>](https://jira.mongodb.org/browse/EVG-<number>)
+EVG-NNNNN
 
 ### Description
 < add description, context, thought process, etc >
