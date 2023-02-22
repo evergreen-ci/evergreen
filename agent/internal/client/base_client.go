@@ -745,10 +745,10 @@ func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData
 	info.path = fmt.Sprintf("tasks/%s/set_results_info", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Service: service, Failed: failed})
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "setting results info").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "setting results info").Error())
 	}
 	defer resp.Body.Close()
-  
+
 	return nil
 }
 
