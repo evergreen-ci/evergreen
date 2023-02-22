@@ -226,6 +226,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.IsBackport() && !pref.CommitQueue.IsEnabled() {
+		j.gitHubError = commitQueueDisabled
 		return errors.New("commit queue is disabled for project")
 	}
 
@@ -249,35 +250,24 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		return errors.Wrap(err, "getting patched project config")
 	}
-	if errs := validator.CheckProjectErrors(project, false); len(errs) != 0 {
-		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
-			validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
-		}
+	if errs := validator.CheckProjectErrors(project, false); len(errs.AtLevel(validator.Error)) != 0 {
+		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckProjectSettings(project, pref, false); len(errs) != 0 {
-		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
-			validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
-		}
+	if errs := validator.CheckProjectSettings(project, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
+		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckPatchedProjectConfigErrors(patchConfig.PatchedProjectConfig); len(errs) != 0 {
-		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
-			validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
-		}
+	if errs := validator.CheckPatchedProjectConfigErrors(patchConfig.PatchedProjectConfig); len(errs.AtLevel(validator.Error)) != 0 {
+		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if validationCatcher.HasErrors() {
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "invalid patched project config")
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
+	// Still error so we can pick this up and return an error to Github.
 	if patchDoc.IsGithubPRPatch() && project.IgnoresAllFiles(patchDoc.FilesChanged()) {
-		grip.Debug(message.Fields{
-			"message":       "not creating patch because all files are being ignored",
-			"files_changed": patchDoc.FilesChanged(),
-			"files_ignored": project.Ignore,
-			"patch_id":      patchDoc.Id,
-			"intent_id":     j.intent.ID(),
-		})
-		return nil
+		j.gitHubError = ignoredFiles
+		return errors.New("not creating patch because all files are being ignored")
 	}
 
 	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
@@ -297,6 +287,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 	if err = j.verifyValidAlias(pref.Id, patchDoc.PatchedProjectConfig); err != nil {
+		j.gitHubError = invalidAlias
 		return err
 	}
 
@@ -367,7 +358,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			catcher.Wrap(err, "inserting build subscription for GitHub PR")
 		}
 		if patchDoc.IsParent() {
-			// add a subscription on each child patch to report it's status to github when it's done.
+			// add a subscription on each child patch to report its status to Github when it's done.
 			for _, childPatch := range patchDoc.Triggers.ChildPatches {
 				childGhStatusSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 					Owner:    patchDoc.GithubPatchData.BaseOwner,

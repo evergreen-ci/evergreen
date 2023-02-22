@@ -37,7 +37,10 @@ const (
 	// GitHub intent processing errors
 	ProjectDisabled        = "project was disabled"
 	PatchingDisabled       = "patching was disabled"
+	commitQueueDisabled    = "commit queue was disabled"
+	ignoredFiles           = "all patched files are ignored"
 	PatchTaskSyncDisabled  = "task sync was disabled for patches"
+	invalidAlias           = "alias not found"
 	NoTasksOrVariants      = "no tasks/variants were configured"
 	NoSyncTasksOrVariants  = "no tasks/variants were configured for sync"
 	GitHubInternalError    = "GitHub returned an error"
