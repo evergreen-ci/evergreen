@@ -245,7 +245,7 @@ func MostRecentPodEvents(id string, n int) db.Q {
 }
 
 // MostRecentPaginatedPodEvents returns a limited and paginated list of pod events for the
-// given pod ID sorted in descending order by timestamp as well as the total number of events
+// given pod ID sorted in descending order by timestamp as well as the total number of events.
 func MostRecentPaginatedPodEvents(id string, limit, page int) ([]EventLogEntry, int, error) {
 	recentPodsQuery := MostRecentPodEvents(id, limit)
 	return FindPaginatedWithTotalCount(recentPodsQuery, limit, page)
