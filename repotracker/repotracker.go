@@ -486,7 +486,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 		Caller:    RunnerName,
 		Context:   "evergreen",
 	}
-	err := thirdparty.SendVersionStatusToGithub(input)
+	err := thirdparty.SendPendingStatusToGithub(input)
 	if err != nil {
 		catcher.Wrap(err, "failed to send version status to github")
 	}

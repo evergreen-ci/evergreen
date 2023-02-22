@@ -1127,9 +1127,9 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(buildStatus.status)
 }
 
-// checkUpdateBuildPRStatus checks if the build is coming from a PR, and if so
-// sends its updated status to GitHub to reflect the status of the build.
-func checkUpdateBuildPRStatus(b *build.Build) error {
+// checkUpdateBuildPRStatusPending checks if the build is coming from a PR, and if so
+// sends a pending status to GitHub to reflect the status of the build.
+func checkUpdateBuildPRStatusPending(b *build.Build) error {
 	if !evergreen.IsGitHubPatchRequester(b.Requester) {
 		return nil
 	}
@@ -1140,7 +1140,7 @@ func checkUpdateBuildPRStatus(b *build.Build) error {
 	if p == nil {
 		return errors.Errorf("patch '%s' not found", b.Version)
 	}
-	if p.IsGithubPRPatch() && !evergreen.IsFinishedPatchStatus(p.Status) {
+	if p.IsGithubPRPatch() && !evergreen.IsFinishedBuildStatus(b.Status) {
 		input := thirdparty.SendGithubStatusInput{
 			VersionId: p.Id.Hex(),
 			Owner:     p.GithubPatchData.BaseOwner,
@@ -1150,7 +1150,7 @@ func checkUpdateBuildPRStatus(b *build.Build) error {
 			Caller:    "pr-task-reset",
 			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		}
-		if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
+		if err = thirdparty.SendPendingStatusToGithub(input); err != nil {
 			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
 		}
 	}
@@ -1331,8 +1331,7 @@ func updateVersionStatus(v *Version) (string, error) {
 	return versionStatus, nil
 }
 
-// UpdatePatchStatus updates the status of a patch. For PR patches, the build associated
-// with the passed in buildVariant has its GitHub status updated.
+// UpdatePatchStatus updates the status of a patch.
 func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
@@ -1387,7 +1386,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrapf(err, "updating build '%s' status", taskBuild.Id)
 	}
-	// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
+	// If the build status has not changed, then the version and patch statuses must have also not changed.
 	if !buildStatusChanged {
 		return nil
 	}
@@ -1406,7 +1405,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	}
 
 	if newVersionStatus != taskVersion.Status {
-		if err = checkUpdateBuildPRStatus(taskBuild); err != nil {
+		if err = checkUpdateBuildPRStatusPending(taskBuild); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
 	}
@@ -1450,7 +1449,8 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 }
 
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
-// builds associated with the given input list of build IDs.
+// builds associated with the given input list of build IDs. For PR patches, builds whose
+// statuses have changed to an unfinished status are changed to pending in GitHub.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
@@ -1468,11 +1468,11 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		if err != nil {
 			return errors.Wrapf(err, "updating build '%s' status", build.Id)
 		}
-		// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
+		// If the build status has not changed, then the version and patch statuses must have also not changed.
 		if !buildStatusChanged {
 			continue
 		}
-		if err = checkUpdateBuildPRStatus(&build); err != nil {
+		if err = checkUpdateBuildPRStatusPending(&build); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", build.Id)
 		}
 		versionSet[build.Version] = true
