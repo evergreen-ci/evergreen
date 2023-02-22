@@ -135,6 +135,8 @@ func MostRecentHostEvents(id string, tag string, n int) db.Q {
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
+// MostRecentPaginatedHostEvents returns a limited and paginated list of host events for the given
+// host ID and tag sorted in descending order by timestamp as well as the total number of events.
 func MostRecentPaginatedHostEvents(id string, tag string, limit, page int) ([]EventLogEntry, int, error) {
 	recentHostsQuery := MostRecentHostEvents(id, tag, limit)
 	return FindPaginatedWithTotalCount(recentHostsQuery, limit, page)
@@ -242,8 +244,8 @@ func MostRecentPodEvents(id string, n int) db.Q {
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
-// MostRecentPaginatedPodEvents creates a query to find the n most recent pod
-// events for the given pod ID, and returns the results in a paginated format.
+// MostRecentPaginatedPodEvents returns a limited and paginated list of pod events for the
+// given pod ID sorted in descending order by timestamp as well as the total number of events
 func MostRecentPaginatedPodEvents(id string, limit, page int) ([]EventLogEntry, int, error) {
 	recentPodsQuery := MostRecentPodEvents(id, limit)
 	return FindPaginatedWithTotalCount(recentPodsQuery, limit, page)
