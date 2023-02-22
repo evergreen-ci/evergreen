@@ -39,8 +39,7 @@ func Find(query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]EventLogEntry, int, error) {
-	query := MostRecentHostEvents(hostID, hostTag, limit)
+func FindPaginatedWithTotalCount(query db.Q, limit, page int) ([]EventLogEntry, int, error) {
 	events := []EventLogEntry{}
 	skip := page * limit
 	if skip > 0 {
@@ -55,7 +54,7 @@ func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]Eve
 	// Count ignores skip and limit by default, so this will return the total number of events.
 	count, err := db.CountQ(EventCollection, query)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "fetching total count for host events")
+		return nil, 0, errors.Wrap(err, "fetching total count for events")
 	}
 
 	return events, count, nil
@@ -134,6 +133,11 @@ func MostRecentHostEvents(id string, tag string, n int) db.Q {
 	}
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
+func MostRecentPaginatedHostEvents(id string, tag string, limit, page int) ([]EventLogEntry, int, error) {
+	recentHostsQuery := MostRecentHostEvents(id, tag, limit)
+	return FindPaginatedWithTotalCount(recentHostsQuery, limit, page)
 }
 
 // Task Events
@@ -236,4 +240,11 @@ func MostRecentPodEvents(id string, n int) db.Q {
 	filter[ResourceIdKey] = id
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
+// MostRecentPaginatedPodEvents creates a query to find the n most recent pod
+// events for the given pod ID, and returns the results in a paginated format.
+func MostRecentPaginatedPodEvents(id string, limit, page int) ([]EventLogEntry, int, error) {
+	recentPodsQuery := MostRecentPodEvents(id, limit)
+	return FindPaginatedWithTotalCount(recentPodsQuery, limit, page)
 }
