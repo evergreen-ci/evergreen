@@ -2169,7 +2169,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 				Id: "project_test",
 			}
 
-			_, project, err := model.FindLatestVersionWithValidProject(projectRef.Id)
+			_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
 			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
 		})

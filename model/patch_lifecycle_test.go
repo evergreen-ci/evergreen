@@ -53,7 +53,7 @@ func init() {
 }
 
 func clearAll(t *testing.T) {
-	require.NoError(t, db.ClearCollections(manifest.Collection, ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
+	require.NoError(t, db.ClearCollections(manifest.Collection, ParserProjectCollection, ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
@@ -180,7 +180,7 @@ func TestSetPriority(t *testing.T) {
 	assert.Equal(t, int64(7), foundTask.Priority)
 }
 
-func TestGetPatchedProject(t *testing.T) {
+func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -193,8 +193,66 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch := resetPatchSetup(t, configFilePath)
 				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
-				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
+				So(patchConfig, ShouldNotBeNil)
+				So(patchConfig.PatchedParserProjectYAML, ShouldNotBeEmpty)
+				So(patchConfig.PatchedParserProject, ShouldNotBeNil)
+
+				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
+					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+					So(err, ShouldBeNil)
+					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
+				})
+
+				Convey("Calling GetPatchedProject with a created but unfinalized patch", func() {
+					configPatch := resetPatchSetup(t, configFilePath)
+
+					// Simulate what patch creation does.
+					patchConfig.PatchedParserProject.Id = configPatch.Id.Hex()
+					So(patchConfig.PatchedParserProject.Insert(), ShouldBeNil)
+					configPatch.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
+					configPatch.PatchedProjectConfig = patchConfig.PatchedProjectConfig
+
+					projectFromPatchAndDB, patchConfigFromPatchAndDB, err := GetPatchedProject(ctx, patchTestConfig, configPatch, "invalid-token-do-not-fetch-from-github")
+					So(err, ShouldBeNil)
+					So(projectFromPatchAndDB, ShouldNotBeNil)
+					So(len(projectFromPatchAndDB.Tasks), ShouldEqual, len(project.Tasks))
+					So(patchConfig, ShouldNotBeNil)
+					So(patchConfigFromPatchAndDB.PatchedParserProject, ShouldNotBeNil)
+					So(len(patchConfigFromPatchAndDB.PatchedParserProject.Tasks), ShouldEqual, len(patchConfig.PatchedParserProject.Tasks))
+					So(patchConfigFromPatchAndDB.PatchedProjectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
+
+					Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
+						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+						So(err, ShouldBeNil)
+						So(projectConfigFromPatch, ShouldEqual, patchConfig.PatchedProjectConfig)
+					})
+				})
+
+				Convey("Calling GetPatchedProject with a created but unfinalized patch using deprecated patched parser project", func() {
+					configPatch := resetPatchSetup(t, configFilePath)
+
+					// Simulate what patch creation does for old patches.
+					configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
+					configPatch.PatchedProjectConfig = patchConfig.PatchedProjectConfig
+
+					projectFromPatch, patchConfigFromPatch, err := GetPatchedProject(ctx, patchTestConfig, configPatch, "invalid-token-do-not-fetch-from-github")
+					So(err, ShouldBeNil)
+					So(patchConfigFromPatch, ShouldNotBeNil)
+					So(projectFromPatch, ShouldNotBeNil)
+					So(len(projectFromPatch.Tasks), ShouldEqual, len(project.Tasks))
+					So(patchConfigFromPatch.PatchedParserProject, ShouldNotBeNil)
+					So(len(patchConfigFromPatch.PatchedParserProject.Tasks), ShouldEqual, len(patchConfig.PatchedParserProject.Tasks))
+					So(patchConfigFromPatch.PatchedParserProjectYAML, ShouldEqual, patchConfig.PatchedParserProjectYAML)
+					So(patchConfigFromPatch.PatchedProjectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
+
+					Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
+						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+						So(err, ShouldBeNil)
+						So(projectConfigFromPatch, ShouldEqual, patchConfig.PatchedProjectConfig)
+					})
+				})
+
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
@@ -203,6 +261,12 @@ func TestGetPatchedProject(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
+
+				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
+					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+					So(err, ShouldBeNil)
+					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
+				})
 			})
 
 			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
@@ -217,6 +281,12 @@ func TestGetPatchedProject(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
+
+				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
+					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+					So(err, ShouldBeNil)
+					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
+				})
 			})
 
 			Reset(func() {
@@ -240,7 +310,7 @@ func TestFinalizePatch(t *testing.T) {
 	token, err := patchTestConfig.GetGithubOauthToken()
 	require.NoError(t, err)
 	for name, test := range map[string]func(*testing.T){
-		"VersionCreation": func(*testing.T) {
+		"VersionCreationWithPatchedParserProject": func(*testing.T) {
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
@@ -253,13 +323,20 @@ modules:
     repo: git@github.com:evergreen-ci/evergreen.git
     branch: main
 `
-			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+			configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 			configPatch.PatchedParserProject += modulesYml
+			require.NoError(t, configPatch.Insert())
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
-			assert.Equal(t, ProjectStorageMethodDB, version.ProjectStorageMethod, "storage method should initially be DB for new versions")
+			assert.Equal(t, evergreen.ProjectStorageMethodDB, version.ProjectStorageMethod, "storage method should initially be DB for new versions")
+
+			dbPatch, err := patch.FindOneId(configPatch.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.True(t, dbPatch.Activated)
+			assert.Zero(t, dbPatch.PatchedParserProject)
 			// ensure the relevant builds/tasks were created
 			builds, err := build.Find(build.All)
 			require.NoError(t, err)
@@ -297,7 +374,7 @@ modules:
     repo: git@github.com:evergreen-ci/evergreen.git
     branch: main
 `
-			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+			configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 			configPatch.PatchedParserProject += modulesYml
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
@@ -317,7 +394,7 @@ modules:
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			assert.NotNil(t, project)
 			require.NoError(t, err)
-			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+			configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)

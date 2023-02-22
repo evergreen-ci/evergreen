@@ -20,7 +20,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20230210160503-ba8cf383fac5
-	github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd
+	github.com/evergreen-ci/utility v0.0.0-20230216205613-b8156d58f1e5
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
@@ -33,7 +33,7 @@ require (
 	github.com/mongodb/amboy v0.0.0-20221207220239-4ab00e3ea9da
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
-	github.com/mongodb/grip v0.0.0-20221003151935-9c3eaaa08384
+	github.com/mongodb/grip v0.0.0-20230217073228-807521e7966a
 	github.com/pkg/errors v0.9.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0

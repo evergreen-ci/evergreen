@@ -472,7 +472,6 @@ mciModule.controller(
             owner_name: $scope.projectRef.owner_name,
             repo_name: $scope.projectRef.repo_name,
             enabled: $scope.projectRef.enabled,
-            private: $scope.projectRef.private,
             restricted: $scope.projectRef.restricted,
             patching_disabled: $scope.projectRef.patching_disabled,
             dispatching_disabled: $scope.projectRef.dispatching_disabled,

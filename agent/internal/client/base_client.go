@@ -159,7 +159,7 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("project_ref")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting project ref").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting project ref").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, projectRef); err != nil {
@@ -176,7 +176,7 @@ func (c *baseCommunicator) DisableHost(ctx context.Context, hostID string, detai
 	}
 	resp, err := c.retryRequest(ctx, info, &details)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrapf(err, "disabling host '%s'", hostID).Error())
+		return util.RespErrorf(resp, errors.Wrapf(err, "disabling host '%s'", hostID).Error())
 	}
 
 	defer resp.Body.Close()
@@ -193,7 +193,7 @@ func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*tas
 	info.setTaskPathSuffix("")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting task info").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting task info").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, task); err != nil {
@@ -212,7 +212,7 @@ func (c *baseCommunicator) GetDisplayTaskInfoFromExecution(ctx context.Context, 
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting parent display task info").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting parent display task info").Error())
 	}
 	defer resp.Body.Close()
 
@@ -233,7 +233,7 @@ func (c *baseCommunicator) GetDistroView(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("distro_view")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting distro view").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting distro view").Error())
 	}
 	defer resp.Body.Close()
 	var dv apimodels.DistroView
@@ -255,7 +255,7 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", utility.RespErrorf(resp, errors.Wrap(err, "getting distro AMI").Error())
+		return "", util.RespErrorf(resp, errors.Wrap(err, "getting distro AMI").Error())
 	}
 	defer resp.Body.Close()
 	out, err := ioutil.ReadAll(resp.Body)
@@ -273,7 +273,7 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting parser project").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting parser project").Error())
 	}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -292,7 +292,7 @@ func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("expansions")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting expansions").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting expansions").Error())
 	}
 	defer resp.Body.Close()
 
@@ -311,7 +311,7 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 	info.setTaskPathSuffix("expansions_and_vars")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting expansions and vars").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting expansions and vars").Error())
 	}
 	defer resp.Body.Close()
 
@@ -340,7 +340,7 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 		return evergreen.TaskConflict, errors.Errorf("unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", utility.RespErrorf(resp, "sending heartbeat")
+		return "", util.RespErrorf(resp, "sending heartbeat")
 	}
 
 	heartbeatResponse := &apimodels.HeartbeatResponse{}
@@ -351,25 +351,6 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 		return evergreen.TaskFailed, nil
 	}
 	return "", nil
-}
-
-// FetchExpansionVars loads expansions for a communicator's task from the API server.
-func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
-	resultVars := &apimodels.ExpansionVars{}
-	info := requestInfo{
-		method:   http.MethodGet,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix("fetch_vars")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "fetching project vars and parameters").Error())
-	}
-	defer resp.Body.Close()
-	if err = utility.ReadJSON(resp.Body, resultVars); err != nil {
-		return nil, errors.Wrap(err, "reading project vars and parameters from response")
-	}
-	return resultVars, err
 }
 
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
@@ -586,7 +567,7 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	}()
 	resp, err := c.retryRequest(ctx, info, &payload)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrapf(err, "sending %d log messages", len(msgs)).Error())
+		return util.RespErrorf(resp, errors.Wrapf(err, "sending %d log messages", len(msgs)).Error())
 	}
 	defer resp.Body.Close()
 	return nil
@@ -606,7 +587,7 @@ func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData Task
 	}
 	resp, err := c.retryRequest(ctx, info, &body)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting the pull request").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting the pull request").Error())
 	}
 
 	res := &apimodels.PullRequestInfo{}
@@ -634,7 +615,7 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	info.setTaskPathSuffix(suffix)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting patch '%s' for task", patchId).Error())
+		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting patch '%s' for task", patchId).Error())
 	}
 	defer resp.Body.Close()
 
@@ -654,7 +635,7 @@ func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting the Cedar config").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting the Cedar config").Error())
 	}
 
 	config := &apimodels.CedarConfig{}
@@ -673,7 +654,7 @@ func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting agent setup data").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting agent setup data").Error())
 	}
 
 	var data apimodels.AgentSetupData
@@ -693,7 +674,7 @@ func (c *baseCommunicator) GetDataPipesConfig(ctx context.Context) (*apimodels.D
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting the Data-Pipes config").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting the Data-Pipes config").Error())
 	}
 
 	config := &apimodels.DataPipesConfig{}
@@ -714,7 +695,7 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", utility.RespErrorf(resp, errors.Wrapf(err, "getting patch file '%s'", patchFileID).Error())
+		return "", util.RespErrorf(resp, errors.Wrapf(err, "getting patch file '%s'", patchFileID).Error())
 	}
 	defer resp.Body.Close()
 
@@ -741,7 +722,7 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	info.setTaskPathSuffix("test_logs")
 	resp, err := c.retryRequest(ctx, info, log)
 	if err != nil {
-		return "", utility.RespErrorf(resp, errors.Wrap(err, "sending test log").Error())
+		return "", util.RespErrorf(resp, errors.Wrap(err, "sending test log").Error())
 	}
 	defer resp.Body.Close()
 
@@ -767,6 +748,7 @@ func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData
 		return utility.RespErrorf(resp, errors.Wrap(err, "setting results info").Error())
 	}
 	defer resp.Body.Close()
+  
 	return nil
 }
 
@@ -780,7 +762,7 @@ func (c *baseCommunicator) NewPush(ctx context.Context, taskData TaskData, req *
 	info.setTaskPathSuffix("new_push")
 	resp, err := c.retryRequest(ctx, info, req)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "adding push log").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "adding push log").Error())
 	}
 	defer resp.Body.Close()
 
@@ -801,7 +783,7 @@ func (c *baseCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskDa
 	info.setTaskPathSuffix("update_push_status")
 	resp, err := c.retryRequest(ctx, info, pushLog)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "updating push log status").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "updating push log status").Error())
 	}
 	defer resp.Body.Close()
 
@@ -825,7 +807,7 @@ func (c *baseCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	info.setTaskPathSuffix("files")
 	resp, err := c.retryRequest(ctx, info, taskFiles)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "posting files").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "posting files").Error())
 	}
 	defer resp.Body.Close()
 
@@ -841,7 +823,7 @@ func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	info.setTaskPathSuffix("downstreamParams")
 	resp, err := c.retryRequest(ctx, info, downstreamParams)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "setting downstream params").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "setting downstream params").Error())
 	}
 	defer resp.Body.Close()
 
@@ -856,7 +838,7 @@ func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData) (
 	info.setTaskPathSuffix("manifest/load")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "loading manifest").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "loading manifest").Error())
 	}
 	defer resp.Body.Close()
 
@@ -876,7 +858,7 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	info.setTaskPathSuffix("keyval/inc")
 	resp, err := c.retryRequest(ctx, info, kv.Key)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "incrementing key").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "incrementing key").Error())
 	}
 	defer resp.Body.Close()
 
@@ -896,7 +878,7 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks request").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks request").Error())
 	}
 	return nil
 }
@@ -910,7 +892,7 @@ func (c *baseCommunicator) GenerateTasksPoll(ctx context.Context, td TaskData) (
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks poll request").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks poll request").Error())
 	}
 	defer resp.Body.Close()
 	generated := &apimodels.GeneratePollResponse{}
@@ -929,7 +911,7 @@ func (c *baseCommunicator) CreateHost(ctx context.Context, td TaskData, options 
 	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
 	resp, err := c.retryRequest(ctx, info, options)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "sending host.create request").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "sending host.create request").Error())
 	}
 	defer resp.Body.Close()
 
@@ -950,7 +932,7 @@ func (c *baseCommunicator) ListHosts(ctx context.Context, td TaskData) (restmode
 	result := restmodel.HostListResults{}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return result, utility.RespErrorf(resp, errors.Wrap(err, "listing hosts").Error())
+		return result, util.RespErrorf(resp, errors.Wrap(err, "listing hosts").Error())
 	}
 	defer resp.Body.Close()
 
@@ -968,7 +950,7 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting distro '%s'", id).Error())
+		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting distro '%s'", id).Error())
 	}
 	defer resp.Body.Close()
 
@@ -997,7 +979,7 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	info.setTaskPathSuffix("start")
 	resp, err := c.retryRequest(ctx, info, taskStartRequest)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "starting task").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "starting task").Error())
 	}
 	defer resp.Body.Close()
 	grip.Info(message.Fields{
@@ -1021,7 +1003,7 @@ func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting status for container '%s'", hostID).Error())
+		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting status for container '%s'", hostID).Error())
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {
@@ -1057,7 +1039,7 @@ func (c *baseCommunicator) GetDockerLogs(ctx context.Context, hostID string, sta
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting logs for container '%s'", hostID)
+		return nil, util.RespErrorf(resp, "getting logs for container '%s'", hostID)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1086,7 +1068,7 @@ func (c *baseCommunicator) ConcludeMerge(ctx context.Context, patchId, status st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "concluding merge for patch '%s'", patchId)
+		return util.RespErrorf(resp, "concluding merge for patch '%s'", patchId)
 	}
 
 	return nil
@@ -1105,7 +1087,7 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting additional patches")
+		return nil, util.RespErrorf(resp, "getting additional patches")
 	}
 	patches := []string{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {

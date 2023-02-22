@@ -42,9 +42,10 @@ func TestFindProject(t *testing.T) {
 			projRef := &ProjectRef{
 				Id: "",
 			}
-			version, project, err := FindLatestVersionWithValidProject(projRef.Id)
+			version, project, pp, err := FindLatestVersionWithValidProject(projRef.Id)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
+			So(pp, ShouldBeNil)
 			So(version, ShouldBeNil)
 		})
 
@@ -70,7 +71,7 @@ func TestFindProject(t *testing.T) {
 			}
 			require.NoError(t, pp.Insert())
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
-			_, _, err := FindLatestVersionWithValidProject(p.Id)
+			_, _, _, err := FindLatestVersionWithValidProject(p.Id)
 			So(err, ShouldBeNil)
 
 		})
@@ -102,8 +103,10 @@ func TestFindProject(t *testing.T) {
 			So(badVersion.Insert(), ShouldBeNil)
 			So(goodVersion.Insert(), ShouldBeNil)
 			So(pp.Insert(), ShouldBeNil)
-			v, p, err := FindLatestVersionWithValidProject("project_test")
+			v, p, pp, err := FindLatestVersionWithValidProject("project_test")
 			So(err, ShouldBeNil)
+			So(pp, ShouldNotBeNil)
+			So(pp.Id, ShouldEqual, "good_version")
 			So(p, ShouldNotBeNil)
 			So(p.Owner, ShouldEqual, "fakeowner")
 			So(v.Id, ShouldEqual, "good_version")
@@ -2431,7 +2434,7 @@ tasks:
 	// parser project, meaning it should use the actual parser project document.
 	v := Version{
 		Id:                   versionID,
-		ProjectStorageMethod: ProjectStorageMethodDB,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 	}
 	require.NoError(t, v.Insert())
 

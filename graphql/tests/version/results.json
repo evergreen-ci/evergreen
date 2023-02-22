@@ -5,7 +5,10 @@
       "result": {
         "data": {
           "version": {
-            "baseTaskStatuses": ["failed", "success"]
+            "baseTaskStatuses": [
+              "failed",
+              "success"
+            ]
           }
         }
       }
@@ -49,16 +52,16 @@
               "branch": "master",
               "isBase": true,
               "modules": {
-                "evergreen":{
-                  "branch":"master",
-                  "repo":"evergreen",
-                  "revision":"08d8cc896f586d8a23edf9bab940d6f2d3e70ffa",
-                  "owner":"evergreen-ci",
-                  "url":"https://api.github.com/repos/evergreen-ci/evergreen/commits/08d8cc896f586d8a23edf9bab940d6f2d3e70ffa"
+                "evergreen": {
+                  "branch": "master",
+                  "repo": "evergreen",
+                  "revision": "08d8cc896f586d8a23edf9bab940d6f2d3e70ffa",
+                  "owner": "evergreen-ci",
+                  "url": "https://api.github.com/repos/evergreen-ci/evergreen/commits/08d8cc896f586d8a23edf9bab940d6f2d3e70ffa"
                 }
               },
               "moduleOverrides": null
-            }       
+            }
           }
         }
       }
@@ -112,15 +115,88 @@
       }
     },
     {
+      "query_file": "buildVariants.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "taskCount": 6,
+            "buildVariants": [
+              {
+                "variant": "lint",
+                "displayName": "Lint",
+                "tasks": [
+                  {
+                    "id": "3",
+                    "execution": 0,
+                    "status": "success",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/3/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "4",
+                    "execution": 0,
+                    "status": "failed",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/4/0?type=ALL"
+                    }
+                  }
+                ]
+              },
+              {
+                "variant": "ubuntu1604",
+                "displayName": "Ubuntu 16.04",
+                "tasks": [
+                  {
+                    "id": "X",
+                    "execution": 0,
+                    "status": "undispatched",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/X/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "2",
+                    "execution": 0,
+                    "status": "failed",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/2/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "XYZ",
+                    "execution": 0,
+                    "status": "setup-failed",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/XYZ/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "1",
+                    "execution": 0,
+                    "status": "success",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/1/0?type=ALL"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "previousVersion.graphql",
       "result": {
         "data": {
           "version": {
-              "id": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
-              "previousVersion": {
-                "id": "spruce_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d"
-              }
+            "id": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
+            "previousVersion": {
+              "id": "spruce_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d"
             }
+          }
         }
       }
     },

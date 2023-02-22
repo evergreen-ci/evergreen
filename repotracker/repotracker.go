@@ -715,7 +715,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		TriggerType:          metadata.TriggerType,
 		TriggerEvent:         metadata.EventID,
 		PeriodicBuildID:      metadata.PeriodicBuildID,
-		ProjectStorageMethod: model.ProjectStorageMethodDB,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {

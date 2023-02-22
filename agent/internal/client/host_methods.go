@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -27,7 +28,7 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	}
 	resp, err := c.retryRequest(ctx, info, detail)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "ending task").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "ending task").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, taskEndResp); err != nil {
@@ -50,7 +51,7 @@ func (c *hostCommunicator) GetNextTask(ctx context.Context, details *apimodels.G
 	info.path = fmt.Sprintf("hosts/%s/agent/next_task", c.hostID)
 	resp, err := c.retryRequest(ctx, info, details)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting next task").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting next task").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, nextTask); err != nil {

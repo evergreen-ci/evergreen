@@ -422,6 +422,9 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 			expAndVars.Expansions.Put(param.Key, param.Value)
 		}
 	}
+	// Overwrite any empty values here since these parameters were explicitly
+	// user-specified.
+	expAndVars.Expansions.Update(expAndVars.Parameters)
 
 	tc.taskModel = taskModel
 	tc.project = project

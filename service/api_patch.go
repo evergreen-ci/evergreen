@@ -286,7 +286,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
 		return
 	}
-	_, project, err := model.FindLatestVersionWithValidProject(projectRef.Id)
+	_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting patch"))
 		return
@@ -437,15 +437,28 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		var patchConfig *model.PatchConfig
-		_, patchConfig, err = model.GetPatchedProject(ctx, &as.Settings, p, githubOauthToken)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+		if p.ProjectStorageMethod != "" {
+			// New patches already create the parser project at the same time as
+			// the patch, so there's no need to get the patched parser project
+			// for them.
+			projectConfig, err := model.GetPatchedProjectConfig(ctx, &as.Settings, p, githubOauthToken)
+			if err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			p.PatchedProjectConfig = projectConfig
+		} else {
+			// In the fallback case, old unfinalized patches had their parser
+			// projects stored as a string, so it gets stored here.
+			_, patchConfig, err := model.GetPatchedProject(ctx, &as.Settings, p, githubOauthToken)
+			if err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			p.PatchedParserProject = patchConfig.PatchedParserProjectYAML
+			p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		}
 
-		p.PatchedParserProject = patchConfig.PatchedParserProject
-		p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
