@@ -139,6 +139,10 @@ models:
     fields:
       canCreateProject:
         resolver: true
+  Pod:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPod
+  TaskContainerCreationOpts:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPodTaskContainerCreationOptions
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:

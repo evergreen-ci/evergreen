@@ -302,6 +302,15 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	return distros, nil
 }
 
+// Pod is the resolver for the pod field.
+func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPod, error) {
+	pod, err := data.FindAPIPodByID(podID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding pod: %s", err.Error()))
+	}
+	return pod, nil
+}
+
 // Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPatch, error) {
 	patch, err := data.FindPatchById(id)
