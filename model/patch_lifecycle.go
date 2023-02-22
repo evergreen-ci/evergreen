@@ -694,8 +694,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		ppStorageMethod = evergreen.ProjectStorageMethodDB
 	}
 	if mustInsertParserProjectDuringFinalization {
-		intermediateProject.Id = p.Id.Hex()
-		intermediateProject.CreateTime = patchVersion.CreateTime
+		intermediateProject.Init(p.Id.Hex(), patchVersion.CreateTime)
 		ppStorageMethod, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, ppStorageMethod, intermediateProject)
 		if err != nil {
 			return nil, errors.Wrapf(err, "upserting parser project for patch '%s'", p.Id.Hex())
@@ -1024,7 +1023,10 @@ func (e *EnqueuePatch) Valid() bool {
 }
 
 // MakeMergePatchFromExisting creates a merge patch from an existing one to be
-// put in the commit queue.
+// put in the commit queue. Is also creates the parser project associated with
+// the patch.
+// kim: TODO: test this in the staging sandbox by using the CLI to make a patch
+// from an existing patch.
 func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Settings, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
 	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.Errorf("enqueueing patch '%s' without metadata", existingPatch.Id.Hex())
@@ -1046,21 +1048,13 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.Wrap(err, "loading existing project")
 	}
 
-	// kim: TODO: remove
-	// projBytes, err := bson.Marshal(pp)
-	// if err != nil {
-	//     return nil, errors.Wrap(err, "marshalling project bytes to bson")
-	// }
-
 	patchDoc := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
-		Author:  existingPatch.Author,
-		Project: existingPatch.Project,
-		Githash: existingPatch.Githash,
-		Status:  evergreen.PatchCreated,
-		Alias:   evergreen.CommitQueueAlias,
-		// kim: TODO: remove
-		// PatchedParserProject: string(projBytes),
+		Id:                   mgobson.NewObjectId(),
+		Author:               existingPatch.Author,
+		Project:              existingPatch.Project,
+		Githash:              existingPatch.Githash,
+		Status:               evergreen.PatchCreated,
+		Alias:                evergreen.CommitQueueAlias,
 		PatchedProjectConfig: existingPatch.PatchedProjectConfig,
 		CreateTime:           time.Now(),
 		MergedFrom:           existingPatch.Id.Hex(),
@@ -1090,9 +1084,12 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.Wrap(err, "computing patch num")
 	}
 
-	pp.Id = patchDoc.Id.Hex()
-	// kim: TODO: re-upsert the copied parser project (pp) here for the copied
-	// patch into the DB with S3 fallback.
+	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
+	ppStorageMethod, err := ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, pp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "upserting parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
+	}
+	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
@@ -1211,10 +1208,6 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 	}
 
 	// kim: NOTE: admin restarts commit queue items from admin UI -> RetryCommitQueueItems -> restartDiffItem -> processCLIPatchItem
-	// kim: TODO: can either change the design to insert parser project here
-	// (with its ID) and set the patch's parser project storage method, or wait
-	// until processCLIPatchItem occurs (i.e. how it currently behaves). I'm
-	// inclined to do the latter since it's less change.
 	if err = newPatch.Insert(); err != nil {
 		return errors.Wrap(err, "inserting patch")
 	}

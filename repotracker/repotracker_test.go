@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -757,6 +758,9 @@ type CreateVersionFromConfigSuite struct {
 	rev           *model.Revision
 	d             *distro.Distro
 	sourceVersion *model.Version
+	ctx           context.Context
+	cancel        context.CancelFunc
+	env           evergreen.Environment
 	suite.Suite
 }
 
@@ -789,6 +793,14 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Revision: "abc",
 	}
 	s.NoError(s.d.Insert())
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.ctx))
+	s.env = env
+}
+
+func (s *CreateVersionFromConfigSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *CreateVersionFromConfigSuite) TestCreateBasicVersion() {
@@ -805,15 +817,14 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -822,6 +833,13 @@ tasks:
 	s.Equal(evergreen.VersionCreated, dbVersion.Status)
 	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
 	s.Equal(evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod, "storage method should initially be DB for new versions")
+
+	s.Equal(evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
+	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), dbVersion.ProjectStorageMethod, dbVersion.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 1)
+	s.Len(dbParserProject.Tasks, 2)
 
 	s.Equal(false, utility.FromBoolPtr(dbVersion.Activated))
 	dbBuild, err := build.FindOneId(v.BuildIds[0])
@@ -849,15 +867,14 @@ tasks:
   exec_timeout_secs: 3
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, nil)
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -868,6 +885,13 @@ tasks:
 	s.Equal("buildvariant 'bv' must either specify run_on field or have every task specify run_on", dbVersion.Errors[0])
 	s.Equal("task 'task1' does not contain any commands", dbVersion.Warnings[0])
 	s.Equal("task 'task2' does not contain any commands", dbVersion.Warnings[1])
+
+	s.Equal(evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
+	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), dbVersion.ProjectStorageMethod, dbVersion.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 1)
+	s.Len(dbParserProject.Tasks, 2)
 
 	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
 	s.NoError(err)
@@ -901,8 +925,7 @@ tasks:
       script: echo "test"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},
@@ -913,7 +936,7 @@ tasks:
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, &vErrs)
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev}, false, &vErrs)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -921,6 +944,13 @@ tasks:
 	s.NoError(err)
 	s.Len(dbVersion.Errors, 2)
 	s.Len(dbVersion.Warnings, 2)
+
+	s.Equal(evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
+	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), dbVersion.ProjectStorageMethod, dbVersion.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 1)
+	s.Len(dbParserProject.Tasks, 2)
 }
 
 func (s *CreateVersionFromConfigSuite) TestTransactionAbort() {
@@ -937,8 +967,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	s.NotNil(pp)
 	//force a duplicate key error with the version
@@ -952,7 +981,7 @@ tasks:
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err = CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	v, err = CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.Error(err)
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
@@ -984,8 +1013,7 @@ tasks:
 - name: task3
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -996,7 +1024,7 @@ tasks:
 	now := time.Now()
 	tomorrow := now.Add(time.Hour * 24) // next day
 	y, m, d := tomorrow.Date()
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, metadata, false, nil)
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.Len(v.Errors, 0)
@@ -1046,8 +1074,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1061,7 +1088,7 @@ tasks:
 		Variant:   ".*",
 	}
 	s.NoError(alias.Upsert())
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubPRAlias}, false, nil)
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubPRAlias}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 

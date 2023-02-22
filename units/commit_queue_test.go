@@ -330,7 +330,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		},
 	}
 
-	projectConfig, err := updatePatch(s.ctx, s.settings, githubToken, projectRef, patchDoc)
+	projectConfig, pp, err := updatePatch(s.ctx, s.settings, githubToken, projectRef, patchDoc)
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)
@@ -339,6 +339,10 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
 	s.Empty(patchDoc.BuildVariants)
+
+	s.Require().NotZero(pp)
+	s.NotEmpty(pp.BuildVariants)
+	s.NotEmpty(pp.Tasks)
 }
 
 func TestAddMergeTaskDependencies(t *testing.T) {

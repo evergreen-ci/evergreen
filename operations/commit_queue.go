@@ -313,9 +313,6 @@ func enqueuePatch() cli.Command {
 			}
 
 			// create the new merge patch
-			// kim: NOTE: this is where CLI users request that a regular patch
-			// gets copied into a merge patch for the commit queue. Can use this
-			// for manual testing.
 			mergePatch, err := client.CreatePatchForMerge(ctx, patchID, commitMessage)
 			if err != nil {
 				return errors.Wrap(err, "creating commit queue patch")

@@ -919,6 +919,15 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	return proj, errors.Wrap(catcher.Resolve(), TranslateProjectError)
 }
 
+// Init initializes the parser project with the expected fields before it is
+// persisted. It's assumed that the remaining parser project configuration is
+// already populated, but these values to initialize come from an external
+// source (i.e. the patch or version it's based on).
+func (pp *ParserProject) Init(id string, createdAt time.Time) {
+	pp.Id = id
+	pp.CreateTime = createdAt
+}
+
 func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {
 	t := parserTask{
 		Name:     name,

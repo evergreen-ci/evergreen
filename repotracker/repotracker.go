@@ -593,6 +593,8 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
+// kim: TODO: test this logic in staging by committing something to the sandbox
+// and seeing if the repotracker processes it correctly.
 func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
 	metadata model.VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if projectInfo.NotPopulated() {
@@ -614,8 +616,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			return nil, errors.Wrap(err, "translating intermediate project")
 		}
 	}
-	projectInfo.IntermediateProject.Id = v.Id
-	projectInfo.IntermediateProject.CreateTime = v.CreateTime
+	projectInfo.IntermediateProject.Init(v.Id, v.CreateTime)
 	if projectInfo.Config != nil {
 		projectInfo.Config.Id = v.Id
 	}
@@ -647,11 +648,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			v.Errors = append(v.Errors, versionErrs.Errors...)
 		}
 		if len(v.Errors) > 0 {
-			// kim: TODO: change this to upsert to DB with S3 fallback and
-			// update project storage method if needed.
-			if err = projectInfo.IntermediateProject.Insert(); err != nil {
-				return v, errors.Wrap(err, "inserting project")
+			env := evergreen.GetEnvironment()
+			ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
+			if err != nil {
+				return nil, errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 			}
+			v.ProjectStorageMethod = ppStorageMethod
 			if err = v.Insert(); err != nil {
 				return nil, errors.Wrap(err, "inserting version")
 			}
@@ -999,11 +1001,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	env := evergreen.GetEnvironment()
 
-	// kim: TODO: upsert parser project to DB with S3 fallback before
-	// transaction.
-	if err := model.ParserProjectUpsertOne(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject); err != nil {
-		return errors.Wrapf(err, "upserting parser project '%s'", projectInfo.IntermediateProject.Id)
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
+	if err != nil {
+		return errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 	}
+	v.ProjectStorageMethod = ppStorageMethod
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
@@ -1036,20 +1038,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				}
 				return errors.Wrapf(err, "inserting project config '%s'", v.Id)
 			}
-		}
-		// kim: TODO: remove insert, since the parser project can be safely
-		// inserted before the transaction.
-		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
-		if err != nil {
-			grip.Notice(message.WrapError(err, message.Fields{
-				"message": "aborting transaction",
-				"cause":   "can't insert parser project",
-				"version": v.Id,
-			}))
-			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "aborting transaction")
-			}
-			return errors.Wrapf(err, "inserting parser project '%s'", v.Id)
 		}
 		_, err = db.Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {

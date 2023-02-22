@@ -338,10 +338,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// patch intent and the actual patch are separate documents.
 	patchDoc.Id = j.PatchID
 
-	patchedParserProject.CreateTime = patchDoc.CreateTime
 	// Ensure that the patched parser project's ID agrees with the patch that's
 	// about to be created, rather than the patch intent.
-	patchedParserProject.Id = j.PatchID.Hex()
+	patchedParserProject.Init(j.PatchID.Hex(), patchDoc.CreateTime)
+
 	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, j.env.Settings(), evergreen.ProjectStorageMethodDB, patchedParserProject)
 	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s' for patch", patchedParserProject.Id)

@@ -54,8 +54,8 @@ func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo s
 	return pr, nil
 }
 
-// kim: TODO: test enqueueing commit queue item for PR, possibly using staging
-// sandbox.
+// kim: TODO: test in staging by enqueueing commit queue item for PR via
+// "evergreen merge" comment in sandbox.
 func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -129,9 +129,13 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return nil, err
 	}
 
-	// kim: TODO: insert parser project here and set the patch doc's parser
-	// project storage method.
-	pp.Id = patchDoc.Id.Hex()
+	env := evergreen.GetEnvironment()
+	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, pp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "upsert parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
+	}
+	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
@@ -139,7 +143,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 
 	catcher = grip.NewBasicCatcher()
 	for _, modulePR := range modulePRs {
-		catcher.Add(thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
+		catcher.Add(thirdparty.SendCommitQueueGithubStatus(env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
 	}
 
 	return patchDoc, catcher.Resolve()
@@ -424,7 +428,6 @@ func checkPRApprovals(ctx context.Context, settings *evergreen.Settings, userRep
 
 // CreatePatchForMerge creates a merge patch from an existing patch and enqueues
 // it in the commit queue.
-// kim: TODO: add tests for copying patch for merge.
 func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	existingPatch, err := patch.FindOneId(existingPatchID)
 	if err != nil {
