@@ -199,20 +199,20 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 	return func(t *testing.T) {
 		dataFilePath := filepath.Join(pathToTests, "tests", state.Directory, "data.json")
 		dataFile, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "data.json"))
-		require.NoError(t, errors.Wrapf(err, "error reading data file for %s", dataFilePath))
+		require.NoError(t, errors.Wrapf(err, "reading data file for %s", dataFilePath))
 
 		resultsFilePath := filepath.Join(pathToTests, "tests", state.Directory, "results.json")
 		resultsFile, err := ioutil.ReadFile(resultsFilePath)
-		require.NoError(t, errors.Wrapf(err, "error reading results file for %s", resultsFilePath))
+		require.NoError(t, errors.Wrapf(err, "reading results file for %s", resultsFilePath))
 
 		var testData map[string]json.RawMessage
 		err = json.Unmarshal(dataFile, &testData)
-		require.NoError(t, errors.Wrapf(err, "error unmarshalling data file for %s", dataFilePath))
+		require.NoError(t, errors.Wrapf(err, "unmarshalling data file for %s", dataFilePath))
 		state.TestData = testData
 
 		var tests testsCases
 		err = json.Unmarshal(resultsFile, &tests)
-		require.NoError(t, errors.Wrapf(err, "error unmarshalling results file for %s", resultsFilePath))
+		require.NoError(t, errors.Wrapf(err, "unmarshalling results file for %s", resultsFilePath))
 
 		// Delete exactly the documents added to the task_logg coll instead of dropping task log db
 		// we do this to minimize deleting data that was not added from this test suite
