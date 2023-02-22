@@ -1286,8 +1286,13 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	require.NoError(t, db.ClearCollections(build.Collection, patch.Collection, task.Collection, VersionCollection))
 	uiConfig := evergreen.UIConfig{Url: "http://localhost"}
 	require.NoError(t, uiConfig.Set())
+
 	sender := send.MakeInternalLogger()
 	assert.NoError(t, grip.SetSender(sender))
+	defer func(s send.Sender) {
+		assert.NoError(t, grip.SetSender(s))
+	}(grip.GetSender())
+
 	b := &build.Build{
 		Id:        "buildtest",
 		Status:    evergreen.BuildFailed,
@@ -1330,7 +1335,7 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	assert.NoError(t, anotherTask.Insert())
 
 	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds([]string{b.Id}))
-	// Confirm that the build status was updated to pending in the PR by checking for appropriate Splunk logs
+	// Confirm if there was a log indicating the build status updated to pending
 	messageString, ok := sender.GetMessageSafe()
 	require.True(t, ok)
 	assert.Contains(t, messageString.Message.String(), "called github status send")
