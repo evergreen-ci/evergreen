@@ -98,13 +98,6 @@ type GetNextTaskDetails struct {
 	EC2InstanceID string `json:"instance_id,omitempty"`
 }
 
-// ExpansionVars is a map of expansion variables for a project.
-// TODO (EVG-18820): remove this after agent version has rolled over.
-type ExpansionVars struct {
-	Vars        map[string]string `json:"vars"`
-	PrivateVars map[string]bool   `json:"private_vars"`
-}
-
 type AgentSetupData struct {
 	SplunkServerURL   string                  `json:"splunk_server_url"`
 	SplunkClientToken string                  `json:"splunk_client_token"`

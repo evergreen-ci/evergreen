@@ -13,7 +13,6 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"google.golang.org/grpc"
 )
@@ -58,19 +57,11 @@ type SharedCommunicator interface {
 	GetDistroAMI(context.Context, string, string, TaskData) (string, error)
 	// GetProject loads the project using the task's version ID.
 	GetProject(context.Context, TaskData) (*model.Project, error)
-	// GetExpansions returns all expansions for the task known by the app server
-	// except for the expansions for the task's build variant.
-	// TODO (EVG-18820): remove this once agent versions have rolled over.
-	GetExpansions(context.Context, TaskData) (util.Expansions, error)
 	// Heartbeat will return a non-empty task status if the agent should stop running the task.
 	// Returning evergreen.TaskConflict means the agent is no longer authorized to run this task and
 	// should move on to the next available one. Returning evergreen.TaskFailed means that the task
 	// has been aborted. An empty string indicates the heartbeat has succeeded.
 	Heartbeat(context.Context, TaskData) (string, error)
-	// FetchExpansionVars loads expansions based on project variables for a communicator's task from the
-	// API server.
-	// TODO (EVG-18820): remove this once agent versions have rolled over.
-	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
 	// GetExpansionsAndVars returns the expansions, project variables, and
 	// version parameters. For expansions, all expansions are loaded except for
 	// the expansions defined for this task's build variant. For variables,
