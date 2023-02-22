@@ -1020,6 +1020,7 @@ func (s *AgentSuite) TestFetchProjectConfig() {
 	s.Equal(s.mockCommunicator.Project.Identifier, s.tc.project.Identifier)
 	s.Require().NotZero(s.tc.expansions)
 	s.Equal("bar", s.tc.expansions["foo"], "should include mock communicator expansions")
+	s.Equal("new-parameter-value", s.tc.expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
 	s.Require().NotZero(s.tc.privateVars)
 	s.True(s.tc.privateVars["some_private_var"], "should include mock communicator private variables")
 }

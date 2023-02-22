@@ -360,6 +360,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 
 	res := apimodels.ExpansionsAndVars{
 		Expansions:  e,
+		Parameters:  map[string]string{},
 		Vars:        map[string]string{},
 		PrivateVars: map[string]bool{},
 	}
@@ -386,9 +387,10 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 	for _, param := range v.Parameters {
-		// Overwrite empty values here since these were explicitly
-		// user-specified.
+		// TODO (EVG-19010): do not need to set res.Vars once agents are
+		// deployed since res.Parameters will take higher priority.
 		res.Vars[param.Key] = param.Value
+		res.Parameters[param.Key] = param.Value
 	}
 
 	return gimlet.NewJSONResponse(res)
