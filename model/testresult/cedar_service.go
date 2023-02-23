@@ -90,14 +90,13 @@ func (s *cedarService) GetFailedTestSamples(ctx context.Context, taskOpts []Task
 			BaseURL: s.baseURL,
 		},
 		SampleOptions: testresults.FailedTestSampleOptions{
+			Tasks:        make([]testresults.TaskInfo, len(taskOpts)),
 			RegexFilters: regexFilters,
 		},
 	}
 	for i, t := range taskOpts {
-		opts.SampleOptions.Tasks[i] = testresults.TaskInfo{
-			TaskID:    t.TaskID,
-			Execution: t.Execution,
-		}
+		opts.SampleOptions.Tasks[i].TaskID = t.TaskID
+		opts.SampleOptions.Tasks[i].Execution = t.Execution
 	}
 
 	data, err := testresults.GetFailedSamples(ctx, opts)

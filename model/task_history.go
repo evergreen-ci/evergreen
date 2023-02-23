@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,7 +31,7 @@ type taskHistoryIterator struct {
 type TaskHistoryChunk struct {
 	Tasks       []bson.M
 	Versions    []Version
-	FailedTests map[string][]testresult.TestResult
+	FailedTests map[string][]string
 	Exhausted   ExhaustedIterator
 }
 
@@ -135,7 +134,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	chunk := TaskHistoryChunk{
 		Tasks:       []bson.M{},
 		Versions:    []Version{},
-		FailedTests: map[string][]testresult.TestResult{},
+		FailedTests: map[string][]string{},
 	}
 
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
@@ -210,68 +209,79 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	var aggregatedTasks []bson.M
-	var agg adb.Aggregation
-	if agg, err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
-		return chunk, errors.WithStack(err)
+	/*
+		var aggregatedTasks []bson.M
+		var agg adb.Aggregation
+		if err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
+			return chunk, errors.WithStack(err)
+		}
+		chunk.Tasks = aggregatedTasks
+		failedTests, err := iter.GetFailedTests(agg)
+		if err != nil {
+			return chunk, errors.WithStack(err)
+		}
+	*/
+	var rawAggregatedTasks []bson.M
+	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &rawAggregatedTasks, taskHistoryMaxTime); err != nil {
+		return chunk, errors.Wrap(err, "aggregating task history data")
 	}
-	chunk.Tasks = aggregatedTasks
-	failedTests, err := iter.GetFailedTests(agg)
-	if err != nil {
-		return chunk, errors.WithStack(err)
-	}
+	chunk.Tasks = rawAggregatedTasks
 
+	matchStage[task.StatusKey] = evergreen.TaskFailed
+	tasks, err := task.FindAll(db.Query(matchStage))
+	if err != nil {
+		return chunk, errors.Wrap(err, "finding failed tasks")
+	}
+	failedTests, err := iter.GetFailedTests(tasks)
+	if err != nil {
+		return chunk, errors.Wrap(err, "getting failed tests for aggregated task history data")
+	}
 	chunk.FailedTests = failedTests
+
 	return chunk, nil
 }
 
 // GetFailedTests returns a mapping of task ID to a slice of failed tasks
 // extracted from a pipeline of aggregated tasks.
-func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map[string][]testresult.TestResult, error) {
+func (thi *taskHistoryIterator) GetFailedTests(tasks []task.Task) (map[string][]string, error) {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
 
-	// Get the ids of the failed tasks.
-	var failedTaskIds []string
-	var taskHistory TaskHistory
-	iter := aggregatedTasks.Iter()
-	for {
-		if iter.Next(&taskHistory) {
-			for _, task := range taskHistory.Tasks {
-				if task.Status == evergreen.TaskFailed {
-					failedTaskIds = append(failedTaskIds, task.Id)
-				}
-			}
-		} else {
-			break
-		}
-	}
-
-	if err := iter.Err(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	if failedTaskIds == nil {
-		// this is an added hack to make tests pass when
-		// transitioning between mongodb drivers
-		return nil, nil
-	}
-
-	// find all the relevant failed tests
-	failedTestsMap := make(map[string][]testresult.TestResult)
-	tasks, err := task.Find(task.ByIds(failedTaskIds))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	// create the mapping of the task id to the list of failed tasks
-	for _, task := range tasks {
-		failedTaskResults, err := task.GetTestResults(ctx, env, &testresult.FilterOptions{Statuses: []string{evergreen.TestFailedStatus}})
+	var allTaskOpts []testresult.TaskOptions
+	taskIDsToDisplay := map[string]string{}
+	for _, tsk := range tasks {
+		taskOpts, err := tsk.CreateTestResultsTaskOptions()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "creating test results task options")
 		}
-		failedTestsMap[task.Id] = append(failedTestsMap[task.Id], failedTaskResults.Results...)
+
+		allTaskOpts = append(allTaskOpts, taskOpts...)
+		for _, opts := range taskOpts {
+			taskIDsToDisplay[opts.TaskID] = tsk.Id
+		}
+	}
+	if len(allTaskOpts) == 0 {
+		// This is an added hack to make tests pass when transitioning
+		// between Mongo drivers.
+		return map[string][]string{}, nil
+	}
+	results, err := testresult.GetFailedTestSamples(ctx, env, allTaskOpts, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting failed test results samples from Cedar")
+	}
+
+	failedTestsMap := map[string][]string{}
+	for _, result := range results {
+		if len(result.MatchingFailedTestNames) == 0 {
+			continue
+		}
+
+		taskID, ok := taskIDsToDisplay[result.TaskID]
+		if !ok {
+			return nil, errors.Wrapf(err, "unexpected task '%s' in failed test sample result", result.TaskID)
+		}
+		failedTestsMap[taskID] = append(failedTestsMap[taskID], result.MatchingFailedTestNames...)
 	}
 
 	return failedTestsMap, nil
