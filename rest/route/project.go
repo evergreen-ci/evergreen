@@ -92,14 +92,14 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "paginating response"))
 		}
 	}
-	projects = projects[:lastIndex]
 
+	projects = projects[:lastIndex]
 	for _, proj := range projects {
 		projectModel := &model.APIProjectRef{}
-		if err = projectModel.BuildFromService(proj); err != nil {
+		// Because this is route to accessible to non-admins, only return basic fields.
+		if err = projectModel.BuildPublicFields(proj); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", proj.Id))
 		}
-
 		if err = resp.AddData(projectModel); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for project '%s'", utility.FromStringPtr(projectModel.Id)))
 		}

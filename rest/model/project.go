@@ -584,18 +584,21 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 	return &projectRef, nil
 }
 
-func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
+// BuildPublicFields only builds the fields that anyone should be able to see
+// so that we can return these to non project admins.
+func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
+	p.Id = utility.ToStringPtr(projectRef.Id)
+	p.Identifier = utility.ToStringPtr(projectRef.Identifier)
+	p.DisplayName = utility.ToStringPtr(projectRef.DisplayName)
 	p.Owner = utility.ToStringPtr(projectRef.Owner)
 	p.Repo = utility.ToStringPtr(projectRef.Repo)
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
 	p.Enabled = utility.BoolPtrCopy(projectRef.Enabled)
+	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)
 	p.Private = utility.BoolPtrCopy(projectRef.Private)
 	p.Restricted = utility.BoolPtrCopy(projectRef.Restricted)
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)
-	p.Id = utility.ToStringPtr(projectRef.Id)
-	p.Identifier = utility.ToStringPtr(projectRef.Identifier)
-	p.DisplayName = utility.ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
 	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
@@ -614,7 +617,6 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)
 	p.SpawnHostScriptPath = utility.ToStringPtr(projectRef.SpawnHostScriptPath)
-	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
 	p.GithubTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubTriggerAliases)
@@ -627,17 +629,9 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 	taskSync.BuildFromService(projectRef.TaskSync)
 	p.TaskSync = taskSync
 
-	workstationConfig := APIWorkstationConfig{}
-	workstationConfig.BuildFromService(projectRef.WorkstationConfig)
-	p.WorkstationConfig = workstationConfig
-
 	buildbaronConfig := APIBuildBaronSettings{}
 	buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings)
 	p.BuildBaronSettings = buildbaronConfig
-
-	taskAnnotationConfig := APITaskAnnotationSettings{}
-	taskAnnotationConfig.BuildFromService(projectRef.TaskAnnotationSettings)
-	p.TaskAnnotationSettings = taskAnnotationConfig
 
 	// Copy triggers
 	if projectRef.Triggers != nil {
@@ -678,6 +672,21 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 		apiSize.BuildFromService(size)
 		p.ContainerSizeDefinitions = append(p.ContainerSizeDefinitions, apiSize)
 	}
+	return nil
+}
+
+func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
+	if err := p.BuildPublicFields(projectRef); err != nil {
+		return err
+	}
+
+	taskAnnotationConfig := APITaskAnnotationSettings{}
+	taskAnnotationConfig.BuildFromService(projectRef.TaskAnnotationSettings)
+	p.TaskAnnotationSettings = taskAnnotationConfig
+
+	workstationConfig := APIWorkstationConfig{}
+	workstationConfig.BuildFromService(projectRef.WorkstationConfig)
+	p.WorkstationConfig = workstationConfig
 
 	for idx, secret := range projectRef.ContainerSecrets {
 		var apiSecret APIContainerSecret
