@@ -716,19 +716,22 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 		}
 		allTaskOpts = append(allTaskOpts, taskOpts...)
 	}
-	samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test results sample: %s", err))
-	}
 
-	for _, sample := range samples {
-		apiSample, ok := apiSamplesByTaskID[sample.TaskID]
-		if !ok {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error: unexpected task '%s' in task test sample result", sample.TaskID))
+	if len(allTaskOpts) > 0 {
+		samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test results sample: %s", err))
 		}
 
-		apiSample.MatchingFailedTestNames = append(apiSample.MatchingFailedTestNames, sample.MatchingFailedTestNames...)
-		apiSample.TotalTestCount += sample.TotalFailedNames
+		for _, sample := range samples {
+			apiSample, ok := apiSamplesByTaskID[sample.TaskID]
+			if !ok {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error: unexpected task '%s' in task test sample result", sample.TaskID))
+			}
+
+			apiSample.MatchingFailedTestNames = append(apiSample.MatchingFailedTestNames, sample.MatchingFailedTestNames...)
+			apiSample.TotalTestCount += sample.TotalFailedNames
+		}
 	}
 
 	return apiSamples, nil

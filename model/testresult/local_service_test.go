@@ -2,14 +2,12 @@ package testresult
 
 import (
 	"context"
-	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,6 +17,7 @@ func TestLocalService(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := newLocalService(env)
+	require.NoError(t, ClearLocal(ctx, env))
 	defer func() {
 		assert.NoError(t, ClearLocal(ctx, env))
 	}()
@@ -55,6 +54,30 @@ func TestLocalService(t *testing.T) {
 		savedResults2[i] = result
 	}
 	require.NoError(t, InsertLocal(ctx, env, savedResults2...))
+
+	task3 := TaskOptions{TaskID: "task3", Execution: 0}
+	savedResults3 := make([]TestResult, maxSampleSize)
+	for i := 0; i < len(savedResults3); i++ {
+		result := getTestResult()
+		result.TaskID = task3.TaskID
+		result.Execution = task3.Execution
+		if i%2 == 0 {
+			result.Status = evergreen.TestFailedStatus
+		}
+		savedResults3[i] = result
+	}
+	require.NoError(t, InsertLocal(ctx, env, savedResults3...))
+
+	task4 := TaskOptions{TaskID: "task4", Execution: 1}
+	savedResults4 := make([]TestResult, maxSampleSize)
+	for i := 0; i < len(savedResults3); i++ {
+		result := getTestResult()
+		result.TaskID = task4.TaskID
+		result.Execution = task4.Execution
+		result.Status = evergreen.TestFailedStatus
+		savedResults4[i] = result
+	}
+	require.NoError(t, InsertLocal(ctx, env, savedResults4...))
 
 	emptyTask := TaskOptions{TaskID: "DNE", Execution: 0}
 
@@ -95,30 +118,6 @@ func TestLocalService(t *testing.T) {
 		assert.Nil(t, stats.FilteredCount)
 	})
 	t.Run("GetMergedFailedTestSample", func(t *testing.T) {
-		task3 := TaskOptions{TaskID: "task3", Execution: 0}
-		savedResults3 := make([]TestResult, maxSampleSize)
-		for i := 0; i < len(savedResults3); i++ {
-			result := getTestResult()
-			result.TaskID = task3.TaskID
-			result.Execution = task3.Execution
-			if i%2 == 0 {
-				result.Status = evergreen.TestFailedStatus
-			}
-			savedResults3[i] = result
-		}
-		require.NoError(t, InsertLocal(ctx, env, savedResults3...))
-
-		task4 := TaskOptions{TaskID: "task4", Execution: 1}
-		savedResults4 := make([]TestResult, maxSampleSize)
-		for i := 0; i < len(savedResults3); i++ {
-			result := getTestResult()
-			result.TaskID = task4.TaskID
-			result.Execution = task4.Execution
-			result.Status = evergreen.TestFailedStatus
-			savedResults4[i] = result
-		}
-		require.NoError(t, InsertLocal(ctx, env, savedResults4...))
-
 		t.Run("FailingTests", func(t *testing.T) {
 			taskOpts := []TaskOptions{task3, task4, emptyTask}
 			sample, err := svc.GetMergedFailedTestSample(ctx, taskOpts)
@@ -137,6 +136,87 @@ func TestLocalService(t *testing.T) {
 			sample, err := svc.GetMergedFailedTestSample(ctx, taskOpts)
 			require.NoError(t, err)
 			assert.Nil(t, sample)
+		})
+	})
+	t.Run("GetFailedTestSamples", func(t *testing.T) {
+		t.Run("WithoutRegexFilters", func(t *testing.T) {
+			taskOpts := []TaskOptions{task3, task4, emptyTask}
+			samples, err := svc.GetFailedTestSamples(ctx, taskOpts, nil)
+			require.NoError(t, err)
+
+			expectedSamples := []TaskTestResultsFailedSample{
+				{
+					TaskID:    task3.TaskID,
+					Execution: task3.Execution,
+					MatchingFailedTestNames: func() []string {
+						sample := make([]string, len(savedResults3)/2)
+						for i := 0; i < len(savedResults3)/2; i++ {
+							sample[i] = savedResults3[2*i].GetDisplayTestName()
+						}
+
+						return sample
+					}(),
+					TotalFailedNames: len(savedResults3) / 2,
+				},
+				{
+					TaskID:    task4.TaskID,
+					Execution: task4.Execution,
+					MatchingFailedTestNames: func() []string {
+						sample := make([]string, len(savedResults4))
+						for i := 0; i < len(savedResults4); i++ {
+							sample[i] = savedResults4[i].GetDisplayTestName()
+						}
+
+						return sample
+					}(),
+					TotalFailedNames: len(savedResults4),
+				},
+			}
+			assert.ElementsMatch(t, expectedSamples, samples)
+		})
+		t.Run("WithRegexFiltersMatch", func(t *testing.T) {
+			taskOpts := []TaskOptions{task3, task4}
+			regexFilters := []string{savedResults4[0].GetDisplayTestName(), savedResults4[1].GetDisplayTestName()}
+			samples, err := svc.GetFailedTestSamples(ctx, taskOpts, regexFilters)
+			require.NoError(t, err)
+
+			expectedSamples := []TaskTestResultsFailedSample{
+				{
+					TaskID:                  task3.TaskID,
+					Execution:               task3.Execution,
+					MatchingFailedTestNames: nil,
+					TotalFailedNames:        len(savedResults3) / 2,
+				},
+				{
+					TaskID:                  task4.TaskID,
+					Execution:               task4.Execution,
+					MatchingFailedTestNames: regexFilters,
+					TotalFailedNames:        len(savedResults4),
+				},
+			}
+			assert.ElementsMatch(t, expectedSamples, samples)
+		})
+		t.Run("WithRegexFiltersNoMatch", func(t *testing.T) {
+			taskOpts := []TaskOptions{task3, task4}
+			regexFilters := []string{"DNE"}
+			samples, err := svc.GetFailedTestSamples(ctx, taskOpts, regexFilters)
+			require.NoError(t, err)
+
+			expectedSamples := []TaskTestResultsFailedSample{
+				{
+					TaskID:                  task3.TaskID,
+					Execution:               task3.Execution,
+					MatchingFailedTestNames: nil,
+					TotalFailedNames:        len(savedResults3) / 2,
+				},
+				{
+					TaskID:                  task4.TaskID,
+					Execution:               task4.Execution,
+					MatchingFailedTestNames: nil,
+					TotalFailedNames:        len(savedResults4),
+				},
+			}
+			assert.ElementsMatch(t, expectedSamples, samples)
 		})
 	})
 }
@@ -456,25 +536,4 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			}
 		})
 	}
-}
-
-func getTestResult() TestResult {
-	result := TestResult{
-		TestName:      utility.RandomString(),
-		Status:        evergreen.TestSucceededStatus,
-		TestStartTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
-		TestEndTime:   time.Now().UTC().Round(time.Millisecond),
-	}
-	// Optional fields, we should test that we handle them properly when
-	// they are populated and when they do not.
-	if sometimes.Half() {
-		result.DisplayTestName = utility.RandomString()
-		result.GroupID = utility.RandomString()
-		result.LogTestName = utility.RandomString()
-		result.LogURL = utility.RandomString()
-		result.RawLogURL = utility.RandomString()
-		result.LineNum = rand.Intn(1000)
-	}
-
-	return result
 }

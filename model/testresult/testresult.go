@@ -244,6 +244,10 @@ func GetMergedFailedTestSample(ctx context.Context, env evergreen.Environment, t
 // GetFailedTestSamples returns failed test samples filtered as specified by
 // the optional regex filters for each task specified.
 func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
+	if len(taskOpts) == 0 {
+		return nil, errors.New("must specify task options")
+	}
+
 	var allSamples []TaskTestResultsFailedSample
 	for service, tasks := range groupTasksByService(taskOpts) {
 		svc, err := getServiceImpl(env, service)
