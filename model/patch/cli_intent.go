@@ -100,6 +100,8 @@ type cliIntent struct {
 }
 
 // BSON fields for the patches
+//
+//nolint:unused
 var (
 	cliDocumentIDKey    = bsonutil.MustHaveTag(cliIntent{}, "DocumentID")
 	cliPatchFileIDKey   = bsonutil.MustHaveTag(cliIntent{}, "PatchFileID")
