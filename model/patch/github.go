@@ -93,6 +93,8 @@ type githubIntent struct {
 }
 
 // BSON fields for the patches
+//
+//nolint:unused
 var (
 	documentIDKey   = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
 	msgIDKey        = bsonutil.MustHaveTag(githubIntent{}, "MsgID")
