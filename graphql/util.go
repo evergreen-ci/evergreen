@@ -1013,38 +1013,3 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 
 	return taskOpts, nil
 }
-
-func groupDisplayTaskFailedSamples(groupedTaskOpts map[testresult.TaskOptions][]testresult.TaskOptions, samples []testresult.TaskTestResultsFailedSample) []testresult.TaskTestResultsFailedSample {
-	var groupedSamples []testresult.TaskTestResultsFailedSample
-
-	sampleIds := map[testresult.TaskOptions]testresult.TaskTestResultsFailedSample{}
-	for _, sample := range samples {
-		id := testresult.TaskOptions{TaskID: sample.TaskID, Execution: sample.Execution}
-		if _, ok := groupedTaskOpts[id]; ok {
-			groupedSamples = append(groupedSamples, sample)
-		}
-		sampleIds[id] = sample
-	}
-
-	for id, execIDs := range groupedTaskOpts {
-		if _, ok := sampleIds[id]; ok {
-			continue
-		}
-
-		sample := testresult.TaskTestResultsFailedSample{
-			TaskID:    id.TaskID,
-			Execution: id.Execution,
-		}
-
-		for _, execID := range execIDs {
-			execID.ResultsService = ""
-			execSample := sampleIds[execID]
-			sample.MatchingFailedTestNames = append(sample.MatchingFailedTestNames, execSample.MatchingFailedTestNames...)
-			sample.TotalFailedNames += execSample.TotalFailedNames
-		}
-
-		groupedSamples = append(groupedSamples, sample)
-	}
-
-	return groupedSamples
-}

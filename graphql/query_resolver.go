@@ -702,30 +702,33 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 	}
 
 	var allTaskOpts []testresult.TaskOptions
-	groupedTaskOpts := map[testresult.TaskOptions][]testresult.TaskOptions{}
-	for _, dbTask := range dbTasks {
+	apiSamples := make([]*TaskTestResultSample, len(dbTasks))
+	apiSamplesByTaskID := map[string]*TaskTestResultSample{}
+	for i, dbTask := range dbTasks {
 		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for task '%s': %s", dbTask.Id, err))
 		}
 
+		apiSamples[i] = &TaskTestResultSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
+		for _, o := range taskOpts {
+			apiSamplesByTaskID[o.TaskID] = apiSamples[i]
+		}
 		allTaskOpts = append(allTaskOpts, taskOpts...)
-		groupedTaskOpts[testresult.TaskOptions{TaskID: dbTask.Id, Execution: dbTask.Execution}] = taskOpts
 	}
 	samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test results sample: %s", err))
 	}
 
-	samples = groupDisplayTaskFailedSamples(groupedTaskOpts, samples)
-	apiSamples := make([]*TaskTestResultSample, len(samples))
-	for i, sample := range samples {
-		apiSamples[i] = &TaskTestResultSample{
-			TaskID:                  sample.TaskID,
-			Execution:               sample.Execution,
-			MatchingFailedTestNames: sample.MatchingFailedTestNames,
-			TotalTestCount:          sample.TotalFailedNames,
+	for _, sample := range samples {
+		apiSample, ok := apiSamplesByTaskID[sample.TaskID]
+		if !ok {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error: unexpected task '%s' in task test sample result", sample.TaskID))
 		}
+
+		apiSample.MatchingFailedTestNames = append(apiSample.MatchingFailedTestNames, sample.MatchingFailedTestNames...)
+		apiSample.TotalTestCount += sample.TotalFailedNames
 	}
 
 	return apiSamples, nil
