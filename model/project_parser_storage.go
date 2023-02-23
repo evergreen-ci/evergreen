@@ -98,9 +98,6 @@ func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergre
 		return method, err
 	}
 
-	// Upsertion could fail for multiple reasons, but Evergreen only resorts to
-	// using S3 if upsert failed due to the DB document size limitation.
-
 	flags, flagErr := evergreen.GetServiceFlags()
 	if flagErr != nil {
 		return method, errors.Wrap(flagErr, "getting service flags to check ability to fall back to S3")
