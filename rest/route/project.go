@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -362,13 +363,19 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging project ref '%s' with repo settings", h.newProjectRef.Identifier))
 	}
 
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
-	}
-	_, err = dbModel.ValidateProjectCreation(h.newProjectRef.Id, settings, mergedProjectRef)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
+	if mergedProjectRef.IsEnabled() {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
+		}
+		originalMergedRef, err := dbModel.GetProjectRefMergedWithRepo(*h.originalProject)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging original project ref '%s' with repo settings", h.originalProject.Identifier))
+		}
+		_, err = dbModel.ValidateEnabledProjectsLimit(h.newProjectRef.Id, settings, originalMergedRef, mergedProjectRef)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
+		}
 	}
 
 	if h.newProjectRef.IsEnabled() {
@@ -687,7 +694,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err = data.CreateProject(ctx, h.env, &dbProjectRef, u); err != nil {
+	if _, err = data.CreateProject(ctx, h.env, &dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
 	}
 
@@ -892,51 +899,11 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 	// body is optional
 	b, _ := ioutil.ReadAll(r.Body)
-	if len(b) > 0 {
-		if err := json.Unmarshal(b, &h.opts); err != nil {
-			return errors.Wrap(err, "unmarshalling JSON request body into version options")
-		}
+	opts, err := parseGetVersionsOptions(b, params)
+	if err != nil {
+		return err
 	}
-
-	if h.opts.IncludeTasks && !h.opts.IncludeBuilds {
-		return errors.New("cannot include tasks without builds")
-	}
-
-	// get some options from the query parameters for legacy usage
-	limitStr := params.Get("limit")
-	if limitStr != "" {
-		limit, err := strconv.Atoi(limitStr)
-		if err != nil {
-			return errors.Wrap(err, "invalid limit")
-		}
-		h.opts.Limit = limit
-	}
-	if h.opts.Limit == 0 {
-		h.opts.Limit = defaultVersionLimit
-	}
-	if h.opts.Limit < 1 {
-		return errors.New("limit must be a positive integer")
-	}
-
-	startStr := params.Get("start")
-	if startStr != "" {
-		startOrder, err := strconv.Atoi(params.Get("start"))
-		if err != nil {
-			return errors.Wrap(err, "invalid start query parameter")
-		}
-		h.opts.StartAfter = startOrder
-	}
-	if h.opts.StartAfter < 0 {
-		return errors.New("start must be a non-negative integer")
-	}
-
-	requester := params.Get("requester")
-	if requester != "" {
-		h.opts.Requester = requester
-	}
-	if h.opts.Requester == "" {
-		h.opts.Requester = evergreen.RepotrackerVersionRequester
-	}
+	h.opts = opts.GetVersionsOptions
 	return nil
 }
 
@@ -969,6 +936,169 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
+}
+
+// POST /rest/v2/projects/{project_id}/versions
+
+// modifyProjectVersionsHandler is a RequestHandler for setting the priority of versions.
+type modifyProjectVersionsHandler struct {
+	projectId string
+	url       string
+	opts      dbModel.VersionsOptions
+}
+
+func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
+	return &modifyProjectVersionsHandler{url: url}
+}
+
+func (h *modifyProjectVersionsHandler) Factory() gimlet.RouteHandler {
+	return &modifyProjectVersionsHandler{url: h.url}
+}
+
+func (h *modifyProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectId = gimlet.GetVars(r)["project_id"]
+	params := r.URL.Query()
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+	opts, err := parseGetVersionsOptions(b, params)
+	if err != nil {
+		return err
+	}
+	if opts.StartTimeStr == "" && opts.RevisionStart == 0 {
+		return errors.New("must specify either timestamps or order numbers")
+	}
+	if opts.Priority == nil {
+		return errors.New("must specify a priority")
+	}
+	h.opts = *opts
+	return nil
+}
+
+func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	priority := utility.FromInt64Ptr(h.opts.Priority)
+	// Check for a valid priority and perform the update.
+	if ok := validPriority(priority, h.projectId, user); !ok {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
+				"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
+			StatusCode: http.StatusForbidden,
+		})
+	}
+	versions, err := data.GetProjectVersionsWithOptions(h.projectId, h.opts.GetVersionsOptions)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectId))
+	}
+	var versionIds []string
+	for _, v := range versions {
+		versionIds = append(versionIds, utility.FromStringPtr(v.Id))
+	}
+	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// parseGetVersionsOptions parses the request body and query parameters and returns a VersionsOptions struct.
+// If both are specified, the values set in the query parameters take precedence.
+func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.VersionsOptions, error) {
+	opts := &dbModel.VersionsOptions{}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, opts); err != nil {
+			return nil, errors.Wrap(err, "unmarshalling JSON request body into version options")
+		}
+	}
+
+	if opts.IncludeTasks && !opts.IncludeBuilds {
+		return nil, errors.New("cannot include tasks without builds")
+	}
+
+	// get some options from the query parameters for legacy usage
+	limitStr := params.Get("limit")
+	if limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid limit")
+		}
+		opts.Limit = limit
+	}
+	if opts.Limit == 0 {
+		opts.Limit = defaultVersionLimit
+	}
+	if opts.Limit < 1 {
+		return nil, errors.New("limit must be a positive integer")
+	}
+
+	startStr := params.Get("start")
+	if startStr != "" {
+		startOrder, err := strconv.Atoi(params.Get("start"))
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid start query parameter")
+		}
+		opts.RevisionStart = startOrder
+	}
+	if opts.RevisionStart < 0 {
+		return nil, errors.New("start must be a non-negative integer")
+	}
+
+	endStr := params.Get("end")
+	if endStr != "" {
+		endOrder, err := strconv.Atoi(params.Get("end"))
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid end query parameter")
+		}
+		opts.RevisionEnd = endOrder
+	}
+	if opts.RevisionEnd < 0 {
+		return nil, errors.New("end must be a non-negative integer")
+	}
+	if opts.RevisionEnd > opts.RevisionStart {
+		return nil, errors.New("end must be less than or equal to start")
+	}
+
+	if opts.StartTimeStr != "" && opts.RevisionStart != 0 {
+		return nil, errors.New("cannot specify both timestamps and order numbers")
+	}
+
+	var err error
+	if opts.StartTimeStr != "" {
+		opts.StartTime, opts.EndTime, err = getStartAndEndTime(opts.StartTimeStr, opts.EndTimeStr)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting start and end time")
+		}
+	}
+
+	requester := params.Get("requester")
+	if requester != "" {
+		opts.Requester = requester
+	}
+	if opts.Requester == "" {
+		opts.Requester = evergreen.RepotrackerVersionRequester
+	}
+	return opts, nil
+}
+
+// getStartAndEndTime returns the start and end time for the given time range input strings.
+// The first returned parameter is the start time, and the second is the end time.
+func getStartAndEndTime(startTimeStr, endTimeStr string) (time.Time, time.Time, error) {
+	startTime, err := model.ParseTime(startTimeStr)
+	if err != nil {
+		return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing start time '%s'", startTimeStr)
+	}
+	endTime := time.Now()
+	if endTimeStr != "" {
+		endTime, err = model.ParseTime(endTimeStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing end time '%s'", endTimeStr)
+		}
+		if startTime.After(endTime) {
+			return time.Time{}, time.Time{}, errors.New("start time must be before end time")
+		}
+	}
+	return startTime, endTime, nil
 }
 
 ////////////////////////////////////////////////////////////////////////

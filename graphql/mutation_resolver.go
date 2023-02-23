@@ -408,16 +408,17 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err := data.CreateProject(ctx, evergreen.GetEnvironment(), dbProjectRef, u); err != nil {
-		apiErr, ok := err.(gimlet.ErrorResponse)
-		if ok {
-			if apiErr.StatusCode == http.StatusBadRequest {
-				return nil, InputValidationError.Send(ctx, apiErr.Message)
+	if created, err := data.CreateProject(ctx, evergreen.GetEnvironment(), dbProjectRef, u); err != nil {
+		if !created {
+			apiErr, ok := err.(gimlet.ErrorResponse)
+			if ok {
+				if apiErr.StatusCode == http.StatusBadRequest {
+					return nil, InputValidationError.Send(ctx, apiErr.Message)
+				}
 			}
-			// StatusNotFound and other error codes are really internal errors bc we determine this input
-			return nil, InternalServerError.Send(ctx, apiErr.Message)
+			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		return nil, InternalServerError.Send(ctx, err.Error())
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 
 	projectRef, err := model.FindBranchProjectRef(*project.Identifier)

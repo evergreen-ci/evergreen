@@ -55,9 +55,14 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 	projectToCopy.Identifier = opts.NewProjectIdentifier
 	disableStartingSettings(projectToCopy)
 
+	catcher := grip.NewBasicCatcher()
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err := CreateProject(ctx, env, projectToCopy, u); err != nil {
-		return nil, err
+	created, err := CreateProject(ctx, env, projectToCopy, u)
+	if err != nil {
+		if !created {
+			return nil, err
+		}
+		catcher.Add(err)
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
 	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
@@ -65,7 +70,6 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 	}
 
 	// Copy variables, aliases, and subscriptions
-	catcher := grip.NewBasicCatcher()
 	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
 	}
@@ -253,6 +257,17 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		} else if mergedSection.Branch != mergedBeforeRef.Branch {
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing branch"); err != nil {
 				return nil, err
+			}
+		}
+
+		if mergedSection.IsEnabled() {
+			config, err := evergreen.GetConfig()
+			if err != nil {
+				return nil, errors.Wrap(err, "getting evergreen config")
+			}
+			_, err = model.ValidateEnabledProjectsLimit(projectId, config, mergedBeforeRef, mergedSection)
+			if err != nil {
+				return nil, errors.Wrap(err, "validating project creation")
 			}
 		}
 

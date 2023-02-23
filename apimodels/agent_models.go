@@ -334,6 +334,8 @@ type DistroView struct {
 type ExpansionsAndVars struct {
 	// Expansions contain the expansions for a task.
 	Expansions util.Expansions `json:"expansions"`
+	// Parameters contain the parameters for a task.
+	Parameters map[string]string `json:"parameters"`
 	// Vars contain the project variables and parameters.
 	Vars map[string]string `json:"vars"`
 	// PrivateVars contain the project private variables.
