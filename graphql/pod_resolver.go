@@ -32,9 +32,10 @@ func (r *podResolver) Task(ctx context.Context, obj *model.APIPod) (*model.APITa
 		return nil, nil
 	}
 	apiTask := &model.APITask{}
-	if err = apiTask.BuildFromService(task, &model.APITaskArgs{
+	err = apiTask.BuildFromService(task, &model.APITaskArgs{
 		LogURL: r.sc.GetURL(),
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building API task from service: %s", err.Error()))
 	}
 	return apiTask, nil
