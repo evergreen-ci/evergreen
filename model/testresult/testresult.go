@@ -65,6 +65,7 @@ func (tr TestResult) GetDisplayTestName() string {
 	return tr.TestName
 }
 
+// Duration returns the duration of the test.
 func (tr TestResult) Duration() time.Duration {
 	return tr.TestEndTime.Sub(tr.TestStartTime)
 }
