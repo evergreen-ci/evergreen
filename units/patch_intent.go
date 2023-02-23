@@ -264,10 +264,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrapf(validationCatcher.Resolve(), "invalid patched project config")
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
-	// Still error so we can pick this up and return an error to Github.
 	if patchDoc.IsGithubPRPatch() && project.IgnoresAllFiles(patchDoc.FilesChanged()) {
-		j.gitHubError = ignoredFiles
-		return errors.New("not creating patch because all files are being ignored")
+		j.sendGitHubStatusMessage(patchDoc, ignoredFiles)
+		return nil
 	}
 
 	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
@@ -1012,6 +1011,20 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(patchDoc *patch.Patch) {
 		patchDoc.GithubPatchData.BaseRepo,
 		patchDoc.GithubPatchData.HeadHash,
 		j.gitHubError,
+	)
+	update.Run(nil)
+
+	j.AddError(update.Error())
+}
+
+// sendGitHubStatusMessage sends a successful status to Github with the given message.
+func (j *patchIntentProcessor) sendGitHubStatusMessage(patchDoc *patch.Patch, msg string) {
+	update := NewGithubStatusUpdateJobWithMessage(
+		evergreenContext,
+		patchDoc.GithubPatchData.BaseOwner,
+		patchDoc.GithubPatchData.BaseRepo,
+		patchDoc.GithubPatchData.HeadHash,
+		msg,
 	)
 	update.Run(nil)
 
