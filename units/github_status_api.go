@@ -25,7 +25,7 @@ const (
 	githubStatusUpdateJobName = "github-status-update"
 
 	githubUpdateTypeNewPatch              = "new-patch"
-	githubUpdateTypeMessage               = "send-message"
+	githubUpdateTypeSuccessMessage        = "success-message"
 	githubUpdateTypeRequestAuth           = "request-auth"
 	githubUpdateTypePushToCommitQueue     = "commit-queue-push"
 	githubUpdateTypeDeleteFromCommitQueue = "commit-queue-delete"
@@ -83,11 +83,11 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 	return j
 }
 
-// NewGithubStatusUpdateJobWithMessage creates a job to send a passing status to Github with a message.
-func NewGithubStatusUpdateJobWithMessage(githubContext, owner, repo, ref, description string) amboy.Job {
+// NewGithubStatusUpdateJobWithSuccessMessage creates a job to send a passing status to Github with a message.
+func NewGithubStatusUpdateJobWithSuccessMessage(githubContext, owner, repo, ref, description string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.GithubContext = githubContext
-	job.UpdateType = githubUpdateTypeMessage
+	job.UpdateType = githubUpdateTypeSuccessMessage
 	job.Owner = owner
 	job.Repo = repo
 	job.Ref = ref
@@ -207,7 +207,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.State = message.GithubStateFailure
 		status.Description = j.Description
 
-	} else if j.UpdateType == githubUpdateTypeMessage {
+	} else if j.UpdateType == githubUpdateTypeSuccessMessage {
 		status.Context = commitqueue.GithubContext
 		status.State = message.GithubStateSuccess
 		status.Description = j.Description

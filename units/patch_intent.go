@@ -105,7 +105,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
 			}
-			j.sendGitHubErrorStatus(patchDoc)
+			j.sendGitHubErrorStatus(ctx, patchDoc)
 			grip.Error(message.WrapError(err, message.Fields{
 				"job":          j.ID(),
 				"message":      "sent GitHub status error",
@@ -265,7 +265,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && project.IgnoresAllFiles(patchDoc.FilesChanged()) {
-		j.sendGitHubStatusMessage(patchDoc, ignoredFiles)
+		j.sendGitHubSuccessMessage(ctx, patchDoc, ignoredFiles)
 		return nil
 	}
 
@@ -1004,7 +1004,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) sendGitHubErrorStatus(patchDoc *patch.Patch) {
+func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
 	update := NewGithubStatusUpdateJobForProcessingError(
 		evergreenContext,
 		patchDoc.GithubPatchData.BaseOwner,
@@ -1012,21 +1012,21 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(patchDoc *patch.Patch) {
 		patchDoc.GithubPatchData.HeadHash,
 		j.gitHubError,
 	)
-	update.Run(nil)
+	update.Run(ctx)
 
 	j.AddError(update.Error())
 }
 
-// sendGitHubStatusMessage sends a successful status to Github with the given message.
-func (j *patchIntentProcessor) sendGitHubStatusMessage(patchDoc *patch.Patch, msg string) {
-	update := NewGithubStatusUpdateJobWithMessage(
+// sendGitHubSuccessMessage sends a successful status to Github with the given message.
+func (j *patchIntentProcessor) sendGitHubSuccessMessage(ctx context.Context, patchDoc *patch.Patch, msg string) {
+	update := NewGithubStatusUpdateJobWithSuccessMessage(
 		evergreenContext,
 		patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo,
 		patchDoc.GithubPatchData.HeadHash,
 		msg,
 	)
-	update.Run(nil)
+	update.Run(ctx)
 
 	j.AddError(update.Error())
 }
