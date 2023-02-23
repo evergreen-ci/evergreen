@@ -135,6 +135,14 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	if err != nil {
 		return nil, errors.Wrapf(err, "upsert parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
 	}
+	grip.Info(message.Fields{
+		"message":        "kim: successfully upserted parser project",
+		"func":           "AddPatchForPr",
+		"source":         "GitHub PR commit queue item",
+		"ticket":         "EVG-18700",
+		"patch":          patchDoc.Id.Hex(),
+		"storage_method": ppStorageMethod,
+	})
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {

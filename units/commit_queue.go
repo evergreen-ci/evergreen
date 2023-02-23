@@ -490,6 +490,14 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 	patchDoc.ProjectStorageMethod = ppStorageMethod
+	grip.Info(message.Fields{
+		"message":        "kim: successfully upserted parser project",
+		"func":           "processCLIPatchItem",
+		"source":         "CLI commit queue item",
+		"ticket":         "EVG-18700",
+		"patch":          patchDoc.Id.Hex(),
+		"storage_method": ppStorageMethod,
+	})
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {

@@ -1090,6 +1090,14 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.Wrapf(err, "upserting parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
 	}
 	patchDoc.ProjectStorageMethod = ppStorageMethod
+	grip.Info(message.Fields{
+		"message":        "kim: successfully upserted parser project",
+		"func":           "MakeMergePatchFromExisting",
+		"source":         "CLI commit queue item",
+		"ticket":         "EVG-18700",
+		"patch":          patchDoc.Id.Hex(),
+		"storage_method": ppStorageMethod,
+	})
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")

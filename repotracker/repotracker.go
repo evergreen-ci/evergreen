@@ -1005,6 +1005,14 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 	}
+	grip.Info(message.Fields{
+		"message":        "kim: successfully upserted parser project",
+		"func":           "createVersionItems",
+		"source":         "repotracker version",
+		"ticket":         "EVG-18700",
+		"version":        v.Id,
+		"storage_method": ppStorageMethod,
+	})
 	v.ProjectStorageMethod = ppStorageMethod
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
