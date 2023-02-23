@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -200,15 +201,15 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 	}}
 	assert.NoError(t, disableRepo.Upsert())
 
-	enabledProjects, err := GetEnabledProjects()
+	enabledProjects, err := GetNumberOfEnabledProjects()
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(enabledProjects))
-	enabledProjectsOwnerRepo, err := GetEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
+	assert.Equal(t, 3, enabledProjects)
+	enabledProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(enabledProjectsOwnerRepo))
+	assert.Equal(t, 2, enabledProjectsOwnerRepo)
 }
 
-func TestValidateProjectCreation(t *testing.T) {
+func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 	enabled1 := &ProjectRef{
 		Id:      "enabled1",
@@ -272,9 +273,11 @@ func TestValidateProjectCreation(t *testing.T) {
 
 	// Should error when trying to enable an existing project past limits.
 	disabled1.Enabled = utility.TruePtr()
-	shouldError, err := ValidateProjectCreation(disabled1.Id, &settings, disabled1)
+	original, err := FindMergedProjectRef(disabled1.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err := ValidateEnabledProjectsLimit(disabled1.Id, &settings, original, disabled1)
 	assert.Error(t, err)
-	assert.True(t, shouldError)
+	assert.Equal(t, http.StatusBadRequest, statusCode)
 
 	// Should not error if owner/repo is part of exception.
 	exception := &ProjectRef{
@@ -283,7 +286,9 @@ func TestValidateProjectCreation(t *testing.T) {
 		Repo:    "repo_exception",
 		Enabled: utility.TruePtr(),
 	}
-	_, err = ValidateProjectCreation(enabled1.Id, &settings, exception)
+	original, err = FindMergedProjectRef(exception.Id, "", false)
+	assert.NoError(t, err)
+	_, err = ValidateEnabledProjectsLimit(enabled1.Id, &settings, original, exception)
 	assert.NoError(t, err)
 
 	// Should error if owner/repo is not part of exception.
@@ -293,21 +298,38 @@ func TestValidateProjectCreation(t *testing.T) {
 		Repo:    "mci",
 		Enabled: utility.TruePtr(),
 	}
-	shouldError, err = ValidateProjectCreation(notException.Id, &settings, notException)
+	original, err = FindMergedProjectRef(notException.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err = ValidateEnabledProjectsLimit(notException.Id, &settings, original, notException)
 	assert.Error(t, err)
-	assert.False(t, shouldError)
+	assert.Equal(t, http.StatusBadRequest, statusCode)
 
 	// Should not error if a repo defaulted project is enabled.
-	disabledByRepo.Enabled = utility.TruePtr()
-	assert.NoError(t, disabledByRepo.Upsert())
-	_, err = ValidateProjectCreation(disabledByRepo.Id, &settings, disabledByRepo)
+	disableRepo.Enabled = utility.TruePtr()
+	assert.NoError(t, disableRepo.Upsert())
+	mergedRef, err := GetProjectRefMergedWithRepo(*disabledByRepo)
 	assert.NoError(t, err)
+	original, err = FindMergedProjectRef(disabledByRepo.Id, "", false)
+	assert.NoError(t, err)
+	_, err = ValidateEnabledProjectsLimit(disabledByRepo.Id, &settings, original, mergedRef)
+	assert.NoError(t, err)
+
+	// Should error on enabled if you try to change owner/repo past limit.
+	enabled2.Owner = "mongodb"
+	enabled2.Repo = "mci"
+	original, err = FindMergedProjectRef(enabled2.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err = ValidateEnabledProjectsLimit(enabled2.Id, &settings, original, enabled2)
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, statusCode)
 
 	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	shouldError, err = ValidateProjectCreation(exception.Id, &settings, exception)
+	original, err = FindMergedProjectRef(exception.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err = ValidateEnabledProjectsLimit(exception.Id, &settings, original, exception)
 	assert.Error(t, err)
-	assert.False(t, shouldError)
+	assert.Equal(t, http.StatusBadRequest, statusCode)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -857,6 +879,16 @@ func TestDetachFromRepo(t *testing.T) {
 func TestDefaultRepoBySection(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, id string){
 		ProjectPageGeneralSection: func(t *testing.T, id string) {
+			repoRef := RepoRef{
+				ProjectRef: ProjectRef{
+					Id:      "repo_ref_id",
+					Owner:   "mongodb",
+					Repo:    "mci",
+					Branch:  "main",
+					Enabled: utility.FalsePtr(),
+				},
+			}
+			assert.NoError(t, repoRef.Upsert())
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGeneralSection, "me"))
 
 			pRefFromDb, err := FindBranchProjectRef(id)
@@ -969,7 +1001,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, ProjectAliasCollection,
-				event.SubscriptionsCollection, event.EventCollection))
+				event.SubscriptionsCollection, event.EventCollection, RepoRefCollection))
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
@@ -989,6 +1021,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				GitTagAuthorizedUsers: []string{"anna"},
 				NotifyOnBuildFailure:  utility.FalsePtr(),
 				PerfEnabled:           utility.FalsePtr(),
+				RepoRefId:             "repo_ref_id",
 				Triggers: []TriggerDefinition{
 					{Project: "your_project"},
 				},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -915,32 +916,39 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	return pRef, nil
 }
 
-// GetEnabledProjects returns the current number of enabled projects on evergreen.
-func GetEnabledProjects() ([]ProjectRef, error) {
+// GetNumberOfEnabledProjects returns the current number of enabled projects on evergreen.
+func GetNumberOfEnabledProjects() (int, error) {
 	// Empty owner and repo will return all enabled project count.
-	return getEnabledProjects("", "")
+	return getNumberOfEnabledProjects("", "")
 }
 
-// GetEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
-func GetEnabledProjectsForOwnerRepo(owner, repo string) ([]ProjectRef, error) {
+// GetNumberOfEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
+func GetNumberOfEnabledProjectsForOwnerRepo(owner, repo string) (int, error) {
 	if owner == "" || repo == "" {
-		return nil, errors.New("owner and repo must be specified")
+		return 0, errors.New("owner and repo must be specified")
 	}
-	return getEnabledProjects(owner, repo)
+	return getNumberOfEnabledProjects(owner, repo)
 }
 
-func getEnabledProjects(owner, repo string) ([]ProjectRef, error) {
+func getNumberOfEnabledProjects(owner, repo string) (int, error) {
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
 	if owner != "" && repo != "" {
 		// Check owner and repos in project ref or repo ref.
 		pipeline = append(pipeline, bson.M{"$match": byOwnerAndRepo(owner, repo)})
 	}
-	projectRefSlice := []ProjectRef{}
-	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefSlice)
-	if err != nil {
-		return nil, err
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+	type Count struct {
+		Count int `bson:"count"`
 	}
-	return projectRefSlice, nil
+	count := []Count{}
+	err := db.Aggregate(ProjectRefCollection, pipeline, &count)
+	if err != nil {
+		return 0, err
+	}
+	if len(count) == 0 {
+		return 0, nil
+	}
+	return count[0].Count, nil
 }
 
 // GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
@@ -1895,21 +1903,13 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				return false, errors.Wrap(err, "getting evergreen config")
 			}
 			// Allow a user to modify owner and repo only if they are editing an unattached project
-			if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+			if err = p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 				return false, errors.Wrap(err, "validating new owner/repo")
 			}
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
 
-			// Cannot enable projects if the project creation limits have been reached.
-			shouldError, err := ValidateProjectCreation(projectId, config, p)
-			if err != nil {
-				if shouldError {
-					return false, errors.Wrap(err, "validating project creation")
-				}
-				// TODO EVG-18784: Return graphql warning
-			}
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
@@ -2025,9 +2025,31 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 // to create our own project settings event  after completing the update.
 func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
 	before, err := GetProjectSettingsById(projectId, false)
-
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
+	}
+
+	if section == ProjectPageGeneralSection {
+		originalMergedRef, err := GetProjectRefMergedWithRepo(before.ProjectRef)
+		if err != nil {
+			return errors.Wrap(err, "getting merged project ref for validation")
+		}
+		newMergedRef, err := GetProjectRefMergedWithRepo(ProjectRef{
+			RepoRefId: before.ProjectRef.RepoRefId,
+		})
+		if err != nil {
+			return errors.Wrap(err, "getting merged project ref for validation")
+		}
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "getting evergreen config")
+		}
+		if newMergedRef.IsEnabled() {
+			_, err = ValidateEnabledProjectsLimit(projectId, config, originalMergedRef, newMergedRef)
+			if err != nil {
+				return errors.Wrap(err, "validating project creation")
+			}
+		}
 	}
 
 	modified, err := SaveProjectPageForSection(projectId, nil, section, false)
@@ -2237,55 +2259,58 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 	return res, nil
 }
 
-// ValidateProjectCreation returns a boolean if you should surface the error or not.
-func ValidateProjectCreation(projectId string, config *evergreen.Settings, projectRef *ProjectRef) (bool, error) {
+// shouldValidateTotalProjectLimit will return true if:
+// - we are creating a new project
+// - the original project was disabled
+func shouldValidateTotalProjectLimit(isNewProject bool, originalMergedRef *ProjectRef) bool {
+	return isNewProject || !originalMergedRef.IsEnabled()
+}
+
+// shouldValidateOwnerRepoLimit will return true if:
+// - we are creating a new project
+// - the original project was disabled
+// - the owner or repo has changed
+// - the owner/repo is not part of exception
+func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) bool {
+	return (shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) ||
+		originalMergedRef.Owner != mergedRefToValidate.Owner || originalMergedRef.Repo != mergedRefToValidate.Repo) &&
+		!config.ProjectCreation.IsExceptionToRepoLimit(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+}
+
+// ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
+// assuming the given project is going to be enabled.
+// Returns a status code and error if we are already at limit with enabled projects.
+func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
-		return false, nil
+		return http.StatusOK, nil
 	}
+
+	isNewProject := originalMergedRef == nil
 	catcher := grip.NewBasicCatcher()
-	allEnabledProjects, err := GetEnabledProjects()
-	if err != nil {
-		return true, errors.Wrap(err, "getting number of projects")
-	}
-	allEnabledProjectsId := []string{}
-	for _, p := range allEnabledProjects {
-		allEnabledProjectsId = append(allEnabledProjectsId, p.Id)
-	}
-	// No need to validate if project was enabled to begin with.
-	if utility.StringSliceContains(allEnabledProjectsId, projectId) {
-		return false, nil
-	}
-
-	// Only error if we are enabling a previously disabled project.
-	shouldError := false
-	pRef, err := findOneProjectRefQ(byId(projectId))
-	if err != nil {
-		return true, errors.Wrapf(err, "getting project '%s", projectId)
-	}
-	if pRef != nil {
-		// Defaulting to repo
-		if projectRef == nil {
-			projectRef, err = GetProjectRefMergedWithRepo(*pRef)
-			if err != nil {
-				return true, errors.Wrapf(err, "getting merged project for '%s'", projectId)
-			}
-		}
-		shouldError = !pRef.IsEnabled() && projectRef.IsEnabled()
-	}
-
-	if len(allEnabledProjects) >= config.ProjectCreation.TotalProjectLimit {
-		catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
-	}
-	if !config.ProjectCreation.IsExceptionToRepoLimit(projectRef.Owner, projectRef.Repo) {
-		enabledOwnerRepoProjects, err := GetEnabledProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
+	if shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) {
+		allEnabledProjects, err := GetNumberOfEnabledProjects()
 		if err != nil {
-			return true, errors.Wrapf(err, "getting number of projects for '%s/%s'", projectRef.Owner, projectRef.Repo)
+			return http.StatusInternalServerError, errors.Wrap(err, "getting number of enabled projects")
 		}
-		if len(enabledOwnerRepoProjects) >= config.ProjectCreation.RepoProjectLimit {
-			catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
+		if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
+			catcher.Errorf("total enabled project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 		}
 	}
-	return shouldError, catcher.Resolve()
+
+	if shouldValidateOwnerRepoLimit(isNewProject, config, originalMergedRef, mergedRefToValidate) {
+		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+		}
+		if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
+			catcher.Errorf("enabled project limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+		}
+	}
+
+	if catcher.HasErrors() {
+		return http.StatusBadRequest, catcher.Resolve()
+	}
+	return http.StatusOK, nil
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {

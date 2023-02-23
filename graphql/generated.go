@@ -933,6 +933,7 @@ type ComplexityRoot struct {
 		TaskFiles               func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
+		TaskLogs                func(childComplexity int) int
 		TimeTaken               func(childComplexity int) int
 		TotalTestCount          func(childComplexity int) int
 		VersionMetadata         func(childComplexity int) int
@@ -1443,6 +1444,8 @@ type TaskResolver interface {
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
 	TaskFiles(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
+
+	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
@@ -6101,6 +6104,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.TaskGroupMaxHosts(childComplexity), true
+
+	case "Task.taskLogs":
+		if e.complexity.Task.TaskLogs == nil {
+			break
+		}
+
+		return e.complexity.Task.TaskLogs(childComplexity), true
 
 	case "Task.timeTaken":
 		if e.complexity.Task.TimeTaken == nil {
@@ -14143,6 +14153,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -20469,6 +20481,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -22797,6 +22811,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -22990,6 +23006,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23183,6 +23201,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23376,6 +23396,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23569,6 +23591,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23762,6 +23786,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -34076,6 +34102,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -34269,6 +34297,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -40243,6 +40273,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -41307,6 +41339,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -41656,6 +41690,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -43056,6 +43092,68 @@ func (ec *executionContext) fieldContext_Task_taskGroupMaxHosts(ctx context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_taskLogs(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_taskLogs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().TaskLogs(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*TaskLogs)
+	fc.Result = res
+	return ec.marshalNTaskLogs2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskLogs(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_taskLogs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "agentLogs":
+				return ec.fieldContext_TaskLogs_agentLogs(ctx, field)
+			case "allLogs":
+				return ec.fieldContext_TaskLogs_allLogs(ctx, field)
+			case "defaultLogger":
+				return ec.fieldContext_TaskLogs_defaultLogger(ctx, field)
+			case "eventLogs":
+				return ec.fieldContext_TaskLogs_eventLogs(ctx, field)
+			case "execution":
+				return ec.fieldContext_TaskLogs_execution(ctx, field)
+			case "systemLogs":
+				return ec.fieldContext_TaskLogs_systemLogs(ctx, field)
+			case "taskId":
+				return ec.fieldContext_TaskLogs_taskId(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_TaskLogs_taskLogs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskLogs", field.Name)
 		},
 	}
 	return fc, nil
@@ -48026,6 +48124,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -51266,6 +51366,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -64603,6 +64705,26 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
 
+		case "taskLogs":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_taskLogs(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "timeTaken":
 
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)

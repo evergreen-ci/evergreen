@@ -546,6 +546,27 @@ func (r *taskResolver) TaskFiles(ctx context.Context, obj *restModel.APITask) (*
 	return &taskFiles, nil
 }
 
+// TaskLogs is the resolver for the taskLogs field.
+func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*TaskLogs, error) {
+	// need project to get default logger
+	p, err := data.FindProjectById(*obj.ProjectId, true, true)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", *obj.ProjectId, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", *obj.ProjectId))
+	}
+	defaultLogger := p.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	// Let the individual TaskLogs resolvers handle fetching logs for the task
+	// We can avoid the overhead of fetching task logs that we will not view
+	// and we can avoid handling errors that we will not see
+	return &TaskLogs{TaskID: *obj.Id, Execution: obj.Execution, DefaultLogger: defaultLogger}, nil
+}
+
 // TotalTestCount is the resolver for the totalTestCount field.
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	if obj.HasCedarResults {

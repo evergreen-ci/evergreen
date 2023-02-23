@@ -282,7 +282,7 @@ type TaskFilterOptions struct {
 	Variant                    *string      `json:"variant"`
 }
 
-// TaskLogs is the return value for the taskLogs query.
+// TaskLogs is the return value for the task.taskLogs query.
 // It contains the logs for a given task on a given execution.
 type TaskLogs struct {
 	AgentLogs     []*apimodels.LogMessage       `json:"agentLogs"`
