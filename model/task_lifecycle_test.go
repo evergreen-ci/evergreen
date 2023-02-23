@@ -1289,9 +1289,9 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 
 	sender := send.MakeInternalLogger()
 	assert.NoError(t, grip.SetSender(sender))
-	defer func(s send.Sender) {
-		assert.NoError(t, grip.SetSender(s))
-	}(grip.GetSender())
+	defer func() {
+		assert.NoError(t, grip.SetSender(send.MakeNative()))
+	}()
 
 	b := &build.Build{
 		Id:        "buildtest",
