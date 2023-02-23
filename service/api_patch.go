@@ -204,7 +204,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		"tasks":      data.Tasks,
 		"alias":      data.Alias,
 	})
-	job := units.NewPatchIntentProcessor(patchID, intent)
+	job := units.NewPatchIntentProcessor(as.env, patchID, intent)
 	job.Run(r.Context())
 
 	if err = job.Error(); err != nil {

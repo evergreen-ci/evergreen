@@ -593,8 +593,6 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
-// kim: TODO: test this logic in staging by committing something to the sandbox
-// and seeing if the repotracker processes it correctly.
 func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
 	metadata model.VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if projectInfo.NotPopulated() {
@@ -1005,14 +1003,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 	}
-	grip.Info(message.Fields{
-		"message":        "kim: successfully upserted parser project",
-		"func":           "createVersionItems",
-		"source":         "repotracker version",
-		"ticket":         "EVG-18700",
-		"version":        v.Id,
-		"storage_method": ppStorageMethod,
-	})
 	v.ProjectStorageMethod = ppStorageMethod
 
 	txFunc := func(sessCtx mongo.SessionContext) error {

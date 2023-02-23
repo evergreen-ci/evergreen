@@ -182,8 +182,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			return
 		}
 		// create a version with the item and subscribe to its completion
-		// kim: TODO: test that both GitHub and CLI patch commit queue items
-		// have the expected result.
 		if nextItem.Source == commitqueue.SourcePullRequest {
 			j.processGitHubPRItem(ctx, cq, &nextItem, projectRef, githubToken)
 		} else if nextItem.Source == commitqueue.SourceDiff {
@@ -397,11 +395,6 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, *nextItem)
 		return
 	}
-	// kim: NOTE: for GitHub PRs, the GitHub REST data connector already sets
-	// the PatchedParserProject before inserting the patch document, so it's not
-	// necessary to load it here. This is in contrast to the CLI commit queue
-	// items, which load the PatchedParserProject on the fly right before
-	// finalizing.
 	projectConfig, _, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubToken)
 	if err != nil {
 		j.logError(err, "problem getting patched project", *nextItem)
@@ -479,8 +472,9 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 
 	// The parser project is typically created when the patch is created. This
 	// is a special exception where it upserts the parser project right before
-	// it's finalized, because the project configuration may have changed since
-	// the original patch was enqueued into the commit queue.
+	// it's finalized, because original CLI patch might be very outdated
+	// compared to the latest project configuration. For the commit queue, it's
+	// best to test against the latest project configuration.
 	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
 	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, j.env.Settings(), evergreen.ProjectStorageMethodDB, pp)
 	if err != nil {
@@ -490,14 +484,6 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 	patchDoc.ProjectStorageMethod = ppStorageMethod
-	grip.Info(message.Fields{
-		"message":        "kim: successfully upserted parser project",
-		"func":           "processCLIPatchItem",
-		"source":         "CLI commit queue item",
-		"ticket":         "EVG-18700",
-		"patch":          patchDoc.Id.Hex(),
-		"storage_method": ppStorageMethod,
-	})
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
@@ -738,7 +724,6 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting updated project config")
 	}
-	// patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
 	// Update module githashes

@@ -54,8 +54,6 @@ func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo s
 	return pr, nil
 }
 
-// kim: TODO: test in staging by enqueueing commit queue item for PR via
-// "evergreen merge" comment in sandbox.
 func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -135,14 +133,6 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	if err != nil {
 		return nil, errors.Wrapf(err, "upsert parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
 	}
-	grip.Info(message.Fields{
-		"message":        "kim: successfully upserted parser project",
-		"func":           "AddPatchForPr",
-		"source":         "GitHub PR commit queue item",
-		"ticket":         "EVG-18700",
-		"patch":          patchDoc.Id.Hex(),
-		"storage_method": ppStorageMethod,
-	})
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {
@@ -169,8 +159,6 @@ func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken
 		return "", nil, nil, nil, errors.Wrap(err, "getting remote config file")
 	}
 
-	// kim: TODO: remove
-	// patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 	return patchContent, summaries, config, patchConfig.PatchedParserProject, nil
 }

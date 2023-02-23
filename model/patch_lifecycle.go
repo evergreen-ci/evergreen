@@ -1025,8 +1025,6 @@ func (e *EnqueuePatch) Valid() bool {
 // MakeMergePatchFromExisting creates a merge patch from an existing one to be
 // put in the commit queue. Is also creates the parser project associated with
 // the patch.
-// kim: TODO: test this in the staging sandbox by using the CLI to make a patch
-// from an existing patch.
 func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Settings, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
 	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.Errorf("enqueueing patch '%s' without metadata", existingPatch.Id.Hex())
@@ -1043,7 +1041,7 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.WithStack(err)
 	}
 
-	project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")
 	}
@@ -1084,20 +1082,13 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.Wrap(err, "computing patch num")
 	}
 
-	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
-	ppStorageMethod, err := ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, pp)
-	if err != nil {
-		return nil, errors.Wrapf(err, "upserting parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
-	}
-	patchDoc.ProjectStorageMethod = ppStorageMethod
-	grip.Info(message.Fields{
-		"message":        "kim: successfully upserted parser project",
-		"func":           "MakeMergePatchFromExisting",
-		"source":         "CLI commit queue item",
-		"ticket":         "EVG-18700",
-		"patch":          patchDoc.Id.Hex(),
-		"storage_method": ppStorageMethod,
-	})
+	// The parser project is typically inserted at the same time as the patch.
+	// However, commit queue items made from CLI patches are a special exception
+	// that do not follow this behavior, because the existing patch may have be
+	// very outdated compared to the tracking branch's latest commit. The commit
+	// queue should ideally test against the most recent available project
+	// config, so it will resolve the parser project later on, when it's
+	// processed in the commit queue.
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
@@ -1215,7 +1206,14 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 		PatchNumber:     patchNumber,
 	}
 
-	// kim: NOTE: admin restarts commit queue items from admin UI -> RetryCommitQueueItems -> restartDiffItem -> processCLIPatchItem
+	// The parser project is typically inserted at the same time as the patch.
+	// However, commit queue items made from CLI patches are a special exception
+	// that do not follow this behavior, because the existing patch may have be
+	// very outdated compared to the tracking branch's latest commit. The commit
+	// queue should ideally test against the most recent available project
+	// config, so it will resolve the parser project later on, when it's
+	// processed in the commit queue.
+
 	if err = newPatch.Insert(); err != nil {
 		return errors.Wrap(err, "inserting patch")
 	}

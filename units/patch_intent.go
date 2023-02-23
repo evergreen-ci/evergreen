@@ -55,12 +55,13 @@ type patchIntentProcessor struct {
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
 // given patch intent. The patch ID is the new ID for the patch to be created,
 // not the patch intent.
-func NewPatchIntentProcessor(patchID mgobson.ObjectId, intent patch.Intent) amboy.Job {
+func NewPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
 	j.IntentID = intent.ID()
 	j.IntentType = intent.GetType()
 	j.PatchID = patchID
 	j.intent = intent
+	j.env = env
 
 	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, j.IntentType, j.IntentID))
 	return j
@@ -658,7 +659,7 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			return errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
 		}
 
-		job := NewPatchIntentProcessor(mgobson.ObjectIdHex(intent.ID()), intent)
+		job := NewPatchIntentProcessor(env, mgobson.ObjectIdHex(intent.ID()), intent)
 		if triggerIntent.ParentStatus == "" {
 			// In order to be able to finalize a patch from the CLI,
 			// we need the child patch intents to exist when the parent patch is finalized.
