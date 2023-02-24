@@ -174,7 +174,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
-	events, count, err := event.FindPaginatedWithTotalCount(h.Id, h.Tag, *limit, *page)
+	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
@@ -298,6 +298,15 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	})
 
 	return distros, nil
+}
+
+// Pod is the resolver for the pod field.
+func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPod, error) {
+	pod, err := data.FindAPIPodByID(podID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding pod: %s", err.Error()))
+	}
+	return pod, nil
 }
 
 // Patch is the resolver for the patch field.

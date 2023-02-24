@@ -1,0 +1,20 @@
+{
+  pod(podId: "localhost") {
+    id
+    type
+    status
+    taskContainerCreationOpts {
+        image
+        memoryMB
+        cpu
+        os
+        arch
+        workingDir
+    }
+    task {
+        id
+        execution
+        status
+    }
+  }
+}

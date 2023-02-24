@@ -23,7 +23,6 @@ const (
 	FirstTaskTypeFailureId   = "first_tasktype_failure"
 	TaskFailTransitionId     = "task_transition_failure"
 	FirstRegressionInVersion = "first_regression_in_version"
-	LastRevisionNotFound     = "last_revision_not_found"
 	taskRegressionByTest     = "task-regression-by-test"
 )
 
@@ -59,7 +58,7 @@ func (ar *AlertRecord) Insert() error {
 	return db.Insert(Collection, ar)
 }
 
-//nolint: megacheck, deadcode, unused
+// nolint: megacheck, deadcode, unused
 var (
 	IdKey                  = bsonutil.MustHaveTag(AlertRecord{}, "Id")
 	subscriptionIDKey      = bsonutil.MustHaveTag(AlertRecord{}, "SubscriptionID")
@@ -134,14 +133,6 @@ func ByFirstFailureInTaskType(subscriptionID, versionId, taskName string) db.Q {
 	q[TypeKey] = FirstTaskTypeFailureId
 	q[VersionIdKey] = versionId
 	q[TaskNameKey] = taskName
-	return db.Query(q).Limit(1)
-}
-
-func ByLastRevNotFound(subscriptionID, projectId, versionId string) db.Q {
-	q := subscriptionIDQuery(subscriptionID)
-	q[TypeKey] = LastRevisionNotFound
-	q[ProjectIdKey] = projectId
-	q[VersionIdKey] = versionId
 	return db.Query(q).Limit(1)
 }
 
