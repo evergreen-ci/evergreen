@@ -82,6 +82,8 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 		}
 	}
 	scanner := bufio.NewScanner(file)
+	// Set the max buffer size to the max size of a Mongo document (16MB).
+	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
 	count := 0
 	for scanner.Scan() {
 		count++
