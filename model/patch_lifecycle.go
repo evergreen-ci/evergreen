@@ -525,9 +525,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 				p.Githash)
 		}
 	}
-	if mustInsertParserProjectDuringFinalization {
-		intermediateProject.Id = p.Id.Hex()
-	}
 	if config != nil {
 		config.Project = p.Project
 		config.Id = p.Id.Hex()
@@ -593,9 +590,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Parameters:          params,
 		Activated:           utility.TruePtr(),
 		AuthorEmail:         authorEmail,
-	}
-	if mustInsertParserProjectDuringFinalization {
-		intermediateProject.CreateTime = patchVersion.CreateTime
 	}
 
 	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings)
@@ -701,6 +695,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		ppStorageMethod = evergreen.ProjectStorageMethodDB
 	}
 	if mustInsertParserProjectDuringFinalization {
+		intermediateProject.Id = p.Id.Hex()
+		intermediateProject.CreateTime = patchVersion.CreateTime
 		ppStorageMethod, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, ppStorageMethod, intermediateProject)
 		if err != nil {
 			return nil, errors.Wrapf(err, "upserting parser project for patch '%s'", p.Id.Hex())

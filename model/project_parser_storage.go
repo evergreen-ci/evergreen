@@ -87,15 +87,12 @@ func ParserProjectUpsertOne(ctx context.Context, settings *evergreen.Settings, m
 // originally-requested storage method.
 func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, pp *ParserProject) (evergreen.ParserProjectStorageMethod, error) {
 	err := ParserProjectUpsertOne(ctx, settings, method, pp)
-	if err == nil {
-		return method, nil
-	}
 	if method == evergreen.ProjectStorageMethodS3 {
-		return method, err
+		return method, errors.Wrap(err, "upserting parser project into S3")
 	}
 
 	if !db.IsDocumentLimit(err) {
-		return method, err
+		return method, errors.Wrap(err, "upserting parser project into the DB")
 	}
 
 	flags, flagErr := evergreen.GetServiceFlags()
@@ -107,7 +104,7 @@ func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergre
 	}
 
 	if err := ParserProjectUpsertOne(ctx, settings, evergreen.ProjectStorageMethodS3, pp); err != nil {
-		return method, errors.Wrap(err, "upserting parser project into S3")
+		return method, errors.Wrap(err, "falling back to upserting parser project into S3")
 	}
 
 	return evergreen.ProjectStorageMethodS3, nil
