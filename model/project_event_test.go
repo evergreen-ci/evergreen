@@ -32,7 +32,7 @@ func getMockProjectSettings() ProjectSettings {
 	return ProjectSettings{
 		ProjectRef: ProjectRef{
 			Owner:          "admin",
-			Enabled:        utility.TruePtr(),
+			Enabled:        true,
 			Private:        utility.TruePtr(),
 			Id:             projectId,
 			Admins:         []string{},
@@ -70,7 +70,7 @@ func getMockProjectSettings() ProjectSettings {
 func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	before := getMockProjectSettings()
 	after := getMockProjectSettings()
-	after.ProjectRef.Enabled = utility.FalsePtr()
+	after.ProjectRef.Enabled = false
 
 	s.NoError(LogProjectModified(projectId, username, &before, &after))
 

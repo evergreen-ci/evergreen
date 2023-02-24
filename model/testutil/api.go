@@ -84,7 +84,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Owner:     project.Owner,
 		Repo:      project.Repo,
 		Branch:    project.Branch,
-		Enabled:   &project.Enabled,
+		Enabled:   project.Enabled,
 		BatchTime: project.BatchTime,
 	}
 	if err = projectRef.Insert(); err != nil {

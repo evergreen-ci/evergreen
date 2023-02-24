@@ -45,7 +45,7 @@ func getMockProjectSettings() model.ProjectSettings {
 	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
 			Owner:          "admin",
-			Enabled:        utility.TruePtr(),
+			Enabled:        true,
 			Private:        utility.TruePtr(),
 			Id:             projectId,
 			Admins:         []string{},
@@ -91,7 +91,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectA",
 				Private:     utility.FalsePtr(),
-				Enabled:     utility.TruePtr(),
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "gimlet",
@@ -100,7 +100,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectB",
 				Private:     utility.TruePtr(),
-				Enabled:     utility.TruePtr(),
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "evergreen",
@@ -109,7 +109,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectC",
 				Private:     utility.TruePtr(),
-				Enabled:     utility.TruePtr(),
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",

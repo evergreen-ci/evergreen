@@ -30,7 +30,7 @@ func TestContainerTaskQueue(t *testing.T) {
 		return ProjectRef{
 			Id:         utility.RandomString(),
 			Identifier: utility.RandomString(),
-			Enabled:    utility.TruePtr(),
+			Enabled:    true,
 		}
 	}
 	checkEmpty := func(t *testing.T, ctq *ContainerTaskQueue) {
@@ -154,7 +154,7 @@ func TestContainerTaskQueue(t *testing.T) {
 		},
 		"DoesNotReturnTaskWithDisabledProject": func(t *testing.T) {
 			ref := getProjectRef()
-			ref.Enabled = utility.FalsePtr()
+			ref.Enabled = false
 			require.NoError(t, ref.Insert())
 
 			needsAllocation := getTaskThatNeedsContainerAllocation()
@@ -168,7 +168,7 @@ func TestContainerTaskQueue(t *testing.T) {
 		},
 		"ReturnsGitHubTaskInDisabledAndHiddenProject": func(t *testing.T) {
 			ref := getProjectRef()
-			ref.Enabled = utility.FalsePtr()
+			ref.Enabled = false
 			ref.Hidden = utility.TruePtr()
 			require.NoError(t, ref.Insert())
 
@@ -191,7 +191,7 @@ func TestContainerTaskQueue(t *testing.T) {
 		},
 		"DoesNotReturnNonGitHubTaskInDisabledAndHiddenProject": func(t *testing.T) {
 			ref := getProjectRef()
-			ref.Enabled = utility.FalsePtr()
+			ref.Enabled = false
 			ref.Hidden = utility.TruePtr()
 			require.NoError(t, ref.Insert())
 

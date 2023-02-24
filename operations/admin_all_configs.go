@@ -69,7 +69,7 @@ func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeD
 	}
 	configDownloaded := map[projectRepo]bool{}
 	for _, p := range projects {
-		if !p.IsEnabled() && !includeDisabled {
+		if !p.Enabled && !includeDisabled {
 			continue
 		}
 		repo := projectRepo{

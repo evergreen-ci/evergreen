@@ -810,7 +810,7 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		Owner:              "dimoxinil",
 		Repo:               "dimoxinil-enterprise-repo",
 		Branch:             "main",
-		Enabled:            utility.FalsePtr(),
+		Enabled:            false,
 		BatchTime:          0,
 		RemotePath:         "evergreen.yml",
 		Id:                 "dimoxinil",
@@ -945,7 +945,7 @@ func TestDeleteProject(t *testing.T) {
 			Id:      "repo_ref",
 			Owner:   "mongodb",
 			Repo:    "test_repo",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 		},
 	}
 	assert.NoError(t, repo.Upsert())
@@ -959,7 +959,7 @@ func TestDeleteProject(t *testing.T) {
 			Owner:                "mongodb",
 			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
-			Enabled:              utility.TruePtr(),
+			Enabled:              true,
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     utility.TruePtr(),
@@ -1011,7 +1011,7 @@ func TestDeleteProject(t *testing.T) {
 			Repo:      repo.Repo,
 			Branch:    projects[i].Branch,
 			RepoRefId: repo.Id,
-			Enabled:   utility.FalsePtr(),
+			Enabled:   false,
 			Hidden:    utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
@@ -1067,7 +1067,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 		Repo:       "evergreen",
 		Branch:     "main",
 		RepoRefId:  "hello",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		Admins:     []string{"me"},
 	}
 	assert.NoError(t, pRef.Insert())
@@ -1131,7 +1131,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "main",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		Admins:     []string{"me"},
 	}
 	assert.NoError(t, pRef.Insert())

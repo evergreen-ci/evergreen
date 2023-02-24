@@ -72,7 +72,7 @@ func resetProjectRefs() {
 		Repo:        "mci-test",
 		Branch:      "master",
 		RemotePath:  "mci",
-		Enabled:     utility.TruePtr(),
+		Enabled:     true,
 		Private:     utility.FalsePtr(),
 		BatchTime:   60,
 		Hidden:      utility.FalsePtr(),
@@ -83,7 +83,7 @@ func resetProjectRefs() {
 		Id:         "mci",
 		Branch:     "main",
 		RemotePath: "self-tests.yml",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 	}
 }
 
@@ -218,7 +218,7 @@ func TestGetRemoteConfig(t *testing.T) {
 				Repo:        "config",
 				Branch:      "master",
 				RemotePath:  "random.txt",
-				Enabled:     utility.TruePtr(),
+				Enabled:     true,
 				Private:     utility.FalsePtr(),
 				BatchTime:   60,
 				Hidden:      utility.FalsePtr(),

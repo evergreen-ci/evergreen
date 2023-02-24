@@ -133,7 +133,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 		Owner:            "baxterthehacker",
 		Repo:             "public-repo",
 		Branch:           "main",
-		Enabled:          utility.TruePtr(),
+		Enabled:          true,
 		BatchTime:        10,
 		Id:               "ident0",
 		PRTestingEnabled: utility.TruePtr(),
@@ -226,7 +226,7 @@ func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) 
 func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	ref := &model.ProjectRef{
 		Id:      "meh",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "changes",
@@ -256,7 +256,7 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "main",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -375,7 +375,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "main",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},

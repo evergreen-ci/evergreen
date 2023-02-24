@@ -278,7 +278,7 @@ func (pd *PodDispatcher) checkTaskIsDispatchable(ctx context.Context, env evergr
 	// Disabled projects generally are not allowed to run tasks. The one
 	// exception is that GitHub PR tasks are still allowed to run for disabled
 	// hidden projects.
-	if !ref.IsEnabled() && (t.Requester != evergreen.GithubPRRequester || !ref.IsHidden()) {
+	if !ref.Enabled && (t.Requester != evergreen.GithubPRRequester || !ref.IsHidden()) {
 		grip.Notice(message.Fields{
 			"message":    "project ref is disabled",
 			"outcome":    "task is not dispatchable",

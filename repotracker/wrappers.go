@@ -41,7 +41,7 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 }
 
 func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef) error {
-	if !project.IsEnabled() || project.IsRepotrackerDisabled() {
+	if !project.Enabled || project.IsRepotrackerDisabled() {
 		return errors.Errorf("project disabled: %s", project.Id)
 	}
 
@@ -71,7 +71,7 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 }
 
 func ActivateBuildsForProject(project model.ProjectRef, ts time.Time) (bool, error) {
-	if !project.IsEnabled() {
+	if !project.Enabled {
 		return false, errors.Errorf("project disabled: %s", project.Id)
 	}
 	ok, err := model.DoProjectActivation(project.Id, ts)

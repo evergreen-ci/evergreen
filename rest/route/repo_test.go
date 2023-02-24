@@ -35,7 +35,7 @@ func TestGetRepoIDHandler(t *testing.T) {
 			Id:      "repo_ref",
 			Repo:    "repo",
 			Owner:   "mongodb",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 		},
 	}
 	require.NoError(t, repoRef.Upsert())
@@ -90,7 +90,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 			Id:      "repo_ref",
 			Owner:   "mongodb",
 			Repo:    "mongo",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 		},
 	}
 	assert.NoError(t, repoRef.Upsert())
@@ -113,7 +113,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 		Owner:               repoRef.Owner,
 		Repo:                repoRef.Repo,
 		Branch:              "main",
-		Enabled:             utility.TruePtr(),
+		Enabled:             true,
 		CommitQueue:         dbModel.CommitQueueParams{Enabled: utility.TruePtr()},
 		GithubChecksEnabled: utility.TruePtr(),
 	}
@@ -254,7 +254,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 		Owner:      "owner",
 		Repo:       "repo",
 		Branch:     "main",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		Restricted: utility.TruePtr(),
 		Admins:     []string{"branch1_admin"},
 	}
@@ -264,7 +264,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 		Owner:      "owner",
 		Repo:       "repo",
 		Branch:     "main",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		Admins:     []string{"branch2_admin", "the amazing Annie"},
 	}
 	assert.NoError(t, independentProject.Insert())

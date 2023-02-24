@@ -1056,7 +1056,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
-			if !project.IsEnabled() || project.IsStatsCacheDisabled() {
+			if !project.Enabled || project.IsStatsCacheDisabled() {
 				continue
 			}
 

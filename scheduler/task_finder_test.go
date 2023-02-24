@@ -82,7 +82,7 @@ func (s *TaskFinderSuite) SetupTest() {
 
 	ref := &model.ProjectRef{
 		Id:      "exists",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 	}
 
 	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
@@ -194,7 +194,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 	ref := &model.ProjectRef{
 		Id:      "exists",
-		Enabled: utility.FalsePtr(),
+		Enabled: false,
 	}
 	s.Require().NoError(ref.Upsert())
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
@@ -229,13 +229,13 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 
 	ref := &model.ProjectRef{
 		Id:      "exists",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 	}
 	s.NoError(ref.Insert())
 
 	ref = &model.ProjectRef{
 		Id:      "disabled",
-		Enabled: utility.FalsePtr(),
+		Enabled: false,
 	}
 
 	s.NoError(ref.Insert())
@@ -243,7 +243,7 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 	ref = &model.ProjectRef{
 		Id:               "patching-disabled",
 		PatchingDisabled: utility.TruePtr(),
-		Enabled:          utility.TruePtr(),
+		Enabled:          true,
 	}
 
 	s.NoError(ref.Insert())
@@ -251,7 +251,7 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 	ref = &model.ProjectRef{
 		Id:                  "dispatching-disabled",
 		DispatchingDisabled: utility.TruePtr(),
-		Enabled:             utility.TruePtr(),
+		Enabled:             true,
 	}
 
 	s.NoError(ref.Insert())
