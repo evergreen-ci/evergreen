@@ -1,0 +1,16 @@
+type Pod {
+    id: String!
+    type: String!
+    status: String!
+    taskContainerCreationOpts: TaskContainerCreationOpts!
+    task: Task
+}
+
+type TaskContainerCreationOpts {
+    image: String!
+    memoryMB: Int!
+    cpu: Int!
+    os: String!
+    arch: String!
+    workingDir: String!
+}

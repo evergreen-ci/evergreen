@@ -390,7 +390,9 @@ func TestCreateProject(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
-			require.NoError(t, CreateProject(ctx, env, &pRef, &u))
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.NoError(t, err)
+			require.True(t, created)
 
 			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 			require.NoError(t, err)
@@ -409,7 +411,9 @@ func TestCreateProject(t *testing.T) {
 		},
 		"FailsWithAlreadyExistingID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
 			require.NoError(t, pRef.Insert())
-			assert.Error(t, CreateProject(ctx, env, &pRef, &u))
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.Error(t, err)
+			require.False(t, created)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

@@ -25,6 +25,7 @@ const (
 	githubStatusUpdateJobName = "github-status-update"
 
 	githubUpdateTypeNewPatch              = "new-patch"
+	githubUpdateTypeSuccessMessage        = "success-message"
 	githubUpdateTypeRequestAuth           = "request-auth"
 	githubUpdateTypePushToCommitQueue     = "commit-queue-push"
 	githubUpdateTypeDeleteFromCommitQueue = "commit-queue-delete"
@@ -37,7 +38,10 @@ const (
 	// GitHub intent processing errors
 	ProjectDisabled        = "project was disabled"
 	PatchingDisabled       = "patching was disabled"
+	commitQueueDisabled    = "commit queue was disabled"
+	ignoredFiles           = "all patched files are ignored"
 	PatchTaskSyncDisabled  = "task sync was disabled for patches"
+	invalidAlias           = "alias not found"
 	NoTasksOrVariants      = "no tasks/variants were configured"
 	NoSyncTasksOrVariants  = "no tasks/variants were configured for sync"
 	GitHubInternalError    = "GitHub returned an error"
@@ -77,6 +81,19 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 	}
 	j.SetPriority(1)
 	return j
+}
+
+// NewGithubStatusUpdateJobWithSuccessMessage creates a job to send a passing status to Github with a message.
+func NewGithubStatusUpdateJobWithSuccessMessage(githubContext, owner, repo, ref, description string) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.GithubContext = githubContext
+	job.UpdateType = githubUpdateTypeSuccessMessage
+	job.Owner = owner
+	job.Repo = repo
+	job.Ref = ref
+	job.Description = description
+	job.SetID(fmt.Sprintf("%s:%s-%s", githubStatusUpdateJobName, job.UpdateType, time.Now().String()))
+	return job
 }
 
 // NewGithubStatusUpdateJobForNewPatch creates a job to update github's API
@@ -188,6 +205,11 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	if j.UpdateType == githubUpdateTypeProcessingError {
 		status.Context = j.GithubContext
 		status.State = message.GithubStateFailure
+		status.Description = j.Description
+
+	} else if j.UpdateType == githubUpdateTypeSuccessMessage {
+		status.Context = commitqueue.GithubContext
+		status.State = message.GithubStateSuccess
 		status.Description = j.Description
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {

@@ -39,8 +39,7 @@ func Find(query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]EventLogEntry, int, error) {
-	query := MostRecentHostEvents(hostID, hostTag, limit)
+func FindPaginatedWithTotalCount(query db.Q, limit, page int) ([]EventLogEntry, int, error) {
 	events := []EventLogEntry{}
 	skip := page * limit
 	if skip > 0 {
@@ -55,7 +54,7 @@ func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]Eve
 	// Count ignores skip and limit by default, so this will return the total number of events.
 	count, err := db.CountQ(EventCollection, query)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "fetching total count for host events")
+		return nil, 0, errors.Wrap(err, "fetching total count for events")
 	}
 
 	return events, count, nil
@@ -134,6 +133,13 @@ func MostRecentHostEvents(id string, tag string, n int) db.Q {
 	}
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
+// MostRecentPaginatedHostEvents returns a limited and paginated list of host events for the given
+// host ID and tag sorted in descending order by timestamp as well as the total number of events.
+func MostRecentPaginatedHostEvents(id string, tag string, limit, page int) ([]EventLogEntry, int, error) {
+	recentHostsQuery := MostRecentHostEvents(id, tag, limit)
+	return FindPaginatedWithTotalCount(recentHostsQuery, limit, page)
 }
 
 // Task Events
@@ -236,4 +242,11 @@ func MostRecentPodEvents(id string, n int) db.Q {
 	filter[ResourceIdKey] = id
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
+// MostRecentPaginatedPodEvents returns a limited and paginated list of pod events for the
+// given pod ID sorted in descending order by timestamp as well as the total number of events.
+func MostRecentPaginatedPodEvents(id string, limit, page int) ([]EventLogEntry, int, error) {
+	recentPodsQuery := MostRecentPodEvents(id, limit)
+	return FindPaginatedWithTotalCount(recentPodsQuery, limit, page)
 }

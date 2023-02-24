@@ -34,6 +34,9 @@ type Query {
   ): HostsResponse!
   taskQueueDistros: [TaskQueueDistro!]!
 
+  # containers
+  pod(podId: String!): Pod!
+  
   # patch
   patch(id: String!): Patch!
 
@@ -67,7 +70,7 @@ type Query {
   # task
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
-  taskLogs(taskId: String!, execution: Int): TaskLogs!
+  taskLogs(taskId: String!, execution: Int): TaskLogs! @deprecated(reason: "Use task.taskLogs instead")
   taskTests(
     taskId: String!
     execution: Int

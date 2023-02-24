@@ -105,7 +105,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
 			}
-			j.sendGitHubErrorStatus(patchDoc)
+			j.sendGitHubErrorStatus(ctx, patchDoc)
 			grip.Error(message.WrapError(err, message.Fields{
 				"job":          j.ID(),
 				"message":      "sent GitHub status error",
@@ -227,6 +227,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.IsBackport() && !pref.CommitQueue.IsEnabled() {
+		j.gitHubError = commitQueueDisabled
 		return errors.New("commit queue is disabled for project")
 	}
 
@@ -252,21 +253,14 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-
-	if errs := validator.CheckProjectErrors(patchedProject, false); len(errs) != 0 {
-		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
-			validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
-		}
+	if errs := validator.CheckProjectErrors(patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
+		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckProjectSettings(patchedProject, pref, false); len(errs) != 0 {
-		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
-			validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
-		}
+	if errs := validator.CheckProjectSettings(patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
+		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig); len(errs) != 0 {
-		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
-			validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
-		}
+	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig); len(errs.AtLevel(validator.Error)) != 0 {
+		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if validationCatcher.HasErrors() {
 		j.gitHubError = ProjectFailsValidation
@@ -274,13 +268,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
-		grip.Debug(message.Fields{
-			"message":       "not creating patch because all files are being ignored",
-			"files_changed": patchDoc.FilesChanged(),
-			"files_ignored": patchedProject.Ignore,
-			"patch_id":      patchDoc.Id,
-			"intent_id":     j.intent.ID(),
-		})
+		j.sendGitHubSuccessMessage(ctx, patchDoc, ignoredFiles)
 		return nil
 	}
 
@@ -300,6 +288,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 	if err = j.verifyValidAlias(pref.Id, patchDoc.PatchedProjectConfig); err != nil {
+		j.gitHubError = invalidAlias
 		return err
 	}
 
@@ -1036,7 +1025,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) sendGitHubErrorStatus(patchDoc *patch.Patch) {
+func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
 	update := NewGithubStatusUpdateJobForProcessingError(
 		evergreenContext,
 		patchDoc.GithubPatchData.BaseOwner,
@@ -1044,7 +1033,21 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(patchDoc *patch.Patch) {
 		patchDoc.GithubPatchData.HeadHash,
 		j.gitHubError,
 	)
-	update.Run(nil)
+	update.Run(ctx)
+
+	j.AddError(update.Error())
+}
+
+// sendGitHubSuccessMessage sends a successful status to Github with the given message.
+func (j *patchIntentProcessor) sendGitHubSuccessMessage(ctx context.Context, patchDoc *patch.Patch, msg string) {
+	update := NewGithubStatusUpdateJobWithSuccessMessage(
+		evergreenContext,
+		patchDoc.GithubPatchData.BaseOwner,
+		patchDoc.GithubPatchData.BaseRepo,
+		patchDoc.GithubPatchData.HeadHash,
+		msg,
+	)
+	update.Run(ctx)
 
 	j.AddError(update.Error())
 }

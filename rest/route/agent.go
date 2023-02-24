@@ -292,88 +292,6 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(newPushLog)
 }
 
-// GET /task/{task_id}/expansions
-type getExpansionsHandler struct {
-	settings *evergreen.Settings
-	taskID   string
-	hostID   string
-}
-
-func makeGetExpansions(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &getExpansionsHandler{
-		settings: settings,
-	}
-}
-
-func (h *getExpansionsHandler) Factory() gimlet.RouteHandler {
-	return &getExpansionsHandler{
-		settings: h.settings,
-	}
-}
-
-func (h *getExpansionsHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	h.hostID = r.Header.Get(evergreen.HostHeader)
-	podID := r.Header.Get(evergreen.PodHeader)
-	if h.hostID == "" && podID == "" {
-		return errors.New("missing both host and pod ID")
-	}
-	return nil
-}
-
-// TODO (EVG-18820): remove this route once agent versions have rolled over.
-func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-	var foundHost *host.Host
-	if h.hostID != "" {
-		foundHost, err = host.FindOneId(h.hostID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
-		}
-		if foundHost == nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
-			)
-		}
-	}
-
-	oauthToken, err := h.settings.GetGithubOauthToken()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
-	}
-
-	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(err)
-	}
-	v, err := model.VersionFindOneId(t.Version)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding version"))
-	}
-	if v == nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Errorf("version '%s' not found", t.Version))
-	}
-	bvExpansions, err := model.FindExpansionsForVariant(ctx, h.settings, v, t.BuildVariant)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "loading build variant expansions"))
-	}
-	e.Update(bvExpansions)
-
-	return gimlet.NewJSONResponse(e)
-}
-
 // GET /task/{task_id}/expansions_and_vars
 type getExpansionsAndVarsHandler struct {
 	settings *evergreen.Settings
@@ -442,6 +360,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 
 	res := apimodels.ExpansionsAndVars{
 		Expansions:  e,
+		Parameters:  map[string]string{},
 		Vars:        map[string]string{},
 		PrivateVars: map[string]bool{},
 	}
@@ -468,9 +387,10 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 	for _, param := range v.Parameters {
-		// Overwrite empty values here since these were explicitly
-		// user-specified.
+		// TODO (EVG-19010): do not need to set res.Vars once agents are
+		// deployed since res.Parameters will take higher priority.
 		res.Vars[param.Key] = param.Value
+		res.Parameters[param.Key] = param.Value
 	}
 
 	return gimlet.NewJSONResponse(res)
@@ -850,84 +770,6 @@ func (h *heartbeatHandler) Run(ctx context.Context) gimlet.Responder {
 		grip.Warningf("updating heartbeat for task %s: %+v", t.Id, err)
 	}
 	return gimlet.NewJSONResponse(heartbeatResponse)
-}
-
-// GET /task/{task_id}/fetch_vars
-type fetchExpansionsForTaskHandler struct {
-	taskID string
-	env    evergreen.Environment
-}
-
-func makeFetchExpansionsForTask(env evergreen.Environment) gimlet.RouteHandler {
-	return &fetchExpansionsForTaskHandler{env: env}
-}
-
-func (h *fetchExpansionsForTaskHandler) Factory() gimlet.RouteHandler {
-	return &fetchExpansionsForTaskHandler{env: h.env}
-}
-
-func (h *fetchExpansionsForTaskHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	return nil
-}
-
-// TODO (EVG-18820): remove this route after agents have rolled over.
-func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-	projectVars, err := model.FindMergedProjectVars(t.Project)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	res := apimodels.ExpansionVars{
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
-	}
-	if projectVars == nil {
-		return gimlet.NewJSONResponse(res)
-	}
-	res.Vars = projectVars.GetVars(t)
-	if projectVars.PrivateVars != nil {
-		res.PrivateVars = projectVars.PrivateVars
-	}
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	if v == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version '%s' not found", t.Version),
-		})
-	}
-	projParams, err := model.FindParametersForVersion(ctx, h.env.Settings(), v)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	for _, param := range projParams {
-		// If the key doesn't exist the value will default to "" anyway; this prevents
-		// an un-specified parameter from overwriting lower-priority expansions.
-		if param.Value != "" {
-			res.Vars[param.Key] = param.Value
-		}
-	}
-
-	for _, param := range v.Parameters {
-		// We will overwrite empty values here since these were explicitly user-specified.
-		res.Vars[param.Key] = param.Value
-	}
-
-	return gimlet.NewJSONResponse(res)
 }
 
 // GET /task/{task_id}/

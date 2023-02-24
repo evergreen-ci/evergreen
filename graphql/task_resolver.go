@@ -466,6 +466,19 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &order, nil
 }
 
+// Pod is the resolver for the pod field.
+func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restModel.APIPod, error) {
+	if utility.FromStringPtr(obj.PodID) == "" {
+		return nil, nil
+	}
+	pod, err := data.FindAPIPodByID(utility.FromStringPtr(obj.PodID))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding pod: %s", err.Error()))
+	}
+	return pod, nil
+
+}
+
 // Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	pRef, err := data.FindProjectById(*obj.ProjectId, true, false)
@@ -544,6 +557,27 @@ func (r *taskResolver) TaskFiles(ctx context.Context, obj *restModel.APITask) (*
 		GroupedFiles: groupedFilesList,
 	}
 	return &taskFiles, nil
+}
+
+// TaskLogs is the resolver for the taskLogs field.
+func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*TaskLogs, error) {
+	// need project to get default logger
+	p, err := data.FindProjectById(*obj.ProjectId, true, true)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", *obj.ProjectId, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", *obj.ProjectId))
+	}
+	defaultLogger := p.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	// Let the individual TaskLogs resolvers handle fetching logs for the task
+	// We can avoid the overhead of fetching task logs that we will not view
+	// and we can avoid handling errors that we will not see
+	return &TaskLogs{TaskID: *obj.Id, Execution: obj.Execution, DefaultLogger: defaultLogger}, nil
 }
 
 // TotalTestCount is the resolver for the totalTestCount field.

@@ -72,6 +72,7 @@ type Task {
   order: Int!
   patch: Patch
   patchNumber: Int
+  pod: Pod
   priority: Int
   project: Project
   projectId: String!
@@ -86,6 +87,10 @@ type Task {
   taskFiles: TaskFiles!
   taskGroup: String
   taskGroupMaxHosts: Int
+  """
+  taskLogs returns the tail 100 lines of the task's logs.
+  """
+  taskLogs: TaskLogs!
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!

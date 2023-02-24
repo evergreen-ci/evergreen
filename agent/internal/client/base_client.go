@@ -353,25 +353,6 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	return "", nil
 }
 
-// FetchExpansionVars loads expansions for a communicator's task from the API server.
-func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
-	resultVars := &apimodels.ExpansionVars{}
-	info := requestInfo{
-		method:   http.MethodGet,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix("fetch_vars")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, util.RespErrorf(resp, errors.Wrap(err, "fetching project vars and parameters").Error())
-	}
-	defer resp.Body.Close()
-	if err = utility.ReadJSON(resp.Body, resultVars); err != nil {
-		return nil, errors.Wrap(err, "reading project vars and parameters from response")
-	}
-	return resultVars, err
-}
-
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
 // creates it if it doesn't exist.
 func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
