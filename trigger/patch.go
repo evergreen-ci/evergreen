@@ -218,7 +218,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	}
 
 	if t.patch.IsChild() {
-		githubContext, err := t.getGithubContext()
+		githubContext, err := t.getGithubContext(projectName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting GitHub context for patch '%s'", t.patch.Id)
 		}
@@ -303,12 +303,7 @@ func (t *patchTriggers) generate(sub *event.Subscription) (*notification.Notific
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *patchTriggers) getGithubContext() (string, error) {
-	projectIdentifier, err := model.GetIdentifierForProject(t.patch.Project)
-	if err != nil { // default to ID
-		projectIdentifier = t.patch.Project
-	}
-
+func (t *patchTriggers) getGithubContext(projectIdentifier string) (string, error) {
 	parentPatch, err := patch.FindOneId(t.patch.Triggers.ParentPatch)
 	if err != nil {
 		return "", errors.Wrapf(err, "getting parent patch '%s'", t.patch.Triggers.ParentPatch)
@@ -316,17 +311,7 @@ func (t *patchTriggers) getGithubContext() (string, error) {
 	if parentPatch == nil {
 		return "", errors.Errorf("parent patch '%s' not found", t.patch.Triggers.ParentPatch)
 	}
-	patchIndex, err := t.patch.GetPatchIndex(parentPatch)
-	if err != nil {
-		return "", errors.Wrap(err, "getting child patch index")
-	}
-	var githubContext string
-	if patchIndex == 0 || patchIndex == -1 {
-		githubContext = fmt.Sprintf("evergreen/%s", projectIdentifier)
-	} else {
-		githubContext = fmt.Sprintf("evergreen/%s/%d", projectIdentifier, patchIndex)
-	}
-	return githubContext, nil
+	return patch.GetGithubContextForChildPatch(projectIdentifier, parentPatch, t.patch)
 }
 
 func (t *patchTriggers) patchFamilyOutcome(sub *event.Subscription) (*notification.Notification, error) {

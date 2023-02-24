@@ -808,6 +808,20 @@ func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 	return -1, nil
 }
 
+func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childPatch *Patch) (string, error) {
+	var githubContext string
+	patchIndex, err := childPatch.GetPatchIndex(parentPatch)
+	if err != nil {
+		return "", errors.Wrap(err, "getting child patch index")
+	}
+	if patchIndex == 0 || patchIndex == -1 {
+		githubContext = fmt.Sprintf("evergreen/%s", projectIdentifier)
+	} else {
+		githubContext = fmt.Sprintf("evergreen/%s/%d", projectIdentifier, patchIndex)
+	}
+	return githubContext, nil
+}
+
 func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	if !p.IsChild() && !p.IsParent() {
 		return evergreen.IsFinishedPatchStatus(p.Status), nil, nil

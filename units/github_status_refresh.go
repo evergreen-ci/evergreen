@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -155,6 +156,56 @@ func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
 	})
 }
 
+func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
+	if len(j.childPatches) == 0 {
+		return nil
+	}
+	projectIdentifier, err := model.GetIdentifierForProject(j.patch.Project)
+	if err != nil {
+		return errors.Wrap(err, "finding project identifier")
+	}
+
+	status := &message.GithubStatus{
+		Owner: j.patch.GithubPatchData.BaseOwner,
+		Repo:  j.patch.GithubPatchData.BaseRepo,
+		Ref:   j.patch.GithubPatchData.HeadHash,
+	}
+
+	for _, childPatch := range j.childPatches {
+		grip.Debug(message.Fields{
+			"ticket":      "EVG-16349",
+			"message":     "getting child patch status",
+			"child_patch": childPatch.Id.Hex(),
+		})
+		var err error
+		status.Context, err = patch.GetGithubContextForChildPatch(projectIdentifier, j.patch, &childPatch)
+		if err != nil {
+			return errors.Wrapf(err, "getting github context for child patch '%s'", childPatch.Id.Hex())
+		}
+
+		status.URL = fmt.Sprintf("%s&refreshed_status=true", childPatch.GetURL(j.urlBase)) // TODO: change
+		childPatchDuration := childPatch.FinishTime.Sub(childPatch.StartTime).String()
+		status.Description = fmt.Sprintf("patch finished in %s", childPatchDuration)
+		if childPatch.Status == evergreen.VersionSucceeded {
+			status.State = message.GithubStateSuccess
+		} else if childPatch.Status == evergreen.VersionFailed {
+			status.State = message.GithubStateFailure
+		} else {
+			status.State = message.GithubStatePending
+			status.Description = "tasks are running"
+		}
+
+		grip.Debug(message.Fields{
+			"ticket":      "EVG-16349",
+			"message":     "sending child patch status",
+			"status":      status,
+			"child_patch": childPatch.Id.Hex(),
+		})
+		j.sendStatus(status)
+	}
+	return nil
+}
+
 func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	shouldUpdate, err := j.shouldUpdate()
 	if err != nil {
@@ -170,7 +221,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	}
 
 	status := &message.GithubStatus{
-		// TODO: remove refreshed_status=true
+		// TODO: switch to GetURL
 		URL:     fmt.Sprintf("%s/version/%s?redirect_spruce_users=true&refreshed_status=true", j.urlBase, j.FetchID),
 		Context: evergreenContext,
 		Owner:   j.patch.GithubPatchData.BaseOwner,
@@ -196,11 +247,12 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	})
 	j.sendStatus(status)
 
-	// TODO: handle child patches; might need to move https://github.com/evergreen-ci/evergreen/blob/89e55638c41cc4a76b0667a78aaf4cd6a778f93f/trigger/patch.go#L292 elsewhere
-	//for _, p := range j.childPatches {
-	//	childPatchDuration := j.patch.FinishTime.Sub(j.patch.StartTime).String()
-	//	status.Description = fmt.Sprintf("patch finished ")
-	//}
+	// Send child patch statuses.
+	if err := j.sendChildPatchStatuses(); err != nil {
+		j.AddError(err)
+		return
+	}
+
 	// For each build, send build status.
 	for _, b := range j.builds {
 		grip.Info(message.Fields{
@@ -222,6 +274,8 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 			status.Description = "tasks are running"
 			fetchTasks = false
 		}
+
+		// Only need to fetch tasks to populate description if the build is finished.
 		if fetchTasks {
 			query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.DependsOnKey)
 			tasks, err := task.FindAll(query)
