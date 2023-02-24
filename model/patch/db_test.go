@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -172,4 +173,51 @@ func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, childPatchIds, 1)
 	assert.Equal(t, childPatchIds[0], childPatch.Id.Hex())
+}
+
+func TestLatestGithubPRPatch(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	patch1 := Patch{
+		Id:         bson.NewObjectId(),
+		CreateTime: time.Now().Add(-time.Hour),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "parks",
+			BaseRepo:  "rec",
+			PRNumber:  12,
+		},
+	}
+	patch2 := Patch{
+		Id:         bson.NewObjectId(),
+		CreateTime: time.Now(),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "parks",
+			BaseRepo:  "rec",
+			PRNumber:  12,
+		},
+	}
+	cqPatch := Patch{
+		Id:         bson.NewObjectId(),
+		CreateTime: time.Now().Add(time.Hour),
+		Alias:      evergreen.CommitQueueAlias,
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "parks",
+			BaseRepo:  "rec",
+			PRNumber:  12,
+		},
+	}
+	wrongPRPatch := Patch{
+		Id:         bson.NewObjectId(),
+		CreateTime: time.Now(),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "parks",
+			BaseRepo:  "rec",
+			PRNumber:  14,
+		},
+	}
+
+	assert.NoError(t, db.InsertMany(Collection, patch1, patch2, cqPatch, wrongPRPatch))
+	p, err := FindLatestGithubPRPatch("parks", "rec", 12)
+	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.Equal(t, p.Id.Hex(), patch2.Id.Hex())
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -30,9 +31,10 @@ const (
 	githubActionReopened    = "reopened"
 
 	// pull request comments
-	retryComment   = "evergreen retry"
-	patchComment   = "evergreen patch"
-	triggerComment = "evergreen merge"
+	retryComment         = "evergreen retry"
+	refreshStatusComment = "evergreen status"
+	patchComment         = "evergreen patch"
+	triggerComment       = "evergreen merge"
 
 	refTags = "refs/tags/"
 )
@@ -233,56 +235,14 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.IssueCommentEvent:
-		if event.Issue.IsPullRequest() {
-			if triggersCommitQueue(*event.Action, *event.Comment.Body) {
-				grip.Info(message.Fields{
-					"source":    "GitHub hook",
-					"msg_id":    gh.msgID,
-					"event":     gh.eventType,
-					"repo":      *event.Repo.FullName,
-					"pr_number": *event.Issue.Number,
-					"user":      *event.Sender.Login,
-					"message":   "commit queue triggered",
-				})
-				if _, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event)); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"source":    "GitHub hook",
-						"msg_id":    gh.msgID,
-						"event":     gh.eventType,
-						"action":    event.Action,
-						"repo":      *event.Repo.FullName,
-						"pr_number": *event.Issue.Number,
-						"user":      *event.Sender.Login,
-						"message":   "can't enqueue on commit queue",
-					}))
-					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing in commit queue"))
-				}
-			}
-			triggerPatch, callerType := triggersPatch(*event.Action, *event.Comment.Body)
-			if triggerPatch {
-				grip.Info(message.Fields{
-					"source":    "GitHub hook",
-					"msg_id":    gh.msgID,
-					"event":     gh.eventType,
-					"repo":      *event.Repo.FullName,
-					"pr_number": *event.Issue.Number,
-					"user":      *event.Sender.Login,
-					"message":   fmt.Sprintf("'%s' triggered", *event.Comment.Body),
-				})
-				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber()); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"source":    "GitHub hook",
-						"msg_id":    gh.msgID,
-						"event":     gh.eventType,
-						"action":    event.Action,
-						"repo":      *event.Repo.FullName,
-						"pr_number": *event.Issue.Number,
-						"user":      *event.Sender.Login,
-						"message":   fmt.Sprintf("can't create PR for '%s'", *event.Comment.Body),
-					}))
-					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating patch"))
-				}
-			}
+		grip.Info(message.Fields{
+			"ticket":  "EVG-16349",
+			"message": "comment event",
+			"source":  "GitHub hook",
+			"body":    event.GetComment().GetBody(),
+		})
+		if err := gh.handleComment(ctx, event); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 	case *github.MetaEvent:
@@ -308,6 +268,58 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueCommentEvent) error {
+	if !event.Issue.IsPullRequest() {
+		return nil
+	}
+	commentBody := event.Comment.GetBody()
+	commentAction := event.GetAction()
+	if triggersCommitQueue(commentAction, event.Comment.GetBody()) {
+		grip.Info(gh.getLogWithMessage(event, "commit queue triggered"))
+
+		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
+		grip.Error(message.WrapError(err, gh.getLogWithMessage(event, "can't enqueue on commit queue")))
+		return errors.Wrap(err, "enqueueing in commit queue")
+	}
+
+	if triggerPatch, callerType := triggersPatch(commentAction, commentBody); triggerPatch {
+		grip.Info(gh.getLogWithMessage(event, fmt.Sprintf("'%s' triggered", *event.Comment.Body)))
+
+		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber())
+		grip.Error(message.WrapError(err, gh.getLogWithMessage(event,
+			fmt.Sprintf("can't create PR for '%s'", commentBody))))
+		return errors.Wrap(err, "creating patch")
+	}
+
+	if triggersStatusRefresh(commentAction, commentBody) {
+		grip.Info(gh.getLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
+		grip.Info(message.Fields{
+			"ticket":  "EVG-16349",
+			"message": "triggered status refresh",
+			"source":  "GitHub hook",
+		})
+
+		err := gh.refreshPatchStatus(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+		grip.Error(message.WrapError(err, gh.getLogWithMessage(event,
+			"problem triggering status refresh")))
+		return errors.Wrap(err, "triggering status refresh")
+	}
+
+	return nil
+}
+
+func (gh *githubHookApi) getLogWithMessage(event *github.IssueCommentEvent, msg string) message.Fields {
+	return message.Fields{
+		"source":    "GitHub hook",
+		"msg_id":    gh.msgID,
+		"event":     gh.eventType,
+		"repo":      *event.Repo.FullName,
+		"pr_number": *event.Issue.Number,
+		"user":      *event.Sender.Login,
+		"message":   msg,
+	}
+}
+
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -324,6 +336,40 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 	}
 
 	return gh.AddIntentForPR(pr, pr.User.GetLogin(), calledBy)
+}
+
+func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	if err != nil {
+		return errors.Wrap(err, "finding patch")
+	}
+	if p == nil {
+		grip.Info(message.Fields{
+			"ticket":  "EVG-16349",
+			"message": "couldn't find patch",
+			"source":  "GitHub hook",
+		})
+		return errors.New("couldn't find patch")
+	}
+	if p.Version == "" {
+		grip.Info(message.Fields{
+			"ticket":  "EVG-16349",
+			"message": "not finalized",
+			"patch":   p.Id,
+			"source":  "GitHub hook",
+		})
+		return errors.Errorf("patch '%s' not finalized", p.Version)
+	}
+
+	job := units.NewGithubStatusRefreshJob(p)
+	grip.Info(message.Fields{
+		"ticket":   "EVG-16349",
+		"message":  "making job",
+		"patch_id": p.Version,
+		"job_id":   job.ID(),
+	})
+	job.Run(ctx)
+	return nil
 }
 
 func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy string) error {
@@ -635,7 +681,6 @@ func triggersPatch(action, comment string) (bool, string) {
 	if action == "deleted" {
 		return false, ""
 	}
-
 	if isPatchComment(comment) {
 		return true, patch.ManualCaller
 	}
@@ -644,6 +689,12 @@ func triggersPatch(action, comment string) (bool, string) {
 	}
 
 	return false, ""
+}
+func triggersStatusRefresh(action, comment string) bool {
+	if action == "deleted" {
+		return false
+	}
+	return comment == refreshStatusComment
 }
 
 func isTag(ref string) bool {
