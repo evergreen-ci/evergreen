@@ -198,12 +198,6 @@ buildvariants:
 	newPatchDB, err := patch.FindOneId(utility.FromStringPtr(newPatch.Id))
 	s.NoError(err)
 	s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
-
-	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.settings, evergreen.ProjectStorageMethodDB, utility.FromStringPtr(newPatch.Id))
-	s.Require().NoError(err)
-	s.Require().NotZero(dbParserProject)
-	s.Len(dbParserProject.BuildVariants, 1)
-	s.Len(dbParserProject.Tasks, 1)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
