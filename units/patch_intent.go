@@ -26,7 +26,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -54,7 +53,8 @@ type patchIntentProcessor struct {
 }
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
-// given patch intent with the given object ID for the patch
+// given patch intent. The patch ID is the new ID for the patch to be created,
+// not the patch intent.
 func NewPatchIntentProcessor(patchID mgobson.ObjectId, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
 	j.IntentID = intent.ID()
@@ -160,10 +160,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	catcher := grip.NewBasicCatcher()
 
 	canFinalize := true
+	var patchedProject *model.Project
+	var patchedParserProject *model.ParserProject
 	switch j.IntentType {
 	case patch.CliIntentType:
-		catcher.Add(j.buildCliPatchDoc(ctx, patchDoc, githubOauthToken))
-
+		catcher.Wrap(j.buildCliPatchDoc(ctx, patchDoc, githubOauthToken), "building CLI patch document")
 	case patch.GithubIntentType:
 		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, githubOauthToken)
 		if err != nil {
@@ -171,10 +172,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 				j.gitHubError = GitHubInternalError
 			}
 		}
-		catcher.Add(err)
-
+		catcher.Wrap(err, "building GitHub patch document")
 	case patch.TriggerIntentType:
-		catcher.Add(j.buildTriggerPatchDoc(patchDoc))
+		patchedProject, patchedParserProject, err = j.buildTriggerPatchDoc(patchDoc)
+		catcher.Wrap(err, "building trigger patch document")
 	default:
 		return errors.Errorf("intent type '%s' is unknown", j.IntentType)
 	}
@@ -237,26 +238,28 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
-	project, patchConfig, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubOauthToken)
-	if err != nil {
-		if strings.Contains(err.Error(), model.EmptyConfigurationError) {
-			j.gitHubError = EmptyConfig
+	var patchedProjectConfig string
+	if patchedParserProject != nil {
+		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, j.env.Settings(), patchDoc, githubOauthToken)
+		if err != nil {
+			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project config")
 		}
-		if strings.Contains(err.Error(), thirdparty.Github502Error) {
-			j.gitHubError = GitHubInternalError
+	} else {
+		var patchConfig *model.PatchConfig
+		patchedProject, patchConfig, err = model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubOauthToken)
+		if err != nil {
+			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project")
 		}
-		if strings.Contains(err.Error(), model.LoadProjectError) {
-			j.gitHubError = InvalidConfig
-		}
-		return errors.Wrap(err, "getting patched project config")
+		patchedParserProject = patchConfig.PatchedParserProject
+		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	if errs := validator.CheckProjectErrors(project, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectErrors(patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckProjectSettings(project, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectSettings(patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckPatchedProjectConfigErrors(patchConfig.PatchedProjectConfig); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if validationCatcher.HasErrors() {
@@ -264,19 +267,18 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrapf(validationCatcher.Resolve(), "invalid patched project config")
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
-	if patchDoc.IsGithubPRPatch() && project.IgnoresAllFiles(patchDoc.FilesChanged()) {
+	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
 		j.sendGitHubSuccessMessage(ctx, patchDoc, ignoredFiles)
 		return nil
 	}
 
-	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
-	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
+	patchDoc.PatchedProjectConfig = patchedProjectConfig
 
 	for _, modulePatch := range patchDoc.Patches {
 		if modulePatch.ModuleName != "" {
 			// validate the module exists
 			var module *model.Module
-			module, err = project.GetModuleByName(modulePatch.ModuleName)
+			module, err = patchedProject.GetModuleByName(modulePatch.ModuleName)
 			if err != nil {
 				return errors.Wrapf(err, "finding module '%s'", modulePatch.ModuleName)
 			}
@@ -290,7 +292,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return err
 	}
 
-	if err = j.buildTasksAndVariants(patchDoc, project); err != nil {
+	if err = j.buildTasksAndVariants(patchDoc, patchedProject); err != nil {
 		return err
 	}
 
@@ -301,7 +303,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if shouldTaskSync := len(patchDoc.SyncAtEndOpts.BuildVariants) != 0 || len(patchDoc.SyncAtEndOpts.Tasks) != 0; shouldTaskSync {
-		patchDoc.SyncAtEndOpts.VariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetAllVariantTasks())
+		patchDoc.SyncAtEndOpts.VariantsTasks = patchDoc.ResolveSyncVariantTasks(patchedProject.GetAllVariantTasks())
 		// If the user requested task sync in their patch, it should match at least
 		// one valid task in a build variant.
 		if len(patchDoc.SyncAtEndOpts.VariantsTasks) == 0 {
@@ -313,7 +315,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.IsCommitQueuePatch() {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, project)
+		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject)
 	}
 	if patchDoc.IsBackport() {
 		patchDoc.Description, err = patchDoc.MakeBackportDescription()
@@ -331,10 +333,23 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if patchDoc.CreateTime.IsZero() {
 		patchDoc.CreateTime = time.Now()
 	}
+	// Set the new patch ID here because the ID for the patch created in this
+	// job differs from the patch intent ID. Presumably, this is because the
+	// patch intent and the actual patch are separate documents.
 	patchDoc.Id = j.PatchID
 
+	patchedParserProject.CreateTime = patchDoc.CreateTime
+	// Ensure that the patched parser project's ID agrees with the patch that's
+	// about to be created, rather than the patch intent.
+	patchedParserProject.Id = j.PatchID.Hex()
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, j.env.Settings(), evergreen.ProjectStorageMethodDB, patchedParserProject)
+	if err != nil {
+		return errors.Wrapf(err, "upserting parser project '%s' for patch", patchedParserProject.Id)
+	}
+	patchDoc.ProjectStorageMethod = ppStorageMethod
+
 	if err = patchDoc.Insert(); err != nil {
-		return err
+		return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
 	}
 
 	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
@@ -342,36 +357,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.IsGithubPRPatch() {
-		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-			Owner:    patchDoc.GithubPatchData.BaseOwner,
-			Repo:     patchDoc.GithubPatchData.BaseRepo,
-			PRNumber: patchDoc.GithubPatchData.PRNumber,
-			Ref:      patchDoc.GithubPatchData.HeadHash,
-		})
-		patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-		if err = patchSub.Upsert(); err != nil {
-			catcher.Wrap(err, "inserting patch subscription for GitHub PR")
-		}
-		buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
-		if err = buildSub.Upsert(); err != nil {
-			catcher.Wrap(err, "inserting build subscription for GitHub PR")
-		}
-		if patchDoc.IsParent() {
-			// add a subscription on each child patch to report its status to Github when it's done.
-			for _, childPatch := range patchDoc.Triggers.ChildPatches {
-				childGhStatusSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-					Owner:    patchDoc.GithubPatchData.BaseOwner,
-					Repo:     patchDoc.GithubPatchData.BaseRepo,
-					PRNumber: patchDoc.GithubPatchData.PRNumber,
-					Ref:      patchDoc.GithubPatchData.HeadHash,
-					ChildId:  childPatch,
-				})
-				patchSub := event.NewExpiringPatchChildOutcomeSubscription(childPatch, childGhStatusSub)
-				if err = patchSub.Upsert(); err != nil {
-					catcher.Wrap(err, "isnerting child patch subscription for GitHub PR")
-				}
-			}
-		}
+		catcher.Wrap(j.createGitHubSubscriptions(patchDoc), "creating GitHub PR patch subscriptions")
 	}
 	if patchDoc.IsBackport() {
 		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
@@ -422,6 +408,56 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	return catcher.Resolve()
+}
+
+// setGitHubPatchingError sets the GitHub error message and returns it if
+// loading the patched project errored.
+func (j *patchIntentProcessor) setGitHubPatchingError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if strings.Contains(err.Error(), model.EmptyConfigurationError) {
+		j.gitHubError = EmptyConfig
+	}
+	if strings.Contains(err.Error(), thirdparty.Github502Error) {
+		j.gitHubError = GitHubInternalError
+	}
+	if strings.Contains(err.Error(), model.LoadProjectError) {
+		j.gitHubError = InvalidConfig
+	}
+	return err
+}
+
+// createGitHubSubscriptions creates subscriptions for notifications related to
+// GitHub PR patches.
+func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
+	catcher := grip.NewBasicCatcher()
+	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+		Owner:    p.GithubPatchData.BaseOwner,
+		Repo:     p.GithubPatchData.BaseRepo,
+		PRNumber: p.GithubPatchData.PRNumber,
+		Ref:      p.GithubPatchData.HeadHash,
+	})
+	patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+	catcher.Wrap(patchSub.Upsert(), "inserting patch subscription for GitHub PR")
+	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
+	catcher.Wrap(buildSub.Upsert(), "inserting build subscription for GitHub PR")
+	if p.IsParent() {
+		// add a subscription on each child patch to report it's status to github when it's done.
+		for _, childPatch := range p.Triggers.ChildPatches {
+			childGhStatusSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+				Owner:    p.GithubPatchData.BaseOwner,
+				Repo:     p.GithubPatchData.BaseRepo,
+				PRNumber: p.GithubPatchData.PRNumber,
+				Ref:      p.GithubPatchData.HeadHash,
+				ChildId:  childPatch,
+			})
+			patchSub := event.NewExpiringPatchChildOutcomeSubscription(childPatch, childGhStatusSub)
+			catcher.Wrap(patchSub.Upsert(), "inserting child patch subscription for GitHub PR")
+		}
+	}
 	return catcher.Resolve()
 }
 
@@ -847,7 +883,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error {
+func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",
@@ -861,47 +897,32 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error
 
 	intent, ok := j.intent.(*patch.TriggerIntent)
 	if !ok {
-		return errors.Errorf("programmatic error: expected intent '%s' to be a trigger intent type but instead got '%T'", j.IntentID, j.intent)
+		return nil, nil, errors.Errorf("programmatic error: expected intent '%s' to be a trigger intent type but instead got '%T'", j.IntentID, j.intent)
 	}
 
-	v, project, _, err := model.FindLatestVersionWithValidProject(patchDoc.Project)
+	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project)
 	if err != nil {
-		return errors.Wrapf(err, "getting last known project '%s'", patchDoc.Project)
+		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
 
 	matchingTasks, err := project.VariantTasksForSelectors(intent.Definitions, patchDoc.GetRequester())
 	if err != nil {
-		return errors.Wrap(err, "matching tasks to alias definitions")
+		return nil, nil, errors.Wrap(err, "matching tasks to alias definitions")
 	}
 	if len(matchingTasks) == 0 {
-		return nil
-	}
-
-	yamlBytes, err := yaml.Marshal(project)
-	if err != nil {
-		return errors.Wrap(err, "marshalling child project")
+		return nil, nil, nil
 	}
 
 	patchDoc.Githash = v.Revision
-	// TODO (EVG-18700): This is storing the entire parser project of the latest
-	// version on the waterfall into the patch document, which is not really an
-	// intended usage of the patched parser project field. The patched parser
-	// project is supposed to be the parser project directly from the YAML file
-	// before generate.tasks. The version this trigger is based off of may have
-	// already run generate.tasks, which can result in a very large parser
-	// project. Therefore, it is not possible to stuff the entire parser project
-	// with generated tasks into the patch document like this, because it may
-	// exceed the 16 MB document limit.
-	patchDoc.PatchedParserProject = string(yamlBytes)
 	patchDoc.VariantsTasks = matchingTasks
 
 	if intent.ParentAsModule != "" {
 		parentPatch, err := patch.FindOneId(patchDoc.Triggers.ParentPatch)
 		if err != nil {
-			return errors.Wrapf(err, "getting parent patch '%s'", patchDoc.Triggers.ParentPatch)
+			return nil, nil, errors.Wrapf(err, "getting parent patch '%s'", patchDoc.Triggers.ParentPatch)
 		}
 		if parentPatch == nil {
-			return errors.Errorf("parent patch '%s' not found", patchDoc.Triggers.ParentPatch)
+			return nil, nil, errors.Errorf("parent patch '%s' not found", patchDoc.Triggers.ParentPatch)
 		}
 		for _, p := range parentPatch.Patches {
 			if p.ModuleName == "" {
@@ -914,7 +935,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error
 			}
 		}
 	}
-	return nil
+	return project, pp, nil
 }
 
 func (j *patchIntentProcessor) verifyValidAlias(projectId string, configStr string) error {

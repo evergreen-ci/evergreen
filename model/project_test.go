@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -2393,14 +2394,13 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 }
 
 func TestGetVariantsAndTasksFromPatchProject(t *testing.T) {
-	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
-	patchedConfig := `
+	patchedProject := `
 buildvariants:
   - name: bv1
     display_name: bv1_display
@@ -2421,32 +2421,66 @@ tasks:
   - name: task3
 `
 
-	const versionID = "version"
-	p := &patch.Patch{
-		Version:              versionID,
-		PatchedParserProject: patchedConfig,
-	}
-	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
-	assert.NoError(t, err)
-	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
+	}()
 
-	// Verify this still works if the patch document doesn't have a patched
-	// parser project, meaning it should use the actual parser project document.
-	v := Version{
-		Id:                   versionID,
-		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
-	}
-	require.NoError(t, v.Insert())
+	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch, pp *ParserProject){
+		"SucceedsWithParserProjectInDB": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
+			require.NoError(t, pp.Insert())
+			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 
-	proj := &Project{}
-	pp, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, "", proj)
-	pp.Id = v.Id
-	assert.NoError(t, err)
-	assert.NotNil(t, pp)
-	assert.NoError(t, pp.Insert())
-	p.PatchedParserProject = ""
-	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
-	assert.NoError(t, err)
-	require.NotZero(t, variantsAndTasks)
-	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
+			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
+			require.NoError(t, err)
+			assert.Len(t, variantsAndTasks.Tasks, 2)
+			require.NotNil(t, variantsAndTasks.Variants)
+			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
+			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
+		},
+		"SucceedsWithAlreadyFinalizedPatch": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
+			v := Version{
+				Id:                   p.Id.Hex(),
+				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+			}
+			require.NoError(t, v.Insert())
+			require.NoError(t, pp.Insert())
+			p.Version = v.Id
+
+			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
+			require.NoError(t, err)
+			assert.Len(t, variantsAndTasks.Tasks, 2)
+			require.NotZero(t, variantsAndTasks)
+			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
+			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
+		},
+		"SucceedsWithPatchedParserProject": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
+			p.PatchedParserProject = patchedProject
+
+			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
+			require.NoError(t, err)
+			assert.Len(t, variantsAndTasks.Tasks, 2)
+			require.NotZero(t, variantsAndTasks)
+			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
+			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
+		},
+		"FailsWithUnfinalizedPatchThatHasNeitherPatchedParserProjectNorParserProjectStorage": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
+			_, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
+			assert.Error(t, err)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
+
+			project := &Project{}
+			pp, err := LoadProjectInto(ctx, []byte(patchedProject), nil, "", project)
+			require.NoError(t, err)
+
+			p := &patch.Patch{
+				Id: mgobson.NewObjectId(),
+			}
+			pp.Id = p.Id.Hex()
+
+			tCase(t, p, pp)
+		})
+	}
 }
