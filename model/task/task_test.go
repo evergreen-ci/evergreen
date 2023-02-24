@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -3670,6 +3671,179 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 			}
 
 			tCase(t, tsk, depTasks)
+		})
+	}
+}
+
+func TestHasResults(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for _, test := range []struct {
+		name           string
+		tsk            *Task
+		executionTasks []Task
+		hasResults     bool
+	}{
+		{
+			name: "RegularTaskNoResults",
+			tsk:  &Task{Id: "task"},
+		},
+		{
+			name: "RegularTaskLegacyCedarResultsFlag",
+			tsk: &Task{
+				Id:              "task",
+				HasCedarResults: true,
+			},
+			hasResults: true,
+		},
+		{
+			name: "RegularTaskResultsServicePopulated",
+			tsk: &Task{
+				Id:             "task",
+				ResultsService: "some_service",
+			},
+			hasResults: true,
+		},
+		{
+			name: "DisplayTaskNoResults",
+			tsk: &Task{
+				Id:             "display_task",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1"},
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0"},
+				{Id: "exec_task1"},
+			},
+		},
+		{
+			name: "DisplayTaskLegacyCedarResultsFlag",
+			tsk: &Task{
+				Id:             "display_task",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0", HasCedarResults: true},
+				{Id: "exec_task1", HasCedarResults: true},
+				{Id: "exec_task2"},
+			},
+			hasResults: true,
+		},
+		{
+			name: "DisplayTaskResultsServicePopulated",
+			tsk: &Task{
+				Id:             "display_task",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0", ResultsService: "some_service"},
+				{Id: "exec_task1", ResultsService: "some_service"},
+				{Id: "exec_task2"},
+			},
+			hasResults: true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			for _, execTask := range test.executionTasks {
+				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				require.NoError(t, err)
+			}
+
+			assert.Equal(t, test.hasResults, test.tsk.HasResults())
+		})
+	}
+}
+
+func TestCreateTestResultsTaskOptions(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for _, test := range []struct {
+		name           string
+		tsk            *Task
+		executionTasks []Task
+		expectedOpts   []testresult.TaskOptions
+	}{
+		{
+			name: "RegularTaskNoResults",
+			tsk:  &Task{Id: "task"},
+		},
+		{
+			name: "RegularTaskResults",
+			tsk: &Task{
+				Id:             "task",
+				Execution:      1,
+				ResultsService: "some_service",
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "task", Execution: 1, ResultsService: "some_service"},
+			},
+		},
+		{
+			name: "DisplayTaskNoResults",
+			tsk: &Task{
+				Id:             "display_task",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1"},
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0"},
+				{Id: "exec_task1"},
+			},
+		},
+		{
+			name: "DisplayTaskLegacyCedarResultsFlag",
+			tsk: &Task{
+				Id:             "display_task",
+				Execution:      1,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0", HasCedarResults: true},
+				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task2"},
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "exec_task0"},
+				{TaskID: "exec_task1", Execution: 1},
+			},
+		},
+		{
+			name: "DisplayTaskResults",
+			tsk: &Task{
+				Id:             "display_task",
+				Execution:      1,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0", ResultsService: "some_service"},
+				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task2"},
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "exec_task0", ResultsService: "some_service"},
+				{TaskID: "exec_task1", Execution: 1, ResultsService: "some_service"},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			for _, execTask := range test.executionTasks {
+				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				require.NoError(t, err)
+			}
+
+			opts, err := test.tsk.CreateTestResultsTaskOptions()
+			require.NoError(t, err)
+			assert.ElementsMatch(t, test.expectedOpts, opts)
 		})
 	}
 }

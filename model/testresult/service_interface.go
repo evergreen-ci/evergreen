@@ -15,6 +15,8 @@ const (
 
 const defaultService = TestResultsServiceCedar
 
+// testResultsService is an interface for fetching test results data from an
+// underlying test results store.
 type testResultsService interface {
 	GetMergedTaskTestResults(context.Context, []TaskOptions, *FilterOptions) (TaskTestResults, error)
 	GetMergedTaskTestResultsStats(context.Context, []TaskOptions) (TaskTestResultsStats, error)

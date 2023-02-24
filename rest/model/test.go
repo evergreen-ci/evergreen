@@ -52,7 +52,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		}
 		at.StartTime = utility.ToTimePtr(v.TestStartTime)
 		at.EndTime = utility.ToTimePtr(v.TestEndTime)
-		at.Duration = v.Duration().Seconds() // TODO: Do we want this in seconds or ms?
+		at.Duration = v.Duration().Seconds()
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{

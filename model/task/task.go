@@ -1444,8 +1444,13 @@ func (t *Task) SetResultsInfo(service string, failedResults bool) error {
 	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id}, bson.M{"$set": set}))
 }
 
+// HasResults returns whether the task has test results or not.
 func (t *Task) HasResults() bool {
 	if t.DisplayOnly {
+		if len(t.ExecutionTasks) == 0 {
+			return false
+		}
+
 		query := ByIds(t.ExecutionTasks)
 		query["$or"] = []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
 		execTasksWithResults, err := Count(db.Query(query))
@@ -2471,13 +2476,12 @@ func (t *Task) makeArchivedTask() *Task {
 
 // PopulateTestResults populates the task's LocalTestResults field with any
 // test results the task may have. If the results are already populated, this
-// function noops.
+// function no-ops.
 func (t *Task) PopulateTestResults() error {
 	if len(t.LocalTestResults) > 0 {
 		return nil
 	}
 
-	// TODO: See if this function can accept a passed-in env.
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -2542,12 +2546,17 @@ func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environmen
 // task options is useful.
 func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) {
 	var taskOpts []testresult.TaskOptions
-	if t.DisplayOnly {
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		query := ByIds(t.ExecutionTasks)
 		query["$or"] = []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
-		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey)
+		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")
+		}
+
+		for _, execTask := range execTasksWithResults {
+			fmt.Println(execTask.ResultsService)
+			fmt.Println(execTask.HasCedarResults)
 		}
 
 		taskOpts = make([]testresult.TaskOptions, len(execTasksWithResults))
