@@ -72,6 +72,7 @@ type Task {
   order: Int!
   patch: Patch
   patchNumber: Int
+  pod: Pod
   priority: Int
   project: Project
   projectId: String!
