@@ -350,6 +350,7 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 	})
 }
 
+// FindLatestGithubPRPatch returns the latest PR patch for the given PR, if there is one.
 func FindLatestGithubPRPatch(owner, repo string, prNumber int) (*Patch, error) {
 	patches, err := Find(db.Query(bson.M{
 		AliasKey: bson.M{"$ne": evergreen.CommitQueueAlias},

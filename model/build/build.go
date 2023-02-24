@@ -299,6 +299,7 @@ func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
 	return timeTaken, makespan, nil
 }
 
+// GetURL returns a url to the build page.
 func (b *Build) GetURL(uiBase string) string {
 	url := fmt.Sprintf("%s/build/%s", uiBase, url.PathEscape(b.Id))
 	if evergreen.IsPatchRequester(b.Requester) {

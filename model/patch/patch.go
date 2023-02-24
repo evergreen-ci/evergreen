@@ -808,6 +808,7 @@ func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 	return -1, nil
 }
 
+// GetGithubContextForChildPatch returns the github context for the given child patch, to be used in github statuses.
 func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childPatch *Patch) (string, error) {
 	var githubContext string
 	patchIndex, err := childPatch.GetPatchIndex(parentPatch)

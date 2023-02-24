@@ -31,6 +31,7 @@ func init() {
 	registry.AddJobType(githubStatusUpdateJobName, func() amboy.Job { return makeGithubStatusRefreshJob() })
 }
 
+// NewGithubStatusRefreshJob is a job that re-sends github statuses to the PR associated with the given patch.
 func NewGithubStatusRefreshJob(p *patch.Patch) amboy.Job {
 	job := makeGithubStatusRefreshJob()
 	job.FetchID = p.Version
