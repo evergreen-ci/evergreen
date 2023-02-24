@@ -268,7 +268,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		DisplayName:     t.build.DisplayName,
 		Object:          event.ObjectBuild,
 		Project:         projectName,
-		URL:             buildLink(t.uiConfig.Url, t.build.Id, evergreen.IsPatchRequester(t.build.Requester)),
+		URL:             t.build.GetURL(t.uiConfig.Url),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}

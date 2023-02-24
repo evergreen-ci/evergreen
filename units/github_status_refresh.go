@@ -127,17 +127,8 @@ func (j *githubStatusRefreshJob) fetch() error {
 }
 
 func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
-	grip.Info(message.Fields{
-		"ticket":  "EVG-16349",
-		"message": "sending status",
-		"status":  status,
-	})
 	c := message.MakeGithubStatusMessageWithRepo(*status)
 	if !c.Loggable() {
-		grip.Info(message.Fields{
-			"ticket":  "EVG-16349",
-			"message": "invalid status",
-		})
 		j.AddError(errors.Errorf("status message is invalid: %+v", status))
 		return
 	}
@@ -149,13 +140,9 @@ func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
 		"message": "called github status refresh",
 		"caller":  githubStatusRefreshJobName,
 	})
-	grip.Debug(message.Fields{
-		"ticket":  "EVG-16349",
-		"message": "sent status",
-		"status":  status,
-	})
 }
 
+// sendChildPatchStatuses iterates through child patches if relevant and builds/sends statuses.
 func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 	if len(j.childPatches) == 0 {
 		return nil
@@ -172,18 +159,13 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 	}
 
 	for _, childPatch := range j.childPatches {
-		grip.Debug(message.Fields{
-			"ticket":      "EVG-16349",
-			"message":     "getting child patch status",
-			"child_patch": childPatch.Id.Hex(),
-		})
 		var err error
 		status.Context, err = patch.GetGithubContextForChildPatch(projectIdentifier, j.patch, &childPatch)
 		if err != nil {
 			return errors.Wrapf(err, "getting github context for child patch '%s'", childPatch.Id.Hex())
 		}
 
-		status.URL = fmt.Sprintf("%s&refreshed_status=true", childPatch.GetURL(j.urlBase)) // TODO: change
+		status.URL = childPatch.GetURL(j.urlBase)
 		childPatchDuration := childPatch.FinishTime.Sub(childPatch.StartTime).String()
 		status.Description = fmt.Sprintf("patch finished in %s", childPatchDuration)
 		if childPatch.Status == evergreen.VersionSucceeded {
@@ -195,12 +177,6 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 			status.Description = "tasks are running"
 		}
 
-		grip.Debug(message.Fields{
-			"ticket":      "EVG-16349",
-			"message":     "sending child patch status",
-			"status":      status,
-			"child_patch": childPatch.Id.Hex(),
-		})
 		j.sendStatus(status)
 	}
 	return nil
@@ -221,8 +197,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	}
 
 	status := &message.GithubStatus{
-		// TODO: switch to GetURL
-		URL:     fmt.Sprintf("%s/version/%s?redirect_spruce_users=true&refreshed_status=true", j.urlBase, j.FetchID),
+		URL:     j.patch.GetURL(j.urlBase),
 		Context: evergreenContext,
 		Owner:   j.patch.GithubPatchData.BaseOwner,
 		Repo:    j.patch.GithubPatchData.BaseRepo,
@@ -240,11 +215,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 		status.State = message.GithubStatePending
 		status.Description = "tasks are running"
 	}
-	grip.Debug(message.Fields{
-		"ticket":  "EVG-16349",
-		"message": "sending patch status",
-		"status":  status,
-	})
+
 	j.sendStatus(status)
 
 	// Send child patch statuses.
@@ -255,16 +226,10 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 
 	// For each build, send build status.
 	for _, b := range j.builds {
-		grip.Info(message.Fields{
-			"ticket":        "EVG-16349",
-			"message":       "iterating through builds",
-			"current_build": b.Id,
-		})
 		status.Context = fmt.Sprintf("%s/%s", evergreenContext, b.BuildVariant)
-		buildDuration := b.FinishTime.Sub(b.StartTime).String()
-		status.Description = fmt.Sprintf("build finished in %s", buildDuration)
-		fetchTasks := true
+		status.URL = b.GetURL(j.urlBase)
 
+		finishedStatus := true
 		if b.Status == evergreen.BuildSucceeded {
 			status.State = message.GithubStateSuccess
 		} else if b.Status == evergreen.BuildFailed {
@@ -272,11 +237,11 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 		} else {
 			status.State = message.GithubStatePending
 			status.Description = "tasks are running"
-			fetchTasks = false
+			finishedStatus = false
 		}
 
 		// Only need to fetch tasks to populate description if the build is finished.
-		if fetchTasks {
+		if finishedStatus {
 			query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.DependsOnKey)
 			tasks, err := task.FindAll(query)
 			if err != nil {
@@ -284,13 +249,10 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 				continue
 			}
 			status.Description = b.GetFinishedNotificationDescription(tasks)
+
+			buildDuration := b.FinishTime.Sub(b.StartTime).String()
+			status.Description = fmt.Sprintf("build finished in %s", buildDuration)
 		}
-		grip.Info(message.Fields{
-			"ticket":        "EVG-16349",
-			"message":       "sending build status",
-			"current_build": b.Id,
-			"description":   status.Description,
-		})
 		j.sendStatus(status)
 	}
 }

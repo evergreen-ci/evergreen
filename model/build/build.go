@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -296,6 +297,14 @@ func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
+}
+
+func (b *Build) GetURL(uiBase string) string {
+	url := fmt.Sprintf("%s/build/%s", uiBase, url.PathEscape(b.Id))
+	if evergreen.IsPatchRequester(b.Requester) {
+		url += "?redirect_spruce_users=true"
+	}
+	return url
 }
 
 // Insert writes the b to the db.

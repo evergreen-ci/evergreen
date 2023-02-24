@@ -470,14 +470,6 @@ func taskLogLink(uiBase string, taskID string, execution int) string {
 	return fmt.Sprintf("%s/task_log_raw/%s/%d?type=T", uiBase, url.PathEscape(taskID), execution)
 }
 
-func buildLink(uiBase string, buildID string, hasPatch bool) string {
-	url := fmt.Sprintf("%s/build/%s", uiBase, url.PathEscape(buildID))
-	if hasPatch {
-		url += "?redirect_spruce_users=true"
-	}
-	return url
-}
-
 type versionLinkInput struct {
 	uiBase    string
 	versionID string

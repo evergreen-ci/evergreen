@@ -235,12 +235,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.IssueCommentEvent:
-		grip.Info(message.Fields{
-			"ticket":  "EVG-16349",
-			"message": "comment event",
-			"source":  "GitHub hook",
-			"body":    event.GetComment().GetBody(),
-		})
 		if err := gh.handleComment(ctx, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
@@ -268,39 +262,36 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// handleComment parses a given comment and takes the relevant action, if it's an Evergreen-tracked comment.
 func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueCommentEvent) error {
 	if !event.Issue.IsPullRequest() {
 		return nil
 	}
+
 	commentBody := event.Comment.GetBody()
 	commentAction := event.GetAction()
 	if triggersCommitQueue(commentAction, event.Comment.GetBody()) {
-		grip.Info(gh.getLogWithMessage(event, "commit queue triggered"))
+		grip.Info(gh.getCommentLogWithMessage(event, "commit queue triggered"))
 
 		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
-		grip.Error(message.WrapError(err, gh.getLogWithMessage(event, "can't enqueue on commit queue")))
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
 		return errors.Wrap(err, "enqueueing in commit queue")
 	}
 
 	if triggerPatch, callerType := triggersPatch(commentAction, commentBody); triggerPatch {
-		grip.Info(gh.getLogWithMessage(event, fmt.Sprintf("'%s' triggered", *event.Comment.Body)))
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", *event.Comment.Body)))
 
 		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber())
-		grip.Error(message.WrapError(err, gh.getLogWithMessage(event,
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
 			fmt.Sprintf("can't create PR for '%s'", commentBody))))
 		return errors.Wrap(err, "creating patch")
 	}
 
 	if triggersStatusRefresh(commentAction, commentBody) {
-		grip.Info(gh.getLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
-		grip.Info(message.Fields{
-			"ticket":  "EVG-16349",
-			"message": "triggered status refresh",
-			"source":  "GitHub hook",
-		})
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
 		err := gh.refreshPatchStatus(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
-		grip.Error(message.WrapError(err, gh.getLogWithMessage(event,
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
 			"problem triggering status refresh")))
 		return errors.Wrap(err, "triggering status refresh")
 	}
@@ -308,7 +299,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	return nil
 }
 
-func (gh *githubHookApi) getLogWithMessage(event *github.IssueCommentEvent, msg string) message.Fields {
+func (gh *githubHookApi) getCommentLogWithMessage(event *github.IssueCommentEvent, msg string) message.Fields {
 	return message.Fields{
 		"source":    "GitHub hook",
 		"msg_id":    gh.msgID,
@@ -344,30 +335,13 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 		return errors.Wrap(err, "finding patch")
 	}
 	if p == nil {
-		grip.Info(message.Fields{
-			"ticket":  "EVG-16349",
-			"message": "couldn't find patch",
-			"source":  "GitHub hook",
-		})
-		return errors.New("couldn't find patch")
+		return errors.Errorf("couldn't find patch for PR '%s/%s:%d'", owner, repo, prNumber)
 	}
 	if p.Version == "" {
-		grip.Info(message.Fields{
-			"ticket":  "EVG-16349",
-			"message": "not finalized",
-			"patch":   p.Id,
-			"source":  "GitHub hook",
-		})
 		return errors.Errorf("patch '%s' not finalized", p.Version)
 	}
 
 	job := units.NewGithubStatusRefreshJob(p)
-	grip.Info(message.Fields{
-		"ticket":   "EVG-16349",
-		"message":  "making job",
-		"patch_id": p.Version,
-		"job_id":   job.ID(),
-	})
 	job.Run(ctx)
 	return nil
 }
