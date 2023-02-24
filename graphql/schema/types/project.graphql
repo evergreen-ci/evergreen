@@ -178,7 +178,7 @@ type Project {
   manualPrTestingEnabled: Boolean @requireProjectFieldAccess
   notifyOnBuildFailure: Boolean @requireProjectFieldAccess
   owner: String!
-  patches(patchesInput: PatchesInput!): Patches! # project patches 
+  patches(patchesInput: PatchesInput!): Patches! # project patches
   patchingDisabled: Boolean @requireProjectFieldAccess
   patchTriggerAliases: [PatchTriggerAlias!] @requireProjectFieldAccess
   perfEnabled: Boolean @requireProjectFieldAccess
@@ -198,6 +198,7 @@ type Project {
   triggers: [TriggerAlias!] @requireProjectFieldAccess
   versionControlEnabled: Boolean @requireProjectFieldAccess
   workstationConfig: WorkstationConfig! @requireProjectFieldAccess
+  externalLinks: [ExternalLink!]! @requireProjectFieldAccess
 }
 
 type CommitQueueParams {
@@ -216,4 +217,9 @@ type TaskSyncOptions {
 type WorkstationConfig {
   gitClone: Boolean
   setupCommands: [WorkstationSetupCommand!]
+}
+
+type ExternalLink {
+  displayName: String!
+  urlTemplate: String!
 }

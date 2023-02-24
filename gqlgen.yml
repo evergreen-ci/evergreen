@@ -54,6 +54,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
+  ExternalLink:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:

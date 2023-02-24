@@ -153,6 +153,23 @@ type APIPeriodicBuildDefinition struct {
 	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
 }
 
+type APIExternalLink struct {
+	URLTemplate *string `json:"url_template"`
+	DisplayName *string `json:"display_name"`
+}
+
+func (t *APIExternalLink) ToService() model.ExternalLink {
+	return model.ExternalLink{
+		URLTemplate: utility.FromStringPtr(t.URLTemplate),
+		DisplayName: utility.FromStringPtr(t.DisplayName),
+	}
+}
+
+func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
+	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
+	t.DisplayName = utility.ToStringPtr(h.DisplayName)
+}
+
 type APICommitQueueParams struct {
 	Enabled               *bool   `json:"enabled"`
 	RequireSigned         *bool   `json:"require_signed"`
@@ -494,7 +511,8 @@ type APIProjectRef struct {
 	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
 	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
-	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
+	DeleteContainerSecrets []string          `json:"delete_container_secrets,omitempty"`
+	ExternalLinks          []APIExternalLink `json:"external_links"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -557,6 +575,14 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		projectRef.PeriodicBuilds = builds
 	}
 
+	// Copy External Links
+	if p.ExternalLinks != nil {
+		links := []model.ExternalLink{}
+		for _, l := range p.ExternalLinks {
+			links = append(links, l.ToService())
+		}
+		projectRef.ExternalLinks = links
+	}
 	if p.PatchTriggerAliases != nil {
 		patchTriggers := []patch.PatchTriggerDefinition{}
 		for _, a := range p.PatchTriggerAliases {

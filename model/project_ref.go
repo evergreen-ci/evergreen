@@ -121,6 +121,13 @@ type ProjectRef struct {
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
 	Hidden        *bool  `bson:"hidden,omitempty" json:"hidden,omitempty"`
 	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
+
+	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
+}
+
+type ExternalLink struct {
+	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -305,6 +312,7 @@ var (
 	projectRefPerfEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
 	projectRefContainerSecretsKey         = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
 	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
+	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -446,6 +454,7 @@ const (
 	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
 	ProjectPagePluginSection         = "PLUGINS"
 	ProjectPageContainerSection      = "CONTAINERS"
+	ProjectPageUISection             = "UI"
 )
 
 const (
@@ -2006,9 +2015,26 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
 			})
+
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref
 		return false, nil
+	case ProjectPageUISection:
+		catcher := grip.NewSimpleCatcher()
+		for _, link := range p.ExternalLinks {
+			// check length of link display name
+			if len(link.DisplayName) > 40 {
+				catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
+			}
+		}
+		if catcher.HasErrors() {
+			return false, errors.Wrapf(catcher.Resolve(), "validating external links")
+		}
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefExternalLinksKey: p.ExternalLinks},
+			})
 	default:
 		return false, errors.Errorf("invalid section")
 	}
