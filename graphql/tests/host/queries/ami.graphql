@@ -1,0 +1,6 @@
+{
+  host(hostId: "ubuntu1604-ppc-1.pic.build.10gen.cc") {
+    id
+    ami
+  }
+}
