@@ -2961,6 +2961,27 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
+
+	// Test successful external link update
+	update = &ProjectRef{
+		ExternalLinks: []ExternalLink{
+			{URLTemplate: "https://arnars.com/{version_id}", DisplayName: "A link"},
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
+	assert.NoError(err)
+
+	// Test failing external link update
+	update = &ProjectRef{
+		ExternalLinks: []ExternalLink{
+			{URLTemplate: "invalid URL template", DisplayName: "way tooooooooooooooooooooo long display name"},
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
+	assert.Error(err)
+	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
+	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
+
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
