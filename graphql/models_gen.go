@@ -70,6 +70,11 @@ type EditSpawnHostInput struct {
 	Volume              *string         `json:"volume"`
 }
 
+type ExternalPatchLink struct {
+	URL         string `json:"url"`
+	DisplayName string `json:"displayName"`
+}
+
 type GroupedBuildVariant struct {
 	DisplayName string           `json:"displayName"`
 	Tasks       []*model.APITask `json:"tasks"`
