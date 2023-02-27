@@ -2555,15 +2555,11 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 		}
 
 		for _, execTask := range execTasksWithResults {
-			fmt.Println(execTask.ResultsService)
-			fmt.Println(execTask.HasCedarResults)
-		}
-
-		taskOpts = make([]testresult.TaskOptions, len(execTasksWithResults))
-		for i, execTask := range execTasksWithResults {
-			taskOpts[i].TaskID = execTask.Id
-			taskOpts[i].Execution = execTask.Execution
-			taskOpts[i].ResultsService = execTask.ResultsService
+			taskOpts = append(taskOpts, testresult.TaskOptions{
+				TaskID:         execTask.Id,
+				Execution:      execTask.Execution,
+				ResultsService: execTask.ResultsService,
+			})
 		}
 	} else if t.HasResults() {
 		taskOpts = append(taskOpts, testresult.TaskOptions{
