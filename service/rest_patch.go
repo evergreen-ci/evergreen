@@ -81,7 +81,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	var pp *model.ParserProject
 	var err error
 	if projCtx.Patch.ProjectStorageMethod != "" {
-		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Patch.Id.Hex())
+		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Patch.ProjectStorageMethod, projCtx.Patch.Id.Hex())
 		if err != nil {
 			gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project for patch '%s'", projCtx.Patch.Id.Hex()))
 			return
