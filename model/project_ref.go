@@ -2031,7 +2031,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
 			})
-
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref
 		return false, nil
