@@ -79,8 +79,9 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 
 	settings := restapi.GetSettings()
 	var pp *model.ParserProject
+	var err error
 	if projCtx.Patch.ProjectStorageMethod != "" {
-		pp, err := model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Patch.Id.Hex())
+		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Patch.Id.Hex())
 		if err != nil {
 			gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project for patch '%s'", projCtx.Patch.Id.Hex()))
 			return
@@ -90,7 +91,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if projCtx.Version != nil {
-		pp, err := model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
+		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 		if err != nil {
 			gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project '%s' for version '%s'", projCtx.Version.Id, projCtx.Version.Id))
 			return
@@ -104,7 +105,6 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var projBytes []byte
 	projBytes, err := yaml.Marshal(pp)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "marshalling parser project '%s' to YAML", pp.Id))
