@@ -421,7 +421,7 @@ func addFailedAndStartedTests(waterfallRows map[string]waterfallRow, failedAndSt
 		failedTests := []string{}
 		for _, r := range t.LocalTestResults {
 			if r.Status == evergreen.TestFailedStatus {
-				failedTests = append(failedTests, r.TestName)
+				failedTests = append(failedTests, r.GetDisplayTestName())
 			}
 		}
 		if t.Status == evergreen.TaskStarted {

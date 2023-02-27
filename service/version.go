@@ -327,7 +327,7 @@ func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild, taskMap map[stri
 		}
 		for _, r := range t.LocalTestResults {
 			if r.Status == evergreen.TestFailedStatus {
-				failedTests = append(failedTests, r.TestName)
+				failedTests = append(failedTests, r.GetDisplayTestName())
 			}
 		}
 		failedTestsByTaskId[t.Id] = failedTests
