@@ -1,7 +1,7 @@
 package command
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,7 +12,7 @@ import (
 
 func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
 	if patchPath != "" {
-		modulePatchContent, err := ioutil.ReadFile(patchPath)
+		modulePatchContent, err := os.ReadFile(patchPath)
 		require.NoError(t, err)
 
 		patch := &patch.Patch{

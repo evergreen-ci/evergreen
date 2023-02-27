@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/evergreen-ci/birch"
@@ -141,7 +141,7 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "parsing request body")
 	}
@@ -286,7 +286,7 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 	h.distroID = gimlet.GetVars(r)["distro_id"]
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "reading request body")
 	}
@@ -462,7 +462,7 @@ func (h *modifyDistrosSettingsHandler) Factory() gimlet.RouteHandler {
 func (h *modifyDistrosSettingsHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "reading request body")
 	}

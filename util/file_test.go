@@ -1,7 +1,6 @@
 package util
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,7 +29,7 @@ func TestWriteToTempFile(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.Remove(filePath))
 			}()
-			fileBytes, err := ioutil.ReadFile(filePath)
+			fileBytes, err := os.ReadFile(filePath)
 			require.NoError(t, err)
 			So(string(fileBytes), ShouldEqual, fileData)
 		})
@@ -38,7 +37,7 @@ func TestWriteToTempFile(t *testing.T) {
 }
 
 func TestFileExists(t *testing.T) {
-	tmpfile, err := ioutil.TempFile("", "testFileOne")
+	tmpfile, err := os.CreateTemp("", "testFileOne")
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
 

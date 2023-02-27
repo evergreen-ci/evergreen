@@ -1,7 +1,6 @@
 package command
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +19,7 @@ func TestCreateEnclosingDirectory(t *testing.T) {
 	// write data to a temp file and then ensure that the directory existing predicate is valid
 	fileName := filepath.Join(dirname, "foo")
 	assert.False(dirExists(fileName))
-	assert.NoError(ioutil.WriteFile(fileName, []byte("hello world"), 0744))
+	assert.NoError(os.WriteFile(fileName, []byte("hello world"), 0744))
 	assert.False(dirExists(fileName))
 	_, err := os.Stat(fileName)
 	assert.True(!os.IsNotExist(err))

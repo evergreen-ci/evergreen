@@ -327,7 +327,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 
 // templateNameInvalidRegex matches any character that may not be included a launch template name.
 // Names may only contain word characters ([a-zA-Z0-9_]) and the following special characters: ( ) . / -
-var templateNameInvalidRegex = regexp.MustCompile("[^\\w()./-]+") //nolint gosimple
+var templateNameInvalidRegex = regexp.MustCompile("[^\\w()./-]+") //nolint:gosimple
 
 func cleanLaunchTemplateName(name string) string {
 	return templateNameInvalidRegex.ReplaceAllString(name, "")

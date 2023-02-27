@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -258,7 +258,7 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 		return "", util.RespErrorf(resp, errors.Wrap(err, "getting distro AMI").Error())
 	}
 	defer resp.Body.Close()
-	out, err := ioutil.ReadAll(resp.Body)
+	out, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "reading distro AMI from response")
 	}
@@ -275,7 +275,7 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting parser project").Error())
 	}
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading parser project from response")
 	}
@@ -719,7 +719,7 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 	defer resp.Body.Close()
 
 	var result []byte
-	result, err = ioutil.ReadAll(resp.Body)
+	result, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrapf(err, "reading patch file '%s' from response", patchFileID)
 	}
@@ -1081,7 +1081,7 @@ func (c *baseCommunicator) GetDockerLogs(ctx context.Context, hostID string, sta
 		return nil, util.RespErrorf(resp, "getting logs for container '%s'", hostID)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading logs from response")
 	}

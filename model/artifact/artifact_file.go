@@ -35,8 +35,9 @@ type Entry struct {
 }
 
 // Params stores file entries as key-value pairs, for easy parameter parsing.
-//  Key = Human-readable name for file
-//  Value = link for the file
+//
+//	Key = Human-readable name for file
+//	Value = link for the file
 type Params map[string]string
 
 // File is a pairing of name and link for easy storage/display
@@ -91,8 +92,8 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 	return publicFiles, nil
 }
 
-//ContainsSigningParams returns true if all the params needed for
-//presigning a url are present
+// ContainsSigningParams returns true if all the params needed for
+// presigning a url are present
 func (f *File) ContainsSigningParams() bool {
 	return !(f.AwsSecret == "" || f.AwsKey == "" || f.Bucket == "" || f.FileKey == "")
 }

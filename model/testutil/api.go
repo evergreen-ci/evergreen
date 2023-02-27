@@ -2,7 +2,7 @@ package testutil
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -48,7 +48,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	modelData := &TestModelData{}
 
-	projectConfig, err := ioutil.ReadFile(projectFile)
+	projectConfig, err := os.ReadFile(projectFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading project config")
 	}
@@ -206,7 +206,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	}
 	modelData.Build = build
 
-	workDir, err := ioutil.TempDir("", "agent_test_")
+	workDir, err := os.MkdirTemp("", "agent_test_")
 	if err != nil {
 		return nil, errors.Wrap(err, "creating working directory")
 	}

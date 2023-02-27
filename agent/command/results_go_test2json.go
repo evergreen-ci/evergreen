@@ -2,7 +2,7 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 
@@ -119,7 +119,7 @@ func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProdu
 		filePath = path.Join(conf.WorkDir, filePath)
 	}
 
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", filePath)
 	}

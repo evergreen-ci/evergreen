@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -146,7 +146,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	reqBody, err := ioutil.ReadAll(body)
+	reqBody, err := io.ReadAll(body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

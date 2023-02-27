@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -1701,7 +1701,7 @@ buildvariants:
 				},
 				"PersistsEvergreenSelfTestsYAML": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
-					yml, err := ioutil.ReadFile(filepath)
+					yml, err := os.ReadFile(filepath)
 					assert.NoError(t, err)
 					checkProjectPersists(ctx, t, env, yml, ppStorageMethod)
 				},
@@ -1766,7 +1766,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 
 func TestParserProjectRoundtrip(t *testing.T) {
 	filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
-	yml, err := ioutil.ReadFile(filepath)
+	yml, err := os.ReadFile(filepath)
 	assert.NoError(t, err)
 
 	original, err := createIntermediateProject(yml, false)

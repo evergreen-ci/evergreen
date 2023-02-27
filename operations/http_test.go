@@ -2,7 +2,7 @@ package operations
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -27,7 +27,7 @@ func (s *CliHttpTestSuite) SetupSuite() {
 	fileContents := "user: \"" + testUserName + "\""
 	fileContents += "\napi_key: \"" + testApiKey + "\""
 	fileContents += "\napi_server_host: \"" + testApiServer + "\""
-	err := ioutil.WriteFile(testFileName, []byte(fileContents), 0644)
+	err := os.WriteFile(testFileName, []byte(fileContents), 0644)
 	s.NoError(err)
 }
 

@@ -96,10 +96,10 @@ func (m *openStackManager) Configure(ctx context.Context, s *evergreen.Settings)
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
 // ProviderSettings in the distro should have the following settings:
-//     - ImageName:     image name
-//     - FlavorName:    like an AWS instance type i.e. m1.large
-//     - KeyName:       (optional) keypair name associated with the account
-//     - SecurityGroup: (optional) security group name
+//   - ImageName:     image name
+//   - FlavorName:    like an AWS instance type i.e. m1.large
+//   - KeyName:       (optional) keypair name associated with the account
+//   - SecurityGroup: (optional) security group name
 func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameOpenstack {
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)

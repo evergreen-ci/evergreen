@@ -1,7 +1,7 @@
 package db
 
 import (
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 
@@ -85,7 +85,7 @@ func TestDBUtils(t *testing.T) {
 			So(WriteGridFile("testfiles", id, strings.NewReader(id)), ShouldBeNil)
 			file, err := GetGridFile("testfiles", id)
 			So(err, ShouldBeNil)
-			raw, err := ioutil.ReadAll(file)
+			raw, err := io.ReadAll(file)
 			So(err, ShouldBeNil)
 			So(string(raw), ShouldEqual, id)
 		})
@@ -462,7 +462,7 @@ func TestClearGridFSCollections(t *testing.T) {
 	defer reader.Close()
 
 	var bytes []byte
-	bytes, err = ioutil.ReadAll(reader)
+	bytes, err = io.ReadAll(reader)
 	assert.NoError(err)
 	assert.Equal("lorem ipsum", string(bytes))
 

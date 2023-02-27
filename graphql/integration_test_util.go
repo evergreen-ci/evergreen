@@ -13,8 +13,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -27,7 +28,7 @@ import (
 )
 
 func TestQueries(t *testing.T, serverURL, pathToTests string) {
-	f, err := ioutil.ReadFile(filepath.Join(pathToTests, "integration_spec.json"))
+	f, err := os.ReadFile(filepath.Join(pathToTests, "integration_spec.json"))
 	require.NoError(t, err)
 	var spec spec
 	err = json.Unmarshal(f, &spec)
@@ -36,7 +37,7 @@ func TestQueries(t *testing.T, serverURL, pathToTests string) {
 
 	for _, testCase := range spec.Tests {
 		singleTest := func(t *testing.T) {
-			f, err := ioutil.ReadFile(filepath.Join(pathToTests, "testdata", testCase.QueryFile))
+			f, err := os.ReadFile(filepath.Join(pathToTests, "testdata", testCase.QueryFile))
 			require.NoError(t, err)
 			jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 			body := bytes.NewBuffer([]byte(jsonQuery))
@@ -48,7 +49,7 @@ func TestQueries(t *testing.T, serverURL, pathToTests string) {
 			r.Header.Add("content-type", "application/json")
 			resp, err := client.Do(r)
 			require.NoError(t, err)
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
 
 			// Remove apollo tracing data from test responses

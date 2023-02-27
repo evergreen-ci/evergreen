@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -27,7 +26,7 @@ func TestHostSetupScript(t *testing.T) {
 
 	// With a setup script, run the script
 	content := []byte("echo \"hello, world\"")
-	err = ioutil.WriteFile(evergreen.SetupScriptName, content, 0644)
+	err = os.WriteFile(evergreen.SetupScriptName, content, 0644)
 	require.NoError(err)
 	defer os.Remove(evergreen.TempSetupScriptName)
 	defer os.Remove(evergreen.SetupScriptName)
@@ -43,7 +42,7 @@ func TestHostSetupScript(t *testing.T) {
 	assert.True(os.IsNotExist(err))
 
 	// Script should time out with context and return an error
-	err = ioutil.WriteFile(evergreen.SetupScriptName, content, 0644)
+	err = os.WriteFile(evergreen.SetupScriptName, content, 0644)
 	require.NoError(err)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
@@ -54,7 +53,7 @@ func TestHostSetupScript(t *testing.T) {
 
 	// A non-zero exit status should return an error
 	content = []byte("exit 1")
-	err = ioutil.WriteFile(evergreen.SetupScriptName, content, 0644)
+	err = os.WriteFile(evergreen.SetupScriptName, content, 0644)
 	require.NoError(err)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()

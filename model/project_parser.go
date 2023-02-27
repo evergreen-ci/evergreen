@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -711,7 +711,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
-		fileContents, err := ioutil.ReadFile(opts.RemotePath)
+		fileContents, err := os.ReadFile(opts.RemotePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading project config")
 		}

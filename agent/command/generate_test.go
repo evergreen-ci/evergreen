@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -92,7 +91,7 @@ func (s *generateSuite) TestExecuteFileDoesNotExist() {
 }
 
 func (s *generateSuite) TestExecuteFailsWithGeneratePollError() {
-	f, err := ioutil.TempFile(s.tmpDirName, "")
+	f, err := os.CreateTemp(s.tmpDirName, "")
 	s.Require().NoError(err)
 	tmpFile := f.Name()
 	tmpFileBase := filepath.Base(tmpFile)
@@ -109,7 +108,7 @@ func (s *generateSuite) TestExecuteFailsWithGeneratePollError() {
 }
 
 func (s *generateSuite) TestExecuteSuccess() {
-	f, err := ioutil.TempFile(s.tmpDirName, "")
+	f, err := os.CreateTemp(s.tmpDirName, "")
 	s.Require().NoError(err)
 	tmpFile := f.Name()
 	tmpFileBase := filepath.Base(tmpFile)
@@ -133,7 +132,7 @@ func (s *generateSuite) TestOptional() {
 }
 
 func (s *generateSuite) TestExecuteSuccessWithValidGlobbing() {
-	f, err := ioutil.TempFile(s.tmpDirName, "")
+	f, err := os.CreateTemp(s.tmpDirName, "")
 	s.Require().NoError(err)
 	tmpFile := f.Name()
 	defer os.Remove(tmpFile)
@@ -161,7 +160,7 @@ func (s *generateSuite) TestErrorWithInvalidExpansions() {
 }
 
 func (s *generateSuite) TestNoErrorWithValidExpansions() {
-	f, err := ioutil.TempFile(s.tmpDirName, "")
+	f, err := os.CreateTemp(s.tmpDirName, "")
 	s.Require().NoError(err)
 	tmpFile := f.Name()
 	tmpFileBase := filepath.Base(tmpFile)

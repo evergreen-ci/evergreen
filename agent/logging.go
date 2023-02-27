@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -222,7 +221,7 @@ func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.B
 	if commandName != "" {
 		directoryName = filepath.Join(directoryName, commandName)
 	}
-	dir, err := ioutil.ReadDir(directoryName)
+	dir, err := os.ReadDir(directoryName)
 	if err != nil {
 		catcher.Wrapf(err, "reading log directory '%s'", directoryName)
 		return catcher.Resolve()

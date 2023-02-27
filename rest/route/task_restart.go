@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -53,7 +53,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
 
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return errors.Wrapf(err, "reading body")
 	}

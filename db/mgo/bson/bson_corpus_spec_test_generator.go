@@ -1,5 +1,4 @@
 //go:build ignore
-// +build ignore
 
 package main
 
@@ -8,8 +7,8 @@ import (
 	"fmt"
 	"go/format"
 	"html/template"
-	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -26,7 +25,7 @@ func main() {
 
 	src := g.generate()
 
-	err := ioutil.WriteFile(fmt.Sprintf("%s.go", strings.TrimSuffix(name, "_generator")), src, 0644)
+	err := os.WriteFile(fmt.Sprintf("%s.go", strings.TrimSuffix(name, "_generator")), src, 0644)
 	if err != nil {
 		log.Fatalf("writing output: %s", err)
 	}
@@ -92,7 +91,7 @@ func (g *Generator) loadTests(filenames []string) ([]*testDef, error) {
 }
 
 func (g *Generator) loadTest(filename string) (*testDef, error) {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

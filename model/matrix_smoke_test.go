@@ -2,7 +2,7 @@ package model
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -48,7 +48,7 @@ func taskNames(v *BuildVariant) []string {
 func TestPythonMatrixIntegration(t *testing.T) {
 	Convey("With a sample matrix project mocking up a python driver", t, func() {
 		p := Project{}
-		bytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
+		bytes, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
 			"testdata", "matrix_python.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {
@@ -106,7 +106,7 @@ func TestPythonMatrixIntegration(t *testing.T) {
 func TestDepsMatrixIntegration(t *testing.T) {
 	Convey("With a sample matrix project mocking up a python driver", t, func() {
 		p := Project{}
-		bytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
+		bytes, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
 			"testdata", "matrix_deps.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {

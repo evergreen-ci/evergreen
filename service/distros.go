@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 
@@ -106,7 +106,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		message := fmt.Sprintf("error reading request: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -347,7 +347,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		message := fmt.Sprintf("error adding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))

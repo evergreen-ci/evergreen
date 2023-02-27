@@ -2,7 +2,6 @@ package util
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -15,7 +14,7 @@ func WriteToTempFile(data string) (string, error) {
 		return "", err
 	}
 
-	file, err := ioutil.TempFile(dir, "temp_file_")
+	file, err := os.CreateTemp(dir, "temp_file_")
 	if err != nil {
 		return "", err
 	}
