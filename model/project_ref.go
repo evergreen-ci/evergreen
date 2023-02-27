@@ -455,7 +455,6 @@ const (
 	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
 	ProjectPagePluginSection         = "PLUGINS"
 	ProjectPageContainerSection      = "CONTAINERS"
-	ProjectPageUISection             = "UI"
 )
 
 const (
@@ -2036,22 +2035,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref
 		return false, nil
-	case ProjectPageUISection:
-		catcher := grip.NewSimpleCatcher()
-		for _, link := range p.ExternalLinks {
-			// check length of link display name
-			if len(link.DisplayName) > 40 {
-				catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
-			}
-		}
-		if catcher.HasErrors() {
-			return false, errors.Wrapf(catcher.Resolve(), "validating external links")
-		}
-		err = db.Update(coll,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$set": bson.M{projectRefExternalLinksKey: p.ExternalLinks},
-			})
 	default:
 		return false, errors.Errorf("invalid section")
 	}
