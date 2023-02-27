@@ -723,6 +723,7 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 		"$set": bson.M{
 			GithashKey:              p.Githash,
 			PatchesKey:              p.Patches,
+			ProjectStorageMethodKey: p.ProjectStorageMethod,
 			PatchedParserProjectKey: p.PatchedParserProject,
 			PatchedProjectConfigKey: p.PatchedProjectConfig,
 			VariantsTasksKey:        p.VariantsTasks,

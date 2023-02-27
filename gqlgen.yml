@@ -141,6 +141,8 @@ models:
     fields:
       canCreateProject:
         resolver: true
+  Pod:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPod
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
@@ -277,6 +279,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskAnnotationSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
+  TaskContainerCreationOpts:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPodTaskContainerCreationOptions
   TaskEndDetail:
     model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
   TaskEventLogData:

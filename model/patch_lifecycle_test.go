@@ -57,7 +57,7 @@ func clearAll(t *testing.T) {
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
-// and creates a patch from the test path given.
+// and creates a patch from the test path given. The patch is not inserted.
 func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	clearAll(t)
 	projectRef := &ProjectRef{
@@ -112,8 +112,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 			},
 		},
 	}
-	err = configPatch.Insert()
-	require.NoError(t, err, "Couldn't insert test patch: %v", err)
+
 	return configPatch
 }
 
@@ -306,14 +305,11 @@ func TestFinalizePatch(t *testing.T) {
 	// first before any documents can be inserted.
 	require.NoError(t, db.CreateCollections(manifest.Collection, VersionCollection, ParserProjectCollection, ProjectConfigCollection))
 
-	configPatch := resetPatchSetup(t, configFilePath)
 	token, err := patchTestConfig.GetGithubOauthToken()
 	require.NoError(t, err)
-	for name, test := range map[string]func(*testing.T){
-		"VersionCreationWithPatchedParserProject": func(*testing.T) {
-			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
-			require.NoError(t, err)
-			assert.NotNil(t, project)
+
+	for name, test := range map[string]func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig){
+		"VersionCreationWithPatchedParserProject": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			modulesYml := `
 modules:
   - name: sandbox
@@ -323,16 +319,17 @@ modules:
     repo: git@github.com:evergreen-ci/evergreen.git
     branch: main
 `
-			configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
-			configPatch.PatchedParserProject += modulesYml
-			require.NoError(t, configPatch.Insert())
-			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+			p.PatchedParserProject = patchConfig.PatchedParserProjectYAML
+			p.PatchedParserProject += modulesYml
+			require.NoError(t, p.Insert())
+
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
-			assert.Equal(t, evergreen.ProjectStorageMethodDB, version.ProjectStorageMethod, "storage method should initially be DB for new versions")
+			assert.Equal(t, evergreen.ProjectStorageMethodDB, version.ProjectStorageMethod, "version's project storage method should be set")
 
-			dbPatch, err := patch.FindOneId(configPatch.Id.Hex())
+			dbPatch, err := patch.FindOneId(p.Id.Hex())
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
@@ -346,9 +343,38 @@ modules:
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 		},
-		"VersionCreationWithAutoUpdateModules": func(*testing.T) {
-			configPatch := resetPatchSetup(t, configFilePath)
-			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
+		"VersionCreationWithParserProjectInDB": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
+			require.NoError(t, err)
+			assert.NotNil(t, project)
+
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			ppStorageMethod := evergreen.ProjectStorageMethodDB
+			p.ProjectStorageMethod = ppStorageMethod
+			require.NoError(t, p.Insert())
+
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, token)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
+			assert.Len(t, version.Parameters, 1)
+			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod, "version's project storage method should match that of its patch")
+
+			dbPatch, err := patch.FindOneId(p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.True(t, dbPatch.Activated)
+			// ensure the relevant builds/tasks were created
+			builds, err := build.Find(build.All)
+			require.NoError(t, err)
+			assert.Len(t, builds, 1)
+			assert.Len(t, builds[0].Tasks, 2)
+			tasks, err := task.Find(bson.M{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+		},
+		"VersionCreationWithAutoUpdateModules": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 
@@ -374,61 +400,54 @@ modules:
     repo: git@github.com:evergreen-ci/evergreen.git
     branch: main
 `
-			configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
-			configPatch.PatchedParserProject += modulesYml
-			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+			p.PatchedParserProject = patchConfig.PatchedParserProjectYAML
+			p.PatchedParserProject += modulesYml
+			require.NoError(t, p.Insert())
+
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			// Ensure that the manifest was created and that auto_update worked for
 			// sandbox module but was skipped for evergreen
-			mfst, err := manifest.FindOne(manifest.ById(configPatch.Id.Hex()))
+			mfst, err := manifest.FindOne(manifest.ById(p.Id.Hex()))
 			require.NoError(t, err)
 			assert.NotNil(t, mfst)
 			assert.Len(t, mfst.Modules, 2)
 			assert.NotEqual(t, mfst.Modules["sandbox"].Revision, "123")
 			assert.Equal(t, mfst.Modules["evergreen"].Revision, "abc")
 		},
-		"PatchNoRemoteConfigDoesntCreateVersion": func(*testing.T) {
-			patchedConfigFile := "fakeInPatchSoNotPatched"
-			configPatch := resetPatchSetup(t, patchedConfigFile)
-			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
-			assert.NotNil(t, project)
-			require.NoError(t, err)
-			configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
-			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
-			require.NoError(t, err)
-			assert.NotNil(t, version)
+		"EmptyCommitQueuePatchDoesntCreateVersion": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			ppStorageMethod := evergreen.ProjectStorageMethodDB
+			p.ProjectStorageMethod = ppStorageMethod
 
-			// ensure the relevant builds/tasks were created
-			builds, err := build.Find(build.All)
-			require.NoError(t, err)
-			assert.Len(t, builds, 1)
-			assert.Len(t, builds[0].Tasks, 1)
-			tasks, err := task.FindAll(task.All)
-			require.NoError(t, err)
-			assert.Len(t, tasks, 1)
-		},
-		"EmptyCommitQueuePatchDoesntCreateVersion": func(*testing.T) {
 			//normal patch works
-			configPatch := resetPatchSetup(t, configFilePath)
-			configPatch.Tasks = []string{}
-			configPatch.BuildVariants = []string{}
-			configPatch.VariantsTasks = []patch.VariantTasks{}
-			v, err := FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+			p.Tasks = []string{}
+			p.BuildVariants = []string{}
+			p.VariantsTasks = []patch.VariantTasks{}
+			require.NoError(t, p.Insert())
+
+			v, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, v)
 			assert.Empty(t, v.BuildIds)
 
 			// commit queue patch should not
-			configPatch.Alias = evergreen.CommitQueueAlias
-			_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+			p.Alias = evergreen.CommitQueueAlias
+			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no builds or tasks for commit queue version")
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(distro.Collection, manifest.Collection, patch.Collection))
-			test(t)
+			p := resetPatchSetup(t, configFilePath)
+
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
+			require.NoError(t, err)
+			assert.NotNil(t, project)
+
+			test(t, p, patchConfig)
 		})
 	}
 }

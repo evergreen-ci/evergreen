@@ -6,15 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1610,88 +1607,5 @@ func TestAddDependencies(t *testing.T) {
 	assert.Len(t, t2.DependsOn, 2)
 	for _, dep := range t2.DependsOn {
 		assert.Equal(t, task.AllStatuses, dep.Status)
-	}
-}
-
-func TestTryMovingLargeParserProjectToS3(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
-	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
-
-	c := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(c)
-
-	ppConf := env.Settings().Providers.AWS.ParserProject
-	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
-		Name:        ppConf.Bucket,
-		Region:      endpoints.UsEast1RegionID,
-		Credentials: pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, ""),
-	})
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
-	}()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
-	}()
-
-	originalFlags, err := evergreen.GetServiceFlags()
-	require.NoError(t, err)
-	newFlags := *originalFlags
-	newFlags.ParserProjectS3StorageDisabled = false
-	require.NoError(t, newFlags.Set())
-	defer func() {
-		assert.NoError(t, originalFlags.Set())
-	}()
-
-	for tName, tCase := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
-		"PutsParserProjectInS3": func(t *testing.T, v *Version, pp *ParserProject) {
-			didPutInS3, err := putParserProjectInS3(ctx, env.Settings(), v, pp)
-			require.NoError(t, err)
-			assert.True(t, didPutInS3)
-
-			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), evergreen.ProjectStorageMethodS3, pp.Id)
-			require.NoError(t, err)
-			require.NotZero(t, ppFromS3, "parser project should be stored in S3")
-			assert.Equal(t, pp.Id, ppFromS3.Id, "parser project should the expected one")
-
-			dbVersion, err := VersionFindOneId(v.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbVersion)
-			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.ProjectStorageMethod, "parser project should be stored in S3")
-		},
-		"NoopsWhenVersionIndicatesParserProjectIsAlreadyStoredInS3": func(t *testing.T, v *Version, pp *ParserProject) {
-			v.ProjectStorageMethod = evergreen.ProjectStorageMethodS3
-
-			didPutInS3, err := putParserProjectInS3(ctx, env.Settings(), v, pp)
-			require.NoError(t, err)
-			assert.False(t, didPutInS3)
-
-			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), evergreen.ProjectStorageMethodS3, pp.Id)
-			assert.NoError(t, err)
-			assert.Zero(t, ppFromS3, "parser project should not be stored in S3")
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
-			require.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
-			pp := ParserProject{
-				Id: "parser_project_id",
-			}
-			require.NoError(t, pp.Insert())
-
-			v := Version{
-				Id:                   "version_id",
-				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
-			}
-			require.NoError(t, v.Insert())
-
-			tCase(t, &v, &pp)
-		})
 	}
 }

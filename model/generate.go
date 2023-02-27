@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -170,17 +169,6 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 	ppCtx, ppCancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
 	defer ppCancel()
 	if err := updateParserProject(ppCtx, settings, v, pp, t.Id); err != nil {
-		if db.IsDocumentLimit(err) {
-			// The parser project has reached the DB document size limit, so put
-			// it in S3.
-			didPutInS3, err := putParserProjectInS3(ctx, settings, v, pp)
-			if err != nil {
-				return errors.Wrap(err, "moving parser project from the DB into S3")
-			}
-			if didPutInS3 {
-				return nil
-			}
-		}
 		return errors.WithStack(err)
 	}
 
@@ -200,37 +188,15 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
 
-	if err := ParserProjectUpsertOne(ctx, settings, v.ProjectStorageMethod, pp); err != nil {
+	ppStorageMethod, err := ParserProjectUpsertOneWithS3Fallback(ctx, settings, v.ProjectStorageMethod, pp)
+	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
+	if err := v.UpdateProjectStorageMethod(ppStorageMethod); err != nil {
+		return errors.Wrapf(err, "updating version's parser project storage method from '%s' to '%s'", v.ProjectStorageMethod, ppStorageMethod)
+	}
+
 	return nil
-}
-
-// putParserProjectInS3 puts a parser project that's currently stored in
-// the DB into S3. If the parser project is already stored in S3, this is a
-// no-op.
-func putParserProjectInS3(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject) (didPutInS3 bool, err error) {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false, errors.Wrap(err, "getting service flags")
-	}
-	if flags.ParserProjectS3StorageDisabled {
-		return false, nil
-	}
-
-	if v.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
-		return false, nil
-	}
-
-	if err := ParserProjectUpsertOne(ctx, settings, evergreen.ProjectStorageMethodS3, pp); err != nil {
-		return false, errors.Wrap(err, "upserting parser project into S3")
-	}
-
-	if err := v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3); err != nil {
-		return false, errors.Wrap(err, "updating version's parser project storage method to S3")
-	}
-
-	return true, nil
 }
 
 func cacheProjectData(p *Project) projectMaps {
