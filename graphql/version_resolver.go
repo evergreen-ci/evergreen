@@ -472,7 +472,6 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 
 // ExternalPatchLinks is the resolver for the externalPatchLinks field.
 func (r *versionResolver) ExternalPatchLinks(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalPatchLink, error) {
-	// find project by identifier
 	pRef, err := data.FindProjectById(*obj.Project, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project `%s`: %s", *obj.Project, err.Error()))
@@ -480,10 +479,9 @@ func (r *versionResolver) ExternalPatchLinks(ctx context.Context, obj *restModel
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
 	}
-	// loop through external links and create a slice of ExternalPatchLink
 	var externalPatchLinks []*ExternalPatchLink
 	for _, link := range pRef.ExternalLinks {
-		// replace {patch_id} with the actual patch id
+		// replace {version_id} with the actual version id
 		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
 		externalPatchLinks = append(externalPatchLinks, &ExternalPatchLink{
 			URL:         formattedURL,
