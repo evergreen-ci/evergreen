@@ -664,8 +664,8 @@ buildvariants:
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2017-small
-      - windows-64-vs2017-large
+      - windows-2022-small
+      - windows-2022-large
     expansions:
       GOROOT: c:/golang/go1.19
       RUN_EC2_SPECIFIC_TESTS: true
