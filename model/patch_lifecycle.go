@@ -26,7 +26,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
@@ -694,8 +693,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		ppStorageMethod = evergreen.ProjectStorageMethodDB
 	}
 	if mustInsertParserProjectDuringFinalization {
-		intermediateProject.Id = p.Id.Hex()
-		intermediateProject.CreateTime = patchVersion.CreateTime
+		intermediateProject.Init(p.Id.Hex(), patchVersion.CreateTime)
 		ppStorageMethod, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, ppStorageMethod, intermediateProject)
 		if err != nil {
 			return nil, errors.Wrapf(err, "upserting parser project for patch '%s'", p.Id.Hex())
@@ -1024,7 +1022,8 @@ func (e *EnqueuePatch) Valid() bool {
 }
 
 // MakeMergePatchFromExisting creates a merge patch from an existing one to be
-// put in the commit queue.
+// put in the commit queue. Is also creates the parser project associated with
+// the patch.
 func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Settings, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
 	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.Errorf("enqueueing patch '%s' without metadata", existingPatch.Id.Hex())
@@ -1041,14 +1040,9 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.WithStack(err)
 	}
 
-	project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")
-	}
-
-	projBytes, err := bson.Marshal(pp)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshalling project bytes to bson")
 	}
 
 	patchDoc := &patch.Patch{
@@ -1058,7 +1052,6 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		Githash:              existingPatch.Githash,
 		Status:               evergreen.PatchCreated,
 		Alias:                evergreen.CommitQueueAlias,
-		PatchedParserProject: string(projBytes),
 		PatchedProjectConfig: existingPatch.PatchedProjectConfig,
 		CreateTime:           time.Now(),
 		MergedFrom:           existingPatch.Id.Hex(),
@@ -1087,6 +1080,14 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	if err != nil {
 		return nil, errors.Wrap(err, "computing patch num")
 	}
+
+	// The parser project is typically inserted at the same time as the patch.
+	// However, commit queue items made from CLI patches are a special exception
+	// that do not follow this behavior, because the existing patch may have be
+	// very outdated compared to the tracking branch's latest commit. The commit
+	// queue should ideally test against the most recent available project
+	// config, so it will resolve the parser project later on, when it's
+	// processed in the commit queue.
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
@@ -1203,6 +1204,14 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 		Patches:         p.Patches,
 		PatchNumber:     patchNumber,
 	}
+
+	// The parser project is typically inserted at the same time as the patch.
+	// However, commit queue items made from CLI patches are a special exception
+	// that do not follow this behavior, because the existing patch may have be
+	// very outdated compared to the tracking branch's latest commit. The commit
+	// queue should ideally test against the most recent available project
+	// config, so it will resolve the parser project later on, when it's
+	// processed in the commit queue.
 
 	if err = newPatch.Insert(); err != nil {
 		return errors.Wrap(err, "inserting patch")

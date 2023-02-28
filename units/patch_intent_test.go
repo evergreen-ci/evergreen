@@ -202,7 +202,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -231,7 +231,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -266,7 +266,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -525,7 +525,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			RepeatDefinition: true,
 		})
 		s.NoError(err)
-		j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+		j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 		j.user = &user.DBUser{Id: "me"}
 
 		currentPatchDoc := intent.NewPatch()
@@ -592,7 +592,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 		RepeatFailed: true,
 	})
 	s.NoError(err)
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.user = &user.DBUser{Id: s.user}
 
 	project := model.Project{
@@ -699,7 +699,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 		RepeatDefinition: true,
 	})
 	s.NoError(err)
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.user = &user.DBUser{Id: s.user}
 
 	project := model.Project{
@@ -837,7 +837,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 		RepeatPatchId:    earlierPatchId,
 	})
 	s.NoError(err)
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.user = &user.DBUser{Id: s.user}
 
 	project := model.Project{
@@ -929,7 +929,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -994,7 +994,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -1151,7 +1151,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NoError(intent.Insert())
 
 	patchID := mgobson.NewObjectId()
-	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
+	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
@@ -1182,7 +1182,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.NoError(intent.Insert())
 
 	patchID := mgobson.NewObjectId()
-	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
+	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
@@ -1259,7 +1259,7 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 	s.NoError(intent.Insert())
 
 	id := mgobson.NewObjectId()
-	j, ok := NewPatchIntentProcessor(id, intent).(*patchIntentProcessor)
+	j, ok := NewPatchIntentProcessor(s.env, id, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
@@ -1274,11 +1274,6 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
-	// TODO (EVG-18700): this can be removed if the env can be passed into
-	// NewPatchIntentProcessor rather than having the trigger job call
-	// GetEnvironment and rely on the global testing environment.
-	evergreen.GetEnvironment().Settings().Credentials = s.env.Settings().Credentials
-
 	latestVersion := model.Version{
 		Id:         "childProj-some-version",
 		Identifier: "childProj",
@@ -1348,8 +1343,6 @@ tasks:
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMatchAnyVariantTasks() {
-	evergreen.GetEnvironment().Settings().Credentials = s.env.Settings().Credentials
-
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
 		Project: s.project,
