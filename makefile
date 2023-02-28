@@ -97,6 +97,7 @@ testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*
 currentHash := $(shell git rev-parse HEAD)
 agentVersion := $(shell grep "AgentVersion" config.go | tr -d '\tAgentVersion = ' | tr -d '"')
 ldFlags := $(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
+gcFlags := $(if $(STAGING_ONLY),-N -l,)
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
 
@@ -116,7 +117,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
