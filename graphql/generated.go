@@ -1178,6 +1178,7 @@ type ComplexityRoot struct {
 		BuildVariants     func(childComplexity int, options BuildVariantOptions) int
 		ChildVersions     func(childComplexity int) int
 		CreateTime        func(childComplexity int) int
+		Errors            func(childComplexity int) int
 		FinishTime        func(childComplexity int) int
 		Id                func(childComplexity int) int
 		IsPatch           func(childComplexity int) int
@@ -1201,6 +1202,7 @@ type ComplexityRoot struct {
 		Tasks             func(childComplexity int, options TaskFilterOptions) int
 		UpstreamProject   func(childComplexity int) int
 		VersionTiming     func(childComplexity int) int
+		Warnings          func(childComplexity int) int
 	}
 
 	VersionTasks struct {
@@ -7250,6 +7252,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.CreateTime(childComplexity), true
 
+	case "Version.errors":
+		if e.complexity.Version.Errors == nil {
+			break
+		}
+
+		return e.complexity.Version.Errors(childComplexity), true
+
 	case "Version.finishTime":
 		if e.complexity.Version.FinishTime == nil {
 			break
@@ -7420,6 +7429,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.VersionTiming(childComplexity), true
+
+	case "Version.warnings":
+		if e.complexity.Version.Warnings == nil {
+			break
+		}
+
+		return e.complexity.Version.Warnings(childComplexity), true
 
 	case "VersionTasks.count":
 		if e.complexity.VersionTasks.Count == nil {
@@ -18870,6 +18886,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -18914,6 +18932,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -18977,6 +18997,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -19021,6 +19043,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -24418,6 +24442,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -24462,6 +24488,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -26569,6 +26597,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -26613,6 +26643,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -35704,6 +35736,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -35748,6 +35782,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -43967,6 +44003,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -44011,6 +44049,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -49213,6 +49253,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -49257,6 +49299,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -50479,6 +50523,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -50523,6 +50569,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -50750,6 +50798,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -50794,6 +50844,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -50840,6 +50892,50 @@ func (ec *executionContext) fieldContext_Version_createTime(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_errors(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_errors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Errors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_errors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -51286,6 +51382,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -51330,6 +51428,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -52078,6 +52178,50 @@ func (ec *executionContext) fieldContext_Version_versionTiming(ctx context.Conte
 				return ec.fieldContext_VersionTiming_timeTaken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VersionTiming", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_warnings(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_warnings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Warnings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_warnings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -67497,6 +67641,13 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "errors":
+
+			out.Values[i] = ec._Version_errors(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "finishTime":
 
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
@@ -67777,6 +67928,13 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				return innerFunc(ctx)
 
 			})
+		case "warnings":
+
+			out.Values[i] = ec._Version_warnings(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
