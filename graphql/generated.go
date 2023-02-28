@@ -789,6 +789,7 @@ type ComplexityRoot struct {
 		DispatchingDisabled      func(childComplexity int) int
 		DisplayName              func(childComplexity int) int
 		Enabled                  func(childComplexity int) int
+		ExternalLinks            func(childComplexity int) int
 		GitTagAuthorizedTeams    func(childComplexity int) int
 		GitTagAuthorizedUsers    func(childComplexity int) int
 		GitTagVersionsEnabled    func(childComplexity int) int
@@ -5325,6 +5326,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.Enabled(childComplexity), true
+
+	case "RepoRef.externalLinks":
+		if e.complexity.RepoRef.ExternalLinks == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.ExternalLinks(childComplexity), true
 
 	case "RepoRef.gitTagAuthorizedTeams":
 		if e.complexity.RepoRef.GitTagAuthorizedTeams == nil {
@@ -14980,6 +14988,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_RepoRef_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_RepoRef_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoRef", field.Name)
 		},
@@ -38849,6 +38859,76 @@ func (ec *executionContext) fieldContext_RepoRef_workstationConfig(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_externalLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_externalLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.ExternalLinks, nil
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
+			}
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]model.APIExternalLink); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []github.com/evergreen-ci/evergreen/rest/model.APIExternalLink`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIExternalLink)
+	fc.Result = res
+	return ec.marshalNExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_externalLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "displayName":
+				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "urlTemplate":
+				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLink", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoSettings_aliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoSettings_aliases(ctx, field)
 	if err != nil {
@@ -39064,6 +39144,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_RepoRef_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_RepoRef_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoRef", field.Name)
 		},
@@ -65049,6 +65131,13 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "workstationConfig":
 
 			out.Values[i] = ec._RepoRef_workstationConfig(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "externalLinks":
+
+			out.Values[i] = ec._RepoRef_externalLinks(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
