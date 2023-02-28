@@ -22,11 +22,6 @@ func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if host == nil {
-		// This should never happen, but if it does, we should log it.
-		grip.Warning(message.Fields{
-			"message": "could not find host",
-			"host_id": utility.FromStringPtr(obj.Id),
-		})
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not find host %s", utility.FromStringPtr(obj.Id)))
 	}
 	return utility.ToStringPtr(host.GetAMI()), nil
