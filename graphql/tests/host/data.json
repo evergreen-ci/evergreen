@@ -10,10 +10,15 @@
       "home_volume_id": "crazy_volume",
       "_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "container_images": null,
-      "creation_time": { "$date": "2018-09-19T13:32:26.568Z" },
+      "creation_time": {
+        "$date": "2018-09-19T13:32:26.568Z"
+      },
       "distro": {
         "_id": "rhel71-power8-large",
-        "aliases": ["rhel71-power8", "rhel71-power8-build"],
+        "aliases": [
+          "rhel71-power8",
+          "rhel71-power8-build"
+        ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
         "provider": "static",
@@ -71,13 +76,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -86,7 +103,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -97,7 +116,9 @@
         },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "host_type": "static",
@@ -106,26 +127,34 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "running",
       "tag": "",
       "user": "mci-exec",
       "zone": "",
       "agent_revision": "2020-07-18",
-      "last_communication": { "$date": "2020-07-20T19:19:22.146Z" },
+      "last_communication": {
+        "$date": "2020-07-20T19:19:22.146Z"
+      },
       "needs_agent": false,
       "agent_deploy_attempt": 64,
       "last_bv": "package_rpm_ppc",
       "last_group": "",
       "last_project": "mms",
       "last_task": "mms_package_rpm_ppc_foliage_467b718c9ad2cc58b67198e917deb2f800713505_20_07_20_15_23_30",
-      "last_task_completed_time": { "$date": "2020-07-20T19:16:17.279Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-20T19:16:17.279Z"
+      },
       "last_version": "mms_467b718c9ad2cc58b67198e917deb2f800713505",
       "needs_agent_monitor": false,
       "jasper_credentials_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "jasper_deploy_attempts": 0,
-      "agent_start_time": { "$date": "1970-01-01T00:00:00Z" },
+      "agent_start_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "jasper_restart_attempts": 0,
       "running_task": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
       "running_task_bv": "package_rpm_ppc",
@@ -137,15 +166,21 @@
     {
       "_id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
       "container_images": null,
-      "creation_time": { "$date": "2018-09-19T13:32:26.199Z" },
+      "creation_time": {
+        "$date": "2018-09-19T13:32:26.199Z"
+      },
       "distro": {
         "_id": "ubuntu1604-power8-large",
-        "aliases": ["ubuntu1604-power8", "ubuntu1604-power8-build"],
+        "aliases": [
+          "ubuntu1604-power8",
+          "ubuntu1604-power8-build"
+        ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
         "provider": "static",
         "provider_settings": [
           {
+            "ami": "ami-0b69ea66ff7391e80",
             "hosts": [
               {
                 "name": "ubuntu1604-ppc-1.pic.build.10gen.cc"
@@ -189,13 +224,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -204,7 +251,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -215,7 +264,9 @@
         },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
       "host_type": "static",
@@ -224,17 +275,23 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "running",
       "tag": "",
       "user": "mci-exec",
       "zone": "",
       "agent_revision": "2020-07-18",
-      "last_communication": { "$date": "2020-07-20T19:19:29.576Z" },
+      "last_communication": {
+        "$date": "2020-07-20T19:19:29.576Z"
+      },
       "needs_agent": false,
       "agent_deploy_attempt": 91,
-      "last_task_completed_time": { "$date": "2020-07-18T18:07:09.575Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-18T18:07:09.575Z"
+      },
       "last_bv": "power8-ubuntu1604",
       "last_group": "",
       "last_project": "cxx-driver",
@@ -243,26 +300,46 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "",
       "jasper_deploy_attempts": 0,
-      "agent_start_time": { "$date": "2019-08-15T12:58:20.426Z" },
+      "agent_start_time": {
+        "$date": "2019-08-15T12:58:20.426Z"
+      },
       "jasper_restart_attempts": 0
     }
   ],
   "tasks": [
     {
       "_id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
-      "create_time": { "$date": "2020-07-20T14:37:05Z" },
-      "injest_time": { "$date": "2020-07-20T15:02:06.764Z" },
-      "dispatch_time": { "$date": "2020-07-20T19:16:18.038Z" },
-      "scheduled_time": { "$date": "2020-07-20T15:14:02.601Z" },
-      "start_time": { "$date": "2020-07-20T19:16:22.151Z" },
-      "finish_time": { "$date": "2020-07-20T19:23:52.419Z" },
-      "activated_time": { "$date": "2020-07-20T15:02:06.764Z" },
+      "create_time": {
+        "$date": "2020-07-20T14:37:05Z"
+      },
+      "injest_time": {
+        "$date": "2020-07-20T15:02:06.764Z"
+      },
+      "dispatch_time": {
+        "$date": "2020-07-20T19:16:18.038Z"
+      },
+      "scheduled_time": {
+        "$date": "2020-07-20T15:14:02.601Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T19:16:22.151Z"
+      },
+      "finish_time": {
+        "$date": "2020-07-20T19:23:52.419Z"
+      },
+      "activated_time": {
+        "$date": "2020-07-20T15:02:06.764Z"
+      },
       "version": "mms_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459",
       "branch": "mms",
       "gitspec": "7f9f33c48eba3790333bc4ed6ac72eba8dd9f459",
-      "priority": { "$numberLong": "0" },
+      "priority": {
+        "$numberLong": "0"
+      },
       "task_group": "",
-      "last_heartbeat": { "$date": "2020-07-20T19:23:52.149Z" },
+      "last_heartbeat": {
+        "$date": "2020-07-20T19:23:52.149Z"
+      },
       "activated": true,
       "activated_by": "",
       "deactivated_for_dependency": false,
@@ -283,17 +360,31 @@
       "order": 21366,
       "r": "gitter_request",
       "status": "success",
-      "time_taken": { "$numberLong": "450268993353" },
+      "time_taken": {
+        "$numberLong": "450268993353"
+      },
       "generated_by": "mms_evg_foliage_stat_check_init_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
       "can_sync": false,
       "duration_prediction": {
-        "value": { "$numberLong": "501281607308" },
-        "std_dev": { "$numberLong": "58841204385" },
-        "ttl": { "$numberLong": "30485900699035" },
-        "collected_at": { "$date": "2020-07-20T15:14:02.385Z" }
+        "value": {
+          "$numberLong": "501281607308"
+        },
+        "std_dev": {
+          "$numberLong": "58841204385"
+        },
+        "ttl": {
+          "$numberLong": "30485900699035"
+        },
+        "collected_at": {
+          "$date": "2020-07-20T15:14:02.385Z"
+        }
       },
-      "expected_duration": { "$numberLong": "501281607308" },
-      "expected_duration_std_dev": { "$numberLong": "58841204385" },
+      "expected_duration": {
+        "$numberLong": "501281607308"
+      },
+      "expected_duration_std_dev": {
+        "$numberLong": "58841204385"
+      },
       "agent_version": "2020-07-18",
       "details": {
         "status": "success",

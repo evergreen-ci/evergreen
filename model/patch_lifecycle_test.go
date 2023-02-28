@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,7 +85,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	err = baseVersion.Insert()
 	require.NoError(t, err, "Couldn't insert test base version: %v", err)
 
-	fileBytes, err := ioutil.ReadFile(patchFile)
+	fileBytes, err := os.ReadFile(patchFile)
 	require.NoError(t, err, "Couldn't read patch file: %v", err)
 
 	// this patch adds a new task to the existing build
@@ -135,7 +134,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 	err := projectRef.Insert()
 	require.NoError(t, err, "Couldn't insert test project ref: %v", err)
 
-	fileBytes, err := ioutil.ReadFile(newProjectPatchFile)
+	fileBytes, err := os.ReadFile(newProjectPatchFile)
 	require.NoError(t, err, "Couldn't read patch file: %v", err)
 
 	// this patch adds a new task to the existing build
@@ -513,7 +512,7 @@ func TestMakePatchedConfig(t *testing.T) {
 
 		Convey("the config should be patched correctly", func() {
 			remoteConfigPath := filepath.Join("config", "evergreen.yml")
-			fileBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
+			fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
 			So(err, ShouldBeNil)
 			// update patch with remove config path variable
 			diffString := fmt.Sprintf(string(fileBytes),
@@ -532,7 +531,7 @@ func TestMakePatchedConfig(t *testing.T) {
 					},
 				}},
 			}
-			projectBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
+			projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
 			So(err, ShouldBeNil)
 			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, string(projectBytes))
 			So(err, ShouldBeNil)
@@ -545,7 +544,7 @@ func TestMakePatchedConfig(t *testing.T) {
 		})
 		Convey("an empty base config should be patched correctly", func() {
 			remoteConfigPath := filepath.Join("model", "testdata", "project2.config")
-			fileBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.diff"))
+			fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.diff"))
 			So(err, ShouldBeNil)
 			p := &patch.Patch{
 				Patches: []patch.ModulePatch{{

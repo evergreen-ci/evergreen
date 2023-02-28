@@ -44,7 +44,7 @@ var (
 	FavoriteProjectsKey       = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
 )
 
-// nolint: deadcode, megacheck, unused
+//nolint:megacheck,unused
 var (
 	githubUserUID         = bsonutil.MustHaveTag(GithubUser{}, "UID")
 	githubUserLastKnownAs = bsonutil.MustHaveTag(GithubUser{}, "LastKnownAs")

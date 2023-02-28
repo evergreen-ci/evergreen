@@ -3,7 +3,7 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/operations/metabuild/generator"
@@ -210,7 +210,7 @@ func formatAndOutputGeneratedConfig(conf *shrub.Configuration, format, file stri
 		return nil
 	}
 
-	if err := ioutil.WriteFile(file, output, 0644); err != nil {
+	if err := os.WriteFile(file, output, 0644); err != nil {
 		return errors.Wrapf(err, "writing formatted config to file '%s'", file)
 	}
 

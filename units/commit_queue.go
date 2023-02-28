@@ -448,7 +448,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	project, err := updatePatch(ctx, j.env.Settings(), githubToken, projectRef, patchDoc)
+	project, pp, err := updatePatch(ctx, j.env.Settings(), githubToken, projectRef, patchDoc)
 	if err != nil {
 		j.logError(err, "can't update patch", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
@@ -469,6 +469,21 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, *nextItem)
 		return
 	}
+
+	// The parser project is typically created when the patch is created. This
+	// is a special exception where it upserts the parser project right before
+	// it's finalized, because original CLI patch might be very outdated
+	// compared to the latest project configuration. For the commit queue, it's
+	// best to test against the latest project configuration.
+	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, j.env.Settings(), evergreen.ProjectStorageMethodDB, pp)
+	if err != nil {
+		j.logError(err, "cannot upsert parser project for patch", *nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
+		j.dequeue(cq, *nextItem)
+		return
+	}
+	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
@@ -688,26 +703,27 @@ func setDefaultNotification(username string) error {
 	return nil
 }
 
-func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
+func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
 	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting branch")
+		return nil, nil, errors.Wrap(err, "getting branch")
 	}
 	if err = validateBranch(branch); err != nil {
-		return nil, errors.Wrap(err, "GitHub returned an invalid branch")
+		return nil, nil, errors.Wrap(err, "GitHub returned an invalid branch")
 	}
 
 	sha := *branch.Commit.SHA
 	patchDoc.Githash = sha
 
-	// Refresh the cached project config
+	// Ensure that the project remote configuration loads directly from GitHub
+	// rather than loading from the cached information from the patch document.
+	patchDoc.ProjectStorageMethod = ""
 	patchDoc.PatchedParserProject = ""
 	patchDoc.PatchedProjectConfig = ""
 	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting updated project config")
+		return nil, nil, errors.Wrap(err, "getting updated project config")
 	}
-	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
 	// Update module githashes
@@ -719,12 +735,12 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 
 		module, err := project.GetModuleByName(mod.ModuleName)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting module '%s'", mod.ModuleName)
+			return nil, nil, errors.Wrapf(err, "getting module '%s'", mod.ModuleName)
 		}
 
 		sha, err = getBranchCommitHash(ctx, module.Repo, module.Branch, githubToken)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting commit hash for branch '%s'", module.Branch)
+			return nil, nil, errors.Wrapf(err, "getting commit hash for branch '%s'", module.Branch)
 		}
 		patchDoc.Patches[i].Githash = sha
 	}
@@ -735,7 +751,7 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 	patchDoc.Tasks = []string{}
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
-	return project, nil
+	return project, patchConfig.PatchedParserProject, nil
 }
 
 // getBranchCommitHash retrieves the most recent commit hash for branch for the given repo, module, and branch name.

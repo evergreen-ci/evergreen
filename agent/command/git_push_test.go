@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 	"testing"
@@ -97,8 +97,8 @@ func TestGitPush(t *testing.T) {
 			c.DryRun = true
 
 			repoDir := t.TempDir()
-			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test1.txt"), []byte("test1"), 0644))
-			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test2.txt"), []byte("test2"), 0644))
+			require.NoError(t, os.WriteFile(path.Join(repoDir, "test1.txt"), []byte("test1"), 0644))
+			require.NoError(t, os.WriteFile(path.Join(repoDir, "test2.txt"), []byte("test2"), 0644))
 
 			// create repo
 			createRepoCommands := []string{
@@ -109,7 +109,7 @@ func TestGitPush(t *testing.T) {
 			cmd := jpm.CreateCommand(ctx).Directory(repoDir).Append(createRepoCommands...)
 			require.NoError(t, cmd.Run(ctx))
 
-			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test3.txt"), []byte("test3"), 0644))
+			require.NoError(t, os.WriteFile(path.Join(repoDir, "test3.txt"), []byte("test3"), 0644))
 			toApplyCommands := []string{
 				`git rm test1.txt`,
 				`git add test3.txt`,

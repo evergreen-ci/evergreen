@@ -23,7 +23,7 @@ import (
 // from the given event, with the given trigger, for the given subscriber.
 // This function will produce an ID that will collide to prevent duplicate
 // notifications from being inserted
-func makeNotificationID(eventID, trigger string, subscriber *event.Subscriber) string { //nolint: interfacer
+func makeNotificationID(eventID, trigger string, subscriber *event.Subscriber) string {
 	return fmt.Sprintf("%s-%s-%s", eventID, trigger, subscriber.String())
 }
 

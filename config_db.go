@@ -12,7 +12,7 @@ var (
 	ConfigDocID      = "global"
 )
 
-// nolint: deadcode, unused
+//nolint:unused
 var (
 	idKey                 = bsonutil.MustHaveTag(Settings{}, "Id")
 	bannerKey             = bsonutil.MustHaveTag(Settings{}, "Banner")

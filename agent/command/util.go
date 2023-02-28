@@ -58,8 +58,10 @@ func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger
 }
 
 // getJoinedWithWorkDir joins the conf.WorkDir A with B like this:
-//   if B is relative, return A+B.
-//   if B is absolute, return B.
+//
+//	if B is relative, return A+B.
+//	if B is absolute, return B.
+//
 // We use this because B might be absolute.
 func getJoinedWithWorkDir(conf *internal.TaskConfig, path string) string {
 	if filepath.IsAbs(path) {

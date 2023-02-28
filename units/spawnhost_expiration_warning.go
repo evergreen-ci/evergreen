@@ -97,7 +97,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 }
 
 func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error) {
-	if h == nil || h.ExpirationTime.IsZero() || h.ExpirationTime.Sub(time.Now()) > (time.Duration(numHours)*time.Hour) { // nolint
+	if h == nil || h.ExpirationTime.IsZero() || h.ExpirationTime.Sub(time.Now()) > (time.Duration(numHours)*time.Hour) { //nolint:all
 		return false, nil
 	}
 	rec, err := alertrecord.FindBySpawnHostExpirationWithHours(h.Id, numHours)

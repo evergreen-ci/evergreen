@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -138,10 +137,10 @@ func (s *ArtifactsSuite) TestCommandParsesFile() {
 
 func (s *ArtifactsSuite) TestPrefixectoryEmptySubDir() {
 	dir := s.T().TempDir()
-	err := ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
+	err := os.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
-	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.conf.WorkDir = dir
 	s.cmd.Files = []string{"*"}
@@ -151,10 +150,10 @@ func (s *ArtifactsSuite) TestPrefixectoryEmptySubDir() {
 
 func (s *ArtifactsSuite) TestPrefixectoryWithSubDir() {
 	dir := s.T().TempDir()
-	err := ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
+	err := os.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
-	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.conf.WorkDir = dir
 	s.cmd.Files = []string{"*"}

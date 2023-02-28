@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -896,7 +896,7 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 	patchAliases := []serviceModel.ProjectAlias{}
 
 	// use io.ReadAll and json.Unmarshal instead of utility.ReadJSON since we may read the results twice
-	bytes, err := ioutil.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading response body")
 	}
@@ -1009,7 +1009,7 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 		return nil, util.RespErrorf(resp, "getting subscriptions for user '%s'", c.apiUser)
 	}
 
-	bytes, err := ioutil.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading response body")
 	}
@@ -1270,7 +1270,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 		return nil, util.RespErrorf(resp, "getting logs for container '%s'", hostID)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading JSON response body")
 	}
@@ -1460,7 +1460,7 @@ func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (
 	if resp.StatusCode != http.StatusOK {
 		return "", util.RespErrorf(resp, "getting task sync path")
 	}
-	path, err := ioutil.ReadAll(resp.Body)
+	path, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "reading response body")
 	}

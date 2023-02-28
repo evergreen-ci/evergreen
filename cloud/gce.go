@@ -109,23 +109,32 @@ func (m *gceManager) Configure(ctx context.Context, s *evergreen.Settings) error
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
 // ProviderSettings in the distro should have the following settings:
-//     - Project: Google Compute project ID
-//     - Zone:    project zone i.e. us-east1-c
+//
+//   - Project: Google Compute project ID
+//
+//   - Zone:    project zone i.e. us-east1-c
 //
 //     (Exactly one of ImageName or ImageFamily must be specified)
-//     - ImageName:   the disk will use the private image of the specified name
-//     - ImageFamily: the disk will use the newest image from a private image family
+//
+//   - ImageName:   the disk will use the private image of the specified name
+//
+//   - ImageFamily: the disk will use the newest image from a private image family
 //
 //     (Either MachineName OR both NumCPUs and MemoryMB must be specified)
-//     - MachineName: instance type i.e. n1-standard-8
-//     - NumCPUs:     number of cores i.e. 2
-//     - MemoryMB:    memory, in MB i.e. 1024
 //
-//     - DiskSizeGB:  boot disk size, in base-2 GB
-//     - DiskType:    boot disk type i.e. pd-standard
+//   - MachineName: instance type i.e. n1-standard-8
 //
-//     - NetworkTags: (optional) security groups
-//     - SSHKeys:     username-key pairs
+//   - NumCPUs:     number of cores i.e. 2
+//
+//   - MemoryMB:    memory, in MB i.e. 1024
+//
+//   - DiskSizeGB:  boot disk size, in base-2 GB
+//
+//   - DiskType:    boot disk type i.e. pd-standard
+//
+//   - NetworkTags: (optional) security groups
+//
+//   - SSHKeys:     username-key pairs
 func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != ProviderName {
 		return nil, errors.Errorf("spawning instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)

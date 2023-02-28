@@ -3,7 +3,6 @@ package docker
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/docker/docker/api/types"
@@ -100,7 +99,7 @@ func TestCleanup(t *testing.T) {
 	} {
 		out, err := dockerClient.ImagePull(ctx, "hello-world", types.ImagePullOptions{})
 		require.NoError(t, err)
-		_, err = io.Copy(ioutil.Discard, out)
+		_, err = io.Copy(io.Discard, out)
 		require.NoError(t, err)
 		require.NoError(t, out.Close())
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -42,7 +43,7 @@ func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 		}
 	}
 
-	job := units.NewPatchIntentProcessor(mgobson.NewObjectId(), intent)
+	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
 	if err := queue.Put(context.TODO(), job); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",

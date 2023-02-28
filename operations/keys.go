@@ -2,7 +2,7 @@ package operations
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
@@ -72,7 +72,7 @@ func keysAdd() cli.Command {
 			}
 			defer client.Close()
 
-			keyFileContents, err := ioutil.ReadFile(keyFile)
+			keyFileContents, err := os.ReadFile(keyFile)
 			if err != nil {
 				return errors.Wrapf(err, "reading public key file '%s'", keyFile)
 			}

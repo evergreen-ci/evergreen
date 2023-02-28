@@ -2,7 +2,7 @@ package units
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -48,7 +48,7 @@ func TestCommitQueueJob(t *testing.T) {
 func (s *commitQueueSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	var err error
-	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
+	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
 	s.Require().Len(s.prBody, 24745)
 
@@ -330,7 +330,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		},
 	}
 
-	projectConfig, err := updatePatch(s.ctx, s.settings, githubToken, projectRef, patchDoc)
+	projectConfig, pp, err := updatePatch(s.ctx, s.settings, githubToken, projectRef, patchDoc)
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)
@@ -339,6 +339,10 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
 	s.Empty(patchDoc.BuildVariants)
+
+	s.Require().NotZero(pp)
+	s.NotEmpty(pp.BuildVariants)
+	s.NotEmpty(pp.Tasks)
 }
 
 func TestAddMergeTaskDependencies(t *testing.T) {

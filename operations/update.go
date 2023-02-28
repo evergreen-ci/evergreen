@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -217,7 +216,7 @@ func tryAllPrepareUpdate(update updateStatus) (string, error) {
 // prepareUpdate fetches the update at the given URL, writes it to a temporary file, and returns
 // the path to the temporary file.
 func prepareUpdate(url, newVersion string) (string, error) {
-	tempFile, err := ioutil.TempFile("", "")
+	tempFile, err := os.CreateTemp("", "")
 	if err != nil {
 		return "", err
 	}

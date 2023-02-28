@@ -734,7 +734,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: unexpected \"}\" in operand")
+	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: bad character U+007D '}'")
 }
 
 func (s *AdminSuite) TestCommitQueueConfig() {

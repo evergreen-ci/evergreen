@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -185,7 +184,7 @@ func smokeStartEvergreen() cli.Command {
 					grip.Warning(closeServer())
 				}()
 
-				clientFile, err := ioutil.TempFile("", "evergreen")
+				clientFile, err := os.CreateTemp("", "evergreen")
 				if err != nil {
 					return errors.Wrap(err, "setting up agent monitor client directory")
 				}
@@ -287,7 +286,7 @@ func smokeTestEndpoints() cli.Command {
 			key := c.String(userKeyFlagName)
 			mode := c.String(modeFlagName)
 
-			defs, err := ioutil.ReadFile(testFile)
+			defs, err := os.ReadFile(testFile)
 			if err != nil {
 				return errors.Wrapf(err, "opening smoke endpoint test file '%s'", testFile)
 			}

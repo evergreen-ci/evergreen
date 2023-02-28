@@ -82,14 +82,15 @@ func (m *vsphereManager) Configure(ctx context.Context, s *evergreen.Settings) e
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
 // vsphereSettings in the distro should have the following settings:
-//     - Template     (string): name of the template VM
-//     - Datastore    (string): (optional) name/path of the datastore to attach to e.g. 1TB_SSD
-//     - ResourcePool (string): (optional) name/path of a resource pool e.g. Resources
-//     - NumCPUs      (int32):  (optional) number of CPUs e.g. 2
-//     - MemoryMB     (int64):  (optional) memory in MB e.g. 2048
+//   - Template     (string): name of the template VM
+//   - Datastore    (string): (optional) name/path of the datastore to attach to e.g. 1TB_SSD
+//   - ResourcePool (string): (optional) name/path of a resource pool e.g. Resources
+//   - NumCPUs      (int32):  (optional) number of CPUs e.g. 2
+//   - MemoryMB     (int64):  (optional) memory in MB e.g. 2048
 //
 // Optional fields use the default values of the template vm if not specified.
-//     -
+//
+//	-
 func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameVsphere {
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)

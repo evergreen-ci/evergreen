@@ -1,7 +1,7 @@
 package testutil
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -54,7 +54,7 @@ func SetupPatches(patchMode PatchTestMode, b *build.Build, patches ...PatchReque
 	}
 
 	for _, p := range patches {
-		patchContent, err := ioutil.ReadFile(p.FilePath)
+		patchContent, err := os.ReadFile(p.FilePath)
 		if err != nil {
 			return nil, err
 		}

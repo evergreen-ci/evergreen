@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -85,7 +85,7 @@ func fileTicketCustomHook(context context.Context, taskId string, execution int,
 	if err != nil {
 		return nil, err
 	}
-	req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+	req.Body = io.NopCloser(bytes.NewReader(jsonBytes))
 
 	if len(webHook.Secret) > 0 {
 		req.Header.Add(evergreen.APIKeyHeader, webHook.Secret)

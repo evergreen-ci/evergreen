@@ -2,7 +2,7 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -60,7 +60,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 		return errors.Wrap(err, "marshalling expansions")
 	}
 	fn := getJoinedWithWorkDir(conf, c.File)
-	if err := ioutil.WriteFile(fn, out, 0600); err != nil {
+	if err := os.WriteFile(fn, out, 0600); err != nil {
 		return errors.Wrapf(err, "writing expansions to file '%s'", fn)
 	}
 	logger.Task().Infof("Expansions written to file '%s'.", fn)
