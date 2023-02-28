@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -21,68 +20,6 @@ import (
 func init() {
 	registry.registerEventHandler(event.ResourceTypeBuild, event.BuildStateChange, makeBuildTriggers)
 	registry.registerEventHandler(event.ResourceTypeBuild, event.BuildGithubCheckFinished, makeBuildTriggers)
-}
-
-func (t *buildTriggers) taskStatusToDesc() string {
-	success := 0
-	failed := 0
-	systemError := 0
-	other := 0
-	noReport := 0
-	for _, t := range t.tasks {
-		switch {
-		case t.Status == evergreen.TaskSucceeded:
-			success++
-
-		case t.Status == evergreen.TaskFailed:
-			failed++
-
-		case evergreen.IsSystemFailedTaskStatus(t.Status):
-			systemError++
-
-		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
-			noReport++
-
-		default:
-			other++
-		}
-	}
-
-	grip.ErrorWhen(other > 0, message.Fields{
-		"source":   "status updates",
-		"message":  "unknown task status",
-		"build_id": t.build.Id,
-	})
-
-	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
-		return "no tasks were run"
-	}
-
-	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
-		taskStatusSubformat(failed, "failed"))
-	if systemError > 0 {
-		desc += fmt.Sprintf(", %d internal errors", systemError)
-	}
-	if other > 0 {
-		desc += fmt.Sprintf(", %d other", other)
-	}
-
-	return appendTime(t.build, desc)
-}
-
-func taskStatusSubformat(n int, verb string) string {
-	if n == 0 {
-		return fmt.Sprintf("none %s", verb)
-	}
-	return fmt.Sprintf("%d %s", n, verb)
-}
-
-func appendTime(b *build.Build, txt string) string {
-	finish := b.FinishTime
-	if utility.IsZeroTime(b.FinishTime) { // in case the build is actually blocked, but we are triggering the finish event
-		finish = time.Now()
-	}
-	return fmt.Sprintf("%s in %s", txt, finish.Sub(b.StartTime).String())
 }
 
 type buildTriggers struct {

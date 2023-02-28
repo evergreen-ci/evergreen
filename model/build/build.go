@@ -348,7 +348,7 @@ func (b *Build) GetFinishedNotificationDescription(tasks []task.Task) string {
 		case t.Status == evergreen.TaskFailed:
 			failed++
 
-		case statusIsSystemFailure(t.Status):
+		case evergreen.IsSystemFailedTaskStatus(t.Status):
 			systemError++
 
 		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
@@ -379,16 +379,6 @@ func (b *Build) GetFinishedNotificationDescription(tasks []task.Task) string {
 	}
 
 	return b.appendTime(desc)
-}
-
-func statusIsSystemFailure(status string) bool {
-	systemFailures := []string{evergreen.TaskSystemFailed,
-		evergreen.TaskTimedOut,
-		evergreen.TaskSystemUnresponse,
-		evergreen.TaskSystemTimedOut,
-		evergreen.TaskTestTimedOut,
-	}
-	return utility.StringSliceContains(systemFailures, status)
 }
 
 func taskStatusSubformat(n int, verb string) string {

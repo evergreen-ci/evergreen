@@ -32,7 +32,7 @@ const (
 
 	// pull request comments
 	retryComment         = "evergreen retry"
-	refreshStatusComment = "evergreen status"
+	refreshStatusComment = "evergreen refresh"
 	patchComment         = "evergreen patch"
 	triggerComment       = "evergreen merge"
 
@@ -46,21 +46,13 @@ func trimComment(comment string) string {
 func isRetryComment(comment string) bool {
 	return trimComment(comment) == retryComment
 }
+
 func isPatchComment(comment string) bool {
 	return trimComment(comment) == patchComment
 }
 
-// containsTriggerComment checks if "evergreen merge" is present in the comment, as
-// it may be followed by a newline and a message.
-func containsTriggerComment(comment string) bool {
-	return strings.HasPrefix(trimComment(comment), triggerComment)
-}
-
-func triggersCommitQueue(commentAction string, comment string) bool {
-	if commentAction == "deleted" {
-		return false
-	}
-	return containsTriggerComment(comment)
+func isRefreshStatusComment(comment string) bool {
+	return trimComment(comment) == refreshStatusComment
 }
 
 type githubHookApi struct {
@@ -270,7 +262,10 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 
 	commentBody := event.Comment.GetBody()
 	commentAction := event.GetAction()
-	if triggersCommitQueue(commentAction, event.Comment.GetBody()) {
+	if commentAction == "deleted" {
+		return nil
+	}
+	if triggersCommitQueue(event.Comment.GetBody()) {
 		grip.Info(gh.getCommentLogWithMessage(event, "commit queue triggered"))
 
 		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
@@ -278,7 +273,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		return errors.Wrap(err, "enqueueing in commit queue")
 	}
 
-	if triggerPatch, callerType := triggersPatch(commentAction, commentBody); triggerPatch {
+	if triggerPatch, callerType := triggersPatch(commentBody); triggerPatch {
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", *event.Comment.Body)))
 
 		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber())
@@ -287,7 +282,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		return errors.Wrap(err, "creating patch")
 	}
 
-	if triggersStatusRefresh(commentAction, commentBody) {
+	if triggersStatusRefresh(commentBody) {
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
 		err := gh.refreshPatchStatus(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
@@ -649,12 +644,15 @@ func isItemOnCommitQueue(id, item string) (bool, error) {
 	return false, nil
 }
 
+// triggersCommitQueue checks if "evergreen merge" is present in the comment, as
+// it may be followed by a newline and a message.
+func triggersCommitQueue(comment string) bool {
+	return strings.HasPrefix(trimComment(comment), triggerComment)
+}
+
 // The bool value returns whether the patch should be created or not.
 // The string value returns the correct caller for the command.
-func triggersPatch(action, comment string) (bool, string) {
-	if action == "deleted" {
-		return false, ""
-	}
+func triggersPatch(comment string) (bool, string) {
 	if isPatchComment(comment) {
 		return true, patch.ManualCaller
 	}
@@ -664,11 +662,8 @@ func triggersPatch(action, comment string) (bool, string) {
 
 	return false, ""
 }
-func triggersStatusRefresh(action, comment string) bool {
-	if action == "deleted" {
-		return false
-	}
-	return comment == refreshStatusComment
+func triggersStatusRefresh(comment string) bool {
+	return isRefreshStatusComment(comment)
 }
 
 func isTag(ref string) bool {
