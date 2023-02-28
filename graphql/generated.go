@@ -268,6 +268,7 @@ type ComplexityRoot struct {
 	}
 
 	Host struct {
+		Ami                   func(childComplexity int) int
 		AvailabilityZone      func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
@@ -1263,6 +1264,8 @@ type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type HostResolver interface {
+	Ami(ctx context.Context, obj *model.APIHost) (*string, error)
+
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
@@ -2303,6 +2306,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedTaskStatusCount.Variant(childComplexity), true
+
+	case "Host.ami":
+		if e.complexity.Host.Ami == nil {
+			break
+		}
+
+		return e.complexity.Host.Ami(childComplexity), true
 
 	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
@@ -14983,6 +14993,47 @@ func (ec *executionContext) fieldContext_Host_availabilityZone(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Host_ami(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Host_ami(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().Ami(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Host_ami(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_displayName(ctx, field)
 	if err != nil {
@@ -17184,6 +17235,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(ctx context.Context
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -22329,6 +22382,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -22487,6 +22542,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -22700,6 +22757,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -33346,6 +33405,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -34377,6 +34438,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(ctx context.Context, fiel
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -52922,6 +52985,8 @@ func (ec *executionContext) fieldContext_Volume_host(ctx context.Context, field 
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -60074,6 +60139,23 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 
 			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
 
+		case "ami":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_ami(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "displayName":
 
 			out.Values[i] = ec._Host_displayName(ctx, field, obj)

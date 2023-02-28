@@ -2,7 +2,7 @@ package units
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -186,7 +186,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
@@ -215,7 +215,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
@@ -244,7 +244,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
 	s.NoError(db.ClearCollections(model.ProjectAliasCollection))

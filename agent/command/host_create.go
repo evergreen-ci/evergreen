@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -267,7 +267,7 @@ func (c *createHost) populateUserdata() error {
 		return errors.Wrap(err, "opening user data file")
 	}
 	defer file.Close()
-	fileData, err := ioutil.ReadAll(file)
+	fileData, err := io.ReadAll(file)
 	if err != nil {
 		return errors.Wrap(err, "reading user data file")
 	}

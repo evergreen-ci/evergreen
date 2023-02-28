@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -93,21 +92,21 @@ func TestExpansionWriter(t *testing.T) {
 			"password": true,
 		},
 	}
-	f, err := ioutil.TempFile("", t.Name())
+	f, err := os.CreateTemp("", t.Name())
 	require.NoError(err)
 	defer os.Remove(f.Name())
 
 	writer := &expansionsWriter{File: f.Name()}
 	err = writer.Execute(ctx, comm, logger, tc)
 	assert.NoError(err)
-	out, err := ioutil.ReadFile(f.Name())
+	out, err := os.ReadFile(f.Name())
 	assert.NoError(err)
 	assert.Equal("baz: qux\nfoo: bar\n", string(out))
 
 	writer = &expansionsWriter{File: f.Name(), Redacted: true}
 	err = writer.Execute(ctx, comm, logger, tc)
 	assert.NoError(err)
-	out, err = ioutil.ReadFile(f.Name())
+	out, err = os.ReadFile(f.Name())
 	assert.NoError(err)
 	assert.Equal("baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
 }

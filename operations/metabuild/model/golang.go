@@ -140,9 +140,9 @@ func (g *Golang) Validate() error {
 }
 
 // validateEnvVars checks that:
-// - GOROOT is defined at the top-level global environment.
-// - GOPATH is defined at the top-level global environment and is a relative
-//   path.
+//   - GOROOT is defined at the top-level global environment.
+//   - GOPATH is defined at the top-level global environment and is a relative
+//     path.
 func (g *Golang) validateEnvVars() error {
 	catcher := grip.NewBasicCatcher()
 	for _, name := range []string{"GOPATH", "GOROOT"} {
@@ -175,11 +175,11 @@ func (g *Golang) RelProjectPath(gopath string) string {
 }
 
 // validatePackages checks that:
-// - Packages are defined.
-// - Each package has a unique name. If it's unnamed, it must be the only
-//   unnamed package with its path. Furthermore, no package can be named the
-//   same as the path of an unnamed package.
-// - Each package definition is valid.
+//   - Packages are defined.
+//   - Each package has a unique name. If it's unnamed, it must be the only
+//     unnamed package with its path. Furthermore, no package can be named the
+//     same as the path of an unnamed package.
+//   - Each package definition is valid.
 func (g *Golang) validatePackages() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(len(g.Packages) == 0, "must have at least one package to test")

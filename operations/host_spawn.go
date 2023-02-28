@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -141,7 +140,7 @@ func hostCreate() cli.Command {
 
 			if userdataFile != "" {
 				var out []byte
-				out, err = ioutil.ReadFile(userdataFile)
+				out, err = os.ReadFile(userdataFile)
 				if err != nil {
 					return errors.Wrapf(err, "reading userdata file '%s'", userdataFile)
 				}
@@ -149,7 +148,7 @@ func hostCreate() cli.Command {
 			}
 			if setupFile != "" {
 				var out []byte
-				out, err = ioutil.ReadFile(setupFile)
+				out, err = os.ReadFile(setupFile)
 				if err != nil {
 					return errors.Wrapf(err, "reading setup file '%s'", setupFile)
 				}
@@ -1300,7 +1299,7 @@ func hostRunCommand() cli.Command {
 
 			if path != "" {
 				var scriptBytes []byte
-				scriptBytes, err = ioutil.ReadFile(path)
+				scriptBytes, err = os.ReadFile(path)
 				if err != nil {
 					return errors.Wrapf(err, "read script from file '%s'", path)
 				}

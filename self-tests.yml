@@ -618,7 +618,7 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      GOROOT: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.19
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
@@ -642,7 +642,7 @@ buildvariants:
       - ubuntu2004-small
       - ubuntu2004-large
     expansions:
-      GOROOT: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.19
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
       race_detector: true
@@ -654,19 +654,20 @@ buildvariants:
   - name: lint
     display_name: Lint
     run_on:
-      - archlinux-new-large
+      - ubuntu2004-small
+      - ubuntu2004-large
     expansions:
-      GOROOT: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.19
     tasks:
       - name: generate-lint
 
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2017-small
-      - windows-64-vs2017-large
+      - windows-vsCurrent-small
+      - windows-vsCurrent-large
     expansions:
-      GOROOT: c:/golang/go1.16
+      GOROOT: c:/golang/go1.19
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.14.zip
       extension: ".exe"
@@ -684,7 +685,7 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      GOROOT: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.19
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.14.tgz
     tasks:
@@ -696,7 +697,7 @@ buildvariants:
     run_on:
       - macos-1014
     expansions:
-      GOROOT: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.19
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.14.tgz
     tasks:
       - name: ".agent .test"

@@ -1,7 +1,7 @@
 package operations
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -38,7 +38,7 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
    - mytask1
    - mytask2`
 
-	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{Project: "mci"}
@@ -66,7 +66,7 @@ func (s *PatchUtilTestSuite) TestLoadVariantsTasksFromFile() {
    - mytask1
    - mytask2`
 
-	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{Project: "mci"}
@@ -96,7 +96,7 @@ func (s *PatchUtilTestSuite) TestAliasFromCLI() {
    - mytask1
    - mytask2`
 
-	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{
@@ -123,7 +123,7 @@ func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
   default: true
   alias: testing`
 
-	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{

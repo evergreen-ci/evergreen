@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -66,7 +65,7 @@ func writeFileWithPerm(path string, content []byte, perm os.FileMode) error {
 		return errors.Wrap(err, "making parent directories")
 	}
 
-	if err := ioutil.WriteFile(path, content, 0200); err != nil {
+	if err := os.WriteFile(path, content, 0200); err != nil {
 		return errors.Wrap(err, "writing file")
 	}
 

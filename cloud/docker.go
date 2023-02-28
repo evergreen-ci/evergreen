@@ -143,7 +143,7 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 	return "", nil
 }
 
-//TerminateInstance destroys a container.
+// TerminateInstance destroys a container.
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
@@ -175,8 +175,8 @@ func (m *dockerManager) StartInstance(ctx context.Context, host *host.Host, user
 	return errors.New("StartInstance is not supported for Docker provider")
 }
 
-//Configure populates a dockerManager by reading relevant settings from the
-//config object.
+// Configure populates a dockerManager by reading relevant settings from the
+// config object.
 func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) error {
 	config := s.Providers.Docker
 
@@ -195,8 +195,8 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 	return nil
 }
 
-//IsUp checks the container's state by querying the Docker API and
-//returns true if the host should be available to connect with SSH.
+// IsUp checks the container's state by querying the Docker API and
+// returns true if the host should be available to connect with SSH.
 func (m *dockerManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 	cloudStatus, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {

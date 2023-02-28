@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,7 +46,7 @@ func TestS3PushExecute(t *testing.T) {
 			tmpDir := t.TempDir()
 			workDir := filepath.Join(tmpDir, "work_dir")
 			require.NoError(t, os.MkdirAll(workDir, 0777))
-			tmpFile, err := ioutil.TempFile(workDir, "file")
+			tmpFile, err := os.CreateTemp(workDir, "file")
 			require.NoError(t, err)
 			fileContent := []byte("foobar")
 			_, err = tmpFile.Write(fileContent)
@@ -66,7 +65,7 @@ func TestS3PushExecute(t *testing.T) {
 				Remote: filepath.Join(s3Path),
 			}))
 
-			pulledContent, err := ioutil.ReadFile(filepath.Join(pullDir, filepath.Base(tmpFile.Name())))
+			pulledContent, err := os.ReadFile(filepath.Join(pullDir, filepath.Base(tmpFile.Name())))
 			require.NoError(t, err)
 			assert.Equal(t, fileContent, pulledContent)
 		},
@@ -74,7 +73,7 @@ func TestS3PushExecute(t *testing.T) {
 			tmpDir := t.TempDir()
 			workDir := filepath.Join(tmpDir, "work_dir")
 			require.NoError(t, os.MkdirAll(workDir, 0777))
-			tmpFile, err := ioutil.TempFile(workDir, "file")
+			tmpFile, err := os.CreateTemp(workDir, "file")
 			require.NoError(t, err)
 			_, err = tmpFile.Write([]byte("foobar"))
 			assert.NoError(t, tmpFile.Close())
@@ -93,7 +92,7 @@ func TestS3PushExecute(t *testing.T) {
 				Remote: s3Path,
 			}))
 
-			files, err := ioutil.ReadDir(pullDir)
+			files, err := os.ReadDir(pullDir)
 			require.NoError(t, err)
 			assert.Empty(t, files)
 		},

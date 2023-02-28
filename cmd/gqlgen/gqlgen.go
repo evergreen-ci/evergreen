@@ -1,5 +1,4 @@
 //go:build tools
-// +build tools
 
 // This is a helper file to track gqlgen as a Go tooling dependency in Go
 // modules.

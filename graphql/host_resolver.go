@@ -15,6 +15,18 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+// Ami is the resolver for the ami field.
+func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string, error) {
+	host, err := host.FindOneId(utility.FromStringPtr(obj.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	if host == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not find host %s", utility.FromStringPtr(obj.Id)))
+	}
+	return utility.ToStringPtr(host.GetAMI()), nil
+}
+
 // DistroID is the resolver for the distroId field.
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil

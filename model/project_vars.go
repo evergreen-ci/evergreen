@@ -30,10 +30,10 @@ const (
 	ProjectAWSSSHKeyValue = "__project_aws_ssh_key_value"
 )
 
-//ProjectVars holds a map of variables specific to a given project.
-//They can be fetched at run time by the agent, so that settings which are
-//sensitive or subject to frequent change don't need to be hard-coded into
-//yml files.
+// ProjectVars holds a map of variables specific to a given project.
+// They can be fetched at run time by the agent, so that settings which are
+// sensitive or subject to frequent change don't need to be hard-coded into
+// yml files.
 type ProjectVars struct {
 
 	//Should match the identifier of the project it refers to

@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -80,7 +79,7 @@ func (s *CommandSuite) TestPreErrorFailsWithSetup() {
 }
 
 func (s *CommandSuite) TestShellExec() {
-	f, err := ioutil.TempFile(s.tmpDirName, "shell-exec-")
+	f, err := os.CreateTemp(s.tmpDirName, "shell-exec-")
 	s.Require().NoError(err)
 	defer os.Remove(f.Name())
 
@@ -122,7 +121,7 @@ func (s *CommandSuite) TestShellExec() {
 	s.Contains(detail.Description, "shell.exec")
 	s.False(detail.TimedOut)
 
-	data, err := ioutil.ReadFile(tmpFile)
+	data, err := os.ReadFile(tmpFile)
 	s.Require().NoError(err)
 	s.Equal("shell.exec test message", strings.Trim(string(data), "\r\n"))
 

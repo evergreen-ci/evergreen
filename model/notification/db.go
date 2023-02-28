@@ -21,7 +21,7 @@ const (
 	Collection = "notifications"
 )
 
-//nolint: deadcode, megacheck, unused
+//nolint:megacheck,unused
 var (
 	idKey         = bsonutil.MustHaveTag(Notification{}, "ID")
 	subscriberKey = bsonutil.MustHaveTag(Notification{}, "Subscriber")

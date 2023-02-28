@@ -3,7 +3,7 @@ package plugin
 import (
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -22,7 +22,7 @@ func (pp *PerfPlugin) Name() string { return "perf" }
 func (pp *PerfPlugin) Configure(map[string]interface{}) error { return nil }
 
 func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
-	panelHTML, err := ioutil.ReadFile(filepath.Join(TemplateRoot(pp.Name()), "task_perf_data.html"))
+	panelHTML, err := os.ReadFile(filepath.Join(TemplateRoot(pp.Name()), "task_perf_data.html"))
 	if err != nil {
 		return nil, fmt.Errorf("Can't load panel html file: %v", err)
 	}

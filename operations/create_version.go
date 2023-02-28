@@ -2,7 +2,7 @@ package operations
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/mongodb/grip"
@@ -46,7 +46,7 @@ func CreateVersion() cli.Command {
 			if err != nil {
 				return errors.Wrapf(err, "opening file '%s'", filePath)
 			}
-			config, err := ioutil.ReadAll(f)
+			config, err := io.ReadAll(f)
 			if err != nil {
 				return errors.Wrapf(err, "reading file '%s'", filePath)
 			}

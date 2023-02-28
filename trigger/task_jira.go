@@ -266,7 +266,9 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 }
 
 // getSummary creates a JIRA subject for a task failure in the style of
-//  Failures: Task_name on Variant (test1, test2) [ProjectName @ githash]
+//
+//	Failures: Task_name on Variant (test1, test2) [ProjectName @ githash]
+//
 // based on the given AlertContext.
 func (j *jiraBuilder) getSummary() (string, error) {
 	subj := &bytes.Buffer{}
@@ -407,7 +409,7 @@ func (j *jiraBuilder) getDescription() (string, error) {
 }
 
 // cleanTestName returns the last item of a test's path.
-//   TODO: stop accommodating this.
+// TODO: stop accommodating this.
 func cleanTestName(path string) string {
 	if unixIdx := strings.LastIndex(path, "/"); unixIdx != -1 {
 		// if the path ends in a slash, remove it and try again

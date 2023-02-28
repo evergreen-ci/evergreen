@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 
 	"github.com/evergreen-ci/evergreen"
@@ -87,7 +86,7 @@ func (c *setDownstream) Execute(ctx context.Context,
 }
 
 func (c *setDownstream) ParseFromFile(filename string) error {
-	filedata, err := ioutil.ReadFile(filename)
+	filedata, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}

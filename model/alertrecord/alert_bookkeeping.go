@@ -58,7 +58,7 @@ func (ar *AlertRecord) Insert() error {
 	return db.Insert(Collection, ar)
 }
 
-// nolint: megacheck, deadcode, unused
+//nolint:megacheck,unused
 var (
 	IdKey                  = bsonutil.MustHaveTag(AlertRecord{}, "Id")
 	subscriptionIDKey      = bsonutil.MustHaveTag(AlertRecord{}, "SubscriptionID")

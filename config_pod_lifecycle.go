@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var podLifecycleConfigKey = bsonutil.MustHaveTag(Settings{}, "PodLifecycle") //nolint: deadcode, unused
+var podLifecycleConfigKey = bsonutil.MustHaveTag(Settings{}, "PodLifecycle") //nolint:unused
 
 // PodLifecycleConfig holds logging settings for the pod init process.
 type PodLifecycleConfig struct {
