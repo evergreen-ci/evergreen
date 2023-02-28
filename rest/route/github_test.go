@@ -320,7 +320,7 @@ func (s *GithubWebhookRouteSuite) TestRefreshStatusTrigger() {
 
 	s.True(triggersPatch(commentString))
 	s.False(triggersPatch(retryComment))
-	
+
 	//test whitespace trimming
 	s.True(triggersPatch("  evergreen refresh "))
 }

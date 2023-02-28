@@ -482,9 +482,7 @@ func versionLink(i versionLinkInput) string {
 	if i.isChild {
 		url += "/downstream-tasks"
 	}
-	if i.hasPatch {
-		url += "?redirect_spruce_users=true"
-	}
+	url += "?redirect_spruce_users=true"
 	return url
 }
 

@@ -301,11 +301,7 @@ func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
 
 // GetURL returns a url to the build page.
 func (b *Build) GetURL(uiBase string) string {
-	url := fmt.Sprintf("%s/build/%s", uiBase, url.PathEscape(b.Id))
-	if evergreen.IsPatchRequester(b.Requester) {
-		url += "?redirect_spruce_users=true"
-	}
-	return url
+	return fmt.Sprintf("%s/build/%s?redirect_spruce_users=true", uiBase, url.PathEscape(b.Id))
 }
 
 // Insert writes the b to the db.
