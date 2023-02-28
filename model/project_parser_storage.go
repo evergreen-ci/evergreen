@@ -5,6 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -103,9 +105,17 @@ func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergre
 		return method, err
 	}
 
-	if err := ParserProjectUpsertOne(ctx, settings, evergreen.ProjectStorageMethodS3, pp); err != nil {
+	newMethod := evergreen.ProjectStorageMethodS3
+	if err := ParserProjectUpsertOne(ctx, settings, newMethod, pp); err != nil {
 		return method, errors.Wrap(err, "falling back to upserting parser project into S3")
 	}
 
-	return evergreen.ProjectStorageMethodS3, nil
+	grip.Info(message.Fields{
+		"message":            "successfully upserted parser into S3 as fallback due to document size limitation",
+		"parser_project":     pp.Id,
+		"old_storage_method": method,
+		"new_storage_method": newMethod,
+	})
+
+	return newMethod, nil
 }

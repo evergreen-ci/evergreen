@@ -184,7 +184,7 @@ func (mdef matrixDefinition) contains(mv matrixValue) bool {
 	return true
 }
 
-// matrixDefintinos is a helper type for parsing either a single definition
+// matrixDefinitions is a helper type for parsing either a single definition
 // or a slice of definitions from YAML.
 type matrixDefinitions []matrixDefinition
 
