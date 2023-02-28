@@ -74,7 +74,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return nil, errors.Wrap(err, "making commit queue patch")
 	}
 
-	p, patchSummaries, proj, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
+	p, patchSummaries, proj, pp, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -127,33 +127,40 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return nil, err
 	}
 
+	env := evergreen.GetEnvironment()
+	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, pp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "upsert parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
+	}
+	patchDoc.ProjectStorageMethod = ppStorageMethod
+
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
 	}
 
 	catcher = grip.NewBasicCatcher()
 	for _, modulePR := range modulePRs {
-		catcher.Add(thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
+		catcher.Add(thirdparty.SendCommitQueueGithubStatus(env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
 	}
 
 	return patchDoc, catcher.Resolve()
 }
 
-func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, error) {
+func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, *model.ParserProject, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "getting GitHub PR diff")
+		return "", nil, nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
 
 	// fetch the latest config file
 	config, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "getting remote config file")
+		return "", nil, nil, nil, errors.Wrap(err, "getting remote config file")
 	}
 
-	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
-	return patchContent, summaries, config, nil
+	return patchContent, summaries, config, patchConfig.PatchedParserProject, nil
 }
 
 func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, patchContent string) error {
