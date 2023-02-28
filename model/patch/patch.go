@@ -270,9 +270,13 @@ func (p *Patch) GetURL(uiHost string) string {
 	var url string
 	if p.Activated {
 		url = uiHost + "/version/" + p.Id.Hex()
+		if p.IsChild() {
+			url += "/downstream-tasks"
+		}
 	} else {
 		url = uiHost + "/patch/" + p.Id.Hex()
 	}
+
 	if p.DisplayNewUI {
 		url = url + "?redirect_spruce_users=true"
 	}

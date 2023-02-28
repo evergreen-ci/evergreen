@@ -28,7 +28,7 @@ const (
 )
 
 func init() {
-	registry.AddJobType(githubStatusUpdateJobName, func() amboy.Job { return makeGithubStatusRefreshJob() })
+	registry.AddJobType(githubStatusRefreshJobName, func() amboy.Job { return makeGithubStatusRefreshJob() })
 }
 
 // NewGithubStatusRefreshJob is a job that re-sends github statuses to the PR associated with the given patch.
@@ -78,6 +78,7 @@ func (j *githubStatusRefreshJob) shouldUpdate() (bool, error) {
 			"message": "GitHub status updates are disabled, not updating status",
 		})
 		return false, nil
+
 	}
 	return true, nil
 }
@@ -91,11 +92,10 @@ func (j *githubStatusRefreshJob) fetch() error {
 	if err := uiConfig.Get(j.env); err != nil {
 		return errors.Wrap(err, "retrieving UI config")
 	}
-	urlBase := uiConfig.Url
-	if urlBase == "" {
+	j.urlBase = uiConfig.Url
+	if j.urlBase == "" {
 		return errors.New("url base doesn't exist")
 	}
-	j.urlBase = urlBase
 	if j.sender == nil {
 		var err error
 		j.sender, err = j.env.GetSender(evergreen.SenderGithubStatus)
@@ -104,6 +104,7 @@ func (j *githubStatusRefreshJob) fetch() error {
 		}
 	}
 	if j.patch == nil {
+		fmt.Println("do we refretch the patch?")
 		j.patch, err = patch.FindOneId(j.FetchID)
 		if err != nil {
 			return errors.Wrap(err, "finding patch")
@@ -112,6 +113,7 @@ func (j *githubStatusRefreshJob) fetch() error {
 			return errors.New("patch not found")
 		}
 	}
+	fmt.Println(j.patch.Status)
 
 	j.builds, err = build.Find(build.ByVersion(j.FetchID))
 	if err != nil {
@@ -148,10 +150,6 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 	if len(j.childPatches) == 0 {
 		return nil
 	}
-	projectIdentifier, err := model.GetIdentifierForProject(j.patch.Project)
-	if err != nil {
-		return errors.Wrap(err, "finding project identifier")
-	}
 
 	status := &message.GithubStatus{
 		Owner: j.patch.GithubPatchData.BaseOwner,
@@ -160,27 +158,70 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 	}
 
 	for _, childPatch := range j.childPatches {
-		var err error
+		projectIdentifier, err := model.GetIdentifierForProject(childPatch.Project)
+		if err != nil {
+			return errors.Wrap(err, "finding project identifier")
+		}
 		status.Context, err = patch.GetGithubContextForChildPatch(projectIdentifier, j.patch, &childPatch)
 		if err != nil {
 			return errors.Wrapf(err, "getting github context for child patch '%s'", childPatch.Id.Hex())
 		}
 
 		status.URL = childPatch.GetURL(j.urlBase)
-		childPatchDuration := childPatch.FinishTime.Sub(childPatch.StartTime).String()
-		status.Description = fmt.Sprintf("patch finished in %s", childPatchDuration)
-		if childPatch.Status == evergreen.VersionSucceeded {
+		status.State, status.Description = getGithubStateAndDescriptionForPatch(&childPatch)
+		j.sendStatus(status)
+	}
+	return nil
+}
+
+func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, string) {
+	var state message.GithubState
+	if p.Status == evergreen.PatchSucceeded {
+		state = message.GithubStateSuccess
+	} else if p.Status == evergreen.PatchFailed {
+		state = message.GithubStateFailure
+	} else {
+		return message.GithubStatePending, "tasks are running"
+	}
+	duration := p.FinishTime.Sub(p.StartTime).String()
+	name := "version"
+	if p.IsChild() {
+		name = "child patch"
+	}
+	return state, fmt.Sprintf("%s finished in %s", name, duration)
+}
+
+func (j *githubStatusRefreshJob) sendBuildStatuses() {
+	status := &message.GithubStatus{
+		Owner: j.patch.GithubPatchData.BaseOwner,
+		Repo:  j.patch.GithubPatchData.BaseRepo,
+		Ref:   j.patch.GithubPatchData.HeadHash,
+	}
+	for _, b := range j.builds {
+		status.Context = fmt.Sprintf("%s/%s", evergreenContext, b.BuildVariant)
+		status.URL = b.GetURL(j.urlBase)
+
+		if b.Status == evergreen.BuildSucceeded {
 			status.State = message.GithubStateSuccess
-		} else if childPatch.Status == evergreen.VersionFailed {
+		} else if b.Status == evergreen.BuildFailed {
 			status.State = message.GithubStateFailure
 		} else {
 			status.State = message.GithubStatePending
 			status.Description = "tasks are running"
 		}
 
+		// Only need to fetch tasks to populate description if the build is finished.
+		if status.State != message.GithubStatePending {
+			query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey)
+			tasks, err := task.FindAll(query)
+			if err != nil {
+				j.AddError(errors.Wrapf(err, "finding tasks in build '%s'", b.Id))
+				continue
+			}
+			status.Description = b.GetFinishedNotificationDescription(tasks)
+		}
 		j.sendStatus(status)
 	}
-	return nil
 }
 
 func (j *githubStatusRefreshJob) Run(ctx context.Context) {
@@ -204,19 +245,9 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 		Repo:    j.patch.GithubPatchData.BaseRepo,
 		Ref:     j.patch.GithubPatchData.HeadHash,
 	}
+	status.State, status.Description = getGithubStateAndDescriptionForPatch(j.patch)
 
 	// Send patch status
-	patchDuration := j.patch.FinishTime.Sub(j.patch.StartTime).String()
-	status.Description = fmt.Sprintf("version finished in %s", patchDuration)
-	if j.patch.Status == evergreen.VersionSucceeded {
-		status.State = message.GithubStateSuccess
-	} else if j.patch.Status == evergreen.VersionFailed {
-		status.State = message.GithubStateFailure
-	} else {
-		status.State = message.GithubStatePending
-		status.Description = "tasks are running"
-	}
-
 	j.sendStatus(status)
 
 	// Send child patch statuses.
@@ -226,34 +257,5 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	}
 
 	// For each build, send build status.
-	for _, b := range j.builds {
-		status.Context = fmt.Sprintf("%s/%s", evergreenContext, b.BuildVariant)
-		status.URL = b.GetURL(j.urlBase)
-
-		finishedStatus := true
-		if b.Status == evergreen.BuildSucceeded {
-			status.State = message.GithubStateSuccess
-		} else if b.Status == evergreen.BuildFailed {
-			status.State = message.GithubStateFailure
-		} else {
-			status.State = message.GithubStatePending
-			status.Description = "tasks are running"
-			finishedStatus = false
-		}
-
-		// Only need to fetch tasks to populate description if the build is finished.
-		if finishedStatus {
-			query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.DependsOnKey)
-			tasks, err := task.FindAll(query)
-			if err != nil {
-				j.AddError(errors.Wrapf(err, "finding tasks in build '%s'", b.Id))
-				continue
-			}
-			status.Description = b.GetFinishedNotificationDescription(tasks)
-
-			buildDuration := b.FinishTime.Sub(b.StartTime).String()
-			status.Description = fmt.Sprintf("build finished in %s", buildDuration)
-		}
-		j.sendStatus(status)
-	}
+	j.sendBuildStatuses()
 }

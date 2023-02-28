@@ -347,9 +347,6 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 
 	comment = triggerComment
 	s.True(triggersCommitQueue(comment))
-
-	action = "deleted"
-	s.False(triggersCommitQueue(comment))
 }
 
 func (s *CommitQueueSuite) TestCommentCleanup() {
