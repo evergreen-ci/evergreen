@@ -58,7 +58,7 @@ func makeGithubStatusRefreshJob() *githubStatusRefreshJob {
 	j := &githubStatusRefreshJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    githubStatusUpdateJobName,
+				Name:    githubStatusRefreshJobName,
 				Version: 0,
 			},
 		},

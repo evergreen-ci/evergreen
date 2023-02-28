@@ -309,16 +309,7 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 }
 
 func (s *GithubWebhookRouteSuite) TestRefreshStatusTrigger() {
-	event, err := github.ParseWebHook("issue_comment", []byte(refreshStatusComment))
-	s.NoError(err)
-	s.NotNil(event)
-
-	issueComment, ok := event.(*github.IssueCommentEvent)
-	s.True(ok)
-	commentString := issueComment.Comment.GetBody()
-	s.Equal(retryComment, commentString)
-
-	s.True(triggersPatch(commentString))
+	s.True(triggersPatch(refreshStatusComment))
 	s.False(triggersPatch(retryComment))
 
 	//test whitespace trimming
