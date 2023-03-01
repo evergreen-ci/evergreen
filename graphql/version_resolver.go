@@ -476,7 +476,7 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", *obj.Id, err.Error()))
 	}
 	if v == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`", *obj.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", *obj.Id, "version not found"))
 	}
 	return v.Warnings, nil
 }
