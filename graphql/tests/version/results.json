@@ -236,6 +236,18 @@
           }
         }
       }
+    },
+    {
+      "query_file": "warnings-and-errors.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
+            "errors": ["tasks section in 'send email' function: function 'send email' not found in project functions"],
+            "warnings": ["no exec_timeout_secs defined at the top-level or on one or more tasks; these tasks will default to a timeout of 6 hours"]
+          }
+        }
+      }
     }
   ]
 }
