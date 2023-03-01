@@ -76,26 +76,55 @@ func (j *eventSendJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.setup(); err != nil {
+		grip.Debug(message.Fields{
+			"message":     "unable to set up event send job",
+			"jira_ticket": "EVG-18931",
+			"job_id":      j.ID(),
+		})
 		j.AddError(err)
 		return
 	}
 
 	n, err := notification.Find(j.NotificationID)
 	if err != nil {
+		grip.Debug(message.Fields{
+			"message":      "unable to find notification",
+			"jira_ticket":  "EVG-18931",
+			"job_id":       j.ID(),
+			"notification": n,
+		})
 		j.AddError(errors.Wrapf(err, "finding notification '%s'", j.NotificationID))
 		return
 	}
 	if n == nil {
+		grip.Debug(message.Fields{
+			"message":      "unable to find notification",
+			"jira_ticket":  "EVG-18931",
+			"job_id":       j.ID(),
+			"notification": n,
+		})
 		j.AddError(errors.Errorf("notification '%s' not found", j.NotificationID))
 		return
 	}
 
 	if err = j.checkDegradedMode(n); err != nil {
+		grip.Debug(message.Fields{
+			"message":      "unable to check degraded mode",
+			"jira_ticket":  "EVG-18931",
+			"job_id":       j.ID(),
+			"notification": n,
+		})
 		j.AddError(errors.Wrapf(n.MarkError(errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
 		return
 	}
 
 	if !utility.IsZeroTime(n.SentAt) {
+		grip.Debug(message.Fields{
+			"message":      "notification has already been processed",
+			"jira_ticket":  "EVG-18931",
+			"job_id":       j.ID(),
+			"notification": n,
+		})
 		j.AddError(errors.Errorf("notification '%s' has already been processed", n.ID))
 		return
 	}
@@ -118,8 +147,25 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		return err
 	}
 	if err = c.SetPriority(level.Notice); err != nil {
+		grip.Debug(message.Fields{
+			"jira_ticket": "EVG-18931",
+			"message":     "setting priority",
+		})
 		return errors.Wrap(err, "setting priority")
 	}
+	grip.Debug(message.Fields{
+		"job_id":            j.ID(),
+		"notification_id":   n.ID,
+		"notification":      n,
+		"message":           "sending notification",
+		"jira_ticket":       "EVG-18931",
+		"composer":          c,
+		"composer.priority": c.Priority(),
+		"composer.loggable": c.Loggable(),
+		"composer.string":   c.String(),
+		"composer.raw":      c.Raw(),
+		"composer.message":  c.String(),
+	})
 	if !c.Loggable() {
 		return errors.New("composer is not loggable")
 	}
@@ -133,15 +179,6 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 	if err != nil {
 		return errors.Wrap(err, "getting global notification sender")
 	}
-
-	grip.Debug(message.Fields{
-		"job_id":          j.ID(),
-		"notification_id": n.ID,
-		"message":         "sending notification",
-		"jira_ticket":     "EVG-18931",
-		"sender_key":      key,
-		"composer":        c,
-	})
 
 	sender.Send(c)
 	return nil
