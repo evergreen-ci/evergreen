@@ -124,7 +124,7 @@ func ActivateBuildsAndTasks(buildIds []string, active bool, caller string) error
 		"setting task activation for builds '%v'", buildIds)
 }
 
-// setTaskActivationForBuilds updates the "active" state of all tasks in buildIds.
+// setTaskActivationForBuilds updates the "active" state of all non-disabled tasks in buildIds.
 // It also updates the task cache for the build document.
 // If withDependencies is true, also set dependencies. Don't need to do this when the entire version is affected.
 // If tasks are given to ignore, then we don't activate those tasks.
