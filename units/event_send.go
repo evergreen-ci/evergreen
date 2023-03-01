@@ -176,7 +176,6 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		grip.Debug(message.Fields{
 			"jira_ticket": "EVG-18931",
 			"message":     "composer is not loggable",
-			"error":       err.Error(),
 		})
 
 		return errors.New("composer is not loggable")
