@@ -11,6 +11,7 @@ input RepoRefInput {
   dispatchingDisabled: Boolean
   displayName: String
   enabled: Boolean
+  externalLinks: [ExternalLinkInput!]
   githubChecksEnabled: Boolean
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
