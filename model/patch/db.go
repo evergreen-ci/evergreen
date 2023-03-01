@@ -351,6 +351,23 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 	})
 }
 
+// FindLatestGithubPRPatch returns the latest PR patch for the given PR, if there is one.
+func FindLatestGithubPRPatch(owner, repo string, prNumber int) (*Patch, error) {
+	patches, err := Find(db.Query(bson.M{
+		AliasKey: bson.M{"$ne": evergreen.CommitQueueAlias},
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchPRNumberKey):  prNumber,
+	}).Sort([]string{"-" + CreateTimeKey}).Limit(1))
+	if err != nil {
+		return nil, err
+	}
+	if len(patches) == 0 {
+		return nil, nil
+	}
+	return &patches[0], nil
+}
+
 func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
 	p, err := FindOne(ById(patchID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
