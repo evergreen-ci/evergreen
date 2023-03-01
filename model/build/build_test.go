@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -454,4 +455,38 @@ func TestBulkInsert(t *testing.T) {
 	dbBuilds, err = Find(db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbBuilds, 3)
+}
+
+func TestGetFinishedNotificationDescription(t *testing.T) {
+	b := &Build{
+		Id:           mgobson.NewObjectId().Hex(),
+		BuildVariant: "testvariant",
+		Version:      "testversion",
+		Status:       evergreen.BuildFailed,
+		StartTime:    time.Time{},
+		FinishTime:   time.Time{}.Add(10 * time.Second),
+	}
+
+	assert.Equal(t, "no tasks were run", b.GetFinishedNotificationDescription(nil))
+
+	tasks := []task.Task{
+		{
+			Status: evergreen.TaskSucceeded,
+		},
+	}
+	assert.Equal(t, "1 succeeded, none failed in 10s", b.GetFinishedNotificationDescription(tasks))
+
+	tasks = []task.Task{
+		{
+			Status: evergreen.TaskSystemFailed,
+		},
+	}
+	assert.Equal(t, "none succeeded, none failed, 1 internal errors in 10s", b.GetFinishedNotificationDescription(tasks))
+
+	tasks = []task.Task{
+		{
+			Status: evergreen.TaskFailed,
+		},
+	}
+	assert.Equal(t, "none succeeded, 1 failed in 10s", b.GetFinishedNotificationDescription(tasks))
 }

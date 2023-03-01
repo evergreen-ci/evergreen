@@ -2,13 +2,18 @@ package build
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -294,6 +299,11 @@ func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
 	return timeTaken, makespan, nil
 }
 
+// GetURL returns a url to the build page.
+func (b *Build) GetURL(uiBase string) string {
+	return fmt.Sprintf("%s/build/%s?redirect_spruce_users=true", uiBase, url.PathEscape(b.Id))
+}
+
 // Insert writes the b to the db.
 func (b *Build) Insert() error {
 	return db.Insert(Collection, b)
@@ -316,4 +326,69 @@ func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
 	}
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, b.getPayload(), &options.InsertManyOptions{Ordered: &ordered})
 	return errors.Wrap(err, "bulk inserting builds")
+}
+
+// GetFinishedNotificationDescription returns a description of successful/failed tasks for the build,
+// to be used by jobs and notification processing.
+func (b *Build) GetFinishedNotificationDescription(tasks []task.Task) string {
+	success := 0
+	failed := 0
+	systemError := 0
+	other := 0
+	noReport := 0
+	for _, t := range tasks {
+		switch {
+		case t.Status == evergreen.TaskSucceeded:
+			success++
+
+		case t.Status == evergreen.TaskFailed:
+			failed++
+
+		case evergreen.IsSystemFailedTaskStatus(t.Status):
+			systemError++
+
+		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
+			noReport++
+
+		default:
+			other++
+		}
+	}
+
+	grip.ErrorWhen(other > 0, message.Fields{
+		"source":   "status updates",
+		"message":  "unknown task status",
+		"build_id": b.Id,
+	})
+
+	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
+		return "no tasks were run"
+	}
+
+	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
+		taskStatusSubformat(failed, "failed"))
+	if systemError > 0 {
+		desc += fmt.Sprintf(", %d internal errors", systemError)
+	}
+	if other > 0 {
+		desc += fmt.Sprintf(", %d other", other)
+	}
+
+	return b.appendTime(desc)
+}
+
+func taskStatusSubformat(n int, verb string) string {
+	if n == 0 {
+		return fmt.Sprintf("none %s", verb)
+	}
+	return fmt.Sprintf("%d %s", n, verb)
+}
+
+func (b *Build) appendTime(txt string) string {
+	finish := b.FinishTime
+	// In case the build is actually blocked, but we are triggering the finish event
+	if utility.IsZeroTime(b.FinishTime) {
+		finish = time.Now()
+	}
+	return fmt.Sprintf("%s in %s", txt, finish.Sub(b.StartTime).String())
 }

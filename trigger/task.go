@@ -226,7 +226,6 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	if buildDoc == nil {
 		return nil, errors.Errorf("build '%s' not found while building email payload", t.task.BuildId)
 	}
-	hasPatch := evergreen.IsPatchRequester(buildDoc.Requester)
 
 	projectRef, err := model.FindMergedProjectRef(t.task.Project, t.task.Version, true)
 	if err != nil {
@@ -278,7 +277,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	attachmentFields := []*message.SlackAttachmentField{
 		{
 			Title: "Build",
-			Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId, hasPatch), t.task.BuildVariant),
+			Value: fmt.Sprintf("<%s|%s>", buildDoc.GetURL(t.uiConfig.Url), t.task.BuildVariant),
 		},
 		{
 			Title: "Version",
@@ -286,7 +285,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 				versionLinkInput{
 					uiBase:    t.uiConfig.Url,
 					versionID: t.task.Version,
-					hasPatch:  hasPatch,
+					hasPatch:  evergreen.IsPatchRequester(buildDoc.Requester),
 					isChild:   false,
 				},
 			), t.task.Version),
