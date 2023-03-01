@@ -132,8 +132,9 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
 		q := bson.M{
-			task.BuildIdKey: bson.M{"$in": buildIds},
-			task.StatusKey:  evergreen.TaskUndispatched,
+			task.BuildIdKey:  bson.M{"$in": buildIds},
+			task.StatusKey:   evergreen.TaskUndispatched,
+			task.PriorityKey: bson.M{"$gt": evergreen.DisabledTaskPriority},
 		}
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}

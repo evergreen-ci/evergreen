@@ -289,7 +289,9 @@ buildvariants:
   - name: t1
 tasks:
 - name: t1
+  priority: 3
 - name: t2
+  priority: -1
 `
 
 	previouslyActivatedVersion := &model.Version{
@@ -357,7 +359,7 @@ tasks:
 	assert.Len(t, bv.BatchTimeTasks, 1)
 	assert.False(t, bv.BatchTimeTasks[0].Activated)
 
-	// should activate build variants and tasks except for the batchtime task
+	// should activate build variants and tasks except for the batchtime task and the task with a negative priority
 	ok, err := model.ActivateElapsedBuildsAndTasks(v)
 	assert.NoError(t, err)
 	assert.True(t, ok)
@@ -370,6 +372,13 @@ tasks:
 
 	build1, err := build.FindOneId(bv.BuildId)
 	assert.NoError(t, err)
+
+	// neither batchtime task nor disabled task should be activated
+	tasks, err := task.Find(task.ByBuildId(build1.Id))
+	assert.Len(t, tasks, 2)
+	for _, tsk := range tasks {
+		assert.False(t, tsk.Activated)
+	}
 
 	// now we should update just the task even though the build is activated already
 	for i, bv := range v.BuildVariants {
