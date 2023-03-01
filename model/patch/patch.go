@@ -815,14 +815,14 @@ func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 
 // GetGithubContextForChildPatch returns the github context for the given child patch, to be used in github statuses.
 func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childPatch *Patch) (string, error) {
-	var githubContext string
 	patchIndex, err := childPatch.GetPatchIndex(parentPatch)
 	if err != nil {
 		return "", errors.Wrap(err, "getting child patch index")
 	}
-	if patchIndex == 0 || patchIndex == -1 {
-		githubContext = fmt.Sprintf("evergreen/%s", projectIdentifier)
-	} else {
+	githubContext := fmt.Sprintf("evergreen/%s", projectIdentifier)
+	// If there are multiple child patches, add the index to ensure these don't overlap,
+	// since there can be multiple for the same child project.
+	if patchIndex > 0 {
 		githubContext = fmt.Sprintf("evergreen/%s/%d", projectIdentifier, patchIndex)
 	}
 	return githubContext, nil
