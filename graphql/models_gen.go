@@ -70,7 +70,7 @@ type EditSpawnHostInput struct {
 	Volume              *string         `json:"volume"`
 }
 
-type ExternalPatchLink struct {
+type ExternalLinkForPatchMetadata struct {
 	URL         string `json:"url"`
 	DisplayName string `json:"displayName"`
 }

@@ -1933,14 +1933,16 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	case ProjectPagePluginSection:
 		catcher := grip.NewSimpleCatcher()
 		for _, link := range p.ExternalLinks {
-			// check length of link display name
-			if len(link.DisplayName) > 40 {
-				catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
-			}
-			// validate url template
-			formattedURL := strings.Replace(link.URLTemplate, "{version_id}", "version_id", -1)
-			if _, err := url.ParseRequestURI(formattedURL); err != nil {
-				catcher.Add(err)
+			if link.DisplayName != "" && link.URLTemplate != "" {
+				// check length of link display name
+				if len(link.DisplayName) > 40 {
+					catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
+				}
+				// validate url template
+				formattedURL := strings.Replace(link.URLTemplate, "{version_id}", "version_id", -1)
+				if _, err := url.ParseRequestURI(formattedURL); err != nil {
+					catcher.Add(err)
+				}
 			}
 		}
 		if catcher.HasErrors() {
