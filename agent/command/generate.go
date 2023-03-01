@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -146,7 +146,7 @@ func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
 	defer jsonFile.Close()
 
 	var data []byte
-	data, err = ioutil.ReadAll(jsonFile)
+	data, err = io.ReadAll(jsonFile)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
 	}

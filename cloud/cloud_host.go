@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-//CloudHost is a provider-agnostic host object that delegates methods
-//like status checks, ssh options, DNS name checks, termination, etc. to the
-//underlying provider's implementation.
+// CloudHost is a provider-agnostic host object that delegates methods
+// like status checks, ssh options, DNS name checks, termination, etc. to the
+// underlying provider's implementation.
 type CloudHost struct {
 	Host     *host.Host
 	KeyPath  string

@@ -2,7 +2,7 @@ package operations
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -88,7 +88,7 @@ func getLatestGithubCommit() (string, error) {
 		return "", errors.Wrap(err, "getting latest commit from GitHub")
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "reading response body from GitHub")
 	}
@@ -355,7 +355,7 @@ func getTaskInfo(client *http.Client, username, key string, taskId string) (apim
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return task, errors.Wrap(err, "reading response body")
 	}
@@ -387,7 +387,7 @@ func makeSmokeRequest(username, key string, method string, client *http.Client, 
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading response body")
 	}

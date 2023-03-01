@@ -4,6 +4,9 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -76,4 +79,43 @@ func ParserProjectUpsertOne(ctx context.Context, settings *evergreen.Settings, m
 	}
 	defer ppStorage.Close(ctx)
 	return ppStorage.UpsertOne(ctx, pp)
+}
+
+// ParserProjectUpsertOneWithS3Fallback attempts to upsert the parser project
+// into persistent storage using the given storage method. If it fails due to
+// DB document size limitations, it will attempt to fall back to using S3
+// to store it. If it succeeds, this returns the actual project storage method
+// used to persist the parser project; otherwise, it returns the
+// originally-requested storage method.
+func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, pp *ParserProject) (evergreen.ParserProjectStorageMethod, error) {
+	err := ParserProjectUpsertOne(ctx, settings, method, pp)
+	if method == evergreen.ProjectStorageMethodS3 {
+		return method, errors.Wrap(err, "upserting parser project into S3")
+	}
+
+	if !db.IsDocumentLimit(err) {
+		return method, errors.Wrap(err, "upserting parser project into the DB")
+	}
+
+	flags, flagErr := evergreen.GetServiceFlags()
+	if flagErr != nil {
+		return method, errors.Wrap(flagErr, "getting service flags to check ability to fall back to S3")
+	}
+	if flags.ParserProjectS3StorageDisabled {
+		return method, err
+	}
+
+	newMethod := evergreen.ProjectStorageMethodS3
+	if err := ParserProjectUpsertOne(ctx, settings, newMethod, pp); err != nil {
+		return method, errors.Wrap(err, "falling back to upserting parser project into S3")
+	}
+
+	grip.Info(message.Fields{
+		"message":            "successfully upserted parser into S3 as fallback due to document size limitation",
+		"parser_project":     pp.Id,
+		"old_storage_method": method,
+		"new_storage_method": newMethod,
+	})
+
+	return newMethod, nil
 }

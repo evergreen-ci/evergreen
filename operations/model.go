@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -100,7 +99,7 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 		return nil, errors.Wrapf(err, "finding config file '%s'", fn)
 	}
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading configuration from file '%s'", path)
 	}
@@ -111,7 +110,7 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 	}
 	conf.LoadedFrom = path
 
-	localData, err := ioutil.ReadFile(localConfigPath)
+	localData, err := os.ReadFile(localConfigPath)
 	if os.IsNotExist(err) {
 		return conf, nil
 	} else if err != nil {
@@ -142,7 +141,7 @@ func (s *ClientSettings) Write(fn string) error {
 		return errors.Wrap(err, "marshalling data to write")
 	}
 
-	return errors.Wrapf(ioutil.WriteFile(fn, yamlData, 0644), "writing file '%s'", fn)
+	return errors.Wrapf(os.WriteFile(fn, yamlData, 0644), "writing file '%s'", fn)
 }
 
 // setupRestCommunicator returns the rest communicator and prints any available info messages if set.

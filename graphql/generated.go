@@ -268,6 +268,7 @@ type ComplexityRoot struct {
 	}
 
 	Host struct {
+		Ami                   func(childComplexity int) int
 		AvailabilityZone      func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
@@ -930,6 +931,7 @@ type ComplexityRoot struct {
 		Order                   func(childComplexity int) int
 		Patch                   func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
+		Pod                     func(childComplexity int) int
 		Priority                func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
@@ -1260,6 +1262,8 @@ type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type HostResolver interface {
+	Ami(ctx context.Context, obj *model.APIHost) (*string, error)
+
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
@@ -1462,6 +1466,7 @@ type TaskResolver interface {
 
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
+	Pod(ctx context.Context, obj *model.APITask) (*model.APIPod, error)
 
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
@@ -2299,6 +2304,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedTaskStatusCount.Variant(childComplexity), true
+
+	case "Host.ami":
+		if e.complexity.Host.Ami == nil {
+			break
+		}
+
+		return e.complexity.Host.Ami(childComplexity), true
 
 	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
@@ -6084,6 +6096,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.PatchNumber(childComplexity), true
+
+	case "Task.pod":
+		if e.complexity.Task.Pod == nil {
+			break
+		}
+
+		return e.complexity.Task.Pod(childComplexity), true
 
 	case "Task.priority":
 		if e.complexity.Task.Priority == nil {
@@ -14261,6 +14280,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -14949,6 +14970,47 @@ func (ec *executionContext) fieldContext_Host_availabilityZone(ctx context.Conte
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Host_ami(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Host_ami(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().Ami(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Host_ami(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -17157,6 +17219,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(ctx context.Context
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -20589,6 +20653,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -22292,6 +22358,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -22450,6 +22518,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -22663,6 +22733,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -22919,6 +22991,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -23114,6 +23188,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -23309,6 +23385,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -23504,6 +23582,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -23699,6 +23779,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -23894,6 +23976,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -28049,6 +28133,8 @@ func (ec *executionContext) fieldContext_Pod_task(ctx context.Context, field gra
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -28077,6 +28163,8 @@ func (ec *executionContext) fieldContext_Pod_task(ctx context.Context, field gra
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -33285,6 +33373,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -34316,6 +34406,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(ctx context.Context, fiel
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -34646,6 +34738,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -34841,6 +34935,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -40817,6 +40913,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -41883,6 +41981,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -42234,6 +42334,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -42981,6 +43083,59 @@ func (ec *executionContext) fieldContext_Task_patchNumber(ctx context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_pod(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_pod(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Pod(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIPod)
+	fc.Result = res
+	return ec.marshalOPod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPod(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_pod(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Pod_id(ctx, field)
+			case "type":
+				return ec.fieldContext_Pod_type(ctx, field)
+			case "status":
+				return ec.fieldContext_Pod_status(ctx, field)
+			case "taskContainerCreationOpts":
+				return ec.fieldContext_Pod_taskContainerCreationOpts(ctx, field)
+			case "task":
+				return ec.fieldContext_Pod_task(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Pod", field.Name)
 		},
 	}
 	return fc, nil
@@ -48932,6 +49087,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -52174,6 +52331,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -52682,6 +52841,8 @@ func (ec *executionContext) fieldContext_Volume_host(ctx context.Context, field 
 				return ec.fieldContext_Host_id(ctx, field)
 			case "availabilityZone":
 				return ec.fieldContext_Host_availabilityZone(ctx, field)
+			case "ami":
+				return ec.fieldContext_Host_ami(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Host_displayName(ctx, field)
 			case "distro":
@@ -59834,6 +59995,23 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 
 			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
 
+		case "ami":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_ami(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "displayName":
 
 			out.Values[i] = ec._Host_displayName(ctx, field, obj)
@@ -65513,6 +65691,23 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_patchNumber(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "pod":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_pod(ctx, field, obj)
 				return res
 			}
 
@@ -72643,6 +72838,13 @@ func (ec *executionContext) unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋeverg
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOPod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPod(ctx context.Context, sel ast.SelectionSet, v *model.APIPod) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Pod(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {

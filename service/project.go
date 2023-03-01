@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -897,7 +897,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 
-	data, err := ioutil.ReadAll(body)
+	data, err := io.ReadAll(body)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusNotFound, err)
 		return

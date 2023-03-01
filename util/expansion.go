@@ -1,7 +1,7 @@
 package util
 
 import (
-	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 
@@ -34,7 +34,7 @@ func (exp *Expansions) Update(newItems map[string]string) {
 // Read a map of keys/values from the given file, and update the expansions
 // to include them (overwriting any duplicates with the new value).
 func (exp *Expansions) UpdateFromYaml(filename string) error {
-	filedata, err := ioutil.ReadFile(filename)
+	filedata, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}

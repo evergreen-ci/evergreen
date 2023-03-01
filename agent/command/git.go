@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -920,11 +919,11 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 		// create a temporary folder and store patch files on disk,
 		// for later use in shell script
-		tempFile, err := ioutil.TempFile("", "mcipatch_")
+		tempFile, err := os.CreateTemp("", "mcipatch_")
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer func() { //nolint: evg-lint
+		defer func() { //nolint:evg-lint
 			grip.Error(tempFile.Close())
 			grip.Error(os.Remove(tempFile.Name()))
 		}()

@@ -39,7 +39,7 @@ var SubscriberTypes = []string{
 	RunChildPatchSubscriberType,
 }
 
-// nolint: deadcode, megacheck, unused
+//nolint:megacheck,unused
 var (
 	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
 	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")

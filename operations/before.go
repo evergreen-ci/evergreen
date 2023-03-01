@@ -172,7 +172,7 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
-// nolint: unused, deadcode
+//nolint:unused
 func requireStringSliceValueChoices(name string, options []string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		catcher := grip.NewBasicCatcher()

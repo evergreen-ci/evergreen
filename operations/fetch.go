@@ -567,13 +567,13 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					errs <- errors.Wrapf(err, "creating file '%s'", fileName)
 					continue
 				}
-				defer out.Close() // nolint
+				defer out.Close() //nolint:evg-lint
 				resp, err := http.Get(u.url)
 				if err != nil {
 					errs <- errors.Wrapf(err, "downloading URL '%s'", u.url)
 					continue
 				}
-				defer resp.Body.Close() // nolint
+				defer resp.Body.Close() //nolint:evg-lint
 
 				// If we can get the info, determine the file size so that the human can get an
 				// idea of how long the file might take to download.

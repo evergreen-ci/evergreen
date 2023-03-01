@@ -2,7 +2,7 @@ package thirdparty
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -40,7 +40,7 @@ func TestJiraUnauthorized(t *testing.T) {
 		resp := &http.Response{
 			StatusCode: http.StatusUnauthorized,
 			Status:     "401 Unauthorized",
-			Body:       ioutil.NopCloser(&bytes.Buffer{}),
+			Body:       io.NopCloser(&bytes.Buffer{}),
 		}
 		stub := &http.Client{Transport: &mockHttp{res: resp, err: nil}}
 

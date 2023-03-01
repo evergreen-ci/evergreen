@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -43,7 +42,7 @@ func (s *TimeoutSuite) SetupTest() {
 	var err error
 
 	s.tmpDirName = s.T().TempDir()
-	s.tmpFile, err = ioutil.TempFile(s.tmpDirName, "timeout")
+	s.tmpFile, err = os.CreateTemp(s.tmpDirName, "timeout")
 	s.Require().NoError(err)
 
 	s.tmpFileName = s.tmpFile.Name()
@@ -115,7 +114,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	s.Equal(1*time.Second, detail.TimeoutDuration)
 	s.EqualValues(execTimeout, detail.TimeoutType)
 
-	data, err := ioutil.ReadFile(s.tmpFileName)
+	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
 	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
 
@@ -183,7 +182,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	s.Equal(1*time.Second, detail.TimeoutDuration)
 	s.EqualValues(execTimeout, detail.TimeoutType)
 
-	data, err := ioutil.ReadFile(s.tmpFileName)
+	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
 	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
 
@@ -250,7 +249,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	s.Equal(1*time.Second, detail.TimeoutDuration)
 	s.EqualValues(idleTimeout, detail.TimeoutType)
 
-	data, err := ioutil.ReadFile(s.tmpFileName)
+	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
 	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
 
@@ -317,7 +316,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	s.Equal(1*time.Second, detail.TimeoutDuration)
 	s.EqualValues(idleTimeout, detail.TimeoutType)
 
-	data, err := ioutil.ReadFile(s.tmpFileName)
+	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
 	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
 
@@ -384,7 +383,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	s.Equal(2*time.Second, detail.TimeoutDuration)
 	s.EqualValues(idleTimeout, detail.TimeoutType)
 
-	data, err := ioutil.ReadFile(s.tmpFileName)
+	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
 	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
 
@@ -451,7 +450,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	s.Equal(2*time.Second, detail.TimeoutDuration)
 	s.EqualValues(execTimeout, detail.TimeoutType)
 
-	data, err := ioutil.ReadFile(s.tmpFileName)
+	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
 	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
 

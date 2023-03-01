@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"text/template"
@@ -328,7 +328,7 @@ func FetchPatchContents(patchfileID string) (string, error) {
 		return "", errors.Wrap(err, "getting grid file")
 	}
 	defer fileReader.Close()
-	patchContents, err := ioutil.ReadAll(fileReader)
+	patchContents, err := io.ReadAll(fileReader)
 	if err != nil {
 		return "", errors.Wrap(err, "reading patch contents")
 	}
@@ -727,6 +727,7 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 		"$set": bson.M{
 			GithashKey:              p.Githash,
 			PatchesKey:              p.Patches,
+			ProjectStorageMethodKey: p.ProjectStorageMethod,
 			PatchedParserProjectKey: p.PatchedParserProject,
 			PatchedProjectConfigKey: p.PatchedProjectConfig,
 			VariantsTasksKey:        p.VariantsTasks,

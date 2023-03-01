@@ -77,24 +77,35 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if projCtx.Version == nil {
-		gimlet.WriteJSONInternalError(w, fmt.Sprintf("cannot get parser project for patch '%s' because version is nil", projCtx.Patch.Id.Hex()))
-		return
-	}
-
 	settings := restapi.GetSettings()
-	pp, err := model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
-	if err != nil {
-		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project '%s' for patch '%s'", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
-		return
-	}
-	if pp == nil {
-		gimlet.WriteJSONInternalError(w, fmt.Sprintf("parser project '%s' for patch '%s' not found", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
+	var pp *model.ParserProject
+	var err error
+	if projCtx.Patch.ProjectStorageMethod != "" {
+		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Patch.ProjectStorageMethod, projCtx.Patch.Id.Hex())
+		if err != nil {
+			gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project for patch '%s'", projCtx.Patch.Id.Hex()))
+			return
+		}
+		if pp == nil {
+			gimlet.WriteJSONInternalError(w, fmt.Sprintf("parser project for patch '%s' not found", projCtx.Patch.Id.Hex()))
+			return
+		}
+	} else if projCtx.Version != nil {
+		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
+		if err != nil {
+			gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project '%s' for version '%s'", projCtx.Version.Id, projCtx.Version.Id))
+			return
+		}
+		if pp == nil {
+			gimlet.WriteJSONInternalError(w, fmt.Sprintf("parser project '%s' for patch '%s' not found", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
+			return
+		}
+	} else {
+		gimlet.WriteJSONInternalError(w, fmt.Sprintf("cannot get parser project for patch '%s' because patch has no associated parser project and version is nil", projCtx.Patch.Id.Hex()))
 		return
 	}
 
-	var projBytes []byte
-	projBytes, err = yaml.Marshal(pp)
+	projBytes, err := yaml.Marshal(pp)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "marshalling parser project '%s' to YAML", pp.Id))
 		return

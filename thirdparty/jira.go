@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"net/http"
 	"net/url"
@@ -145,7 +145,7 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*Ji
 		return nil, errors.WithStack(err)
 	}
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
-		msg, _ := ioutil.ReadAll(res.Body)
+		msg, _ := io.ReadAll(res.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}
 
@@ -182,7 +182,7 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]inter
 		return errors.WithStack(err)
 	}
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
-		msg, _ := ioutil.ReadAll(res.Body)
+		msg, _ := io.ReadAll(res.Body)
 		return errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}
 
@@ -215,7 +215,7 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 		return nil, errors.Errorf("HTTP request returned unexpected status `%v`", res.Status)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read http body")
 	}
@@ -254,7 +254,7 @@ func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int)
 
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read http body")
 	}

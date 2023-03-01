@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -27,7 +26,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
@@ -327,13 +325,14 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 
 	if p.ProjectStorageMethod != "" || p.PatchedParserProject != "" {
 		// If the patch has been created but not finalized, it has either
-		// already saved the project config as a string (if any), the parser
-		// project document, or has the entire patched parser project as a
-		// string (which is the fallback for old patches that don't store the
-		// parser project). Since the project config is optional, the patch may
-		// be created and have already evaluated the patched project config, but
-		// there simply was none. Therefore, this is a valid way to check and
-		// get the PatchedProjectConfig after the patch is already created.
+		// already saved the project config as a string (if any), stored the
+		// parser project document (i.e. ProjectStorageMethod), or has the
+		// entire patched parser project as a string (i.e.
+		// PatchedParserProject). Since the project config is optional, the
+		// patch may be created and have already evaluated the patched project
+		// config, but there simply was none. Therefore, this is a valid way to
+		// check and get the PatchedProjectConfig after the patch is already
+		// created.
 		return p.PatchedProjectConfig, nil
 	}
 
@@ -402,13 +401,13 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 			}
 		}
 
-		defer os.Remove(patchFilePath) //nolint: evg-lint
+		defer os.Remove(patchFilePath) //nolint:evg-lint
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "writing config file")
 		}
-		defer os.Remove(configFilePath) //nolint: evg-lint
+		defer os.Remove(configFilePath) //nolint:evg-lint
 
 		// clean the working directory
 		workingDirectory := filepath.Dir(patchFilePath)
@@ -457,7 +456,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		}
 
 		// read in the patched config file
-		data, err := ioutil.ReadFile(localConfigPath)
+		data, err := os.ReadFile(localConfigPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading patched config file")
 		}
@@ -469,7 +468,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 	return nil, errors.New("no patch on project")
 }
 
-// FinalizePatch Finalizes a patch:
+// FinalizePatch finalizes a patch:
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
@@ -491,11 +490,29 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching project options for patch")
 	}
-	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
-	if err != nil {
-		return nil, errors.Wrapf(err,
-			"marshalling patched parser project from repository revision '%s'",
-			p.Githash)
+
+	// It used to be that the parser project was not stored until patches were
+	// finalized. Newer patches always store the parser project when the patch
+	// is created rather than when it's finalized. For backward compatibility
+	// with existing unfinalized patches, the parser project must be inserted
+	// now if an old patch is being finalized.
+	mustInsertParserProjectDuringFinalization := p.PatchedParserProject != ""
+	var intermediateProject *ParserProject
+	// TODO (EVG-18700): this if-else most likely is equivalent to just calling
+	// FindAndTranslateProjectForPatch. Try removing the if block in a follow-up
+	// commit.
+	if mustInsertParserProjectDuringFinalization {
+		intermediateProject, err = LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
+		if err != nil {
+			return nil, errors.Wrapf(err,
+				"marshalling patched parser project from repository revision '%s'",
+				p.Githash)
+		}
+	} else {
+		project, intermediateProject, err = FindAndTranslateProjectForPatch(ctx, settings, p)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
+		}
 	}
 	var config *ProjectConfig
 	if projectRef.IsVersionControlEnabled() {
@@ -506,7 +523,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 				p.Githash)
 		}
 	}
-	intermediateProject.Id = p.Id.Hex()
 	if config != nil {
 		config.Project = p.Project
 		config.Id = p.Id.Hex()
@@ -554,27 +570,25 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	patchVersion := &Version{
-		Id:                   p.Id.Hex(),
-		CreateTime:           time.Now(),
-		Identifier:           p.Project,
-		Revision:             p.Githash,
-		Author:               p.Author,
-		Message:              p.Description,
-		BuildIds:             []string{},
-		BuildVariants:        []VersionBuildStatus{},
-		Status:               evergreen.PatchCreated,
-		Requester:            requester,
-		ParentPatchID:        p.Triggers.ParentPatch,
-		ParentPatchNumber:    parentPatchNumber,
-		Branch:               projectRef.Branch,
-		RevisionOrderNumber:  p.PatchNumber,
-		AuthorID:             p.Author,
-		Parameters:           params,
-		Activated:            utility.TruePtr(),
-		AuthorEmail:          authorEmail,
-		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		Id:                  p.Id.Hex(),
+		CreateTime:          time.Now(),
+		Identifier:          p.Project,
+		Revision:            p.Githash,
+		Author:              p.Author,
+		Message:             p.Description,
+		BuildIds:            []string{},
+		BuildVariants:       []VersionBuildStatus{},
+		Status:              evergreen.PatchCreated,
+		Requester:           requester,
+		ParentPatchID:       p.Triggers.ParentPatch,
+		ParentPatchNumber:   parentPatchNumber,
+		Branch:              projectRef.Branch,
+		RevisionOrderNumber: p.PatchNumber,
+		AuthorID:            p.Author,
+		Parameters:          params,
+		Activated:           utility.TruePtr(),
+		AuthorEmail:         authorEmail,
 	}
-	intermediateProject.CreateTime = patchVersion.CreateTime
 
 	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings)
 	if err != nil {
@@ -670,6 +684,23 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
+
+	ppStorageMethod := p.ProjectStorageMethod
+	if ppStorageMethod == "" {
+		// It used to be that the parser project was not stored until patches
+		// were finalized, so for backward compatibility with existing
+		// unfinalized patches, try storing the parser project in in the DB.
+		ppStorageMethod = evergreen.ProjectStorageMethodDB
+	}
+	if mustInsertParserProjectDuringFinalization {
+		intermediateProject.Init(p.Id.Hex(), patchVersion.CreateTime)
+		ppStorageMethod, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, ppStorageMethod, intermediateProject)
+		if err != nil {
+			return nil, errors.Wrapf(err, "upserting parser project for patch '%s'", p.Id.Hex())
+		}
+	}
+	patchVersion.ProjectStorageMethod = ppStorageMethod
+
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
@@ -683,10 +714,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
-		}
-		_, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
-		if err != nil {
-			return nil, errors.Wrapf(err, "inserting parser project for version '%s'", patchVersion.Id)
 		}
 		if config != nil {
 			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
@@ -995,7 +1022,8 @@ func (e *EnqueuePatch) Valid() bool {
 }
 
 // MakeMergePatchFromExisting creates a merge patch from an existing one to be
-// put in the commit queue.
+// put in the commit queue. Is also creates the parser project associated with
+// the patch.
 func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Settings, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
 	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.Errorf("enqueueing patch '%s' without metadata", existingPatch.Id.Hex())
@@ -1012,14 +1040,9 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.WithStack(err)
 	}
 
-	project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")
-	}
-
-	projBytes, err := bson.Marshal(pp)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshalling project bytes to bson")
 	}
 
 	patchDoc := &patch.Patch{
@@ -1029,7 +1052,6 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		Githash:              existingPatch.Githash,
 		Status:               evergreen.PatchCreated,
 		Alias:                evergreen.CommitQueueAlias,
-		PatchedParserProject: string(projBytes),
 		PatchedProjectConfig: existingPatch.PatchedProjectConfig,
 		CreateTime:           time.Now(),
 		MergedFrom:           existingPatch.Id.Hex(),
@@ -1058,6 +1080,14 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	if err != nil {
 		return nil, errors.Wrap(err, "computing patch num")
 	}
+
+	// The parser project is typically inserted at the same time as the patch.
+	// However, commit queue items made from CLI patches are a special exception
+	// that do not follow this behavior, because the existing patch may have be
+	// very outdated compared to the tracking branch's latest commit. The commit
+	// queue should ideally test against the most recent available project
+	// config, so it will resolve the parser project later on, when it's
+	// processed in the commit queue.
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
@@ -1174,6 +1204,14 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 		Patches:         p.Patches,
 		PatchNumber:     patchNumber,
 	}
+
+	// The parser project is typically inserted at the same time as the patch.
+	// However, commit queue items made from CLI patches are a special exception
+	// that do not follow this behavior, because the existing patch may have be
+	// very outdated compared to the tracking branch's latest commit. The commit
+	// queue should ideally test against the most recent available project
+	// config, so it will resolve the parser project later on, when it's
+	// processed in the commit queue.
 
 	if err = newPatch.Insert(); err != nil {
 		return errors.Wrap(err, "inserting patch")

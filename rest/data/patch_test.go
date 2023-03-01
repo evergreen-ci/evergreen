@@ -2,7 +2,7 @@ package data
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -279,7 +279,7 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 
 	s.Require().NoError(s.setup())
 	var err error
-	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "route", "testdata", "pull_request.json"))
+	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "route", "testdata", "pull_request.json"))
 	s.NoError(err)
 	s.Len(s.prBody, 24731)
 }

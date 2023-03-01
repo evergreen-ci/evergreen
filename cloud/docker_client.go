@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -210,7 +209,7 @@ func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, 
 	}
 
 	// Wait until ImageImport finishes
-	_, err = ioutil.ReadAll(resp)
+	_, err = io.ReadAll(resp)
 	if err != nil {
 		return errors.Wrap(err, "Error reading ImageImport response")
 	}
@@ -245,7 +244,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 	if err != nil {
 		return errors.Wrap(err, "error pulling image from registry")
 	}
-	_, err = ioutil.ReadAll(resp)
+	_, err = io.ReadAll(resp)
 	if err != nil {
 		return errors.Wrap(err, "error reading image pull response")
 	}
@@ -317,7 +316,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 
 	// wait for ImageBuild to complete -- success response otherwise returned
 	// before building from Dockerfile is over, and next ContainerCreate will fail
-	_, err = ioutil.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "Error reading ImageBuild response")
 	}

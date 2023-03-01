@@ -22,7 +22,8 @@ const (
 )
 
 // BSON fields for the patches
-//nolint: deadcode, megacheck, unused
+//
+//nolint:megacheck,unused
 var (
 	IdKey                   = bsonutil.MustHaveTag(Patch{}, "Id")
 	DescriptionKey          = bsonutil.MustHaveTag(Patch{}, "Description")

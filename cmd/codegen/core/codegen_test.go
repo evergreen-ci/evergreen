@@ -1,7 +1,6 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +17,7 @@ func TestCodegen(t *testing.T) {
 		t.Skip()
 		return
 	}
-	configFile, err := ioutil.ReadFile("testdata/schema/config.yml")
+	configFile, err := os.ReadFile("testdata/schema/config.yml")
 	require.NoError(t, err)
 	var gqlConfig config.Config
 	err = yaml.Unmarshal(configFile, &gqlConfig)
@@ -28,7 +27,7 @@ func TestCodegen(t *testing.T) {
 		mapping[dbModel] = info.Model[0]
 	}
 
-	schemaFiles, err := ioutil.ReadDir(filepath.Join("testdata", "schema"))
+	schemaFiles, err := os.ReadDir(filepath.Join("testdata", "schema"))
 	require.NoError(t, err)
 	for _, info := range schemaFiles {
 		if !strings.HasSuffix(info.Name(), ".graphql") {
@@ -36,17 +35,17 @@ func TestCodegen(t *testing.T) {
 		}
 		name := strings.Replace(info.Name(), ".graphql", "", -1)
 		t.Run(name, func(t *testing.T) {
-			f, err := ioutil.ReadFile(filepath.Join("testdata", "schema", name+".graphql"))
+			f, err := os.ReadFile(filepath.Join("testdata", "schema", name+".graphql"))
 			require.NoError(t, err)
 			generated, converters, err := Codegen(string(f), mapping)
 			require.NoError(t, err)
 
-			expected, err := ioutil.ReadFile(filepath.Join("testdata", "expected", name+".go"))
+			expected, err := os.ReadFile(filepath.Join("testdata", "expected", name+".go"))
 			require.NoError(t, err)
 			assert.Equal(t, string(expected), string(generated))
 
 			converterFilepath := filepath.Join("testdata", "expected", name+"__converters.go")
-			expected, err = ioutil.ReadFile(converterFilepath)
+			expected, err = os.ReadFile(converterFilepath)
 			require.NoError(t, err)
 			assert.Equal(t, string(expected), string(converters))
 		})

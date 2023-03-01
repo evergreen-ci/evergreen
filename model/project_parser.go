@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -711,7 +711,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
-		fileContents, err := ioutil.ReadFile(opts.RemotePath)
+		fileContents, err := os.ReadFile(opts.RemotePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading project config")
 		}
@@ -917,6 +917,15 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)
 	return proj, errors.Wrap(catcher.Resolve(), TranslateProjectError)
+}
+
+// Init initializes the parser project with the expected fields before it is
+// persisted. It's assumed that the remaining parser project configuration is
+// already populated, but these values to initialize come from an external
+// source (i.e. the patch or version it's based on).
+func (pp *ParserProject) Init(id string, createdAt time.Time) {
+	pp.Id = id
+	pp.CreateTime = createdAt
 }
 
 func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {

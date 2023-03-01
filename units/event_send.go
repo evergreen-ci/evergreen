@@ -134,6 +134,15 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		return errors.Wrap(err, "getting global notification sender")
 	}
 
+	grip.Debug(message.Fields{
+		"job_id":          j.ID(),
+		"notification_id": n.ID,
+		"message":         "sending notification",
+		"jira_ticket":     "EVG-18931",
+		"sender_key":      key,
+		"composer":        c,
+	})
+
 	sender.Send(c)
 	return nil
 }

@@ -1307,7 +1307,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 	}
 
 	if lastGoodVersion == nil {
-		return nil, nil, nil, errors.Wrapf(err, "finding a valid version for project '%s'", projectId)
+		return nil, nil, nil, errors.Errorf("did not find latest any valid version for project '%s'", projectId)
 	}
 
 	return nil, nil, nil, errors.Wrapf(err, "loading project from "+
@@ -2140,7 +2140,6 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
 			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
-
 					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)

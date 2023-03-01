@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 )
 
@@ -28,7 +28,7 @@ func main() {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-	bytes, err := ioutil.ReadAll(f)
+	bytes, err := io.ReadAll(f)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -45,7 +45,7 @@ func main() {
 	}
 
 	data := []byte(fmt.Sprintf("docker_host: %s", hosts[0].DNS))
-	err = ioutil.WriteFile("bin/expansions.yml", data, 0644)
+	err = os.WriteFile("bin/expansions.yml", data, 0644)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)

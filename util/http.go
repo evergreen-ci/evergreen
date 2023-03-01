@@ -2,7 +2,7 @@ package util
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -60,7 +60,7 @@ func RespErrorf(resp *http.Response, format string, args ...interface{}) error {
 	}
 
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return wrapError(errors.Wrap(err, "reading response body"))
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -480,7 +480,7 @@ func adminDistroExecute() cli.Command {
 			}
 			if script == "" {
 				scriptPath := c.String(scriptPathFlagName)
-				b, err := ioutil.ReadFile(scriptPath)
+				b, err := os.ReadFile(scriptPath)
 				if err != nil {
 					return errors.Wrapf(err, "reading script file '%s'", scriptPath)
 				}

@@ -22,8 +22,8 @@ type ProviderSettings interface {
 	FromDistroSettings(distro.Distro, string) error
 }
 
-//Manager is an interface which handles creating new hosts or modifying
-//them via some third-party API.
+// Manager is an interface which handles creating new hosts or modifying
+// them via some third-party API.
 type Manager interface {
 	// Load credentials or other settings from the config file
 	Configure(context.Context, *evergreen.Settings) error

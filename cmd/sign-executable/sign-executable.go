@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -164,7 +163,7 @@ func downloadClient(ctx context.Context, opts fetchClientOpts) error {
 }
 
 func signExecutable(ctx context.Context, opts signOpts) error {
-	tempDir, err := ioutil.TempDir("", "evergreen")
+	tempDir, err := os.MkdirTemp("", "evergreen")
 	if err != nil {
 		return errors.Wrap(err, "creating temp dir")
 	}

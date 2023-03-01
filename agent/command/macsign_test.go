@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -178,7 +178,7 @@ func TestMacSignExecute(t *testing.T) {
 				ctx := context.TODO()
 				mockClientBinary := filepath.Join(t.TempDir(), "client")
 				assert.NoError(t,
-					ioutil.WriteFile(mockClientBinary, []byte(tc.executableContent), 0777),
+					os.WriteFile(mockClientBinary, []byte(tc.executableContent), 0777),
 				)
 				cmd := &macSign{}
 				tc.params["client_binary"] = mockClientBinary

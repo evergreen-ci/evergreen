@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,7 +32,7 @@ func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projec
 		projectRef = &model.ProjectRef{}
 	}
 
-	data, err := ioutil.ReadFile(projectPath)
+	data, err := os.ReadFile(projectPath)
 	if err != nil {
 		return err
 	}

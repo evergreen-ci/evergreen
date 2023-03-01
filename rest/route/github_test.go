@@ -3,8 +3,8 @@ package route
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -79,19 +79,19 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.Require().NoError(commitqueue.InsertQueue(&commitqueue.CommitQueue{ProjectID: "mci"}))
 
 	var err error
-	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
+	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
 	s.Len(s.prBody, 24731)
-	s.pushBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
+	s.pushBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
 	s.Len(s.pushBody, 7597)
-	s.commitQueueCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "commit_queue_comment_event.json"))
+	s.commitQueueCommentBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "commit_queue_comment_event.json"))
 	s.NoError(err)
 	s.Len(s.commitQueueCommentBody, 11494)
-	s.retryCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "retry_comment_event.json"))
+	s.retryCommentBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "retry_comment_event.json"))
 	s.NoError(err)
 	s.Len(s.retryCommentBody, 11468)
-	s.patchCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "patch_comment_event.json"))
+	s.patchCommentBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "patch_comment_event.json"))
 	s.NoError(err)
 	s.Len(s.patchCommentBody, 11468)
 

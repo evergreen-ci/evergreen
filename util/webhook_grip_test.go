@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -220,39 +220,39 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 	t.lastUrl = req.URL.String()
 	resp := &http.Response{
 		StatusCode: http.StatusNoContent,
-		Body:       ioutil.NopCloser(nil),
+		Body:       io.NopCloser(nil),
 	}
 
 	if t.attemptCount < t.minAttempts {
 		resp.StatusCode = http.StatusBadRequest
-		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("won't succeed before %d requests", t.minAttempts)))
+		resp.Body = io.NopCloser(bytes.NewBufferString(fmt.Sprintf("won't succeed before %d requests", t.minAttempts)))
 		return resp, nil
 	}
 
 	if req.Method != http.MethodPost {
 		resp.StatusCode = http.StatusMethodNotAllowed
-		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected method POST, got %s", req.Method)))
+		resp.Body = io.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected method POST, got %s", req.Method)))
 
 		return resp, nil
 	}
 
 	mid := req.Header.Get(evergreenNotificationIDHeader)
 	if len(mid) == 0 {
-		resp.Body = ioutil.NopCloser(bytes.NewBufferString("no message id"))
+		resp.Body = io.NopCloser(bytes.NewBufferString("no message id"))
 		return resp, nil
 	}
 
 	sig := []byte(req.Header.Get(evergreenHMACHeader))
 	if len(sig) == 0 {
 		resp.StatusCode = http.StatusBadRequest
-		resp.Body = ioutil.NopCloser(bytes.NewBufferString("signature is empty"))
+		resp.Body = io.NopCloser(bytes.NewBufferString("signature is empty"))
 		return resp, nil
 	}
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		resp.StatusCode = http.StatusInternalServerError
-		resp.Body = ioutil.NopCloser(bytes.NewBufferString(err.Error()))
+		resp.Body = io.NopCloser(bytes.NewBufferString(err.Error()))
 		return resp, nil
 	}
 	t.lastBody = body
@@ -260,13 +260,13 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 	hash, err := CalculateHMACHash(t.secret, body)
 	if err != nil {
 		resp.StatusCode = http.StatusInternalServerError
-		resp.Body = ioutil.NopCloser(bytes.NewBufferString(err.Error()))
+		resp.Body = io.NopCloser(bytes.NewBufferString(err.Error()))
 		return resp, nil
 	}
 
 	if !hmac.Equal([]byte(hash), sig) {
 		resp.StatusCode = http.StatusBadRequest
-		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected signature: %s, got %s", sig, hash)))
+		resp.Body = io.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected signature: %s, got %s", sig, hash)))
 		return resp, nil
 	}
 	resp.StatusCode = http.StatusNoContent

@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -388,7 +387,7 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 
 // LoadLocalConfig loads the local project config into a project
 func loadLocalConfig(filepath string) (*model.Project, error) {
-	configBytes, err := ioutil.ReadFile(filepath)
+	configBytes, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading project config from file '%s'", filepath)
 	}

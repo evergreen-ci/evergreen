@@ -3,7 +3,6 @@ package operations
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,7 +79,7 @@ func Validate() cli.Command {
 			}
 
 			if fileInfo.Mode()&os.ModeDir != 0 { // directory
-				files, err := ioutil.ReadDir(path)
+				files, err := os.ReadDir(path)
 				if err != nil {
 					return errors.Wrapf(err, "reading directory '%s'", path)
 				}
@@ -110,7 +109,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 }
 
 func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string, projectID string) error {
-	confFile, err := ioutil.ReadFile(path)
+	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading file '%s'", path)
 	}
