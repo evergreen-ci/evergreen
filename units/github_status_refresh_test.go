@@ -23,8 +23,6 @@ import (
 type githubStatusRefreshSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
-	builds   []build.Build
-	tasks    []task.Task
 
 	cancel context.CancelFunc
 	suite.Suite
