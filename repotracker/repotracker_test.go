@@ -282,6 +282,7 @@ buildvariants:
   - name: t1
     batchtime: 30
   - name: t2
+  - name: t3
 - name: bv2
   display_name: bv2_display
   run_on: d2
@@ -292,6 +293,7 @@ tasks:
   priority: 3
 - name: t2
   priority: -1
+- name: t3
 `
 
 	previouslyActivatedVersion := &model.Version{
@@ -375,9 +377,18 @@ tasks:
 
 	// neither batchtime task nor disabled task should be activated
 	tasks, err := task.Find(task.ByBuildId(build1.Id))
-	assert.Len(t, tasks, 2)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 3)
 	for _, tsk := range tasks {
-		assert.False(t, tsk.Activated)
+		if tsk.DisplayName == "t1" {
+			assert.False(t, tsk.Activated)
+		}
+		if tsk.DisplayName == "t2" {
+			assert.False(t, tsk.Activated)
+		}
+		if tsk.DisplayName == "t3" {
+			assert.True(t, tsk.Activated)
+		}
 	}
 
 	// now we should update just the task even though the build is activated already
