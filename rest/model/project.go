@@ -698,6 +698,17 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 		apiSize.BuildFromService(size)
 		p.ContainerSizeDefinitions = append(p.ContainerSizeDefinitions, apiSize)
 	}
+
+	// copy external links
+	if projectRef.ExternalLinks != nil {
+		externalLinks := []APIExternalLink{}
+		for _, l := range projectRef.ExternalLinks {
+			externalLink := APIExternalLink{}
+			externalLink.BuildFromService(l)
+			externalLinks = append(externalLinks, externalLink)
+		}
+		p.ExternalLinks = externalLinks
+	}
 	return nil
 }
 
