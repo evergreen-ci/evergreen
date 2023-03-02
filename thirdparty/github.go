@@ -58,6 +58,7 @@ const (
 	githubPrUnstable  = "unstable"
 )
 
+// IsUnblockedGithubStatus returns true if the status is in the list of unblocked statuses
 func IsUnblockedGithubStatus(status string) bool {
 	return utility.StringSliceContains(UnblockedGithubStatuses, status)
 }
@@ -471,7 +472,7 @@ func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string)
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from '%s/%s': sha: '%s': %v", repoOwner, repo, sha, err)
-		grip.Error(message.Fields{
+		grip.Debug(message.Fields{
 			"message": errMsg,
 			"owner":   repoOwner,
 			"repo":    repo,

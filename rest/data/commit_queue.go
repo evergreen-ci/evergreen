@@ -318,7 +318,7 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 		return nil, errors.New("PR contains no base branch label")
 	}
 
-	if !thirdparty.IsUnblockedGithubStatus(*pr.MergeableState) {
+	if !thirdparty.IsUnblockedGithubStatus(pr.GetMergeableState()) {
 		errMsg := fmt.Sprintf("PR is not mergeable, status: %s", *pr.MergeableState)
 		grip.Error(message.Fields{
 			"message":        errMsg,
