@@ -199,6 +199,97 @@
       }
     },
     {
+      "query_file": "sortByDurationDSC.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "testFile": "TestFinalizePatch",
+                "duration": 1.049
+              },
+              {
+                "testFile": "TestGenerateSuite",
+                "duration": 0.15
+              },
+              {
+                "testFile": "TestHostTaskAuditing",
+                "duration": 0.069
+              },
+              {
+                "testFile": "TestRetryCommitQueueItems",
+                "duration": 0.069
+              },
+              {
+                "testFile": "TestUpdateVersionAndParserProject",
+                "duration": 0.04
+              },
+              {
+                "testFile": "TestGenerateSuite/TestSaveNewTasksWithDependencies",
+                "duration": 0.02
+              },
+              {
+                "testFile": "TestGenerateSuite/TestSaveNewTasksWithCrossVariantDependencies",
+                "duration": 0.02
+              },
+              {
+                "testFile": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
+                "duration": 0.02
+              },
+              {
+                "testFile": "TestStuckHostAuditing",
+                "duration": 0.009
+              },
+              {
+                "testFile": "TestDepsMatrixIntegration",
+                "duration": 0.009
+              },
+              {
+                "testFile": "TestSetVersionActivation",
+                "duration": 0.009
+              },
+              {
+                "testFile": "TestProjectEventSuite/TestModifyProjectNonEvent",
+                "duration": 0
+              },
+              {
+                "testFile": "TestGenerateSuite/TestValidateNoRedefine",
+                "duration": 0
+              },
+              {
+                "testFile": "TestSortTasks",
+                "duration": 0
+              },
+              {
+                "testFile": "TestMergeAxisValue",
+                "duration": 0
+              },
+              {
+                "testFile": "TestCreateIntermediateProjectRequirements",
+                "duration": 0
+              },
+              {
+                "testFile": "TestTaskGroupWithDisplayTask",
+                "duration": 0
+              },
+              {
+                "testFile": "TestTryUpsert/ConfigNumberMatches",
+                "duration": 0
+              },
+              {
+                "testFile": "TestGetActivationTimeWithCron/Interval",
+                "duration": 0
+              },
+              {
+                "testFile": "TestCreateTaskGroup",
+                "duration": 0
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "sortByTestName.graphql",
       "result": {
         "data": {
