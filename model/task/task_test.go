@@ -3270,7 +3270,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 }
 
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
-	tasksToFetch := []*string{utility.ToStringPtr("t1"), utility.ToStringPtr("t2")}
+	tasksToFetch := []string{"t1", "t2"}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
@@ -3682,10 +3682,11 @@ func TestHasResults(t *testing.T) {
 	}()
 
 	for _, test := range []struct {
-		name           string
-		tsk            *Task
-		executionTasks []Task
-		hasResults     bool
+		name              string
+		tsk               *Task
+		executionTasks    []Task
+		oldExecutionTasks []Task
+		hasResults        bool
 	}{
 		{
 			name: "RegularTaskNoResults",
@@ -3747,10 +3748,54 @@ func TestHasResults(t *testing.T) {
 			},
 			hasResults: true,
 		},
+		{
+			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			tsk: &Task{
+				Id:             "display_task",
+				DisplayOnly:    true,
+				Execution:      2,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
+				Archived:       true,
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0"},
+				{Id: "exec_task1"},
+				{Id: "exec_task2"},
+			},
+			oldExecutionTasks: []Task{
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+			},
+			hasResults: true,
+		},
+		{
+			name: "ArchivedDisplayTaskResultsServicePopulated",
+			tsk: &Task{
+				Id:             "display_task",
+				Execution:      2,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
+				Archived:       true,
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0"},
+				{Id: "exec_task1"},
+				{Id: "exec_task2"},
+			},
+			oldExecutionTasks: []Task{
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+			},
+			hasResults: true,
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			for _, execTask := range test.executionTasks {
 				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				require.NoError(t, err)
+			}
+			for _, execTask := range test.oldExecutionTasks {
+				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 
@@ -3766,10 +3811,11 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 	}()
 
 	for _, test := range []struct {
-		name           string
-		tsk            *Task
-		executionTasks []Task
-		expectedOpts   []testresult.TaskOptions
+		name              string
+		tsk               *Task
+		executionTasks    []Task
+		oldExecutionTasks []Task
+		expectedOpts      []testresult.TaskOptions
 	}{
 		{
 			name: "RegularTaskNoResults",
@@ -3834,10 +3880,67 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{TaskID: "exec_task1", Execution: 1, ResultsService: "some_service"},
 			},
 		},
+		{
+			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			tsk: &Task{
+				Id:             "display_task",
+				DisplayOnly:    true,
+				Execution:      2,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
+				Archived:       true,
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0", HasCedarResults: true},
+				{Id: "exec_task1", Execution: 2, HasCedarResults: true},
+				{Id: "exec_task2"},
+			},
+			oldExecutionTasks: []Task{
+				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasCedarResults: true},
+				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasCedarResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "exec_task0"},
+				{TaskID: "exec_task1", Execution: 2},
+				{TaskID: "exec_task3", Execution: 1},
+			},
+		},
+		{
+			name: "ArchivedDisplayTaskResults",
+			tsk: &Task{
+				Id:             "display_task",
+				Execution:      2,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
+				Archived:       true,
+			},
+			executionTasks: []Task{
+				{Id: "exec_task0", ResultsService: "some_service"},
+				{Id: "exec_task1", Execution: 2, ResultsService: "some_service"},
+				{Id: "exec_task2"},
+			},
+			oldExecutionTasks: []Task{
+				{Id: "exec_task1_0", OldTaskId: "exec_task1", ResultsService: "some_service"},
+				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, ResultsService: "some_service"},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, ResultsService: "some_service"},
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "exec_task0", ResultsService: "some_service"},
+				{TaskID: "exec_task1", Execution: 2, ResultsService: "some_service"},
+				{TaskID: "exec_task3", Execution: 1, ResultsService: "some_service"},
+			},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			for _, execTask := range test.executionTasks {
 				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				require.NoError(t, err)
+			}
+			for _, execTask := range test.oldExecutionTasks {
+				execTask.Archived = true
+				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 

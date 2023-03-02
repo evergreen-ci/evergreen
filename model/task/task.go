@@ -1446,22 +1446,29 @@ func (t *Task) SetResultsInfo(service string, failedResults bool) error {
 
 // HasResults returns whether the task has test results or not.
 func (t *Task) HasResults() bool {
-	if t.DisplayOnly {
-		if len(t.ExecutionTasks) == 0 {
-			return false
-		}
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
+		if t.Archived {
+			execTasks, err := FindByExecutionTasksAndMaxExecution(t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "getting execution tasks for archived display task",
+				}))
+			}
 
-		query := ByIds(t.ExecutionTasks)
-		query["$or"] = []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
-		execTasksWithResults, err := Count(db.Query(query))
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "getting count of execution tasks with results for display task",
-			}))
-			return false
-		}
+			return len(execTasks) > 0
+		} else {
+			query := ByIds(t.ExecutionTasks)
+			query["$or"] = hasResults
+			execTasksWithResults, err := Count(db.Query(query))
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "getting count of execution tasks with results for display task",
+				}))
+			}
 
-		return execTasksWithResults > 0
+			return execTasksWithResults > 0
+		}
 	}
 
 	return t.ResultsService != "" || t.HasCedarResults
@@ -2547,16 +2554,29 @@ func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environmen
 func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) {
 	var taskOpts []testresult.TaskOptions
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		query := ByIds(t.ExecutionTasks)
-		query["$or"] = []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
-		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey)
+		var (
+			execTasksWithResults []Task
+			err                  error
+		)
+		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
+		if t.Archived {
+			execTasksWithResults, err = FindByExecutionTasksAndMaxExecution(t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
+		} else {
+			query := ByIds(t.ExecutionTasks)
+			query["$or"] = hasResults
+			execTasksWithResults, err = FindWithFields(query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey)
+		}
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")
 		}
 
 		for _, execTask := range execTasksWithResults {
+			taskID := execTask.Id
+			if execTask.Archived {
+				taskID = execTask.OldTaskId
+			}
 			taskOpts = append(taskOpts, testresult.TaskOptions{
-				TaskID:         execTask.Id,
+				TaskID:         taskID,
 				Execution:      execTask.Execution,
 				ResultsService: execTask.ResultsService,
 			})

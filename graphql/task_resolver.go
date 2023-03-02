@@ -349,7 +349,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
 	}
-	tasks, err := task.FindByExecutionTasksAndMaxExecution(obj.ExecutionTasks, obj.Execution)
+	tasks, err := task.FindByExecutionTasksAndMaxExecution(utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
 	}

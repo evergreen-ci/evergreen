@@ -905,49 +905,52 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
-// FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the passed in taskIds and execution,
-// or the most recent executions of those tasks if they do not have a matching execution
-func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, error) {
-	pipeline := []bson.M{}
-	match := bson.M{
-		"$match": bson.M{
-			IdKey: bson.M{
-				"$in": taskIds,
+// FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the
+// passed in taskIds and execution, or the most recent executions of those
+// tasks if they do not have a matching execution.
+func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
+	query := bson.M{
+		IdKey: bson.M{
+			"$in": taskIds,
+		},
+		ExecutionKey: bson.M{
+			"$lte": execution,
+		},
+	}
+	for _, filter := range filters {
+		query[filter.Key] = filter.Value
+	}
+	tasks, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding tasks")
+	}
+
+	// Get the taskIds that were not found in the previous match stage.
+	var foundIds []string
+	for _, t := range tasks {
+		foundIds = append(foundIds, t.Id)
+	}
+
+	missingTasks, _ := utility.StringSliceSymmetricDifference(taskIds, foundIds)
+	if len(missingTasks) > 0 {
+		var oldTaskPipeline []bson.M
+		match := bson.M{
+			OldTaskIdKey: bson.M{
+				"$in": missingTasks,
 			},
 			ExecutionKey: bson.M{
 				"$lte": execution,
 			},
-		},
-	}
-	pipeline = append(pipeline, match)
-	result := []Task{}
-	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "finding tasks")
-	}
-	// Get the taskIds that were not found in the previous match stage
-	foundIds := []string{}
-	for _, t := range result {
-		foundIds = append(foundIds, t.Id)
-	}
-
-	missingTasks, _ := utility.StringSliceSymmetricDifference(utility.FromStringPtrSlice(taskIds), foundIds)
-	if len(missingTasks) > 0 {
-		oldTasks := []Task{}
-		oldTaskPipeline := []bson.M{}
-		match = bson.M{
-			"$match": bson.M{
-				OldTaskIdKey: bson.M{
-					"$in": missingTasks,
-				},
-				ExecutionKey: bson.M{
-					"$lte": execution,
-				},
-			},
 		}
-		oldTaskPipeline = append(oldTaskPipeline, match)
+		for _, filter := range filters {
+			match[filter.Key] = filter.Value
+		}
+		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$match": match})
 
-		// If there are multiple previous executions, matching on non-zero executions with $lte will return
-		// duplicate tasks. We sort and group to find and return the old task with the most recent execution.
+		// If there are multiple previous executions, matching on
+		// non-zero executions with $lte will return duplicate tasks.
+		// We sort and group to find and return the old task with the
+		// most recent execution.
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{
 			"$sort": bson.D{bson.E{Key: ExecutionKey, Value: -1}},
 		})
@@ -959,16 +962,17 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 		})
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}})
 
+		var oldTasks []Task
 		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
 			return nil, errors.Wrap(err, "finding old tasks")
 		}
-		result = append(result, oldTasks...)
+		tasks = append(tasks, oldTasks...)
 	}
-	if len(result) == 0 {
+	if len(tasks) == 0 {
 		return nil, nil
 	}
 
-	return result, nil
+	return tasks, nil
 }
 
 // FindHostRunnable finds all host tasks that can be scheduled for a distro with
