@@ -34,6 +34,7 @@ func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo 
 		Head: &github.PullRequestBranch{
 			SHA: github.String("abcdef1234"),
 		},
+		MergeableState: utility.ToStringPtr("clean"),
 	}, nil
 }
 
