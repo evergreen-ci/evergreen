@@ -688,8 +688,8 @@
             "line_num": 126,
             "log_url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123",
             "raw_log_url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
-            "test_start_time": "2020-02-14T22:22:24Z",
-            "test_end_time": "2020-02-14T22:22:44Z"
+            "test_start_time":  { "$date": "2020-02-14T22:22:24Z" },
+            "test_end_time":  { "$date": "2020-02-14T22:22:44Z" }
           },
           {
             "test_name": "apple",
@@ -699,8 +699,8 @@
             "line_num": 126,
             "url": "",
             "url_raw": "",
-            "test_start_time": "2020-02-14T22:22:44Z",
-            "test_end_time": "2020-02-14T22:22:54Z"
+            "test_start_time":  { "$date": "2020-02-14T22:22:44Z" },
+            "test_end_time":  { "$date": "2020-02-14T22:22:54Z" }
           },
           {
             "test_name": "d",
@@ -710,8 +710,8 @@
             "line_num": 126,
             "url": "",
             "url_raw": "",
-            "test_start_time": "2020-02-14T22:22:54Z",
-            "test_end_time": "2020-02-14T22:23:34Z"
+            "test_start_time":  { "$date": "2020-02-14T22:22:54Z" },
+            "test_end_time":  { "$date": "2020-02-14T22:23:34Z" }
           },
           {
             "test_name": "c",
@@ -721,8 +721,8 @@
             "line_num": 126,
             "url": "/url/without/scheme/host",
             "url_raw": "/raw/url/without/scheme/host",
-            "test_start_time": "2020-02-14T22:23:34Z",
-            "test_end_time": "2020-02-14T22:24:04Z"
+            "test_start_time":  { "$date": "2020-02-14T22:23:34Z" },
+            "test_end_time":  { "$date": "2020-02-14T22:24:04Z" }
           }
         ]
       }

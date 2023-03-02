@@ -839,8 +839,8 @@
           "execution": 0,
           "status": "fail",
           "line_num": 19,
-          "test_start_time": "2020-02-21T15:15:56Z",
-          "test_end_time": "2020-02-21T15:15:56.009Z"
+          "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
+          "test_end_time": { "$date": "2020-02-21T15:15:56.009Z" }
         },
         {
           "test_name": "TestHostTaskAuditing",
@@ -848,8 +848,8 @@
           "execution": 0,
           "status": "fail",
           "line_num": 12,
-          "test_start_time": "2020-02-21T15:15:56Z",
-          "test_end_time": "2020-02-21T15:15:56.069Z"
+          "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
+          "test_end_time": { "$date": "2020-02-21T15:15:56.069Z" }
         },
         {
           "test_name": "TestProjectEventSuite/TestModifyProjectNonEvent",
@@ -857,8 +857,8 @@
           "execution": 0,
           "status": "skip",
           "line_num": 236,
-          "test_start_time": "2020-02-21T15:15:56Z",
-          "test_end_time": "2020-02-21T15:15:56Z"
+          "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
+          "test_end_time": { "$date": "2020-02-21T15:15:56Z" }
         },
         {
           "test_name": "TestGenerateSuite",
@@ -866,8 +866,8 @@
           "execution": 0,
           "status": "skip",
           "line_num": 22,
-          "test_start_time": "2020-02-21T15:15:56Z",
-          "test_end_time": "2020-02-21T15:15:56.150Z"
+          "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
+          "test_end_time": { "$date": "2020-02-21T15:15:56.150Z" }
         },
         {
           "test_name": "TestGenerateSuite/TestSaveNewTasksWithDependencies",
@@ -876,8 +876,8 @@
           "status": "pass",
           "line_num": 36,
           "group_id": "llama",
-          "test_start_time": "2020-02-21T15:15:56Z",
-          "test_end_time": "2020-02-21T15:15:56.020Z"
+          "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
+          "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
         },
         {
           "test_name": "TestGenerateSuite/TestValidateNoRedefine",
@@ -885,8 +885,8 @@
           "execution": 0,
           "status": "pass",
           "line_num": 41,
-          "test_start_time": "2020-02-21T15:15:56Z",
-          "test_end_time": "2020-02-21T15:15:56Z"
+          "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
+          "test_end_time": { "$date": "2020-02-21T15:15:56Z" }
         }
       ]
     }
