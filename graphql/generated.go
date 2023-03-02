@@ -58275,19 +58275,6 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 		asMap[k] = v
 	}
 
-	if _, present := asMap["testName"]; !present {
-		asMap["testName"] = ""
-	}
-	if _, present := asMap["groupID"]; !present {
-		asMap["groupID"] = ""
-	}
-	if _, present := asMap["limit"]; !present {
-		asMap["limit"] = 0
-	}
-	if _, present := asMap["page"]; !present {
-		asMap["page"] = 0
-	}
-
 	fieldsInOrder := [...]string{"testName", "statuses", "groupID", "sort", "limit", "page"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
