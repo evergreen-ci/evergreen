@@ -195,8 +195,6 @@ func TestXUnitParseAndUpload(t *testing.T) {
 
 			assert.Len(t, cedarSrv.TestResults.Results, 1)
 		},
-		// "": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.CedarMockServer, logger client.LoggerProducer) {
-		// },
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
