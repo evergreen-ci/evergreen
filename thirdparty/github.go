@@ -47,8 +47,12 @@ var UnblockedGithubStatuses = []string{
 }
 
 const (
-	// all PR statuses except for "blocked" based on statuses listed here:
+	// All PR statuses except for "blocked" based on statuses listed here:
 	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
+	// Because the pr.MergeableState is not documented, it can change without
+	// notice. that's why we want to only allow fields we know to be unblocked
+	// rather than simply blocking the "blocked" status. That way if it does
+	// change, it doesn't fail silently.
 	githubPrBehind    = "behind"
 	githubPrClean     = "clean"
 	githubPrDirty     = "dirty"
@@ -472,7 +476,7 @@ func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string)
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from '%s/%s': sha: '%s': %v", repoOwner, repo, sha, err)
-		grip.Debug(message.Fields{
+		grip.Error(message.Fields{
 			"message": errMsg,
 			"owner":   repoOwner,
 			"repo":    repo,
