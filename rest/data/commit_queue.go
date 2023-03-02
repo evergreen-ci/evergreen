@@ -319,7 +319,7 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 	}
 
 	if !thirdparty.IsUnblockedGithubStatus(pr.GetMergeableState()) {
-		errMsg := fmt.Sprintf("PR is not mergeable, status: %s", *pr.MergeableState)
+		errMsg := fmt.Sprintf("PR is not mergeable, status: %s", pr.GetMergeableState())
 		grip.Error(message.Fields{
 			"message":        errMsg,
 			"state":          *pr.MergeableState,
