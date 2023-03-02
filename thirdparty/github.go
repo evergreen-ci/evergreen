@@ -52,7 +52,7 @@ type GithubPatch struct {
 	CommitMessage  string `bson:"commit_message"`
 }
 
-// SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
+// SendGithubStatusInput is the input to the SendVersionStatusToGithub function and contains
 // all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {
 	VersionId string
@@ -295,9 +295,9 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref strin
 	return file, nil
 }
 
-// SendPendingStatusToGithub sends a pending status to a Github PR patch
+// SendVersionStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
-func SendPendingStatusToGithub(input SendGithubStatusInput) error {
+func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
