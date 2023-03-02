@@ -71,6 +71,282 @@ func TestGenericBuildFinding(t *testing.T) {
 	})
 }
 
+func TestFindIntermediateBuilds(t *testing.T) {
+
+	Convey("When finding intermediate builds", t, func() {
+
+		require.NoError(t, db.Clear(Collection))
+
+		// the two builds to use as endpoints
+
+		currBuild := &Build{
+			Id:                  "curr",
+			RevisionOrderNumber: 1000,
+			BuildVariant:        "bv1",
+			Requester:           "r1",
+			Project:             "project1",
+		}
+		So(currBuild.Insert(), ShouldBeNil)
+
+		prevBuild := &Build{Id: "prev", RevisionOrderNumber: 10}
+		So(prevBuild.Insert(), ShouldBeNil)
+
+		Convey("all builds returned should be in commits between the current"+
+			" build and the specified previous one", func() {
+
+			// insert two builds with commit order numbers in the correct
+			// range
+
+			matchingBuildOne := &Build{
+				Id:                  "mb1",
+				RevisionOrderNumber: 50,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(matchingBuildOne.Insert(), ShouldBeNil)
+
+			matchingBuildTwo := &Build{
+				Id:                  "mb2",
+				RevisionOrderNumber: 51,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(matchingBuildTwo.Insert(), ShouldBeNil)
+
+			// insert two builds with commit order numbers out of range (one too
+			// high and one too low)
+
+			numberTooLow := &Build{
+				Id:                  "tooLow",
+				RevisionOrderNumber: 5,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(numberTooLow.Insert(), ShouldBeNil)
+
+			numberTooHigh := &Build{
+				Id:                  "tooHigh",
+				RevisionOrderNumber: 5000,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(numberTooHigh.Insert(), ShouldBeNil)
+
+			// finding intermediate builds should return only the two in range
+
+			found, err := currBuild.FindIntermediateBuilds(prevBuild)
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 2)
+			So(buildIdInSlice(found, matchingBuildOne.Id), ShouldBeTrue)
+			So(buildIdInSlice(found, matchingBuildTwo.Id), ShouldBeTrue)
+		})
+
+		Convey("all builds returned should have the same build variant,"+
+			" requester, and project as the current one", func() {
+
+			// insert four builds - one with the wrong build variant, one
+			// with the wrong requester, one with the wrong project, and one
+			// with all the correct values
+
+			wrongBV := &Build{
+				Id:                  "wrongBV",
+				RevisionOrderNumber: 50,
+				BuildVariant:        "bv2",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(wrongBV.Insert(), ShouldBeNil)
+
+			wrongReq := &Build{
+				Id:                  "wrongReq",
+				RevisionOrderNumber: 51,
+				BuildVariant:        "bv1",
+				Requester:           "r2",
+				Project:             "project1",
+			}
+			So(wrongReq.Insert(), ShouldBeNil)
+
+			wrongProject := &Build{
+				Id:                  "wrongProject",
+				RevisionOrderNumber: 52,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project2",
+			}
+			So(wrongProject.Insert(), ShouldBeNil)
+
+			allCorrect := &Build{
+				Id:                  "allCorrect",
+				RevisionOrderNumber: 53,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(allCorrect.Insert(), ShouldBeNil)
+
+			// finding intermediate builds should return only the one with
+			// all the correctly matching values
+
+			found, err := currBuild.FindIntermediateBuilds(prevBuild)
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 1)
+			So(found[0].Id, ShouldEqual, allCorrect.Id)
+
+		})
+
+		Convey("the builds returned should be sorted in ascending order"+
+			" by commit order number", func() {
+
+			// insert two builds with commit order numbers in the correct
+			// range
+			matchingBuildOne := &Build{
+				Id:                  "mb1",
+				RevisionOrderNumber: 52,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(matchingBuildOne.Insert(), ShouldBeNil)
+
+			matchingBuildTwo := &Build{
+				Id:                  "mb2",
+				RevisionOrderNumber: 50,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(matchingBuildTwo.Insert(), ShouldBeNil)
+
+			matchingBuildThree := &Build{
+				Id:                  "mb3",
+				RevisionOrderNumber: 51,
+				BuildVariant:        "bv1",
+				Requester:           "r1",
+				Project:             "project1",
+			}
+			So(matchingBuildThree.Insert(), ShouldBeNil)
+
+			// the builds should come out sorted by commit order number
+
+			found, err := currBuild.FindIntermediateBuilds(prevBuild)
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 3)
+			So(found[0].Id, ShouldEqual, matchingBuildTwo.Id)
+			So(found[1].Id, ShouldEqual, matchingBuildThree.Id)
+			So(found[2].Id, ShouldEqual, matchingBuildOne.Id)
+		})
+	})
+}
+
+func TestFindPreviousActivatedBuild(t *testing.T) {
+
+	Convey("When finding the previous activated build", t, func() {
+
+		require.NoError(t, db.Clear(Collection))
+
+		currBuild := &Build{
+			Id:                  "curr",
+			RevisionOrderNumber: 1000,
+			BuildVariant:        "bv1",
+			Project:             "project1",
+			Requester:           "r1",
+		}
+
+		Convey("the last activated build before the specified one with the"+
+			" same build variant and specified requester + project should be"+
+			" fetched", func() {
+
+			// insert 7 builds:
+			//  one with too high a commit number
+			//  one with the wrong build variant
+			//  one with the wrong project
+			//  one with the wrong requester
+			//  one inactive
+			//  two matching ones
+
+			tooHigh := &Build{
+				Id:                  "tooHigh",
+				RevisionOrderNumber: 5000,
+				BuildVariant:        "bv1",
+				Project:             "project1",
+				Requester:           "r1",
+				Activated:           true,
+			}
+			So(tooHigh.Insert(), ShouldBeNil)
+
+			wrongBV := &Build{
+				Id:                  "wrongBV",
+				RevisionOrderNumber: 500,
+				BuildVariant:        "bv2",
+				Project:             "project1",
+				Requester:           "r1",
+				Activated:           true,
+			}
+			So(wrongBV.Insert(), ShouldBeNil)
+
+			wrongProject := &Build{
+				Id:                  "wrongProject",
+				RevisionOrderNumber: 500,
+				BuildVariant:        "bv1",
+				Project:             "project2",
+				Requester:           "r1",
+				Activated:           true,
+			}
+			So(wrongProject.Insert(), ShouldBeNil)
+
+			wrongReq := &Build{
+				Id:                  "wrongReq",
+				RevisionOrderNumber: 500,
+				BuildVariant:        "bv1",
+				Project:             "project1",
+				Requester:           "r2",
+				Activated:           true,
+			}
+			So(wrongReq.Insert(), ShouldBeNil)
+
+			notActive := &Build{
+				Id:                  "notActive",
+				RevisionOrderNumber: 500,
+				BuildVariant:        "bv1",
+				Project:             "project1",
+				Requester:           "r1",
+			}
+			So(notActive.Insert(), ShouldBeNil)
+
+			matchingHigher := &Build{
+				Id:                  "matchingHigher",
+				RevisionOrderNumber: 900,
+				BuildVariant:        "bv1",
+				Project:             "project1",
+				Requester:           "r1",
+				Activated:           true,
+			}
+			So(matchingHigher.Insert(), ShouldBeNil)
+
+			matchingLower := &Build{
+				Id:                  "matchingLower",
+				RevisionOrderNumber: 800,
+				BuildVariant:        "bv1",
+				Project:             "project1",
+				Requester:           "r1",
+				Activated:           true,
+			}
+			So(matchingLower.Insert(), ShouldBeNil)
+
+			// the matching build with the higher commit order number should
+			// be returned
+
+			found, err := currBuild.PreviousActivated("project1", "r1")
+			So(err, ShouldBeNil)
+			So(found.Id, ShouldEqual, matchingHigher.Id)
+		})
+	})
+}
+
 func TestRecentlyFinishedBuilds(t *testing.T) {
 
 	Convey("When finding all recently finished builds", t, func() {

@@ -18,6 +18,15 @@ const (
 	APITimeFormat = "\"2006-01-02T15:04:05.000Z\""
 )
 
+func ParseTime(tval string) (time.Time, error) {
+	if !strings.HasPrefix(tval, "\"") {
+		tval = "\"" + tval + "\""
+	}
+
+	t, err := time.ParseInLocation(APITimeFormat, tval, time.UTC)
+	return t, errors.WithStack(err)
+}
+
 // Represents duration in milliseconds
 type APIDuration uint64
 
@@ -58,13 +67,4 @@ func FromTimePtr(t *time.Time) (time.Time, error) {
 	}
 
 	return ParseTime(t.Format(APITimeFormat))
-}
-
-func ParseTime(tval string) (time.Time, error) {
-	if !strings.HasPrefix(tval, "\"") {
-		tval = "\"" + tval + "\""
-	}
-
-	t, err := time.ParseInLocation(APITimeFormat, tval, time.UTC)
-	return t, errors.WithStack(err)
 }
