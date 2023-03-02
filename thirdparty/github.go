@@ -50,7 +50,7 @@ const (
 	// All PR statuses except for "blocked" based on statuses listed here:
 	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
 	// Because the pr.MergeableState is not documented, it can change without
-	// notice. that's why we want to only allow fields we know to be unblocked
+	// notice. That's why we want to only allow fields we know to be unblocked
 	// rather than simply blocking the "blocked" status. That way if it does
 	// change, it doesn't fail silently.
 	githubPrBehind    = "behind"
