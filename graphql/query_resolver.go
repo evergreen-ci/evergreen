@@ -631,7 +631,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(baseTaskOpts)
 
 	var sortBy string
 	if sortCategory != nil {

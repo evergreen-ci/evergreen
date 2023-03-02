@@ -209,18 +209,6 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	/*
-		var aggregatedTasks []bson.M
-		var agg adb.Aggregation
-		if err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
-			return chunk, errors.WithStack(err)
-		}
-		chunk.Tasks = aggregatedTasks
-		failedTests, err := iter.GetFailedTests(agg)
-		if err != nil {
-			return chunk, errors.WithStack(err)
-		}
-	*/
 	var rawAggregatedTasks []bson.M
 	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &rawAggregatedTasks, taskHistoryMaxTime); err != nil {
 		return chunk, errors.Wrap(err, "aggregating task history data")
