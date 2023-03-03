@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -104,7 +104,7 @@ func (s *logSenderSuite) TestFileLogger() {
 	f, err := os.Open(logFileName)
 	s.Require().NoError(err)
 	defer f.Close()
-	logs, err := ioutil.ReadAll(f)
+	logs, err := io.ReadAll(f)
 	s.NoError(err)
 	logStr := string(logs)
 	for i := 0; i < s.numMessages; i++ {

@@ -99,9 +99,9 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 	return &out
 }
 
-func (c *ResultCounts) Raw() interface{} { _ = c.Collect(); return c } // nolint: golint
-func (c *ResultCounts) Loggable() bool   { return c.loggable }         // nolint: golint
-func (c *ResultCounts) String() string { // nolint: golint
+func (c *ResultCounts) Raw() interface{} { _ = c.Collect(); return c }
+func (c *ResultCounts) Loggable() bool   { return c.loggable }
+func (c *ResultCounts) String() string {
 	if !c.Loggable() {
 		return ""
 	}

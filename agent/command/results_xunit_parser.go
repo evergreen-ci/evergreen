@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
@@ -71,7 +70,7 @@ type failureDetails struct {
 
 func parseXMLResults(reader io.Reader) ([]testSuite, error) {
 	results := testSuites{}
-	fileData, err := ioutil.ReadAll(reader)
+	fileData, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading results file")
 	}

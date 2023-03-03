@@ -2,7 +2,7 @@ package operations
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -332,7 +332,7 @@ func PatchFile() cli.Command {
 			}
 			params.Description = params.getDescription()
 
-			fullPatch, err := ioutil.ReadFile(diffPath)
+			fullPatch, err := os.ReadFile(diffPath)
 			if err != nil {
 				return errors.Wrapf(err, "reading diff file '%s'", diffPath)
 			}

@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -36,6 +36,37 @@ const (
 	GithubInvestigation = "Github API Limit Investigation"
 )
 
+var UnblockedGithubStatuses = []string{
+	githubPrBehind,
+	githubPrClean,
+	githubPrDirty,
+	githubPrDraft,
+	githubPrHas_Hooks,
+	githubPrUnknown,
+	githubPrUnstable,
+}
+
+const (
+	// All PR statuses except for "blocked" based on statuses listed here:
+	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
+	// Because the pr.MergeableState is not documented, it can change without
+	// notice. That's why we want to only allow fields we know to be unblocked
+	// rather than simply blocking the "blocked" status. That way if it does
+	// change, it doesn't fail silently.
+	githubPrBehind    = "behind"
+	githubPrClean     = "clean"
+	githubPrDirty     = "dirty"
+	githubPrDraft     = "draft"
+	githubPrHas_Hooks = "has_hooks"
+	githubPrUnknown   = "unknown"
+	githubPrUnstable  = "unstable"
+)
+
+// IsUnblockedGithubStatus returns true if the status is in the list of unblocked statuses
+func IsUnblockedGithubStatus(status string) bool {
+	return utility.StringSliceContains(UnblockedGithubStatuses, status)
+}
+
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
 	PRNumber       int    `bson:"pr_number"`
@@ -52,7 +83,7 @@ type GithubPatch struct {
 	CommitMessage  string `bson:"commit_message"`
 }
 
-// SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
+// SendGithubStatusInput is the input to the SendVersionStatusToGithub function and contains
 // all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {
 	VersionId string
@@ -248,7 +279,7 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 }
 
 func parseGithubErrorResponse(resp *github.Response) error {
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ResponseReadError{err.Error()}
 	}
@@ -295,9 +326,9 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref strin
 	return file, nil
 }
 
-// SendPendingStatusToGithub sends a pending status to a Github PR patch
+// SendVersionStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
-func SendPendingStatusToGithub(input SendGithubStatusInput) error {
+func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
@@ -494,7 +525,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 		if err != nil {
 			return nil, err
 		}
-		req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+		req.Body = io.NopCloser(bytes.NewReader(jsonBytes))
 	}
 
 	// check if there is an oauth token, if there is make sure it is a valid oauthtoken
@@ -605,7 +636,7 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 	if resp == nil {
 		return nil, errors.New("invalid github response")
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
@@ -633,7 +664,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 		return "", errors.New("invalid github response")
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", ResponseReadError{err.Error()}
 	}
@@ -701,7 +732,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 		defer resp.Body.Close()
 		if err != nil {
 			var respBody []byte
-			respBody, err = ioutil.ReadAll(resp.Body)
+			respBody, err = io.ReadAll(resp.Body)
 			if err != nil {
 				return nil, false, ResponseReadError{err.Error()}
 			}

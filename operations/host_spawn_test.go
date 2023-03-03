@@ -3,7 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -51,11 +51,11 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			localContent, err := ioutil.ReadFile(localFile)
+			localContent, err := os.ReadFile(localFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, localContent)
 
-			remoteContent, err := ioutil.ReadFile(newRemoteFile)
+			remoteContent, err := os.ReadFile(newRemoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, remoteContent)
 		},
@@ -67,11 +67,11 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			localContent, err := ioutil.ReadFile(localFile)
+			localContent, err := os.ReadFile(localFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, localContent)
 
-			remoteContent, err := ioutil.ReadFile(remoteFile)
+			remoteContent, err := os.ReadFile(remoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, remoteContent)
 		},
@@ -85,11 +85,11 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			localContent, err := ioutil.ReadFile(newLocalFile)
+			localContent, err := os.ReadFile(newLocalFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, localContent)
 
-			remoteContent, err := ioutil.ReadFile(remoteFile)
+			remoteContent, err := os.ReadFile(remoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, remoteContent)
 		},
@@ -103,11 +103,11 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			remoteContent, err := ioutil.ReadFile(remoteFile)
+			remoteContent, err := os.ReadFile(remoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, remoteContent)
 
-			localContent, err := ioutil.ReadFile(localFile)
+			localContent, err := os.ReadFile(localFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, localContent)
 		},
@@ -120,11 +120,11 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			localContent, err := ioutil.ReadFile(localFile)
+			localContent, err := os.ReadFile(localFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, localContent)
 
-			remoteContent, err := ioutil.ReadFile(remoteFile)
+			remoteContent, err := os.ReadFile(remoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, remoteContent)
 		},
@@ -138,11 +138,11 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			localContent, err := ioutil.ReadFile(localFile)
+			localContent, err := os.ReadFile(localFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, localContent)
 
-			remoteContent, err := ioutil.ReadFile(remoteFile)
+			remoteContent, err := os.ReadFile(remoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, remoteContent)
 		},
@@ -159,7 +159,7 @@ func TestHostRsync(t *testing.T) {
 			assert.False(t, oldRemoteFileExists)
 
 			newRemoteFile := filepath.Join(remoteDir, filepath.Base(localFile))
-			newRemoteContent, err := ioutil.ReadFile(newRemoteFile)
+			newRemoteContent, err := os.ReadFile(newRemoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, newRemoteContent)
 		},
@@ -171,12 +171,12 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			oldRemoteContent, err := ioutil.ReadFile(remoteFile)
+			oldRemoteContent, err := os.ReadFile(remoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, oldRemoteContent)
 
 			newRemoteFile := filepath.Join(remoteDir, filepath.Base(localFile))
-			newRemoteContent, err := ioutil.ReadFile(newRemoteFile)
+			newRemoteContent, err := os.ReadFile(newRemoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, newRemoteContent)
 		},
@@ -195,7 +195,7 @@ func TestHostRsync(t *testing.T) {
 			assert.False(t, oldLocalFileExists)
 
 			newLocalFile := filepath.Join(localDir, filepath.Base(remoteFile))
-			newLocalContent, err := ioutil.ReadFile(newLocalFile)
+			newLocalContent, err := os.ReadFile(newLocalFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, newLocalContent)
 		},
@@ -208,12 +208,12 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			oldLocalContent, err := ioutil.ReadFile(localFile)
+			oldLocalContent, err := os.ReadFile(localFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, oldLocalContent)
 
 			newLocalFile := filepath.Join(localDir, filepath.Base(remoteFile))
-			newLocalContent, err := ioutil.ReadFile(newLocalFile)
+			newLocalContent, err := os.ReadFile(newLocalFile)
 			require.NoError(t, err)
 			assert.Equal(t, remoteFileContent, newLocalContent)
 		},
@@ -225,12 +225,12 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			oldRemoteContent, err := ioutil.ReadFile(remoteFile)
+			oldRemoteContent, err := os.ReadFile(remoteFile)
 			assert.NoError(t, err)
 			assert.Equal(t, remoteFileContent, oldRemoteContent)
 
 			newRemoteFile := filepath.Join(remoteDir, filepath.Base(localDir), filepath.Base(localFile))
-			newRemoteContent, err := ioutil.ReadFile(newRemoteFile)
+			newRemoteContent, err := os.ReadFile(newRemoteFile)
 			require.NoError(t, err)
 			assert.Equal(t, localFileContent, newRemoteContent)
 		},
@@ -243,12 +243,12 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			oldLocalContent, err := ioutil.ReadFile(localFile)
+			oldLocalContent, err := os.ReadFile(localFile)
 			assert.NoError(t, err)
 			assert.Equal(t, localFileContent, oldLocalContent)
 
 			newLocalFile := filepath.Join(localDir, filepath.Base(remoteDir), filepath.Base(remoteFile))
-			newLocalContent, err := ioutil.ReadFile(newLocalFile)
+			newLocalContent, err := os.ReadFile(newLocalFile)
 			require.NoError(t, err)
 			assert.Equal(t, remoteFileContent, newLocalContent)
 		},
@@ -290,7 +290,7 @@ func TestHostRsync(t *testing.T) {
 
 			localDir := t.TempDir()
 
-			localFile, err := ioutil.TempFile(localDir, "local_file")
+			localFile, err := os.CreateTemp(localDir, "local_file")
 			require.NoError(t, err)
 			n, err := localFile.Write(localFileContent)
 			require.NoError(t, err)
@@ -299,7 +299,7 @@ func TestHostRsync(t *testing.T) {
 
 			remoteDir := t.TempDir()
 
-			remoteFile, err := ioutil.TempFile(remoteDir, "remote_file")
+			remoteFile, err := os.CreateTemp(remoteDir, "remote_file")
 			require.NoError(t, err)
 			n, err = remoteFile.Write(remoteFileContent)
 			require.NoError(t, err)

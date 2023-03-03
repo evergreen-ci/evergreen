@@ -72,7 +72,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := dbModel.SetVersionsPriority([]string{p.patchId}, priority, ""); err != nil {
+		if err := dbModel.SetVersionPriority(p.patchId, priority, ""); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch priority"))
 		}
 	}

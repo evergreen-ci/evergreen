@@ -22,7 +22,7 @@ const (
 	SubscriptionsCollection = "subscriptions"
 )
 
-// nolint: deadcode, megacheck, unused
+//nolint:megacheck,unused
 var (
 	subscriptionIDKey             = bsonutil.MustHaveTag(Subscription{}, "ID")
 	subscriptionResourceTypeKey   = bsonutil.MustHaveTag(Subscription{}, "ResourceType")

@@ -3,7 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
@@ -36,7 +36,7 @@ func Evaluate() cli.Command {
 			showTasks := c.Bool(taskFlagName)
 			showVariants := c.Bool(variantsFlagName)
 
-			configBytes, err := ioutil.ReadFile(path)
+			configBytes, err := os.ReadFile(path)
 			if err != nil {
 				return errors.Wrap(err, "reading project config")
 			}

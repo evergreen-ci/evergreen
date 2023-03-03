@@ -43,13 +43,12 @@ func (err *LastError) Error() string {
 	return err.Err
 }
 
-type queryError struct { //nolint
-	//nolint
-	Err       string "$err"
-	ErrMsg    string
-	Assertion string
-	Code      int
-	//nolint
+//nolint:all
+type queryError struct {
+	Err           string "$err"
+	ErrMsg        string
+	Assertion     string
+	Code          int
 	AssertionCode int "assertionCode"
 }
 

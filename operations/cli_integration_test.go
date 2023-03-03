@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -80,7 +79,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(db.Clear(patch.Collection), ShouldBeNil)
 	So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
 	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(), ShouldBeNil)
-	localConfBytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
+	localConfBytes, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
 	So(err, ShouldBeNil)
 
 	projectRef := &model.ProjectRef{
@@ -119,7 +118,7 @@ func setupCLITestHarness() cliTestHarness {
 		APIKey:        "testapikey",
 		User:          "testuser",
 	}
-	settingsFile, err := ioutil.TempFile("", "settings")
+	settingsFile, err := os.CreateTemp("", "settings")
 	So(err, ShouldBeNil)
 	settingsBytes, err := yaml.Marshal(settings)
 	So(err, ShouldBeNil)

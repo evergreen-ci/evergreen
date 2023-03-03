@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -105,7 +104,7 @@ func makeHostProvisioningScriptFile(workingDir string, content string) (string, 
 	// Cygwin shell requires back slashes ('\') to be escaped, so use forward
 	// slashes ('/') instead as the path separator.
 	scriptPath = util.ConsistentFilepath(scriptPath)
-	if err = ioutil.WriteFile(scriptPath, []byte(content), 0700); err != nil {
+	if err = os.WriteFile(scriptPath, []byte(content), 0700); err != nil {
 		return "", errors.Wrapf(err, "writing script file '%s'", scriptPath)
 	}
 	return scriptPath, nil

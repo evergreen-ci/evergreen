@@ -2,7 +2,7 @@ package operations
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
@@ -100,7 +100,7 @@ func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeD
 		}
 		configDownloaded[repo] = true
 
-		err = ioutil.WriteFile(p.Identifier+".yml", config, 0644)
+		err = os.WriteFile(p.Identifier+".yml", config, 0644)
 		if err != nil {
 			catcher.Wrapf(err, "writing configuration for project '%s'", p.Identifier)
 		}

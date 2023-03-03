@@ -74,7 +74,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return nil, errors.Wrap(err, "making commit queue patch")
 	}
 
-	p, patchSummaries, proj, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
+	p, patchSummaries, proj, pp, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -127,33 +127,40 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return nil, err
 	}
 
+	env := evergreen.GetEnvironment()
+	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, pp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "upsert parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
+	}
+	patchDoc.ProjectStorageMethod = ppStorageMethod
+
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
 	}
 
 	catcher = grip.NewBasicCatcher()
 	for _, modulePR := range modulePRs {
-		catcher.Add(thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
+		catcher.Add(thirdparty.SendCommitQueueGithubStatus(env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
 	}
 
 	return patchDoc, catcher.Resolve()
 }
 
-func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, error) {
+func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, *model.ParserProject, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "getting GitHub PR diff")
+		return "", nil, nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
 
 	// fetch the latest config file
 	config, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "getting remote config file")
+		return "", nil, nil, nil, errors.Wrap(err, "getting remote config file")
 	}
 
-	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
-	return patchContent, summaries, config, nil
+	return patchContent, summaries, config, patchConfig.PatchedParserProject, nil
 }
 
 func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, patchContent string) error {
@@ -309,6 +316,28 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 
 	if pr == nil || pr.Base == nil || pr.Base.Ref == nil {
 		return nil, errors.New("PR contains no base branch label")
+	}
+
+	if !thirdparty.IsUnblockedGithubStatus(pr.GetMergeableState()) {
+		errMsg := fmt.Sprintf("PR is not mergeable, status: %s", pr.GetMergeableState())
+		grip.Debug(message.Fields{
+			"message":        errMsg,
+			"state":          pr.GetMergeableState(),
+			"owner":          userRepo.Owner,
+			"repo":           userRepo.Repo,
+			"pr_title":       pr.GetTitle(),
+			"commit_message": pr.GetNumber(),
+		})
+		sendErr := thirdparty.SendCommitQueueGithubStatus(env, pr, message.GithubStateFailure, errMsg, "")
+
+		grip.Error(message.WrapError(sendErr, message.Fields{
+			"message": "error sending patch creation failure to github",
+			"owner":   userRepo.Owner,
+			"repo":    userRepo.Repo,
+			"pr":      info.PR,
+		}))
+
+		return nil, errors.New(errMsg)
 	}
 
 	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)

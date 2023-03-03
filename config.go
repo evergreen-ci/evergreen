@@ -3,7 +3,6 @@ package evergreen
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,10 +32,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2023-02-14"
+	ClientVersion = "2023-02-23"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-02-23"
+	AgentVersion = "2023-03-03"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -288,7 +287,7 @@ func (c *Settings) ValidateAndDefault() error {
 
 // NewSettings builds an in-memory representation of the given settings file.
 func NewSettings(filename string) (*Settings, error) {
-	configData, err := ioutil.ReadFile(filename)
+	configData, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

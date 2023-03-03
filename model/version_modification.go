@@ -88,7 +88,7 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 				return http.StatusUnauthorized, errors.Errorf("insufficient access to set priority %d, can only set priority less than or equal to %d", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
-		if err := SetVersionsPriority([]string{version.Id}, modifications.Priority, user.Id); err != nil {
+		if err := SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting version priority")
 		}
 	default:

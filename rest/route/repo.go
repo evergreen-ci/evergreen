@@ -3,7 +3,7 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -95,7 +95,7 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.user = MustHaveUser(ctx)
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "reading request body")
 	}

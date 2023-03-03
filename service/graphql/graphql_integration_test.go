@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,7 +26,7 @@ func TestAtomicGQLQueries(t *testing.T) {
 	grip.Warning(grip.SetSender(send.MakePlainLogger()))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, t.Name())
-	testDirectories, err := ioutil.ReadDir(filepath.Join(pathToTests, "tests"))
+	testDirectories, err := os.ReadDir(filepath.Join(pathToTests, "tests"))
 	require.NoError(t, err)
 	server, err := service.CreateTestServer(settings, nil, true)
 	require.NoError(t, err)

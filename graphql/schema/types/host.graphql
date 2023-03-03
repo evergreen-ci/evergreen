@@ -26,6 +26,7 @@ Host models a host, which are used for things like running tasks or as virtual w
 type Host {
   id: ID!
   availabilityZone: String
+  ami: String
   displayName: String
   distro: DistroInfo
   distroId: String

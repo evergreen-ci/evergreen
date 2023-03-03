@@ -103,7 +103,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 
 	repository, err := model.FindRepository(projectRef.Id)
 	if err != nil {
-		return errors.Wrapf(err, "error finding repository '%v'", projectRef.Identifier)
+		return errors.Wrapf(err, "finding repository '%s'", projectRef.Identifier)
 	}
 
 	var revisions []model.Revision
@@ -471,11 +471,11 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 
 	versionSub := event.NewVersionGithubCheckOutcomeSubscription(v.Id, ghSub)
 	if err := versionSub.Upsert(); err != nil {
-		catcher.Wrap(err, "failed to insert version github check subscription")
+		catcher.Wrap(err, "inserting version GitHub check subscription")
 	}
 	buildSub := event.NewGithubCheckBuildOutcomeSubscriptionByVersion(v.Id, ghSub)
 	if err := buildSub.Upsert(); err != nil {
-		catcher.Wrap(err, "failed to insert build github check subscription")
+		catcher.Wrap(err, "inserting build GitHub check subscription")
 	}
 	input := thirdparty.SendGithubStatusInput{
 		VersionId: v.Id,
@@ -486,9 +486,9 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 		Caller:    RunnerName,
 		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(input)
+	err := thirdparty.SendVersionStatusToGithub(input)
 	if err != nil {
-		catcher.Wrap(err, "failed to send version status to github")
+		catcher.Wrap(err, "failed to send version status to GitHub")
 	}
 	return catcher.Resolve()
 }
@@ -569,7 +569,7 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 		return nil, errors.Wrap(err, "unable to find user")
 	}
 	if u == nil {
-		return nil, errors.Errorf("user %s does not exist", userID)
+		return nil, errors.Errorf("user '%s' does not exist", userID)
 	}
 	var subscriber *event.Subscriber
 	preference := u.Settings.Notifications.BuildBreak
@@ -611,11 +611,10 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	if projectInfo.Project == nil {
 		projectInfo.Project, err = model.TranslateProject(projectInfo.IntermediateProject)
 		if err != nil {
-			return nil, errors.Wrap(err, "error translating intermediate project")
+			return nil, errors.Wrap(err, "translating intermediate project")
 		}
 	}
-	projectInfo.IntermediateProject.Id = v.Id
-	projectInfo.IntermediateProject.CreateTime = v.CreateTime
+	projectInfo.IntermediateProject.Init(v.Id, v.CreateTime)
 	if projectInfo.Config != nil {
 		projectInfo.Config.Id = v.Id
 	}
@@ -647,11 +646,14 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			v.Errors = append(v.Errors, versionErrs.Errors...)
 		}
 		if len(v.Errors) > 0 {
-			if err = v.Insert(); err != nil {
-				return nil, errors.Wrap(err, "error inserting version")
+			env := evergreen.GetEnvironment()
+			ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
+			if err != nil {
+				return nil, errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 			}
-			if err = projectInfo.IntermediateProject.Insert(); err != nil {
-				return v, errors.Wrap(err, "error inserting project")
+			v.ProjectStorageMethod = ppStorageMethod
+			if err = v.Insert(); err != nil {
+				return nil, errors.Wrap(err, "inserting version")
 			}
 			return v, nil
 
@@ -995,12 +997,20 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"version": v.Id,
 	}))
 
+	env := evergreen.GetEnvironment()
+
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
+	if err != nil {
+		return errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
+	}
+	v.ProjectStorageMethod = ppStorageMethod
+
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
 		if err != nil {
 			return errors.Wrap(err, "starting transaction")
 		}
-		db := evergreen.GetEnvironment().DB()
+		db := env.DB()
 		_, err = db.Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
@@ -1026,18 +1036,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				}
 				return errors.Wrapf(err, "inserting project config '%s'", v.Id)
 			}
-		}
-		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
-		if err != nil {
-			grip.Notice(message.WrapError(err, message.Fields{
-				"message": "aborting transaction",
-				"cause":   "can't insert parser project",
-				"version": v.Id,
-			}))
-			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "aborting transaction")
-			}
-			return errors.Wrapf(err, "inserting parser project '%s'", v.Id)
 		}
 		_, err = db.Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {

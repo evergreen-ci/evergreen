@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -50,7 +49,7 @@ func (ae APIError) Error() string {
 // NewAPIError creates an APIError by reading the body of the response and its status code.
 func NewAPIError(resp *http.Response) APIError {
 	defer resp.Body.Close()
-	bodyBytes, _ := ioutil.ReadAll(resp.Body) // ignore error, request has already failed anyway
+	bodyBytes, _ := io.ReadAll(resp.Body) // ignore error, request has already failed anyway
 	bodyStr := string(bodyBytes)
 	return APIError{bodyStr, resp.Status, resp.StatusCode}
 }
@@ -294,7 +293,7 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 		return nil, NewAPIError(resp)
 	}
 	ref := &model.Project{}
-	yamlBytes, err := ioutil.ReadAll(resp.Body)
+	yamlBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +318,7 @@ func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading response body")
 	}
@@ -341,7 +340,7 @@ func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading response body")
 	}

@@ -2273,7 +2273,7 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 		a.Name = utility.ToStringPtr(v.Name)
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
-			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: govet
+			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint:govet
 				return errors.Wrap(err, "converting Slack options to API model")
 			}
 		}
@@ -2288,7 +2288,7 @@ func (a *APISlackConfig) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	options := i.(send.SlackOptions) //nolint: govet
+	options := i.(send.SlackOptions) //nolint:govet
 	return evergreen.SlackConfig{
 		Token:   utility.FromStringPtr(a.Token),
 		Level:   utility.FromStringPtr(a.Level),
