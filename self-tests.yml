@@ -346,7 +346,9 @@ tasks:
   - <<: *run-build
     name: dist-staging
     patch_only: true
-    run_on: archlinux-new-small
+    run_on:
+      - ubuntu2004-small
+      - ubuntu2004-large
   - <<: *run-build
     name: dist
   - <<: *run-build
