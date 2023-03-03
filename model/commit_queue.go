@@ -49,6 +49,9 @@ func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitq
 	return modulePRs, modulePatches, nil
 }
 
+// kim: NOTE: used only for legacy/Spruce UI to remove commit queue items for
+// aborting incomplete patches. Probably not relevant because it's for use
+// before patch is finished.
 func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*commitqueue.CommitQueueItem, error) {
 	cq, err := commitqueue.FindOneId(projectId)
 	if err != nil {
@@ -73,6 +76,8 @@ func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*c
 
 // RemoveItemAndPreventMerge removes an item from the commit queue and disables the merge task, if applicable.
 func RemoveItemAndPreventMerge(cq *commitqueue.CommitQueue, issue string, user string) (*commitqueue.CommitQueueItem, error) {
+	// kim: NOTE: This could race with ConcludeMerge to remove the item. Need to
+	// know if it's okay to race or not.
 	removed, err := cq.Remove(issue)
 	if err != nil {
 		return removed, errors.Wrapf(err, "removing item '%s' from commit queue for project '%s'", issue, cq.ProjectID)

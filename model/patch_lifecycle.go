@@ -894,14 +894,18 @@ func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
 
-// AbortPatchesWithGithubPatchData runs CancelPatch on patches created before
-// the given time, with the same pr number, and base repository. Tasks which
-// are abortable (see model/task.IsAbortable()) will be aborted, while
-// dispatched/running/completed tasks will not be affected
-func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
+// AbortPatchesWithGithubPatchData aborts patches and commit queue items created
+// before the given time, with the same PR number, and base repository. Tasks
+// which are abortable will be aborted, while completed tasks will not be
+// affected. This function makes one exception for a patch that is in the commit
+// queue - if it is already merging or has merged, then that patch is not
+// aborted. It will also return true if there was a commit queue merge in
+// progress.
+// kim: TODO: add tests.
+func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) (isCommitQueueMerging bool, err error) {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
-		return errors.Wrap(err, "fetching initial patch")
+		return false, errors.Wrap(err, "fetching initial patch")
 	}
 	grip.Info(message.Fields{
 		"source":         "github hook",
@@ -918,10 +922,17 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 			if p.IsCommitQueuePatch() {
 				mergeTask, err := task.FindMergeTaskForVersion(p.Version)
 				if err != nil {
-					return errors.Wrap(err, "finding merge task for version")
+					return isCommitQueueMerging, errors.Wrap(err, "finding merge task for version")
 				}
 				if mergeTask == nil {
-					return errors.New("no merge task found")
+					return isCommitQueueMerging, errors.New("no merge task found")
+				}
+				if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
+					// If the merge task already started, the merge itself may
+					// have caused the PR to close. In that case, there is no
+					// need to abort the commit queue item.
+					isCommitQueueMerging = true
+					continue
 				}
 				catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
 			} else if err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
@@ -942,7 +953,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 		}
 	}
 
-	return errors.Wrap(catcher.Resolve(), "aborting patches")
+	return isCommitQueueMerging, errors.Wrap(catcher.Resolve(), "aborting patches")
 }
 
 func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project) string {

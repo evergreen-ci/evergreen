@@ -34,7 +34,7 @@ const (
 type DBCommitQueueConnector struct{}
 
 // GetGitHubPR takes the owner, repo, and PR number.
-func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
+func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, prNum int) (*github.PullRequest, error) {
 	conf, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
@@ -46,7 +46,7 @@ func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo s
 
 	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	pr, err := thirdparty.GetGithubPullRequest(ctxWithCancel, ghToken, owner, repo, PRNum)
+	pr, err := thirdparty.GetGithubPullRequest(ctxWithCancel, ghToken, owner, repo, prNum)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub PR from GitHub API")
 	}
@@ -508,7 +508,6 @@ func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, exis
 }
 
 func ConcludeMerge(patchID, status string) error {
-	event.LogCommitQueueConcludeTest(patchID, status)
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
 		return errors.Wrap(err, "finding patch")
@@ -533,13 +532,17 @@ func ConcludeMerge(patchID, status string) error {
 	if item == "" {
 		return errors.Errorf("commit queue item for patch '%s' not found", patchID)
 	}
-	found, err := cq.Remove(item)
-	if err != nil {
+	// kim: NOTE: If a task is concluding the merge, it's already merged the
+	// commit successfully. This only needs to ensure that the item is no longer
+	// in the commit queue, either because this removed it or because something
+	// else has already removed it.
+	if _, err = cq.Remove(item); err != nil {
 		return errors.Wrapf(err, "dequeueing item '%s' from commit queue", item)
 	}
-	if found == nil {
-		return errors.Errorf("item '%s' not found in commit queue", item)
-	}
+	event.LogCommitQueueConcludeTest(patchID, status)
+	// if found == nil {
+	//     return errors.Errorf("item '%s' not found in commit queue", item)
+	// }
 	githubStatus := message.GithubStateFailure
 	description := "merge test failed"
 	if status == evergreen.MergeTestSucceeded {

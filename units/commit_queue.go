@@ -523,6 +523,8 @@ func (j *commitQueueJob) logError(err error, msg string, item commitqueue.Commit
 }
 
 func (j *commitQueueJob) dequeue(cq *commitqueue.CommitQueue, item commitqueue.CommitQueueItem) {
+	// kim: NOTE: This could race with ConcludeMerge to remove the item. Need to
+	// know if it's okay to race or not.
 	_, err := cq.Remove(item.Issue)
 	j.logError(err, fmt.Sprintf("error dequeuing item '%s'", item.Issue), item)
 }

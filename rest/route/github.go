@@ -180,7 +180,26 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"action":  *event.Action,
 				"message": "pull request closed; aborting patch",
 			})
-			err := data.AbortPatchesFromPullRequest(event)
+
+			// kim: NOTE: we can't do this check here to exit early, because we
+			// still have to abort patches that are not on the commit queue.
+			// prIsMerging, err := data.IsPRMergingInCommitQueue(event)
+			// grip.Error(message.WrapError(err, message.Fields{
+			//     "message":   "could not check if PR had a merge in progress in the commit queue",
+			//     "action":    event.Action,
+			//     "owner":     event.Organization,
+			//     "repo":      event.Repo,
+			//     "pr_number": utility.FromIntPtr(event.Number),
+			//     "msg_id":    gh.msgID,
+			//     "event":     gh.eventType,
+			// }))
+			// if prIsMerging {
+			//     // If the PR is being merged in the commit queue merge task,
+			//     // there's no need to abort commit queue items.
+			//     return gimlet.NewJSONResponse(struct{}{})
+			// }
+
+			isCommitQueueMerging, err := data.AbortPatchesFromPullRequest(event)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "GitHub hook",
@@ -192,16 +211,19 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting patches"))
 			}
 
-			// if the item is on a commit queue, remove it
-			if err = gh.tryDequeueCommitQueueItemForPR(event.PullRequest); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"source":  "GitHub hook",
-					"msg_id":  gh.msgID,
-					"event":   gh.eventType,
-					"action":  *event.Action,
-					"message": "commit queue item not dequeued",
-				}))
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "dequeueing item from commit queue"))
+			// If the item is on a commit queue and the merge is not already in
+			// progress, remove it.
+			if !isCommitQueueMerging {
+				if err := gh.tryDequeueCommitQueueItemForPR(event.PullRequest); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"source":  "GitHub hook",
+						"msg_id":  gh.msgID,
+						"event":   gh.eventType,
+						"action":  *event.Action,
+						"message": "commit queue item not dequeued",
+					}))
+					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "dequeueing item from commit queue"))
+				}
 			}
 
 			return gimlet.NewJSONResponse(struct{}{})

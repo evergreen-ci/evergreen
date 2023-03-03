@@ -149,6 +149,9 @@ func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
 	patches, err = Find(ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 1)
+
+	// kim: TODO: add test for commit queue (single and multiple commit queue
+	// items)
 }
 
 func (s *patchSuite) TestMakeMergePatch() {

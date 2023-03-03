@@ -177,24 +177,58 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 	return apiPatches, nil
 }
 
+// kim: TODO: remove
+// // IsPRMergingInCommitQueue returns whether or not the PR is currently being
+// // merged in the commit queue, or has already been merged via the commit queue.
+// func IsPRMergingInCommitQueue(event *github.PullRequestEvent) (bool, error) {
+//     owner, repo, err := verifyPullRequestEventForAbort(event)
+//     if err != nil {
+//         return false, err
+//     }
+//     prNumber := utility.FromIntPtr(event.Number)
+//
+//     patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(utility.FromTimePtr(event.PullRequest.ClosedAt), owner, repo, prNumber))
+//     if err != nil {
+//         return false, errors.Wrap(err, "finding GitHub PR commit queue items")
+//     }
+//
+//     catcher := grip.NewBasicCatcher()
+//     for _, p := range patches {
+//         if !p.IsCommitQueuePatch() {
+//             continue
+//         }
+//
+//         mergeTask, err := task.FindMergeTaskForVersion(p.Version)
+//         catcher.Wrapf(err, "finding merge task for version '%s'", p.Version)
+//         if mergeTask == nil {
+//             continue
+//         }
+//
+//         if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
+//             return true, catcher.Resolve()
+//         }
+//     }
+//     return false, catcher.Resolve()
+// }
+
 // AbortPatchesFromPullRequest aborts patches with the same PR Number,
 // in the same repository, at the pull request's close time
-func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
+func AbortPatchesFromPullRequest(event *github.PullRequestEvent) (isCommitQueueMerging bool, err error) {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "",
+	isCommitQueueMerging, err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "",
 		owner, repo, *event.Number)
 	if err != nil {
-		return gimlet.ErrorResponse{
+		return isCommitQueueMerging, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "aborting patches").Error(),
 		}
 	}
 
-	return nil
+	return isCommitQueueMerging, nil
 }
 
 // GetPatchRawPatches fetches the raw patches for a patch
