@@ -903,49 +903,6 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	return pr, nil
 }
 
-func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, prNumber int) ([]*github.RepositoryCommit, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
-	defer utility.PutHTTPClient(httpClient)
-
-	client := github.NewClient(httpClient)
-
-	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
-	if err != nil {
-		return nil, err
-	}
-	if len(commits) == 0 {
-		return nil, errors.New("No commits received from github")
-	}
-
-	return commits, nil
-}
-
-// GetGithubPullRequestReviews retrieves a list of reviews for the given PR.
-func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string, prNumber int, reviewPage int) ([]*github.PullRequestReview, int, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
-	defer utility.PutHTTPClient(httpClient)
-
-	client := github.NewClient(httpClient)
-
-	opts := &github.ListOptions{
-		PerPage: 100,
-		Page:    reviewPage,
-	}
-
-	reviews, resp, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
-	if resp != nil {
-		defer resp.Body.Close()
-		if err != nil {
-			return nil, 0, parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from query for PR reviews in '%s/%s' prNumber %d : %v", owner, repo, prNumber, err)
-		return nil, 0, APIResponseError{errMsg}
-	}
-
-	return reviews, resp.NextPage, nil
-}
-
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestDiff")
