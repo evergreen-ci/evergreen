@@ -31,29 +31,14 @@ const (
 	githubActionReopened    = "reopened"
 
 	// pull request comments
-	retryComment         = "evergreen retry"
-	refreshStatusComment = "evergreen refresh"
-	patchComment         = "evergreen patch"
-	triggerComment       = "evergreen merge"
+	retryComment            = "evergreen retry"
+	refreshStatusComment    = "evergreen refresh"
+	patchComment            = "evergreen patch"
+	commitQueueMergeComment = "evergreen merge"
+	evergreenHelpComment    = "evergreen help"
 
 	refTags = "refs/tags/"
 )
-
-func trimComment(comment string) string {
-	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
-}
-
-func isRetryComment(comment string) bool {
-	return trimComment(comment) == retryComment
-}
-
-func isPatchComment(comment string) bool {
-	return trimComment(comment) == patchComment
-}
-
-func isRefreshStatusComment(comment string) bool {
-	return trimComment(comment) == refreshStatusComment
-}
 
 type githubHookApi struct {
 	queue  amboy.Queue
@@ -274,7 +259,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	}
 
 	if triggerPatch, callerType := triggersPatch(commentBody); triggerPatch {
-		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", *event.Comment.Body)))
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
 		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber())
 		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
@@ -291,6 +276,14 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		return errors.Wrap(err, "triggering status refresh")
 	}
 
+	if triggersHelpText(commentBody) {
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
+		err := gh.displayHelpText(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
+			"problem sending help comment")))
+		return errors.Wrap(err, "sending help comment")
+	}
+
 	return nil
 }
 
@@ -304,6 +297,60 @@ func (gh *githubHookApi) getCommentLogWithMessage(event *github.IssueCommentEven
 		"user":      *event.Sender.Login,
 		"message":   msg,
 	}
+}
+
+func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string, prNum int) error {
+	pr, err := gh.sc.GetGitHubPR(ctx, owner, repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "getting PR from GitHub API")
+	}
+
+	if pr == nil || pr.Base == nil || pr.Base.Ref == nil {
+		return errors.New("PR contains no base branch label")
+	}
+	branch := pr.Base.GetRef()
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
+	if err != nil {
+		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
+			owner, repo, branch)
+	}
+	helpMarkdown := getHelpTextFromProjects(projectRefs)
+	return gh.sc.AddCommentToPR(ctx, owner, repo, helpMarkdown, prNum)
+}
+
+func getHelpTextFromProjects(projectRefs []model.ProjectRef) string {
+	var manualPRProjectEnabled, autoPRProjectEnabled, cqProjectEnabled bool
+	var cqProjectMessage string
+
+	for _, p := range projectRefs {
+		if p.IsManualPRTestingEnabled() {
+			manualPRProjectEnabled = true
+		}
+		if p.IsAutoPRTestingEnabled() {
+			autoPRProjectEnabled = true
+		}
+		if err := p.CommitQueueIsOn(); err == nil {
+			cqProjectEnabled = true
+		} else if cqMessage := p.CommitQueue.Message; cqMessage != "" {
+			cqProjectMessage += cqMessage
+		}
+	}
+
+	formatStr := "- `%s` \n    - %s\n"
+	res := fmt.Sprintf("### %s\n", "Available Evergreen Comment Commands")
+	if autoPRProjectEnabled || manualPRProjectEnabled {
+		comments := fmt.Sprintf("%s, %s", retryComment, patchComment)
+		res += fmt.Sprintf(formatStr, comments, "attempt creating PR patch")
+		res += fmt.Sprintf(formatStr, refreshStatusComment, "resyncs PR Github checks")
+	}
+	if cqProjectEnabled {
+		res += fmt.Sprintf(formatStr, commitQueueMergeComment, "adds PR to the commit queue")
+	} else if cqProjectMessage != "" {
+		// Should only display this if the commit queue isn't enabled for a different branch.
+		text := fmt.Sprintf("the commit queue is NOT enabled for this branch: %s", cqProjectMessage)
+		res += fmt.Sprintf(formatStr, commitQueueMergeComment, text)
+	}
+	return res
 }
 
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
@@ -644,10 +691,22 @@ func isItemOnCommitQueue(id, item string) (bool, error) {
 	return false, nil
 }
 
+func trimComment(comment string) string {
+	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
+}
+
+func isRetryComment(comment string) bool {
+	return trimComment(comment) == retryComment
+}
+
+func isPatchComment(comment string) bool {
+	return trimComment(comment) == patchComment
+}
+
 // triggersCommitQueue checks if "evergreen merge" is present in the comment, as
 // it may be followed by a newline and a message.
 func triggersCommitQueue(comment string) bool {
-	return strings.HasPrefix(trimComment(comment), triggerComment)
+	return strings.HasPrefix(trimComment(comment), commitQueueMergeComment)
 }
 
 // The bool value returns whether the patch should be created or not.
@@ -663,7 +722,11 @@ func triggersPatch(comment string) (bool, string) {
 	return false, ""
 }
 func triggersStatusRefresh(comment string) bool {
-	return isRefreshStatusComment(comment)
+	return trimComment(comment) == refreshStatusComment
+}
+
+func triggersHelpText(comment string) bool {
+	return trimComment(comment) == evergreenHelpComment
 }
 
 func isTag(ref string) bool {

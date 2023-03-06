@@ -1135,3 +1135,22 @@ func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage str
 	}
 	return nil
 }
+
+func PostCommentToPullRequest(ctx context.Context, token, owner, repo, comment string, prNum int) error {
+	httpClient := getGithubClient(token, "PostCommentToPullRequest")
+	defer utility.PutHTTPClient(httpClient)
+	githubClient := github.NewClient(httpClient)
+
+	githubComment := &github.IssueComment{
+		Body: &comment,
+	}
+	respComment, resp, err := githubClient.Issues.CreateComment(ctx, owner, repo, prNum, githubComment)
+	if err != nil {
+		return errors.Wrap(err, "can't access GitHub merge API")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
+		return errors.New("unexpected data from GitHub")
+	}
+	return nil
+}

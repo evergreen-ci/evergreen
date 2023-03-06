@@ -42,6 +42,7 @@ type Connector interface {
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata) (*model.Version, error)
 	FindTestsByTaskId(FindTestsByTaskIdOpts) ([]testresult.TestResult, error)
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
-	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error)
+	AddPatchForPR(context.Context, model.ProjectRef, int, []restModel.APIModule, string) (*patch.Patch, error)
+	AddCommentToPR(context.Context, string, string, string, int) error
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 }

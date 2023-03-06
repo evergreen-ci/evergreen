@@ -33,28 +33,7 @@ const (
 
 type DBCommitQueueConnector struct{}
 
-// GetGitHubPR takes the owner, repo, and PR number.
-func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
-	conf, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting admin settings")
-	}
-	ghToken, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-	}
-
-	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	pr, err := thirdparty.GetGithubPullRequest(ctxWithCancel, ghToken, owner, repo, PRNum)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GitHub PR from GitHub API")
-	}
-
-	return pr, nil
-}
-
-func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
+func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
@@ -368,7 +347,7 @@ func tryEnqueueItemForPR(ctx context.Context, settings *evergreen.Settings, sc C
 			return nil, "can't enqueue without required number of approvals", errors.Wrapf(err, "checking pull request approvals")
 		}
 	}
-	patchDoc, err := sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
+	patchDoc, err := sc.AddPatchForPR(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
 		return nil, "failed to create patch", errors.Wrap(err, "adding patch for PR")
 	}

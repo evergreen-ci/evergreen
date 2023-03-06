@@ -37,8 +37,12 @@ func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo 
 	}, nil
 }
 
-func (pc *MockGitHubConnectorImpl) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
+func (pc *MockGitHubConnectorImpl) AddPatchForPR(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
 	return &patch.Patch{}, nil
+}
+
+func (pc *MockGitHubConnectorImpl) AddCommentToPR(ctx context.Context, owner, repo, comment string, PRNum int) error {
+	return nil
 }
 
 func (pc *MockGitHubConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
