@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -97,7 +98,9 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 	out := []string{}
 
 	for _, fileSpec := range files {
-		paths, err := filepath.Glob(filepath.Join(workDir, fileSpec))
+		relativeToWorkDir := strings.TrimPrefix(filepath.ToSlash(fileSpec), filepath.ToSlash(workDir))
+		path := filepath.Join(workDir, relativeToWorkDir)
+		paths, err := filepath.Glob(path)
 		catcher.Add(err)
 		out = append(out, paths...)
 	}

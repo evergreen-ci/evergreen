@@ -817,7 +817,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
 	}
 	if volume == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", updateVolumeInput.VolumeID))
 	}
 	err = validateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
 	if err != nil {

@@ -476,7 +476,6 @@ func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restMo
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding pod: %s", err.Error()))
 	}
 	return pod, nil
-
 }
 
 // Project is the resolver for the project field.

@@ -273,7 +273,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
-		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}))
+		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for build '%s'", buildId)
 		}
@@ -285,28 +285,29 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 	return nil
 }
 
-// SetVersionsPriority updates the priority field of all tasks associated with the given version ids.
-func SetVersionsPriority(versionIds []string, priority int64, caller string) error {
+// SetVersionPriority updates the priority field of all tasks associated with the given version id.
+func SetVersionPriority(versionId string, priority int64, caller string) error {
 	_, err := task.UpdateAll(
-		bson.M{task.VersionKey: bson.M{"$in": versionIds}},
+		bson.M{task.VersionKey: versionId},
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "setting priority for versions")
+		return errors.Wrapf(err, "setting priority for version '%s'", versionId)
 	}
 
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: bson.M{"$in": versionIds}}))
+		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
-			return errors.Wrap(err, "getting tasks for versions")
+			return errors.Wrapf(err, "getting tasks for version '%s'", versionId)
 		}
 		err = SetActiveState(caller, false, tasks...)
 		if err != nil {
-			return errors.Wrap(err, "deactivating tasks for versions")
+			return errors.Wrapf(err, "deactivating tasks for version '%s'", versionId)
 		}
 	}
+
 	return nil
 }
 
@@ -345,7 +346,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if len(allFinishedTasks) == 0 {
 		return nil
 	}
-	return restartTasks(allFinishedTasks, caller)
+	return restartTasks(allFinishedTasks, caller, versionId)
 }
 
 // getTasksToReset returns all finished tasks that should be reset given an initial input list of
@@ -370,7 +371,7 @@ func getTasksToReset(taskIds []string) ([]task.Task, error) {
 
 // restartTasks restarts all finished tasks in the given list that are not part of
 // a single host task group.
-func restartTasks(allFinishedTasks []task.Task, caller string) error {
+func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error {
 	toArchive := []task.Task{}
 	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() {
@@ -426,18 +427,11 @@ func restartTasks(allFinishedTasks []task.Task, caller string) error {
 		}
 	}
 
-	buildIdsMap := map[string]bool{}
-	var buildIds []string
-	for _, t := range allFinishedTasks {
-		buildIdsMap[t.BuildId] = true
-	}
-	for buildId := range buildIdsMap {
-		buildIds = append(buildIds, buildId)
-	}
 	if err := build.SetBuildStartedForTasks(allFinishedTasks, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
-	return errors.Wrap(UpdateVersionAndPatchStatusForBuilds(buildIds), "updating version status")
+
+	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
 }
 
 // RestartVersions restarts selected tasks for a set of versions.
@@ -467,7 +461,7 @@ func RestartBuild(build *build.Build, taskIds []string, abortInProgress bool, ca
 	if len(tasksToReset) == 0 {
 		return nil
 	}
-	return errors.Wrap(restartTasks(tasksToReset, caller), "restarting tasks")
+	return errors.Wrap(restartTasks(tasksToReset, caller, build.Version), "restarting tasks")
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
