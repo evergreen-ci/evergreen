@@ -995,7 +995,7 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 		err      error
 	)
 
-	if !evergreen.IsPatchRequester(dbTask.Requester) {
+	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
 		baseTask, err = dbTask.FindTaskOnPreviousCommit()
 	} else {
 		baseTask, err = dbTask.FindTaskOnBaseCommit()
