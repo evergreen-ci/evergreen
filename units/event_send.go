@@ -128,7 +128,6 @@ func (j *eventSendJob) Run(_ context.Context) {
 			"jira_ticket":  "EVG-18931",
 			"job_id":       j.ID(),
 			"notification": n,
-			"error":        err.Error(),
 		})
 		j.AddError(errors.Errorf("notification '%s' has already been processed", n.ID))
 		return
