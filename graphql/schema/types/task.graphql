@@ -8,6 +8,28 @@ enum TestSortCategory {
 
 ###### INPUTS ######
 """
+TestFilterOptions is an input for the task.Tests query.
+It's used to filter, sort, and paginate test results of a task.
+"""
+input TestFilterOptions {
+  testName: String
+  statuses: [String!]
+  groupID: String
+  sort: [TestSortOptions!]
+  limit: Int
+  page: Int
+}
+
+"""
+TestSortOptions is an input for the task.Tests query.
+It's used to define sort criteria for test results of a task.
+"""
+input TestSortOptions {
+  sortBy: TestSortCategory!
+  direction: SortDirection!
+}
+
+"""
 TestFilter is an input value for the taskTestSample query.
 It's used to filter for tests with testName and status testStatus.
 """
@@ -91,6 +113,7 @@ type Task {
   taskLogs returns the tail 100 lines of the task's logs.
   """
   taskLogs: TaskLogs!
+  tests(opts: TestFilterOptions): TaskTestResult!
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
@@ -174,9 +197,9 @@ It contains the test results for a task. For example, if there is a task to run 
 could be the result of each individual unit test.
 """
 type TaskTestResult {
-  filteredTestCount: Int!
   testResults: [TestResult!]!
   totalTestCount: Int!
+  filteredTestCount: Int!
 }
 
 type TestResult {
