@@ -12,12 +12,12 @@ TestFilterOptions is an input for the task.Tests query.
 It's used to filter, sort, and paginate test results of a task.
 """
 input TestFilterOptions {
-  testName: String!
+  testName: String
   statuses: [String!]
-  groupID: String!
+  groupID: String
   sort: [TestSortOptions!]
-  limit: Int!
-  page: Int!
+  limit: Int
+  page: Int
 }
 
 """

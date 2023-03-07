@@ -331,12 +331,12 @@ type TestFilter struct {
 // TestFilterOptions is an input for the task.Tests query.
 // It's used to filter, sort, and paginate test results of a task.
 type TestFilterOptions struct {
-	TestName string             `json:"testName"`
+	TestName *string            `json:"testName"`
 	Statuses []string           `json:"statuses"`
-	GroupID  string             `json:"groupID"`
+	GroupID  *string            `json:"groupID"`
 	Sort     []*TestSortOptions `json:"sort"`
-	Limit    int                `json:"limit"`
-	Page     int                `json:"page"`
+	Limit    *int               `json:"limit"`
+	Page     *int               `json:"page"`
 }
 
 // TestSortOptions is an input for the task.Tests query.

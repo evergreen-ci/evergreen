@@ -944,13 +944,13 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 	}
 
 	return &testresult.FilterOptions{
-		TestName:     opts.TestName,
+		TestName:     utility.FromStringPtr(opts.TestName),
 		Statuses:     opts.Statuses,
-		GroupID:      opts.GroupID,
+		GroupID:      utility.FromStringPtr(opts.GroupID),
 		SortBy:       sortBy,
 		SortOrderDSC: sortOrderDSC,
-		Limit:        opts.Limit,
-		Page:         opts.Page,
+		Limit:        utility.FromIntPtr(opts.Limit),
+		Page:         utility.FromIntPtr(opts.Page),
 		BaseTasks:    baseTaskOpts,
 	}, nil
 }
@@ -995,7 +995,7 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 		err      error
 	)
 
-	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
+	if !evergreen.IsPatchRequester(dbTask.Requester) {
 		baseTask, err = dbTask.FindTaskOnPreviousCommit()
 	} else {
 		baseTask, err = dbTask.FindTaskOnBaseCommit()

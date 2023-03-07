@@ -58496,7 +58496,7 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testName"))
-			it.TestName, err = ec.unmarshalNString2string(ctx, v)
+			it.TestName, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -58512,7 +58512,7 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupID"))
-			it.GroupID, err = ec.unmarshalNString2string(ctx, v)
+			it.GroupID, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -58528,7 +58528,7 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-			it.Limit, err = ec.unmarshalNInt2int(ctx, v)
+			it.Limit, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -58536,7 +58536,7 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
-			it.Page, err = ec.unmarshalNInt2int(ctx, v)
+			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
