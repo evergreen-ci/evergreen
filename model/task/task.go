@@ -1963,6 +1963,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.Details = apimodels.TaskEndDetail{}
 		t.ResultsService = ""
 		t.ResultsFailed = false
+		t.HasCedarResults = false
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -1990,6 +1991,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			DetailsKey:                 "",
 			ResultsServiceKey:          "",
 			ResultsFailedKey:           "",
+			HasCedarResultsKey:         "",
 			ResetWhenFinishedKey:       "",
 			ResetFailedWhenFinishedKey: "",
 			AgentVersionKey:            "",
