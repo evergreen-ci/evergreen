@@ -68,13 +68,13 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 
 	// this should never happen if patch is initially validated
 	if err := cmd.Start(); err != nil {
-		return nil, errors.Wrapf(err, "starting `git apply --numstat`: 424 - %v",
+		return nil, errors.Wrapf(err, "starting 'git apply --numstat': 424 - %v",
 			summaryBuffer.String())
 	}
 
 	// this should never happen if patch is initially validated
 	if err := cmd.Wait(); err != nil {
-		return nil, errors.Wrapf(err, "running `git apply --numstat`: 562 - %v",
+		return nil, errors.Wrapf(err, "running 'git apply --numstat': 562 - %v",
 			summaryBuffer.String())
 	}
 	return &summaryBuffer, nil
