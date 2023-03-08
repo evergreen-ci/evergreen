@@ -204,7 +204,11 @@ coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 120 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(buildDir) v1.51.2 >/dev/null 2>&1 && touch $@
+	@GO_LINT_INSTALLER_VERSION="v1.51.2"
+	@GO_LINT_INSTALLER_CHECKSUM="0e09dedc7e35f511b7924b885e50d7fe48eef25bec78c86f22f5b5abd24976cc"
+	@curl --retry 10 --retry-max-time 120 -sSfL -O https://raw.githubusercontent.com/golangci/golangci-lint/${GO_LINT_INSTALLER_VERSION}/install.sh
+	@echo "${GO_LINT_INSTALLER_CHECKSUM} install.sh" | sha256sum --check
+	@sh install.sh -b $(buildDir) ${GO_LINT_INSTALLER_VERSION} >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -ldflags "-w" -o $@ $<
 # end lint setup targets
