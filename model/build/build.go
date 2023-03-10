@@ -127,19 +127,6 @@ func (b *Build) FindBuildOnBaseCommit() (*Build, error) {
 	return FindOne(ByRevisionAndVariant(b.Revision, b.BuildVariant))
 }
 
-// Find all builds on the same project + variant + requester between
-// the current b and the specified previous build.
-func (b *Build) FindIntermediateBuilds(previous *Build) ([]Build, error) {
-	return Find(ByBetweenBuilds(b, previous))
-}
-
-// Find the most recent activated build with the same variant +
-// requester + project as the current build.
-func (b *Build) PreviousActivated(project string, requester string) (*Build, error) {
-	return FindOne(ByRecentlyActivatedForProjectAndVariant(
-		b.RevisionOrderNumber, project, b.BuildVariant, requester))
-}
-
 // Find the most recent b on with the same build variant + requester +
 // project as the current build, with any of the specified statuses.
 func (b *Build) PreviousSuccessful() (*Build, error) {
@@ -320,10 +307,6 @@ func (b *Build) GetURL(uiBase string) string {
 // Insert writes the b to the db.
 func (b *Build) Insert() error {
 	return db.Insert(Collection, b)
-}
-
-func (b *Build) IsPatchBuild() bool {
-	return evergreen.IsPatchRequester(b.Requester)
 }
 
 type Builds []*Build
