@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
 
@@ -50,22 +50,25 @@ type goTestResult struct {
 	StartLine int
 	// Number representing the last line of the test in log output
 	EndLine int
+
+	// Can be set to mark the id of the server-side log that this
+	// results corresponds to
+	LogId string
 }
 
 // ToModelTestResults converts the implementation of LocalTestResults native
-// to the goTest plugin to the implementation used by MCI tasks.
-func ToModelTestResults(results []*goTestResult, suiteName string) []testresult.TestResult {
-	var modelResults []testresult.TestResult
+// to the goTest plugin to the implementation used by MCI tasks
+func ToModelTestResults(results []*goTestResult, suiteName string) task.LocalTestResults {
+	var modelResults []task.TestResult
 	for _, res := range results {
-		// Start and end are times that we don't know, we must
-		// calculate them here based on the result runtime.
-		start := time.Now()
-		end := start.Add(res.RunTime)
-
+		// start and end are times that we don't know,
+		// represented as a 64bit floating point (epoch time fraction)
+		var start float64 = float64(time.Now().Unix())
+		var end float64 = start + res.RunTime.Seconds()
 		var status string
 		switch res.Status {
-		// As long as we use a regex, it should be impossible to get an
-		// incorrect status code.
+		// as long as we use a regex, it should be impossible to
+		// get an incorrect status code
 		case PASS:
 			status = evergreen.TestSucceededStatus
 		case SKIP:
@@ -73,18 +76,18 @@ func ToModelTestResults(results []*goTestResult, suiteName string) []testresult.
 		case FAIL:
 			status = evergreen.TestFailedStatus
 		}
-		convertedResult := testresult.TestResult{
-			TestName:      res.Name,
-			Status:        status,
-			TestStartTime: start,
-			TestEndTime:   end,
-			LogTestName:   suiteName,
-			LineNum:       res.StartLine - 1,
+		convertedResult := task.TestResult{
+			TestFile:    res.Name,
+			Status:      status,
+			StartTime:   start,
+			EndTime:     end,
+			LogTestName: suiteName,
+			LineNum:     res.StartLine - 1,
+			LogId:       res.LogId,
 		}
 		modelResults = append(modelResults, convertedResult)
 	}
-
-	return modelResults
+	return task.LocalTestResults{Results: modelResults}
 }
 
 // goTestParser parses tests following go test output format.

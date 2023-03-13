@@ -230,7 +230,7 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 				task.PriorityKey: bson.M{"$lt": priority},
 			},
 		},
-	}).WithFields(task.ExecutionKey)
+	}).WithFields(ExecutionKey)
 	tasks, err := task.FindAll(query)
 	if err != nil {
 		return errors.Wrap(err, "finding matching tasks")

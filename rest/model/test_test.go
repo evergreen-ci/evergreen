@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -13,9 +14,8 @@ import (
 )
 
 func TestTestBuildFromService(t *testing.T) {
-	env := evergreen.GetEnvironment()
-	start := time.Now().Add(-10 * time.Minute)
-	end := time.Now()
+	start := time.Unix(12345, 6789)
+	end := time.Unix(9876, 54321)
 
 	for _, test := range []struct {
 		name   string
@@ -23,69 +23,151 @@ func TestTestBuildFromService(t *testing.T) {
 		hasErr bool
 	}{
 		{
-			name: "NoOptionals",
+			name: "EvergreenTestResultNoOptionals",
 			io: func() (interface{}, *APITest) {
 				input := &testresult.TestResult{
-					TaskID:        "task",
-					Execution:     1,
-					TestName:      "test_file",
-					Status:        "test_status",
-					LineNum:       15,
-					TestStartTime: start,
-					TestEndTime:   end,
+					TaskID:    "task",
+					Execution: 1,
+					TestFile:  "test_file",
+					Status:    "test_status",
+					LineNum:   15,
+					ExitCode:  1,
+					StartTime: utility.ToPythonTime(start),
+					EndTime:   utility.ToPythonTime(end),
 				}
+				otr := task.ConvertToOld(input)
 
 				output := &APITest{
-					ID:        utility.ToStringPtr(input.TestName),
+					ID:        utility.ToStringPtr(input.ID.Hex()),
 					Execution: input.Execution,
 					Status:    utility.ToStringPtr(input.Status),
-					TestFile:  utility.ToStringPtr(input.TestName),
+					TestFile:  utility.ToStringPtr(input.TestFile),
 					Logs: TestLogs{
-						URL:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
-						URLRaw:     utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLLobster: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
-						URLParsley: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						URLParsley: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerParsley)),
 						LineNum:    15,
 					},
+					ExitCode:  1,
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
-					Duration:  input.Duration().Seconds(),
+					Duration:  input.EndTime - input.StartTime,
 				}
 
 				return input, output
 			},
 		},
 		{
-			name: "Optionals",
+			name: "EvergreenTestResultOptionals",
 			io: func() (interface{}, *APITest) {
 				input := &testresult.TestResult{
 					TaskID:          "task",
 					Execution:       1,
-					TestName:        "test_file",
+					TestFile:        "test_file",
 					DisplayTestName: "display",
 					GroupID:         "group",
 					Status:          "test_status",
+					LogID:           "id",
 					LineNum:         15,
-					TestStartTime:   start,
-					TestEndTime:     end,
+					ExitCode:        1,
+					StartTime:       utility.ToPythonTime(start),
+					EndTime:         utility.ToPythonTime(end),
 				}
+				otr := task.ConvertToOld(input)
 
 				output := &APITest{
-					ID:        utility.ToStringPtr(input.TestName),
+					ID:        utility.ToStringPtr(input.ID.Hex()),
 					Execution: input.Execution,
 					TestFile:  utility.ToStringPtr(input.DisplayTestName),
 					GroupID:   utility.ToStringPtr(input.GroupID),
 					Status:    utility.ToStringPtr(input.Status),
 					Logs: TestLogs{
-						URL:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
-						URLRaw:     utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLLobster: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
-						URLParsley: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						URLParsley: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerParsley)),
+						LineNum:    15,
+						LogID:      utility.ToStringPtr(input.LogID),
+					},
+					ExitCode:  1,
+					StartTime: utility.ToTimePtr(start),
+					EndTime:   utility.ToTimePtr(end),
+					Duration:  input.EndTime - input.StartTime,
+				}
+
+				return input, output
+			},
+		},
+		{
+			name: "CedarTestResultNoOptionals",
+			io: func() (interface{}, *APITest) {
+				input := &apimodels.CedarTestResult{
+					TaskID:    "task",
+					Execution: 1,
+					TestName:  "test",
+					Status:    "status",
+					LineNum:   15,
+					Start:     start,
+					End:       end,
+				}
+				otr := task.ConvertCedarTestResult(*input)
+
+				output := &APITest{
+					ID:        utility.ToStringPtr(input.TestName),
+					Execution: input.Execution,
+					TestFile:  utility.ToStringPtr(input.TestName),
+					Status:    utility.ToStringPtr(input.Status),
+					Logs: TestLogs{
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						URLParsley: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerParsley)),
 						LineNum:    15,
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
-					Duration:  input.Duration().Seconds(),
+					Duration:  end.Sub(start).Seconds(),
+				}
+
+				return input, output
+			},
+		},
+		{
+			name: "CedarTestResultOptionals",
+			io: func() (interface{}, *APITest) {
+				input := &apimodels.CedarTestResult{
+					TaskID:          "task",
+					Execution:       1,
+					TestName:        "test",
+					DisplayTestName: "display",
+					GroupID:         "group",
+					Status:          "status",
+					BaseStatus:      "base_status",
+					LogTestName:     "log",
+					LineNum:         15,
+					Start:           start,
+					End:             end,
+				}
+				otr := task.ConvertCedarTestResult(*input)
+
+				output := &APITest{
+					ID:         utility.ToStringPtr(input.TestName),
+					Execution:  input.Execution,
+					TestFile:   utility.ToStringPtr(input.DisplayTestName),
+					GroupID:    utility.ToStringPtr(input.GroupID),
+					Status:     utility.ToStringPtr(input.Status),
+					BaseStatus: utility.ToStringPtr(input.BaseStatus),
+					Logs: TestLogs{
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						URLParsley: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerParsley)),
+						LineNum:    15,
+					},
+					StartTime: utility.ToTimePtr(start),
+					EndTime:   utility.ToTimePtr(end),
+					Duration:  end.Sub(start).Seconds(),
 				}
 
 				return input, output
@@ -104,7 +186,7 @@ func TestTestBuildFromService(t *testing.T) {
 		{
 			name: "InvalidType",
 			io: func() (interface{}, *APITest) {
-				return &task.Task{}, &APITest{}
+				return &task.TestResult{}, &APITest{}
 			},
 			hasErr: true,
 		},

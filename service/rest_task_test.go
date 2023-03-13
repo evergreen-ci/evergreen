@@ -23,7 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
+func insertTaskForTesting(taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -57,17 +57,11 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		ExpectedDuration: 99 * time.Millisecond,
 	}
 
-	if len(testResults) > 0 {
-		task.ResultsService = testresult.TestResultsServiceLocal
-		if err := testresult.InsertLocal(ctx, env, testResults...); err != nil {
-			return nil, err
-		}
-	}
-	if err := task.Insert(); err != nil {
+	err := task.Insert()
+	if err != nil {
 		return nil, err
 	}
-
-	return task, nil
+	return task, testresult.InsertMany(testResults)
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -78,13 +72,8 @@ func TestGetTaskInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
-	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection))
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
-	}()
-
 	Convey("When finding info on a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
@@ -92,15 +81,15 @@ func TestGetTaskInfo(t *testing.T) {
 		projectName := "project_test"
 
 		testResult := testresult.TestResult{
-			Status:        "success",
-			TaskID:        taskId,
-			Execution:     0,
-			TestName:      "some-test",
-			LogURL:        "some-url",
-			TestStartTime: time.Now().Add(-9 * time.Minute),
-			TestEndTime:   time.Now().Add(-1 * time.Minute),
+			Status:    "success",
+			TaskID:    taskId,
+			Execution: 0,
+			TestFile:  "some-test",
+			URL:       "some-url",
+			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
+			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		testTask, err := insertTaskForTesting(ctx, env, taskId, versionId, projectName, []testresult.TestResult{testResult})
+		testTask, err := insertTaskForTesting(taskId, versionId, projectName, []testresult.TestResult{testResult})
 		So(err, ShouldBeNil)
 
 		file := artifact.File{
@@ -208,7 +197,7 @@ func TestGetTaskInfo(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(len(jsonTestResults), ShouldEqual, 1)
 
-			_jsonTestResult, ok := jsonTestResults[testResult.TestName]
+			_jsonTestResult, ok := jsonTestResults[testResult.TestFile]
 			So(ok, ShouldBeTrue)
 			jsonTestResult, ok := _jsonTestResult.(map[string]interface{})
 			So(ok, ShouldBeTrue)
@@ -221,7 +210,7 @@ func TestGetTaskInfo(t *testing.T) {
 			jsonTestResultLogs, ok := _jsonTestResultLogs.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonTestResultLogs["url"], ShouldEqual, testResult.LogURL)
+			So(jsonTestResultLogs["url"], ShouldEqual, testResult.URL)
 
 			var jsonFiles []map[string]interface{}
 			err = json.Unmarshal(*rawJSONBody["files"], &jsonFiles)
@@ -267,7 +256,7 @@ func TestGetTaskStatus(t *testing.T) {
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
@@ -280,19 +269,18 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
-			ResultsService: testresult.TestResultsServiceLocal,
 		}
 		testResult := testresult.TestResult{
-			Status:        "success",
-			TaskID:        testTask.Id,
-			Execution:     testTask.Execution,
-			TestName:      "some-test",
-			LogURL:        "some-url",
-			TestStartTime: time.Now().Add(-9 * time.Minute),
-			TestEndTime:   time.Now().Add(-1 * time.Minute),
+			Status:    "success",
+			TaskID:    testTask.Id,
+			Execution: testTask.Execution,
+			TestFile:  "some-test",
+			URL:       "some-url",
+			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
+			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		require.NoError(t, testTask.Insert())
-		require.NoError(t, testresult.InsertLocal(ctx, env, testResult))
+		So(testTask.Insert(), ShouldBeNil)
+		So(testresult.InsertMany([]testresult.TestResult{testResult}), ShouldBeNil)
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -333,7 +321,7 @@ func TestGetTaskStatus(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(len(jsonTestResults), ShouldEqual, 1)
 
-			_jsonTestResult, ok := jsonTestResults[testResult.TestName]
+			_jsonTestResult, ok := jsonTestResults[testResult.TestFile]
 			So(ok, ShouldBeTrue)
 			jsonTestResult, ok := _jsonTestResult.(map[string]interface{})
 			So(ok, ShouldBeTrue)
@@ -346,7 +334,7 @@ func TestGetTaskStatus(t *testing.T) {
 			jsonTestResultLogs, ok := _jsonTestResultLogs.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonTestResultLogs["url"], ShouldEqual, testResult.LogURL)
+			So(jsonTestResultLogs["url"], ShouldEqual, testResult.URL)
 		})
 	})
 
@@ -384,10 +372,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
 
-	defer func() {
-		assert.NoError(db.ClearCollections(task.Collection))
-		assert.NoError(testresult.ClearLocal(ctx, env))
-	}()
+	require.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
 	executionTaskId := "execution-task"
 	displayTaskId := "display-task"
@@ -395,17 +380,17 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	projectName := "project_test"
 
 	testResult := testresult.TestResult{
-		Status:        "success",
-		TaskID:        executionTaskId,
-		Execution:     0,
-		TestName:      "some-test",
-		LogURL:        "some-url",
-		TestStartTime: time.Now().Add(-9 * time.Minute),
-		TestEndTime:   time.Now().Add(-1 * time.Minute),
+		Status:    "success",
+		TaskID:    executionTaskId,
+		Execution: 0,
+		TestFile:  "some-test",
+		URL:       "some-url",
+		StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
+		EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 	}
-	_, err = insertTaskForTesting(ctx, env, executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
+	_, err = insertTaskForTesting(executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
 	assert.NoError(err)
-	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil)
+	displayTask, err := insertTaskForTesting(displayTaskId, versionId, projectName, []testresult.TestResult{})
 	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
 	err = db.Update(task.Collection,

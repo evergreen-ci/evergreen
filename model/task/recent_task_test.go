@@ -28,6 +28,7 @@ func TestRecentTasks(t *testing.T) {
 			Version:                fmt.Sprintf("version-%d", i),
 			Project:                fmt.Sprintf("project-%d", i),
 			Revision:               fmt.Sprintf("revision-%d", i),
+			LocalTestResults:       []TestResult{},
 		})
 	}
 

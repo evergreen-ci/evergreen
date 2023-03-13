@@ -289,32 +289,32 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// POST /tasks/{task_id}/set_results_info
+// POST /tasks/{task_id}/set_has_cedar_results
 
-type taskSetResultsInfoHandler struct {
+type taskSetHasCedarResultsHandler struct {
 	taskID string
-	info   apimodels.TaskTestResultsInfo
+	info   apimodels.CedarTestResultsTaskInfo
 }
 
-func makeTaskSetResultsInfoHandler() gimlet.RouteHandler {
-	return &taskSetResultsInfoHandler{}
+func makeTaskSetHasCedarResultsHandler() gimlet.RouteHandler {
+	return &taskSetHasCedarResultsHandler{}
 }
 
-func (rh *taskSetResultsInfoHandler) Factory() gimlet.RouteHandler {
-	return &taskSetResultsInfoHandler{}
+func (rh *taskSetHasCedarResultsHandler) Factory() gimlet.RouteHandler {
+	return &taskSetHasCedarResultsHandler{}
 }
 
-func (rh *taskSetResultsInfoHandler) Parse(ctx context.Context, r *http.Request) error {
+func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Request) error {
 	rh.taskID = gimlet.GetVars(r)["task_id"]
 
 	if err := gimlet.GetJSON(r.Body, &rh.info); err != nil {
-		return errors.Wrap(err, "reading test results info from JSON request body")
+		return errors.Wrap(err, "reading Cedar test results info from JSON request body")
 	}
 
 	return nil
 }
 
-func (rh *taskSetResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
+func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
@@ -326,11 +326,10 @@ func (rh *taskSetResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = t.SetResultsInfo(rh.info.Service, rh.info.Failed); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting results info for task '%s'", rh.taskID))
+	if err = t.SetHasCedarResults(true, rh.info.Failed); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HasCedarResults flag for task '%s'", rh.taskID))
 	}
-
-	return gimlet.NewTextResponse("Results info set in task")
+	return gimlet.NewTextResponse("HasCedarResults flag set in task")
 }
 
 // GET /task/sync_read_credentials

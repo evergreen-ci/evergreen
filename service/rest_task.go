@@ -151,12 +151,13 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	destTask.LocalTestResults = make(taskTestResultsByName, len(srcTask.LocalTestResults))
 	for _, tr := range srcTask.LocalTestResults {
+		numSecs := tr.EndTime - tr.StartTime
 		testResult := taskTestResult{
 			Status:    tr.Status,
-			TimeTaken: tr.Duration(),
-			Logs:      taskTestLogURL{tr.LogURL},
+			TimeTaken: time.Duration(numSecs * float64(time.Second)),
+			Logs:      taskTestLogURL{tr.URL},
 		}
-		destTask.LocalTestResults[tr.TestName] = testResult
+		destTask.LocalTestResults[tr.TestFile] = testResult
 	}
 
 	// Copy over artifacts and binaries.
@@ -212,12 +213,13 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	// Copy over the test results
 	result.Tests = make(taskStatusByTest, len(task.LocalTestResults))
 	for _, _testResult := range task.LocalTestResults {
+		numSecs := _testResult.EndTime - _testResult.StartTime
 		testResult := taskTestResult{
 			Status:    _testResult.Status,
-			TimeTaken: _testResult.Duration(),
-			Logs:      taskTestLogURL{_testResult.LogURL},
+			TimeTaken: time.Duration(numSecs * float64(time.Second)),
+			Logs:      taskTestLogURL{_testResult.URL},
 		}
-		result.Tests[_testResult.TestName] = testResult
+		result.Tests[_testResult.TestFile] = testResult
 	}
 
 	gimlet.WriteJSON(w, result)

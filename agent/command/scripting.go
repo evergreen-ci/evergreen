@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/shlex"
@@ -544,7 +544,7 @@ func (c *scriptingExec) reportTestResults(ctx context.Context, comm client.Commu
 		}
 
 		logs := []model.TestLog{log}
-		results := [][]testresult.TestResult{result}
+		results := [][]task.TestResult{result}
 
 		if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
 			return errors.Wrap(err, "sending test logs and test results")

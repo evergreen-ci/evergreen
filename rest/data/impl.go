@@ -9,6 +9,7 @@ package data
 type DBConnector struct {
 	URL    string
 	Prefix string
+	DBTestConnector
 	DBCommitQueueConnector
 	DBProjectConnector
 	DBVersionConnector

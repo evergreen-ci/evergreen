@@ -32,6 +32,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -109,6 +110,9 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	}
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
+	require.NoError(t, db.CreateCollections(testresult.Collection))
+	require.NoError(t, db.EnsureIndex(testresult.Collection, mongo.IndexModel{
+		Keys: testresult.TestResultsIndex}))
 
 	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.TaskLogDB), state.TestData, *state))
 	roleManager := env.RoleManager()
@@ -277,12 +281,12 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, d := range data {
+		var docs []interface{}
 		// the docs to insert as part of setup need to be deserialized as extended JSON, whereas the rest of the
 		// test spec is normal JSON
-		var docs []interface{}
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
+		// task_logg collection belongs to the logs db
 		if coll == state.TaskLogColl {
-			// task_logg collection belongs to the logs db
 			_, err := logsDb.Collection(coll).InsertMany(ctx, docs)
 			catcher.Add(err)
 		} else {
