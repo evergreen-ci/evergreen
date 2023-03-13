@@ -522,27 +522,12 @@ func ConcludeMerge(patchID, status string) error {
 	if cq == nil {
 		return errors.Errorf("commit queue for project '%s' not found", p.Project)
 	}
-	item := ""
-	for _, entry := range cq.Queue {
-		if entry.Version == patchID {
-			item = entry.Issue
-			break
-		}
+	if _, err = cq.Remove(patchID); err != nil {
+		return errors.Wrapf(err, "dequeueing item '%s' from commit queue", patchID)
 	}
-	if item == "" {
-		return errors.Errorf("commit queue item for patch '%s' not found", patchID)
-	}
-	// kim: NOTE: If a task is concluding the merge, it's already merged the
-	// commit successfully. This only needs to ensure that the item is no longer
-	// in the commit queue, either because this removed it or because something
-	// else has already removed it.
-	if _, err = cq.Remove(item); err != nil {
-		return errors.Wrapf(err, "dequeueing item '%s' from commit queue", item)
-	}
+
 	event.LogCommitQueueConcludeTest(patchID, status)
-	// if found == nil {
-	//     return errors.Errorf("item '%s' not found in commit queue", item)
-	// }
+
 	githubStatus := message.GithubStateFailure
 	description := "merge test failed"
 	if status == evergreen.MergeTestSucceeded {
@@ -554,6 +539,7 @@ func ConcludeMerge(patchID, status string) error {
 		"message": "unable to send github status",
 		"patch":   patchID,
 	}))
+
 	return nil
 }
 

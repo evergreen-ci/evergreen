@@ -177,42 +177,10 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 	return apiPatches, nil
 }
 
-// kim: TODO: remove
-// // IsPRMergingInCommitQueue returns whether or not the PR is currently being
-// // merged in the commit queue, or has already been merged via the commit queue.
-// func IsPRMergingInCommitQueue(event *github.PullRequestEvent) (bool, error) {
-//     owner, repo, err := verifyPullRequestEventForAbort(event)
-//     if err != nil {
-//         return false, err
-//     }
-//     prNumber := utility.FromIntPtr(event.Number)
-//
-//     patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(utility.FromTimePtr(event.PullRequest.ClosedAt), owner, repo, prNumber))
-//     if err != nil {
-//         return false, errors.Wrap(err, "finding GitHub PR commit queue items")
-//     }
-//
-//     catcher := grip.NewBasicCatcher()
-//     for _, p := range patches {
-//         if !p.IsCommitQueuePatch() {
-//             continue
-//         }
-//
-//         mergeTask, err := task.FindMergeTaskForVersion(p.Version)
-//         catcher.Wrapf(err, "finding merge task for version '%s'", p.Version)
-//         if mergeTask == nil {
-//             continue
-//         }
-//
-//         if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
-//             return true, catcher.Resolve()
-//         }
-//     }
-//     return false, catcher.Resolve()
-// }
-
 // AbortPatchesFromPullRequest aborts patches with the same PR Number,
-// in the same repository, at the pull request's close time
+// in the same repository, at the pull request's close time. This returns
+// whether or not one of the GitHub patches is a commit queue item and is
+// currently merging the PR.
 func AbortPatchesFromPullRequest(event *github.PullRequestEvent) (isCommitQueueMerging bool, err error) {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {

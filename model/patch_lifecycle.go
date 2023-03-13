@@ -899,8 +899,8 @@ func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 // which are abortable will be aborted, while completed tasks will not be
 // affected. This function makes one exception for a patch that is in the commit
 // queue - if it is already merging or has merged, then that patch is not
-// aborted. It will also return true if there was a commit queue merge in
-// progress.
+// aborted and is allowed to finish. It will also return true if there was a
+// commit queue merge in progress.
 // kim: TODO: add tests.
 func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) (isCommitQueueMerging bool, err error) {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
@@ -929,8 +929,8 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				}
 				if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
 					// If the merge task already started, the merge itself may
-					// have caused the PR to close. In that case, there is no
-					// need to abort the commit queue item.
+					// be happening or has already happened. In that case, there
+					// is no need to abort the commit queue item.
 					isCommitQueueMerging = true
 					continue
 				}

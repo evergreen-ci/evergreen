@@ -49,8 +49,6 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		logger.Task().Error(err)
 		logger.Task().Critical(pErr)
 		td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-		// kim: NOTE: this runs before EndTask for this task, but another
-		// EndTask may be running concurrently.
 		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, status, td))
 	}()
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {

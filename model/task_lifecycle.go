@@ -777,7 +777,6 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 
 // DequeueAndRestartForTask restarts all items after the given task's version, aborts/dequeues the current version,
 // and sends an updated status to GitHub.
-// kim: NOTE: this is used for setting active state (i.e. UI probably)
 func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubState message.GithubState, caller, reason string) error {
 	if cq == nil {
 		var err error
