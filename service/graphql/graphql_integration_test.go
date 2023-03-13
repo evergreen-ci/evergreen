@@ -8,17 +8,14 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const apiKey = "testapikey"
@@ -63,9 +60,6 @@ func TestGQLQueries(t *testing.T) {
 		SystemRoles: []string{"unrestrictedTaskAccess"},
 	}
 	require.NoError(t, testUser.Insert())
-
-	require.NoError(t, db.EnsureIndex(testresult.Collection, mongo.IndexModel{
-		Keys: testresult.TestResultsIndex}))
 
 	graphql.TestQueries(t, server.URL, pathToTests)
 }

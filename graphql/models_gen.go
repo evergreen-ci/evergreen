@@ -307,9 +307,9 @@ type TaskQueueDistro struct {
 // It contains the test results for a task. For example, if there is a task to run all unit tests, then the test results
 // could be the result of each individual unit test.
 type TaskTestResult struct {
-	FilteredTestCount int              `json:"filteredTestCount"`
 	TestResults       []*model.APITest `json:"testResults"`
 	TotalTestCount    int              `json:"totalTestCount"`
+	FilteredTestCount int              `json:"filteredTestCount"`
 }
 
 // TaskTestResultSample is the return value for the taskTestSample query.
@@ -326,6 +326,24 @@ type TaskTestResultSample struct {
 type TestFilter struct {
 	TestName   string `json:"testName"`
 	TestStatus string `json:"testStatus"`
+}
+
+// TestFilterOptions is an input for the task.Tests query.
+// It's used to filter, sort, and paginate test results of a task.
+type TestFilterOptions struct {
+	TestName *string            `json:"testName"`
+	Statuses []string           `json:"statuses"`
+	GroupID  *string            `json:"groupID"`
+	Sort     []*TestSortOptions `json:"sort"`
+	Limit    *int               `json:"limit"`
+	Page     *int               `json:"page"`
+}
+
+// TestSortOptions is an input for the task.Tests query.
+// It's used to define sort criteria for test results of a task.
+type TestSortOptions struct {
+	SortBy    TestSortCategory `json:"sortBy"`
+	Direction SortDirection    `json:"direction"`
 }
 
 // UpdateVolumeInput is the input to the updateVolume mutation.

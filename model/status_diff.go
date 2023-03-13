@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/pkg/errors"
 )
 
@@ -116,12 +117,9 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 
 // getTestUrl returns the correct relative URL to a test log, given a
 // TestResult structure
-func getTestUrl(tr *task.TestResult) string {
-	if tr.URL != "" {
-		return tr.URL
-	}
-	if tr.LogId != "" {
-		return TestLogPath + tr.LogId
+func getTestUrl(tr *testresult.TestResult) string {
+	if tr.LogURL != "" {
+		return tr.LogURL
 	}
 	if tr.TaskID != "" && tr.GetLogTestName() != "" {
 		return fmt.Sprintf("%s%s/%d/%s?group_id=%s", TestLogPath, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.GroupID)
@@ -151,20 +149,20 @@ func StatusDiffTasks(original *task.Task, patch *task.Task) TaskStatusDiff {
 	}
 
 	// build maps of test statuses, for matching
-	originalTests := make(map[string]task.TestResult)
+	originalTests := make(map[string]testresult.TestResult)
 	for _, test := range original.LocalTestResults {
-		originalTests[test.TestFile] = test
+		originalTests[test.TestName] = test
 	}
 
 	// iterate through all patch tests and create diffs
 	for _, test := range patch.LocalTestResults {
-		baseTest := originalTests[test.TestFile]
+		baseTest := originalTests[test.TestName]
 
 		// get the base name for windows/non-windows paths
-		testFile := path.Base(strings.Replace(test.TestFile, "\\", "/", -1))
+		testName := path.Base(strings.Replace(test.TestName, "\\", "/", -1))
 		diff.Tests = append(diff.Tests,
 			TestStatusDiff{
-				Name:     testFile,
+				Name:     testName,
 				Diff:     StatusDiff{baseTest.Status, test.Status},
 				Original: getTestUrl(&baseTest),
 				Patch:    getTestUrl(&test),
@@ -176,13 +174,13 @@ func StatusDiffTasks(original *task.Task, patch *task.Task) TaskStatusDiff {
 
 // StatusDiffTests takes two sets of tests and returns a diff of their results
 // for easy comparison and analysis.
-func StatusDiffTests(original, patch []task.TestResult) []TestStatusDiff {
+func StatusDiffTests(original, patch []testresult.TestResult) []TestStatusDiff {
 	diff := []TestStatusDiff{}
 	if len(original) == 0 || len(patch) == 0 {
 		return diff
 	}
 
-	originalMap := make(map[string]task.TestResult)
+	originalMap := make(map[string]testresult.TestResult)
 	for _, test := range original {
 		originalMap[test.GetDisplayTestName()] = test
 	}
