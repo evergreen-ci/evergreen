@@ -37,7 +37,7 @@ func TestGithubStatusUpdate(t *testing.T) {
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
+	s.NoError(db.ClearCollections(patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
 	uiConfig := evergreen.UIConfig{}
 	uiConfig.Url = "https://example.com"

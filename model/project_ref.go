@@ -476,8 +476,9 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if p.Id == "" {
 		p.Id = mgobson.NewObjectId().Hex()
 	}
-	// Ensure that any new project is originally explicitly disabled.
+	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = utility.FalsePtr()
+	p.Private = utility.TruePtr()
 
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
@@ -1251,7 +1252,7 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 
 	res := []task.Task{}
-	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
+	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
 		return nil, errors.Wrapf(err, "aggregating tasks")
 	}
 	return res, nil

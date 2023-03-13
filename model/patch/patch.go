@@ -270,9 +270,13 @@ func (p *Patch) GetURL(uiHost string) string {
 	var url string
 	if p.Activated {
 		url = uiHost + "/version/" + p.Id.Hex()
+		if p.IsChild() {
+			url += "/downstream-tasks"
+		}
 	} else {
 		url = uiHost + "/patch/" + p.Id.Hex()
 	}
+
 	if p.DisplayNewUI {
 		url = url + "?redirect_spruce_users=true"
 	}
@@ -807,6 +811,21 @@ func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 		}
 	}
 	return -1, nil
+}
+
+// GetGithubContextForChildPatch returns the github context for the given child patch, to be used in github statuses.
+func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childPatch *Patch) (string, error) {
+	patchIndex, err := childPatch.GetPatchIndex(parentPatch)
+	if err != nil {
+		return "", errors.Wrap(err, "getting child patch index")
+	}
+	githubContext := fmt.Sprintf("evergreen/%s", projectIdentifier)
+	// If there are multiple child patches, add the index to ensure these don't overlap,
+	// since there can be multiple for the same child project.
+	if patchIndex > 0 {
+		githubContext = fmt.Sprintf("evergreen/%s/%d", projectIdentifier, patchIndex)
+	}
+	return githubContext, nil
 }
 
 func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {

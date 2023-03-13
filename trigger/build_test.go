@@ -9,7 +9,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -233,41 +232,6 @@ func (s *buildSuite) TestGithubCheckOutcome() {
 	n, err = s.t.buildGithubCheckOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
-}
-
-func (s *buildSuite) TestTaskStatusToDesc() {
-	buildTrigger := makeBuildTriggers().(*buildTriggers)
-	buildTrigger.build = &build.Build{
-		Id:           mgobson.NewObjectId().Hex(),
-		BuildVariant: "testvariant",
-		Version:      "testversion",
-		Status:       evergreen.BuildFailed,
-		StartTime:    time.Time{},
-		FinishTime:   time.Time{}.Add(10 * time.Second),
-	}
-
-	s.Equal("no tasks were run", buildTrigger.taskStatusToDesc())
-
-	buildTrigger.tasks = []task.Task{
-		{
-			Status: evergreen.TaskSucceeded,
-		},
-	}
-	s.Equal("1 succeeded, none failed in 10s", buildTrigger.taskStatusToDesc())
-
-	buildTrigger.tasks = []task.Task{
-		{
-			Status: evergreen.TaskSystemFailed,
-		},
-	}
-	s.Equal("none succeeded, none failed, 1 internal errors in 10s", buildTrigger.taskStatusToDesc())
-
-	buildTrigger.tasks = []task.Task{
-		{
-			Status: evergreen.TaskFailed,
-		},
-	}
-	s.Equal("none succeeded, 1 failed in 10s", buildTrigger.taskStatusToDesc())
 }
 
 func (s *buildSuite) TestBuildExceedsTime() {

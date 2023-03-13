@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -30,9 +31,10 @@ const (
 	githubActionReopened    = "reopened"
 
 	// pull request comments
-	retryComment   = "evergreen retry"
-	patchComment   = "evergreen patch"
-	triggerComment = "evergreen merge"
+	retryComment         = "evergreen retry"
+	refreshStatusComment = "evergreen refresh"
+	patchComment         = "evergreen patch"
+	triggerComment       = "evergreen merge"
 
 	refTags = "refs/tags/"
 )
@@ -44,21 +46,13 @@ func trimComment(comment string) string {
 func isRetryComment(comment string) bool {
 	return trimComment(comment) == retryComment
 }
+
 func isPatchComment(comment string) bool {
 	return trimComment(comment) == patchComment
 }
 
-// containsTriggerComment checks if "evergreen merge" is present in the comment, as
-// it may be followed by a newline and a message.
-func containsTriggerComment(comment string) bool {
-	return strings.HasPrefix(trimComment(comment), triggerComment)
-}
-
-func triggersCommitQueue(commentAction string, comment string) bool {
-	if commentAction == "deleted" {
-		return false
-	}
-	return containsTriggerComment(comment)
+func isRefreshStatusComment(comment string) bool {
+	return trimComment(comment) == refreshStatusComment
 }
 
 type githubHookApi struct {
@@ -233,56 +227,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.IssueCommentEvent:
-		if event.Issue.IsPullRequest() {
-			if triggersCommitQueue(*event.Action, *event.Comment.Body) {
-				grip.Info(message.Fields{
-					"source":    "GitHub hook",
-					"msg_id":    gh.msgID,
-					"event":     gh.eventType,
-					"repo":      *event.Repo.FullName,
-					"pr_number": *event.Issue.Number,
-					"user":      *event.Sender.Login,
-					"message":   "commit queue triggered",
-				})
-				if _, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event)); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"source":    "GitHub hook",
-						"msg_id":    gh.msgID,
-						"event":     gh.eventType,
-						"action":    event.Action,
-						"repo":      *event.Repo.FullName,
-						"pr_number": *event.Issue.Number,
-						"user":      *event.Sender.Login,
-						"message":   "can't enqueue on commit queue",
-					}))
-					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing in commit queue"))
-				}
-			}
-			triggerPatch, callerType := triggersPatch(*event.Action, *event.Comment.Body)
-			if triggerPatch {
-				grip.Info(message.Fields{
-					"source":    "GitHub hook",
-					"msg_id":    gh.msgID,
-					"event":     gh.eventType,
-					"repo":      *event.Repo.FullName,
-					"pr_number": *event.Issue.Number,
-					"user":      *event.Sender.Login,
-					"message":   fmt.Sprintf("'%s' triggered", *event.Comment.Body),
-				})
-				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber()); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"source":    "GitHub hook",
-						"msg_id":    gh.msgID,
-						"event":     gh.eventType,
-						"action":    event.Action,
-						"repo":      *event.Repo.FullName,
-						"pr_number": *event.Issue.Number,
-						"user":      *event.Sender.Login,
-						"message":   fmt.Sprintf("can't create PR for '%s'", *event.Comment.Body),
-					}))
-					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating patch"))
-				}
-			}
+		if err := gh.handleComment(ctx, event); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 	case *github.MetaEvent:
@@ -308,6 +254,58 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// handleComment parses a given comment and takes the relevant action, if it's an Evergreen-tracked comment.
+func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueCommentEvent) error {
+	if !event.Issue.IsPullRequest() {
+		return nil
+	}
+
+	commentBody := event.Comment.GetBody()
+	commentAction := event.GetAction()
+	if commentAction == "deleted" {
+		return nil
+	}
+	if triggersCommitQueue(event.Comment.GetBody()) {
+		grip.Info(gh.getCommentLogWithMessage(event, "commit queue triggered"))
+
+		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
+		return errors.Wrap(err, "enqueueing in commit queue")
+	}
+
+	if triggerPatch, callerType := triggersPatch(commentBody); triggerPatch {
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", *event.Comment.Body)))
+
+		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber())
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
+			fmt.Sprintf("can't create PR for '%s'", commentBody))))
+		return errors.Wrap(err, "creating patch")
+	}
+
+	if triggersStatusRefresh(commentBody) {
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
+
+		err := gh.refreshPatchStatus(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
+			"problem triggering status refresh")))
+		return errors.Wrap(err, "triggering status refresh")
+	}
+
+	return nil
+}
+
+func (gh *githubHookApi) getCommentLogWithMessage(event *github.IssueCommentEvent, msg string) message.Fields {
+	return message.Fields{
+		"source":    "GitHub hook",
+		"msg_id":    gh.msgID,
+		"event":     gh.eventType,
+		"repo":      *event.Repo.FullName,
+		"pr_number": *event.Issue.Number,
+		"user":      *event.Sender.Login,
+		"message":   msg,
+	}
+}
+
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -324,6 +322,23 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 	}
 
 	return gh.AddIntentForPR(pr, pr.User.GetLogin(), calledBy)
+}
+
+func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	if err != nil {
+		return errors.Wrap(err, "finding patch")
+	}
+	if p == nil {
+		return errors.Errorf("couldn't find patch for PR '%s/%s:%d'", owner, repo, prNumber)
+	}
+	if p.Version == "" {
+		return errors.Errorf("patch '%s' not finalized", p.Version)
+	}
+
+	job := units.NewGithubStatusRefreshJob(p)
+	job.Run(ctx)
+	return nil
 }
 
 func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy string) error {
@@ -629,13 +644,15 @@ func isItemOnCommitQueue(id, item string) (bool, error) {
 	return false, nil
 }
 
+// triggersCommitQueue checks if "evergreen merge" is present in the comment, as
+// it may be followed by a newline and a message.
+func triggersCommitQueue(comment string) bool {
+	return strings.HasPrefix(trimComment(comment), triggerComment)
+}
+
 // The bool value returns whether the patch should be created or not.
 // The string value returns the correct caller for the command.
-func triggersPatch(action, comment string) (bool, string) {
-	if action == "deleted" {
-		return false, ""
-	}
-
+func triggersPatch(comment string) (bool, string) {
 	if isPatchComment(comment) {
 		return true, patch.ManualCaller
 	}
@@ -644,6 +661,9 @@ func triggersPatch(action, comment string) (bool, string) {
 	}
 
 	return false, ""
+}
+func triggersStatusRefresh(comment string) bool {
+	return isRefreshStatusComment(comment)
 }
 
 func isTag(ref string) bool {

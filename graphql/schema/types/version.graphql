@@ -47,6 +47,7 @@ type Version {
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
   childVersions: [Version]
   createTime: Time!
+  errors: [String!]!
   finishTime: Time
   isPatch: Boolean!
   manifest: Manifest
@@ -70,6 +71,7 @@ type Version {
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
   externalLinksForPatchMetadata: [ExternalLinkForPatchMetadata!]!
+  warnings: [String!]!
 }
 
 type VersionTasks {

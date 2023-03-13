@@ -73,9 +73,8 @@ type SharedCommunicator interface {
 	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
 	// creates it if it doesn't exist.
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
-	// SetHasCedarResults sets the HasCedarResults flag to true in the
-	// task and sets CedarResultsFailed if there are failed results.
-	SetHasCedarResults(context.Context, TaskData, bool) error
+	// SetResultsInfo sets the test results information in the task.
+	SetResultsInfo(context.Context, TaskData, string, bool) error
 	// GetDataPipesConfig returns the Data-Pipes service configuration.
 	GetDataPipesConfig(context.Context) (*apimodels.DataPipesConfig, error)
 
@@ -93,7 +92,6 @@ type SharedCommunicator interface {
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 
 	// The following operations are used by task commands.
-	SendTestResults(context.Context, TaskData, *task.LocalTestResults) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)

@@ -36,6 +36,39 @@ const (
 	GithubInvestigation = "Github API Limit Investigation"
 )
 
+var UnblockedGithubStatuses = []string{
+	githubPRBehind,
+	githubPRClean,
+	githubPRDirty,
+	githubPRDraft,
+	githubPRHasHooks,
+	githubPRUnknown,
+	githubPRUnstable,
+}
+
+const (
+	GithubPRBlocked = "blocked"
+
+	// All PR statuses except for "blocked" based on statuses listed here:
+	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
+	// Because the pr.MergeableState is not documented, it can change without
+	// notice. That's why we want to only allow fields we know to be unblocked
+	// rather than simply blocking the "blocked" status. That way if it does
+	// change, it doesn't fail silently.
+	githubPRBehind   = "behind"
+	githubPRClean    = "clean"
+	githubPRDirty    = "dirty"
+	githubPRDraft    = "draft"
+	githubPRHasHooks = "has_hooks"
+	githubPRUnknown  = "unknown"
+	githubPRUnstable = "unstable"
+)
+
+// IsUnblockedGithubStatus returns true if the status is in the list of unblocked statuses
+func IsUnblockedGithubStatus(status string) bool {
+	return utility.StringSliceContains(UnblockedGithubStatuses, status)
+}
+
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
 	PRNumber       int    `bson:"pr_number"`
@@ -52,7 +85,7 @@ type GithubPatch struct {
 	CommitMessage  string `bson:"commit_message"`
 }
 
-// SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
+// SendGithubStatusInput is the input to the SendVersionStatusToGithub function and contains
 // all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {
 	VersionId string
@@ -295,9 +328,9 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref strin
 	return file, nil
 }
 
-// SendPendingStatusToGithub sends a pending status to a Github PR patch
+// SendVersionStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
-func SendPendingStatusToGithub(input SendGithubStatusInput) error {
+func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")

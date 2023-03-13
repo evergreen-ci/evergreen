@@ -302,11 +302,18 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 	commentString := issueComment.Comment.GetBody()
 	s.Equal(retryComment, commentString)
 
-	s.True(triggersPatch("created", commentString))
-	s.False(triggersPatch("deleted", commentString))
+	s.True(triggersPatch(commentString))
 
 	//test whitespace trimming
-	s.True(triggersPatch("created", "  evergreen retry "))
+	s.True(triggersPatch("  evergreen retry "))
+}
+
+func (s *GithubWebhookRouteSuite) TestRefreshStatusTrigger() {
+	s.True(triggersStatusRefresh(refreshStatusComment))
+	s.False(triggersStatusRefresh(retryComment))
+
+	//test whitespace trimming
+	s.True(triggersStatusRefresh("  evergreen refresh "))
 }
 
 func (s *GithubWebhookRouteSuite) TestPatchCommentTrigger() {
@@ -319,23 +326,18 @@ func (s *GithubWebhookRouteSuite) TestPatchCommentTrigger() {
 	commentString := issueComment.Comment.GetBody()
 	s.Equal(patchComment, commentString)
 
-	s.True(triggersPatch("created", commentString))
-	s.False(triggersPatch("deleted", commentString))
+	s.True(triggersPatch(commentString))
 
 	//test whitespace trimming
-	s.True(triggersPatch("created", "  evergreen patch "))
+	s.True(triggersPatch("  evergreen patch "))
 }
 
 func (s *CommitQueueSuite) TestCommentTrigger() {
 	comment := "no dice"
-	action := "created"
-	s.False(triggersCommitQueue(action, comment))
+	s.False(triggersCommitQueue(comment))
 
 	comment = triggerComment
-	s.True(triggersCommitQueue(action, comment))
-
-	action = "deleted"
-	s.False(triggersCommitQueue(action, comment))
+	s.True(triggersCommitQueue(comment))
 }
 
 func (s *CommitQueueSuite) TestCommentCleanup() {
@@ -343,11 +345,11 @@ func (s *CommitQueueSuite) TestCommentCleanup() {
 	patch := " \n Evergreen       \n  Patch \n "
 	retry := " \n Evergreen       \n  Retry \n "
 
-	s.False(containsTriggerComment(patch))
+	s.False(triggersCommitQueue(patch))
 	s.False(isPatchComment(retry))
 	s.False(isRetryComment(trigger))
 
-	s.True(containsTriggerComment(trigger))
+	s.True(triggersCommitQueue(trigger))
 	s.True(isPatchComment(patch))
 	s.True(isRetryComment(retry))
 }

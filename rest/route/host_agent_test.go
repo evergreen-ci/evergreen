@@ -93,7 +93,8 @@ func TestHostNextTask(t *testing.T) {
 			assert.NotNil(t, taskResp)
 			assert.Equal(t, taskResp.TaskId, "task1")
 			nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
-			require.Nil(t, err)
+			require.NoError(t, err)
+			require.NotNil(t, nextTask)
 			assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
 			dbHost, err := host.FindOneId("h1")
 			require.NoError(t, err)
@@ -1656,8 +1657,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			}
 			assert.NoError(t, version3.Insert())
 			b := &build.Build{
-				Id:      "build",
-				Version: p1,
+				Id: "build",
 			}
 			assert.NoError(t, b.Insert())
 			patch1 := patch.Patch{

@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -97,7 +98,9 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 	out := []string{}
 
 	for _, fileSpec := range files {
-		paths, err := filepath.Glob(filepath.Join(workDir, fileSpec))
+		relativeToWorkDir := strings.TrimPrefix(filepath.ToSlash(fileSpec), filepath.ToSlash(workDir))
+		path := filepath.Join(workDir, relativeToWorkDir)
+		paths, err := filepath.Glob(path)
 		catcher.Add(err)
 		out = append(out, paths...)
 	}
@@ -113,7 +116,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 	logger client.LoggerProducer, comm client.Communicator) error {
 
 	cumulative := testcaseAccumulator{
-		tests:           []task.TestResult{},
+		tests:           []testresult.TestResult{},
 		logs:            []*model.TestLog{},
 		logIdxToTestIdx: []int{},
 	}
@@ -186,11 +189,11 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 	}
 	logger.Task().Infof("Posting test logs succeeded for %d of %d files.", succeeded, len(cumulative.logs))
 
-	return sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{Results: cumulative.tests})
+	return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
 }
 
 type testcaseAccumulator struct {
-	tests           []task.TestResult
+	tests           []testresult.TestResult
 	logs            []*model.TestLog
 	logIdxToTestIdx []int
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
@@ -582,11 +581,7 @@ func MarkEnd(settings *evergreen.Settings, t *task.Task, caller string, finishTi
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
-	hasFailedTests, err := t.HasFailedTests()
-	if err != nil {
-		return errors.Wrap(err, "checking for failed tests")
-	}
-	if hasFailedTests && detailsCopy.Status != evergreen.TaskFailed {
+	if t.ResultsFailed && detailsCopy.Status != evergreen.TaskFailed {
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 	}
@@ -598,17 +593,9 @@ func MarkEnd(settings *evergreen.Settings, t *task.Task, caller string, finishTi
 		})
 		return nil
 	}
-	if !t.HasCedarResults { // Results not in cedar, check the db.
-		count, err := testresult.Count(testresult.FilterByTaskIDAndExecution(t.Id, t.Execution))
-		if err != nil {
-			return errors.Wrap(err, "unable to count test results")
-		}
-		t.HasLegacyResults = utility.ToBoolPtr(count > 0) // cache if we even need to look this up in the future
-
-		if detailsCopy.Status == evergreen.TaskSucceeded && count == 0 && t.MustHaveResults {
-			detailsCopy.Status = evergreen.TaskFailed
-			detailsCopy.Description = evergreen.TaskDescriptionNoResults
-		}
+	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults() {
+		detailsCopy.Status = evergreen.TaskFailed
+		detailsCopy.Description = evergreen.TaskDescriptionNoResults
 	}
 
 	t.Details = detailsCopy
@@ -622,7 +609,7 @@ func MarkEnd(settings *evergreen.Settings, t *task.Task, caller string, finishTi
 		})
 	}
 	startPhaseAt := time.Now()
-	err = t.MarkEnd(finishTime, &detailsCopy)
+	err := t.MarkEnd(finishTime, &detailsCopy)
 
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
@@ -1126,36 +1113,6 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(buildStatus.status)
 }
 
-// checkUpdateBuildPRStatusPending checks if the build is coming from a PR, and if so
-// sends a pending status to GitHub to reflect the status of the build.
-func checkUpdateBuildPRStatusPending(b *build.Build) error {
-	if !evergreen.IsGitHubPatchRequester(b.Requester) {
-		return nil
-	}
-	p, err := patch.FindOneId(b.Version)
-	if err != nil {
-		return errors.Wrapf(err, "finding patch '%s'", b.Version)
-	}
-	if p == nil {
-		return errors.Errorf("patch '%s' not found", b.Version)
-	}
-	if p.IsGithubPRPatch() && !evergreen.IsFinishedBuildStatus(b.Status) {
-		input := thirdparty.SendGithubStatusInput{
-			VersionId: p.Id.Hex(),
-			Owner:     p.GithubPatchData.BaseOwner,
-			Repo:      p.GithubPatchData.BaseRepo,
-			Ref:       p.GithubPatchData.HeadHash,
-			Desc:      "patch status change",
-			Caller:    "pr-task-reset",
-			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
-		}
-		if err = thirdparty.SendPendingStatusToGithub(input); err != nil {
-			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
-		}
-	}
-	return nil
-}
-
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all of the build's tasks become blocked.
 func updateBuildStatus(b *build.Build) (bool, error) {
@@ -1330,8 +1287,7 @@ func updateVersionStatus(v *Version) (string, error) {
 	return versionStatus, nil
 }
 
-// UpdatePatchStatus updates the status of a patch.
-func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
+func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
 		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
@@ -1347,8 +1303,24 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else if err = p.UpdateStatus(patchStatus); err != nil {
-		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
+	} else {
+		if err = p.UpdateStatus(patchStatus); err != nil {
+			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
+		}
+		if p.IsGithubPRPatch() {
+			input := thirdparty.SendGithubStatusInput{
+				VersionId: p.Id.Hex(),
+				Owner:     p.GithubPatchData.BaseOwner,
+				Repo:      p.GithubPatchData.BaseRepo,
+				Ref:       p.GithubPatchData.HeadHash,
+				Desc:      "patch status change",
+				Caller:    "pr-task-reset",
+				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
+			}
+			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
+				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+			}
+		}
 	}
 
 	isDone, parentPatch, err := p.GetFamilyInformation()
@@ -1385,7 +1357,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrapf(err, "updating build '%s' status", taskBuild.Id)
 	}
-	// If the build status has not changed, then the version and patch statuses must have also not changed.
+	// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
 	if !buildStatusChanged {
 		return nil
 	}
@@ -1403,12 +1375,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
 	}
 
-	if newVersionStatus != taskVersion.Status {
-		if err = checkUpdateBuildPRStatusPending(taskBuild); err != nil {
-			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
-		}
-	}
-
 	if evergreen.IsPatchRequester(taskVersion.Requester) {
 		p, err := patch.FindOneId(taskVersion.Id)
 		if err != nil {
@@ -1417,7 +1383,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
@@ -1447,9 +1413,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
-// UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
-// builds associated with the given input list of build IDs. For PR patches, builds whose
-// statuses have changed to an unfinished status are changed to pending in GitHub.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
@@ -1459,30 +1422,28 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		return errors.Wrapf(err, "fetching builds")
 	}
 
-	// Maintain a list of builds for each version because we may
-	// be updating many builds for the same version.
-	versionSet := make(map[string]bool)
+	versionsToUpdate := make(map[string]string)
+	bvMap := make(map[string]string)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
 		if err != nil {
 			return errors.Wrapf(err, "updating build '%s' status", build.Id)
 		}
-		// If the build status has not changed, then the version and patch statuses must have also not changed.
+		// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
 		if !buildStatusChanged {
 			continue
 		}
-		if err = checkUpdateBuildPRStatusPending(&build); err != nil {
-			return errors.Wrapf(err, "updating build '%s' PR status", build.Id)
-		}
-		versionSet[build.Version] = true
+
+		versionsToUpdate[build.Version] = build.Id
+		bvMap[build.Id] = build.BuildVariant
 	}
-	for versionId := range versionSet {
+	for versionId, buildId := range versionsToUpdate {
 		buildVersion, err := VersionFindOneId(versionId)
 		if err != nil {
-			return errors.Wrapf(err, "getting version '%s'", versionId)
+			return errors.Wrapf(err, "getting version '%s' for build '%s'", versionId, buildId)
 		}
 		if buildVersion == nil {
-			return errors.Errorf("no version '%s' found", versionId)
+			return errors.Errorf("no version '%s' found for build '%s'", versionId, buildId)
 		}
 		newVersionStatus, err := updateVersionStatus(buildVersion)
 		if err != nil {
@@ -1497,7 +1458,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+			if err = UpdatePatchStatus(p, newVersionStatus, bvMap[buildId]); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}

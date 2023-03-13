@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -46,7 +47,7 @@ type commonTemplateData struct {
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
-	FailedTests     []task.TestResult
+	FailedTests     []testresult.TestResult
 
 	Task       *task.Task
 	ProjectRef *model.ProjectRef
@@ -126,7 +127,7 @@ const emailTaskFailTemplate = `
         <tr><td colspan="2" height="10"></td></tr>
         <tr>
           <td width="90%">
-            <a href="{{ .URL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view logs</a>
+            <a href="{{ .LogURL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view logs</a>
           </td>
           <td>&nbsp;</td>
         </tr>
@@ -450,16 +451,17 @@ func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes
 	return nil, errors.Errorf("unknown subscriber type '%s'", sub.Subscriber.Type)
 }
 
-func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
-	result := []task.TestResult{}
+func getFailedTestsFromTemplate(t task.Task) ([]testresult.TestResult, error) {
+	results := []testresult.TestResult{}
 	for i := range t.LocalTestResults {
 		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			testResult := t.LocalTestResults[i]
-			testResult.URL = testResult.GetLogURL(evergreen.LogViewerHTML)
-			result = append(result, testResult)
+			testResult.LogURL = testResult.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML)
+			results = append(results, testResult)
 		}
 	}
-	return result, nil
+
+	return results, nil
 }
 
 func taskLink(uiBase string, taskID string, execution int) string {
@@ -468,14 +470,6 @@ func taskLink(uiBase string, taskID string, execution int) string {
 
 func taskLogLink(uiBase string, taskID string, execution int) string {
 	return fmt.Sprintf("%s/task_log_raw/%s/%d?type=T", uiBase, url.PathEscape(taskID), execution)
-}
-
-func buildLink(uiBase string, buildID string, hasPatch bool) string {
-	url := fmt.Sprintf("%s/build/%s", uiBase, url.PathEscape(buildID))
-	if hasPatch {
-		url += "?redirect_spruce_users=true"
-	}
-	return url
 }
 
 type versionLinkInput struct {
@@ -490,9 +484,7 @@ func versionLink(i versionLinkInput) string {
 	if i.isChild {
 		url += "/downstream-tasks"
 	}
-	if i.hasPatch {
-		url += "?redirect_spruce_users=true"
-	}
+	url += "?redirect_spruce_users=true"
 	return url
 }
 

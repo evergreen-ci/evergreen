@@ -959,6 +959,7 @@ type ComplexityRoot struct {
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
 		TaskLogs                func(childComplexity int) int
+		Tests                   func(childComplexity int, opts *TestFilterOptions) int
 		TimeTaken               func(childComplexity int) int
 		TotalTestCount          func(childComplexity int) int
 		VersionMetadata         func(childComplexity int) int
@@ -1191,6 +1192,7 @@ type ComplexityRoot struct {
 		BuildVariants                 func(childComplexity int, options BuildVariantOptions) int
 		ChildVersions                 func(childComplexity int) int
 		CreateTime                    func(childComplexity int) int
+		Errors                        func(childComplexity int) int
 		ExternalLinksForPatchMetadata func(childComplexity int) int
 		FinishTime                    func(childComplexity int) int
 		Id                            func(childComplexity int) int
@@ -1215,6 +1217,7 @@ type ComplexityRoot struct {
 		Tasks                         func(childComplexity int, options TaskFilterOptions) int
 		UpstreamProject               func(childComplexity int) int
 		VersionTiming                 func(childComplexity int) int
+		Warnings                      func(childComplexity int) int
 	}
 
 	VersionTasks struct {
@@ -1491,6 +1494,7 @@ type TaskResolver interface {
 	TaskFiles(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
+	Tests(ctx context.Context, obj *model.APITask, opts *TestFilterOptions) (*TaskTestResult, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
@@ -1546,6 +1550,7 @@ type VersionResolver interface {
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
 	ExternalLinksForPatchMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForPatchMetadata, error)
+	Warnings(ctx context.Context, obj *model.APIVersion) ([]string, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -6265,6 +6270,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.TaskLogs(childComplexity), true
 
+	case "Task.tests":
+		if e.complexity.Task.Tests == nil {
+			break
+		}
+
+		args, err := ec.field_Task_tests_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Task.Tests(childComplexity, args["opts"].(*TestFilterOptions)), true
+
 	case "Task.timeTaken":
 		if e.complexity.Task.TimeTaken == nil {
 			break
@@ -7316,6 +7333,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.CreateTime(childComplexity), true
 
+	case "Version.errors":
+		if e.complexity.Version.Errors == nil {
+			break
+		}
+
+		return e.complexity.Version.Errors(childComplexity), true
+
 	case "Version.externalLinksForPatchMetadata":
 		if e.complexity.Version.ExternalLinksForPatchMetadata == nil {
 			break
@@ -7493,6 +7517,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.VersionTiming(childComplexity), true
+
+	case "Version.warnings":
+		if e.complexity.Version.Warnings == nil {
+			break
+		}
+
+		return e.complexity.Version.Warnings(childComplexity), true
 
 	case "VersionTasks.count":
 		if e.complexity.VersionTasks.Count == nil {
@@ -7745,6 +7776,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTaskSyncOptionsInput,
 		ec.unmarshalInputTestFilter,
+		ec.unmarshalInputTestFilterOptions,
+		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputTriggerAliasInput,
 		ec.unmarshalInputUpdateVolumeInput,
 		ec.unmarshalInputUseSpruceOptionsInput,
@@ -9819,6 +9852,21 @@ func (ec *executionContext) field_Query_version_args(ctx context.Context, rawArg
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Task_tests_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *TestFilterOptions
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalOTestFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -14552,6 +14600,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -19167,6 +19217,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -19213,6 +19265,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -19276,6 +19330,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -19322,6 +19378,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -20933,6 +20991,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23285,6 +23345,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23482,6 +23544,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23679,6 +23743,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23876,6 +23942,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -24073,6 +24141,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -24270,6 +24340,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -24739,6 +24811,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -24785,6 +24859,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -26894,6 +26970,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -26940,6 +27018,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -28433,6 +28513,8 @@ func (ec *executionContext) fieldContext_Pod_task(ctx context.Context, field gra
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -35094,6 +35176,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -35291,6 +35375,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -35427,12 +35513,12 @@ func (ec *executionContext) fieldContext_Query_taskTests(ctx context.Context, fi
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "filteredTestCount":
-				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			case "testResults":
 				return ec.fieldContext_TaskTestResult_testResults(ctx, field)
 			case "totalTestCount":
 				return ec.fieldContext_TaskTestResult_totalTestCount(ctx, field)
+			case "filteredTestCount":
+				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskTestResult", field.Name)
 		},
@@ -36091,6 +36177,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -36137,6 +36225,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -41343,6 +41433,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -42411,6 +42503,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -42764,6 +42858,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -44286,6 +44382,69 @@ func (ec *executionContext) fieldContext_Task_taskLogs(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_tests(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_tests(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Tests(rctx, obj, fc.Args["opts"].(*TestFilterOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*TaskTestResult)
+	fc.Result = res
+	return ec.marshalNTaskTestResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_tests(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "testResults":
+				return ec.fieldContext_TaskTestResult_testResults(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_TaskTestResult_totalTestCount(ctx, field)
+			case "filteredTestCount":
+				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskTestResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Task_tests_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_timeTaken(ctx, field)
 	if err != nil {
@@ -44430,6 +44589,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -44476,6 +44637,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -47337,50 +47500,6 @@ func (ec *executionContext) fieldContext_TaskSyncOptions_patchEnabled(ctx contex
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FilteredTestCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskTestResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TaskTestResult_testResults(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskTestResult_testResults(ctx, field)
 	if err != nil {
@@ -47483,6 +47602,50 @@ func (ec *executionContext) _TaskTestResult_totalTestCount(ctx context.Context, 
 }
 
 func (ec *executionContext) fieldContext_TaskTestResult_totalTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskTestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FilteredTestCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskTestResult",
 		Field:      field,
@@ -49521,6 +49684,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -49678,6 +49843,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -49724,6 +49891,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -50946,6 +51115,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -50992,6 +51163,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -51219,6 +51392,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -51265,6 +51440,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -51311,6 +51488,50 @@ func (ec *executionContext) fieldContext_Version_createTime(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_errors(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_errors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Errors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_errors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -51757,6 +51978,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_childVersions(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "isPatch":
@@ -51803,6 +52026,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "externalLinksForPatchMetadata":
 				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -52608,6 +52833,50 @@ func (ec *executionContext) fieldContext_Version_externalLinksForPatchMetadata(c
 	return fc, nil
 }
 
+func (ec *executionContext) _Version_warnings(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_warnings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().Warnings(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_warnings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VersionTasks_count(ctx context.Context, field graphql.CollectedField, obj *VersionTasks) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VersionTasks_count(ctx, field)
 	if err != nil {
@@ -52825,6 +53094,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -58712,6 +58983,110 @@ func (ec *executionContext) unmarshalInputTestFilter(ctx context.Context, obj in
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testStatus"))
 			it.TestStatus, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context, obj interface{}) (TestFilterOptions, error) {
+	var it TestFilterOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"testName", "statuses", "groupID", "sort", "limit", "page"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "testName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testName"))
+			it.TestName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "statuses":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
+			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "groupID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupID"))
+			it.GroupID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "sort":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sort"))
+			it.Sort, err = ec.unmarshalOTestSortOptions2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptionsᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "limit":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			it.Limit, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "page":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestSortOptions(ctx context.Context, obj interface{}) (TestSortOptions, error) {
+	var it TestSortOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"sortBy", "direction"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "sortBy":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortBy"))
+			it.SortBy, err = ec.unmarshalNTestSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "direction":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
+			it.Direction, err = ec.unmarshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -66469,6 +66844,26 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				return innerFunc(ctx)
 
 			})
+		case "tests":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_tests(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "timeTaken":
 
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
@@ -67308,13 +67703,6 @@ func (ec *executionContext) _TaskTestResult(ctx context.Context, sel ast.Selecti
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TaskTestResult")
-		case "filteredTestCount":
-
-			out.Values[i] = ec._TaskTestResult_filteredTestCount(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "testResults":
 
 			out.Values[i] = ec._TaskTestResult_testResults(ctx, field, obj)
@@ -67325,6 +67713,13 @@ func (ec *executionContext) _TaskTestResult(ctx context.Context, sel ast.Selecti
 		case "totalTestCount":
 
 			out.Values[i] = ec._TaskTestResult_totalTestCount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "filteredTestCount":
+
+			out.Values[i] = ec._TaskTestResult_filteredTestCount(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -68177,6 +68572,13 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "errors":
+
+			out.Values[i] = ec._Version_errors(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "finishTime":
 
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
@@ -68467,6 +68869,26 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_externalLinksForPatchMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "warnings":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_warnings(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -71685,6 +72107,21 @@ func (ec *executionContext) marshalNTestResult2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._TestResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNTestSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, v interface{}) (TestSortCategory, error) {
+	var res TestSortCategory
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTestSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, sel ast.SelectionSet, v TestSortCategory) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNTestSortOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptions(ctx context.Context, v interface{}) (*TestSortOptions, error) {
+	res, err := ec.unmarshalInputTestSortOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNTicketFields2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐTicketFields(ctx context.Context, sel ast.SelectionSet, v *thirdparty.TicketFields) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -74415,6 +74852,14 @@ func (ec *executionContext) marshalOTaskTestResultSample2ᚕᚖgithubᚗcomᚋev
 	return ret
 }
 
+func (ec *executionContext) unmarshalOTestFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterOptions(ctx context.Context, v interface{}) (*TestFilterOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTestFilterOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOTestSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, v interface{}) (*TestSortCategory, error) {
 	if v == nil {
 		return nil, nil
@@ -74429,6 +74874,26 @@ func (ec *executionContext) marshalOTestSortCategory2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOTestSortOptions2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptionsᚄ(ctx context.Context, v interface{}) ([]*TestSortOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*TestSortOptions, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTestSortOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptions(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {

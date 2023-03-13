@@ -16,6 +16,7 @@ func main() {
 		directory string
 		source    string
 		ldFlags   string
+		gcFlags   string
 		buildName string
 		output    string
 		goBin     string
@@ -38,6 +39,7 @@ func main() {
 	flag.StringVar(&directory, "directory", "", "output directory")
 	flag.StringVar(&source, "source", "", "path to source file")
 	flag.StringVar(&ldFlags, "ldflags", "", "specify any ldflags to pass to go build")
+	flag.StringVar(&gcFlags, "gcflags", "", "specify any gcflags to pass to go build")
 	flag.StringVar(&buildName, "buildName", "", "use GOOS_ARCH to specify target platform")
 	flag.StringVar(&goBin, "goBinary", "go", "specify path to go binary")
 	flag.StringVar(&output, "output", "", "specify the name of executable")
@@ -67,6 +69,10 @@ func main() {
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
 	cmd.Args = append(cmd.Args, ldf)
 
+	gcf := fmt.Sprintf("-gcflags=%s", gcFlags)
+	gcfQuoted := fmt.Sprintf("-gcflags=\"%s\"", gcFlags)
+	cmd.Args = append(cmd.Args, gcf)
+
 	cmd.Env = os.Environ()
 	if tmpdir := os.Getenv("TMPDIR"); tmpdir != "" {
 		cmd.Env = append(cmd.Env, "TMPDIR="+strings.Replace(tmpdir, `\`, `\\`, -1))
@@ -84,6 +90,7 @@ func main() {
 	cmd.Stderr = os.Stderr
 
 	cmdString := strings.Join(cmd.Args, " ")
+	cmdString = strings.Replace(cmdString, gcf, gcfQuoted, -1)
 	fmt.Println(goos, goarch, strings.Replace(cmdString, ldf, ldfQuoted, -1))
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("problem building %s: %v\n", output, err)
