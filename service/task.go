@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -125,13 +126,13 @@ type uiExecTask struct {
 }
 
 type uiTestResult struct {
-	TestResult task.TestResult `json:"test_result"`
-	TaskId     string          `json:"task_id"`
-	TaskName   string          `json:"task_name"`
-	URL        string          `json:"url"`
-	URLRaw     string          `json:"url_raw"`
-	URLLobster string          `json:"url_lobster"`
-	URLParsley string          `json:"url_parsley"`
+	TestResult testresult.TestResult `json:"test_result"`
+	TaskId     string                `json:"task_id"`
+	TaskName   string                `json:"task_name"`
+	URL        string                `json:"url"`
+	URLRaw     string                `json:"url_raw"`
+	URLLobster string                `json:"url_lobster"`
+	URLParsley string                `json:"url_parsley"`
 }
 
 type logData struct {
@@ -336,7 +337,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	testResults := uis.getTestResults(projCtx, &uiTask)
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
-		var testResultsOnBaseCommit []task.TestResult
+		var testResultsOnBaseCommit []testresult.TestResult
 		taskOnBaseCommit, err = projCtx.Task.FindTaskOnBaseCommit()
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -433,7 +434,7 @@ type taskHistoryPageData struct {
 	TaskName    string
 	Tasks       []bson.M
 	Variants    []string
-	FailedTests map[string][]task.TestResult
+	FailedTests map[string][]string
 	Versions    []model.Version
 
 	// Flags that indicate whether the beginning/end of history has been reached
@@ -924,7 +925,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
-func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) []task.TestResult {
+func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) []testresult.TestResult {
 	if err := projCtx.Task.PopulateTestResults(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"task_id": projCtx.Task.Id,
@@ -977,10 +978,10 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 				TestResult: tr,
 				TaskId:     tr.TaskID,
 				TaskName:   execTaskDisplayNameMap[tr.TaskID],
-				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
-				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
-				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
-				URLParsley: tr.GetLogURL(evergreen.LogViewerParsley),
+				URL:        tr.GetLogURL(uis.env, evergreen.LogViewerHTML),
+				URLRaw:     tr.GetLogURL(uis.env, evergreen.LogViewerRaw),
+				URLLobster: tr.GetLogURL(uis.env, evergreen.LogViewerLobster),
+				URLParsley: tr.GetLogURL(uis.env, evergreen.LogViewerParsley),
 			})
 		}
 	} else {
@@ -988,10 +989,10 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
 				TaskId:     tr.TaskID,
-				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
-				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
-				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
-				URLParsley: tr.GetLogURL(evergreen.LogViewerParsley),
+				URL:        tr.GetLogURL(uis.env, evergreen.LogViewerHTML),
+				URLRaw:     tr.GetLogURL(uis.env, evergreen.LogViewerRaw),
+				URLLobster: tr.GetLogURL(uis.env, evergreen.LogViewerLobster),
+				URLParsley: tr.GetLogURL(uis.env, evergreen.LogViewerParsley),
 			})
 		}
 

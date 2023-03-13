@@ -220,7 +220,7 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 	t.lastUrl = req.URL.String()
 	resp := &http.Response{
 		StatusCode: http.StatusNoContent,
-		Body:       io.NopCloser(nil),
+		Body:       http.NoBody,
 	}
 
 	if t.attemptCount < t.minAttempts {

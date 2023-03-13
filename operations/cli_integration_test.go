@@ -17,12 +17,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v3"
@@ -278,6 +280,13 @@ func TestCLIFetchArtifacts(t *testing.T) {
 }
 
 func TestCLITestHistory(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := evergreen.GetEnvironment()
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+		assert.NoError(t, testresult.ClearLocal(ctx, env))
+	}()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLITestHistory")
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
@@ -313,35 +322,38 @@ func TestCLITestHistory(t *testing.T) {
 			So(testVersion3.Insert(), ShouldBeNil)
 			// create tasks with three different display names that start and finish at various times
 			for i := 0; i < 10; i++ {
-				startTime := now.Add(time.Minute * time.Duration(i))
-				endTime := now.Add(time.Minute * time.Duration(i+1))
-				passingResult := task.TestResult{
-					TestFile:  "passingTest",
-					Status:    evergreen.TestSucceededStatus,
-					StartTime: float64(startTime.Unix()),
-					EndTime:   float64(endTime.Unix()),
+				tsk := task.Task{
+					Id:             fmt.Sprintf("task_%v", i),
+					Project:        project,
+					DisplayName:    fmt.Sprintf("testTask_%v", i%3),
+					Revision:       fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
+					Version:        fmt.Sprintf("version%v", i%3),
+					BuildVariant:   "osx",
+					Status:         evergreen.TaskFailed,
+					ResultsService: testresult.TestResultsServiceLocal,
 				}
-				failedResult := task.TestResult{
-					TestFile:  "failingTest",
-					Status:    evergreen.TestFailedStatus,
-					StartTime: float64(startTime.Unix()),
-					EndTime:   float64(endTime.Unix()),
+				So(tsk.Insert(), ShouldBeNil)
+
+				startTime := now.Add(time.Minute * time.Duration(i)).UTC()
+				endTime := now.Add(time.Minute * time.Duration(i+1)).UTC()
+				passingResult := testresult.TestResult{
+					TestName:      "passingTest",
+					TaskID:        tsk.Id,
+					Status:        evergreen.TestSucceededStatus,
+					TestStartTime: startTime,
+					TestEndTime:   endTime,
 				}
-				t := task.Task{
-					Id:               fmt.Sprintf("task_%v", i),
-					Project:          project,
-					DisplayName:      fmt.Sprintf("testTask_%v", i%3),
-					Revision:         fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
-					Version:          fmt.Sprintf("version%v", i%3),
-					BuildVariant:     "osx",
-					Status:           evergreen.TaskFailed,
-					LocalTestResults: []task.TestResult{passingResult, failedResult},
+				failedResult := testresult.TestResult{
+					TestName:      "failingTest",
+					TaskID:        tsk.Id,
+					Status:        evergreen.TestFailedStatus,
+					TestStartTime: startTime,
+					TestEndTime:   endTime,
 				}
-				So(t.Insert(), ShouldBeNil)
+				require.NoError(t, testresult.InsertLocal(ctx, evergreen.GetEnvironment(), passingResult, failedResult))
 			}
 		})
 	})
-
 }
 
 func TestCLIFunctions(t *testing.T) {

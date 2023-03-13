@@ -129,12 +129,12 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 				So(len(updatedTask.LocalTestResults), ShouldEqual, 2)
 				So(updatedTask.LocalTestResults[0].Status, ShouldEqual, "pass")
 				So(updatedTask.LocalTestResults[1].Status, ShouldEqual, "pass")
-				So(updatedTask.LocalTestResults[0].TestFile, ShouldEqual, "TestPass01")
-				So(updatedTask.LocalTestResults[1].TestFile, ShouldEqual, "TestPass02")
-				So(updatedTask.LocalTestResults[0].StartTime, ShouldBeLessThan,
-					updatedTask.LocalTestResults[0].EndTime)
-				So(updatedTask.LocalTestResults[1].StartTime, ShouldBeLessThan,
-					updatedTask.LocalTestResults[1].EndTime)
+				So(updatedTask.LocalTestResults[0].TestName, ShouldEqual, "TestPass01")
+				So(updatedTask.LocalTestResults[1].TestName, ShouldEqual, "TestPass02")
+				So(updatedTask.LocalTestResults[0].TestStartTime, ShouldBeLessThan,
+					updatedTask.LocalTestResults[0].TestEndTime)
+				So(updatedTask.LocalTestResults[1].TestStartTime, ShouldBeLessThan,
+					updatedTask.LocalTestResults[1].TestEndTime)
 
 				Convey("with relevant logs present in the DB as well", func() {
 					log, err := model.FindOneTestLog("0_goodpkg", "testTaskId", 0)

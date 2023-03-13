@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -467,6 +468,27 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 		TimeTaken: &apiTimeTaken,
 		Makespan:  &apiMakespan,
 	}, nil
+}
+
+// ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
+func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
+	pRef, err := data.FindProjectById(*obj.Project, false, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project `%s`: %s", *obj.Project, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
+	}
+	var externalLinks []*ExternalLinkForMetadata
+	for _, link := range pRef.ExternalLinks {
+		// replace {version_id} with the actual version id
+		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
+		externalLinks = append(externalLinks, &ExternalLinkForMetadata{
+			URL:         formattedURL,
+			DisplayName: link.DisplayName,
+		})
+	}
+	return externalLinks, nil
 }
 
 // Warnings is the resolver for the warnings field.

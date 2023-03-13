@@ -11,6 +11,7 @@ input RepoRefInput {
   dispatchingDisabled: Boolean
   displayName: String
   enabled: Boolean
+  externalLinks: [ExternalLinkInput!]
   githubChecksEnabled: Boolean
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
@@ -85,6 +86,7 @@ type RepoRef {
   triggers: [TriggerAlias!]! @requireProjectFieldAccess
   versionControlEnabled: Boolean! @requireProjectFieldAccess
   workstationConfig: RepoWorkstationConfig! @requireProjectFieldAccess
+  externalLinks: [ExternalLink!] @requireProjectFieldAccess
 }
 
 type RepoCommitQueueParams {
