@@ -655,9 +655,9 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 
 	// setting revision numbers will take precedence over setting start and end times
 	if opts.RevisionStart > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.RevisionStart, "$gt": opts.RevisionEnd}
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.RevisionStart, "$gte": opts.RevisionEnd}
 	} else {
-		match[VersionCreateTimeKey] = bson.M{"$lt": startTime, "$gte": endTime}
+		match[VersionCreateTimeKey] = bson.M{"$gte": startTime, "$lte": endTime}
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
