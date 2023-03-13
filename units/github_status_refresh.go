@@ -139,9 +139,12 @@ func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
 
 	j.sender.Send(c)
 	grip.Info(message.Fields{
-		"ticket":  thirdparty.GithubInvestigation,
-		"message": "called github status refresh",
-		"caller":  githubStatusRefreshJobName,
+		"ticket":   thirdparty.GithubInvestigation,
+		"message":  "called github status refresh",
+		"caller":   githubStatusRefreshJobName,
+		"context":  status.Context,
+		"patch_id": j.FetchID,
+		"job_id":   j.ID(),
 	})
 }
 

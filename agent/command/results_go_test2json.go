@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/go-test2json"
 	"github.com/mitchellh/mapstructure"
@@ -104,13 +105,12 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 		delete(results.Tests, key)
 	}
 
-	evgResults := make([]task.TestResult, 0, len(results.Tests))
+	evgResults := make([]testresult.TestResult, 0, len(results.Tests))
 	for _, v := range results.Tests {
-		testResult := goTest2JSONToTestResult(suiteName, v.Name, conf.Task, v)
-		evgResults = append(evgResults, testResult)
+		evgResults = append(evgResults, goTest2JSONToTestResult(suiteName, v.Name, conf.Task, v))
 	}
 
-	return errors.Wrap(sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{Results: evgResults}), "sending test results")
+	return errors.Wrap(sendTestResults(ctx, comm, logger, conf, evgResults), "sending test results")
 }
 
 func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProducer, conf *internal.TaskConfig) (*test2json.TestResults, error) {
@@ -132,14 +132,14 @@ func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProdu
 	return results, nil
 }
 
-func goTest2JSONToTestResult(suiteName, key string, t *task.Task, test *test2json.Test) task.TestResult {
-	result := task.TestResult{
-		TestFile:    key,
-		LogTestName: suiteName,
-		LineNum:     test.FirstLogLine,
-		Status:      evergreen.TestFailedStatus,
-		StartTime:   float64(test.StartTime.Unix()),
-		EndTime:     float64(test.EndTime.Unix()),
+func goTest2JSONToTestResult(suiteName, key string, t *task.Task, test *test2json.Test) testresult.TestResult {
+	result := testresult.TestResult{
+		TestName:      key,
+		LogTestName:   suiteName,
+		LineNum:       test.FirstLogLine,
+		Status:        evergreen.TestFailedStatus,
+		TestStartTime: test.StartTime,
+		TestEndTime:   test.EndTime,
 	}
 	switch test.Status {
 	case test2json.Passed:
