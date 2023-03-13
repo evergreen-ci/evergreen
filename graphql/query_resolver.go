@@ -595,34 +595,6 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	return allTasks, nil
 }
 
-// TaskLogs is the resolver for the taskLogs field.
-func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *int) (*TaskLogs, error) {
-	t, err := task.FindByIdExecution(taskID, execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-	}
-	// need project to get default logger
-	p, err := data.FindProjectById(t.Project, true, true)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
-	}
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
-	}
-	defaultLogger := p.DefaultLogger
-	if defaultLogger == "" {
-		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
-	// Let the individual TaskLogs resolvers handle fetching logs for the task
-	// We can avoid the overhead of fetching task logs that we will not view
-	// and we can avoid handling errors that we will not see
-	return &TaskLogs{TaskID: taskID, Execution: t.Execution, DefaultLogger: defaultLogger}, nil
-}
-
 // TaskTests is the resolver for the taskTests field.
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
@@ -1169,3 +1141,36 @@ func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIV
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *int) (*TaskLogs, error) {
+	t, err := task.FindByIdExecution(taskID, execution)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	// need project to get default logger
+	p, err := data.FindProjectById(t.Project, true, true)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
+	}
+	defaultLogger := p.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	// Let the individual TaskLogs resolvers handle fetching logs for the task
+	// We can avoid the overhead of fetching task logs that we will not view
+	// and we can avoid handling errors that we will not see
+	return &TaskLogs{TaskID: taskID, Execution: t.Execution, DefaultLogger: defaultLogger}, nil
+}
