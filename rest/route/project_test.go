@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"net/http"
 	"testing"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -882,116 +882,48 @@ func TestGetProjectVersions(t *testing.T) {
 		Identifier: "something-else",
 	}
 	assert.NoError(project.Insert())
-	for testName, test := range map[string]func(*testing.T, *getProjectVersionsHandler){
-		"parseSuccess": func(t *testing.T, rm *getProjectVersionsHandler) {
-			body := []byte(`
-{
-	"revision_start": 4,
-	"revision_end": 1
-}
-			`)
-			req, _ := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
-			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
-			err := rm.Parse(ctx, req)
-			assert.NoError(err)
-			assert.Equal(rm.opts.RevisionStart, 4)
-			assert.Equal(rm.opts.RevisionEnd, 1)
-		},
-		"parseSuccessNoBody": func(t *testing.T, rm *getProjectVersionsHandler) {
-			req, _ := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer([]byte{}))
-			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
-			err := rm.Parse(ctx, req)
-			assert.NoError(err)
-			assert.Equal(rm.opts.Requester, evergreen.RepotrackerVersionRequester)
-			assert.Equal(rm.opts.Limit, defaultVersionLimit)
-		},
-		"parseFaiWithInvalidStartAndEnd": func(t *testing.T, rm *getProjectVersionsHandler) {
-			body := []byte(`
-{
-	"revision_start": 1,
-	"revision_end": 4
-}
-			`)
-			req, _ := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
-			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
-			err := rm.Parse(ctx, req)
-			assert.Error(err)
-		},
-		"parseFaiWithTimeStampAndOrder": func(t *testing.T, rm *getProjectVersionsHandler) {
-			body := []byte(`
-{
-	"revision_start": 1,
-	"revision_end": 4
-	"start_time_str": "2022-11-02T00:00:00.000Z",
-	"end_time_str": "2022-11-03T00:00:00.000Z"
-}
-			`)
-			req, _ := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
-			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
-			err := rm.Parse(ctx, req)
-			assert.Error(err)
-		},
-		"runSucceeds": func(t *testing.T, rm *getProjectVersionsHandler) {
-			rm.projectName = "something-else"
-			rm.opts = serviceModel.GetVersionsOptions{
-				Requester: evergreen.AdHocRequester,
-				Limit:     20,
-			}
-			resp := rm.Run(ctx)
-			respJson, err := json.Marshal(resp.Data())
-			assert.NoError(err)
-			assert.Contains(string(respJson), `"version_id":"v4"`)
-			assert.NotContains(string(respJson), `"version_id":"v3"`)
-		},
-		"runSucceedsWithBounds": func(t *testing.T, rm *getProjectVersionsHandler) {
-			rm.projectName = "something-else"
-			rm.opts = serviceModel.GetVersionsOptions{
-				Limit:         20,
-				Requester:     evergreen.RepotrackerVersionRequester,
-				RevisionStart: 4,
-				RevisionEnd:   1,
-			}
-			resp := rm.Run(ctx)
-			respJson, err := json.Marshal(resp.Data())
-			assert.NoError(err)
-			assert.Contains(string(respJson), `"version_id":"v3"`)
-			assert.NotContains(string(respJson), `"version_id":"v4"`)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			assert.NoError(db.ClearCollections(serviceModel.VersionCollection, task.Collection, build.Collection))
-			v1 := serviceModel.Version{
-				Id:                  "v1",
-				Identifier:          projectId,
-				Requester:           evergreen.AdHocRequester,
-				RevisionOrderNumber: 1,
-			}
-			assert.NoError(v1.Insert())
-			v2 := serviceModel.Version{
-				Id:                  "v2",
-				Identifier:          projectId,
-				Requester:           evergreen.AdHocRequester,
-				RevisionOrderNumber: 2,
-			}
-			assert.NoError(v2.Insert())
-			v3 := serviceModel.Version{
-				Id:                  "v3",
-				Identifier:          projectId,
-				Requester:           evergreen.RepotrackerVersionRequester,
-				RevisionOrderNumber: 3,
-			}
-			assert.NoError(v3.Insert())
-			v4 := serviceModel.Version{
-				Id:                  "v4",
-				Identifier:          projectId,
-				Requester:           evergreen.AdHocRequester,
-				RevisionOrderNumber: 4,
-			}
-			assert.NoError(v4.Insert())
-			rm := makeGetProjectVersionsHandler("").(*getProjectVersionsHandler)
-			test(t, rm)
-		})
+	v1 := serviceModel.Version{
+		Id:                  "v1",
+		Identifier:          projectId,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 1,
 	}
+	assert.NoError(v1.Insert())
+	v2 := serviceModel.Version{
+		Id:                  "v2",
+		Identifier:          projectId,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 2,
+	}
+	assert.NoError(v2.Insert())
+	v3 := serviceModel.Version{
+		Id:                  "v3",
+		Identifier:          projectId,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 3,
+	}
+	assert.NoError(v3.Insert())
+	v4 := serviceModel.Version{
+		Id:                  "v4",
+		Identifier:          projectId,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 4,
+	}
+	assert.NoError(v4.Insert())
+
+	h := getProjectVersionsHandler{
+		projectName: "something-else",
+		opts: serviceModel.GetVersionsOptions{
+			Requester: evergreen.AdHocRequester,
+			Limit:     20,
+		},
+	}
+
+	resp := h.Run(ctx)
+	respJson, err := json.Marshal(resp.Data())
+	assert.NoError(err)
+	assert.Contains(string(respJson), `"version_id":"v4"`)
+	assert.NotContains(string(respJson), `"version_id":"v3"`)
 }
 
 func TestDeleteProject(t *testing.T) {
@@ -1610,8 +1542,8 @@ func TestModifyProjectVersions(t *testing.T) {
 			err := rm.Parse(ctx, req)
 			assert.NoError(err)
 			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
-			assert.Equal(rm.opts.StartTime, time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC))
-			assert.Equal(rm.opts.EndTime, time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC))
+			assert.Equal(rm.startTime, time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC))
+			assert.Equal(rm.endTime, time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC))
 		},
 		"parseFaiWithNoPriority": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
@@ -1681,14 +1613,11 @@ func TestModifyProjectVersions(t *testing.T) {
 		},
 		"runSucceeds": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			rm.projectId = projectId
-			rm.opts = serviceModel.VersionsOptions{
-				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
-				GetVersionsOptions: serviceModel.GetVersionsOptions{
-					RevisionStart: 4,
-					RevisionEnd:   1,
-					Requester:     evergreen.RepotrackerVersionRequester,
-					Limit:         20,
-				},
+			rm.opts = serviceModel.ModifyVersionsOptions{
+				Priority:      utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
+				RevisionStart: 4,
+				RevisionEnd:   1,
+				Requester:     evergreen.RepotrackerVersionRequester,
 			}
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
@@ -1706,15 +1635,12 @@ func TestModifyProjectVersions(t *testing.T) {
 		},
 		"runSucceedsTimeStamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			rm.projectId = projectId
-			rm.opts = serviceModel.VersionsOptions{
-				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
-				GetVersionsOptions: serviceModel.GetVersionsOptions{
-					StartTime: time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC),
-					EndTime:   time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC),
-					Requester: evergreen.RepotrackerVersionRequester,
-					Limit:     20,
-				},
+			rm.opts = serviceModel.ModifyVersionsOptions{
+				Priority:  utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
+				Requester: evergreen.RepotrackerVersionRequester,
 			}
+			rm.startTime = time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC)
+			rm.endTime = time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC)
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
 			assert.Equal(http.StatusOK, resp.Status())
