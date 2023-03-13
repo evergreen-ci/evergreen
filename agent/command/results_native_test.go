@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -62,15 +63,18 @@ func TestAttachResults(t *testing.T) {
 					testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
 					require.NoError(t, err)
 					So(testTask, ShouldNotBeNil)
+
 					// ensure test results are exactly as expected
 					// attempt to open the file
 					reportFile, err := os.Open(resultsLoc)
 					require.NoError(t, err)
-					results := &task.LocalTestResults{}
-					err = utility.ReadJSON(reportFile, results)
-					require.NoError(t, err)
-					testResults := *results
-					So(testTask.LocalTestResults, ShouldResemble, testResults.Results)
+					var nativeResults nativeTestResults
+					require.NoError(t, utility.ReadJSON(reportFile, &nativeResults))
+					results := make([]testresult.TestResult, len(nativeResults.Results))
+					for i, nativeResult := range nativeResults.Results {
+						results[i] = nativeResult.convertToService()
+					}
+					So(testTask.LocalTestResults, ShouldResemble, results)
 					require.NoError(t, err)
 				}
 			}
@@ -122,30 +126,22 @@ func TestAttachRawResults(t *testing.T) {
 
 							reportFile, err := os.Open(resultsLoc)
 							require.NoError(t, err)
-							results := &task.LocalTestResults{}
-							err = utility.ReadJSON(reportFile, results)
-							require.NoError(t, err)
+							var nativeResults nativeTestResults
+							require.NoError(t, utility.ReadJSON(reportFile, &nativeResults))
+							results := make([]testresult.TestResult, len(nativeResults.Results))
+							for i, nativeResult := range nativeResults.Results {
+								results[i] = nativeResult.convertToService()
+							}
 
-							testResults := *results
-							So(len(testResults.Results), ShouldEqual, 3)
+							So(len(results), ShouldEqual, 3)
 							So(len(testTask.LocalTestResults), ShouldEqual, 3)
 							firstResult := testTask.LocalTestResults[0]
-							So(firstResult.LogRaw, ShouldEqual, "")
-							So(firstResult.LogId, ShouldNotEqual, "")
-
-							testLog, err := model.FindOneTestLogById(firstResult.LogId)
-							So(err, ShouldBeNil)
-							So(testLog.Lines[0], ShouldEqual, testResults.Results[0].LogRaw)
+							So(firstResult.RawLogURL, ShouldEqual, "")
 
 							Convey("both URL and raw log should be stored appropriately if both exist", func() {
 								urlResult := testTask.LocalTestResults[2]
-								So(urlResult.LogRaw, ShouldEqual, "")
-								So(urlResult.URL, ShouldNotEqual, "")
-								So(urlResult.LogId, ShouldNotEqual, "")
-
-								testLog, err := model.FindOneTestLogById(urlResult.LogId)
-								So(err, ShouldBeNil)
-								So(testLog.Lines[0], ShouldEqual, testResults.Results[2].LogRaw)
+								So(urlResult.RawLogURL, ShouldEqual, "")
+								So(urlResult.LogURL, ShouldNotEqual, "")
 							})
 						})
 					})
