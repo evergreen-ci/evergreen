@@ -614,24 +614,12 @@
       "finish_time": {
         "$date": "2019-11-18T18:57:15.053Z"
       },
-      "build_variants": [
-        "ubuntu1804"
-      ],
-      "tasks": [
-        "compile",
-        "test",
-        "lint",
-        "coverage"
-      ],
+      "build_variants": ["ubuntu1804"],
+      "tasks": ["compile", "test", "lint", "coverage"],
       "variants_tasks": [
         {
           "variant": "ubuntu1804",
-          "tasks": [
-            "lint",
-            "coverage",
-            "compile",
-            "test"
-          ],
+          "tasks": ["lint", "coverage", "compile", "test"],
           "displaytasks": []
         }
       ],
@@ -723,7 +711,13 @@
     },
     {
       "_id": "spruce",
-      "identifier": "spruce"
+      "identifier": "spruce",
+      "external_links": [
+        {
+          "display_name": "A link to somewhere",
+          "url_template": "https://a-fake-url-for-{version_id}.com/{version_id}"
+        }
+      ]
     },
     {
       "_id": "logkeeper",

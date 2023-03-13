@@ -13,7 +13,8 @@ TaskFilterOptions defines the parameters that are used when fetching tasks from 
 """
 input TaskFilterOptions {
   baseStatuses: [String!] = []
-  includeEmptyActivation: Boolean = false @deprecated(reason: "Use includeNeverActivatedTasks instead")
+  includeEmptyActivation: Boolean = false
+    @deprecated(reason: "Use includeNeverActivatedTasks instead")
   includeNeverActivatedTasks: Boolean = false
   limit: Int = 0
   page: Int = 0
@@ -30,7 +31,6 @@ input SortOrder {
   Direction: SortDirection!
   Key: TaskSortCategory!
 }
-
 
 ###### TYPES ######
 """
@@ -70,6 +70,7 @@ type Version {
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
+  externalLinksForMetadata: [ExternalLinkForMetadata!]!
   warnings: [String!]!
 }
 
@@ -83,7 +84,7 @@ type TaskStats {
   eta: Time
 }
 
-type StatusCount { 
+type StatusCount {
   count: Int!
   status: String!
 }
@@ -127,5 +128,7 @@ type UpstreamProject {
   version: Version
 }
 
-
-
+type ExternalLinkForMetadata {
+  url: String!
+  displayName: String!
+}
