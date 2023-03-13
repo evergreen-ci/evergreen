@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -47,7 +46,7 @@ type commonTemplateData struct {
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
-	FailedTests     []testresult.TestResult
+	FailedTests     []task.TestResult
 
 	Task       *task.Task
 	ProjectRef *model.ProjectRef
@@ -127,7 +126,7 @@ const emailTaskFailTemplate = `
         <tr><td colspan="2" height="10"></td></tr>
         <tr>
           <td width="90%">
-            <a href="{{ .LogURL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view logs</a>
+            <a href="{{ .URL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view logs</a>
           </td>
           <td>&nbsp;</td>
         </tr>
@@ -451,17 +450,16 @@ func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes
 	return nil, errors.Errorf("unknown subscriber type '%s'", sub.Subscriber.Type)
 }
 
-func getFailedTestsFromTemplate(t task.Task) ([]testresult.TestResult, error) {
-	results := []testresult.TestResult{}
+func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
+	result := []task.TestResult{}
 	for i := range t.LocalTestResults {
 		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			testResult := t.LocalTestResults[i]
-			testResult.LogURL = testResult.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML)
-			results = append(results, testResult)
+			testResult.URL = testResult.GetLogURL(evergreen.LogViewerHTML)
+			result = append(result, testResult)
 		}
 	}
-
-	return results, nil
+	return result, nil
 }
 
 func taskLink(uiBase string, taskID string, execution int) string {

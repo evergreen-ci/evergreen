@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -124,7 +124,7 @@ func globFiles(patterns ...string) ([]string, error) {
 }
 
 // parseTestOutput parses the test results and logs from a single output source.
-func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (model.TestLog, []testresult.TestResult, error) {
+func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (model.TestLog, []task.TestResult, error) {
 	// parse the output logs
 	parser := &goTestParser{}
 	if err := parser.Parse(report); err != nil {
@@ -144,15 +144,15 @@ func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.R
 		Lines:         logLines,
 	}
 
-	return testLog, ToModelTestResults(parser.Results(), suiteName), nil
+	return testLog, ToModelTestResults(parser.Results(), suiteName).Results, nil
 }
 
 // parseTestOutputFiles parses all of the files that are passed in, and returns
 // the test logs and test results found within.
 func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
-	conf *internal.TaskConfig, outputFiles []string) ([]model.TestLog, [][]testresult.TestResult, error) {
+	conf *internal.TaskConfig, outputFiles []string) ([]model.TestLog, [][]task.TestResult, error) {
 
-	var results [][]testresult.TestResult
+	var results [][]task.TestResult
 	var logs []model.TestLog
 
 	// now, open all the files, and parse the test results

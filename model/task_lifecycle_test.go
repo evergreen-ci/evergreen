@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -1663,7 +1664,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
 			reset()
-			testTask.ResultsService = testresult.TestResultsServiceLocal
 			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
@@ -1681,10 +1681,44 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		})
 
-		Convey("task should fail if there are failing tests", func() {
+		Convey("task should not fail if there are only passing or silently failing tests", func() {
 			reset()
-			testTask.ResultsService = testresult.TestResultsServiceLocal
-			testTask.ResultsFailed = true
+			err := testTask.SetResults([]task.TestResult{
+				{
+					Status: evergreen.TestSilentlyFailedStatus,
+				},
+				{
+					Status: evergreen.TestSucceededStatus,
+				},
+				{
+					Status: evergreen.TestSilentlyFailedStatus,
+				},
+			})
+			So(err, ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
+
+			v, err := VersionFindOneId(v.Id)
+			So(err, ShouldBeNil)
+			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
+
+			b, err := build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
+
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+		})
+
+		Convey("task should fail if there is one failed test", func() {
+			reset()
+			err := testTask.SetResults([]task.TestResult{
+				{
+					Status: evergreen.TestFailedStatus,
+				},
+			})
+
+			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
@@ -1701,6 +1735,68 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 
+		Convey("task should fail if there are failed test results in cedar", func() {
+			reset()
+			testTask.HasCedarResults = true
+			testTask.CedarResultsFailed = true
+
+			detail.Status = evergreen.TaskSucceeded
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
+
+			v, err := VersionFindOneId(v.Id)
+			So(err, ShouldBeNil)
+			So(v.Status, ShouldEqual, evergreen.VersionFailed)
+
+			b, err := build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildFailed)
+
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
+		})
+
+		Convey("task should not fail if there are no failed test results in cedar", func() {
+			reset()
+			testTask.HasCedarResults = true
+
+			detail.Status = evergreen.TaskSucceeded
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
+
+			v, err := VersionFindOneId(v.Id)
+			So(err, ShouldBeNil)
+			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
+
+			b, err := build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
+
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+		})
+
+		Convey("task should not fail if there are failed test results in cedar but no test results in cedar (inconsistent state)", func() {
+			reset()
+			testTask.HasCedarResults = false
+			testTask.CedarResultsFailed = true
+
+			detail.Status = evergreen.TaskSucceeded
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
+
+			v, err := VersionFindOneId(v.Id)
+			So(err, ShouldBeNil)
+			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
+
+			b, err := build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
+
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+		})
+
 		Convey("incomplete versions report updates", func() {
 			reset()
 			b2 := &build.Build{
@@ -1710,6 +1806,12 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Status:    evergreen.BuildCreated,
 			}
 			So(b2.Insert(), ShouldBeNil)
+			err := testTask.SetResults([]task.TestResult{
+				{
+					Status: evergreen.TestFailedStatus,
+				},
+			})
+			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
@@ -4758,8 +4860,7 @@ func TestResetStaleTask(t *testing.T) {
 }
 
 func TestMarkEndWithNoResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
-
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection, testresult.Collection))
 	testTask1 := task.Task{
 		Id:              "t1",
 		Status:          evergreen.TaskStarted,
@@ -4778,7 +4879,6 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		BuildId:         "b",
 		Version:         "v",
 		MustHaveResults: true,
-		ResultsService:  testresult.TestResultsServiceLocal,
 	}
 	assert.NoError(t, testTask2.Insert())
 	b := build.Build{
@@ -4814,6 +4914,11 @@ func TestMarkEndWithNoResults(t *testing.T) {
 	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
 
+	results := testresult.TestResult{
+		ID:     mgobson.NewObjectId(),
+		TaskID: testTask2.Id,
+	}
+	assert.NoError(t, results.Insert())
 	err = MarkEnd(settings, &testTask2, "", time.Now(), details, false)
 	assert.NoError(t, err)
 	dbTask, err = task.FindOneId(testTask2.Id)

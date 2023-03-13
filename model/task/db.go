@@ -93,9 +93,9 @@ var (
 	GenerateTaskKey                = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
-	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
+	HasLegacyResultsKey            = bsonutil.MustHaveTag(Task{}, "HasLegacyResults")
 	HasCedarResultsKey             = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
-	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
+	CedarResultsFailedKey          = bsonutil.MustHaveTag(Task{}, "CedarResultsFailed")
 	IsGithubCheckKey               = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey           = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
@@ -109,6 +109,17 @@ var (
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
+
+	// BSON fields for the test result struct
+	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
+	TestResultLineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
+	TestResultTestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
+	TestResultURLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
+	TestResultLogIdKey     = bsonutil.MustHaveTag(TestResult{}, "LogId")
+	TestResultURLRawKey    = bsonutil.MustHaveTag(TestResult{}, "URLRaw")
+	TestResultExitCodeKey  = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
+	TestResultStartTimeKey = bsonutil.MustHaveTag(TestResult{}, "StartTime")
+	TestResultEndTimeKey   = bsonutil.MustHaveTag(TestResult{}, "EndTime")
 )
 
 var (
@@ -905,52 +916,49 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
-// FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the
-// passed in taskIds and execution, or the most recent executions of those
-// tasks if they do not have a matching execution.
-func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
-	query := bson.M{
-		IdKey: bson.M{
-			"$in": taskIds,
-		},
-		ExecutionKey: bson.M{
-			"$lte": execution,
-		},
-	}
-	for _, filter := range filters {
-		query[filter.Key] = filter.Value
-	}
-	tasks, err := Find(query)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding tasks")
-	}
-
-	// Get the taskIds that were not found in the previous match stage.
-	var foundIds []string
-	for _, t := range tasks {
-		foundIds = append(foundIds, t.Id)
-	}
-
-	missingTasks, _ := utility.StringSliceSymmetricDifference(taskIds, foundIds)
-	if len(missingTasks) > 0 {
-		var oldTaskPipeline []bson.M
-		match := bson.M{
-			OldTaskIdKey: bson.M{
-				"$in": missingTasks,
+// FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the passed in taskIds and execution,
+// or the most recent executions of those tasks if they do not have a matching execution
+func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, error) {
+	pipeline := []bson.M{}
+	match := bson.M{
+		"$match": bson.M{
+			IdKey: bson.M{
+				"$in": taskIds,
 			},
 			ExecutionKey: bson.M{
 				"$lte": execution,
 			},
-		}
-		for _, filter := range filters {
-			match[filter.Key] = filter.Value
-		}
-		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$match": match})
+		},
+	}
+	pipeline = append(pipeline, match)
+	result := []Task{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "finding tasks")
+	}
+	// Get the taskIds that were not found in the previous match stage
+	foundIds := []string{}
+	for _, t := range result {
+		foundIds = append(foundIds, t.Id)
+	}
 
-		// If there are multiple previous executions, matching on
-		// non-zero executions with $lte will return duplicate tasks.
-		// We sort and group to find and return the old task with the
-		// most recent execution.
+	missingTasks, _ := utility.StringSliceSymmetricDifference(utility.FromStringPtrSlice(taskIds), foundIds)
+	if len(missingTasks) > 0 {
+		oldTasks := []Task{}
+		oldTaskPipeline := []bson.M{}
+		match = bson.M{
+			"$match": bson.M{
+				OldTaskIdKey: bson.M{
+					"$in": missingTasks,
+				},
+				ExecutionKey: bson.M{
+					"$lte": execution,
+				},
+			},
+		}
+		oldTaskPipeline = append(oldTaskPipeline, match)
+
+		// If there are multiple previous executions, matching on non-zero executions with $lte will return
+		// duplicate tasks. We sort and group to find and return the old task with the most recent execution.
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{
 			"$sort": bson.D{bson.E{Key: ExecutionKey, Value: -1}},
 		})
@@ -962,17 +970,16 @@ func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filter
 		})
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}})
 
-		var oldTasks []Task
 		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
 			return nil, errors.Wrap(err, "finding old tasks")
 		}
-		tasks = append(tasks, oldTasks...)
+		result = append(result, oldTasks...)
 	}
-	if len(tasks) == 0 {
+	if len(result) == 0 {
 		return nil, nil
 	}
 
-	return tasks, nil
+	return result, nil
 }
 
 // FindHostRunnable finds all host tasks that can be scheduled for a distro with

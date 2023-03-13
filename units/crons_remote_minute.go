@@ -49,6 +49,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		PopulateHostSetupJobs(j.env),
 		PopulateBackgroundStatsJobs(j.env, 0),
 		PopulateContainerStateJobs(j.env),
+		PopulateDataCleanupJobs(j.env),
 		PopulateEventSendJobs(j.env),
 		PopulateGenerateTasksJobs(j.env),
 		PopulateHostMonitoring(j.env),

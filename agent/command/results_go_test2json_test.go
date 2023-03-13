@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	timberutil "github.com/evergreen-ci/timber/testutil"
@@ -109,8 +108,8 @@ func (s *test2JSONSuite) TestExecute() {
 	s.noErrorMessages(msgs)
 
 	s.Require().Len(s.cedarSrv.TestResults.Results, 1)
-	s.Equal(testresult.TestResultsServiceCedar, s.comm.ResultsService)
-	s.True(s.comm.ResultsFailed)
+	s.True(s.comm.HasCedarResults)
+	s.True(s.comm.CedarResultsFailed)
 	s.Len(s.cedarSrv.Buildlogger.Data, 1)
 }
 

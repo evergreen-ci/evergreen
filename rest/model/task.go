@@ -83,10 +83,10 @@ type APITask struct {
 	ResetWhenFinished           bool                `json:"reset_when_finished"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	OverrideDependencies bool   `json:"-"`
-	Archived             bool   `json:"archived"`
-	ResultsFailed        bool   `json:"-"`
-	ResultsService       string `json:"-"`
+	OverrideDependencies bool `json:"-"`
+	Archived             bool `json:"archived"`
+	HasCedarResults      bool `json:"-"`
+	CedarResultsFailed   bool `json:"-"`
 }
 
 type APIAbortInfo struct {
@@ -228,8 +228,8 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Requester:                   utility.ToStringPtr(t.Requester),
 		Aborted:                     t.Aborted,
 		CanSync:                     t.CanSync,
-		ResultsFailed:               t.ResultsFailed,
-		ResultsService:              t.ResultsService,
+		HasCedarResults:             t.HasCedarResults,
+		CedarResultsFailed:          t.CedarResultsFailed,
 		MustHaveResults:             t.MustHaveResults,
 		ResetWhenFinished:           t.ResetWhenFinished,
 		ParentTaskId:                utility.FromStringPtr(t.DisplayTaskId),
@@ -405,8 +405,8 @@ func (at *APITask) ToService() (*task.Task, error) {
 		DisplayOnly:                 at.DisplayOnly,
 		Requester:                   utility.FromStringPtr(at.Requester),
 		CanSync:                     at.CanSync,
-		ResultsFailed:               at.ResultsFailed,
-		ResultsService:              at.ResultsService,
+		HasCedarResults:             at.HasCedarResults,
+		CedarResultsFailed:          at.CedarResultsFailed,
 		MustHaveResults:             at.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  at.SyncAtEndOpts.Enabled,
