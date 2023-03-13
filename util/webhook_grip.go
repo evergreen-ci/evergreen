@@ -3,7 +3,6 @@ package util
 import (
 	"bytes"
 	"context"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -169,19 +168,6 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return true, errors.Errorf("response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
 		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return true, errors.Wrap(err, "reading webhook response")
-		}
-
-		grip.Info(message.Fields{
-			"message":         "send webhook notification",
-			"notification_id": raw.NotificationID,
-			"url":             raw.URL,
-			"response_code":   resp.StatusCode,
-			"response_body":   body,
-		})
 
 		return false, nil
 	}, utility.RetryOptions{
