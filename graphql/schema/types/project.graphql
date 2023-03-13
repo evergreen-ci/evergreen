@@ -203,7 +203,7 @@ type Project {
   triggers: [TriggerAlias!] @requireProjectFieldAccess
   versionControlEnabled: Boolean @requireProjectFieldAccess
   workstationConfig: WorkstationConfig! @requireProjectFieldAccess
-  externalLinks: [ExternalLink!]!
+  externalLinks: [ExternalLink!]
 }
 
 type CommitQueueParams {

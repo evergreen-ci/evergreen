@@ -86,7 +86,7 @@ type RepoRef {
   triggers: [TriggerAlias!]! @requireProjectFieldAccess
   versionControlEnabled: Boolean! @requireProjectFieldAccess
   workstationConfig: RepoWorkstationConfig! @requireProjectFieldAccess
-  externalLinks: [ExternalLink!]! @requireProjectFieldAccess
+  externalLinks: [ExternalLink!] @requireProjectFieldAccess
 }
 
 type RepoCommitQueueParams {
