@@ -211,7 +211,7 @@ type ComplexityRoot struct {
 		URLTemplate func(childComplexity int) int
 	}
 
-	ExternalLinkForPatchMetadata struct {
+	ExternalLinkForMetadata struct {
 		DisplayName func(childComplexity int) int
 		URL         func(childComplexity int) int
 	}
@@ -1183,41 +1183,41 @@ type ComplexityRoot struct {
 	}
 
 	Version struct {
-		Activated                     func(childComplexity int) int
-		Author                        func(childComplexity int) int
-		BaseTaskStatuses              func(childComplexity int) int
-		BaseVersion                   func(childComplexity int) int
-		Branch                        func(childComplexity int) int
-		BuildVariantStats             func(childComplexity int, options BuildVariantOptions) int
-		BuildVariants                 func(childComplexity int, options BuildVariantOptions) int
-		ChildVersions                 func(childComplexity int) int
-		CreateTime                    func(childComplexity int) int
-		Errors                        func(childComplexity int) int
-		ExternalLinksForPatchMetadata func(childComplexity int) int
-		FinishTime                    func(childComplexity int) int
-		Id                            func(childComplexity int) int
-		IsPatch                       func(childComplexity int) int
-		Manifest                      func(childComplexity int) int
-		Message                       func(childComplexity int) int
-		Order                         func(childComplexity int) int
-		Parameters                    func(childComplexity int) int
-		Patch                         func(childComplexity int) int
-		PreviousVersion               func(childComplexity int) int
-		Project                       func(childComplexity int) int
-		ProjectIdentifier             func(childComplexity int) int
-		ProjectMetadata               func(childComplexity int) int
-		Repo                          func(childComplexity int) int
-		Requester                     func(childComplexity int) int
-		Revision                      func(childComplexity int) int
-		StartTime                     func(childComplexity int) int
-		Status                        func(childComplexity int) int
-		TaskCount                     func(childComplexity int) int
-		TaskStatusStats               func(childComplexity int, options BuildVariantOptions) int
-		TaskStatuses                  func(childComplexity int) int
-		Tasks                         func(childComplexity int, options TaskFilterOptions) int
-		UpstreamProject               func(childComplexity int) int
-		VersionTiming                 func(childComplexity int) int
-		Warnings                      func(childComplexity int) int
+		Activated                func(childComplexity int) int
+		Author                   func(childComplexity int) int
+		BaseTaskStatuses         func(childComplexity int) int
+		BaseVersion              func(childComplexity int) int
+		Branch                   func(childComplexity int) int
+		BuildVariantStats        func(childComplexity int, options BuildVariantOptions) int
+		BuildVariants            func(childComplexity int, options BuildVariantOptions) int
+		ChildVersions            func(childComplexity int) int
+		CreateTime               func(childComplexity int) int
+		Errors                   func(childComplexity int) int
+		ExternalLinksForMetadata func(childComplexity int) int
+		FinishTime               func(childComplexity int) int
+		Id                       func(childComplexity int) int
+		IsPatch                  func(childComplexity int) int
+		Manifest                 func(childComplexity int) int
+		Message                  func(childComplexity int) int
+		Order                    func(childComplexity int) int
+		Parameters               func(childComplexity int) int
+		Patch                    func(childComplexity int) int
+		PreviousVersion          func(childComplexity int) int
+		Project                  func(childComplexity int) int
+		ProjectIdentifier        func(childComplexity int) int
+		ProjectMetadata          func(childComplexity int) int
+		Repo                     func(childComplexity int) int
+		Requester                func(childComplexity int) int
+		Revision                 func(childComplexity int) int
+		StartTime                func(childComplexity int) int
+		Status                   func(childComplexity int) int
+		TaskCount                func(childComplexity int) int
+		TaskStatusStats          func(childComplexity int, options BuildVariantOptions) int
+		TaskStatuses             func(childComplexity int) int
+		Tasks                    func(childComplexity int, options TaskFilterOptions) int
+		UpstreamProject          func(childComplexity int) int
+		VersionTiming            func(childComplexity int) int
+		Warnings                 func(childComplexity int) int
 	}
 
 	VersionTasks struct {
@@ -1549,7 +1549,7 @@ type VersionResolver interface {
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
-	ExternalLinksForPatchMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForPatchMetadata, error)
+	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
 	Warnings(ctx context.Context, obj *model.APIVersion) ([]string, error)
 }
 type VolumeResolver interface {
@@ -2121,19 +2121,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ExternalLink.URLTemplate(childComplexity), true
 
-	case "ExternalLinkForPatchMetadata.displayName":
-		if e.complexity.ExternalLinkForPatchMetadata.DisplayName == nil {
+	case "ExternalLinkForMetadata.displayName":
+		if e.complexity.ExternalLinkForMetadata.DisplayName == nil {
 			break
 		}
 
-		return e.complexity.ExternalLinkForPatchMetadata.DisplayName(childComplexity), true
+		return e.complexity.ExternalLinkForMetadata.DisplayName(childComplexity), true
 
-	case "ExternalLinkForPatchMetadata.url":
-		if e.complexity.ExternalLinkForPatchMetadata.URL == nil {
+	case "ExternalLinkForMetadata.url":
+		if e.complexity.ExternalLinkForMetadata.URL == nil {
 			break
 		}
 
-		return e.complexity.ExternalLinkForPatchMetadata.URL(childComplexity), true
+		return e.complexity.ExternalLinkForMetadata.URL(childComplexity), true
 
 	case "File.link":
 		if e.complexity.File.Link == nil {
@@ -7340,12 +7340,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.Errors(childComplexity), true
 
-	case "Version.externalLinksForPatchMetadata":
-		if e.complexity.Version.ExternalLinksForPatchMetadata == nil {
+	case "Version.externalLinksForMetadata":
+		if e.complexity.Version.ExternalLinksForMetadata == nil {
 			break
 		}
 
-		return e.complexity.Version.ExternalLinksForPatchMetadata(childComplexity), true
+		return e.complexity.Version.ExternalLinksForMetadata(childComplexity), true
 
 	case "Version.finishTime":
 		if e.complexity.Version.FinishTime == nil {
@@ -13436,8 +13436,8 @@ func (ec *executionContext) fieldContext_ExternalLink_urlTemplate(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _ExternalLinkForPatchMetadata_url(ctx context.Context, field graphql.CollectedField, obj *ExternalLinkForPatchMetadata) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExternalLinkForPatchMetadata_url(ctx, field)
+func (ec *executionContext) _ExternalLinkForMetadata_url(ctx context.Context, field graphql.CollectedField, obj *ExternalLinkForMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLinkForMetadata_url(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13467,9 +13467,9 @@ func (ec *executionContext) _ExternalLinkForPatchMetadata_url(ctx context.Contex
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExternalLinkForPatchMetadata_url(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExternalLinkForMetadata_url(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExternalLinkForPatchMetadata",
+		Object:     "ExternalLinkForMetadata",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -13480,8 +13480,8 @@ func (ec *executionContext) fieldContext_ExternalLinkForPatchMetadata_url(ctx co
 	return fc, nil
 }
 
-func (ec *executionContext) _ExternalLinkForPatchMetadata_displayName(ctx context.Context, field graphql.CollectedField, obj *ExternalLinkForPatchMetadata) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExternalLinkForPatchMetadata_displayName(ctx, field)
+func (ec *executionContext) _ExternalLinkForMetadata_displayName(ctx context.Context, field graphql.CollectedField, obj *ExternalLinkForMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLinkForMetadata_displayName(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13511,9 +13511,9 @@ func (ec *executionContext) _ExternalLinkForPatchMetadata_displayName(ctx contex
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExternalLinkForPatchMetadata_displayName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExternalLinkForMetadata_displayName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExternalLinkForPatchMetadata",
+		Object:     "ExternalLinkForMetadata",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -19263,8 +19263,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -19376,8 +19376,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -24857,8 +24857,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -27016,8 +27016,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -36220,8 +36220,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -44629,8 +44629,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -49883,8 +49883,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -51155,8 +51155,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -51432,8 +51432,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -52018,8 +52018,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForPatchMetadata":
-				return ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -52777,8 +52777,8 @@ func (ec *executionContext) fieldContext_Version_versionTiming(ctx context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Version_externalLinksForPatchMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Version_externalLinksForPatchMetadata(ctx, field)
+func (ec *executionContext) _Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -52791,7 +52791,7 @@ func (ec *executionContext) _Version_externalLinksForPatchMetadata(ctx context.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().ExternalLinksForPatchMetadata(rctx, obj)
+		return ec.resolvers.Version().ExternalLinksForMetadata(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -52803,12 +52803,12 @@ func (ec *executionContext) _Version_externalLinksForPatchMetadata(ctx context.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ExternalLinkForPatchMetadata)
+	res := resTmp.([]*ExternalLinkForMetadata)
 	fc.Result = res
-	return ec.marshalNExternalLinkForPatchMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForPatchMetadataᚄ(ctx, field.Selections, res)
+	return ec.marshalNExternalLinkForMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadataᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Version_externalLinksForPatchMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
@@ -52817,11 +52817,11 @@ func (ec *executionContext) fieldContext_Version_externalLinksForPatchMetadata(c
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "url":
-				return ec.fieldContext_ExternalLinkForPatchMetadata_url(ctx, field)
+				return ec.fieldContext_ExternalLinkForMetadata_url(ctx, field)
 			case "displayName":
-				return ec.fieldContext_ExternalLinkForPatchMetadata_displayName(ctx, field)
+				return ec.fieldContext_ExternalLinkForMetadata_displayName(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ExternalLinkForPatchMetadata", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLinkForMetadata", field.Name)
 		},
 	}
 	return fc, nil
@@ -60495,26 +60495,26 @@ func (ec *executionContext) _ExternalLink(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var externalLinkForPatchMetadataImplementors = []string{"ExternalLinkForPatchMetadata"}
+var externalLinkForMetadataImplementors = []string{"ExternalLinkForMetadata"}
 
-func (ec *executionContext) _ExternalLinkForPatchMetadata(ctx context.Context, sel ast.SelectionSet, obj *ExternalLinkForPatchMetadata) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, externalLinkForPatchMetadataImplementors)
+func (ec *executionContext) _ExternalLinkForMetadata(ctx context.Context, sel ast.SelectionSet, obj *ExternalLinkForMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, externalLinkForMetadataImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("ExternalLinkForPatchMetadata")
+			out.Values[i] = graphql.MarshalString("ExternalLinkForMetadata")
 		case "url":
 
-			out.Values[i] = ec._ExternalLinkForPatchMetadata_url(ctx, field, obj)
+			out.Values[i] = ec._ExternalLinkForMetadata_url(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "displayName":
 
-			out.Values[i] = ec._ExternalLinkForPatchMetadata_displayName(ctx, field, obj)
+			out.Values[i] = ec._ExternalLinkForMetadata_displayName(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -68847,7 +68847,7 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				return innerFunc(ctx)
 
 			})
-		case "externalLinksForPatchMetadata":
+		case "externalLinksForMetadata":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -68856,7 +68856,7 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Version_externalLinksForPatchMetadata(ctx, field, obj)
+				res = ec._Version_externalLinksForMetadata(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -69827,7 +69827,7 @@ func (ec *executionContext) marshalNExternalLink2githubᚗcomᚋevergreenᚑci�
 	return ec._ExternalLink(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNExternalLinkForPatchMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForPatchMetadataᚄ(ctx context.Context, sel ast.SelectionSet, v []*ExternalLinkForPatchMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalNExternalLinkForMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadataᚄ(ctx context.Context, sel ast.SelectionSet, v []*ExternalLinkForMetadata) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -69851,7 +69851,7 @@ func (ec *executionContext) marshalNExternalLinkForPatchMetadata2ᚕᚖgithubᚗ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNExternalLinkForPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForPatchMetadata(ctx, sel, v[i])
+			ret[i] = ec.marshalNExternalLinkForMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadata(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -69871,14 +69871,14 @@ func (ec *executionContext) marshalNExternalLinkForPatchMetadata2ᚕᚖgithubᚗ
 	return ret
 }
 
-func (ec *executionContext) marshalNExternalLinkForPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForPatchMetadata(ctx context.Context, sel ast.SelectionSet, v *ExternalLinkForPatchMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalNExternalLinkForMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadata(ctx context.Context, sel ast.SelectionSet, v *ExternalLinkForMetadata) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._ExternalLinkForPatchMetadata(ctx, sel, v)
+	return ec._ExternalLinkForMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNExternalLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLink(ctx context.Context, v interface{}) (model.APIExternalLink, error) {

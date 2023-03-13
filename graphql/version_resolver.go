@@ -470,8 +470,8 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 	}, nil
 }
 
-// ExternalLinksForPatchMetadata is the resolver for the externalLinksForPatchMetadata field.
-func (r *versionResolver) ExternalLinksForPatchMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForPatchMetadata, error) {
+// ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
+func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
 	pRef, err := data.FindProjectById(*obj.Project, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project `%s`: %s", *obj.Project, err.Error()))
@@ -479,11 +479,11 @@ func (r *versionResolver) ExternalLinksForPatchMetadata(ctx context.Context, obj
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
 	}
-	var externalLinks []*ExternalLinkForPatchMetadata
+	var externalLinks []*ExternalLinkForMetadata
 	for _, link := range pRef.ExternalLinks {
 		// replace {version_id} with the actual version id
 		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
-		externalLinks = append(externalLinks, &ExternalLinkForPatchMetadata{
+		externalLinks = append(externalLinks, &ExternalLinkForMetadata{
 			URL:         formattedURL,
 			DisplayName: link.DisplayName,
 		})

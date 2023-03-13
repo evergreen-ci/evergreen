@@ -70,7 +70,7 @@ type Version {
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
-  externalLinksForPatchMetadata: [ExternalLinkForPatchMetadata!]!
+  externalLinksForMetadata: [ExternalLinkForMetadata!]!
   warnings: [String!]!
 }
 
@@ -128,7 +128,7 @@ type UpstreamProject {
   version: Version
 }
 
-type ExternalLinkForPatchMetadata {
+type ExternalLinkForMetadata {
   url: String!
   displayName: String!
 }
