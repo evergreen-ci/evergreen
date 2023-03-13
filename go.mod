@@ -14,7 +14,6 @@ require (
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
 	github.com/evergreen-ci/cocoa v0.0.0-20221213160430-8eeec9035d31
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
-	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20230119161755-1aced8006202
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
