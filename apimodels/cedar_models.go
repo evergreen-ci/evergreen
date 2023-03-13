@@ -7,3 +7,7 @@ type CedarConfig struct {
 	APIKey   string `json:"api_key,omitempty"`
 	Insecure bool   `json:"insecure"`
 }
+
+type CedarTestResultsTaskInfo struct {
+	Failed bool `json:"failed"`
+}

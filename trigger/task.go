@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -44,7 +43,7 @@ const (
 
 func makeTaskTriggers() eventHandler {
 	t := &taskTriggers{
-		oldTestResults: map[string]*testresult.TestResult{},
+		oldTestResults: map[string]*task.TestResult{},
 	}
 	t.base.triggers = map[string]trigger{
 		event.TriggerOutcome:                     t.taskOutcome,
@@ -141,7 +140,7 @@ type taskTriggers struct {
 	owner    string
 	uiConfig evergreen.UIConfig
 
-	oldTestResults map[string]*testresult.TestResult
+	oldTestResults map[string]*task.TestResult
 
 	base
 }
@@ -739,7 +738,7 @@ func testMatchesRegex(testName string, sub *event.Subscription) (bool, error) {
 	return regexp.MatchString(regex, testName)
 }
 
-func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, currentTask *task.Task, test *testresult.TestResult) (bool, error) {
+func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, currentTask *task.Task, test *task.TestResult) (bool, error) {
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
@@ -829,7 +828,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		t.oldTestResults = mapTestResultsByTestName(previousCompleteTask.LocalTestResults)
 	}
 
-	testsToAlert := []testresult.TestResult{}
+	testsToAlert := []task.TestResult{}
 	hasFailingTest := false
 	for _, test := range t.task.LocalTestResults {
 		if test.Status != evergreen.TestFailedStatus {
@@ -978,8 +977,8 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 // struct. If multiple tests of the same name exist, this function will return
 // a failing test if one existed, otherwise it may return any test with the
 // same name.
-func mapTestResultsByTestName(results []testresult.TestResult) map[string]*testresult.TestResult {
-	m := map[string]*testresult.TestResult{}
+func mapTestResultsByTestName(results []task.TestResult) map[string]*task.TestResult {
+	m := map[string]*task.TestResult{}
 
 	for i, result := range results {
 		if testResult, ok := m[result.GetDisplayTestName()]; ok {

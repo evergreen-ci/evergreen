@@ -1274,6 +1274,29 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
+func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.Wrap(err, "getting service flags")
+		}
+		if flags.BackgroundCleanupDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background data cleanup",
+				"impact":  "data will accumulate",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2))), "enqueueing test results cleanup job")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewTestLogsCleanupJob(utility.RoundPartOfMinute(2))), "enqueueing test logs cleanup job")
+
+		return catcher.Resolve()
+	}
+}
+
 // PopulatePodAllocatorJobs returns the queue operation to enqueue jobs to
 // allocate pods to tasks and disable container tasks that exceed the stale
 // undispatched threshold.

@@ -7,7 +7,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -366,10 +368,23 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	}
 	require.NoError(taskDoc.Insert())
 	require.NoError(taskDoc.Archive())
+	result0 := testresult.TestResult{
+		ID:        mgobson.NewObjectId(),
+		TaskID:    "task",
+		Execution: 0,
+	}
+	result1 := testresult.TestResult{
+		ID:        mgobson.NewObjectId(),
+		TaskID:    "task",
+		Execution: 1,
+	}
+	require.NoError(result0.Insert())
+	require.NoError(result1.Insert())
 
 	task00, err := FindOneIdOldOrNew("task", 0)
 	assert.NoError(err)
 	require.NotNil(task00)
+	assert.Equal("task_0", task00.Id)
 	assert.Equal(0, task00.Execution)
 
 	task01, err := FindOneIdOldOrNew("task", 1)

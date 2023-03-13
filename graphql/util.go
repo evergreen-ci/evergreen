@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -19,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -347,6 +347,34 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 		"buildVariantCount":  len(result),
 	})
 	return result, nil
+}
+
+// getCedarFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
+func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, testFilters []string) ([]apimodels.CedarFailedTestResultsSample, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	taskFilters := []apimodels.CedarTaskInfo{}
+	for _, t := range tasks {
+		taskFilters = append(taskFilters, apimodels.CedarTaskInfo{
+			TaskID:      t.Id,
+			Execution:   t.Execution,
+			DisplayTask: t.DisplayOnly,
+		})
+	}
+
+	opts := apimodels.GetCedarFailedTestResultsSampleOptions{
+		BaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		SampleOptions: apimodels.CedarFailedTestSampleOptions{
+			Tasks:        taskFilters,
+			RegexFilters: testFilters,
+		},
+	}
+	results, err := apimodels.GetCedarFilteredFailedSamples(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting cedar filtered failed samples")
+	}
+	return results, nil
 }
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
@@ -927,89 +955,4 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
-}
-
-//////////////////////////////////////////
-// Helper functions for task test results.
-//////////////////////////////////////////
-
-func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *TestFilterOptions) (*testresult.FilterOptions, error) {
-	if opts == nil {
-		return nil, nil
-	}
-
-	sortBy, sortOrderDSC, baseTaskOpts, err := convertTestSortOptions(ctx, dbTask, opts.Sort)
-	if err != nil {
-		return nil, err
-	}
-
-	return &testresult.FilterOptions{
-		TestName:     utility.FromStringPtr(opts.TestName),
-		Statuses:     opts.Statuses,
-		GroupID:      utility.FromStringPtr(opts.GroupID),
-		SortBy:       sortBy,
-		SortOrderDSC: sortOrderDSC,
-		Limit:        utility.FromIntPtr(opts.Limit),
-		Page:         utility.FromIntPtr(opts.Page),
-		BaseTasks:    baseTaskOpts,
-	}, nil
-}
-
-func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) (string, bool, []testresult.TaskOptions, error) {
-	// TODO (EVG-14306): Enable multi-sort parameters once it is supported
-	// by the test results interface.
-	if len(opts) == 0 {
-		return "", false, nil, nil
-	}
-
-	baseTaskOpts, err := getBaseTaskTestResultsOptions(ctx, dbTask)
-	if err != nil {
-		return "", false, nil, err
-	}
-
-	var sortBy string
-	switch opts[0].SortBy {
-	case TestSortCategoryStatus:
-		sortBy = testresult.SortByStatus
-	case TestSortCategoryDuration:
-		sortBy = testresult.SortByDuration
-	case TestSortCategoryTestName:
-		sortBy = testresult.SortByTestName
-	case TestSortCategoryStartTime:
-		sortBy = testresult.SortByStart
-	case TestSortCategoryBaseStatus:
-		if len(baseTaskOpts) > 0 {
-			// Only sort by base status if we know there are base
-			// task options we can send to the results service.
-			sortBy = testresult.SortByBaseStatus
-		}
-	}
-
-	return sortBy, opts[0].Direction == SortDirectionDesc, baseTaskOpts, nil
-}
-
-func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]testresult.TaskOptions, error) {
-	var (
-		baseTask *task.Task
-		taskOpts []testresult.TaskOptions
-		err      error
-	)
-
-	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
-		baseTask, err = dbTask.FindTaskOnPreviousCommit()
-	} else {
-		baseTask, err = dbTask.FindTaskOnBaseCommit()
-	}
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task '%s': %s", dbTask.Id, err))
-	}
-
-	if baseTask != nil && baseTask.ResultsService == dbTask.ResultsService {
-		taskOpts, err = baseTask.CreateTestResultsTaskOptions()
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for base task '%s': %s", baseTask.Id, err))
-		}
-	}
-
-	return taskOpts, nil
 }

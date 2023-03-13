@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/timber/buildlogger"
 	timberutil "github.com/evergreen-ci/timber/testutil"
@@ -24,18 +23,20 @@ import (
 func TestSendTestResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	results := []testresult.TestResult{
-		{
-			TestName:        "test",
-			DisplayTestName: "display",
-			GroupID:         "group",
-			Status:          "pass",
-			LogURL:          "https://url.com",
-			RawLogURL:       "https://rawurl.com",
-			LogTestName:     "log_test_name",
-			LineNum:         123,
-			TestStartTime:   time.Now().Add(-time.Hour).UTC(),
-			TestEndTime:     time.Now().UTC(),
+	results := &task.LocalTestResults{
+		Results: []task.TestResult{
+			{
+				TestFile:        "test",
+				DisplayTestName: "display",
+				GroupID:         "group",
+				Status:          "pass",
+				URL:             "https://url.com",
+				URLRaw:          "https://rawurl.com",
+				LogTestName:     "log_test_name",
+				LineNum:         123,
+				StartTime:       float64(time.Now().Add(-time.Hour).Unix()),
+				EndTime:         float64(time.Now().Unix()),
+			},
 		},
 	}
 	conf := &internal.TaskConfig{
@@ -82,24 +83,24 @@ func TestSendTestResults(t *testing.T) {
 				require.Len(t, res, 1)
 				require.Len(t, res[0].Results, 1)
 				assert.NotEmpty(t, res[0].Results[0].TestName)
-				assert.NotEqual(t, results[0].TestName, res[0].Results[0].TestName)
-				if results[0].DisplayTestName != "" {
-					assert.Equal(t, results[0].DisplayTestName, res[0].Results[0].DisplayTestName)
+				assert.NotEqual(t, results.Results[0].TestFile, res[0].Results[0].TestName)
+				if results.Results[0].DisplayTestName != "" {
+					assert.Equal(t, results.Results[0].DisplayTestName, res[0].Results[0].DisplayTestName)
 				} else {
-					assert.Equal(t, results[0].TestName, res[0].Results[0].DisplayTestName)
+					assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].DisplayTestName)
 				}
-				assert.Equal(t, results[0].Status, res[0].Results[0].Status)
-				assert.Equal(t, results[0].GroupID, res[0].Results[0].GroupId)
-				if results[0].LogTestName != "" {
-					assert.Equal(t, results[0].LogTestName, res[0].Results[0].LogTestName)
+				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
+				assert.Equal(t, results.Results[0].GroupID, res[0].Results[0].GroupId)
+				if results.Results[0].LogTestName != "" {
+					assert.Equal(t, results.Results[0].LogTestName, res[0].Results[0].LogTestName)
 				} else {
-					assert.Equal(t, results[0].TestName, res[0].Results[0].LogTestName)
+					assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].LogTestName)
 				}
-				assert.Equal(t, results[0].LogURL, res[0].Results[0].LogUrl)
-				assert.Equal(t, results[0].RawLogURL, res[0].Results[0].RawLogUrl)
-				assert.EqualValues(t, results[0].LineNum, res[0].Results[0].LineNum)
-				assert.Equal(t, results[0].TestStartTime, res[0].Results[0].TestStartTime.AsTime())
-				assert.Equal(t, results[0].TestEndTime, res[0].Results[0].TestEndTime.AsTime())
+				assert.Equal(t, results.Results[0].URL, res[0].Results[0].LogUrl)
+				assert.Equal(t, results.Results[0].URLRaw, res[0].Results[0].RawLogUrl)
+				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
+				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
+				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)
 			}
 		}
 
@@ -112,43 +113,43 @@ func TestSendTestResults(t *testing.T) {
 					checkRecord(t, srv)
 					checkResults(t, srv)
 					assert.NotZero(t, srv.Close.TestResultsRecordId)
-					assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
-					assert.False(t, comm.ResultsFailed)
+					assert.True(t, comm.HasCedarResults)
+					assert.False(t, comm.CedarResultsFailed)
 				})
 				t.Run("FailingResults", func(t *testing.T) {
-					results[0].Status = evergreen.TestFailedStatus
+					results.Results[0].Status = evergreen.TestFailedStatus
 					require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
-					assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
-					assert.True(t, comm.ResultsFailed)
-					results[0].Status = "pass"
+					assert.True(t, comm.HasCedarResults)
+					assert.True(t, comm.CedarResultsFailed)
+					results.Results[0].Status = "pass"
 				})
 			},
 			"SucceedsNoDisplayTestName": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-				displayTestName := results[0].DisplayTestName
-				results[0].DisplayTestName = ""
+				displayTestName := results.Results[0].DisplayTestName
+				results.Results[0].DisplayTestName = ""
 				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
 				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
-				assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
-				assert.False(t, comm.ResultsFailed)
-				results[0].DisplayTestName = displayTestName
+				assert.True(t, comm.HasCedarResults)
+				assert.False(t, comm.CedarResultsFailed)
+				results.Results[0].DisplayTestName = displayTestName
 			},
 			"SucceedsNoLogTestName": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-				logTestName := results[0].LogTestName
-				results[0].LogTestName = ""
+				logTestName := results.Results[0].LogTestName
+				results.Results[0].LogTestName = ""
 				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
 				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
-				assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
-				assert.False(t, comm.ResultsFailed)
-				results[0].LogTestName = logTestName
+				assert.True(t, comm.HasCedarResults)
+				assert.False(t, comm.CedarResultsFailed)
+				results.Results[0].LogTestName = logTestName
 			},
 			"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 				srv.CreateErr = true
@@ -177,8 +178,8 @@ func TestSendTestResults(t *testing.T) {
 			t.Run(testName, func(t *testing.T) {
 				conf.CedarTestResultsID = ""
 				srv := setupCedarServer(ctx, t, comm)
-				comm.ResultsService = ""
-				comm.ResultsFailed = false
+				comm.HasCedarResults = false
+				comm.CedarResultsFailed = false
 				testCase(ctx, t, srv.TestResults, comm)
 			})
 		}

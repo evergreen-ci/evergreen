@@ -1024,6 +1024,178 @@ func TestIsSystemUnresponsive(t *testing.T) {
 
 }
 
+func TestMergeTestResultsBulk(t *testing.T) {
+	require.NoError(t, db.Clear(testresult.Collection))
+	assert := assert.New(t)
+
+	tasks := []Task{
+		{
+			Id:        "task1",
+			Execution: 0,
+		},
+		{
+			Id:        "task2",
+			Execution: 0,
+		},
+		{
+			Id:        "task3",
+			Execution: 0,
+		},
+	}
+
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task1",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task2",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task3",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task1",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 1,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task4",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task1",
+		Status:    evergreen.TestSucceededStatus,
+		Execution: 0,
+	}).Insert())
+
+	out, err := MergeTestResultsBulk(tasks, nil)
+	assert.NoError(err)
+	count := 0
+	for _, t := range out {
+		count += len(t.LocalTestResults)
+	}
+	assert.Equal(4, count)
+
+	query := db.Query(bson.M{
+		testresult.StatusKey: evergreen.TestFailedStatus,
+	})
+	out, err = MergeTestResultsBulk(tasks, &query)
+	assert.NoError(err)
+	count = 0
+	for _, t := range out {
+		count += len(t.LocalTestResults)
+		for _, result := range t.LocalTestResults {
+			assert.Equal(evergreen.TestFailedStatus, result.Status)
+		}
+	}
+	assert.Equal(3, count)
+}
+
+func TestTaskSetResultsFields(t *testing.T) {
+	taskID := "jstestfuzz_self_tests_replication_fuzzers_master_initial_sync_fuzzer_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
+	project := "jstestfuzz-self-tests"
+	distroID := "amazon2-test"
+	buildVariant := "replication_fuzzers"
+	displayName := "fuzzer"
+	requester := "gitter_request"
+
+	displayTaskID := "jstestfuzz_self_tests_replication_fuzzers_display_master_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
+	executionDisplayName := "master"
+	StartTime := 1569431862.508
+	EndTime := 1569431887.2
+
+	TestStartTime := utility.FromPythonTime(StartTime).In(time.UTC)
+	TestEndTime := utility.FromPythonTime(EndTime).In(time.UTC)
+
+	testresults := []TestResult{
+		{
+			Status:          "pass",
+			TestFile:        "job0_fixture_setup",
+			DisplayTestName: "display",
+			GroupID:         "group",
+			URL:             "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
+			URLRaw:          "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
+			ExitCode:        0,
+			StartTime:       StartTime,
+			EndTime:         EndTime,
+		},
+	}
+
+	Convey("SetResults", t, func() {
+		So(db.ClearCollections(Collection, testresult.Collection), ShouldBeNil)
+
+		taskCreateTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
+		So(err, ShouldBeNil)
+
+		task := Task{
+			Id:           taskID,
+			CreateTime:   taskCreateTime,
+			Project:      project,
+			DistroId:     distroID,
+			BuildVariant: buildVariant,
+			DisplayName:  displayName,
+			Execution:    0,
+			Requester:    requester,
+		}
+
+		executionDisplayTask := Task{
+			Id:             displayTaskID,
+			CreateTime:     taskCreateTime,
+			Project:        project,
+			DistroId:       distroID,
+			BuildVariant:   buildVariant,
+			DisplayName:    executionDisplayName,
+			Execution:      0,
+			Requester:      requester,
+			ExecutionTasks: []string{taskID},
+		}
+
+		So(task.Insert(), ShouldBeNil)
+		Convey("Without a display task", func() {
+
+			So(task.SetResults(testresults), ShouldBeNil)
+
+			written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
+			So(err, ShouldBeNil)
+			So(1, ShouldEqual, len(written))
+			So(written[0].Project, ShouldEqual, project)
+			So(written[0].BuildVariant, ShouldEqual, buildVariant)
+			So(written[0].DistroId, ShouldEqual, distroID)
+			So(written[0].Requester, ShouldEqual, requester)
+			So(written[0].DisplayName, ShouldEqual, displayName)
+			So(written[0].ExecutionDisplayName, ShouldBeBlank)
+			So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
+			So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
+			So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
+		})
+
+		Convey("With a display task", func() {
+			So(executionDisplayTask.Insert(), ShouldBeNil)
+
+			So(task.SetResults(testresults), ShouldBeNil)
+
+			written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
+			So(err, ShouldBeNil)
+			So(1, ShouldEqual, len(written))
+			So(written[0].Project, ShouldEqual, project)
+			So(written[0].BuildVariant, ShouldEqual, buildVariant)
+			So(written[0].DistroId, ShouldEqual, distroID)
+			So(written[0].Requester, ShouldEqual, requester)
+			So(written[0].DisplayName, ShouldEqual, displayName)
+			So(written[0].ExecutionDisplayName, ShouldEqual, executionDisplayName)
+			So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
+			So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
+			So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
+		})
+	})
+}
+
 func TestTaskStatusCount(t *testing.T) {
 	assert := assert.New(t)
 	counts := TaskStatusCount{}
@@ -1039,6 +1211,25 @@ func TestTaskStatusCount(t *testing.T) {
 	assert.Equal(1, counts.Failed)
 	assert.Equal(1, counts.Started)
 	assert.Equal(1, counts.Inactive)
+}
+
+func TestPopulateTestResultsForDisplayTask(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(Collection, testresult.Collection))
+	dt := Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et"},
+	}
+	assert.NoError(dt.Insert())
+	test := testresult.TestResult{
+		TaskID:   "et",
+		TestFile: "myTest",
+	}
+	assert.NoError(test.Insert())
+	require.NoError(t, dt.populateTestResultsForDisplayTask())
+	require.Len(t, dt.LocalTestResults, 1)
+	assert.Equal("myTest", dt.LocalTestResults[0].TestFile)
 }
 
 func TestBlocked(t *testing.T) {
@@ -2606,6 +2797,22 @@ func getTaskThatNeedsContainerAllocation() Task {
 	}
 }
 
+func TestSetHasLegacyResults(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	task := Task{Id: "t1"}
+	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.SetHasLegacyResults(true))
+
+	assert.True(t, utility.FromBoolPtr(task.HasLegacyResults))
+
+	taskFromDb, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.NotNil(t, taskFromDb.HasLegacyResults)
+	assert.True(t, utility.FromBoolPtr(taskFromDb.HasLegacyResults))
+}
+
 func TestSetGeneratedTasksToActivate(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
@@ -3270,7 +3477,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 }
 
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
-	tasksToFetch := []string{"t1", "t2"}
+	tasksToFetch := []*string{utility.ToStringPtr("t1"), utility.ToStringPtr("t2")}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
@@ -3671,282 +3878,6 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 			}
 
 			tCase(t, tsk, depTasks)
-		})
-	}
-}
-
-func TestHasResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
-	}()
-
-	for _, test := range []struct {
-		name              string
-		tsk               *Task
-		executionTasks    []Task
-		oldExecutionTasks []Task
-		hasResults        bool
-	}{
-		{
-			name: "RegularTaskNoResults",
-			tsk:  &Task{Id: "task"},
-		},
-		{
-			name: "RegularTaskLegacyCedarResultsFlag",
-			tsk: &Task{
-				Id:              "task",
-				HasCedarResults: true,
-			},
-			hasResults: true,
-		},
-		{
-			name: "RegularTaskResultsServicePopulated",
-			tsk: &Task{
-				Id:             "task",
-				ResultsService: "some_service",
-			},
-			hasResults: true,
-		},
-		{
-			name: "DisplayTaskNoResults",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0"},
-				{Id: "exec_task1"},
-			},
-		},
-		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", HasCedarResults: true},
-				{Id: "exec_task2"},
-			},
-			hasResults: true,
-		},
-		{
-			name: "DisplayTaskResultsServicePopulated",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", ResultsService: "some_service"},
-				{Id: "exec_task2"},
-			},
-			hasResults: true,
-		},
-		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				Execution:      2,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
-				Archived:       true,
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0"},
-				{Id: "exec_task1"},
-				{Id: "exec_task2"},
-			},
-			oldExecutionTasks: []Task{
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
-			},
-			hasResults: true,
-		},
-		{
-			name: "ArchivedDisplayTaskResultsServicePopulated",
-			tsk: &Task{
-				Id:             "display_task",
-				Execution:      2,
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
-				Archived:       true,
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0"},
-				{Id: "exec_task1"},
-				{Id: "exec_task2"},
-			},
-			oldExecutionTasks: []Task{
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
-			},
-			hasResults: true,
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			for _, execTask := range test.executionTasks {
-				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
-				require.NoError(t, err)
-			}
-			for _, execTask := range test.oldExecutionTasks {
-				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
-				require.NoError(t, err)
-			}
-
-			assert.Equal(t, test.hasResults, test.tsk.HasResults())
-		})
-	}
-}
-
-func TestCreateTestResultsTaskOptions(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
-	}()
-
-	for _, test := range []struct {
-		name              string
-		tsk               *Task
-		executionTasks    []Task
-		oldExecutionTasks []Task
-		expectedOpts      []testresult.TaskOptions
-	}{
-		{
-			name: "RegularTaskNoResults",
-			tsk:  &Task{Id: "task"},
-		},
-		{
-			name: "RegularTaskResults",
-			tsk: &Task{
-				Id:             "task",
-				Execution:      1,
-				ResultsService: "some_service",
-			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "task", Execution: 1, ResultsService: "some_service"},
-			},
-		},
-		{
-			name: "DisplayTaskNoResults",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0"},
-				{Id: "exec_task1"},
-			},
-		},
-		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
-			tsk: &Task{
-				Id:             "display_task",
-				Execution:      1,
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
-				{Id: "exec_task2"},
-			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0"},
-				{TaskID: "exec_task1", Execution: 1},
-			},
-		},
-		{
-			name: "DisplayTaskResults",
-			tsk: &Task{
-				Id:             "display_task",
-				Execution:      1,
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
-				{Id: "exec_task2"},
-			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0", ResultsService: "some_service"},
-				{TaskID: "exec_task1", Execution: 1, ResultsService: "some_service"},
-			},
-		},
-		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				Execution:      2,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
-				Archived:       true,
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", Execution: 2, HasCedarResults: true},
-				{Id: "exec_task2"},
-			},
-			oldExecutionTasks: []Task{
-				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasCedarResults: true},
-				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasCedarResults: true},
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasCedarResults: true},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
-			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0"},
-				{TaskID: "exec_task1", Execution: 2},
-				{TaskID: "exec_task3", Execution: 1},
-			},
-		},
-		{
-			name: "ArchivedDisplayTaskResults",
-			tsk: &Task{
-				Id:             "display_task",
-				Execution:      2,
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2", "exec_task3"},
-				Archived:       true,
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 2, ResultsService: "some_service"},
-				{Id: "exec_task2"},
-			},
-			oldExecutionTasks: []Task{
-				{Id: "exec_task1_0", OldTaskId: "exec_task1", ResultsService: "some_service"},
-				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, ResultsService: "some_service"},
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, ResultsService: "some_service"},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, ResultsService: "some_service"},
-			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0", ResultsService: "some_service"},
-				{TaskID: "exec_task1", Execution: 2, ResultsService: "some_service"},
-				{TaskID: "exec_task3", Execution: 1, ResultsService: "some_service"},
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			for _, execTask := range test.executionTasks {
-				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
-				require.NoError(t, err)
-			}
-			for _, execTask := range test.oldExecutionTasks {
-				execTask.Archived = true
-				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
-				require.NoError(t, err)
-			}
-
-			opts, err := test.tsk.CreateTestResultsTaskOptions()
-			require.NoError(t, err)
-			assert.ElementsMatch(t, test.expectedOpts, opts)
 		})
 	}
 }

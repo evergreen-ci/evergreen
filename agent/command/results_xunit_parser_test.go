@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
@@ -220,7 +219,7 @@ func TestXMLToModelConversion(t *testing.T) {
 		}
 
 		Convey("when converting the results to model struct", func() {
-			tests := []testresult.TestResult{}
+			tests := []task.TestResult{}
 			logs := []*model.TestLog{}
 			for _, testCase := range res[0].TestCases {
 				test, log := testCase.toModelTestResultAndLog(conf)

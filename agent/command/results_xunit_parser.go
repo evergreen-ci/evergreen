@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -88,29 +88,30 @@ func parseXMLResults(reader io.Reader) ([]testSuite, error) {
 	return results.Suites, nil
 }
 
-// toModelTestResultAndLog converts an XUnit test case into a test result and
-// test log. Logs are only generated if the test case did not succeed (this is
-// part of the XUnit XML file design).
-func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (testresult.TestResult, *model.TestLog) {
+// ToModelTestResultAndLog converts an xunit test case into an
+// mci task.TestResult and model.TestLog. Logs are only
+// generated if the test case did not succeed (this is part of
+// the xunit xml file design)
+func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (task.TestResult, *model.TestLog) {
 
-	res := testresult.TestResult{}
+	res := task.TestResult{}
 	var log *model.TestLog
 
 	if tc.ClassName != "" {
-		res.TestName = fmt.Sprintf("%v.%v", tc.ClassName, tc.Name)
+		res.TestFile = fmt.Sprintf("%v.%v", tc.ClassName, tc.Name)
 	} else {
-		res.TestName = tc.Name
+		res.TestFile = tc.Name
 	}
-	// Replace spaces, dashes, etc. with underscores.
-	res.TestName = util.CleanForPath(res.TestName)
+	// replace spaces, dashes, etc. with underscores
+	res.TestFile = util.CleanForPath(res.TestFile)
 
-	res.TestStartTime = time.Now()
-	res.TestEndTime = res.TestStartTime.Add(time.Duration(float64(tc.Time) * float64(time.Second)))
+	res.StartTime = float64(time.Now().Unix())
+	res.EndTime = res.StartTime + float64(tc.Time)
 
-	// The presence of the Failure, Error, or Skipped fields is used to
-	// indicate an unsuccessful test case. Logs can only be generated in
-	// in failure cases, because XUnit results only include messages if
-	// they did *not* succeed.
+	// the presence of the Failure, Error, or Skipped fields
+	// is used to indicate an unsuccessful test case. Logs
+	// can only be generated in failure cases, because xunit
+	// results only include messages if they did *not* succeed.
 	switch {
 	case tc.Failure != nil:
 		res.Status = evergreen.TestFailedStatus
