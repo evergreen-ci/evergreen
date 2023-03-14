@@ -19,7 +19,7 @@ require (
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
-	github.com/evergreen-ci/timber v0.0.0-20230120153024-15a5176eaa51
+	github.com/evergreen-ci/timber v0.0.0-20230210160503-ba8cf383fac5
 	github.com/evergreen-ci/utility v0.0.0-20230216205613-b8156d58f1e5
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
