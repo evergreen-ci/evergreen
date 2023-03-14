@@ -146,10 +146,9 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			"source":             "patch intents",
 		}))
 
-		_, err := model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
+		j.AddError(model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
 			false, patchDoc.Id.Hex(), patchDoc.GithubPatchData.BaseOwner,
-			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber)
-		j.AddError(err)
+			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber))
 	}
 }
 

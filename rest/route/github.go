@@ -181,8 +181,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"message": "pull request closed; aborting patch",
 			})
 
-			isCommitQueueMerging, err := data.AbortPatchesFromPullRequest(event)
-			if err != nil {
+			if err := data.AbortPatchesFromPullRequest(event); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "GitHub hook",
 					"msg_id":  gh.msgID,
@@ -191,19 +190,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"message": "failed to abort patches",
 				}))
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting patches"))
-			}
-
-			if !isCommitQueueMerging {
-				if err := gh.tryDequeueCommitQueueItemForPR(event.PullRequest); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"source":  "GitHub hook",
-						"msg_id":  gh.msgID,
-						"event":   gh.eventType,
-						"action":  *event.Action,
-						"message": "commit queue item not dequeued",
-					}))
-					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "dequeueing item from commit queue"))
-				}
 			}
 
 			return gimlet.NewJSONResponse(struct{}{})

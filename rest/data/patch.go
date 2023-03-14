@@ -181,22 +181,20 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 // in the same repository, at the pull request's close time. This returns
 // whether or not one of the GitHub patches is a commit queue item and is
 // currently merging the PR.
-func AbortPatchesFromPullRequest(event *github.PullRequestEvent) (isCommitQueueMerging bool, err error) {
+func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	isCommitQueueMerging, err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "",
-		owner, repo, *event.Number)
-	if err != nil {
-		return isCommitQueueMerging, gimlet.ErrorResponse{
+	if err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "", owner, repo, *event.Number); err != nil {
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "aborting patches").Error(),
 		}
 	}
 
-	return isCommitQueueMerging, nil
+	return nil
 }
 
 // GetPatchRawPatches fetches the raw patches for a patch
