@@ -928,13 +928,6 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
 					// If the merge task already started, the PR merge is
 					// already ongoing, so it's better to just let it complete.
-					grip.Info(message.Fields{
-						"message": "kim: skipping abort for merging task in GitHub PR",
-						"owner":   owner,
-						"repo":    repo,
-						"pr_num":  prNumber,
-						"patch":   p.Id.Hex(),
-					})
 					continue
 				}
 				catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
