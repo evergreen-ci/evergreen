@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "query_file": "failed_test_count.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "failedTestCount": 2
+          }
+        }
+      }
+    },
+    {
+      "query_file": "failed_test_count_none.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "failedTestCount": 0
+          }
+        }
+      }
+    }
+  ]
+}

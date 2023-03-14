@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "total_test_count.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "totalTestCount": 20
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "ami.graphql",
+      "result": {
+        "data": {
+          "ami_exists": {
+            "ami": "ami-049df09df40fc2c1c"
+          },
+          "no_ami": {
+            "ami": null
+          }
+        }
+      }
+    }
+  ]
+}

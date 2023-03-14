@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "patch.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task",
+            "patch": {
+              "author": "arjun"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

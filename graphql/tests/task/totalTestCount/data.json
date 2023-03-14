@@ -1,0 +1,537 @@
+{
+  "tasks": [
+    {
+      "_id": "1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "status": "success",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "branch": "spruce"
+    }
+  ],
+  "testresults": [
+    {
+      "_id": "5e4ff42d4e88faea7a90f0af",
+      "status": "fail",
+      "test_file": "TestStuckHostAuditing",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 14,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.01,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.009Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0ae",
+      "status": "fail",
+      "test_file": "TestHostTaskAuditing",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 12,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.07,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.069Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0f6",
+      "status": "skip",
+      "test_file": "TestProjectEventSuite/TestModifyProjectNonEvent",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 236,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0b3",
+      "status": "skip",
+      "test_file": "TestGenerateSuite",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 22,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.15,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.150Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0ba",
+      "status": "pass",
+      "test_file": "TestGenerateSuite/TestSaveNewTasksWithDependencies",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 36,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.02,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.020Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0be",
+      "status": "pass",
+      "test_file": "TestGenerateSuite/TestValidateNoRedefine",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 41,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0d5",
+      "status": "pass",
+      "test_file": "TestSortTasks",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 116,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0dd",
+      "status": "pass",
+      "test_file": "TestDepsMatrixIntegration",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 132,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.01,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.009Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0e0",
+      "status": "pass",
+      "test_file": "TestFinalizePatch",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 152,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298157.05,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:57.049Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0fc",
+      "status": "pass",
+      "test_file": "TestMergeAxisValue",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 251,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0ff",
+      "status": "pass",
+      "test_file": "TestCreateIntermediateProjectRequirements",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 261,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f109",
+      "status": "pass",
+      "test_file": "TestTaskGroupWithDisplayTask",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 285,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f112",
+      "status": "pass",
+      "test_file": "TestTryUpsert/configNumberMatches",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 302,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f11e",
+      "status": "pass",
+      "test_file": "TestGetActivationTimeWithCron/Interval",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 324,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0b9",
+      "status": "pass",
+      "test_file": "TestGenerateSuite/TestSaveNewTasksWithCrossVariantDependencies",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 32,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.02,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.020Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0bf",
+      "status": "pass",
+      "test_file": "TestUpdateVersionAndParserProject",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 54,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.04,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.040Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0cd",
+      "status": "pass",
+      "test_file": "TestSetVersionActivation",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 82,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.01,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.009Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0d2",
+      "status": "pass",
+      "test_file": "TestCreateTaskGroup",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 107,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0e6",
+      "status": "pass",
+      "test_file": "TestRetryCommitQueueItems",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 203,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.07,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.069Z"
+      }
+    },
+    {
+      "_id": "5e4ff42d4e88faea7a90f0ee",
+      "status": "pass",
+      "test_file": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
+      "log_id": "5e4ff42d30661528ad67fafb",
+      "line_num": 219,
+      "exit_code": 0,
+      "start": 1582298156,
+      "end": 1582298156.02,
+      "task_id": "1",
+      "task_execution": 0,
+      "branch": "evergreen",
+      "build_variant": "ubuntu1604",
+      "distro": "ubuntu1604-build",
+      "r": "github_pull_request",
+      "display_name": "test-model",
+      "task_create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "test_start_time": {
+        "$date": "2020-02-21T15:15:56Z"
+      },
+      "test_end_time": {
+        "$date": "2020-02-21T15:15:56.020Z"
+      }
+    }
+  ]
+}

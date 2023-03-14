@@ -1,0 +1,69 @@
+{
+  "tasks": [
+    {
+      "_id": "some_task",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "status": "dispatched",
+      "branch": "spruce",
+      "distro": "macos-1014",
+      "execution": 1,
+      "host_id": "host2"
+    }, 
+    {
+      "_id": "some_task_2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "status": "undispatched",
+      "branch": "spruce",
+      "host_id": "host1"
+    }
+  ],
+  "hosts": [
+    {
+      "_id": "host1",
+      "distro": {
+        "_id": "localhost1",
+        "provider": "gce",
+        "spawn_allowed": true,
+        "provider_settings": [
+          {
+            "is_vpc": true,
+            "vpc_name": "stage_dynamic_vpc",
+            "docker_registry_user": "",
+            "key_name": "mci",
+            "jasper_credentials_path": "/etc/jasper-credentials.json",
+            "subnet_id": "subnet-517c941a",
+            "ami": "ami-049df09df40fc2c1c",
+            "docker_registry_pw": "",
+            "region": "us-east-1",
+            "security_group_ids": [
+              "sg-601a6c13"
+            ],
+            "curator_dir": "/usr/local/bin",
+            "mount_points": [
+              {
+                "virtual_name": "ephemeral0",
+                "device_name": "/dev/xvdd"
+              }
+            ],
+            "bid_price": 0.21,
+            "client_dir": "/opt/evergreen",
+            "instance_type": "c3.xlarge",
+            "security_group": "sg-601a6c13",
+            "shell_path": "/usr/bin/bash",
+            "user_data": "#!/usr/sbin/bash \ntouch hello-world"
+          }
+        ]
+      }
+    }
+  ]
+}

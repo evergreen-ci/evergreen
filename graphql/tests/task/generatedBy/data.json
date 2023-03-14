@@ -1,0 +1,12 @@
+{
+  "tasks": [
+    {
+      "_id": "generated_task",
+      "generated_by": "generator_task"
+    },
+    {
+      "_id": "generator_task",
+      "display_name": "i am a generator"
+    }
+  ]
+}

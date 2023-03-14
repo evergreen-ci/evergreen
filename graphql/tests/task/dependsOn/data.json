@@ -1,0 +1,117 @@
+{
+  "tasks": [ 
+    {
+      "_id": "dep1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_name": "dep1",
+      "build_variant": "ubuntu",
+      "host_id": "host1"
+    },
+    {
+      "_id": "dep2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_name": "dep2",
+      "build_variant": "windows",
+      "status": "failed"
+    },
+    {
+      "_id": "dep3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_name": "dep3",
+      "build_variant": "windows",
+      "status": "started"
+    },
+    {
+      "_id": "dep4",
+      "version": "1e4ff3abe3c3317e352062e4",
+      "display_name": "dep4",
+      "build_variant": "windows",
+      "depends_on": [
+        {
+          "_id": "task6",
+          "status": "failed",
+          "unattainable": false
+        }
+      ]
+    },
+    {
+      "_id": "dep5",
+      "version": "1e4ff3abe3c3317e352062e4",
+      "display_name": "dep5",
+      "build_variant": "windows",
+      "status": "failed"
+    },
+    {
+      "_id": "task2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        {
+          "_id": "dep1",
+          "status": "*",
+          "unattainable": false
+        }
+      ],
+      "host_id": "host2"
+    },
+    {
+      "_id": "task3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        {
+          "_id": "dep1",
+          "status": "started",
+          "unattainable": false
+        }
+      ],
+      "status": "failed",
+      "host_id": "host3"
+    },
+    {
+      "_id": "task4",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        {
+          "_id": "dep2",
+          "status": "*",
+          "unattainable": false
+        }
+      ],
+      "host_id": "host4"
+    },
+    {
+      "_id": "task5",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        {
+          "_id": "dep2",
+          "status": "failed",
+          "unattainable": false
+        }
+      ],
+      "host_id": "host5"
+    },
+    {
+      "_id": "task6",
+      "version": "1e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        {
+          "_id": "dep4",
+          "status": "failed",
+          "unattainable": false
+        }
+      ]
+    },
+    {
+      "_id": "task7",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "spruce",
+      "depends_on": [
+        {
+          "_id": "dep5",
+          "status": "",
+          "unattainable": false
+        }
+      ]
+    }
+  ]
+}

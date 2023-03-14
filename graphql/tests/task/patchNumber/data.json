@@ -1,0 +1,51 @@
+{
+  "patches": [
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "patch_number": 1234,
+      "author": "arjun",
+      "githash": "ca82a6dff817ec66f44342007202690a93763949"
+    },
+    {
+      "_id": {
+        "$oid": "1e4ff3abe3c3317e352062e4"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "taskity_task",
+      "order": 2567,
+      "version": "5e4ff3abe3c3317e352062e4",
+      "host_id": "i-0bb70e2ac4c1a9ac8",
+      "distro": "archlinux-small",
+      "r": "github_pull_request",
+      "execution": 0,
+      "details": {
+        "oom_killer": {
+          "detected": true,
+          "pids": [
+            1234,
+            5678,
+            9101,
+            1235
+          ]
+        }
+      },
+      "depends_on": [
+        {
+          "_id": "dep1",
+          "status": "*",
+          "unattainable": true
+        },
+        {
+          "_id": "dep2",
+          "status": "*",
+          "unattainable": false
+        }
+      ]
+    }
+  ]
+}

@@ -38,14 +38,36 @@ func TestAtomicGQLQueries(t *testing.T) {
 	fmt.Println("PATH: ", dir)
 
 	for _, dir := range testDirectories {
-		state := graphql.AtomicGraphQLState{
-			TaskLogDB:   model.TaskLogDB,
-			TaskLogColl: model.TaskLogCollection,
-			Directory:   dir.Name(),
-			Settings:    settings,
-			ServerURL:   server.URL,
+		runOuterDirectoryTests := false
+		nestedEntries, err := os.ReadDir(filepath.Join(pathToTests, "tests", dir.Name()))
+		require.NoError(t, err)
+
+		for _, entry := range nestedEntries {
+			if entry.IsDir() && entry.Name() != "queries" {
+				state := graphql.AtomicGraphQLState{
+					TaskLogDB:   model.TaskLogDB,
+					TaskLogColl: model.TaskLogCollection,
+					Directory:   filepath.Join(dir.Name(), entry.Name()),
+					Settings:    settings,
+					ServerURL:   server.URL,
+				}
+				t.Run(state.Directory, graphql.MakeTestsInDirectory(&state, pathToTests))
+			} else {
+				runOuterDirectoryTests = true
+			}
 		}
-		t.Run(state.Directory, graphql.MakeTestsInDirectory(&state, pathToTests))
+
+		// The following code can be deleted once all tests have been moved to the new folder structure.
+		if runOuterDirectoryTests {
+			state := graphql.AtomicGraphQLState{
+				TaskLogDB:   model.TaskLogDB,
+				TaskLogColl: model.TaskLogCollection,
+				Directory:   dir.Name(),
+				Settings:    settings,
+				ServerURL:   server.URL,
+			}
+			t.Run(state.Directory, graphql.MakeTestsInDirectory(&state, pathToTests))
+		}
 	}
 }
 

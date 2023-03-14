@@ -1,0 +1,24 @@
+{
+
+  "tasks": [
+    {
+      "_id": "task7",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "spruce",
+      "depends_on": [
+        {
+          "_id": "dep5",
+          "status": "",
+          "unattainable": false
+        }
+      ]
+    },
+    {
+      "_id": "dep5",
+      "version": "1e4ff3abe3c3317e352062e4",
+      "display_name": "dep5",
+      "build_variant": "windows",
+      "status": "failed"
+    }
+  ]
+}

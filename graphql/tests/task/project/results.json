@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "query_file": "project.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "project": {
+              "id": "spruce"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

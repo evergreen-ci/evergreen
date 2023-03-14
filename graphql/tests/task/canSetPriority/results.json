@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "can_set_priority.graphql",
+      "result": {
+        "data": {
+          "yes": {
+            "canSetPriority": true
+          },
+          "no": {
+            "canSetPriority": false
+          }
+        }
+      }
+    }
+  ]
+}

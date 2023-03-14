@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "version_metadata.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task",
+            "versionMetadata": {
+              "author": "brian.samek"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

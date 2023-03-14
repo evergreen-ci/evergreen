@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "query_file": "can_restart.graphql",
+      "result": {
+        "data": {
+          "finishedTask": {
+            "canRestart": true
+          },
+          "executionTask": {
+            "canRestart": false
+          },
+          "displayTask": {
+            "canRestart": true
+          },
+          "blockedDisplayTask": {
+            "canRestart": true
+          },
+          "runningTask": {
+            "canRestart": false
+          },
+          "abortedTask": {
+            "canRestart": false
+          }
+        }
+      }
+    }
+  ]
+}

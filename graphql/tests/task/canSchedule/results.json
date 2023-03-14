@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "query_file": "can_schedule.graphql",
+      "result": {
+        "data": {
+          "unscheduledTask": {
+            "canSchedule": true
+          },
+          "finishedTask": {
+            "canSchedule": false
+          },
+          "runningTask": {
+            "canSchedule": false
+          },
+          "abortedTask": {
+            "canSchedule": false
+          },
+          "executionTask": {
+            "canSchedule": false
+          }
+        }
+      }
+    }
+  ]
+}

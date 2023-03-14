@@ -1,0 +1,808 @@
+{
+  "tests": [
+    {
+      "query_file": "all_params.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "baseStatus": "success",
+                  "buildVariant": "ubuntu1604",
+                  "blocked": true,
+                  "displayName": "test-thirdparty-docker",
+                  "status": "success"
+                }
+              ],
+              "count": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "count.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "execution_tasks.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "executionTasksFull": null
+                },
+                {
+                  "id": "2",
+                  "executionTasksFull": [
+                    {
+                      "id": "execution_task",
+                      "status": "failed"
+                    }
+                  ]
+                },
+                {
+                  "id": "3",
+                  "executionTasksFull": null
+                },
+                {
+                  "id": "4",
+                  "executionTasksFull": null
+                },
+                {
+                  "id": "5",
+                  "executionTasksFull": null
+                },
+                {
+                  "id": "6",
+                  "executionTasksFull": null
+                },
+                {
+                  "id": "7",
+                  "executionTasksFull": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_base_status_aborted.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "7"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_base_status_multiple.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "3"
+                },
+                {
+                  "id": "4"
+                },
+                {
+                  "id": "7"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_base_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "3",
+                  "baseStatus": "failed",
+                  "baseTask": {
+                    "id": "base-task-3",
+                    "status": "failed"
+                  },
+                  "displayName": "test-cloud"
+                },
+                {
+                  "id": "4",
+                  "baseStatus": "failed",
+                  "baseTask": {
+                    "id": "base-task-4",
+                    "status": "failed"
+                  },
+                  "displayName": "lint"
+                }
+              ],
+              "count": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_status_aborted.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "7"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_status_multiple.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "status": "success"
+                },
+                {
+                  "id": "3",
+                  "status": "failed"
+                },
+                {
+                  "id": "4",
+                  "status": "success"
+                }
+              ],
+              "count": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "3",
+                  "displayName": "test-cloud",
+                  "status": "failed"
+                }
+              ],
+              "count": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_task_name_bad.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [],
+              "count": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_task_name.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "displayName": "test-thirdparty-docker"
+                },
+                {
+                  "id": "3",
+                  "displayName": "test-cloud"
+                },
+                {
+                  "id": "6",
+                  "displayName": "js-test"
+                },
+                {
+                  "id": "7",
+                  "displayName": "test-agent"
+                }
+              ],
+              "count": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_variant_bad.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [],
+              "count": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_variant_partial.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "2"
+                },
+                {
+                  "id": "4"
+                },
+                {
+                  "id": "5"
+                },
+                {
+                  "id": "6"
+                }
+              ],
+              "count": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_by_variant.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "2"
+                },
+                {
+                  "id": "4"
+                },
+                {
+                  "id": "5"
+                },
+                {
+                  "id": "6"
+                }
+              ],
+              "count": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "limit_and_pagination_1.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "displayName": "test-thirdparty-docker"
+                },
+                {
+                  "id": "2",
+                  "displayName": "compile"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "limit_and_pagination_2.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "3",
+                  "displayName": "test-cloud"
+                },
+                {
+                  "id": "4",
+                  "displayName": "lint"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_params.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "baseStatus": "success",
+                  "buildVariant": "ubuntu1604",
+                  "displayName": "test-thirdparty-docker",
+                  "status": "success"
+                },
+                {
+                  "id": "2",
+                  "baseStatus": "success",
+                  "buildVariant": "windows",
+                  "displayName": "compile",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "3",
+                  "baseStatus": "failed",
+                  "buildVariant": "ubuntu1604",
+                  "displayName": "test-cloud",
+                  "status": "failed"
+                },
+                {
+                  "id": "4",
+                  "baseStatus": "failed",
+                  "buildVariant": "windows",
+                  "displayName": "lint",
+                  "status": "success"
+                },
+                {
+                  "id": "5",
+                  "baseStatus": "success",
+                  "buildVariant": "windows",
+                  "displayName": "dist",
+                  "status": "task-timed-out"
+                },
+                {
+                  "id": "6",
+                  "baseStatus": "success",
+                  "buildVariant": "windows",
+                  "displayName": "js-test",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "7",
+                  "baseStatus": "aborted",
+                  "buildVariant": "ubuntu1604",
+                  "displayName": "test-agent",
+                  "status": "aborted"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_by_base_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "3",
+                  "baseStatus": "failed"
+                },
+                {
+                  "id": "4",
+                  "baseStatus": "failed"
+                },
+                {
+                  "id": "7",
+                  "baseStatus": "aborted"
+                },
+                {
+                  "id": "1",
+                  "baseStatus": "success"
+                },
+                {
+                  "id": "2",
+                  "baseStatus": "success"
+                },
+                {
+                  "id": "5",
+                  "baseStatus": "success"
+                },
+                {
+                  "id": "6",
+                  "baseStatus": "success"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_by_duration.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "3",
+                  "timeTaken": 71999
+                },
+                {
+                  "id": "6",
+                  "timeTaken": 43598
+                },
+                {
+                  "id": "1",
+                  "timeTaken": 42167
+                },
+                {
+                  "id": "5",
+                  "timeTaken": 21789
+                },
+                {
+                  "id": "4",
+                  "timeTaken": 10003
+                },
+                {
+                  "id": "2",
+                  "timeTaken": 8519
+                },
+                {
+                  "id": "7",
+                  "timeTaken": 298
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_by_name.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "2",
+                  "displayName": "compile"
+                },
+                {
+                  "id": "5",
+                  "displayName": "dist"
+                },
+                {
+                  "id": "6",
+                  "displayName": "js-test"
+                },
+                {
+                  "id": "4",
+                  "displayName": "lint"
+                },
+                {
+                  "id": "7",
+                  "displayName": "test-agent"
+                },
+                {
+                  "id": "3",
+                  "displayName": "test-cloud"
+                },
+                {
+                  "id": "1",
+                  "displayName": "test-thirdparty-docker"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_by_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "3",
+                  "status": "failed"
+                },
+                {
+                  "id": "5",
+                  "status": "task-timed-out"
+                },
+                {
+                  "id": "2",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "6",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "7",
+                  "status": "aborted"
+                },
+                {
+                  "id": "1",
+                  "status": "success"
+                },
+                {
+                  "id": "4",
+                  "status": "success"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_by_variant.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "buildVariant": "ubuntu1604"
+                },
+                {
+                  "id": "3",
+                  "buildVariant": "ubuntu1604"
+                },
+                {
+                  "id": "7",
+                  "buildVariant": "ubuntu1604"
+                },
+                {
+                  "id": "2",
+                  "buildVariant": "windows"
+                },
+                {
+                  "id": "4",
+                  "buildVariant": "windows"
+                },
+                {
+                  "id": "5",
+                  "buildVariant": "windows"
+                },
+                {
+                  "id": "6",
+                  "buildVariant": "windows"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_descending_base_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "baseStatus": "success"
+                },
+                {
+                  "id": "2",
+                  "baseStatus": "success"
+                },
+                {
+                  "id": "5",
+                  "baseStatus": "success"
+                },
+                {
+                  "id": "6",
+                  "baseStatus": "success"
+                },
+                {
+                  "id": "7",
+                  "baseStatus": "aborted"
+                },
+                {
+                  "id": "3",
+                  "baseStatus": "failed"
+                },
+                {
+                  "id": "4",
+                  "baseStatus": "failed"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_descending_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "status": "success"
+                },
+                {
+                  "id": "4",
+                  "status": "success"
+                },
+                {
+                  "id": "7",
+                  "status": "aborted"
+                },
+                {
+                  "id": "2",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "6",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "3",
+                  "status": "failed"
+                },
+                {
+                  "id": "5",
+                  "status": "task-timed-out"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_multiple.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "5",
+                  "baseTask": {
+                    "status": "success"
+                  },
+                  "blocked": false,
+                  "buildVariant": "windows",
+                  "displayName": "dist",
+                  "status": "task-timed-out"
+                },
+                {
+                  "id": "3",
+                  "baseTask": {
+                    "status": "failed"
+                  },
+                  "blocked": false,
+                  "buildVariant": "ubuntu1604",
+                  "displayName": "test-cloud",
+                  "status": "failed"
+                },
+                {
+                  "id": "2",
+                  "baseTask": {
+                    "status": "success"
+                  },
+                  "blocked": false,
+                  "buildVariant": "windows",
+                  "displayName": "compile",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "6",
+                  "baseTask": {
+                    "status": "success"
+                  },
+                  "blocked": false,
+                  "buildVariant": "windows",
+                  "displayName": "js-test",
+                  "status": "system-failed"
+                },
+                {
+                  "id": "7",
+                  "baseTask": {
+                    "status": "aborted"
+                  },
+                  "blocked": false,
+                  "buildVariant": "ubuntu1604",
+                  "displayName": "test-agent",
+                  "status": "aborted"
+                },
+                {
+                  "id": "1",
+                  "baseTask": {
+                    "status": "success"
+                  },
+                  "blocked": true,
+                  "buildVariant": "ubuntu1604",
+                  "displayName": "test-thirdparty-docker",
+                  "status": "success"
+                },
+                {
+                  "id": "4",
+                  "baseTask": {
+                    "status": "failed"
+                  },
+                  "blocked": false,
+                  "buildVariant": "windows",
+                  "displayName": "lint",
+                  "status": "success"
+                }
+              ],
+              "count": 7
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "versions": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "create_time": {
+        "$date": "2020-02-21T15:13:48.801Z"
+      },
+      "start_time": {
+        "$date": "2020-02-21T15:15:38.261Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-21T15:29:54.869Z"
+      },
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "author": "brian.samek",
+      "author_email": "",
+      "message": "'evergreen-ci/evergreen' pull request #3186 by bsamek: EVG-7425 Don't send ShouldExit to unprovisioned hosts (https://github.com/evergreen-ci/evergreen/pull/3186)",
+      "status": "failed",
+      "order": 2567,
+      "config_number": 1,
+      "ignored": false,
+      "owner_name": "",
+      "repo_name": "",
+      "branch_name": "main",
+      "repo_kind": "",
+      "build_variants_status": [
+        {
+          "build_variant": "ubuntu1604",
+          "activated": true,
+          "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        },
+        {
+          "build_variant": "lint",
+          "activated": true,
+          "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        }
+      ],
+      "builds": [
+        "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+        "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      ],
+      "identifier": "evergreen",
+      "remote": false,
+      "remote_path": "",
+      "r": "github_pull_request",
+      "author_id": "brian.samek",
+      "activated": true
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen"
+    }
+  ]
+}

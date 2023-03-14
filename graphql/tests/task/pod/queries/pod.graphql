@@ -1,0 +1,11 @@
+{
+    task(taskId: "task_id0", execution: 0) {
+        id
+        execution
+        pod {
+            id
+            type
+            status
+        }
+    }
+}
