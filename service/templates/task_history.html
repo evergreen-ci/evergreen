@@ -47,7 +47,7 @@ Evergreen - Task History
           <div  class="tablerow"
                 ng-repeat="taskGroup in tasksByVariantByCommit"
                 style="margin-bottom: 0px;">
-            <div ng-hide="hideInactiveVersions.get() && isTaskGroupInactive[taskGroup._id] || (!taskGroupHasTaskMatchingFilter(variants, taskGroup) && hideUnmatchingVersions.get())">
+            <div ng-hide="hideInactiveVersions.get() && isTaskGroupInactive[taskGroup._id]">
               <div  class="header"
                     ng-class="taskGroupHasTaskMatchingFilter(variants, taskGroup) | conditional:'full-opacity':'semi-transparent'">
                 <div ng-class="{'highlight-bg': taskGroup._id == selectedRevision}">
@@ -71,7 +71,7 @@ Evergreen - Task History
                 <div style="clear: both"></div>
               </div>
             </div>
-            <div ng-show="hideInactiveVersions.get() && inactiveTaskGroupCount[$index] && !hideUnmatchingVersions.get() ">
+            <div ng-show="hideInactiveVersions.get() && inactiveTaskGroupCount[$index]">
               <div class="header muted" style="text-align: center; position: relative">
                 <div class="task-history-divider-line">z
                 </div>
@@ -93,35 +93,6 @@ Evergreen - Task History
       <div class="filter-table" id="filters">
         <div style="position: relative">
           <div>
-            <h3>Filter</h3>
-            <h5>By Tests:</h5>
-
-            <input  ng-model="taskHistoryFilter.testsSearchString"
-                    ng-change="taskHistoryFilter.searchTestNames()"
-                    mci-focus="taskHistoryFilter.showTestNameResults()"
-                    mci-blur="taskHistoryFilter.hideTestNameResults()"
-                    mci-key-return="taskHistoryFilter.filterTest(taskHistoryFilter.testsSearchString, 'fail')">
-            <i  class="fa fa-plus"
-                style="cursor: pointer"
-                ng-click="taskHistoryFilter.filterTest(taskHistoryFilter.testsSearchString, 'fail')"></i>
-            <div  class="autocomplete-container" ng-show="taskHistoryFilter.testsSearchDisplay">
-              <div  class="autocomplete-element"
-                    ng-repeat="testName in taskHistoryFilter.testsSearchResults"
-                    ng-click="taskHistoryFilter.filterTest(testName, 'fail')">
-                [[ testName ]]
-              </div>
-            </div>
-            <div  ng-repeat="(test, status) in taskHistoryFilter.filter.tests" class="filter-atom">
-              <span ng-click="taskHistoryFilter.removeTestFilter(test)" style="cursor: pointer">
-                <i class="fa fa-remove"></i>
-              </span>
-              [[ test ]]
-              <select ng-options="status for status in ['pass', 'fail', 'ran']"
-                      ng-model="taskHistoryFilter.filter.tests[test]"
-                      ng-change=" taskHistoryFilter.setLocationHash();
-                                  taskHistoryFilter.queryServer();"></select>
-            </div>
-
             <h3> Options <span class="small"> ([[tasksByVariantByCommit.length]] Versions)</span></h3>
 
             <div class="checkbox">
@@ -130,13 +101,6 @@ Evergreen - Task History
                 Hide Inactive Versions
               </label>
             </div>
-            <div ng-hide="hideUnmatchingVersions.hidden()" class="checkbox">
-              <label>
-                <input type="checkbox" ng-model="hideUnmatchingVersions.v">
-                Hide Unmatched Versions
-              </label>
-            </div>
-          </div>
           <br>
           <div style="display: none">
             <h4>Build Variants</h4>
