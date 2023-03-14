@@ -206,6 +206,16 @@ type ComplexityRoot struct {
 		WorkDir              func(childComplexity int) int
 	}
 
+	ExternalLink struct {
+		DisplayName func(childComplexity int) int
+		URLTemplate func(childComplexity int) int
+	}
+
+	ExternalLinkForMetadata struct {
+		DisplayName func(childComplexity int) int
+		URL         func(childComplexity int) int
+	}
+
 	File struct {
 		Link       func(childComplexity int) int
 		Name       func(childComplexity int) int
@@ -608,6 +618,7 @@ type ComplexityRoot struct {
 		DispatchingDisabled      func(childComplexity int) int
 		DisplayName              func(childComplexity int) int
 		Enabled                  func(childComplexity int) int
+		ExternalLinks            func(childComplexity int) int
 		GitTagAuthorizedTeams    func(childComplexity int) int
 		GitTagAuthorizedUsers    func(childComplexity int) int
 		GitTagVersionsEnabled    func(childComplexity int) int
@@ -777,6 +788,7 @@ type ComplexityRoot struct {
 		DispatchingDisabled      func(childComplexity int) int
 		DisplayName              func(childComplexity int) int
 		Enabled                  func(childComplexity int) int
+		ExternalLinks            func(childComplexity int) int
 		GitTagAuthorizedTeams    func(childComplexity int) int
 		GitTagAuthorizedUsers    func(childComplexity int) int
 		GitTagVersionsEnabled    func(childComplexity int) int
@@ -946,6 +958,7 @@ type ComplexityRoot struct {
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
 		TaskLogs                func(childComplexity int) int
+		Tests                   func(childComplexity int, opts *TestFilterOptions) int
 		TimeTaken               func(childComplexity int) int
 		TotalTestCount          func(childComplexity int) int
 		VersionMetadata         func(childComplexity int) int
@@ -1169,40 +1182,41 @@ type ComplexityRoot struct {
 	}
 
 	Version struct {
-		Activated         func(childComplexity int) int
-		Author            func(childComplexity int) int
-		BaseTaskStatuses  func(childComplexity int) int
-		BaseVersion       func(childComplexity int) int
-		Branch            func(childComplexity int) int
-		BuildVariantStats func(childComplexity int, options BuildVariantOptions) int
-		BuildVariants     func(childComplexity int, options BuildVariantOptions) int
-		ChildVersions     func(childComplexity int) int
-		CreateTime        func(childComplexity int) int
-		Errors            func(childComplexity int) int
-		FinishTime        func(childComplexity int) int
-		Id                func(childComplexity int) int
-		IsPatch           func(childComplexity int) int
-		Manifest          func(childComplexity int) int
-		Message           func(childComplexity int) int
-		Order             func(childComplexity int) int
-		Parameters        func(childComplexity int) int
-		Patch             func(childComplexity int) int
-		PreviousVersion   func(childComplexity int) int
-		Project           func(childComplexity int) int
-		ProjectIdentifier func(childComplexity int) int
-		ProjectMetadata   func(childComplexity int) int
-		Repo              func(childComplexity int) int
-		Requester         func(childComplexity int) int
-		Revision          func(childComplexity int) int
-		StartTime         func(childComplexity int) int
-		Status            func(childComplexity int) int
-		TaskCount         func(childComplexity int) int
-		TaskStatusStats   func(childComplexity int, options BuildVariantOptions) int
-		TaskStatuses      func(childComplexity int) int
-		Tasks             func(childComplexity int, options TaskFilterOptions) int
-		UpstreamProject   func(childComplexity int) int
-		VersionTiming     func(childComplexity int) int
-		Warnings          func(childComplexity int) int
+		Activated                func(childComplexity int) int
+		Author                   func(childComplexity int) int
+		BaseTaskStatuses         func(childComplexity int) int
+		BaseVersion              func(childComplexity int) int
+		Branch                   func(childComplexity int) int
+		BuildVariantStats        func(childComplexity int, options BuildVariantOptions) int
+		BuildVariants            func(childComplexity int, options BuildVariantOptions) int
+		ChildVersions            func(childComplexity int) int
+		CreateTime               func(childComplexity int) int
+		Errors                   func(childComplexity int) int
+		ExternalLinksForMetadata func(childComplexity int) int
+		FinishTime               func(childComplexity int) int
+		Id                       func(childComplexity int) int
+		IsPatch                  func(childComplexity int) int
+		Manifest                 func(childComplexity int) int
+		Message                  func(childComplexity int) int
+		Order                    func(childComplexity int) int
+		Parameters               func(childComplexity int) int
+		Patch                    func(childComplexity int) int
+		PreviousVersion          func(childComplexity int) int
+		Project                  func(childComplexity int) int
+		ProjectIdentifier        func(childComplexity int) int
+		ProjectMetadata          func(childComplexity int) int
+		Repo                     func(childComplexity int) int
+		Requester                func(childComplexity int) int
+		Revision                 func(childComplexity int) int
+		StartTime                func(childComplexity int) int
+		Status                   func(childComplexity int) int
+		TaskCount                func(childComplexity int) int
+		TaskStatusStats          func(childComplexity int, options BuildVariantOptions) int
+		TaskStatuses             func(childComplexity int) int
+		Tasks                    func(childComplexity int, options TaskFilterOptions) int
+		UpstreamProject          func(childComplexity int) int
+		VersionTiming            func(childComplexity int) int
+		Warnings                 func(childComplexity int) int
 	}
 
 	VersionTasks struct {
@@ -1478,6 +1492,7 @@ type TaskResolver interface {
 	TaskFiles(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
+	Tests(ctx context.Context, obj *model.APITask, opts *TestFilterOptions) (*TaskTestResult, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
@@ -1532,6 +1547,7 @@ type VersionResolver interface {
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
+	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
 	Warnings(ctx context.Context, obj *model.APIVersion) ([]string, error)
 }
 type VolumeResolver interface {
@@ -2088,6 +2104,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DistroInfo.WorkDir(childComplexity), true
+
+	case "ExternalLink.displayName":
+		if e.complexity.ExternalLink.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.ExternalLink.DisplayName(childComplexity), true
+
+	case "ExternalLink.urlTemplate":
+		if e.complexity.ExternalLink.URLTemplate == nil {
+			break
+		}
+
+		return e.complexity.ExternalLink.URLTemplate(childComplexity), true
+
+	case "ExternalLinkForMetadata.displayName":
+		if e.complexity.ExternalLinkForMetadata.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.ExternalLinkForMetadata.DisplayName(childComplexity), true
+
+	case "ExternalLinkForMetadata.url":
+		if e.complexity.ExternalLinkForMetadata.URL == nil {
+			break
+		}
+
+		return e.complexity.ExternalLinkForMetadata.URL(childComplexity), true
 
 	case "File.link":
 		if e.complexity.File.Link == nil {
@@ -4217,6 +4261,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Enabled(childComplexity), true
 
+	case "Project.externalLinks":
+		if e.complexity.Project.ExternalLinks == nil {
+			break
+		}
+
+		return e.complexity.Project.ExternalLinks(childComplexity), true
+
 	case "Project.gitTagAuthorizedTeams":
 		if e.complexity.Project.GitTagAuthorizedTeams == nil {
 			break
@@ -5267,6 +5318,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.Enabled(childComplexity), true
 
+	case "RepoRef.externalLinks":
+		if e.complexity.RepoRef.ExternalLinks == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.ExternalLinks(childComplexity), true
+
 	case "RepoRef.gitTagAuthorizedTeams":
 		if e.complexity.RepoRef.GitTagAuthorizedTeams == nil {
 			break
@@ -6197,6 +6255,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.TaskLogs(childComplexity), true
+
+	case "Task.tests":
+		if e.complexity.Task.Tests == nil {
+			break
+		}
+
+		args, err := ec.field_Task_tests_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Task.Tests(childComplexity, args["opts"].(*TestFilterOptions)), true
 
 	case "Task.timeTaken":
 		if e.complexity.Task.TimeTaken == nil {
@@ -7256,6 +7326,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.Errors(childComplexity), true
 
+	case "Version.externalLinksForMetadata":
+		if e.complexity.Version.ExternalLinksForMetadata == nil {
+			break
+		}
+
+		return e.complexity.Version.ExternalLinksForMetadata(childComplexity), true
+
 	case "Version.finishTime":
 		if e.complexity.Version.FinishTime == nil {
 			break
@@ -7653,6 +7730,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputDisplayTask,
 		ec.unmarshalInputEditSpawnHostInput,
+		ec.unmarshalInputExternalLinkInput,
 		ec.unmarshalInputGithubUserInput,
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
@@ -7684,6 +7762,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTaskSyncOptionsInput,
 		ec.unmarshalInputTestFilter,
+		ec.unmarshalInputTestFilterOptions,
+		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputTriggerAliasInput,
 		ec.unmarshalInputUpdateVolumeInput,
 		ec.unmarshalInputUseSpruceOptionsInput,
@@ -9734,6 +9814,21 @@ func (ec *executionContext) field_Query_version_args(ctx context.Context, rawArg
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Task_tests_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *TestFilterOptions
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalOTestFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -13215,6 +13310,182 @@ func (ec *executionContext) fieldContext_DistroInfo_workDir(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _ExternalLink_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIExternalLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLink_displayName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalLink_displayName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalLink_urlTemplate(ctx context.Context, field graphql.CollectedField, obj *model.APIExternalLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URLTemplate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalLink_urlTemplate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalLinkForMetadata_url(ctx context.Context, field graphql.CollectedField, obj *ExternalLinkForMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLinkForMetadata_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalLinkForMetadata_url(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalLinkForMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalLinkForMetadata_displayName(ctx context.Context, field graphql.CollectedField, obj *ExternalLinkForMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLinkForMetadata_displayName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalLinkForMetadata_displayName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalLinkForMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _File_link(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_File_link(ctx, field)
 	if err != nil {
@@ -14291,6 +14562,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -14607,6 +14880,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -14726,6 +15001,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_RepoRef_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_RepoRef_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoRef", field.Name)
 		},
@@ -18948,6 +19225,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -19059,6 +19338,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -20672,6 +20953,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -20925,6 +21208,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21068,6 +21353,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21211,6 +21498,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21374,6 +21663,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21537,6 +21828,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21732,6 +22025,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21985,6 +22280,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23010,6 +23307,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23207,6 +23506,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23404,6 +23705,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23601,6 +23904,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23798,6 +24103,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -23995,6 +24302,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -24510,6 +24819,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -26240,6 +26551,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -26665,6 +26978,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -28160,6 +28475,8 @@ func (ec *executionContext) fieldContext_Pod_task(ctx context.Context, field gra
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -30686,6 +31003,53 @@ func (ec *executionContext) fieldContext_Project_workstationConfig(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_externalLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_externalLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExternalLinks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIExternalLink)
+	fc.Result = res
+	return ec.marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "displayName":
+				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "urlTemplate":
+				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLink", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectAlias_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectAlias_id(ctx, field)
 	if err != nil {
@@ -31589,6 +31953,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -32027,6 +32393,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -33980,6 +34348,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -34765,6 +35135,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -34962,6 +35334,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -35025,12 +35399,12 @@ func (ec *executionContext) fieldContext_Query_taskTests(ctx context.Context, fi
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "filteredTestCount":
-				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			case "testResults":
 				return ec.fieldContext_TaskTestResult_testResults(ctx, field)
 			case "totalTestCount":
 				return ec.fieldContext_TaskTestResult_totalTestCount(ctx, field)
+			case "filteredTestCount":
+				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskTestResult", field.Name)
 		},
@@ -35735,6 +36109,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -38440,6 +38816,73 @@ func (ec *executionContext) fieldContext_RepoRef_workstationConfig(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_externalLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_externalLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.ExternalLinks, nil
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
+			}
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]model.APIExternalLink); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []github.com/evergreen-ci/evergreen/rest/model.APIExternalLink`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIExternalLink)
+	fc.Result = res
+	return ec.marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_externalLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "displayName":
+				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "urlTemplate":
+				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLink", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoSettings_aliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoSettings_aliases(ctx, field)
 	if err != nil {
@@ -38655,6 +39098,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_RepoRef_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_RepoRef_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoRef", field.Name)
 		},
@@ -40871,6 +41316,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -41939,6 +42386,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -42292,6 +42741,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -43230,6 +43681,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -43812,6 +44265,69 @@ func (ec *executionContext) fieldContext_Task_taskLogs(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_tests(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_tests(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Tests(rctx, obj, fc.Args["opts"].(*TestFilterOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*TaskTestResult)
+	fc.Result = res
+	return ec.marshalNTaskTestResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_tests(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "testResults":
+				return ec.fieldContext_TaskTestResult_testResults(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_TaskTestResult_totalTestCount(ctx, field)
+			case "filteredTestCount":
+				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskTestResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Task_tests_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_timeTaken(ctx, field)
 	if err != nil {
@@ -44002,6 +44518,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -46865,50 +47383,6 @@ func (ec *executionContext) fieldContext_TaskSyncOptions_patchEnabled(ctx contex
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FilteredTestCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskTestResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TaskTestResult_testResults(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskTestResult_testResults(ctx, field)
 	if err != nil {
@@ -47011,6 +47485,50 @@ func (ec *executionContext) _TaskTestResult_totalTestCount(ctx context.Context, 
 }
 
 func (ec *executionContext) fieldContext_TaskTestResult_totalTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskTestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FilteredTestCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskTestResult",
 		Field:      field,
@@ -49049,6 +49567,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -49252,6 +49772,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -50522,6 +51044,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -50797,6 +51321,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -51381,6 +51907,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -51600,6 +52128,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -52136,6 +52666,56 @@ func (ec *executionContext) fieldContext_Version_versionTiming(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().ExternalLinksForMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ExternalLinkForMetadata)
+	fc.Result = res
+	return ec.marshalNExternalLinkForMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadataᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_ExternalLinkForMetadata_url(ctx, field)
+			case "displayName":
+				return ec.fieldContext_ExternalLinkForMetadata_displayName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLinkForMetadata", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Version_warnings(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Version_warnings(ctx, field)
 	if err != nil {
@@ -52397,6 +52977,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
 				return ec.fieldContext_Task_timeTaken(ctx, field)
 			case "totalTestCount":
@@ -55889,6 +56471,42 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context, obj interface{}) (model.APIExternalLink, error) {
+	var it model.APIExternalLink
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"displayName", "urlTemplate"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "displayName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayName"))
+			it.DisplayName, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "urlTemplate":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("urlTemplate"))
+			it.URLTemplate, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, obj interface{}) (model.APIGithubUser, error) {
 	var it model.APIGithubUser
 	asMap := map[string]interface{}{}
@@ -56654,7 +57272,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions", "externalLinks"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -56993,6 +57611,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "externalLinks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
+			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -57146,7 +57772,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57258,6 +57884,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			it.Enabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "externalLinks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
+			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -58232,6 +58866,110 @@ func (ec *executionContext) unmarshalInputTestFilter(ctx context.Context, obj in
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testStatus"))
 			it.TestStatus, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context, obj interface{}) (TestFilterOptions, error) {
+	var it TestFilterOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"testName", "statuses", "groupID", "sort", "limit", "page"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "testName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testName"))
+			it.TestName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "statuses":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
+			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "groupID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupID"))
+			it.GroupID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "sort":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sort"))
+			it.Sort, err = ec.unmarshalOTestSortOptions2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptionsᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "limit":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			it.Limit, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "page":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestSortOptions(ctx context.Context, obj interface{}) (TestSortOptions, error) {
+	var it TestSortOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"sortBy", "direction"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "sortBy":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortBy"))
+			it.SortBy, err = ec.unmarshalNTestSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "direction":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
+			it.Direction, err = ec.unmarshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -59600,6 +60338,76 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 
 			out.Values[i] = ec._DistroInfo_workDir(ctx, field, obj)
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var externalLinkImplementors = []string{"ExternalLink"}
+
+func (ec *executionContext) _ExternalLink(ctx context.Context, sel ast.SelectionSet, obj *model.APIExternalLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, externalLinkImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExternalLink")
+		case "displayName":
+
+			out.Values[i] = ec._ExternalLink_displayName(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "urlTemplate":
+
+			out.Values[i] = ec._ExternalLink_urlTemplate(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var externalLinkForMetadataImplementors = []string{"ExternalLinkForMetadata"}
+
+func (ec *executionContext) _ExternalLinkForMetadata(ctx context.Context, sel ast.SelectionSet, obj *ExternalLinkForMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, externalLinkForMetadataImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExternalLinkForMetadata")
+		case "url":
+
+			out.Values[i] = ec._ExternalLinkForMetadata_url(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "displayName":
+
+			out.Values[i] = ec._ExternalLinkForMetadata_displayName(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -62778,6 +63586,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "externalLinks":
+
+			out.Values[i] = ec._Project_externalLinks(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -64588,6 +65400,10 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "externalLinks":
+
+			out.Values[i] = ec._RepoRef_externalLinks(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -65882,6 +66698,26 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				return innerFunc(ctx)
 
 			})
+		case "tests":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_tests(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "timeTaken":
 
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
@@ -66721,13 +67557,6 @@ func (ec *executionContext) _TaskTestResult(ctx context.Context, sel ast.Selecti
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TaskTestResult")
-		case "filteredTestCount":
-
-			out.Values[i] = ec._TaskTestResult_filteredTestCount(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "testResults":
 
 			out.Values[i] = ec._TaskTestResult_testResults(ctx, field, obj)
@@ -66738,6 +67567,13 @@ func (ec *executionContext) _TaskTestResult(ctx context.Context, sel ast.Selecti
 		case "totalTestCount":
 
 			out.Values[i] = ec._TaskTestResult_totalTestCount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "filteredTestCount":
+
+			out.Values[i] = ec._TaskTestResult_filteredTestCount(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -67877,6 +68713,26 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				return innerFunc(ctx)
 
 			})
+		case "externalLinksForMetadata":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_externalLinksForMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "warnings":
 			field := field
 
@@ -68831,6 +69687,69 @@ func (ec *executionContext) marshalNDuration2githubᚗcomᚋevergreenᚑciᚋeve
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNExternalLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLink(ctx context.Context, sel ast.SelectionSet, v model.APIExternalLink) graphql.Marshaler {
+	return ec._ExternalLink(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNExternalLinkForMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadataᚄ(ctx context.Context, sel ast.SelectionSet, v []*ExternalLinkForMetadata) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExternalLinkForMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadata(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExternalLinkForMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadata(ctx context.Context, sel ast.SelectionSet, v *ExternalLinkForMetadata) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExternalLinkForMetadata(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNExternalLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLink(ctx context.Context, v interface{}) (model.APIExternalLink, error) {
+	res, err := ec.unmarshalInputExternalLinkInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNFile2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx context.Context, sel ast.SelectionSet, v *model.APIFile) graphql.Marshaler {
@@ -70998,6 +71917,21 @@ func (ec *executionContext) marshalNTestResult2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._TestResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNTestSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, v interface{}) (TestSortCategory, error) {
+	var res TestSortCategory
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTestSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, sel ast.SelectionSet, v TestSortCategory) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNTestSortOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptions(ctx context.Context, v interface{}) (*TestSortOptions, error) {
+	res, err := ec.unmarshalInputTestSortOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNTicketFields2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐTicketFields(ctx context.Context, sel ast.SelectionSet, v *thirdparty.TicketFields) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -72068,6 +73002,73 @@ func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋeverg
 	}
 	res, err := ec.unmarshalInputEditSpawnHostInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIExternalLink) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExternalLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLink(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx context.Context, v interface{}) ([]model.APIExternalLink, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]model.APIExternalLink, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNExternalLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLink(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIFile) graphql.Marshaler {
@@ -73708,6 +74709,14 @@ func (ec *executionContext) marshalOTaskTestResultSample2ᚕᚖgithubᚗcomᚋev
 	return ret
 }
 
+func (ec *executionContext) unmarshalOTestFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterOptions(ctx context.Context, v interface{}) (*TestFilterOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTestFilterOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOTestSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, v interface{}) (*TestSortCategory, error) {
 	if v == nil {
 		return nil, nil
@@ -73722,6 +74731,26 @@ func (ec *executionContext) marshalOTestSortCategory2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOTestSortOptions2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptionsᚄ(ctx context.Context, v interface{}) ([]*TestSortOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*TestSortOptions, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTestSortOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptions(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
