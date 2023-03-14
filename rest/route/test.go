@@ -193,3 +193,71 @@ func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, result inter
 
 	return nil
 }
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// GET /tasks/{task_id}/tests/count
+
+type testCountGetHandler struct {
+	execution int
+}
+
+func makeFetchTestCountForTask() gimlet.RouteHandler {
+	return &testCountGetHandler{}
+}
+
+func (h *testCountGetHandler) Factory() gimlet.RouteHandler {
+	return &testCountGetHandler{}
+}
+
+func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	executionString := r.URL.Query().Get("execution")
+	if executionString != "" {
+		var err error
+		h.execution, err = strconv.Atoi(executionString)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("invalid execution '%s'", executionString),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	}
+
+	return nil
+}
+
+func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
+	projCtx := MustHaveProjectContext(ctx)
+	if projCtx.Task == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "task not found",
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	t := projCtx.Task
+	if t.Execution != h.execution {
+		t, err := task.FindOneIdOldOrNew(t.Id, h.execution)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "finding task '%s' with execution %d", t.Id, h.execution).Error(),
+			})
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' with execution %d not found", t.Id, h.execution),
+			})
+		}
+	}
+
+	stats, err := t.GetTestResultsStats(ctx, evergreen.GetEnvironment())
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "getting stats for task '%s'", t.Id).Error(),
+		})
+	}
+
+	return gimlet.NewTextResponse(stats.TotalCount)
+}
