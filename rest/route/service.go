@@ -220,7 +220,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/subscriptions").Version(2).Delete().Wrap(requireUser).RouteHandler(makeDeleteSubscription())
 	app.AddRoute("/subscriptions").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchSubscription())
 	app.AddRoute("/subscriptions").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetSubscription())
-	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTaskRoute(opts.URL))
+	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTaskRoute(settings, opts.URL))
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(requireUser, addProject, editTasks).RouteHandler(makeModifyTaskRoute())
 	app.AddRoute("/tasks/{task_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByTask())
 	app.AddRoute("/tasks/{task_id}/annotation").Version(2).Put().Wrap(requireUser, editAnnotations).RouteHandler(makePutAnnotationsByTask())

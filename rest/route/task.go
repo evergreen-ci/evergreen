@@ -23,14 +23,16 @@ type taskGetHandler struct {
 	fetchAllExecutions bool
 	execution          int
 	url                string
+
+	settings *evergreen.Settings
 }
 
-func makeGetTaskRoute(url string) gimlet.RouteHandler {
-	return &taskGetHandler{url: url}
+func makeGetTaskRoute(settings *evergreen.Settings, url string) gimlet.RouteHandler {
+	return &taskGetHandler{settings: settings, url: url}
 }
 
 func (tgh *taskGetHandler) Factory() gimlet.RouteHandler {
-	return &taskGetHandler{url: tgh.url}
+	return &taskGetHandler{settings: tgh.settings, url: tgh.url}
 }
 
 // ParseAndValidate fetches the taskId from the http request.
@@ -84,6 +86,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeAMI:               true,
 		IncludeArtifacts:         true,
 		LogURL:                   tgh.url,
+		ParsleyLogURL:            tgh.settings.Ui.ParsleyUrl,
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tgh.taskID))
