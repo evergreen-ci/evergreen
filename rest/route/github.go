@@ -341,7 +341,7 @@ func getHelpTextFromProjects(projectRefs []model.ProjectRef) string {
 	if autoPRProjectEnabled || manualPRProjectEnabled {
 		// Wrap comments in separate code blocks to make it clear they are aliases.
 		comments := fmt.Sprintf("%s`, `%s", retryComment, patchComment)
-		res += fmt.Sprintf(formatStr, comments, "attempt creating PR patch")
+		res += fmt.Sprintf(formatStr, comments, "attempts to create a new PR patch")
 		res += fmt.Sprintf(formatStr, refreshStatusComment, "resyncs PR GitHub checks")
 	}
 	if cqProjectEnabled {
