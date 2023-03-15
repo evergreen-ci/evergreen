@@ -983,7 +983,6 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
 	// Don't merge enabled field
-	repoRef.Enabled = pRef.Enabled
 	reflectedBranch := reflect.ValueOf(pRef).Elem()
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 

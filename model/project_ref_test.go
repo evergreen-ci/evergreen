@@ -528,6 +528,7 @@ func TestAttachToNewRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		GithubChecksEnabled: utility.TruePtr(),
+		Enabled:             true,
 	}
 	assert.NoError(t, pRef.Insert())
 	pRef.Owner = "newOwner"
@@ -563,8 +564,8 @@ func TestAttachToRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		GithubChecksEnabled: utility.TruePtr(),
-		Enabled:             true,
 		TracksPushEvents:    utility.TruePtr(),
+		Enabled:             true,
 	}
 	assert.NoError(t, pRef.Insert())
 
@@ -613,6 +614,7 @@ func TestAttachToRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		PRTestingEnabled: utility.TruePtr(),
+		Enabled:          true,
 	}
 	assert.NoError(t, pRef.Insert())
 	assert.NoError(t, pRef.AttachToRepo(u))
@@ -1623,13 +1625,14 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	assert.Equal("mci1", res[0])
 	assert.Equal("mci2", res[1])
 
-	doc.Id = "both_settings_from_repo"
+	doc.Id = "commit_queue_setting_from_repo"
 	doc.CommitQueue.Enabled = nil
 	assert.NoError(doc.Insert())
 	res, err = FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
 	assert.Len(res, 3)
 
+	repoRef.CommitQueue.Enabled = utility.FalsePtr()
 	assert.NoError(repoRef.Upsert())
 	res, err = FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
@@ -2577,15 +2580,18 @@ func TestFindPeriodicProjects(t *testing.T) {
 	pRef := ProjectRef{
 		Id:             "p1",
 		RepoRefId:      "my_repo",
+		Enabled:        true,
 		PeriodicBuilds: []PeriodicBuildDefinition{},
 	}
 	assert.NoError(t, pRef.Insert())
 
 	pRef.Id = "p2"
+	pRef.Enabled = true
 	pRef.PeriodicBuilds = []PeriodicBuildDefinition{{ID: "p1"}}
 	assert.NoError(t, pRef.Insert())
 
 	pRef.Id = "p3"
+	pRef.Enabled = true
 	pRef.PeriodicBuilds = nil
 	assert.NoError(t, pRef.Insert())
 

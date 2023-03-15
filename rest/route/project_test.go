@@ -631,7 +631,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
 	s.Equal(cachedProject.Branch, utility.FromStringPtr(projectRef.Branch))
-	s.Equal(cachedProject.Enabled, projectRef.Enabled)
+	s.Equal(cachedProject.Enabled, utility.FromBoolPtr(projectRef.Enabled))
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
 	s.Equal(cachedProject.RemotePath, utility.FromStringPtr(projectRef.RemotePath))
 	s.Equal(cachedProject.Id, utility.FromStringPtr(projectRef.Id))

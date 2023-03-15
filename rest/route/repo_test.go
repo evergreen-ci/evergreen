@@ -32,10 +32,9 @@ func TestGetRepoIDHandler(t *testing.T) {
 
 	repoRef := &dbModel.RepoRef{
 		ProjectRef: dbModel.ProjectRef{
-			Id:      "repo_ref",
-			Repo:    "repo",
-			Owner:   "mongodb",
-			Enabled: true,
+			Id:    "repo_ref",
+			Repo:  "repo",
+			Owner: "mongodb",
 		},
 	}
 	require.NoError(t, repoRef.Upsert())
@@ -72,7 +71,7 @@ func TestGetRepoIDHandler(t *testing.T) {
 	assert.Equal(t, repoRef.Id, utility.FromStringPtr(repo.Id))
 	assert.Equal(t, repoRef.Repo, utility.FromStringPtr(repo.Repo))
 	assert.Equal(t, repoRef.Owner, utility.FromStringPtr(repo.Owner))
-	assert.Equal(t, repoRef.Enabled, repo.Enabled)
+	assert.Equal(t, false, utility.FromBoolPtr(repo.Enabled))
 	assert.Len(t, repo.Aliases, 1)
 	assert.Equal(t, alias, repo.Aliases[0])
 	assert.Equal(t, repoVars.Vars, repo.Variables.Vars)
@@ -87,10 +86,9 @@ func TestPatchRepoIDHandler(t *testing.T) {
 
 	repoRef := &dbModel.RepoRef{
 		ProjectRef: dbModel.ProjectRef{
-			Id:      "repo_ref",
-			Owner:   "mongodb",
-			Repo:    "mongo",
-			Enabled: true,
+			Id:    "repo_ref",
+			Owner: "mongodb",
+			Repo:  "mongo",
 		},
 	}
 	assert.NoError(t, repoRef.Upsert())
@@ -124,6 +122,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 		Repo:       repoRef.Repo,
 		Branch:     "main",
 		RepoRefId:  repoRef.Id,
+		Enabled:    true,
 	}
 	assert.NoError(t, independentProject.Insert())
 	assert.NoError(t, branchProject.Insert())
