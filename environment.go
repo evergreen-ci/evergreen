@@ -34,12 +34,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
 var (
@@ -295,7 +296,7 @@ func (e *envState) initSettings(path string) error {
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
-		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetConnectTimeout(5 * time.Second).SetMonitor(otelmongo.NewMonitor())
 
 	if settings.HasAuth() {
 		ymlUser, ymlPwd, err := settings.GetAuth()
@@ -827,13 +828,16 @@ func (e *envState) initTracer(ctx context.Context) error {
 	resource, err := resource.New(ctx,
 		resource.WithProcess(),
 		resource.WithHost(),
-		resource.WithAttributes(attribute.String("build_revision", BuildRevision)),
+		resource.WithAttributes(semconv.ServiceName("evergreen")),
+		resource.WithAttributes(semconv.ServiceVersion(BuildRevision)),
 	)
 	if err != nil {
 		return errors.Wrap(err, "making otel resource")
 	}
 
-	client := otlptracegrpc.NewClient()
+	client := otlptracegrpc.NewClient(
+		otlptracegrpc.WithEndpoint("http://ec2-54-90-249-87.compute-1.amazonaws.com:9080"),
+	)
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return errors.Wrap(err, "initializing otel exporter")

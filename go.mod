@@ -42,12 +42,13 @@ require (
 	github.com/urfave/cli v1.22.10
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmware/govmomi v0.27.1
-	go.mongodb.org/mongo-driver v1.11.1
+	go.mongodb.org/mongo-driver v1.11.2
+	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.40.0
 	go.opentelemetry.io/otel v1.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.14.0
 	go.opentelemetry.io/otel/sdk v1.14.0
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/crypto v0.1.0
 	golang.org/x/oauth2 v0.4.0
 	golang.org/x/tools v0.1.12
 	gonum.org/v1/gonum v0.12.0
