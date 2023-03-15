@@ -797,8 +797,8 @@ github.com/mongodb/grip v0.0.0-20211028155128-86e6e47bafdb/go.mod h1:0CTWxPoPDJP
 github.com/mongodb/grip v0.0.0-20211101151816-abbea0c0d465/go.mod h1:686LUUoh+vP85XVjr1ZYqC2mk52m138QmCZ4B2HZYkI=
 github.com/mongodb/grip v0.0.0-20220210164115-898ba2888109/go.mod h1:VAvqrRA7VH0xZmgcZNbN9ksYT20R5XywjeAv6o1CZZ8=
 github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21/go.mod h1:QfF6CwbaTQx1Kgww77c6ROPBFN+JCiU2qBnk2SjKHyU=
-github.com/mongodb/grip v0.0.0-20230217073228-807521e7966a h1:a6BFt59+tWH9VcMn/FH4p2XwffMeSyA77Kv7BfmloJk=
-github.com/mongodb/grip v0.0.0-20230217073228-807521e7966a/go.mod h1:CNr4TAUhDiY8IdFJ/fnk85Q+mK/Qg0pzi5e9VNnJEUE=
+github.com/mongodb/grip v0.0.0-20230314193422-ac5e5873ff4c h1:4GvJM4U5UcUoKFag2qCZsuSuQtEdBi1sivuafI5mhCk=
+github.com/mongodb/grip v0.0.0-20230314193422-ac5e5873ff4c/go.mod h1:2aBs5TWdJ2oxyEqC7HZWwR79ky0WMDHQZXbX7qdQRWI=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b h1:VeoszGUVkmmRmPxwiJIiO/psZbPwz7tc6qbX2xDoQLY=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b/go.mod h1:ZMsAlwE3H8Yh/L9bc3lliN3EZME41wButVxWpt2e4Io=
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=
