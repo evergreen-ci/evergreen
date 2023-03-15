@@ -1331,7 +1331,7 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error
 				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
 			}
 			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
-				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+				return errors.Wrapf(err, "sending patch '%s' status to GitHub", p.Id.Hex())
 			}
 		}
 	}

@@ -22,7 +22,7 @@ type MockGitHubConnectorImpl struct {
 	StoredError     error
 }
 
-func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
+func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo string, prNum int) (*github.PullRequest, error) {
 	return &github.PullRequest{
 		User: &github.User{
 			ID:    github.Int64(1234),
@@ -49,7 +49,7 @@ func (pc *MockGitHubConnectorImpl) AddCommentToPR(ctx context.Context, owner, re
 func (pc *MockGitHubConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	_, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
+		return false, errors.Wrap(err, "can't get GitHub OAuth token from configuration")
 	}
 
 	permission, ok := pc.UserPermissions[args]

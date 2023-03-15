@@ -413,7 +413,7 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	errs := []string{}
 	pc.SetInternalAliases()
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubPRAliases, "GitHub PR Aliases")...)
-	errs = append(errs, model.ValidateProjectAliases(pc.GitHubChecksAliases, "Github Checks Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.GitHubChecksAliases, "GitHub Checks Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.CommitQueueAliases, "Commit Queue Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.PatchAliases, "Patch Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.GitTagAliases, "Git Tag Aliases")...)
@@ -462,11 +462,11 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 		case evergreen.CommitQueueAlias:
 			msgComponents = append(msgComponents, "Commit queue alias")
 		case evergreen.GithubPRAlias:
-			msgComponents = append(msgComponents, "Github PR alias")
+			msgComponents = append(msgComponents, "GitHub PR alias")
 		case evergreen.GitTagAlias:
 			msgComponents = append(msgComponents, "Git tag alias")
 		case evergreen.GithubChecksAlias:
-			msgComponents = append(msgComponents, "Github check alias")
+			msgComponents = append(msgComponents, "GitHub check alias")
 		default:
 			msgComponents = append(msgComponents, "Patch alias")
 		}
