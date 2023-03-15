@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypePod, func() interface{} { return &podData{} })
+	registry.AddType(ResourceTypePod, func() interface{} { return &PodData{} })
 }
 
 // PodEventType represents a type of event related to a pod.
@@ -32,8 +32,8 @@ const (
 	EventPodFinishedTask PodEventType = "CONTAINER_TASK_FINISHED"
 )
 
-// podData contains information relevant to a pod event.
-type podData struct {
+// PodData contains information relevant to a pod event.
+type PodData struct {
 	OldStatus string `bson:"old_status,omitempty" json:"old_status,omitempty"`
 	NewStatus string `bson:"new_status,omitempty" json:"new_status,omitempty"`
 	Reason    string `bson:"reason,omitempty" json:"reason,omitempty"`
@@ -45,7 +45,7 @@ type podData struct {
 }
 
 // LogPodEvent logs an event for a pod to the event log.
-func LogPodEvent(id string, kind PodEventType, data podData) {
+func LogPodEvent(id string, kind PodEventType, data PodData) {
 	e := EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   id,
@@ -68,7 +68,7 @@ func LogPodEvent(id string, kind PodEventType, data podData) {
 // LogPodStatusChanged logs an event indicating that the pod's status has been
 // updated.
 func LogPodStatusChanged(id, oldStatus, newStatus, reason string) {
-	LogPodEvent(id, EventPodStatusChange, podData{
+	LogPodEvent(id, EventPodStatusChange, PodData{
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 		Reason:    reason,
@@ -78,11 +78,11 @@ func LogPodStatusChanged(id, oldStatus, newStatus, reason string) {
 // LogPodAssignedTask logs an event indicating that the pod has been assigned a
 // task to run.
 func LogPodAssignedTask(id, taskID string, execution int) {
-	LogPodEvent(id, EventPodAssignedTask, podData{TaskID: taskID, TaskExecution: execution})
+	LogPodEvent(id, EventPodAssignedTask, PodData{TaskID: taskID, TaskExecution: execution})
 }
 
 // LogPodRunningTaskCleared logs an event indicating that the pod's current
 // running task has been cleared, so it is no longer assigned to run the task.
 func LogPodRunningTaskCleared(id, taskID string, execution int) {
-	LogPodEvent(id, EventPodClearedTask, podData{TaskID: taskID, TaskExecution: execution})
+	LogPodEvent(id, EventPodClearedTask, PodData{TaskID: taskID, TaskExecution: execution})
 }
