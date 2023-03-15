@@ -121,8 +121,6 @@ input CommitQueueParamsInput {
   enabled: Boolean
   mergeMethod: String
   message: String
-  requireSigned: Boolean
-  requiredApprovalCount: Int
 }
 
 input WorkstationConfigInput {
@@ -210,8 +208,6 @@ type CommitQueueParams {
   enabled: Boolean
   mergeMethod: String!
   message: String!
-  requireSigned: Boolean
-  requiredApprovalCount: Int
 }
 
 type TaskSyncOptions {
