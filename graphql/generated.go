@@ -599,6 +599,7 @@ type ComplexityRoot struct {
 	}
 
 	Pod struct {
+		Events                    func(childComplexity int, limit *int, page *int) int
 		ID                        func(childComplexity int) int
 		Status                    func(childComplexity int) int
 		Task                      func(childComplexity int) int
@@ -1393,10 +1394,12 @@ type PermissionsResolver interface {
 	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
 }
 type PodResolver interface {
-	Type(ctx context.Context, obj *model.APIPod) (string, error)
-	Status(ctx context.Context, obj *model.APIPod) (string, error)
+	Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error)
 
+	Status(ctx context.Context, obj *model.APIPod) (string, error)
 	Task(ctx context.Context, obj *model.APIPod) (*model.APITask, error)
+
+	Type(ctx context.Context, obj *model.APIPod) (string, error)
 }
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
@@ -4172,6 +4175,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Permissions.UserID(childComplexity), true
+
+	case "Pod.events":
+		if e.complexity.Pod.Events == nil {
+			break
+		}
+
+		args, err := ec.field_Pod_events_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Pod.Events(childComplexity, args["limit"].(*int), args["page"].(*int)), true
 
 	case "Pod.id":
 		if e.complexity.Pod.ID == nil {
@@ -9175,6 +9190,30 @@ func (ec *executionContext) field_Mutation_updateVolume_args(ctx context.Context
 		}
 	}
 	args["updateVolumeInput"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Pod_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["page"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["page"] = arg1
 	return args, nil
 }
 
@@ -28244,6 +28283,67 @@ func (ec *executionContext) fieldContext_Permissions_userId(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Pod_events(ctx context.Context, field graphql.CollectedField, obj *model.APIPod) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Pod_events(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Pod().Events(rctx, obj, fc.Args["limit"].(*int), fc.Args["page"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*PodEvents)
+	fc.Result = res
+	return ec.marshalNPodEvents2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPodEvents(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Pod_events(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Pod",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "count":
+				return ec.fieldContext_PodEvents_count(ctx, field)
+			case "eventLogEntries":
+				return ec.fieldContext_PodEvents_eventLogEntries(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PodEvents", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Pod_events_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Pod_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPod) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Pod_id(ctx, field)
 	if err != nil {
@@ -28281,50 +28381,6 @@ func (ec *executionContext) fieldContext_Pod_id(ctx context.Context, field graph
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Pod_type(ctx context.Context, field graphql.CollectedField, obj *model.APIPod) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Pod_type(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Pod().Type(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Pod_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Pod",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -28371,64 +28427,6 @@ func (ec *executionContext) fieldContext_Pod_status(ctx context.Context, field g
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Pod_taskContainerCreationOpts(ctx context.Context, field graphql.CollectedField, obj *model.APIPod) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Pod_taskContainerCreationOpts(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TaskContainerCreationOpts, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(model.APIPodTaskContainerCreationOptions)
-	fc.Result = res
-	return ec.marshalNTaskContainerCreationOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPodTaskContainerCreationOptions(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Pod_taskContainerCreationOpts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Pod",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "image":
-				return ec.fieldContext_TaskContainerCreationOpts_image(ctx, field)
-			case "memoryMB":
-				return ec.fieldContext_TaskContainerCreationOpts_memoryMB(ctx, field)
-			case "cpu":
-				return ec.fieldContext_TaskContainerCreationOpts_cpu(ctx, field)
-			case "os":
-				return ec.fieldContext_TaskContainerCreationOpts_os(ctx, field)
-			case "arch":
-				return ec.fieldContext_TaskContainerCreationOpts_arch(ctx, field)
-			case "workingDir":
-				return ec.fieldContext_TaskContainerCreationOpts_workingDir(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskContainerCreationOpts", field.Name)
 		},
 	}
 	return fc, nil
@@ -28614,6 +28612,108 @@ func (ec *executionContext) fieldContext_Pod_task(ctx context.Context, field gra
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Pod_taskContainerCreationOpts(ctx context.Context, field graphql.CollectedField, obj *model.APIPod) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Pod_taskContainerCreationOpts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskContainerCreationOpts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIPodTaskContainerCreationOptions)
+	fc.Result = res
+	return ec.marshalNTaskContainerCreationOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPodTaskContainerCreationOptions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Pod_taskContainerCreationOpts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Pod",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "image":
+				return ec.fieldContext_TaskContainerCreationOpts_image(ctx, field)
+			case "memoryMB":
+				return ec.fieldContext_TaskContainerCreationOpts_memoryMB(ctx, field)
+			case "cpu":
+				return ec.fieldContext_TaskContainerCreationOpts_cpu(ctx, field)
+			case "os":
+				return ec.fieldContext_TaskContainerCreationOpts_os(ctx, field)
+			case "arch":
+				return ec.fieldContext_TaskContainerCreationOpts_arch(ctx, field)
+			case "workingDir":
+				return ec.fieldContext_TaskContainerCreationOpts_workingDir(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskContainerCreationOpts", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Pod_type(ctx context.Context, field graphql.CollectedField, obj *model.APIPod) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Pod_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Pod().Type(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Pod_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Pod",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29251,9 +29351,9 @@ func (ec *executionContext) _PodEvents_eventLogEntries(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.HostAPIEventLogEntry)
+	res := resTmp.([]*model.PodAPIEventLogEntry)
 	fc.Result = res
-	return ec.marshalNHostEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventLogEntryᚄ(ctx, field.Selections, res)
+	return ec.marshalNPodEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐPodAPIEventLogEntryᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PodEvents_eventLogEntries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -29265,21 +29365,21 @@ func (ec *executionContext) fieldContext_PodEvents_eventLogEntries(ctx context.C
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_HostEventLogEntry_id(ctx, field)
+				return ec.fieldContext_PodEventLogEntry_id(ctx, field)
 			case "data":
-				return ec.fieldContext_HostEventLogEntry_data(ctx, field)
+				return ec.fieldContext_PodEventLogEntry_data(ctx, field)
 			case "eventType":
-				return ec.fieldContext_HostEventLogEntry_eventType(ctx, field)
+				return ec.fieldContext_PodEventLogEntry_eventType(ctx, field)
 			case "processedAt":
-				return ec.fieldContext_HostEventLogEntry_processedAt(ctx, field)
+				return ec.fieldContext_PodEventLogEntry_processedAt(ctx, field)
 			case "resourceId":
-				return ec.fieldContext_HostEventLogEntry_resourceId(ctx, field)
+				return ec.fieldContext_PodEventLogEntry_resourceId(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_HostEventLogEntry_resourceType(ctx, field)
+				return ec.fieldContext_PodEventLogEntry_resourceType(ctx, field)
 			case "timestamp":
-				return ec.fieldContext_HostEventLogEntry_timestamp(ctx, field)
+				return ec.fieldContext_PodEventLogEntry_timestamp(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type HostEventLogEntry", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PodEventLogEntry", field.Name)
 		},
 	}
 	return fc, nil
@@ -34808,16 +34908,18 @@ func (ec *executionContext) fieldContext_Query_pod(ctx context.Context, field gr
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "events":
+				return ec.fieldContext_Pod_events(ctx, field)
 			case "id":
 				return ec.fieldContext_Pod_id(ctx, field)
-			case "type":
-				return ec.fieldContext_Pod_type(ctx, field)
 			case "status":
 				return ec.fieldContext_Pod_status(ctx, field)
-			case "taskContainerCreationOpts":
-				return ec.fieldContext_Pod_taskContainerCreationOpts(ctx, field)
 			case "task":
 				return ec.fieldContext_Pod_task(ctx, field)
+			case "taskContainerCreationOpts":
+				return ec.fieldContext_Pod_taskContainerCreationOpts(ctx, field)
+			case "type":
+				return ec.fieldContext_Pod_type(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Pod", field.Name)
 		},
@@ -44296,16 +44398,18 @@ func (ec *executionContext) fieldContext_Task_pod(ctx context.Context, field gra
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "events":
+				return ec.fieldContext_Pod_events(ctx, field)
 			case "id":
 				return ec.fieldContext_Pod_id(ctx, field)
-			case "type":
-				return ec.fieldContext_Pod_type(ctx, field)
 			case "status":
 				return ec.fieldContext_Pod_status(ctx, field)
-			case "taskContainerCreationOpts":
-				return ec.fieldContext_Pod_taskContainerCreationOpts(ctx, field)
 			case "task":
 				return ec.fieldContext_Pod_task(ctx, field)
+			case "taskContainerCreationOpts":
+				return ec.fieldContext_Pod_taskContainerCreationOpts(ctx, field)
+			case "type":
+				return ec.fieldContext_Pod_type(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Pod", field.Name)
 		},
@@ -64040,14 +64144,7 @@ func (ec *executionContext) _Pod(ctx context.Context, sel ast.SelectionSet, obj 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Pod")
-		case "id":
-
-			out.Values[i] = ec._Pod_id(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "type":
+		case "events":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -64056,7 +64153,7 @@ func (ec *executionContext) _Pod(ctx context.Context, sel ast.SelectionSet, obj 
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Pod_type(ctx, field, obj)
+				res = ec._Pod_events(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -64067,6 +64164,13 @@ func (ec *executionContext) _Pod(ctx context.Context, sel ast.SelectionSet, obj 
 				return innerFunc(ctx)
 
 			})
+		case "id":
+
+			out.Values[i] = ec._Pod_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "status":
 			field := field
 
@@ -64087,13 +64191,6 @@ func (ec *executionContext) _Pod(ctx context.Context, sel ast.SelectionSet, obj 
 				return innerFunc(ctx)
 
 			})
-		case "taskContainerCreationOpts":
-
-			out.Values[i] = ec._Pod_taskContainerCreationOpts(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "task":
 			field := field
 
@@ -64104,6 +64201,33 @@ func (ec *executionContext) _Pod(ctx context.Context, sel ast.SelectionSet, obj 
 					}
 				}()
 				res = ec._Pod_task(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "taskContainerCreationOpts":
+
+			out.Values[i] = ec._Pod_taskContainerCreationOpts(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "type":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Pod_type(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -71765,6 +71889,74 @@ func (ec *executionContext) marshalNPodEventLogData2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._PodEventLogData(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPodEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐPodAPIEventLogEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PodAPIEventLogEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPodEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐPodAPIEventLogEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPodEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐPodAPIEventLogEntry(ctx context.Context, sel ast.SelectionSet, v *model.PodAPIEventLogEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PodEventLogEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPodEvents2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPodEvents(ctx context.Context, sel ast.SelectionSet, v PodEvents) graphql.Marshaler {
+	return ec._PodEvents(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPodEvents2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPodEvents(ctx context.Context, sel ast.SelectionSet, v *PodEvents) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PodEvents(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
