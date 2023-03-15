@@ -413,19 +413,16 @@ func AggregateWithHint(collection string, pipeline interface{}, hint interface{}
 	return errors.WithStack(pipe.All(out))
 }
 
-// AggregateWithMaxTime runs aggregate and specifies a max query time which ensures the query won't go on indefinitely when the request is cancelled.
-// A db.Aggregation is returned because in some usages the same db.Aggregation needs to be reused after the pipeline results have been retrieved.
-func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) (db.Aggregation, error) {
+// AggregateWithMaxTime runs aggregate and specifies a max query time which
+// ensures the query won't go on indefinitely when the request is cancelled.
+func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
 	session, database, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		err = errors.Wrap(err, "establishing db connection")
+		err = errors.Wrap(err, "establishing DB connection")
 		grip.Error(err)
-		return nil, err
+		return err
 	}
 	defer session.Close()
 
-	pipe := database.C(collection).Pipe(pipeline).MaxTime(maxTime)
-
-	err = errors.WithStack(pipe.All(out))
-	return pipe, err
+	return database.C(collection).Pipe(pipeline).MaxTime(maxTime).All(out)
 }

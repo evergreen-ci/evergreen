@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -64,12 +63,6 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 		collection = logsDb.Collection(collName)
 	}
 	switch collName {
-	case testresult.Collection:
-		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-			Keys: testresult.TestResultsIndex,
-		}); err != nil {
-			return errors.Wrap(err, "creating test results index")
-		}
 	case task.Collection:
 		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
 			{
@@ -89,6 +82,8 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 		}
 	}
 	scanner := bufio.NewScanner(file)
+	// Set the max buffer size to the max size of a Mongo document (16MB).
+	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
 	count := 0
 	for scanner.Scan() {
 		count++

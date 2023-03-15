@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -14,20 +12,18 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	ID         *string `json:"test_id"`
-	TaskID     *string `json:"task_id"`
-	Execution  int     `json:"execution"`
-	Status     *string `json:"status"`
-	BaseStatus *string `json:"base_status,omitempty"`
-	TestFile   *string `json:"test_file"`
-	// TODO: (EVG-15379) Remove this field once Spruce dependency is gone.
-	DisplayTestName *string    `json:"display_test_name"`
-	GroupID         *string    `json:"group_id,omitempty"`
-	Logs            TestLogs   `json:"logs"`
-	ExitCode        int        `json:"exit_code"`
-	StartTime       *time.Time `json:"start_time"`
-	EndTime         *time.Time `json:"end_time"`
-	Duration        float64    `json:"duration"`
+	ID         *string    `json:"test_id"`
+	TaskID     *string    `json:"task_id"`
+	Execution  int        `json:"execution"`
+	Status     *string    `json:"status"`
+	BaseStatus *string    `json:"base_status,omitempty"`
+	TestFile   *string    `json:"test_file"`
+	GroupID    *string    `json:"group_id,omitempty"`
+	Logs       TestLogs   `json:"logs"`
+	StartTime  *time.Time `json:"start_time"`
+	EndTime    *time.Time `json:"end_time"`
+	Duration   float64    `json:"duration"`
+	ExitCode   int        `json:"-"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
@@ -38,42 +34,13 @@ type TestLogs struct {
 	URLLobster *string `json:"url_lobster,omitempty"`
 	URLParsley *string `json:"url_parsley,omitempty"`
 	LineNum    int     `json:"line_num"`
-	LogID      *string `json:"log_id,omitempty"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
+	env := evergreen.GetEnvironment()
+
 	switch v := st.(type) {
 	case *testresult.TestResult:
-		at.ID = utility.ToStringPtr(v.ID.Hex())
-		at.Execution = v.Execution
-		if v.GroupID != "" {
-			at.GroupID = utility.ToStringPtr(v.GroupID)
-		}
-		at.Status = utility.ToStringPtr(v.Status)
-		at.ExitCode = v.ExitCode
-		startTime := utility.FromPythonTime(v.StartTime)
-		endTime := utility.FromPythonTime(v.EndTime)
-		at.Duration = v.EndTime - v.StartTime
-		at.StartTime = ToTimePtr(startTime)
-		at.EndTime = ToTimePtr(endTime)
-
-		tr := task.ConvertToOld(v)
-		at.TestFile = utility.ToStringPtr(tr.GetDisplayTestName())
-		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
-			URLRaw:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
-			LineNum: v.LineNum,
-		}
-		if lobsterURL := tr.GetLogURL(evergreen.LogViewerLobster); lobsterURL != "" {
-			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
-		}
-		if parsleyURL := tr.GetLogURL(evergreen.LogViewerParsley); parsleyURL != "" {
-			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
-		}
-		if v.LogID != "" {
-			at.Logs.LogID = utility.ToStringPtr(v.LogID)
-		}
-	case *apimodels.CedarTestResult:
 		at.ID = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
 		if v.GroupID != "" {
@@ -83,21 +50,20 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if v.BaseStatus != "" {
 			at.BaseStatus = utility.ToStringPtr(v.BaseStatus)
 		}
-		at.StartTime = utility.ToTimePtr(v.Start)
-		at.EndTime = utility.ToTimePtr(v.End)
-		at.Duration = v.End.Sub(v.Start).Seconds()
+		at.StartTime = utility.ToTimePtr(v.TestStartTime)
+		at.EndTime = utility.ToTimePtr(v.TestEndTime)
+		at.Duration = v.Duration().Seconds()
 
-		tr := task.ConvertCedarTestResult(*v)
-		at.TestFile = utility.ToStringPtr(tr.GetDisplayTestName())
+		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
-			URLRaw:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
+			URL:     utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
+			URLRaw:  utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
 			LineNum: v.LineNum,
 		}
-		if lobsterURL := tr.GetLogURL(evergreen.LogViewerLobster); lobsterURL != "" {
+		if lobsterURL := v.GetLogURL(env, evergreen.LogViewerLobster); lobsterURL != "" {
 			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
 		}
-		if parsleyURL := tr.GetLogURL(evergreen.LogViewerParsley); parsleyURL != "" {
+		if parsleyURL := v.GetLogURL(env, evergreen.LogViewerParsley); parsleyURL != "" {
 			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
 		}
 

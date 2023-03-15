@@ -35,7 +35,7 @@ var (
 	ClientVersion = "2023-03-15"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-03-31"
+	AgentVersion = "2023-03-13"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -182,6 +182,7 @@ func (c *Settings) ValidateAndDefault() error {
 	if c.ConfigDir == "" {
 		catcher.Add(errors.New("config directory must not be empty"))
 	}
+
 	if len(c.CredentialsNew) > 0 {
 		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "parsing credentials"))

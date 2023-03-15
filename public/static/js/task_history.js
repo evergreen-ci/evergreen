@@ -26,53 +26,23 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
   var filterSerializer = {
     // Converts `ret.filter` into a readable string
     serialize: function() {
-      var str = '';
-      _.each(ret.filter.tests, function(testResult, testName) {
-        if (str.length > 0) {
-          str += '&';
-        }
-
-        str += encodeURIComponent(testName) + '=' +
-        encodeURIComponent(testResult);
-      });
-
-      if (str.length > 0) {
-        str += '&';
-      }
-
       /* buildVariants is a single string delimited by ',' and each buildVariant
       * gets piped through encodeURIComponent */
-      str += 'buildVariants=' +
+      return 'buildVariants=' +
       _.map(ret.filter.buildVariants, encodeURIComponent).join(',');
-
-      return str;
     },
     /* The inverse of `serialize`. Takes a string, parses it, and sets
     * `ret.filter` to the parsed value. */
     deserialize: function(str) {
       ret.filter = ret.filter || {};
-      ret.filter.tests = {};
       ret.filter.buildVariants = [];
 
-      var nameValuePairs = str.split('&');
-      var testNamesToResults = _.initial(nameValuePairs);
-      _.each(testNamesToResults, function(v) {
-        var nameValuePair = v.split('=');
-        ret.filter.tests[decodeURIComponent(nameValuePair[0])] =
-        decodeURIComponent(nameValuePair[1]);
-      });
-
-      if (nameValuePairs.length > 0) {
-        var lastNameValuePair = _.last(nameValuePairs).split('=');
-        if (lastNameValuePair[0] === 'buildVariants') {
-          /* If buildVariants isn't empty, split buildVariants by ',' delimiter
-          * and do a URI decode on each of them */
-          ret.filter.buildVariants = lastNameValuePair[1] ?
-          _.map(lastNameValuePair[1].split(','), decodeURIComponent) : [];
-        } else {
-          ret.filter.tests[decodeURIComponent(lastNameValuePair[0])] =
-          decodeURIComponent(lastNameValuePair[1]);
-        }
+      var buildVariants = str.split('=');
+      if (buildVariants[0] === 'buildVariants') {
+        /* If buildVariants isn't empty, split buildVariants by ',' delimiter
+        * and do a URI decode on each of them */
+        ret.filter.buildVariants = lastNameValuePair[1] ?
+        _.map(lastNameValuePair[1].split(','), decodeURIComponent) : [];
       }
     }
   };
@@ -81,55 +51,26 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
     // All build variants
     ret.buildVariants = buildVariants;
     ret.taskName = taskName;
-    ret.testNames = [];
     ret.project = project;
 
-    $http.get(
-      '/task_history/' +
-      encodeURIComponent(ret.project) +
-      '/' +
-      encodeURIComponent(ret.taskName) +
-      '/test_names'
-    ).then(function(resp) {
-        var testNames = resp.data;
-        ret.testNames = [];
-        var testNamesMap = {};
-        _.each(testNames, function(name) {
-          testNamesMap[$filter('endOfPath')(name)] = true;
-        });
-
-        _.each(testNamesMap, function(value, key) {
-          ret.testNames.push(key);
-        });
-      }, function(resp) {
-        console.log("Error occurred when getting test names: `" + resp.headers + "`");
-      });
-
-      ret.constraints = {
-        low: Number.POSITIVE_INFINITY,
-        high: 0
-      };
+    ret.constraints = {
+      low: Number.POSITIVE_INFINITY,
+      high: 0
+    };
 
     // Build Variant autocomplete state
     ret.buildVariantSearchString = "";
     ret.buildVariantSearchResults = [];
     ret.buildVariantSearchDisplay = false;
 
-    // Test results autocomplete state
-    ret.testsSearchString = "";
-    ret.testsSearchResults = [];
-    ret.testsSearchDisplay = false;
-
     ret.testsLoading = false;
     ret.taskMatchesFilter = {};
 
     if ($window.location.hash) {
       filterSerializer.deserialize(ret.locationHash.get());
-      ret.filter.tests = ret.filter.tests || {};
       ret.filter.buildVariants = ret.filter.buildVariants || [];
     } else {
       ret.filter = {
-        tests: {},
         buildVariants: []
       };
     }
@@ -182,41 +123,6 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
     ret.buildVariantSearchDisplay = false;
   };
 
-  // Search through test names
-  ret.searchTestNames = function() {
-    ret.testsSearchResults = [];
-
-    if (!ret.testsSearchString) {
-      return;
-    }
-
-    for (var i = 0; i < ret.testNames.length; ++i) {
-      if (ret.testNames[i].toLowerCase().indexOf(ret.testsSearchString.toLowerCase()) != -1) {
-        ret.testsSearchResults.push(ret.testNames[i]);
-      }
-    }
-
-    ret.testsSearchDisplay = true;
-  };
-
-  // Filter for tasks where a test with the given name has a particular result
-  ret.filterTest = function(name, result) {
-    ret.filter.tests[name] = result;
-    ret.testsSearchString = "";
-
-    ret.queryServer();
-
-    ret.setLocationHash();
-  };
-
-  // Remove a test with a given name from the filter, inverse of above
-  ret.removeTestFilter = function(name) {
-    delete ret.filter.tests[name];
-    ret.queryServer();
-
-    ret.setLocationHash();
-  };
-
   // Refresh the location
   ret.setLocationHash = function() {
     ret.locationHash.set(filterSerializer.serialize());
@@ -253,16 +159,6 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
         console.log("Error occurred when filtering tasks: `" + resp.headers + "`");
       });
     };
-
-  // Show the test name autocomplete results
-  ret.showTestNameResults = function() {
-    ret.testsSearchDisplay = true;
-  };
-
-  // Hide the test name autocomplete results
-  ret.hideTestNameResults = function() {
-    ret.testsSearchDisplay = false;
-  };
 
   return ret;
 });
@@ -378,10 +274,6 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
       }
     }
 
-    if (filter.tests && !_.isEmpty(filter.tests) && task) {
-      return $scope.taskHistoryFilter.taskMatchesFilter[task._id];
-    }
-
     return true;
   };
 
@@ -445,7 +337,7 @@ $scope.getTaskTooltip = function(testGroup, buildvariant) {
       var displayedTests = [];
       for (var i = 0; i < failedTests.length; i++) {
         if (i < failedTestLimit) {
-          displayedTests.push($filter('endOfPath')(failedTests[i].test_file));
+          displayedTests.push($filter('endOfPath')(failedTests[i]));
         }
       }
       tooltip += failedTests.length + ' ' + $filter('pluralize')(failedTests.length, 'test') +
@@ -535,19 +427,6 @@ $scope.hideInactiveVersions = {
   },
   toggle: function() {
     $scope.hideInactiveVersions.v = !$scope.hideInactiveVersions.v;
-  }
-};
-
-$scope.hideUnmatchingVersions = {
-  v: false,
-  get: function() {
-    return $scope.hideUnmatchingVersions.v;
-  },
-  toggle: function() {
-    $scope.hideUnmatchingVersions.v = !$scope.hideUnmatchingVersions.v;
-  },
-  hidden: function(){
-    return _.size($scope.taskHistoryFilter.filter.tests) == 0
   }
 };
 });

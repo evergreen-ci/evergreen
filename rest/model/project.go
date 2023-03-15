@@ -153,12 +153,27 @@ type APIPeriodicBuildDefinition struct {
 	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
 }
 
+type APIExternalLink struct {
+	URLTemplate *string `json:"url_template"`
+	DisplayName *string `json:"display_name"`
+}
+
+func (t *APIExternalLink) ToService() model.ExternalLink {
+	return model.ExternalLink{
+		URLTemplate: utility.FromStringPtr(t.URLTemplate),
+		DisplayName: utility.FromStringPtr(t.DisplayName),
+	}
+}
+
+func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
+	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
+	t.DisplayName = utility.ToStringPtr(h.DisplayName)
+}
+
 type APICommitQueueParams struct {
-	Enabled               *bool   `json:"enabled"`
-	RequireSigned         *bool   `json:"require_signed"`
-	RequiredApprovalCount *int    `json:"required_approval_count"`
-	MergeMethod           *string `json:"merge_method"`
-	Message               *string `json:"message"`
+	Enabled     *bool   `json:"enabled"`
+	MergeMethod *string `json:"merge_method"`
+	Message     *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition {
@@ -183,8 +198,6 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
-	cqParams.RequireSigned = utility.BoolPtrCopy(params.RequireSigned)
-	cqParams.RequiredApprovalCount = utility.ToIntPtr(params.RequiredApprovalCount)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
 }
@@ -192,8 +205,6 @@ func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueP
 func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
-	serviceParams.RequireSigned = utility.BoolPtrCopy(cqParams.RequireSigned)
-	serviceParams.RequiredApprovalCount = utility.FromIntPtr(cqParams.RequiredApprovalCount)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
@@ -494,7 +505,8 @@ type APIProjectRef struct {
 	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
 	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
-	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
+	DeleteContainerSecrets []string          `json:"delete_container_secrets,omitempty"`
+	ExternalLinks          []APIExternalLink `json:"external_links"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -557,6 +569,14 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		projectRef.PeriodicBuilds = builds
 	}
 
+	// Copy External Links
+	if p.ExternalLinks != nil {
+		links := []model.ExternalLink{}
+		for _, l := range p.ExternalLinks {
+			links = append(links, l.ToService())
+		}
+		projectRef.ExternalLinks = links
+	}
 	if p.PatchTriggerAliases != nil {
 		patchTriggers := []patch.PatchTriggerDefinition{}
 		for _, a := range p.PatchTriggerAliases {
@@ -671,6 +691,17 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 		var apiSize APIContainerResources
 		apiSize.BuildFromService(size)
 		p.ContainerSizeDefinitions = append(p.ContainerSizeDefinitions, apiSize)
+	}
+
+	// copy external links
+	if projectRef.ExternalLinks != nil {
+		externalLinks := []APIExternalLink{}
+		for _, l := range projectRef.ExternalLinks {
+			externalLink := APIExternalLink{}
+			externalLink.BuildFromService(l)
+			externalLinks = append(externalLinks, externalLink)
+		}
+		p.ExternalLinks = externalLinks
 	}
 	return nil
 }

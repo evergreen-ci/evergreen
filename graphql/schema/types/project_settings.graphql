@@ -71,6 +71,7 @@ input ProjectInput {
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
   containerSizeDefinitions: [ContainerResourcesInput!]
+  externalLinks: [ExternalLinkInput!]
 }
 
 ###### TYPES ######
@@ -95,7 +96,7 @@ type ProjectSubscription {
   subscriber: ProjectSubscriber
   trigger: String!
   triggerData: StringMap
- }
+}
 
 type Selector {
   data: String!
@@ -176,7 +177,7 @@ type ProjectEventLogEntry {
   user: String!
 }
 
-type ProjectEventSettings{
+type ProjectEventSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
   projectRef: Project
@@ -194,4 +195,3 @@ type ProjectAlias {
   variant: String!
   variantTags: [String!]!
 }
-

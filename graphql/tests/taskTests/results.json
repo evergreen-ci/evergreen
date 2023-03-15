@@ -146,19 +146,19 @@
           "taskTests": {
             "testResults": [
               {
-                "id": "356534666634326434653838666165613761393066306233",
+                "id": "TestGenerateSuite",
                 "status": "skip"
               },
               {
-                "id": "356534666634326434653838666165613761393066306165",
+                "id": "TestHostTaskAuditing",
                 "status": "fail"
               },
               {
-                "id": "356534666634326434653838666165613761393066306636",
+                "id": "TestProjectEventSuite/TestModifyProjectNonEvent",
                 "status": "skip"
               },
               {
-                "id": "356534666634326434653838666165613761393066306166",
+                "id": "TestStuckHostAuditing",
                 "status": "fail"
               }
             ]
@@ -199,90 +199,161 @@
       }
     },
     {
-      "query_file": "sortByStartTime.graphql",
+      "query_file": "sortByDurationDSC.graphql",
       "result": {
         "data": {
           "taskTests": {
             "testResults": [
               {
-                "startTime": "2020-02-21T10:15:51-05:00",
-                "id": "356534666634326434653838666165613761393066306166"
+                "testFile": "TestFinalizePatch",
+                "duration": 1.049
               },
               {
-                "startTime": "2020-02-21T10:15:52-05:00",
-                "id": "356534666634326434653838666165613761393066306165"
+                "testFile": "TestGenerateSuite",
+                "duration": 0.15
               },
               {
-                "startTime": "2020-02-21T10:15:53-05:00",
-                "id": "356534666634326434653838666165613761393066306636"
+                "testFile": "TestHostTaskAuditing",
+                "duration": 0.069
               },
               {
-                "startTime": "2020-02-21T10:15:54-05:00",
-                "id": "356534666634326434653838666165613761393066306233"
+                "testFile": "TestRetryCommitQueueItems",
+                "duration": 0.069
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306239"
+                "testFile": "TestUpdateVersionAndParserProject",
+                "duration": 0.04
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306261"
+                "testFile": "TestGenerateSuite/TestSaveNewTasksWithDependencies",
+                "duration": 0.02
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306265"
+                "testFile": "TestGenerateSuite/TestSaveNewTasksWithCrossVariantDependencies",
+                "duration": 0.02
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306266"
+                "testFile": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
+                "duration": 0.02
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306364"
+                "testFile": "TestStuckHostAuditing",
+                "duration": 0.009
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306432"
+                "testFile": "TestDepsMatrixIntegration",
+                "duration": 0.009
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306435"
+                "testFile": "TestSetVersionActivation",
+                "duration": 0.009
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306464"
+                "testFile": "TestProjectEventSuite/TestModifyProjectNonEvent",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306530"
+                "testFile": "TestGenerateSuite/TestValidateNoRedefine",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306536"
+                "testFile": "TestSortTasks",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306565"
+                "testFile": "TestMergeAxisValue",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306663"
+                "testFile": "TestCreateIntermediateProjectRequirements",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066306666"
+                "testFile": "TestTaskGroupWithDisplayTask",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066313039"
+                "testFile": "TestTryUpsert/ConfigNumberMatches",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066313132"
+                "testFile": "TestGetActivationTimeWithCron/Interval",
+                "duration": 0
               },
               {
-                "startTime": "2020-02-21T10:15:56-05:00",
-                "id": "356534666634326434653838666165613761393066313165"
+                "testFile": "TestCreateTaskGroup",
+                "duration": 0
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sortByTestName.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "testFile": "TestCreateIntermediateProjectRequirements"
+              },
+              {
+                "testFile": "TestCreateTaskGroup"
+              },
+              {
+                "testFile": "TestDepsMatrixIntegration"
+              },
+              {
+                "testFile": "TestFinalizePatch"
+              },
+              {
+                "testFile": "TestGenerateSuite"
+              },
+              {
+                "testFile": "TestGenerateSuite/TestSaveNewTasksWithCrossVariantDependencies"
+              },
+              {
+                "testFile": "TestGenerateSuite/TestSaveNewTasksWithDependencies"
+              },
+              {
+                "testFile": "TestGenerateSuite/TestValidateNoRedefine"
+              },
+              {
+                "testFile": "TestGetActivationTimeWithCron/Interval"
+              },
+              { 
+                "testFile": "TestHostTaskAuditing"
+              },
+              {
+                "testFile": "TestMergeAxisValue"
+              },
+              {
+                "testFile": "TestProjectAliasSuite/TestInsertTagsAndNoVariant"
+              },
+              {
+                "testFile": "TestProjectEventSuite/TestModifyProjectNonEvent"
+              },
+              {
+                "testFile": "TestRetryCommitQueueItems"
+              },
+              {
+                "testFile": "TestSetVersionActivation"
+              },
+              {
+                "testFile": "TestSortTasks"
+              },
+              {
+                "testFile": "TestStuckHostAuditing"
+              },
+              {
+                "testFile": "TestTaskGroupWithDisplayTask"
+              },
+              {
+                "testFile": "TestTryUpsert/ConfigNumberMatches"
+              },
+              {
+                "testFile": "TestUpdateVersionAndParserProject"
               }
             ]
           }
