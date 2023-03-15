@@ -34,6 +34,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 var (
@@ -209,6 +215,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.createRemoteQueues(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.setupRoleManager())
+	catcher.Add(e.initTracer(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -812,6 +819,38 @@ func (e *envState) initDepot(ctx context.Context) error {
 	if e.depot, err = certdepot.BootstrapDepotWithMongoClient(ctx, e.client, bootstrapConfig); err != nil {
 		return errors.Wrapf(err, "bootstrapping collection '%s'", CredentialsCollection)
 	}
+
+	return nil
+}
+
+func (e *envState) initTracer(ctx context.Context) error {
+	resource, err := resource.New(ctx,
+		resource.WithProcess(),
+		resource.WithHost(),
+		resource.WithAttributes(attribute.String("build_revision", BuildRevision)),
+	)
+	if err != nil {
+		return errors.Wrap(err, "making otel resource")
+	}
+
+	client := otlptracegrpc.NewClient()
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return errors.Wrap(err, "initializing otel exporter")
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(exp),
+		trace.WithResource(resource),
+	)
+	otel.SetTracerProvider(tp)
+
+	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(tp.Shutdown(ctx))
+		catcher.Add(exp.Shutdown(ctx))
+		return nil
+	})
 
 	return nil
 }
