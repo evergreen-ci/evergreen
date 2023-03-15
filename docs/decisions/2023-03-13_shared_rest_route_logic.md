@@ -6,6 +6,8 @@
 
 ## Context and Problem Statement
 
+Ticket: EVG-16701
+
 A feature request was made for a new endpoint to perform a bulk operation on a group of versions. Since there was an existing GET endpoint to retrieve a list of versions based off of detailed request parameters, the 
 PR to implement the new endpoint was made to use the existing GET endpoint's logic to retrieve the list of versions and then perform the bulk operation on the list of versions. This was done to avoid duplicating request parsing and version retrieving
 logic. 

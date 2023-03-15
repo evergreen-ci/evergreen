@@ -659,14 +659,11 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 	} else {
 		match[VersionCreateTimeKey] = bson.M{"$gte": startTime, "$lte": endTime}
 	}
-	pipeline := []bson.M{{"$match": match}}
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
-
-	res := []Version{}
-	if err = db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrap(err, "aggregating versions and builds")
+	versions, err := VersionFind(db.Query(match))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding versions")
 	}
-	return res, nil
+	return versions, nil
 }
 
 // constructManifest will construct a manifest from the given project and version.
