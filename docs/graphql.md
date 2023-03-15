@@ -120,7 +120,7 @@ GraphQL's type safety ensures that you will be notified if fields change. We
 recommend staying up to date with our API changes to ensure application
 compatibility with Evergreen.
 
-### SLA's and SLO's
+## SLA's and SLO's
 
 As queries are determined by the client, we cannot guarantee the performance of
 our GraphQL API. We aim for a response time of less than 2 seconds for most
