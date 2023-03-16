@@ -34,7 +34,7 @@ func (gc *DBGithubConnector) GetGitHubPR(ctx context.Context, owner, repo string
 }
 
 // AddCommentToPR adds the given comment to the associated PR.
-func (gc *DBGithubConnector) AddCommentToPR(ctx context.Context, owner, repo, comment string, PRNum int) error {
+func (gc *DBGithubConnector) AddCommentToPR(ctx context.Context, owner, repo string, prNum int, comment string) error {
 	conf, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
@@ -47,6 +47,6 @@ func (gc *DBGithubConnector) AddCommentToPR(ctx context.Context, owner, repo, co
 	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	err = thirdparty.PostCommentToPullRequest(ctxWithCancel, ghToken, owner, repo, comment, PRNum)
+	err = thirdparty.PostCommentToPullRequest(ctxWithCancel, ghToken, owner, repo, prNum, comment)
 	return errors.Wrap(err, "posting GitHub comment with GitHub API")
 }

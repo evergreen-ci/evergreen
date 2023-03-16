@@ -315,7 +315,7 @@ func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string
 			owner, repo, branch)
 	}
 	helpMarkdown := getHelpTextFromProjects(projectRefs)
-	return gh.sc.AddCommentToPR(ctx, owner, repo, helpMarkdown, prNum)
+	return gh.sc.AddCommentToPR(ctx, owner, repo, prNum, helpMarkdown)
 }
 
 func getHelpTextFromProjects(projectRefs []model.ProjectRef) string {

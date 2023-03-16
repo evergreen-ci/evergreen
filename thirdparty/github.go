@@ -1127,7 +1127,7 @@ func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage str
 }
 
 // PostCommentToPullRequest posts the given comment to the associated PR.
-func PostCommentToPullRequest(ctx context.Context, token, owner, repo, comment string, prNum int) error {
+func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, prNum int, comment string) error {
 	httpClient := getGithubClient(token, "PostCommentToPullRequest")
 	defer utility.PutHTTPClient(httpClient)
 	githubClient := github.NewClient(httpClient)

@@ -42,7 +42,7 @@ func (pc *MockGitHubConnectorImpl) AddPatchForPR(ctx context.Context, projectRef
 	return &patch.Patch{}, nil
 }
 
-func (pc *MockGitHubConnectorImpl) AddCommentToPR(ctx context.Context, owner, repo, comment string, PRNum int) error {
+func (pc *MockGitHubConnectorImpl) AddCommentToPR(ctx context.Context, owner, repo string, prNum int, comment string) error {
 	return nil
 }
 
