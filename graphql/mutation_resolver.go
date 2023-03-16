@@ -434,7 +434,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	if utility.FromBoolPtr(requestS3Creds) {
-		if err = data.RequestS3Creds(*apiProjectRef.Identifier); err != nil {
+		if err = data.RequestS3Creds(*apiProjectRef.Identifier, u.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
 		}
 	}
@@ -462,7 +462,8 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 	if utility.FromBoolPtr(requestS3Creds) {
-		if err = data.RequestS3Creds(*projectRef.Identifier); err != nil {
+		u := gimlet.GetUser(ctx).(*user.DBUser)
+		if err = data.RequestS3Creds(*projectRef.Identifier, u.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
 	}
