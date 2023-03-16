@@ -17,7 +17,7 @@ import (
 
 const (
 	TaskLogLinkFormat        = "%s/task_log_raw/%s/%d?type=%s"
-	ParsleyTaskLogLinkFormat = "%s/evergreen/%s/%d/%s" // URL,taskId, execution, type
+	ParsleyTaskLogLinkFormat = "%s/evergreen/%s/%d/%s"
 	EventLogLinkFormat       = "%s/event_log/task/%s"
 )
 
