@@ -391,7 +391,11 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{
+						LogURL:                   "http://evergreen.example.net",
+						ParsleyLogURL:            "http://parsley.example.net",
+						IncludeProjectIdentifier: true,
+					})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -412,6 +416,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 					url:        "http://evergreen.example.net",
+					parsleyURL: "http://parsley.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -744,9 +749,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					Id: "0build0",
 				}
 				nextModelTask := &model.APITask{}
-				err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+				err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{
+					LogURL:                   "http://evergreen.example.net",
+					ParsleyLogURL:            "http://parsley.example.net",
+					IncludeProjectIdentifier: true,
+				})
 				So(err, ShouldBeNil)
-				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks, "http://evergreen.example.net")
+				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks, "http://evergreen.example.net", "http://parsley.example.net")
 				So(err, ShouldBeNil)
 				expectedTasks = append(expectedTasks, nextModelTask)
 				expectedPages := &gimlet.ResponsePages{
@@ -998,7 +1007,11 @@ func TestTaskResetPrepare(t *testing.T) {
 func TestTaskGetHandler(t *testing.T) {
 	Convey("With test server with a handler and mock data", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
-		rm := makeGetTaskRoute("https://example.net/test")
+		rm := makeGetTaskRoute(
+			&evergreen.Settings{Ui: evergreen.UIConfig{
+				ParsleyUrl: "https://parsley.net/yee",
+			}},
+			"https://example.net/test")
 
 		Convey("and task is in the service context", func() {
 			newTask := task.Task{

@@ -23,16 +23,20 @@ type tasksByProjectHandler struct {
 	limit        int
 	key          string
 	url          string
+	parsleyURL   string
 }
 
-func makeTasksByProjectAndCommitHandler(url string) gimlet.RouteHandler {
+func makeTasksByProjectAndCommitHandler(parsleyURL, url string) gimlet.RouteHandler {
 	return &tasksByProjectHandler{
-		url: url,
+		url:        url,
+		parsleyURL: parsleyURL,
 	}
 }
 
 func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
-	return &tasksByProjectHandler{url: tph.url}
+	return &tasksByProjectHandler{
+		url:        tph.url,
+		parsleyURL: tph.parsleyURL}
 }
 
 // Parse fetches the project context and task status from the request
@@ -123,6 +127,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeAMI:               true,
 			IncludeProjectIdentifier: true,
 			LogURL:                   tph.url,
+			ParsleyLogURL:            tph.parsleyURL,
 		})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)

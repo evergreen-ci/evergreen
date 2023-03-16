@@ -159,7 +159,7 @@ func (ad *APIOomTrackerInfo) ToService() *apimodels.OOMTrackerInfo {
 	}
 }
 
-func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
+func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url, parsleyURL string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
 		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i], &APITaskArgs{
@@ -167,6 +167,7 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
 			LogURL:                   url,
+			ParsleyLogURL:            parsleyURL,
 		}); err != nil {
 			return errors.Wrapf(err, "converting previous task execution at index %d to API model", i)
 		}
