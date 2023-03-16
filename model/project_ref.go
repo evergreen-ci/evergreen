@@ -725,8 +725,10 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	}
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-		return errors.Wrap(err, "validating new owner/repo")
+	if p.Enabled {
+		if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+			return errors.Wrap(err, "validating new owner/repo")
+		}
 	}
 
 	if p.UseRepoSettings() {
@@ -940,7 +942,6 @@ func getNumberOfEnabledProjects(owner, repo string) (int, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{ProjectRefEnabledKey: true}},
 	}
-	// pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
 	if owner != "" && repo != "" {
 		// Check owner and repos in project ref or repo ref.
 		pipeline = append(pipeline, bson.M{"$match": byOwnerAndRepo(owner, repo)})
@@ -982,7 +983,6 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
-	// Don't merge enabled field
 	reflectedBranch := reflect.ValueOf(pRef).Elem()
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
@@ -1036,7 +1036,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
 	repoRef.Identifier = ""
-	repoRef.Enabled = false
 
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
@@ -1912,8 +1911,10 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				return false, errors.Wrap(err, "getting evergreen config")
 			}
 			// Allow a user to modify owner and repo only if they are editing an unattached project
-			if err = p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-				return false, errors.Wrap(err, "validating new owner/repo")
+			if p.Enabled {
+				if err = p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+					return false, errors.Wrap(err, "validating new owner/repo")
+				}
 			}
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
@@ -2318,11 +2319,9 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 	return http.StatusOK, nil
 }
 
+// ValidateProjectRefAndSetDefaults validates the project ref and sets default values.
+// Should only be called on enabled project refs or repo refs.
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
-	if !p.Enabled {
-		return nil
-	}
-
 	// verify input and webhooks
 	if p.Owner == "" || p.Repo == "" {
 		return errors.New("no owner/repo specified")

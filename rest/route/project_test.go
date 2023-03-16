@@ -933,6 +933,7 @@ func TestDeleteProject(t *testing.T) {
 		serviceModel.RepoRefCollection,
 		serviceModel.ProjectAliasCollection,
 		serviceModel.ProjectVarsCollection,
+		evergreen.ScopeCollection,
 		user.Collection,
 	))
 	u := user.DBUser{
@@ -942,10 +943,9 @@ func TestDeleteProject(t *testing.T) {
 
 	repo := serviceModel.RepoRef{
 		ProjectRef: serviceModel.ProjectRef{
-			Id:      "repo_ref",
-			Owner:   "mongodb",
-			Repo:    "test_repo",
-			Enabled: true,
+			Id:    "repo_ref",
+			Owner: "mongodb",
+			Repo:  "test_repo",
 		},
 	}
 	assert.NoError(t, repo.Upsert())

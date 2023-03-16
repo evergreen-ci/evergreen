@@ -94,7 +94,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Branch:                "main",
 		SpawnHostScriptPath:   "my-path",
 		Admins:                []string{"john.liu"},
-		Enabled:               true,
 		PatchingDisabled:      nil,
 		GitTagVersionsEnabled: utility.FalsePtr(),
 		PRTestingEnabled:      utility.TruePtr(),
