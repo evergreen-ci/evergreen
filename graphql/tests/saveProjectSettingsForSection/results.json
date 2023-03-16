@@ -24,9 +24,7 @@
           "saveProjectSettingsForSection": {
             "projectRef": {
               "commitQueue": {
-                "enabled": true,
-                "requireSigned": true,
-                "requiredApprovalCount": 1
+                "enabled": true
               }
             },
             "vars": {

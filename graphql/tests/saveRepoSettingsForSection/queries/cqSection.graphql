@@ -1,14 +1,7 @@
 mutation {
   saveRepoSettingsForSection(
     repoSettings: {
-      projectRef: {
-        id: "repo_id"
-        commitQueue: {
-          enabled: true
-          requireSigned: false
-          requiredApprovalCount: 0
-        }
-      }
+      projectRef: { id: "repo_id", commitQueue: { enabled: true } }
       aliases: [
         {
           id: "5ffe393097b1d3759dd3c1aa"
@@ -27,8 +20,6 @@ mutation {
     projectRef {
       commitQueue {
         enabled
-        requireSigned
-        requiredApprovalCount
       }
     }
     vars {

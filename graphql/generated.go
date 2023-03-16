@@ -168,11 +168,9 @@ type ComplexityRoot struct {
 	}
 
 	CommitQueueParams struct {
-		Enabled               func(childComplexity int) int
-		MergeMethod           func(childComplexity int) int
-		Message               func(childComplexity int) int
-		RequireSigned         func(childComplexity int) int
-		RequiredApprovalCount func(childComplexity int) int
+		Enabled     func(childComplexity int) int
+		MergeMethod func(childComplexity int) int
+		Message     func(childComplexity int) int
 	}
 
 	ContainerResources struct {
@@ -757,7 +755,6 @@ type ComplexityRoot struct {
 		SubnetAvailabilityZones  func(childComplexity int) int
 		Task                     func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions        func(childComplexity int, taskID string) int
-		TaskLogs                 func(childComplexity int, taskID string, execution *int) int
 		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
 		TaskQueueDistros         func(childComplexity int) int
 		TaskTestSample           func(childComplexity int, tasks []string, filters []*TestFilter) int
@@ -770,11 +767,9 @@ type ComplexityRoot struct {
 	}
 
 	RepoCommitQueueParams struct {
-		Enabled               func(childComplexity int) int
-		MergeMethod           func(childComplexity int) int
-		Message               func(childComplexity int) int
-		RequireSigned         func(childComplexity int) int
-		RequiredApprovalCount func(childComplexity int) int
+		Enabled     func(childComplexity int) int
+		MergeMethod func(childComplexity int) int
+		Message     func(childComplexity int) int
 	}
 
 	RepoRef struct {
@@ -1423,7 +1418,6 @@ type QueryResolver interface {
 	LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
-	TaskLogs(ctx context.Context, taskID string, execution *int) (*TaskLogs, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error)
 	TaskTestSample(ctx context.Context, tasks []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
@@ -1959,20 +1953,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueParams.Message(childComplexity), true
-
-	case "CommitQueueParams.requireSigned":
-		if e.complexity.CommitQueueParams.RequireSigned == nil {
-			break
-		}
-
-		return e.complexity.CommitQueueParams.RequireSigned(childComplexity), true
-
-	case "CommitQueueParams.requiredApprovalCount":
-		if e.complexity.CommitQueueParams.RequiredApprovalCount == nil {
-			break
-		}
-
-		return e.complexity.CommitQueueParams.RequiredApprovalCount(childComplexity), true
 
 	case "ContainerResources.cpu":
 		if e.complexity.ContainerResources.CPU == nil {
@@ -5120,18 +5100,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.TaskAllExecutions(childComplexity, args["taskId"].(string)), true
 
-	case "Query.taskLogs":
-		if e.complexity.Query.TaskLogs == nil {
-			break
-		}
-
-		args, err := ec.field_Query_taskLogs_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.TaskLogs(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
-
 	case "Query.taskNamesForBuildVariant":
 		if e.complexity.Query.TaskNamesForBuildVariant == nil {
 			break
@@ -5240,20 +5208,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoCommitQueueParams.Message(childComplexity), true
-
-	case "RepoCommitQueueParams.requireSigned":
-		if e.complexity.RepoCommitQueueParams.RequireSigned == nil {
-			break
-		}
-
-		return e.complexity.RepoCommitQueueParams.RequireSigned(childComplexity), true
-
-	case "RepoCommitQueueParams.requiredApprovalCount":
-		if e.complexity.RepoCommitQueueParams.RequiredApprovalCount == nil {
-			break
-		}
-
-		return e.complexity.RepoCommitQueueParams.RequiredApprovalCount(childComplexity), true
 
 	case "RepoRef.admins":
 		if e.complexity.RepoRef.Admins == nil {
@@ -9642,30 +9596,6 @@ func (ec *executionContext) field_Query_taskAllExecutions_args(ctx context.Conte
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_taskLogs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["taskId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskId"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["execution"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["execution"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_taskNamesForBuildVariant_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -12455,88 +12385,6 @@ func (ec *executionContext) fieldContext_CommitQueueParams_message(ctx context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _CommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommitQueueParams_requireSigned(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RequireSigned, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_CommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "CommitQueueParams",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _CommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommitQueueParams_requiredApprovalCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RequiredApprovalCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_CommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "CommitQueueParams",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -28886,10 +28734,6 @@ func (ec *executionContext) fieldContext_Project_commitQueue(ctx context.Context
 				return ec.fieldContext_CommitQueueParams_mergeMethod(ctx, field)
 			case "message":
 				return ec.fieldContext_CommitQueueParams_message(ctx, field)
-			case "requireSigned":
-				return ec.fieldContext_CommitQueueParams_requireSigned(ctx, field)
-			case "requiredApprovalCount":
-				return ec.fieldContext_CommitQueueParams_requiredApprovalCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CommitQueueParams", field.Name)
 		},
@@ -35398,79 +35242,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_taskLogs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_taskLogs(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskLogs(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(*int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*TaskLogs)
-	fc.Result = res
-	return ec.marshalNTaskLogs2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskLogs(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_taskLogs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "agentLogs":
-				return ec.fieldContext_TaskLogs_agentLogs(ctx, field)
-			case "allLogs":
-				return ec.fieldContext_TaskLogs_allLogs(ctx, field)
-			case "defaultLogger":
-				return ec.fieldContext_TaskLogs_defaultLogger(ctx, field)
-			case "eventLogs":
-				return ec.fieldContext_TaskLogs_eventLogs(ctx, field)
-			case "execution":
-				return ec.fieldContext_TaskLogs_execution(ctx, field)
-			case "systemLogs":
-				return ec.fieldContext_TaskLogs_systemLogs(ctx, field)
-			case "taskId":
-				return ec.fieldContext_TaskLogs_taskId(ctx, field)
-			case "taskLogs":
-				return ec.fieldContext_TaskLogs_taskLogs(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskLogs", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_taskLogs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_taskTests(ctx, field)
 	if err != nil {
@@ -36503,94 +36274,6 @@ func (ec *executionContext) fieldContext_RepoCommitQueueParams_message(ctx conte
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoCommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoCommitQueueParams_requireSigned(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RequireSigned, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoCommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoCommitQueueParams",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RepoCommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoCommitQueueParams_requiredApprovalCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RequiredApprovalCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoCommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoCommitQueueParams",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_id(ctx, field)
 	if err != nil {
@@ -36952,10 +36635,6 @@ func (ec *executionContext) fieldContext_RepoRef_commitQueue(ctx context.Context
 				return ec.fieldContext_RepoCommitQueueParams_mergeMethod(ctx, field)
 			case "message":
 				return ec.fieldContext_RepoCommitQueueParams_message(ctx, field)
-			case "requireSigned":
-				return ec.fieldContext_RepoCommitQueueParams_requireSigned(ctx, field)
-			case "requiredApprovalCount":
-				return ec.fieldContext_RepoCommitQueueParams_requiredApprovalCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoCommitQueueParams", field.Name)
 		},
@@ -56237,7 +55916,7 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "mergeMethod", "message", "requireSigned", "requiredApprovalCount"}
+	fieldsInOrder := [...]string{"enabled", "mergeMethod", "message"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -56265,22 +55944,6 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("message"))
 			it.Message, err = ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "requireSigned":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requireSigned"))
-			it.RequireSigned, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "requiredApprovalCount":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requiredApprovalCount"))
-			it.RequiredApprovalCount, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60254,14 +59917,6 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "requireSigned":
-
-			out.Values[i] = ec._CommitQueueParams_requireSigned(ctx, field, obj)
-
-		case "requiredApprovalCount":
-
-			out.Values[i] = ec._CommitQueueParams_requiredApprovalCount(ctx, field, obj)
-
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -64916,29 +64571,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
-		case "taskLogs":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_taskLogs(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
 		case "taskTests":
 			field := field
 
@@ -65247,20 +64879,6 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 		case "message":
 
 			out.Values[i] = ec._RepoCommitQueueParams_message(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "requireSigned":
-
-			out.Values[i] = ec._RepoCommitQueueParams_requireSigned(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "requiredApprovalCount":
-
-			out.Values[i] = ec._RepoCommitQueueParams_requiredApprovalCount(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
