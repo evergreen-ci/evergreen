@@ -629,3 +629,15 @@ func Gp2EquivalentIOPSForGp3(volumeSize int) int {
 
 	return iops
 }
+
+// isEC2InstanceNotFound returns whether or not the given error is due to the
+// EC2 instance not being found.
+func isEC2InstanceNotFound(err error) bool {
+	if err == noReservationError {
+		return true
+	}
+	if ec2Err, ok := errors.Cause(err).(awserr.Error); ok && ec2Err.Code() == EC2ErrorNotFound {
+		return true
+	}
+	return false
+}
