@@ -1056,7 +1056,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 
 	instance, err := m.client.GetInstanceInfo(ctx, id)
 	if err != nil {
-		if err == noReservationError {
+		if isEC2InstanceNotFound(err) {
 			return StatusNonExistent, nil
 		}
 		grip.Error(message.WrapError(err, message.Fields{
