@@ -463,7 +463,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	}
 	if utility.FromBoolPtr(requestS3Creds) {
 		usr := mustHaveUser(ctx)
-		if err = data.RequestS3Creds(*projectRef.Identifier, u.EmailAddress); err != nil {
+		if err = data.RequestS3Creds(*projectRef.Identifier, usr.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
 	}
