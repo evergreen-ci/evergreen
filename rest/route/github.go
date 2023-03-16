@@ -337,6 +337,7 @@ func getHelpTextFromProjects(projectRefs []model.ProjectRef) string {
 	}
 
 	formatStr := "- `%s` \n    - %s\n"
+	formatStrStrikethrough := "- ~`%s`~ \n    - %s\n"
 	res := fmt.Sprintf("### %s\n", "Available Evergreen Comment Commands")
 	if autoPRProjectEnabled || manualPRProjectEnabled {
 		// Wrap comments in separate code blocks to make it clear they are aliases.
@@ -349,8 +350,7 @@ func getHelpTextFromProjects(projectRefs []model.ProjectRef) string {
 	} else if cqProjectMessage != "" {
 		// Should only display this if the commit queue isn't enabled for a different branch.
 		text := fmt.Sprintf("the commit queue is NOT enabled for this branch: %s", cqProjectMessage)
-		strikethroughComment := fmt.Sprintf("~%s~", commitQueueMergeComment)
-		res += fmt.Sprintf(formatStr, strikethroughComment, text)
+		res += fmt.Sprintf(formatStrStrikethrough, commitQueueMergeComment, text)
 	}
 	return res
 }
