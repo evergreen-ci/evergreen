@@ -1268,7 +1268,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
-	assert.False(t, repoRef.Enabled)
 	assert.True(t, repoRef.IsPRTestingEnabled())
 	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
 	assert.Equal(t, "", repoRef.Identifier)
@@ -2885,14 +2884,6 @@ func TestValidateOwnerAndRepo(t *testing.T) {
 	// a project with an owner and repo should not error
 	project.Owner = "evergreen-ci"
 	err = project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
-	assert.NoError(t, err)
-
-	// a disabled project should not error
-	disabledProject := ProjectRef{
-		Id:      "project",
-		Enabled: false,
-	}
-	err = disabledProject.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
 }
 
