@@ -48,18 +48,17 @@ func (r *podResolver) Events(ctx context.Context, obj *model.APIPod, limit *int,
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod events: %s", err.Error()))
 	}
-	// populate eventlogs pointer arrays
-	apiEventLogPointers := []*restModel.PodAPIEventLogEntry{}
+	apiEventLogEntries := []*restModel.PodAPIEventLogEntry{}
 	for _, e := range events {
 		apiEventLog := restModel.PodAPIEventLogEntry{}
 		err = apiEventLog.BuildFromService(e)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
 		}
-		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
+		apiEventLogEntries = append(apiEventLogEntries, &apiEventLog)
 	}
 	podEvents := PodEvents{
-		EventLogEntries: apiEventLogPointers,
+		EventLogEntries: apiEventLogEntries,
 		Count:           count,
 	}
 	return &podEvents, nil
