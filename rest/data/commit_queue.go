@@ -28,28 +28,7 @@ import (
 
 type DBCommitQueueConnector struct{}
 
-// GetGitHubPR takes the owner, repo, and PR number.
-func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
-	conf, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting admin settings")
-	}
-	ghToken, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-	}
-
-	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	pr, err := thirdparty.GetGithubPullRequest(ctxWithCancel, ghToken, owner, repo, PRNum)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GitHub PR from GitHub API")
-	}
-
-	return pr, nil
-}
-
-func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
+func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
@@ -319,7 +298,7 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 		return nil, errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 
-	patchDoc, errMsg, err := tryEnqueueItemForPR(ctx, sc, projectRef, userRepo, info.PR, cqInfo)
+	patchDoc, errMsg, err := tryEnqueueItemForPR(ctx, sc, projectRef, info.PR, cqInfo)
 	if err != nil {
 		sendErr := thirdparty.SendCommitQueueGithubStatus(env, pr, message.GithubStateFailure, errMsg, "")
 		grip.Error(message.WrapError(sendErr, message.Fields{
@@ -414,8 +393,8 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 
 // tryEnqueueItemForPR attempts to enqueue an item for a PR after checking it is in a valid state to enqueue. It returns the enqueued patch,
 // and in the failure case it will return an error and a short error message to be sent to GitHub.
-func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.ProjectRef, userRepo UserRepoInfo, prNum int, cqInfo restModel.GithubCommentCqData) (*patch.Patch, string, error) {
-	patchDoc, err := sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
+func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.ProjectRef, prNum int, cqInfo restModel.GithubCommentCqData) (*patch.Patch, string, error) {
+	patchDoc, err := sc.AddPatchForPR(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
 		return nil, "failed to create patch", errors.Wrap(err, "adding patch for PR")
 	}

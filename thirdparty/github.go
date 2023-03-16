@@ -660,7 +660,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get tag information from Github")
+		return "", errors.Wrap(err, "failed to get tag information from GitHub")
 	}
 	if resp == nil {
 		return "", errors.New("invalid github response")
@@ -694,7 +694,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 	}
 
 	if tagSha == "" {
-		return "", errors.New("empty SHA from Github")
+		return "", errors.New("empty SHA from GitHub")
 	}
 
 	return sha, nil
@@ -755,7 +755,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 
 	if user.Login == nil || user.ID == nil || user.Company == nil ||
 		user.Email == nil || user.OrganizationsURL == nil {
-		return nil, false, errors.New("Github user is missing required data")
+		return nil, false, errors.New("GitHub user is missing required data")
 	}
 
 	return &GithubLoginUser{
@@ -1121,7 +1121,27 @@ func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage str
 		return errors.Wrap(err, "can't access GitHub merge API")
 	}
 	if !res.GetMerged() {
-		return errors.Errorf("Github refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
+		return errors.Errorf("GitHub refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
+	}
+	return nil
+}
+
+// PostCommentToPullRequest posts the given comment to the associated PR.
+func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, prNum int, comment string) error {
+	httpClient := getGithubClient(token, "PostCommentToPullRequest")
+	defer utility.PutHTTPClient(httpClient)
+	githubClient := github.NewClient(httpClient)
+
+	githubComment := &github.IssueComment{
+		Body: &comment,
+	}
+	respComment, resp, err := githubClient.Issues.CreateComment(ctx, owner, repo, prNum, githubComment)
+	if err != nil {
+		return errors.Wrap(err, "can't access GitHub merge API")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
+		return errors.New("unexpected data from GitHub")
 	}
 	return nil
 }

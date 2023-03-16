@@ -261,7 +261,7 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	// Errors when there aren't aliases for all enabled features.
 	err := validateFeaturesHaveAliases(oldPRef, pRef, aliases)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Github checks")
+	assert.Contains(t, err.Error(), "GitHub checks")
 
 	pRef.RepoRefId = "r1"
 	repoAlias1 := model.ProjectAlias{
