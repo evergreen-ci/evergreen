@@ -97,7 +97,6 @@ var (
 	restRoutePartialAuthDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "RestRoutePartialAuthDisabled")
 	uiPartialAuthDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "UIPartialAuthDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
-	parserProjectS3StorageDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "ParserProjectS3StorageDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
