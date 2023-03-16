@@ -87,13 +87,6 @@ func RequestS3Creds(projectIdentifier, userEmail string) error {
 		return err
 	}
 
-	subToSub := event.Subscriber{
-		Type: event.EmailSubscriberType,
-		Target: event.EmailSubscriber{
-			Address: userEmail,
-		},
-	}
-	notifyUser := notification.New()
 	err = notification.InsertMany(*n)
 	if err != nil {
 		return errors.Wrap(err, "batch inserting notifications")
