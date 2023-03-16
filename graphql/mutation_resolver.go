@@ -462,7 +462,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 	if utility.FromBoolPtr(requestS3Creds) {
-		u := gimlet.GetUser(ctx).(*user.DBUser)
+		usr := mustHaveUser(ctx)
 		if err = data.RequestS3Creds(*projectRef.Identifier, u.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
