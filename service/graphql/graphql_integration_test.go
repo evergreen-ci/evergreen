@@ -35,39 +35,33 @@ func TestAtomicGQLQueries(t *testing.T) {
 	fmt.Println("PATH: ", dir)
 
 	for _, dir := range testDirectories {
-		runOldFormatTests := false
 		dirContents, err := os.ReadDir(filepath.Join(pathToTests, "tests", dir.Name()))
 		require.NoError(t, err)
 
 		for _, entry := range dirContents {
 			if entry.IsDir() {
+				var state graphql.AtomicGraphQLState
 				if entry.Name() == "queries" {
 					// The existence of a queries folder suggests that there are old format tests to run.
-					runOldFormatTests = true
+					state = graphql.AtomicGraphQLState{
+						TaskLogDB:   model.TaskLogDB,
+						TaskLogColl: model.TaskLogCollection,
+						Directory:   dir.Name(),
+						Settings:    settings,
+						ServerURL:   server.URL,
+					}
 				} else {
 					// A nested directory that isn't a queries folder suggests that there are new format tests to run.
-					state := graphql.AtomicGraphQLState{
+					state = graphql.AtomicGraphQLState{
 						TaskLogDB:   model.TaskLogDB,
 						TaskLogColl: model.TaskLogCollection,
 						Directory:   filepath.Join(dir.Name(), entry.Name()),
 						Settings:    settings,
 						ServerURL:   server.URL,
 					}
-					t.Run(state.Directory, graphql.MakeTestsInDirectory(&state, pathToTests))
 				}
+				t.Run(state.Directory, graphql.MakeTestsInDirectory(&state, pathToTests))
 			}
-		}
-
-		// The following code can be deleted once all tests have been moved to the new folder structure.
-		if runOldFormatTests {
-			state := graphql.AtomicGraphQLState{
-				TaskLogDB:   model.TaskLogDB,
-				TaskLogColl: model.TaskLogCollection,
-				Directory:   dir.Name(),
-				Settings:    settings,
-				ServerURL:   server.URL,
-			}
-			t.Run(state.Directory, graphql.MakeTestsInDirectory(&state, pathToTests))
 		}
 	}
 }
