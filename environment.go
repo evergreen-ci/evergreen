@@ -132,10 +132,6 @@ type Environment interface {
 	// SaveConfig persists the configuration settings.
 	SaveConfig() error
 
-	// TracerProvider returns the TracerProvider for sending
-	// traces to the configured collector.
-	TracerProvider() *trace.TracerProvider
-
 	// GetSender provides a grip Sender configured with the environment's
 	// settings. These Grip senders must be used with Composers that specify
 	// all message details.
@@ -932,13 +928,6 @@ func (e *envState) Session() db.Session {
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(e.ctx, e.client).Clone()
-}
-
-func (e *envState) TracerProvider() *trace.TracerProvider {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	return e.tracerProvider
 }
 
 func (e *envState) ClientConfig() *ClientConfig {

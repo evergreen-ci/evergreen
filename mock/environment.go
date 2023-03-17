@@ -333,9 +333,3 @@ func (e *Environment) SetUserManagerInfo(umi evergreen.UserManagerInfo) {
 	defer e.mu.Unlock()
 	e.userManagerInfo = umi
 }
-
-func (e *Environment) TracerProvider() *trace.TracerProvider {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.tracerProvider
-}

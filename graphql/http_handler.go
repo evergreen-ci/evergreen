@@ -8,6 +8,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -19,7 +20,11 @@ import (
 func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
 
+	// Send OTEL traces for each request.
 	srv.Use(otelgqlgen.Middleware())
+
+	// Apollo tracing support https://github.com/apollographql/apollo-tracing
+	srv.Use(apollotracing.Tracer{})
 
 	// Log graphql requests to splunk
 	srv.Use(SplunkTracing{})

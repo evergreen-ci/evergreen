@@ -94,5 +94,5 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
-	return gimlet.MergeApplications(router, app, clients, uiService, rest, apiRestV2, apiService)
+	return gimlet.MergeApplicationsWithRouter(router, app, clients, uiService, rest, apiRestV2, apiService)
 }
