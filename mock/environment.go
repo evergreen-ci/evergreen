@@ -23,6 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -39,6 +41,7 @@ type Environment struct {
 	DBSession               db.Session
 	EvergreenSettings       *evergreen.Settings
 	MongoClient             *mongo.Client
+	tracerProvider          *trace.TracerProvider
 	mu                      sync.RWMutex
 	DatabaseName            string
 	EnvContext              context.Context
@@ -93,6 +96,15 @@ func (e *Environment) Configure(ctx context.Context) error {
 		RoleCollection:  evergreen.RoleCollection,
 		ScopeCollection: evergreen.ScopeCollection,
 	})
+
+	exporter, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	e.tracerProvider = trace.NewTracerProvider(
+		trace.WithBatcher(exporter),
+	)
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(e.roleManager.RegisterPermissions(evergreen.ProjectPermissions))
@@ -320,4 +332,10 @@ func (e *Environment) SetUserManagerInfo(umi evergreen.UserManagerInfo) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.userManagerInfo = umi
+}
+
+func (e *Environment) TracerProvider() *trace.TracerProvider {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.tracerProvider
 }
