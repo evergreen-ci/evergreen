@@ -87,8 +87,7 @@ func (b *Build) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, b)
 // In spite of the name, a build with status BuildFailed may still be in
 // progress; use AllCachedTasksFinished
 func (b *Build) IsFinished() bool {
-	return b.Status == evergreen.BuildFailed ||
-		b.Status == evergreen.BuildSucceeded
+	return evergreen.IsFinishedBuildStatus(b.Status)
 }
 
 // AllUnblockedTasksOrCompileFinished returns true when all activated tasks in the build have

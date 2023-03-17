@@ -436,7 +436,6 @@ func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, exis
 }
 
 func ConcludeMerge(patchID, status string) error {
-	event.LogCommitQueueConcludeTest(patchID, status)
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
 		return errors.Wrap(err, "finding patch")
@@ -451,23 +450,12 @@ func ConcludeMerge(patchID, status string) error {
 	if cq == nil {
 		return errors.Errorf("commit queue for project '%s' not found", p.Project)
 	}
-	item := ""
-	for _, entry := range cq.Queue {
-		if entry.Version == patchID {
-			item = entry.Issue
-			break
-		}
+	if _, err = cq.Remove(patchID); err != nil {
+		return errors.Wrapf(err, "dequeueing item '%s' from commit queue", patchID)
 	}
-	if item == "" {
-		return errors.Errorf("commit queue item for patch '%s' not found", patchID)
-	}
-	found, err := cq.Remove(item)
-	if err != nil {
-		return errors.Wrapf(err, "dequeueing item '%s' from commit queue", item)
-	}
-	if found == nil {
-		return errors.Errorf("item '%s' not found in commit queue", item)
-	}
+
+	event.LogCommitQueueConcludeTest(patchID, status)
+
 	githubStatus := message.GithubStateFailure
 	description := "merge test failed"
 	if status == evergreen.MergeTestSucceeded {
@@ -479,6 +467,7 @@ func ConcludeMerge(patchID, status string) error {
 		"message": "unable to send github status",
 		"patch":   patchID,
 	}))
+
 	return nil
 }
 
