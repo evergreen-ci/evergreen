@@ -22,7 +22,7 @@ type MockGitHubConnectorImpl struct {
 	StoredError     error
 }
 
-func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
+func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo string, prNum int) (*github.PullRequest, error) {
 	return &github.PullRequest{
 		User: &github.User{
 			ID:    github.Int64(1234),
@@ -38,14 +38,18 @@ func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo 
 	}, nil
 }
 
-func (pc *MockGitHubConnectorImpl) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
+func (pc *MockGitHubConnectorImpl) AddPatchForPR(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
 	return &patch.Patch{}, nil
+}
+
+func (pc *MockGitHubConnectorImpl) AddCommentToPR(ctx context.Context, owner, repo string, prNum int, comment string) error {
+	return nil
 }
 
 func (pc *MockGitHubConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	_, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
+		return false, errors.Wrap(err, "can't get GitHub OAuth token from configuration")
 	}
 
 	permission, ok := pc.UserPermissions[args]

@@ -99,6 +99,9 @@ agentVersion := $(shell grep "AgentVersion" config.go | tr -d '\tAgentVersion = 
 ldFlags := $(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
 gcFlags := $(if $(STAGING_ONLY),-N -l,)
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
+
+goLintInstallerVersion := "v1.51.2"
+goLintInstallerChecksum := "0e09dedc7e35f511b7924b885e50d7fe48eef25bec78c86f22f5b5abd24976cc"
 # end evergreen specific configuration
 
 ######################################################################
@@ -204,7 +207,9 @@ coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 120 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(buildDir) v1.51.2 >/dev/null 2>&1 && touch $@
+	@curl --retry 10 --retry-max-time 120 -sSfL -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
+	@echo "$(goLintInstallerChecksum) $(buildDir)/install.sh" | sha256sum --check
+	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -ldflags "-w" -o $@ $<
 # end lint setup targets

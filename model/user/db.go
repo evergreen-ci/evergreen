@@ -240,7 +240,7 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 		if u == nil {
 			u = &DBUser{
 				Id:       evergreen.GithubPatchUser,
-				DispName: "Github Pull Requests",
+				DispName: "GitHub Pull Requests",
 				APIKey:   utility.RandomString(),
 			}
 			if err = u.Insert(); err != nil {

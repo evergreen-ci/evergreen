@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/amboy"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -336,7 +337,7 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 	comment := "no dice"
 	s.False(triggersCommitQueue(comment))
 
-	comment = triggerComment
+	comment = commitQueueMergeComment
 	s.True(triggersCommitQueue(comment))
 }
 
@@ -398,4 +399,68 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag, "")
 	s.NoError(err)
 	s.NotNil(v)
+}
+
+func TestGetHelpTextFromProjects(t *testing.T) {
+	cqAndPREnabledProject := model.ProjectRef{
+		Id:      "cqEnabled",
+		Enabled: utility.TruePtr(),
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	manualPRProject := model.ProjectRef{
+		Id:                     "manualEnabled",
+		Enabled:                utility.TruePtr(),
+		ManualPRTestingEnabled: utility.TruePtr(),
+	}
+	cqDisabledWithTextProject := model.ProjectRef{
+		Id:      "cqDisabled",
+		Enabled: utility.TruePtr(),
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.FalsePtr(),
+			Message: "this commit queue isn't enabled",
+		},
+	}
+
+	for testCase, test := range map[string]func(*testing.T){
+		"cqEnabledAndDisabled": func(t *testing.T) {
+			pRefs := []model.ProjectRef{cqAndPREnabledProject, cqDisabledWithTextProject}
+			helpText := getHelpTextFromProjects(pRefs)
+			assert.Contains(t, helpText, refreshStatusComment)
+			assert.Contains(t, helpText, commitQueueMergeComment)
+			assert.NotContains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
+			assert.Contains(t, helpText, retryComment)
+			assert.Contains(t, helpText, patchComment)
+		},
+		"manualAndAutomaticPRTestingEnabled": func(t *testing.T) {
+			pRefs := []model.ProjectRef{cqAndPREnabledProject, manualPRProject}
+			helpText := getHelpTextFromProjects(pRefs)
+			assert.Contains(t, helpText, refreshStatusComment)
+			assert.Contains(t, helpText, commitQueueMergeComment)
+			assert.Contains(t, helpText, patchComment)
+			assert.Contains(t, helpText, retryComment)
+		},
+		"manualPRTestingEnabled": func(t *testing.T) {
+			pRefs := []model.ProjectRef{manualPRProject}
+			helpText := getHelpTextFromProjects(pRefs)
+			assert.Contains(t, helpText, refreshStatusComment)
+			assert.Contains(t, helpText, patchComment)
+			assert.Contains(t, helpText, retryComment)
+			assert.NotContains(t, helpText, commitQueueMergeComment)
+		},
+		"cqDisabled": func(t *testing.T) {
+			pRefs := []model.ProjectRef{cqDisabledWithTextProject}
+			helpText := getHelpTextFromProjects(pRefs)
+			assert.Contains(t, helpText, commitQueueMergeComment)
+			assert.Contains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
+			assert.NotContains(t, helpText, refreshStatusComment)
+			assert.NotContains(t, helpText, retryComment)
+			assert.NotContains(t, helpText, patchComment)
+		},
+	} {
+
+		t.Run(testCase, test)
+	}
 }

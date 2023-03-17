@@ -482,8 +482,8 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 
 func TestRequestS3Creds(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
-	assert.Error(t, RequestS3Creds(""))
-	assert.NoError(t, RequestS3Creds("identifier"))
+	assert.Error(t, RequestS3Creds("", ""))
+	assert.NoError(t, RequestS3Creds("identifier", "user@email.com"))
 	n, err := notification.FindUnprocessed()
 	assert.NoError(t, err)
 	assert.Len(t, n, 0)
@@ -491,7 +491,7 @@ func TestRequestS3Creds(t *testing.T) {
 		JiraProject: "BUILD",
 	}
 	assert.NoError(t, projectCreationConfig.Set())
-	assert.NoError(t, RequestS3Creds("identifier"))
+	assert.NoError(t, RequestS3Creds("identifier", "user@email.com"))
 	n, err = notification.FindUnprocessed()
 	assert.NoError(t, err)
 	assert.Len(t, n, 1)
@@ -505,4 +505,5 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.Equal(t, summary, payload.Summary)
 	assert.Equal(t, description, payload.Description)
 	assert.Equal(t, []string{"Access"}, payload.Components)
+	assert.Equal(t, "user@email.com", payload.Reporter)
 }

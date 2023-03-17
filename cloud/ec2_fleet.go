@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
@@ -236,8 +235,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 
 	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
-
-		if ec2Err, ok := errors.Cause(err).(awserr.Error); ok && ec2Err.Code() == EC2ErrorNotFound {
+		if isEC2InstanceNotFound(err) {
 			return StatusNonExistent, nil
 		}
 		grip.Error(message.WrapError(err, message.Fields{

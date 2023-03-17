@@ -369,7 +369,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	errs := []string{}
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubPRAliases, "GitHub PR Aliases")...)
-	errs = append(errs, model.ValidateProjectAliases(responseRef.GithubChecksAliases, "Github Checks Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.GithubChecksAliases, "GitHub Checks Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GitTagAliases, "Git Tag Aliases")...)
@@ -475,12 +475,12 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 		if responseRef.GithubChecksEnabled {
 			if hook == nil {
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Github checks in this repo, must enable GitHub webhooks first"))
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable GitHub checks in this repo, must enable GitHub webhooks first"))
 				return
 			}
 			for _, ref := range conflictingRefs {
 				if ref.IsGithubChecksEnabled() && ref.Id != id {
-					uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable github checks in this repo, must disable in '%s' first", ref.Id))
+					uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable GitHub checks in this repo, must disable in '%s' first", ref.Id))
 					return
 				}
 			}

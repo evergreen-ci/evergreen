@@ -87,7 +87,7 @@ func (h *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
+	dc := data.DBGithubConnector{}
 
 	removed, err := data.CommitQueueRemoveItem(h.project, h.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {

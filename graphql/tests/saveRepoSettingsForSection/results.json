@@ -25,9 +25,7 @@
           "saveRepoSettingsForSection": {
             "projectRef": {
               "commitQueue": {
-                "enabled": true,
-                "requireSigned": false,
-                "requiredApprovalCount": 0
+                "enabled": true
               }
             },
             "vars": {

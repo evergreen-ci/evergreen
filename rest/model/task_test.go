@@ -69,6 +69,12 @@ func TestTaskBuildFromService(t *testing.T) {
 						SystemLogLink: utility.ToStringPtr("url/task_log_raw/testId/2?type=S"),
 						AgentLogLink:  utility.ToStringPtr("url/task_log_raw/testId/2?type=E"),
 					},
+					ParsleyLogs: LogLinks{
+						AllLogLink:    utility.ToStringPtr("parsley/evergreen/testId/2/all"),
+						TaskLogLink:   utility.ToStringPtr("parsley/evergreen/testId/2/task"),
+						SystemLogLink: utility.ToStringPtr("parsley/evergreen/testId/2/system"),
+						AgentLogLink:  utility.ToStringPtr("parsley/evergreen/testId/2/agent"),
+					},
 				},
 				st: task.Task{
 					Id:                          "testId",
@@ -122,6 +128,12 @@ func TestTaskBuildFromService(t *testing.T) {
 						SystemLogLink: utility.ToStringPtr("url/task_log_raw//0?type=S"),
 						AgentLogLink:  utility.ToStringPtr("url/task_log_raw//0?type=E"),
 						EventLogLink:  utility.ToStringPtr("url/event_log/task/"),
+					},
+					ParsleyLogs: LogLinks{
+						AllLogLink:    utility.ToStringPtr("parsley/evergreen//0/all"),
+						TaskLogLink:   utility.ToStringPtr("parsley/evergreen//0/task"),
+						SystemLogLink: utility.ToStringPtr("parsley/evergreen//0/system"),
+						AgentLogLink:  utility.ToStringPtr("parsley/evergreen//0/agent"),
 					},
 					CreateTime:             &time.Time{},
 					DispatchTime:           &time.Time{},
@@ -180,13 +192,19 @@ func TestTaskBuildFromService(t *testing.T) {
 		Convey("running BuildFromService(), should produce an equivalent model", func() {
 			for _, tc := range modelPairs {
 				apiTask := &APITask{}
-				err := apiTask.BuildFromService(&tc.st, &APITaskArgs{LogURL: "url"})
+				err := apiTask.BuildFromService(&tc.st, &APITaskArgs{LogURL: "url", ParsleyLogURL: "parsley"})
 				So(err, ShouldBeNil)
 				So(utility.FromStringPtr(apiTask.Id), ShouldEqual, utility.FromStringPtr(tc.at.Id))
 				So(apiTask.Execution, ShouldEqual, tc.at.Execution)
+
 				So(utility.FromStringPtr(apiTask.Logs.AgentLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.AgentLogLink))
 				So(utility.FromStringPtr(apiTask.Logs.SystemLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.SystemLogLink))
 				So(utility.FromStringPtr(apiTask.Logs.TaskLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.TaskLogLink))
+				So(utility.FromStringPtr(apiTask.Logs.AllLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.AllLogLink))
+				So(utility.FromStringPtr(apiTask.ParsleyLogs.TaskLogLink), ShouldEqual, utility.FromStringPtr(tc.at.ParsleyLogs.TaskLogLink))
+				So(utility.FromStringPtr(apiTask.ParsleyLogs.SystemLogLink), ShouldEqual, utility.FromStringPtr(tc.at.ParsleyLogs.SystemLogLink))
+				So(utility.FromStringPtr(apiTask.ParsleyLogs.AgentLogLink), ShouldEqual, utility.FromStringPtr(tc.at.ParsleyLogs.AgentLogLink))
+				So(utility.FromStringPtr(apiTask.ParsleyLogs.AllLogLink), ShouldEqual, utility.FromStringPtr(tc.at.ParsleyLogs.AllLogLink))
 
 				So(utility.FromStringPtr(apiTask.HostId), ShouldEqual, utility.FromStringPtr(tc.at.HostId))
 				So(utility.FromStringPtr(apiTask.PodID), ShouldEqual, utility.FromStringPtr(tc.at.PodID))
