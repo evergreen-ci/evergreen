@@ -495,12 +495,12 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 		Id:      "disabled",
 		Enabled: utility.FalsePtr(),
 	}
-	repoRefWithPRTesting := &model.RepoRef{model.ProjectRef{
+	repoRefWithPRTesting := &model.RepoRef{ProjectRef: model.ProjectRef{
 		Id:                     "enabled",
 		PRTestingEnabled:       utility.TruePtr(),
 		ManualPRTestingEnabled: utility.TruePtr(),
 	}}
-	repoRefWithoutPRTesting := &model.RepoRef{model.ProjectRef{
+	repoRefWithoutPRTesting := &model.RepoRef{ProjectRef: model.ProjectRef{
 		Id:               "notEnabled",
 		PRTestingEnabled: nil,
 	}}
