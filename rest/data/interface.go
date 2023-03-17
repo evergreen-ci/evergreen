@@ -21,6 +21,7 @@ type Connector interface {
 	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (model.ProjectInfo, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata) (*model.Version, error)
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
-	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error)
+	AddPatchForPR(context.Context, model.ProjectRef, int, []restModel.APIModule, string) (*patch.Patch, error)
+	AddCommentToPR(context.Context, string, string, int, string) error
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 }
