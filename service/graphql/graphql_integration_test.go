@@ -45,7 +45,7 @@ func TestAtomicGQLQueries(t *testing.T) {
 					// The existence of a queries folder suggests that there are old format tests to run.
 					runOldFormatTests = true
 				} else {
-					// A nested directory with that isn't a queries folder suggests that there are new format tests to run.
+					// A nested directory that isn't a queries folder suggests that there are new format tests to run.
 					state := graphql.AtomicGraphQLState{
 						TaskLogDB:   model.TaskLogDB,
 						TaskLogColl: model.TaskLogCollection,
