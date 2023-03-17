@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -194,7 +193,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 			return gimlet.NewJSONResponse(struct{}{})
 		}
-
 	case *github.PushEvent:
 		grip.Debug(message.Fields{
 			"source":     "GitHub hook",
@@ -573,35 +571,6 @@ func validatePushTagEvent(event *github.PushEvent) error {
 	}
 	if !event.GetCreated() {
 		return errors.New("not a tag creation event")
-	}
-	return nil
-}
-
-// Because the PR isn't necessarily on a commit queue, we only error if item is on the queue and can't be removed correctly
-func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) error {
-	err := thirdparty.ValidatePR(pr)
-	if err != nil {
-		return errors.Wrap(err, "GitHub sent an incomplete PR")
-	}
-	projRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
-	if err != nil {
-		return errors.Wrapf(err, "finding valid project for '%s/%s', branch '%s'", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
-	}
-	if projRef == nil {
-		return nil
-	}
-
-	exists, err := isItemOnCommitQueue(projRef.Id, strconv.Itoa(*pr.Number))
-	if err != nil {
-		return errors.Wrapf(err, "checking if item is on commit queue for project '%s'", projRef.Id)
-	}
-	if !exists {
-		return nil
-	}
-
-	_, err = data.CommitQueueRemoveItem(projRef.Id, strconv.Itoa(*pr.Number), evergreen.GithubPatchUser)
-	if err != nil {
-		return errors.Wrapf(err, "can't remove item %d from commit queue for project '%s'", *pr.Number, projRef.Id)
 	}
 	return nil
 }
