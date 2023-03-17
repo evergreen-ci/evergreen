@@ -115,6 +115,9 @@ var (
 	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableHostsPerUser")
 	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableVolumesPerUser")
 	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnHostConfig{}, "SpawnHostsPerUser")
+
+	tracerEnabledKey        = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
+	tracerCollectorEndpoint = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
 )
 
 func byId(id string) bson.M {

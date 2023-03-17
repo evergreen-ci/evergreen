@@ -825,6 +825,10 @@ func (e *envState) initDepot(ctx context.Context) error {
 }
 
 func (e *envState) initTracer(ctx context.Context) error {
+	if !e.settings.Tracer.Enabled {
+		return nil
+	}
+
 	resource, err := resource.New(ctx,
 		resource.WithProcess(),
 		resource.WithHost(),
@@ -836,7 +840,7 @@ func (e *envState) initTracer(ctx context.Context) error {
 	}
 
 	client := otlptracegrpc.NewClient(
-		otlptracegrpc.WithEndpoint("http://ec2-54-90-249-87.compute-1.amazonaws.com:9080"),
+		otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint),
 	)
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
