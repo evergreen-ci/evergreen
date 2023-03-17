@@ -340,6 +340,8 @@ func FindFailedCommitQueuePatchesInTimeRange(projectID string, startTime, endTim
 	return Find(db.Query(query).Sort([]string{CreateTimeKey}))
 }
 
+// ByGithubPRAndCreatedBefore finds all patches that were created for a GitHub
+// PR before the given timestamp.
 func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) db.Q {
 	return db.Query(bson.M{
 		CreateTimeKey: bson.M{

@@ -160,7 +160,7 @@ func LogHostTaskFinished(taskId string, execution int, hostId, status string) {
 func LogContainerTaskFinished(taskID string, execution int, podID, status string) {
 	LogTaskFinished(taskID, execution, status)
 	if podID != "" {
-		LogPodEvent(podID, EventPodFinishedTask, podData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
+		LogPodEvent(podID, EventPodFinishedTask, PodData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
 	}
 }
 

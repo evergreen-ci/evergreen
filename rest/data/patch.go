@@ -178,16 +178,16 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 }
 
 // AbortPatchesFromPullRequest aborts patches with the same PR Number,
-// in the same repository, at the pull request's close time
+// in the same repository, at the pull request's close time. This returns
+// whether or not one of the GitHub patches is a commit queue item and is
+// currently merging the PR.
 func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
 		return err
 	}
 
-	err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "",
-		owner, repo, *event.Number)
-	if err != nil {
+	if err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "", owner, repo, *event.Number); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "aborting patches").Error(),

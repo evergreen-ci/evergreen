@@ -7,8 +7,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -39,6 +41,27 @@ func (r *podResolver) Task(ctx context.Context, obj *model.APIPod) (*model.APITa
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building API task from service: %s", err.Error()))
 	}
 	return apiTask, nil
+}
+
+func (r *podResolver) Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error) {
+	events, count, err := event.MostRecentPaginatedPodEvents(utility.FromStringPtr(obj.ID), *limit, *page)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod events: %s", err.Error()))
+	}
+	apiEventLogEntries := []*restModel.PodAPIEventLogEntry{}
+	for _, e := range events {
+		apiEventLog := restModel.PodAPIEventLogEntry{}
+		err = apiEventLog.BuildFromService(e)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
+		}
+		apiEventLogEntries = append(apiEventLogEntries, &apiEventLog)
+	}
+	podEvents := PodEvents{
+		EventLogEntries: apiEventLogEntries,
+		Count:           count,
+	}
+	return &podEvents, nil
 }
 
 // Os is the resolver for the os field.

@@ -16,8 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -269,13 +267,6 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
 	err := data.ConcludeMerge(p.patchId, p.Status)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":      "failed to conclude commit queue merge",
-			"route":        "/rest/v2/commit_queue/{patch_id}/conclude_merge",
-			"patch":        p.patchId,
-			"patch_status": p.Status,
-			"jira_ticket":  "EVG-18724",
-		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "concluding merge"))
 	}
 
