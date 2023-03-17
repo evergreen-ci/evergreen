@@ -309,26 +309,37 @@ func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string
 		return errors.New("PR contains no base branch label")
 	}
 	branch := pr.Base.GetRef()
-	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
+	repoRef, err := model.FindRepoRefByOwnerAndRepo(owner, repo)
 	if err != nil {
-		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
+		return errors.Wrapf(err, "fetching repo ref for '%s'%s'", owner, repo)
+	}
+	projectRefs, err := model.FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
+	if err != nil {
+		return errors.Wrapf(err, "fetching merged project refs for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
 	}
-	helpMarkdown := getHelpTextFromProjects(projectRefs)
+
+	helpMarkdown := getHelpTextFromProjects(repoRef, projectRefs)
 	return gh.sc.AddCommentToPR(ctx, owner, repo, prNum, helpMarkdown)
 }
 
-func getHelpTextFromProjects(projectRefs []model.ProjectRef) string {
+func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.ProjectRef) string {
 	var manualPRProjectEnabled, autoPRProjectEnabled, cqProjectEnabled bool
 	var cqProjectMessage string
 
+	canInheritRepoPRSettings := true
 	for _, p := range projectRefs {
-		if p.IsManualPRTestingEnabled() {
+		if p.IsEnabled() && p.IsManualPRTestingEnabled() {
 			manualPRProjectEnabled = true
 		}
-		if p.IsAutoPRTestingEnabled() {
+		if p.IsEnabled() && p.IsAutoPRTestingEnabled() {
 			autoPRProjectEnabled = true
 		}
+		// If the project is explicitly disabled, then we shouldn't consider if the repo allows for PR testing.
+		if !p.IsEnabled() {
+			canInheritRepoPRSettings = false
+		}
+
 		if err := p.CommitQueueIsOn(); err == nil {
 			cqProjectEnabled = true
 		} else if cqMessage := p.CommitQueue.Message; cqMessage != "" {
@@ -336,13 +347,30 @@ func getHelpTextFromProjects(projectRefs []model.ProjectRef) string {
 		}
 	}
 
+	// If the branch isn't explicitly disabled, also consider the repo settings.
+	if canInheritRepoPRSettings && repoRef != nil {
+		if repoRef.IsManualPRTestingEnabled() {
+			manualPRProjectEnabled = true
+		}
+		if repoRef.IsAutoPRTestingEnabled() {
+			autoPRProjectEnabled = true
+		}
+	}
+
 	formatStr := "- `%s` \n    - %s\n"
 	formatStrStrikethrough := "- ~`%s`~ \n    - %s\n"
 	res := fmt.Sprintf("### %s\n", "Available Evergreen Comment Commands")
+	if autoPRProjectEnabled {
+		res += fmt.Sprintf(formatStr, retryComment, `
+attempts to create a new PR patch; 
+this is useful when something went wrong with automatically creating PR patches`)
+	}
+	if manualPRProjectEnabled {
+		res += fmt.Sprintf(formatStr, patchComment, `
+attempts to create a new PR patch; 
+this is required to create a PR patch when only manual PR testing is enabled`)
+	}
 	if autoPRProjectEnabled || manualPRProjectEnabled {
-		// Wrap comments in separate code blocks to make it clear they are aliases.
-		comments := fmt.Sprintf("%s`, `%s", retryComment, patchComment)
-		res += fmt.Sprintf(formatStr, comments, "attempts to create a new PR patch")
 		res += fmt.Sprintf(formatStr, refreshStatusComment, "resyncs PR GitHub checks")
 	}
 	if cqProjectEnabled {
