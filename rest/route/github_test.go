@@ -404,7 +404,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 func TestGetHelpTextFromProjects(t *testing.T) {
 	cqAndPREnabledProject := model.ProjectRef{
 		Id:      "cqEnabled",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -412,12 +412,12 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 	}
 	manualPRProject := model.ProjectRef{
 		Id:                     "manualEnabled",
-		Enabled:                utility.TruePtr(),
+		Enabled:                true,
 		ManualPRTestingEnabled: utility.TruePtr(),
 	}
 	cqDisabledWithTextProject := model.ProjectRef{
 		Id:      "cqDisabled",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 			Message: "this commit queue isn't enabled",
