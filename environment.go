@@ -35,6 +35,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -236,7 +237,6 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
-	tracerProvider          *trace.TracerProvider
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
 	closers                 []closerOp
@@ -851,7 +851,7 @@ func (e *envState) initTracer(ctx context.Context) error {
 		trace.WithBatcher(exp),
 		trace.WithResource(resource),
 	)
-	e.tracerProvider = tp
+	otel.SetTracerProvider(tp)
 
 	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
 		catcher := grip.NewBasicCatcher()
