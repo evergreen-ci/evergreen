@@ -371,6 +371,7 @@ func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
 	s.Contains(cmd.Env, "TMPDIR")
 	s.Contains(cmd.Env, "GOCACHE")
 	s.Contains(cmd.Env, "CI")
+	s.Contains(cmd.Env, "XDG_CACHE_HOME")
 	s.Contains(cmd.Env, "foo")
 }
 
