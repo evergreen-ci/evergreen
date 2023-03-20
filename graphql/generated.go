@@ -73,7 +73,6 @@ type DirectiveRoot struct {
 	CanCreateProject          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
 	RequireProjectFieldAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	RequireSuperUser          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {

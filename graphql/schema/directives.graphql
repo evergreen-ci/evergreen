@@ -1,9 +1,4 @@
 """
-requireSuperUser is used to restrict certain actions to superusers.
-"""
-directive @requireSuperUser on FIELD_DEFINITION
-
-"""
 canCreateProject is used to restrict certain actions to admins.
 """
 directive @canCreateProject on ARGUMENT_DEFINITION 
