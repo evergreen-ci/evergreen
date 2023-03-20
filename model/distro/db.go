@@ -37,6 +37,7 @@ var (
 	IsVirtualWorkstationKey  = bsonutil.MustHaveTag(Distro{}, "IsVirtualWorkstation")
 	IsClusterKey             = bsonutil.MustHaveTag(Distro{}, "IsCluster")
 	IceCreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IceCreamSettings")
+	IamInstanceProfileArnKey = bsonutil.MustHaveTag(Distro{}, "IamInstanceProfileArn")
 )
 
 var (
