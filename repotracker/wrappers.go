@@ -26,7 +26,7 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 	if err != nil {
 		grip.Warning(message.Fields{
 			"runner":  RunnerName,
-			"message": "Github credentials not specified in Evergreen credentials file",
+			"message": "GitHub credentials not specified in Evergreen credentials file",
 		})
 		return nil, errors.WithStack(err)
 	}

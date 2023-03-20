@@ -171,11 +171,9 @@ func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
 }
 
 type APICommitQueueParams struct {
-	Enabled               *bool   `json:"enabled"`
-	RequireSigned         *bool   `json:"require_signed"`
-	RequiredApprovalCount *int    `json:"required_approval_count"`
-	MergeMethod           *string `json:"merge_method"`
-	Message               *string `json:"message"`
+	Enabled     *bool   `json:"enabled"`
+	MergeMethod *string `json:"merge_method"`
+	Message     *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition {
@@ -200,8 +198,6 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
-	cqParams.RequireSigned = utility.BoolPtrCopy(params.RequireSigned)
-	cqParams.RequiredApprovalCount = utility.ToIntPtr(params.RequiredApprovalCount)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
 }
@@ -209,8 +205,6 @@ func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueP
 func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
-	serviceParams.RequireSigned = utility.BoolPtrCopy(cqParams.RequireSigned)
-	serviceParams.RequiredApprovalCount = utility.FromIntPtr(cqParams.RequiredApprovalCount)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 

@@ -23,7 +23,7 @@ func TestPodEvents(t *testing.T) {
 
 			assert.Equal(t, id, events[0].ResourceId)
 			require.NotZero(t, events[0].Data)
-			data, ok := events[0].Data.(*podData)
+			data, ok := events[0].Data.(*PodData)
 			require.True(t, ok)
 			assert.Equal(t, oldStatus, data.OldStatus)
 			assert.Equal(t, newStatus, data.NewStatus)
@@ -41,7 +41,7 @@ func TestPodEvents(t *testing.T) {
 
 			assert.Equal(t, podID, events[0].ResourceId)
 			require.NotZero(t, events[0].Data)
-			data, ok := events[0].Data.(*podData)
+			data, ok := events[0].Data.(*PodData)
 			require.True(t, ok)
 			assert.Equal(t, taskID, data.TaskID)
 			assert.Equal(t, execution, data.TaskExecution)

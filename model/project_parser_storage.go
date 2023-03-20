@@ -97,14 +97,6 @@ func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergre
 		return method, errors.Wrap(err, "upserting parser project into the DB")
 	}
 
-	flags, flagErr := evergreen.GetServiceFlags()
-	if flagErr != nil {
-		return method, errors.Wrap(flagErr, "getting service flags to check ability to fall back to S3")
-	}
-	if flags.ParserProjectS3StorageDisabled {
-		return method, err
-	}
-
 	newMethod := evergreen.ProjectStorageMethodS3
 	if err := ParserProjectUpsertOne(ctx, settings, newMethod, pp); err != nil {
 		return method, errors.Wrap(err, "falling back to upserting parser project into S3")
