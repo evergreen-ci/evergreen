@@ -21,7 +21,10 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
 
 	// Send OTEL traces for each request.
-	srv.Use(otelgqlgen.Middleware())
+	// Only create spans for resolved fields.
+	srv.Use(otelgqlgen.Middleware(
+		otelgqlgen.WithCreateSpanFromFields(func(fieldCtx *graphql.FieldContext) bool { return fieldCtx.IsResolver }),
+	))
 
 	// Apollo tracing support https://github.com/apollographql/apollo-tracing
 	srv.Use(apollotracing.Tracer{})
