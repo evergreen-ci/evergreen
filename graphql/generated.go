@@ -70,6 +70,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	CanCreateProject          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
 	RequireProjectFieldAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireSuperUser          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -8029,9 +8030,24 @@ func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context,
 	var arg0 data.CopyProjectOpts
 	if tmp, ok := rawArgs["project"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
-		arg0, err = ec.unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) {
+			return ec.unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx, tmp)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.CanCreateProject == nil {
+				return nil, errors.New("directive canCreateProject is not implemented")
+			}
+			return ec.directives.CanCreateProject(ctx, rawArgs, directive0)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(data.CopyProjectOpts); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts`, tmp))
 		}
 	}
 	args["project"] = arg0
@@ -8053,9 +8069,24 @@ func (ec *executionContext) field_Mutation_createProject_args(ctx context.Contex
 	var arg0 model.APIProjectRef
 	if tmp, ok := rawArgs["project"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
-		arg0, err = ec.unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) {
+			return ec.unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.CanCreateProject == nil {
+				return nil, errors.New("directive canCreateProject is not implemented")
+			}
+			return ec.directives.CanCreateProject(ctx, rawArgs, directive0)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(model.APIProjectRef); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIProjectRef`, tmp))
 		}
 	}
 	args["project"] = arg0
@@ -21417,28 +21448,8 @@ func (ec *executionContext) _Mutation_createProject(ctx context.Context, field g
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().CreateProject(rctx, fc.Args["project"].(model.APIProjectRef), fc.Args["requestS3Creds"].(*bool))
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireSuperUser == nil {
-				return nil, errors.New("directive requireSuperUser is not implemented")
-			}
-			return ec.directives.RequireSuperUser(ctx, nil, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*model.APIProjectRef); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIProjectRef`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateProject(rctx, fc.Args["project"].(model.APIProjectRef), fc.Args["requestS3Creds"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21582,28 +21593,8 @@ func (ec *executionContext) _Mutation_copyProject(ctx context.Context, field gra
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["project"].(data.CopyProjectOpts), fc.Args["requestS3Creds"].(*bool))
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireSuperUser == nil {
-				return nil, errors.New("directive requireSuperUser is not implemented")
-			}
-			return ec.directives.RequireSuperUser(ctx, nil, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*model.APIProjectRef); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIProjectRef`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["project"].(data.CopyProjectOpts), fc.Args["requestS3Creds"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

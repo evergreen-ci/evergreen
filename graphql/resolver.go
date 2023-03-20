@@ -25,7 +25,8 @@ func New(apiURL string) Config {
 			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
-	c.Directives.RequireSuperUser = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+	c.Directives.CanCreateProject = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+		// Allow if user is superuser
 		user := mustHaveUser(ctx)
 		opts := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
@@ -35,6 +36,33 @@ func New(apiURL string) Config {
 		}
 		if user.HasPermission(opts) {
 			return next(ctx)
+		}
+
+		// Check if this call is for create or copy project
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "Project not specified")
+		}
+		projectIdToCopy, hasProjectId := args["project"].(map[string]interface{})["projectIdToCopy"].(string)
+		if hasProjectId {
+			// Check if the user has permission to copy the project
+			opts := gimlet.PermissionOpts{
+				Resource:      projectIdToCopy,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			}
+			if user.HasPermission(opts) {
+				return next(ctx)
+			}
+		} else {
+			canCreate, err := user.HasProjectCreatePermission()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking user permissions: %s", err.Error()))
+			}
+			if canCreate {
+				return next(ctx)
+			}
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
 	}
