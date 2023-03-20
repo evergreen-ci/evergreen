@@ -909,9 +909,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
-	if v == nil {
-		fmt.Println("This shouldn't be nil though")
-	}
+
 	patchDoc.Githash = v.Revision
 	matchingTasks, err := project.VariantTasksForSelectors(intent.Definitions, patchDoc.GetRequester())
 	if err != nil {
