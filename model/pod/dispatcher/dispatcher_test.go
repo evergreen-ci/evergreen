@@ -150,7 +150,7 @@ func TestAssignNextTask(t *testing.T) {
 		return model.ProjectRef{
 			Id:         utility.RandomString(),
 			Identifier: utility.RandomString(),
-			Enabled:    utility.TruePtr(),
+			Enabled:    true,
 		}
 	}
 
@@ -262,7 +262,7 @@ func TestAssignNextTask(t *testing.T) {
 		},
 		"DispatchesTaskInDisabledHiddenProject": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			params.task.Requester = evergreen.GithubPRRequester
-			params.ref.Enabled = utility.FalsePtr()
+			params.ref.Enabled = false
 			params.ref.Hidden = utility.TruePtr()
 			require.NoError(t, params.dispatcher.Insert())
 			require.NoError(t, params.pod.Insert())
@@ -370,7 +370,7 @@ func TestAssignNextTask(t *testing.T) {
 			checkDispatcherTasks(t, params.dispatcher, nil)
 		},
 		"DequeuesTaskInDisabledProjectAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
-			params.ref.Enabled = utility.FalsePtr()
+			params.ref.Enabled = false
 			require.NoError(t, params.pod.Insert())
 			require.NoError(t, params.task.Insert())
 			require.NoError(t, params.ref.Insert())

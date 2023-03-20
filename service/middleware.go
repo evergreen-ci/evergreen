@@ -294,7 +294,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.U
 	pc.AllProjects = make([]restModel.UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
-		if !p.IsEnabled() {
+		if !p.Enabled {
 			continue
 		}
 		if !p.IsPrivate() || includePrivate {

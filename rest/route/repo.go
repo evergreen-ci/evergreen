@@ -260,7 +260,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 		githubCheckIds []string
 	}{}
 	for _, p := range mergedRepos {
-		if !p.IsEnabled() {
+		if !p.Enabled {
 			continue
 		}
 		counts := branchInfo[p.Branch]

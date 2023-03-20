@@ -29,7 +29,7 @@ func getTestProjectSettings(projectId string) model.ProjectSettings {
 	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
 			Owner:      "admin",
-			Enabled:    utility.TruePtr(),
+			Enabled:    true,
 			Private:    utility.TruePtr(),
 			Identifier: projectId,
 			Admins:     []string{},
@@ -62,7 +62,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	beforeSettings := getTestProjectSettings(s.projectId)
 
 	afterSettings := getTestProjectSettings(s.projectId)
-	afterSettings.ProjectRef.Enabled = utility.FalsePtr()
+	afterSettings.ProjectRef.Enabled = false
 
 	s.event = model.ProjectChangeEvent{
 		User: "me",
@@ -78,7 +78,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 
 	projectRef := &model.ProjectRef{
 		Id:      "mci2",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 	}
 	s.NoError(projectRef.Insert())
 

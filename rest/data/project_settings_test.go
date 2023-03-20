@@ -272,7 +272,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				Owner:               ref.Owner,
 				Repo:                ref.Repo,
 				Branch:              ref.Branch,
-				Enabled:             utility.TruePtr(),
+				Enabled:             true,
 				PRTestingEnabled:    utility.TruePtr(),
 				GithubChecksEnabled: utility.TruePtr(),
 				CommitQueue: model.CommitQueueParams{
@@ -283,7 +283,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			ref.PRTestingEnabled = utility.TruePtr()
 			ref.GithubChecksEnabled = utility.TruePtr()
 			assert.NoError(t, ref.Upsert())
-			ref.Enabled = utility.TruePtr()
+			ref.Enabled = true
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(ref))
 			apiChanges := &restModel.APIProjectSettings{
@@ -299,7 +299,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				Owner:               ref.Owner,
 				Repo:                ref.Repo,
 				Branch:              ref.Branch,
-				Enabled:             utility.TruePtr(),
+				Enabled:             true,
 				PRTestingEnabled:    utility.TruePtr(),
 				GithubChecksEnabled: utility.TruePtr(),
 				CommitQueue: model.CommitQueueParams{
@@ -329,7 +329,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				Owner:   ref.Owner,
 				Repo:    ref.Repo,
 				Branch:  ref.Branch,
-				Enabled: utility.TruePtr(),
+				Enabled: true,
 			}
 			assert.NoError(t, oldRef.Insert())
 
@@ -888,7 +888,7 @@ func TestCopyProject(t *testing.T) {
 			Repo:       "evergreen",
 			Branch:     "main",
 			Restricted: utility.FalsePtr(),
-			Enabled:    utility.TruePtr(),
+			Enabled:    true,
 			Admins:     []string{"oldAdmin"},
 			ContainerSecrets: []model.ContainerSecret{
 				{

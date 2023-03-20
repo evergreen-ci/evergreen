@@ -1047,7 +1047,7 @@ func TestValidatePlugins(t *testing.T) {
 	require.NoError(t, db.Clear(model.ProjectRefCollection),
 		"Error clearing collection")
 	projectRef := &model.ProjectRef{
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		Id:      "p1",
 	}
 	assert.Nil(projectRef.Insert())

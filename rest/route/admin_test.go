@@ -350,7 +350,7 @@ func (s *AdminRouteSuite) TestRestartVersionsRoute() {
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		Owner:   "me",
 		Repo:    "my-repo",
 		Branch:  "my-branch",
