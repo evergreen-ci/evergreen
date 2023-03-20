@@ -50,7 +50,7 @@ type ProjectRef struct {
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
 	DisplayName            string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
-	Enabled                *bool               `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
+	Enabled                bool                `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
 	Private                *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
 	Restricted             *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
 	Owner                  string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
@@ -319,10 +319,6 @@ var (
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
 )
 
-func (p *ProjectRef) IsEnabled() bool {
-	return utility.FromBoolPtr(p.Enabled)
-}
-
 func (p *ProjectRef) IsPrivate() bool {
 	return utility.FromBoolPtr(p.Private)
 }
@@ -475,7 +471,7 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 		p.Id = mgobson.NewObjectId().Hex()
 	}
 	// Ensure that any new project is originally explicitly disabled and set to private.
-	p.Enabled = utility.FalsePtr()
+	p.Enabled = false
 	p.Private = utility.TruePtr()
 
 	// if a hidden project exists for this configuration, use that ID
@@ -727,8 +723,10 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	}
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-		return errors.Wrap(err, "validating new owner/repo")
+	if p.Enabled {
+		if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+			return errors.Wrap(err, "validating new owner/repo")
+		}
 	}
 
 	if p.UseRepoSettings() {
@@ -772,7 +770,7 @@ func (p *ProjectRef) addGithubConflictsToUpdate(update bson.M) bson.M {
 		}))
 		return update
 	}
-	if mergedProject.IsEnabled() {
+	if mergedProject.Enabled {
 		conflicts, err := mergedProject.GetGithubProjectConflicts()
 		if err != nil {
 			grip.Debug(message.WrapError(err, message.Fields{
@@ -939,7 +937,9 @@ func GetNumberOfEnabledProjectsForOwnerRepo(owner, repo string) (int, error) {
 }
 
 func getNumberOfEnabledProjects(owner, repo string) (int, error) {
-	pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
+	pipeline := []bson.M{
+		{"$match": bson.M{ProjectRefEnabledKey: true}},
+	}
 	if owner != "" && repo != "" {
 		// Check owner and repos in project ref or repo ref.
 		pipeline = append(pipeline, bson.M{"$match": byOwnerAndRepo(owner, repo)})
@@ -1015,8 +1015,7 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 
 func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
 	repoRef = &RepoRef{ProjectRef{
-		Enabled: utility.TruePtr(),
-		Admins:  []string{},
+		Admins: []string{},
 	}}
 
 	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
@@ -1503,7 +1502,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
-	if repoRef == nil || !repoRef.IsEnabled() || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
+	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
 		grip.Debug(message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref not configured for PR testing untracked branches",
@@ -1523,7 +1522,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	// if a disabled project exists, then return early
 	var hiddenProject *ProjectRef
 	for i, p := range projectRefs {
-		if !p.IsEnabled() && !p.IsHidden() {
+		if !p.Enabled && !p.IsHidden() {
 			grip.Debug(message.Fields{
 				"source":  "find project ref for PR testing",
 				"message": "project ref is disabled, not PR testing",
@@ -1552,7 +1551,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			Repo:      repo,
 			Branch:    branch,
 			RepoRefId: repoRef.Id,
-			Enabled:   utility.FalsePtr(),
+			Enabled:   false,
 			Hidden:    utility.TruePtr(),
 		}
 		if err = hiddenProject.Add(nil); err != nil {
@@ -1819,7 +1818,7 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 		return nil, err
 	}
 	for _, p := range projectRefs {
-		if p.IsEnabled() && len(p.PeriodicBuilds) > 0 {
+		if p.Enabled && len(p.PeriodicBuilds) > 0 {
 			res = append(res, p)
 		}
 	}
@@ -1887,7 +1886,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
-			ProjectRefEnabledKey:               p.Enabled,
 			ProjectRefBranchKey:                p.Branch,
 			ProjectRefBatchTimeKey:             p.BatchTime,
 			ProjectRefRemotePathKey:            p.RemotePath,
@@ -1911,8 +1909,10 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				return false, errors.Wrap(err, "getting evergreen config")
 			}
 			// Allow a user to modify owner and repo only if they are editing an unattached project
-			if err = p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-				return false, errors.Wrap(err, "validating new owner/repo")
+			if p.Enabled {
+				if err = p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+					return false, errors.Wrap(err, "validating new owner/repo")
+				}
 			}
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
@@ -1921,6 +1921,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
+			setUpdate[ProjectRefEnabledKey] = p.Enabled
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
@@ -2053,29 +2054,6 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 	before, err := GetProjectSettingsById(projectId, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
-	}
-
-	if section == ProjectPageGeneralSection {
-		originalMergedRef, err := GetProjectRefMergedWithRepo(before.ProjectRef)
-		if err != nil {
-			return errors.Wrap(err, "getting merged project ref for validation")
-		}
-		newMergedRef, err := GetProjectRefMergedWithRepo(ProjectRef{
-			RepoRefId: before.ProjectRef.RepoRefId,
-		})
-		if err != nil {
-			return errors.Wrap(err, "getting merged project ref for validation")
-		}
-		config, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.Wrap(err, "getting evergreen config")
-		}
-		if newMergedRef.IsEnabled() {
-			_, err = ValidateEnabledProjectsLimit(projectId, config, originalMergedRef, newMergedRef)
-			if err != nil {
-				return errors.Wrap(err, "validating project creation")
-			}
-		}
 	}
 
 	modified, err := SaveProjectPageForSection(projectId, nil, section, false)
@@ -2289,7 +2267,7 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 // - we are creating a new project
 // - the original project was disabled
 func shouldValidateTotalProjectLimit(isNewProject bool, originalMergedRef *ProjectRef) bool {
-	return isNewProject || !originalMergedRef.IsEnabled()
+	return isNewProject || !originalMergedRef.Enabled
 }
 
 // shouldValidateOwnerRepoLimit will return true if:
@@ -2339,11 +2317,9 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 	return http.StatusOK, nil
 }
 
+// ValidateProjectRefAndSetDefaults validates the project ref and sets default values.
+// Should only be called on enabled project refs or repo refs.
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
-	if !p.IsEnabled() {
-		return nil
-	}
-
 	// verify input and webhooks
 	if p.Owner == "" || p.Repo == "" {
 		return errors.New("no owner/repo specified")
@@ -2663,7 +2639,7 @@ func UpdateNextPeriodicBuild(projectId, definition string, nextRun time.Time) er
 
 func (p *ProjectRef) CommitQueueIsOn() error {
 	catcher := grip.NewBasicCatcher()
-	if !p.IsEnabled() {
+	if !p.Enabled {
 		catcher.Add(errors.Errorf("project '%s' is disabled", p.Id))
 	}
 	if p.IsPatchingDisabled() {
@@ -3193,7 +3169,7 @@ func newContainerSecretExternalName(smConf evergreen.SecretsManagerConfig, proje
 // particular reason that the task can or cannot be dispatched.
 func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, reason string) {
 	// GitHub PR tasks are still allowed to run for disabled hidden projects.
-	if !pRef.IsEnabled() {
+	if !pRef.Enabled {
 		// GitHub PR tasks are still allowed to run for disabled hidden
 		// projects.
 		if t.Requester == evergreen.GithubPRRequester && pRef.IsHidden() {

@@ -72,7 +72,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Id:               "mci",
-		Enabled:          utility.TruePtr(),
+		Enabled:          true,
 		PatchingDisabled: utility.FalsePtr(),
 		Branch:           "main",
 		RemotePath:       "self-tests.yml",
@@ -95,7 +95,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "main",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		RemotePath: "self-tests.yml",
 	}).Insert())
 

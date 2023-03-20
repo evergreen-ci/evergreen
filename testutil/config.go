@@ -416,7 +416,6 @@ func MockConfig() *evergreen.Settings {
 			ContainerConfigurationsDisabled: true,
 			RestRoutePartialAuthDisabled:    true,
 			UIPartialAuthDisabled:           true,
-			ParserProjectS3StorageDisabled:  true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{
@@ -459,6 +458,10 @@ func MockConfig() *evergreen.Settings {
 			SpawnHostsPerUser:         5,
 			UnexpirableHostsPerUser:   2,
 			UnexpirableVolumesPerUser: 2,
+		},
+		Tracer: evergreen.TracerConfig{
+			Enabled:           true,
+			CollectorEndpoint: "localhost:4317",
 		},
 		ShutdownWaitSeconds: 15,
 	}

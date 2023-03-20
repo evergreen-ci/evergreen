@@ -357,7 +357,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		statusCode, err := model.ValidateEnabledProjectsLimit(responseRef.Id, settings, &origProjectRef, &model.ProjectRef{
-			Enabled: utility.ToBoolPtr(responseRef.Enabled),
+			Enabled: responseRef.Enabled,
 			Owner:   responseRef.Owner,
 			Repo:    responseRef.Repo,
 		})
@@ -586,7 +586,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.SpawnHostScriptPath = responseRef.SpawnHostScriptPath
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
-	projectRef.Enabled = &responseRef.Enabled
+	projectRef.Enabled = responseRef.Enabled
 	projectRef.Private = &responseRef.Private
 	projectRef.Restricted = &responseRef.Restricted
 	projectRef.Owner = responseRef.Owner

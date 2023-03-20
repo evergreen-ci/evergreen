@@ -391,7 +391,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	// We have to iterate over the merged project refs to verify if they are enabled
 	enabledProjects := []model.ProjectRef{}
 	for _, p := range allProjects {
-		if p.IsEnabled() {
+		if p.Enabled {
 			enabledProjects = append(enabledProjects, p)
 		}
 	}

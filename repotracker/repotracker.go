@@ -88,7 +88,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 
-	if !projectRef.IsEnabled() || projectRef.IsRepotrackerDisabled() {
+	if !projectRef.Enabled || projectRef.IsRepotrackerDisabled() {
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
 		// projects.

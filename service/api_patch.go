@@ -106,7 +106,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if pref.IsPatchingDisabled() || !pref.IsEnabled() {
+	if pref.IsPatchingDisabled() || !pref.Enabled {
 		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("patching is disabled"))
 		return
 	}

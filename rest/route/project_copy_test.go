@@ -38,7 +38,7 @@ func (s *ProjectCopySuite) SetupSuite() {
 			Branch:     "abcd",
 			Owner:      "evergreen-ci",
 			Repo:       "evergreen",
-			Enabled:    utility.TruePtr(),
+			Enabled:    true,
 			Admins:     []string{"my-user"},
 		},
 		{
@@ -47,7 +47,7 @@ func (s *ProjectCopySuite) SetupSuite() {
 			Branch:     "bcde",
 			Owner:      "evergreen-ci",
 			Repo:       "evergreen",
-			Enabled:    utility.TruePtr(),
+			Enabled:    true,
 			Admins:     []string{"my-user"},
 		},
 	}
@@ -145,13 +145,13 @@ func (s *copyVariablesSuite) SetupTest() {
 		{
 			Id:      "projectA",
 			Branch:  "abcd",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 			Admins:  []string{"my-user"},
 		},
 		{
 			Id:      "projectB",
 			Branch:  "bcde",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 			Admins:  []string{"my-user"},
 		},
 	}

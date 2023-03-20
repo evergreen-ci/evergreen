@@ -758,7 +758,7 @@ buildvariants:
 		Repo:       "sample",
 		Branch:     "main",
 		RemotePath: "evergreen.yml",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		BatchTime:  180,
 	}
 	require.NoError(t, projectRef.Insert())
@@ -1069,7 +1069,7 @@ tasks:
 		Repo:       "sample",
 		Branch:     "main",
 		RemotePath: "evergreen.yml",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		BatchTime:  180,
 	}
 	require.NoError(t, projectRef.Insert())
