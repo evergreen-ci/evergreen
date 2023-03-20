@@ -43,6 +43,7 @@ func NewConfigModel() *APIAdminSettings {
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
+		Tracer:            &APITracerSettings{},
 	}
 }
 
@@ -93,6 +94,7 @@ type APIAdminSettings struct {
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
+	Tracer              *APITracerSettings                `json:"tracer,omitempty"`
 	ShutdownWaitSeconds *int                              `json:"shutdown_wait_seconds,omitempty"`
 }
 
@@ -2796,6 +2798,31 @@ func (c *APISpawnHostConfig) ToService() (interface{}, error) {
 	}
 	if c.SpawnHostsPerUser != nil {
 		config.SpawnHostsPerUser = *c.SpawnHostsPerUser
+	}
+
+	return config, nil
+}
+
+type APITracerSettings struct {
+	Enabled           *bool   `json:"enabled"`
+	CollectorEndpoint *string `json:"collector_endpoint"`
+}
+
+func (c *APITracerSettings) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TracerConfig:
+		c.Enabled = &v.Enabled
+		c.CollectorEndpoint = &v.CollectorEndpoint
+	default:
+		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APITracerSettings) ToService() (interface{}, error) {
+	config := evergreen.TracerConfig{
+		Enabled:           utility.FromBoolPtr(c.Enabled),
+		CollectorEndpoint: utility.FromStringPtr(c.CollectorEndpoint),
 	}
 
 	return config, nil
