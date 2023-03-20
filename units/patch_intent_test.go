@@ -1354,6 +1354,26 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 		Id: p.Id.Hex(),
 	}
 	s.NoError(pp.Insert())
+	latestVersion := model.Version{
+		Id:         "childProj-some-version",
+		Identifier: "childProj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	s.Require().NoError(latestVersion.Insert())
+
+	latestVersionParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
+buildvariants:
+- name: my-build-variant
+  display_name: my-build-variant
+  run_on:
+    - some-distro
+  tasks:
+    - my-task
+tasks:
+- name: my-task`), latestVersionParserProject))
+	latestVersionParserProject.Id = latestVersion.Id
+	s.Require().NoError(latestVersionParserProject.Insert())
 
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
@@ -1365,7 +1385,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 	s.NoError(err)
 
 	s.Len(p.Triggers.ChildPatches, 0)
-	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should succeed even with patch alias that doesn't match any defined aliases")
+	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 
 	dbPatch, err := patch.FindOneId(p.Id.Hex())

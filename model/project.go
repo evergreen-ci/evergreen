@@ -1302,8 +1302,8 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 				revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 				continue
 			}
+			return lastGoodVersion, project, pp, nil
 		}
-		return lastGoodVersion, project, pp, nil
 	}
 
 	if lastGoodVersion == nil {
