@@ -1285,25 +1285,28 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 	for i := 0; i < retryCount; i++ {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
 		if err != nil {
-			// database error, don't log critical
+			// Database error, don't log critical but try again.
 			continue
 		}
-		if lastGoodVersion != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-			defer cancel()
-			env := evergreen.GetEnvironment()
-			project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
-			if err != nil {
-				grip.Critical(message.WrapError(err, message.Fields{
-					"message": "last known good version has malformed config",
-					"version": lastGoodVersion.Id,
-					"project": projectId,
-				}))
-				revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
-				continue
-			}
-			return lastGoodVersion, project, pp, nil
+		if lastGoodVersion == nil {
+			// If we received no version with no error then no reason to keep trying.
+			break
 		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
+		defer cancel()
+		env := evergreen.GetEnvironment()
+		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
+		if err != nil {
+			grip.Critical(message.WrapError(err, message.Fields{
+				"message": "last known good version has malformed config",
+				"version": lastGoodVersion.Id,
+				"project": projectId,
+			}))
+			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
+			continue
+		}
+		return lastGoodVersion, project, pp, nil
 	}
 
 	if lastGoodVersion == nil {
