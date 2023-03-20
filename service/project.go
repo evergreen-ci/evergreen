@@ -48,13 +48,11 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionProjectCreate,
-		RequiredLevel: evergreen.ProjectCreate.Value,
+	canCreate, err := dbUser.HasProjectCreatePermission()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
-	canCreate := dbUser.HasPermission(opts)
 
 	spruceLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
 	newUILink := ""
