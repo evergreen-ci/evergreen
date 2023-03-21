@@ -62,6 +62,9 @@ type EC2ProviderSettings struct {
 	// SecurityGroupIDs is a list of security group IDs.
 	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
 
+	// IAMInstanceProfileARN is the Amazon Resource Name (ARN) of the instance profile.
+	IAMInstanceProfileARN string `mapstructure:"iam_instance_profile_arn,omitempty" json:"iam_instance_profile_arn,omitempty"  bson:"iam_instance_profile_arn,omitempty"`
+
 	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
 	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
 
