@@ -1505,7 +1505,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
 	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
-	s.Equal("a_new_arn", ec2Settings.IAMInstanceProfileArn)
+	s.Equal("a_new_arn", ec2Settings.IAMInstanceProfileARN)
 
 	// create provider list, choose by region
 	settings2 := EC2ProviderSettings{
@@ -1513,7 +1513,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 		AMI:                   "other_ami",
 		InstanceType:          "other_instance",
 		SecurityGroupIDs:      []string{"ghijkl"},
-		IAMInstanceProfileArn: "a_beautiful_profile",
+		IAMInstanceProfileARN: "a_beautiful_profile",
 		BidPrice:              float64(0.002),
 		AWSKeyID:              "other_key_id",
 		KeyName:               "other_key",
@@ -1532,7 +1532,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
 	s.Equal(ec2Settings.Region, "us-east-2")
 	s.Equal(ec2Settings.InstanceType, "other_instance")
-	s.Equal(ec2Settings.IAMInstanceProfileArn, "a_beautiful_profile")
+	s.Equal(ec2Settings.IAMInstanceProfileARN, "a_beautiful_profile")
 }
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {
