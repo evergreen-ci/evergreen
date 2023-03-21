@@ -3,7 +3,6 @@ mciModule.controller(
   function ($scope, $window, $http, $location, $mdDialog, timeUtil) {
     $scope.availableTriggers = $window.availableTriggers;
     $scope.userId = $window.user.Id;
-    $scope.create = $window.canCreate;
     $scope.slackAppName = $window.slackAppName;
 
     $scope.projectVars = {};
@@ -349,76 +348,6 @@ mciModule.controller(
     $scope.removeGithubTrigger = function (index) {
       $scope.settingsFormData.github_trigger_aliases.splice(index, 1);
       $scope.isDirty = true;
-    };
-
-    $scope.addProject = function () {
-      $scope.modalOpen = false;
-      $("#admin-modal").modal("hide");
-
-      if ($scope.findProject($scope.newProject.identifier)) {
-        console.log("project identifier already exists");
-        $scope.newProjectMessage = "Project with this ID or identifier already exists.";
-        $scope.newProject = {};
-        return;
-      }
-
-      // if copyProject is set, copy the current project
-      if ($scope.newProject.copyProject) {
-        $http
-          .put("/project/" + $scope.newProject.identifier, $scope.newProject)
-          .then(
-            function (resp) {
-              var data_put = resp.data;
-              item = Object.assign({}, $scope.settingsFormData);
-              item.identifier = $scope.newProject.identifier;
-              item.pr_testing_enabled = false;
-              item.manual_pr_testing_enabled = false;
-              item.commit_queue.enabled = false;
-              item.commit_queue.require_signed = false;
-              item.git_tag_versions_enabled = false;
-              item.github_checks_enabled = false;
-              item.enabled = false;
-              item.subscriptions = _.filter($scope.subscriptions, function (d) {
-                return !d.changed;
-              });
-              // project variables will be copied in the route, so that we get private variables correctly
-              item.project_vars = null;
-              item.private_vars = null;
-              $http.post("/project/" + $scope.newProject.identifier, item).then(
-                function (resp) {
-                  $scope.refreshTrackedProjects(data_put.AllProjects);
-                  $scope.loadProject(data_put.ProjectId);
-                  $scope.newProject = {};
-                },
-                function (resp) {
-                  console.log(
-                    "error saving data for new project: " + resp.status
-                  );
-                }
-              );
-            },
-            function (resp) {
-              console.log("error creating new project: " + resp.status);
-            }
-          );
-
-        // otherwise, create a blank project
-      } else {
-        $http
-          .put("/project/" + $scope.newProject.identifier, $scope.newProject)
-          .then(
-            function (resp) {
-              var data = resp.data;
-              $scope.refreshTrackedProjects(data.AllProjects);
-              $scope.loadProject(data.ProjectId);
-              $scope.newProject = {};
-              $scope.settingsFormData.tracks_push_events = true;
-            },
-            function (resp) {
-              console.log("error creating project: " + resp.status);
-            }
-          );
-      }
     };
 
     $scope.loadProject = function (projectId) {
