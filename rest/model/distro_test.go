@@ -32,7 +32,7 @@ func TestDistroBuildFromService(t *testing.T) {
 			SchedulerHost: "host",
 			ConfigPath:    "config_path",
 		},
-		IamInstanceProfileArn: "iam_instance_profile_arn",
+		IAMInstanceProfileArn: "iam_instance_profile_arn",
 	}
 	apiDistro := &APIDistro{}
 	apiDistro.BuildFromService(d)
@@ -45,7 +45,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.ServiceUser, utility.FromStringPtr(apiDistro.BootstrapSettings.ServiceUser))
 	assert.Equal(t, d.BootstrapSettings.ShellPath, utility.FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
 	assert.Equal(t, d.Note, utility.FromStringPtr(apiDistro.Note))
-	assert.Equal(t, d.IamInstanceProfileArn, utility.FromStringPtr(apiDistro.IamInstanceProfileArn))
+	assert.Equal(t, d.IAMInstanceProfileArn, utility.FromStringPtr(apiDistro.IAMInstanceProfileArn))
 	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
 	assert.Equal(t, d.IceCreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
 	assert.Equal(t, d.IceCreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))

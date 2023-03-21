@@ -51,7 +51,7 @@ type Distro struct {
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
-	IamInstanceProfileArn string                `bson:"arn,omitempty" json:"arn,omitempty" mapstructure:"arn,omitempty"`
+	IAMInstanceProfileArn string                `bson:"iam_instance_profile_arn,omitempty" json:"iam_instance_profile_arn,omitempty" mapstructure:"iam_instance_profile_arn,omitempty"`
 }
 
 // DistroData is the same as a distro, with the only difference being that all
