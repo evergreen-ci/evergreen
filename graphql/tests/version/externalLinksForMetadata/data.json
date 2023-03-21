@@ -33,6 +33,9 @@
       "repo_name": "spruce",
       "branch_name": "master",
       "repo_kind": "github",
+      "builds": [
+        "spruce_ubuntu1604_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d_20_12_22_18_13_05"
+      ],
       "identifier": "spruce",
       "remote": false,
       "remote_path": ".evergreen.yml",
@@ -40,22 +43,16 @@
       "author_id": "chaya.malik"
     }
   ],
-  "manifest": [
+  "project_ref": [
     {
-      "_id": "spruce_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d",
-      "revision": "e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d",
-      "project": "spruce",
-      "branch": "master",
-      "modules": {
-        "evergreen": {
-          "branch": "master",
-          "repo": "evergreen",
-          "revision": "08d8cc896f586d8a23edf9bab940d6f2d3e70ffa",
-          "owner": "evergreen-ci",
-          "url": "https://api.github.com/repos/evergreen-ci/evergreen/commits/08d8cc896f586d8a23edf9bab940d6f2d3e70ffa"
+      "_id": "spruce",
+      "identifier": "spruce",
+      "external_links": [
+        {
+          "display_name": "A link to somewhere",
+          "url_template": "https://a-fake-url-for-{version_id}.com/{version_id}"
         }
-      },
-      "is_base": true
+      ]
     }
   ]
 }

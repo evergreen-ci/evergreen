@@ -7,11 +7,6 @@
       "patch_number": 1234,
       "author": "arjun",
       "githash": "ca82a6dff817ec66f44342007202690a93763949"
-    },
-    {
-      "_id": {
-        "$oid": "1e4ff3abe3c3317e352062e4"
-      }
     }
   ],
   "tasks": [

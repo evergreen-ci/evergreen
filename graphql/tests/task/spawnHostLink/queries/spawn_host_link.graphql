@@ -1,5 +1,5 @@
 {
-  task(taskId: "dep1") {
+  task(taskId: "task1") {
     spawnHostLink
   }
 }

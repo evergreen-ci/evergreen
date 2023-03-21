@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "task": {
-            "spawnHostLink": "http://localhost/spawn?distro_id=localhost1&task_id=dep1"
+            "spawnHostLink": "http://localhost/spawn?distro_id=localhost1&task_id=task1"
           }
         }
       }
