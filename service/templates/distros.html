@@ -456,6 +456,12 @@ Evergreen - Distros
                 <div class="icon fa fa-warning distro-error" ng-show="!validSecurityGroup()">Security group for EC2 VPC
                   must be the id (starts with 'sg-')</div>
               </div>
+              <div>
+                <label class="distro-label">IAM Instance Profile ARN:</label>
+                <input type="text" ng-readonly="readOnly" name="IAMInstanceProfileARN" class="form-control"
+                  ng-model="activeDistro.settings.iam_instance_profile_arn" placeholder="The Amazon Resource Name (ARN) of the instance profile."
+                  ng-readonly="readOnly">
+              </div>
               <div ng-show="activeDistro.settings.is_vpc">
                 <label class="distro-label">Default VPC Subnet Id:</label>
                 <input type="text" name="subnet_id" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.subnet_id"

@@ -1491,6 +1491,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 			birch.EC.String("subnet_id", "subnet-123456"),
 			birch.EC.Double("bid_price", 0.001),
 			birch.EC.String("region", evergreen.DefaultEC2Region),
+			birch.EC.String("iam_instance_profile_arn", "a_new_arn"),
 			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 		)},
 	}
@@ -1504,16 +1505,18 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
 	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
+	s.Equal("a_new_arn", ec2Settings.IAMInstanceProfileArn)
 
 	// create provider list, choose by region
 	settings2 := EC2ProviderSettings{
-		Region:           "us-east-2",
-		AMI:              "other_ami",
-		InstanceType:     "other_instance",
-		SecurityGroupIDs: []string{"ghijkl"},
-		BidPrice:         float64(0.002),
-		AWSKeyID:         "other_key_id",
-		KeyName:          "other_key",
+		Region:                "us-east-2",
+		AMI:                   "other_ami",
+		InstanceType:          "other_instance",
+		SecurityGroupIDs:      []string{"ghijkl"},
+		IAMInstanceProfileArn: "a_beautiful_profile",
+		BidPrice:              float64(0.002),
+		AWSKeyID:              "other_key_id",
+		KeyName:               "other_key",
 	}
 	bytes, err := bson.Marshal(ec2Settings)
 	s.NoError(err)
@@ -1529,6 +1532,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
 	s.Equal(ec2Settings.Region, "us-east-2")
 	s.Equal(ec2Settings.InstanceType, "other_instance")
+	s.Equal(ec2Settings.IAMInstanceProfileArn, "a_beautiful_profile")
 }
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {

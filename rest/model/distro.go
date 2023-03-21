@@ -363,7 +363,6 @@ type APIDistro struct {
 	IsCluster             bool                     `json:"is_cluster"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
-	IAMInstanceProfileArn *string                  `json:"iam_instance_profile_arn"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -390,7 +389,6 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.ContainerPool = utility.ToStringPtr(d.ContainerPool)
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.Note = utility.ToStringPtr(d.Note)
-	apiDistro.IAMInstanceProfileArn = utility.ToStringPtr(d.IAMInstanceProfileArn)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
@@ -468,7 +466,6 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.Note = utility.FromStringPtr(apiDistro.Note)
-	d.IAMInstanceProfileArn = utility.FromStringPtr(apiDistro.IAMInstanceProfileArn)
 	d.ValidProjects = utility.FromStringPtrSlice(apiDistro.ValidProjects)
 
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
