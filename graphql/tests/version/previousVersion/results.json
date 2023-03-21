@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "previous_version.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
+            "previousVersion": {
+              "id": "spruce_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
