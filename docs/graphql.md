@@ -5,9 +5,9 @@ and write access to various pieces of data found in Evergreen. You can use the
 GraphQL Playground, which can be found at https://evergreen.mongodb.com/graphql,
 to experiment with and explore the available data.
 
-To use the API in your own code, you can use the endpoint
-https://evergreen.mongodb.com/graphql/query, or alternatively, leverage code
-generation to generate typings in your preferred language.
+If you intend to use this API for production-level code, we ask that you get in
+touch with us to ensure proper support. However, if you wish to perform
+exploratory operations, there is no need to seek prior authorization.
 
 ## Authentication
 
@@ -23,6 +23,16 @@ types. A common directive used in Evergreen's GraphQL API is
 `@requireProjectAccess`. Before calling a query that has this directive, ensure
 the caller has permissions to view a project. You can find the other directives
 [here](https://github.com/evergreen-ci/evergreen/blob/d96942bcf0c26b158b8b1313bd27786f7a7c31a7/graphql/schema/directives.graphql).
+
+## Limitations and Future Improvements
+
+The Evergreen GraphQL API is currently in beta and not intended for public use,
+so we cannot guarantee field consistency between releases. However, when we
+deprecate a field, we mark it with the @deprecated directive. You can configure
+your GraphQL client to issue warnings when using these fields. Additionally,
+GraphQL's type safety ensures that you will be notified if fields change. We
+recommend staying up to date with our API changes to ensure application
+compatibility with Evergreen.
 
 ## Documentation
 
@@ -43,15 +53,15 @@ logic utilizing the traditional REST API. However, with our GraphQL API, it can
 be accomplished in a single declarative request.
 
 ```graphql
-{
-  mainlineCommits(
-    options: {projectIdentifier: "spruce", limit: 5}
-    buildVariantOptions: {tasks: "e2e_test", statuses: "success"}
-  ) {
+# Query with variables defined
+query ($options: MainlineCommitsOptions!, $buildVariantOptions: BuildVariantOptions!) {
+  # Pass in the options to the mainlineCommits query
+  mainlineCommits(options: $options, buildVariantOptions: $buildVariantOptions) {
     versions {
       version {
         id
-        buildVariants(options: {tasks: "e2e_test"}) {
+        # Pass in the options to the buildVariants query
+        buildVariants(options: $buildVariantOptions) {
           tasks {
             displayName
             execution
@@ -70,6 +80,20 @@ be accomplished in a single declarative request.
         }
       }
     }
+  }
+}
+```
+
+```json
+// Query Variables
+{
+  "options": {
+    "projectIdentifier": "spruce",
+    "limit": 5
+  },
+  "buildVariantOptions": {
+    "tasks": ["e2e_test"],
+    "statuses": ["success"]
   }
 }
 ```
@@ -109,16 +133,6 @@ Code generation tools are available in the GraphQL ecosystem, including
 which generate strongly typed APIs based on our GraphQL schema. This means you
 can write code that directly interacts with the API without manually parsing the
 response data or worrying about type mismatches.
-
-## Limitations and Future Improvements
-
-The Evergreen GraphQL API is currently in beta and not intended for public use,
-so we cannot guarantee field consistency between releases. However, when we
-deprecate a field, we mark it with the @deprecated directive. You can configure
-your GraphQL client to issue warnings when using these fields. Additionally,
-GraphQL's type safety ensures that you will be notified if fields change. We
-recommend staying up to date with our API changes to ensure application
-compatibility with Evergreen.
 
 ## SLA's and SLO's
 
