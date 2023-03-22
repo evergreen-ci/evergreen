@@ -313,7 +313,7 @@ func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string
 	if err != nil {
 		return errors.Wrapf(err, "fetching repo ref for '%s'%s'", owner, repo)
 	}
-	projectRefs, err := model.FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return errors.Wrapf(err, "fetching merged project refs for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -357,18 +357,16 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 		}
 	}
 
-	formatStr := "- `%s` \n    - %s\n"
+	formatStr := "- `%s`    - %s\n"
 	formatStrStrikethrough := "- ~`%s`~ \n    - %s\n"
 	res := fmt.Sprintf("### %s\n", "Available Evergreen Comment Commands")
 	if autoPRProjectEnabled {
-		res += fmt.Sprintf(formatStr, retryComment, `
-attempts to create a new PR patch; 
-this is useful when something went wrong with automatically creating PR patches`)
+		res += fmt.Sprintf(formatStr, retryComment, "attempts to create a new PR patch; "+
+			"this is useful when something went wrong with automatically creating PR patches")
 	}
 	if manualPRProjectEnabled {
-		res += fmt.Sprintf(formatStr, patchComment, `
-attempts to create a new PR patch; 
-this is required to create a PR patch when only manual PR testing is enabled`)
+		res += fmt.Sprintf(formatStr, patchComment, "attempts to create a new PR patch; "+""+
+			"this is required to create a PR patch when only manual PR testing is enabled")
 	}
 	if autoPRProjectEnabled || manualPRProjectEnabled {
 		res += fmt.Sprintf(formatStr, refreshStatusComment, "resyncs PR GitHub checks")
@@ -379,6 +377,9 @@ this is required to create a PR patch when only manual PR testing is enabled`)
 		// Should only display this if the commit queue isn't enabled for a different branch.
 		text := fmt.Sprintf("the commit queue is NOT enabled for this branch: %s", cqProjectMessage)
 		res += fmt.Sprintf(formatStrStrikethrough, commitQueueMergeComment, text)
+	}
+	if !autoPRProjectEnabled && !manualPRProjectEnabled && !cqProjectEnabled && cqProjectMessage == "" {
+		res = "No commands available for this branch."
 	}
 	return res
 }
