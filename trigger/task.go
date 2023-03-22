@@ -1046,7 +1046,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 		return nil, nil
 	}
 
-	n, err := t.generateWithAlertRecord(sub, alertrecord.FirstRegressionInVersion, triggerBuildBreak, "caused a regression", "")
+	n, err := t.generateWithAlertRecord(sub, alertrecord.FirstRegressionInVersion, triggerBuildBreak, "potentially caused a regression", "")
 	if err != nil {
 		return nil, err
 	}
