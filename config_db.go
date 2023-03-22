@@ -97,7 +97,6 @@ var (
 	restRoutePartialAuthDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "RestRoutePartialAuthDisabled")
 	uiPartialAuthDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "UIPartialAuthDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
-	parserProjectS3StorageDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "ParserProjectS3StorageDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
@@ -115,6 +114,9 @@ var (
 	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableHostsPerUser")
 	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableVolumesPerUser")
 	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnHostConfig{}, "SpawnHostsPerUser")
+
+	tracerEnabledKey        = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
+	tracerCollectorEndpoint = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
 )
 
 func byId(id string) bson.M {

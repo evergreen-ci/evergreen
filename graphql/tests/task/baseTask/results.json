@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "query_file": "base_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "baseTask": {
+              "id": "base-task-1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "mainline_commits_base_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "mainline_commit_2",
+            "status": "success",
+            "baseTask": {
+              "id": "mainline_commit_1",
+              "status": "failed"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

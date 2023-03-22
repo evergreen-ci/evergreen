@@ -164,11 +164,12 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
-	s.EqualValues(testSettings.ServiceFlags.ParserProjectS3StorageDisabled, settingsFromConnector.ServiceFlags.ParserProjectS3StorageDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
+	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
+	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 
 	// spot check events in the event log
 	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
@@ -294,11 +295,12 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
-	s.EqualValues(testSettings.ServiceFlags.ParserProjectS3StorageDisabled, settingsFromConnector.ServiceFlags.ParserProjectS3StorageDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
+	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
+	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 }
 
 func (s *AdminDataSuite) TestRestart() {

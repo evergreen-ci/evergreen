@@ -24,7 +24,7 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 	assert.Len(t, events, 10)
 	for i := 0; i < 10; i++ {
 		assert.Equal(t, "pod1", events[i].ResourceId)
-		assert.Equal(t, 19-(2*i), events[i].Data.(*podData).TaskExecution)
+		assert.Equal(t, 19-(2*i), events[i].Data.(*PodData).TaskExecution)
 
 	}
 
@@ -41,7 +41,7 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 	assert.Len(t, events, 5)
 	for i := 0; i < 5; i++ {
 		assert.Equal(t, "pod1", events[i].ResourceId)
-		assert.Equal(t, 9-(2*i), events[i].Data.(*podData).TaskExecution)
+		assert.Equal(t, 9-(2*i), events[i].Data.(*PodData).TaskExecution)
 	}
 
 	// Query for pod1 events, limit 11, page 0
@@ -51,6 +51,6 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 	assert.Len(t, events, 10)
 	for i := 0; i < 10; i++ {
 		assert.Equal(t, "pod1", events[i].ResourceId)
-		assert.Equal(t, 19-(2*i), events[i].Data.(*podData).TaskExecution)
+		assert.Equal(t, 19-(2*i), events[i].Data.(*PodData).TaskExecution)
 	}
 }

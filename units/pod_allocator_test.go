@@ -238,7 +238,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			assert.False(t, dbTask.ContainerAllocated)
 		},
 		"RunNoopsWhenProjectDoesNotAllowDispatching": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
-			pRef.Enabled = utility.FalsePtr()
+			pRef.Enabled = false
 			require.NoError(t, pRef.Upsert())
 			require.NoError(t, tsk.Insert())
 
@@ -264,7 +264,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			pRef := model.ProjectRef{
 				Id:         "project_id",
 				Identifier: "project_identifier",
-				Enabled:    utility.TruePtr(),
+				Enabled:    true,
 				ContainerSecrets: []model.ContainerSecret{
 					{
 						Name:         "pod_secret",
@@ -314,7 +314,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 		return model.ProjectRef{
 			Id:         utility.RandomString(),
 			Identifier: utility.RandomString(),
-			Enabled:    utility.TruePtr(),
+			Enabled:    true,
 		}
 	}
 

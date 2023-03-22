@@ -1,0 +1,27 @@
+{
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "commit_queue": {
+        "patch_type": "PR"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "some_task",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "status": "dispatched",
+      "branch": "spruce",
+      "distro": "macos-1014",
+      "execution": 0,
+      "host_id": "host2"
+    }
+  ]
+}

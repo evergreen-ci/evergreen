@@ -1,0 +1,89 @@
+{
+  "tests": [
+    {
+      "query_file": "depends_on_task_status_not_success_nor_fail.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "PENDING",
+                "requiredStatus": "MUST_FINISH",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "depends_on_task_status_equals_dep_status.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "PENDING",
+                "requiredStatus": "MUST_SUCCEED",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "depends_on_dep_status_equals_all_statuses.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "MET",
+                "requiredStatus": "MUST_FINISH",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "depends_on_dep_status_failed.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "MET",
+                "requiredStatus": "MUST_FAIL",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "depends_on_unmet.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "UNMET",
+                "requiredStatus": "MUST_SUCCEED",
+                "buildVariant": "windows",
+                "name": "dep5"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

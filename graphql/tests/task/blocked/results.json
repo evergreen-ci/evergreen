@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "blocked.graphql",
+      "result": {
+        "data": {
+          "yes": {
+            "blocked": true
+          },
+          "no": {
+            "blocked": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -362,22 +362,18 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging project ref '%s' with repo settings", h.newProjectRef.Identifier))
 	}
 
-	if mergedProjectRef.IsEnabled() {
+	if mergedProjectRef.Enabled {
 		settings, err := evergreen.GetConfig()
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
 		}
-		originalMergedRef, err := dbModel.GetProjectRefMergedWithRepo(*h.originalProject)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging original project ref '%s' with repo settings", h.originalProject.Identifier))
-		}
-		_, err = dbModel.ValidateEnabledProjectsLimit(h.newProjectRef.Id, settings, originalMergedRef, mergedProjectRef)
+		_, err = dbModel.ValidateEnabledProjectsLimit(h.newProjectRef.Id, settings, h.originalProject, mergedProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
 		}
 	}
 
-	if h.newProjectRef.IsEnabled() {
+	if h.newProjectRef.Enabled {
 		var hasHook bool
 		hasHook, err = dbModel.EnableWebhooks(ctx, h.newProjectRef)
 		if err != nil {
@@ -782,7 +778,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		Repo:      project.Repo,
 		Branch:    project.Branch,
 		RepoRefId: project.RepoRefId,
-		Enabled:   utility.FalsePtr(),
+		Enabled:   false,
 		Hidden:    utility.TruePtr(),
 	}
 	if err = skeletonProj.Update(); err != nil {

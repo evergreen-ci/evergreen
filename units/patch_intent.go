@@ -218,7 +218,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	// hidden projects can only run PR patches
-	if !pref.IsEnabled() && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {
+	if !pref.Enabled && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {
 		j.gitHubError = ProjectDisabled
 		return errors.New("project is disabled")
 	}

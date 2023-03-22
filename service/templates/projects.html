@@ -27,12 +27,6 @@ Evergreen Projects
 <div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-show="trackedProjects.length>0">
 <div class="col-lg-2 col-lg-offset-1">
   <h1> Projects</h1>
-  <div class="row" ng-show="create">
-    <div class="col-lg-12">
-      <button class="btn btn-primary" ng-click="openAdminModal('newProject')"> New Project </button>
-      <label>[[newProjectMessage]] </label>
-    </div>
-  </div>
   <div class="row">
     <h3 class="col-lg-12" ng-show="showProject(enabledProjects)" > Enabled </h3>
   </div>

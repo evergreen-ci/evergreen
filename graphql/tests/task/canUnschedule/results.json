@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "query_file": "can_unschedule.graphql",
+      "result": {
+        "data": {
+          "yes": {
+            "canUnschedule": true
+          },
+          "no": {
+            "canUnschedule": false
+          },
+          "noBecauseExecutionTask": {
+            "canUnschedule": false
+          }
+        }
+      }
+    }
+  ]
+}

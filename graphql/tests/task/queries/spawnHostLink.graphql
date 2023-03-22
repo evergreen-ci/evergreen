@@ -1,5 +1,0 @@
-{
-  task(taskId: "dep1") {
-    spawnHostLink
-  }
-}

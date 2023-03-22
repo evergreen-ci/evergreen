@@ -1,0 +1,77 @@
+{
+  "tests": [
+    {
+      "query_file": "build_variants.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "taskCount": 6,
+            "buildVariants": [
+              {
+                "variant": "lint",
+                "displayName": "Lint",
+                "tasks": [
+                  {
+                    "id": "3",
+                    "execution": 0,
+                    "status": "success",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/3/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "4",
+                    "execution": 0,
+                    "status": "failed",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/4/0?type=ALL"
+                    }
+                  }
+                ]
+              },
+              {
+                "variant": "ubuntu1604",
+                "displayName": "Ubuntu 16.04",
+                "tasks": [
+                  {
+                    "id": "6",
+                    "execution": 0,
+                    "status": "undispatched",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/6/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "2",
+                    "execution": 0,
+                    "status": "failed",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/2/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "5",
+                    "execution": 0,
+                    "status": "setup-failed",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/5/0?type=ALL"
+                    }
+                  },
+                  {
+                    "id": "1",
+                    "execution": 0,
+                    "status": "success",
+                    "logs": {
+                      "allLogLink": "https://localhost:8443/task_log_raw/1/0?type=ALL"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

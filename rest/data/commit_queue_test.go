@@ -47,7 +47,7 @@ func (s *CommitQueueSuite) SetupTest() {
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Branch:           "main",
-		Enabled:          utility.TruePtr(),
+		Enabled:          true,
 		PatchingDisabled: utility.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
@@ -61,7 +61,7 @@ func (s *CommitQueueSuite) SetupTest() {
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Branch:           "main",
-		Enabled:          utility.TruePtr(),
+		Enabled:          true,
 		PatchingDisabled: utility.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),

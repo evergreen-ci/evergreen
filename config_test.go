@@ -922,6 +922,28 @@ func (s *AdminSuite) TestCedarConfig() {
 	s.Equal(config, settings.Cedar)
 }
 
+func (s *AdminSuite) TestTracerConfig() {
+	config := TracerConfig{
+		Enabled:           true,
+		CollectorEndpoint: "localhost:4316",
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Tracer)
+
+	config.Enabled = false
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Tracer)
+}
+
 func (s *AdminSuite) TestDataPipesConfig() {
 	config := DataPipesConfig{
 		Host:         "https://url.com",

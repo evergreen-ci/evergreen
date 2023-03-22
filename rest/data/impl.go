@@ -12,6 +12,7 @@ type DBConnector struct {
 	DBCommitQueueConnector
 	DBProjectConnector
 	DBVersionConnector
+	DBGithubConnector
 }
 
 func (ctx *DBConnector) GetURL() string          { return ctx.URL }

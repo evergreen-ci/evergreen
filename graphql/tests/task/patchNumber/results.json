@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "patch_number.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "patchNumber": 2567
+          }
+        }
+      }
+    }
+  ]
+}

@@ -161,7 +161,7 @@ func validateFeaturesHaveAliases(originalProjectRef *model.ProjectRef, newProjec
 		catcher.Errorf(msg, "Git tag versions")
 	}
 	if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
-		catcher.Errorf(msg, "Github checks")
+		catcher.Errorf(msg, "GitHub checks")
 	}
 
 	return catcher.Resolve()

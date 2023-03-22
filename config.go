@@ -32,7 +32,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2023-02-23"
+	ClientVersion = "2023-03-20"
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2023-03-13"
@@ -106,6 +106,7 @@ type Settings struct {
 	Ui                  UIConfig                `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
 	ShutdownWaitSeconds int                     `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
+	Tracer              TracerConfig            `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }

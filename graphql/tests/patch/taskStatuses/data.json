@@ -1,0 +1,146 @@
+{
+  "versions": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "create_time": {
+        "$date": "2020-02-21T15:13:48.801Z"
+      },
+      "start_time": {
+        "$date": "2020-02-21T15:15:38.261Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-21T15:29:54.869Z"
+      },
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "author": "brian.samek",
+      "author_email": "",
+      "message": "'evergreen-ci/evergreen' pull request #3186 by bsamek: EVG-7425 Don't send ShouldExit to unprovisioned hosts (https://github.com/evergreen-ci/evergreen/pull/3186)",
+      "status": "failed",
+      "order": 2567,
+      "config_number": 1,
+      "ignored": false,
+      "owner_name": "",
+      "repo_name": "",
+      "branch_name": "main",
+      "repo_kind": "",
+      "identifier": "evergreen",
+      "remote": false,
+      "remote_path": "",
+      "r": "github_pull_request",
+      "author_id": "brian.samek"
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "r": "github_pull_request",
+      "status": "success"
+    },
+    {
+      "_id": "2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-cloud",
+      "r": "github_pull_request",
+      "status": "failed"
+    },
+    {
+      "_id": "XYZ",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "silver",
+      "r": "github_pull_request",
+      "status": "setup-failed"
+    },
+    {
+      "_id": "X",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "gold",
+      "r": "github_pull_request",
+      "status": "undispatched"
+    },
+    {
+      "_id": "3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "windows",
+      "display_name": "lint",
+      "r": "github_pull_request",
+      "status": "success"
+    },
+    {
+      "_id": "4",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "windows",
+      "display_name": "compile",
+      "r": "github_pull_request",
+      "status": "failed"
+    }
+  ],
+  "patches": [
+    {
+      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "desc": "'evergreen-ci/spruce' pull request #27 by tgrander: Refactor App + Use Context for global state (https://github.com/evergreen-ci/spruce/pull/27)",
+      "branch": "spruce",
+      "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+      "patch_number": 20,
+      "author": "trey.granderson",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "status": "failed",
+      "create_time": { "$date": "2019-11-18T18:53:15Z" },
+      "start_time": { "$date": "2019-11-18T18:54:15.734Z" },
+      "finish_time": { "$date": "2019-11-18T18:57:15.053Z" },
+      "build_variants": ["ubuntu1804"],
+      "tasks": ["compile", "test", "lint", "coverage"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1804",
+          "tasks": ["lint", "coverage", "compile", "test"],
+          "displaytasks": []
+        }
+      ],
+      "patches": [
+        {
+          "name": "",
+          "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+          "patch_set": {
+            "patch_file_id": "5dd2e89cd1fe07048e43bb9e_3b53f9b61226491cd31113c773d66e351957ed29",
+            "summary": [
+              { "filename": "package.json", "additions": 2, "deletions": 0 },
+              {
+                "filename": "src/components/Navbar.tsx",
+                "additions": 70,
+                "deletions": 0
+              }
+            ]
+          },
+          "message": ""
+        }
+      ],
+      "activated": true,
+      "patched_config": "stepback: true\ncommand_type: test\nignore:\n - \"*.md\"\n - \".github/*\"\n\nfunctions:\n get-project:\n command: git.get_project\n type: setup\n params:\n directory: spruce\n\n npm-install:\n command: subprocess.exec\n type: setup\n params:\n working_dir: spruce\n binary: npm\n args: [install]\n\n npm-test:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [test, --, -u, --reporters=default, --reporters=jest-junit]\n env:\n CI: \"true\"\n\n npm-lint:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, lint]\n\n npm-build:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, build]\n\n npm-build:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, build]\n\n npm-coverage:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, coverage]\n\n attach-results:\n command: attach.xunit_results\n params:\n files:\n - \"./spruce/junit.xml\"\n\ntasks:\n - name: compile\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-build\n - func: npm-build\n - name: test\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-test\n - func: attach-results\n - name: lint\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-lint\n - name: coverage\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-coverage\n\nbuildvariants:\n - name: ubuntu1804\n display_name: Ubuntu 18.04\n run_on:\n - ubuntu1804-test\n tasks:\n - name: compile\n - name: test\n - name: lint\n - name: coverage\n",
+      "alias": "__github",
+      "github_patch_data": {
+        "pr_number": 27,
+        "base_owner": "evergreen-ci",
+        "base_repo": "spruce",
+        "base_branch": "main",
+        "head_owner": "evergreen-ci",
+        "head_repo": "spruce",
+        "head_hash": "2b37dacf86f9d4d1545faaba37c7c5693202e645",
+        "author": "tgrander",
+        "author_uid": 15262143,
+        "merge_commit_sha": ""
+      }
+    }
+  ]
+}

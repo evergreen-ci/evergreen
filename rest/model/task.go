@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	TaskLogLinkFormat  = "%s/task_log_raw/%s/%d?type=%s"
-	EventLogLinkFormat = "%s/event_log/task/%s"
+	TaskLogLinkFormat        = "%s/task_log_raw/%s/%d?type=%s"
+	ParsleyTaskLogLinkFormat = "%s/evergreen/%s/%d/%s"
+	EventLogLinkFormat       = "%s/event_log/task/%s"
 )
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
@@ -56,6 +57,7 @@ type APITask struct {
 	DisplayStatus               *string             `json:"display_status"`
 	Details                     ApiTaskEndDetail    `json:"status_details"`
 	Logs                        LogLinks            `json:"logs"`
+	ParsleyLogs                 LogLinks            `json:"parsley_logs"`
 	TimeTaken                   APIDuration         `json:"time_taken_ms"`
 	ExpectedDuration            APIDuration         `json:"expected_duration_ms"`
 	EstimatedStart              APIDuration         `json:"est_wait_to_start_ms"`
@@ -101,7 +103,7 @@ type LogLinks struct {
 	TaskLogLink   *string `json:"task_log"`
 	AgentLogLink  *string `json:"agent_log"`
 	SystemLogLink *string `json:"system_log"`
-	EventLogLink  *string `json:"event_log"`
+	EventLogLink  *string `json:"event_log,omitempty"`
 }
 
 type ApiTaskEndDetail struct {
@@ -157,14 +159,16 @@ func (ad *APIOomTrackerInfo) ToService() *apimodels.OOMTrackerInfo {
 	}
 }
 
-func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
+// BuildPreviousExecutions adds the given previous executions to the given API task.
+func (at *APITask) BuildPreviousExecutions(tasks []task.Task, logURL, parsleyURL string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
 		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i], &APITaskArgs{
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
-			LogURL:                   url,
+			LogURL:                   logURL,
+			ParsleyLogURL:            parsleyURL,
 		}); err != nil {
 			return errors.Wrapf(err, "converting previous task execution at index %d to API model", i)
 		}
@@ -221,7 +225,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		GenerateTask:                t.GenerateTask,
 		GeneratedBy:                 t.GeneratedBy,
 		DisplayOnly:                 t.DisplayOnly,
-		Mainline:                    (t.Requester == evergreen.RepotrackerVersionRequester),
+		Mainline:                    t.Requester == evergreen.RepotrackerVersionRequester,
 		TaskGroup:                   t.TaskGroup,
 		TaskGroupMaxHosts:           t.TaskGroupMaxHosts,
 		Blocked:                     t.Blocked(),
@@ -301,6 +305,7 @@ type APITaskArgs struct {
 	IncludeAMI               bool
 	IncludeArtifacts         bool
 	LogURL                   string
+	ParsleyLogURL            string
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -316,13 +321,22 @@ func (at *APITask) BuildFromService(t *task.Task, args *APITaskArgs) error {
 	}
 	if args.LogURL != "" {
 		ll := LogLinks{
-			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
-			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "T")),
-			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "E")),
-			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "S")),
-			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id))),
+			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "ALL")),
+			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "T")),
+			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "E")),
+			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "S")),
+			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, t.Id)),
 		}
 		at.Logs = ll
+	}
+	if args.ParsleyLogURL != "" {
+		ll := LogLinks{
+			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "all")),
+			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "task")),
+			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "agent")),
+			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "system")),
+		}
+		at.ParsleyLogs = ll
 	}
 	if args.IncludeAMI {
 		if err := at.GetAMI(); err != nil {
