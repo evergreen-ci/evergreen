@@ -5,7 +5,6 @@
   {{if .User}}
   window.user = {{.User}};
   {{end}}
-  window.canCreate = {{.CanCreate}};
   window.userTz = {{GetTimezone $.User}}
 </script>
 <script type="text/javascript" src="{{Static "thirdparty" "tablesorter.js"}}"></script>
