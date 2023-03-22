@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "query_file": "availability_zone_fail.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "invalid availability zone 'thangthang', valid availability zones are: [us-east-1a]",
+            "path": ["spawnVolume"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "spawn_host_success_no_optional_params.graphql",
+      "result": { "data": { "spawnVolume": true } }
+    },
+    {
+      "query_file": "spawn_and_attach_success.graphql",
+      "result": { "data": { "spawnVolume": true } }
+    },
+    {
+      "query_file": "no_expiration_success.graphql",
+      "result": { "data": { "spawnVolume": true } }
+    },
+    {
+      "query_file": "expiration_fail.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Cannot apply an expiration time AND set volume as non-expirable",
+            "path": ["spawnVolume"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "with_expiration_success.graphql",
+      "result": { "data": { "spawnVolume": true } }
+    }
+  ]
+}

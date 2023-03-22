@@ -1,0 +1,20 @@
+{
+    "tests": [
+        {
+            "query_file": "spawn_host.graphql",
+            "result": {
+                "data": {
+                    "spawnHost": {
+                        "hostUrl": "",
+                        "id": "static",
+                        "expiration": "2020-08-06T13:42:12-04:00",
+                        "noExpiration": false,
+                        "distro": {
+                            "id": "rhel71-power8-large"
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

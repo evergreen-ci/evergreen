@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "query_file": "update_user_settings.graphql",
+      "result": {
+        "data": {
+          "updateUserSettings": true
+        }
+      }
+    }
+  ]
+}

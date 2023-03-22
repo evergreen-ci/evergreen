@@ -1,0 +1,73 @@
+{
+  "tests": [
+    {
+      "query_file": "empty_array.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "hostIds cannot be empty",
+            "path": ["updateHostStatus"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "multiple_hosts.graphql",
+      "result": {
+        "data": {
+          "updateHostStatus": 2
+        }
+      }
+    },
+    {
+      "query_file": "no_hosts_found.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "No matching hosts found",
+            "path": ["updateHostStatus"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "single_host.graphql",
+      "result": {
+        "data": {
+          "updateHostStatus": 1
+        }
+      }
+    },
+    {
+      "query_file": "user_has_no_permission_to_edit_host.graphql",
+      "result": {
+        "data": {
+          "updateHostStatus": 0
+        }
+      }
+    },
+    {
+      "query_file": "invalid_status.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "could not modify host 'i-06f80fa6e28f93b7d': 'chicken' is not a valid status",
+            "path": ["updateHostStatus"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}

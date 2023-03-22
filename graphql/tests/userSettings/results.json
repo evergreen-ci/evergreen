@@ -1,23 +1,15 @@
 {
   "tests": [
     {
-      "query_file": "update-user-settings.graphql",
-      "result": {
-        "data": {
-          "updateUserSettings": true
-        }
-      }
-    },
-    {
       "query_file": "user-settings.graphql",
       "result": {
         "data": {
           "userSettings": {
-            "timezone": "UTC",
+            "timezone": "America/New_York",
             "region": "",
             "githubUser": { "lastKnownAs": "" },
-            "slackUsername": "mohamed.khelif",
-            "slackMemberId": "testslackuser"
+            "slackUsername": "testslackuser",
+            "slackMemberId": "12345member"
           }
         }
       }

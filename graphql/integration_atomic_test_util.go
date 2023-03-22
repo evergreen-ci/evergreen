@@ -305,12 +305,12 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
 	m := map[string][]setupFn{
-		"attachVolumeToHost":   {spawnTestHostAndVolume},
-		"detachVolumeFromHost": {spawnTestHostAndVolume},
-		"removeVolume":         {spawnTestHostAndVolume},
-		"spawnVolume":          {spawnTestHostAndVolume, addSubnets},
-		"updateVolume":         {spawnTestHostAndVolume},
-		"schedulePatch":        {persistTestSettings},
+		"mutation/attachVolumeToHost":   {spawnTestHostAndVolume},
+		"mutation/detachVolumeFromHost": {spawnTestHostAndVolume},
+		"mutation/removeVolume":         {spawnTestHostAndVolume},
+		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
+		"mutation/updateVolume":         {spawnTestHostAndVolume},
+		"mutation/schedulePatch":        {persistTestSettings},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
@@ -323,7 +323,7 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"spawnVolume": {clearSubnets},
+		"mutation/spawnVolume": {clearSubnets},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {
