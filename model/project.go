@@ -1278,6 +1278,8 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
+	defer cancel()
 	for i := 0; i < retryCount; i++ {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
 		if err != nil {
@@ -1289,8 +1291,6 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 			break
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-		defer cancel()
 		env := evergreen.GetEnvironment()
 		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
 		if err != nil {
