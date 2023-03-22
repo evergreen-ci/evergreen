@@ -381,6 +381,7 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 	return false
 }
 
+// HasProjectCreatePermission returns true if the user is an admin for any existing project.
 func (u *DBUser) HasProjectCreatePermission() (bool, error) {
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(u.Roles())
