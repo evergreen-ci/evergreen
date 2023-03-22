@@ -177,7 +177,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":            "problem sorting revisions for repository",
+				"message":            "problem storing revisions for repository",
 				"runner":             RunnerName,
 				"project":            projectRef.Id,
 				"project_identifier": projectRef.Identifier,
