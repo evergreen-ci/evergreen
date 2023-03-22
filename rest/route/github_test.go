@@ -425,7 +425,7 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 	}
 	disabledProject := model.ProjectRef{
 		Id:      "disabled",
-		Enabled: utility.FalsePtr(),
+		Enabled: false,
 	}
 	repoRefWithPRTesting := &model.RepoRef{ProjectRef: model.ProjectRef{
 		Id:                     "enabled",
