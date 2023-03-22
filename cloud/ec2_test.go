@@ -338,6 +338,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		birch.EC.String("user_data", someUserData),
 		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.Array("mount_points", birch.NewArray(
 			birch.VC.Document(birch.NewDocument(
 				birch.EC.String("device_name", "device"),
@@ -366,6 +367,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
 	s.Equal("sg-123456", *runInput.SecurityGroups[0])
+	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Nil(runInput.SecurityGroupIds)
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
