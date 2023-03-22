@@ -1272,12 +1272,8 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 		return nil, nil, nil, errors.New("cannot pass empty projectId to FindLatestVersionWithValidParserProject")
 	}
 
-	project := &Project{
-		Identifier: projectId,
-	}
-	pp := &ParserProject{
-		Identifier: utility.ToStringPtr(projectId),
-	}
+	var project *Project
+	var pp *ParserProject
 
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
