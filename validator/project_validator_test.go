@@ -2168,7 +2168,20 @@ func TestCheckProjectWarnings(t *testing.T) {
 			projectRef := &model.ProjectRef{
 				Id: "project_test",
 			}
+			v := &model.Version{
+				Id:         "my_version",
+				Owner:      "fakeowner",
+				Repo:       "fakerepo",
+				Branch:     "fakebranch",
+				Identifier: "project_test",
+				Requester:  evergreen.RepotrackerVersionRequester,
+			}
+			pp := model.ParserProject{
+				Id: "my_version",
+			}
 
+			require.NoError(t, pp.Insert())
+			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
 			_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
 			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
