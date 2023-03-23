@@ -65,7 +65,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching version: %s : %s", *obj.Id, err.Error()))
 		}
-		if err = setVersionActivationStatus(version); err != nil {
+		if err = setVersionActivationStatus(ctx, version); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
 		}
 		obj.Activated = version.Activated
@@ -74,7 +74,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	if obj.IsPatchRequester() && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), options, utility.FromStringPtr(obj.Requester), r.sc.GetURL())
+	groupedBuildVariants, err := generateBuildVariants(ctx, utility.FromStringPtr(obj.Id), options, utility.FromStringPtr(obj.Requester), r.sc.GetURL())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *obj.Id, err.Error()))
 	}
@@ -302,7 +302,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		IncludeBuildVariantDisplayName: true,
 		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
-	tasks, count, err := task.GetTasksByVersion(versionId, opts)
+	tasks, count, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version with id '%s': %s", versionId, err.Error()))
 	}
@@ -334,7 +334,7 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVe
 		FieldsToProject:                []string{task.DisplayStatusKey},
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
+	tasks, _, err := task.GetTasksByVersion(ctx, *obj.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}

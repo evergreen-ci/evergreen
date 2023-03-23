@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/net/context"
 )
 
 func checkStatuses(t *testing.T, expected string, toCheck Task) {
@@ -910,9 +911,10 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, dt))
 
+	ctx := context.TODO()
 	// execution tasks have been filtered outs
 	opts := GetTasksByVersionOptions{}
-	tasks, count, err := GetTasksByVersion("v1", opts)
+	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 3)
 	// alphabetical order
@@ -932,14 +934,16 @@ func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 
 	assert.NoError(t, inactiveTask.Insert())
 
+	ctx := context.TODO()
+
 	// inactive tasks should be included
 	opts := GetTasksByVersionOptions{IncludeNeverActivatedTasks: true}
-	_, count, err := GetTasksByVersion("v1", opts)
+	_, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 1)
 	// inactive tasks should be excluded
 	opts = GetTasksByVersionOptions{IncludeNeverActivatedTasks: false}
-	_, count, err = GetTasksByVersion("v1", opts)
+	_, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 0)
 }
@@ -976,8 +980,10 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 	}
 	assert.NoError(t, a.Upsert())
 
+	ctx := context.TODO()
+
 	opts := GetTasksByVersionOptions{}
-	tasks, count, err := GetTasksByVersion("v1", opts)
+	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 3)
 	assert.Equal(t, tasks[0].Id, "t1")
@@ -1026,12 +1032,14 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
 
+	ctx := context.TODO()
+
 	// Normal Patch builds
 	opts := GetTasksByVersionOptions{
 		IncludeBaseTasks: true,
 		IsMainlineCommit: false,
 	}
-	tasks, count, err := GetTasksByVersion("v2", opts)
+	tasks, count, err := GetTasksByVersion(ctx, "v2", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
 	assert.Equal(t, "t2", tasks[0].Id)
@@ -1045,7 +1053,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		IncludeBaseTasks: true,
 		IsMainlineCommit: true,
 	}
-	tasks, count, err = GetTasksByVersion("v3", opts)
+	tasks, count, err = GetTasksByVersion(ctx, "v3", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
 	assert.Equal(t, "t3", tasks[0].Id)
@@ -1105,13 +1113,15 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
 
+	ctx := context.TODO()
+
 	// Sort by display name, asc
 	opts := GetTasksByVersionOptions{
 		Sorts: []TasksSortOrder{
 			{Key: DisplayNameKey, Order: 1},
 		},
 	}
-	tasks, count, err := GetTasksByVersion("v1", opts)
+	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, count)
 	assert.Equal(t, "t2", tasks[0].Id)
@@ -1125,7 +1135,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 			{Key: BuildVariantKey, Order: 1},
 		},
 	}
-	tasks, count, err = GetTasksByVersion("v1", opts)
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, count)
 	assert.Equal(t, "t2", tasks[0].Id)
@@ -1139,7 +1149,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 			{Key: DisplayStatusKey, Order: 1},
 		},
 	}
-	tasks, count, err = GetTasksByVersion("v1", opts)
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, count)
 	assert.Equal(t, "t2", tasks[0].Id)
@@ -1153,7 +1163,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 			{Key: BaseTaskStatusKey, Order: 1},
 		},
 	}
-	tasks, count, err = GetTasksByVersion("v1", opts)
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, count)
 	assert.Equal(t, "t2", tasks[0].Id)
@@ -1167,7 +1177,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 			{Key: TimeTakenKey, Order: 1},
 		},
 	}
-	tasks, count, err = GetTasksByVersion("v1", opts)
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, count)
 	assert.Equal(t, "t1", tasks[0].Id)
