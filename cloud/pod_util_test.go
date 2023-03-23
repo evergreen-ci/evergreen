@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	awsECS "github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/evergreen-ci/cocoa"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
@@ -364,6 +365,8 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 								Subnets:        []string{"subnet-12345"},
 								SecurityGroups: []string{"sg-12345"},
 							},
+							LogRegion: "us-east-1",
+							LogGroup:  "log_group",
 						},
 						SecretsManager: evergreen.SecretsManagerConfig{
 							SecretPrefix: "secret_prefix",
@@ -398,6 +401,9 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 		require.Equal(t, containerOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
+		assert.Equal(t, awsECS.LogDriverAwslogs, utility.FromStringPtr(cDef.LogConfiguration.LogDriver))
+		assert.Equal(t, "us-east-1", cDef.LogConfiguration.Options[awsLogsRegion])
+		assert.Equal(t, "log_group", cDef.LogConfiguration.Options[awsLogsGroup])
 
 		require.Len(t, cDef.EnvVars, 1, "container definition should contain just the secret environment variable, not the plaintext one")
 		expectedSecret := containerOpts.EnvSecrets[utility.FromStringPtr(cDef.EnvVars[0].Name)]

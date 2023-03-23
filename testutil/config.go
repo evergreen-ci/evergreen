@@ -325,6 +325,8 @@ func MockConfig() *evergreen.Settings {
 						TaskDefinitionPrefix: "ecs_prefix",
 						TaskRole:             "task_role",
 						ExecutionRole:        "execution_role",
+						LogRegion:            "log_region",
+						LogGroup:             "log_group",
 						AWSVPC: evergreen.AWSVPCConfig{
 							Subnets:        []string{"subnet-12345"},
 							SecurityGroups: []string{"sg-12345"},

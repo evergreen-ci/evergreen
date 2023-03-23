@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/aws/aws-sdk-go/aws"
+	awsECS "github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
@@ -221,9 +222,13 @@ const (
 	agentContainerName = "evg-agent"
 	// agentPort is the standard port that the agent runs on.
 	agentPort = 2285
+	// awsLogsGroup is the log configuration option name for specifying the log group.
+	awsLogsGroup = "awslogs-group"
+	// awsLogsGroup is the log configuration option name for specifying the AWS region.
+	awsLogsRegion = "awslogs-region"
 )
 
-// ExportECSPodCreationOptions exports the ECS pod creation options into
+// ExportECSPodDefinitionOptions exports the ECS pod creation options into
 // cocoa.ECSPodDefinitionOptions to create the pod definition.
 func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSPodDefinitionOptions, error) {
 	ecsConf := settings.Providers.AWS.Pod.ECS
@@ -254,6 +259,7 @@ func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskCo
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
 func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
+	ecsConf := settings.Providers.AWS.Pod.ECS
 	def := cocoa.NewECSContainerDefinition().
 		SetName(agentContainerName).
 		SetImage(opts.Image).
@@ -262,6 +268,10 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 		SetWorkingDir(opts.WorkingDir).
 		SetCommand(bootstrapContainerCommand(settings, opts)).
 		SetEnvironmentVariables(exportPodEnvSecrets(opts)).
+		SetLogConfiguration(*cocoa.NewLogConfiguration().SetLogDriver(awsECS.LogDriverAwslogs).SetOptions(map[string]string{
+			awsLogsGroup:  ecsConf.LogGroup,
+			awsLogsRegion: ecsConf.LogRegion,
+		})).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
 
 	if opts.RepoCredsExternalID != "" {
