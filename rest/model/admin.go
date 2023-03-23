@@ -1847,6 +1847,8 @@ func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
 	a.TaskDefinitionPrefix = utility.ToStringPtr(conf.TaskDefinitionPrefix)
 	a.TaskRole = utility.ToStringPtr(conf.TaskRole)
 	a.ExecutionRole = utility.ToStringPtr(conf.ExecutionRole)
+	a.LogRegion = utility.ToStringPtr(conf.LogRegion)
+	a.LogGroup = utility.ToStringPtr(conf.LogGroup)
 	var apiAWSVPC APIAWSVPCConfig
 	apiAWSVPC.BuildFromService(conf.AWSVPC)
 	a.AWSVPC = &apiAWSVPC
