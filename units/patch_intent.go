@@ -1002,7 +1002,6 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	var err error
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser {
 		grip.Info(message.Fields{
@@ -1029,7 +1028,24 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		}))
 		return false, err
 	}
-	return isMember, nil
+	if isMember {
+		return isMember, nil
+	}
+
+	isInstalledForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, githubOauthToken, requiredOrganization, githubUser)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":          j.ID(),
+			"message":      "failed to check if user is an installed app",
+			"source":       "patch intents",
+			"creator":      githubUser,
+			"required_org": requiredOrganization,
+			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+		}))
+	}
+	return isInstalledForOrg, nil
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
