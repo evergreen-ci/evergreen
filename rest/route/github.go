@@ -315,14 +315,14 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 
 	canInheritRepoPRSettings := true
 	for _, p := range projectRefs {
-		if p.IsEnabled() && p.IsManualPRTestingEnabled() {
+		if p.Enabled && p.IsManualPRTestingEnabled() {
 			manualPRProjectEnabled = true
 		}
-		if p.IsEnabled() && p.IsAutoPRTestingEnabled() {
+		if p.Enabled && p.IsAutoPRTestingEnabled() {
 			autoPRProjectEnabled = true
 		}
 		// If the project is explicitly disabled, then we shouldn't consider if the repo allows for PR testing.
-		if !p.IsEnabled() {
+		if !p.Enabled {
 			canInheritRepoPRSettings = false
 		}
 
