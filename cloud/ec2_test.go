@@ -380,6 +380,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
@@ -410,6 +411,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
+	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("keyName", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
@@ -426,6 +428,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
@@ -455,6 +458,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	requestInput := *mock.RequestSpotInstancesInput
 	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
 	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
+	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
 	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
 	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
@@ -471,6 +475,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpotInsufficientCapacityFallback() {
 	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
@@ -507,6 +512,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpotInsufficientCapacityFallback() {
 	requestInput := *mock.RequestSpotInstancesInput
 	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
 	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
+	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
 	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
 	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
@@ -520,6 +526,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpotInsufficientCapacityFallback() {
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
+	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("keyName", *runInput.KeyName)
 	s.Require().Len(runInput.BlockDeviceMappings, 1)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
@@ -537,6 +544,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpotUnfulfillableCapacityFallback() {
 	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
@@ -573,6 +581,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpotUnfulfillableCapacityFallback() {
 	requestInput := *mock.RequestSpotInstancesInput
 	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
 	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
+	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
 	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
 	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
@@ -586,6 +595,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpotUnfulfillableCapacityFallback() {
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
+	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("keyName", *runInput.KeyName)
 	s.Require().Len(runInput.BlockDeviceMappings, 1)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
@@ -603,6 +613,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
@@ -632,6 +643,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	requestInput := *mock.RequestSpotInstancesInput
 	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
 	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
+	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
 	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
 	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
@@ -648,6 +660,7 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("key_name", ""),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
@@ -677,6 +690,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("key_name", ""),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
@@ -725,6 +739,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
+	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("evg_auto_evergreen", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)

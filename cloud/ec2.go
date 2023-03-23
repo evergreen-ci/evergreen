@@ -515,7 +515,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 }
 
 func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) error {
-	spotRequest := &ec2.RequestSpotInstancesInput{ //add here
+	spotRequest := &ec2.RequestSpotInstancesInput{
 		SpotPrice:     aws.String(fmt.Sprintf("%v", ec2Settings.BidPrice)),
 		InstanceCount: aws.Int64(1),
 		LaunchSpecification: &ec2.RequestSpotLaunchSpecification{
