@@ -1111,14 +1111,16 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	return nil, errors.Errorf("no matching hooks found")
 }
 
+// MergePullRequest attempts to merge the given pull request. If commits are merged one after another, Github may
+// not have updated that this can be merged, so we allow retries.
 func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
-	httpClient := getGithubClient(token, "MergePullRequest")
+	httpClient := getGithubClientRetry(token, "MergePullRequest")
 	defer utility.PutHTTPClient(httpClient)
 	githubClient := github.NewClient(httpClient)
 	res, _, err := githubClient.PullRequests.Merge(ctx, owner, repo,
 		prNum, commitMessage, mergeOpts)
 	if err != nil {
-		return errors.Wrap(err, "can't access GitHub merge API")
+		return errors.Wrap(err, "accessing GitHub merge API")
 	}
 	if !res.GetMerged() {
 		return errors.Errorf("GitHub refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
