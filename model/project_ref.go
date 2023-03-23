@@ -2953,6 +2953,9 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 // explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val
 // Should not be used with project enabled field.
 func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bson.M {
+	if projectKey == ProjectRefEnabledKey {
+		return nil
+	}
 	return []bson.M{
 		lookupRepoStep,
 		{"$match": bson.M{
