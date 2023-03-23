@@ -1399,8 +1399,10 @@ func byId(identifier string) db.Q {
 func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	pipeline := []bson.M{{"$match": byOwnerRepoAndBranch(owner, repoName, branch, true)}}
-	pipeline = append(pipeline, projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
+	match := byOwnerRepoAndBranch(owner, repoName, branch, true)
+	match[ProjectRefEnabledKey] = true
+	pipeline := []bson.M{{"$match": match}}
+	pipeline = append(pipeline, lookupRepoStep)
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
@@ -1670,8 +1672,10 @@ func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*Proj
 func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	pipeline := []bson.M{{"$match": byOwnerAndRepo(owner, repo)}}
-	pipeline = append(pipeline, projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
+	match := byOwnerAndRepo(owner, repo)
+	match[ProjectRefEnabledKey] = true
+	pipeline := []bson.M{{"$match": match}}
+	pipeline = append(pipeline, lookupRepoStep)
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
@@ -2947,6 +2951,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 
 // projectRefPipelineForValueIsBool is an aggregation pipeline to find projects that have the projectKey
 // explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val
+// Should not be used with project enabled field.
 func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bson.M {
 	return []bson.M{
 		lookupRepoStep,
