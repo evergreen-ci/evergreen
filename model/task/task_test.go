@@ -3492,24 +3492,25 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.NoError(annotationWithSuspectedIssue.Upsert())
 	s.NoError(annotationWithEmptyIssues.Upsert())
 
+	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}
-	t, _, err := GetTasksByVersion("version_known", opts)
+	t, _, err := GetTasksByVersion(ctx, "version_known", opts)
 	s.NoError(err)
 	// ignore annotation for successful task
 	s.Equal(evergreen.TaskSucceeded, t[0].DisplayStatus)
 
 	// test with empty issues list
-	t, _, err = GetTasksByVersion("version_not_known", opts)
+	t, _, err = GetTasksByVersion(ctx, "version_not_known", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
 
 	// test with no annotation document
-	t, _, err = GetTasksByVersion("version_no_annotation", opts)
+	t, _, err = GetTasksByVersion(ctx, "version_no_annotation", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
 
 	// test with empty issues
-	t, _, err = GetTasksByVersion("version_with_empty_issues", opts)
+	t, _, err = GetTasksByVersion(ctx, "version_with_empty_issues", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
 }
