@@ -466,7 +466,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	launchTemplate := &ec2.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		KeyName:             aws.String(ec2Settings.KeyName),
-		IamInstanceProfile:  &ec2.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)},
 		InstanceType:        aws.String(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagTemplate(makeTags(h)),
