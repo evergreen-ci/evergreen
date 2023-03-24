@@ -162,6 +162,36 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
+func NewCanCreateMiddleware() gimlet.Middleware {
+	return &canCreateMiddleware{}
+}
+
+type canCreateMiddleware struct {
+}
+
+func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	user := MustHaveUser(ctx)
+
+	isAdmin, err := user.HasProjectCreatePermission()
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error checking permissions",
+		}))
+		return
+	}
+	if !isAdmin {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
+		return
+	}
+
+	next(rw, r)
+}
+
 // This middleware is more restrictive than checkProjectAdmin, as branch admins do not have access
 func NewRepoAdminMiddleware() gimlet.Middleware {
 	return &projectRepoMiddleware{}
