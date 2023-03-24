@@ -96,7 +96,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "ht_1", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateName)
 		},
 		"RequestFleet": func(*testing.T) {
-			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc", InstanceType: "instanceType0", IAMInstanceProfileARN: "my-profile"}
+			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc", InstanceType: "instanceType0"}
 
 			instanceID, err := m.requestFleet(context.Background(), h, ec2Settings)
 			assert.NoError(t, err)
@@ -108,8 +108,7 @@ func TestFleet(t *testing.T) {
 		},
 		"MakeOverrides": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{
-				InstanceType:          "instanceType0",
-				IAMInstanceProfileARN: "my-profile",
+				InstanceType: "instanceType0",
 			}
 			overrides, err := m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)
@@ -124,9 +123,8 @@ func TestFleet(t *testing.T) {
 			assert.Nil(t, overrides)
 
 			ec2Settings = &EC2ProviderSettings{
-				InstanceType:          "instanceType0",
-				IAMInstanceProfileARN: "my-profile",
-				SubnetId:              "subnet-654321",
+				InstanceType: "instanceType0",
+				SubnetId:     "subnet-654321",
 			}
 			overrides, err = m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)

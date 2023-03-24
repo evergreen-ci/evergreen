@@ -323,7 +323,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ImageId:             &ec2Settings.AMI,
 		KeyName:             &ec2Settings.KeyName,
 		InstanceType:        &ec2Settings.InstanceType,
-		IamInstanceProfile:  &ec2.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)},
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagSpecifications(makeTags(h)),
 	}
@@ -523,7 +522,6 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			KeyName:             aws.String(ec2Settings.KeyName),
 			InstanceType:        aws.String(ec2Settings.InstanceType),
 			BlockDeviceMappings: blockDevices,
-			IamInstanceProfile:  &ec2.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)},
 		},
 	}
 
