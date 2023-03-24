@@ -57,6 +57,7 @@
         "owner_name": "evergreen-ci",
         "repo_name": "evergreen",
         "branch_name": "",
+        "enabled": true,
         "repo_ref_id": "mci-repo"
       },
       {
@@ -79,7 +80,6 @@
         "owner_name": "evergreen-ci",
         "repo_name": "evergreen",
         "branch_name": "main",
-        "enabled": true,
         "pr_testing_enabled": true,
         "commit_queue": {
           "enabled": true

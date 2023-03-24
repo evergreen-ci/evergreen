@@ -2950,7 +2950,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 }
 
 // projectRefPipelineForValueIsBool is an aggregation pipeline to find projects that have the projectKey
-// explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val
+// explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val.
 // Should not be used with project enabled field.
 func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bson.M {
 	if projectKey == ProjectRefEnabledKey {
@@ -2977,7 +2977,6 @@ func projectRefPipelineForMatchingTrigger(project string) []bson.M {
 			"$and": []bson.M{
 				{"$or": []bson.M{
 					{ProjectRefEnabledKey: true},
-					{ProjectRefEnabledKey: bson.M{"$ne": false}, bsonutil.GetDottedKeyName("repo_ref", RepoRefEnabledKey): true},
 				}},
 				{"$or": []bson.M{
 					{
@@ -3003,7 +3002,6 @@ func projectRefPipelineForCommitQueueEnabled() []bson.M {
 			"$and": []bson.M{
 				{"$or": []bson.M{
 					{ProjectRefEnabledKey: true},
-					{ProjectRefEnabledKey: nil, bsonutil.GetDottedKeyName("repo_ref", RepoRefEnabledKey): true},
 				}},
 				{"$or": []bson.M{
 					{
