@@ -268,14 +268,16 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 		SetWorkingDir(opts.WorkingDir).
 		SetCommand(bootstrapContainerCommand(settings, opts)).
 		SetEnvironmentVariables(exportPodEnvSecrets(opts)).
-		SetLogConfiguration(*cocoa.NewLogConfiguration().SetLogDriver(awsECS.LogDriverAwslogs).SetOptions(map[string]string{
-			awsLogsGroup:  ecsConf.LogGroup,
-			awsLogsRegion: ecsConf.LogRegion,
-		})).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
 
 	if opts.RepoCredsExternalID != "" {
 		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().SetID(opts.RepoCredsExternalID))
+	}
+	if ecsConf.LogRegion != "" && ecsConf.LogGroup != "" {
+		def.SetLogConfiguration(*cocoa.NewLogConfiguration().SetLogDriver(awsECS.LogDriverAwslogs).SetOptions(map[string]string{
+			awsLogsGroup:  ecsConf.LogGroup,
+			awsLogsRegion: ecsConf.LogRegion,
+		}))
 	}
 
 	return def, nil
