@@ -363,7 +363,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/").Handler(as.requestHost).Put()
 	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/{user}/").Handler(as.hostsInfoForUser).Get()
 	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/distros/list/").Handler(as.listDistros).Get()
-	app.AddRoute("/dockerfile").Wrap(requireUserToggleable).Handler(getDockerfile).Get()
+	app.AddRoute("/dockerfile").Wrap().Handler(getDockerfile).Get()
 
 	return app
 }
