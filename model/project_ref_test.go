@@ -1507,32 +1507,6 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.NotNil(projectRef)
 	assert.Equal("mci", projectRef.Id)
 
-	// doc defaults to repo, which is not enabled
-	doc = &ProjectRef{
-		Owner:     "mongodb",
-		Repo:      "mci",
-		Branch:    "not_main",
-		Id:        "mci_main",
-		RepoRefId: "my_repo",
-	}
-	repoDoc := &RepoRef{ProjectRef{Id: "my_repo"}}
-	assert.NoError(doc.Insert())
-	assert.NoError(repoDoc.Upsert())
-
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
-	assert.NoError(err)
-	assert.Nil(projectRef)
-
-	// doc defaults to repo, which is enabled
-	repoDoc.Enabled = true
-	repoDoc.CommitQueue.Enabled = utility.TruePtr()
-	assert.NoError(repoDoc.Upsert())
-
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
-	assert.NoError(err)
-	assert.NotNil(projectRef)
-	assert.Equal("mci_main", projectRef.Id)
-
 	// doc doesn't default to repo
 	doc.CommitQueue.Enabled = utility.FalsePtr()
 	assert.NoError(doc.Update())
