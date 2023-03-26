@@ -153,7 +153,38 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 }
 
 func TestNewCanCreateMiddleware(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(evergreen.RoleCollection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	adminRole := gimlet.Role{
+		ID:          "r1",
+		Scope:       "anything",
+		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+	}
+	assert.NoError(env.RoleManager().UpdateRole(adminRole))
 
+	opCtx := model.Context{}
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "not.admin"})
+	r, err := http.NewRequest(http.MethodPut, "/projects/makeFromRoute", nil)
+	assert.NoError(err)
+	assert.NotNil(r)
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+
+	mw := NewCanCreateMiddleware()
+	rw := httptest.NewRecorder()
+
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "johnny.appleseed", SystemRoles: []string{"r1"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+
+	rw = httptest.NewRecorder()
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
 }
 
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
