@@ -152,6 +152,10 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 }
 
+func TestNewCanCreateMiddleware(t *testing.T) {
+
+}
+
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
