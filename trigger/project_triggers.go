@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -124,7 +123,5 @@ func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (model.Pro
 		return model.ProjectInfo{}, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
-	return model.GetProjectFromFile(ctx, opts)
+	return model.GetProjectFromFile(context.Background(), opts)
 }

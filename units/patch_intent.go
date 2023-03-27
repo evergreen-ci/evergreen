@@ -183,12 +183,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if err = catcher.Resolve(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":     "failed to build patch document",
-			"job":         j.ID(),
-			"patch_id":    j.PatchID,
-			"intent_type": j.IntentType,
-			"intent_id":   j.IntentID,
-			"source":      "patch intents",
+			"message":      "failed to build patch document",
+			"job":          j.ID(),
+			"patch_id":     j.PatchID,
+			"intent_type":  j.IntentType,
+			"intent_id":    j.IntentID,
+			"github_error": j.gitHubError,
+			"source":       "patch intents",
 		}))
 
 		return err
@@ -354,6 +355,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
+		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
+			j.gitHubError = noChildPatchTasksOrVariants
+		}
 		return errors.Wrap(err, "processing trigger aliases")
 	}
 
@@ -906,15 +910,17 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
 
+	patchDoc.Githash = v.Revision
 	matchingTasks, err := project.VariantTasksForSelectors(intent.Definitions, patchDoc.GetRequester())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "matching tasks to alias definitions")
 	}
 	if len(matchingTasks) == 0 {
-		return nil, nil, nil
+		// Adding to Github error here directly doesn't work, since we need the parent patch to send the
+		// error to the Github PR, so instead we return it as an error that we case on.
+		return nil, nil, errors.New(noChildPatchTasksOrVariants)
 	}
 
-	patchDoc.Githash = v.Revision
 	patchDoc.VariantsTasks = matchingTasks
 
 	if intent.ParentAsModule != "" {

@@ -93,7 +93,8 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		DontDefaultIfBlank: true, // note this means that we will never merge with the default message (concatenated commit messages)
 	}
 
-	// do the merge
-	return thirdparty.MergePullRequest(githubCtx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+	// Do the merge and assign to error so the defer statement handles this correctly.
+	err = thirdparty.MergePullRequest(githubCtx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 		patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
+	return err
 }

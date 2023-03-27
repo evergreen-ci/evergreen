@@ -112,7 +112,11 @@ func TestFindProject(t *testing.T) {
 			So(p.Owner, ShouldEqual, "fakeowner")
 			So(v.Id, ShouldEqual, "good_version")
 		})
-
+		Convey("error if no version exists", func() {
+			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
+			_, _, _, err := FindLatestVersionWithValidProject("project_test")
+			So(err, ShouldNotBeNil)
+		})
 	})
 
 }

@@ -199,6 +199,9 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	if _, ok := env["CI"]; !ok {
 		env["CI"] = "true"
 	}
+	if _, ok := env["XDG_CACHE_HOME"]; !ok {
+		env["XDG_CACHE_HOME"] = filepath.Join(opts.workingDir, ".xdgcache")
+	}
 
 	return env
 }

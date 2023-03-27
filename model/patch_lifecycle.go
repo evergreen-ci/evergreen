@@ -203,7 +203,7 @@ func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
 }
 
 func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *GetProjectOpts, p *patch.Patch) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, fetchProjectFilesTimeout)
 	defer cancel()
 	env := evergreen.GetEnvironment()
 

@@ -345,7 +345,8 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 		return nil, err
 	}
 
-	// If the PR is blocked and the patch is successful, refresh status, and re-check PR.
+	// If the PR is blocked, refresh status, and re-check PR.
+	// We do this even if the patch isn't finished since the PR checks may not rely on all variants.
 	if pr.GetMergeableState() == thirdparty.GithubPRBlocked {
 		p, err := patch.FindLatestGithubPRPatch(info.Owner, info.Repo, info.PR)
 		if err != nil {
@@ -357,7 +358,7 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 				"repo":    info.Repo,
 				"pr":      info.PR,
 			}))
-		} else if p != nil && p.Version != "" && p.Status == evergreen.PatchSucceeded {
+		} else if p != nil && p.Version != "" {
 			refreshJob := units.NewGithubStatusRefreshJob(p)
 			refreshJob.Run(ctx)
 			pr, err = getPRAndCheckBase(ctx, sc, info)
