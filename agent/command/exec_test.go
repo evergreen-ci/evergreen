@@ -363,6 +363,7 @@ func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
 	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
 	defer cancel()
 	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 8)
 	s.Contains(cmd.Env, agentutil.MarkerTaskID)
 	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
 	s.Contains(cmd.Env, "TEMP")
@@ -370,7 +371,6 @@ func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
 	s.Contains(cmd.Env, "TMPDIR")
 	s.Contains(cmd.Env, "GOCACHE")
 	s.Contains(cmd.Env, "CI")
-	s.Contains(cmd.Env, "XDG_CACHE_HOME")
 	s.Contains(cmd.Env, "foo")
 }
 
@@ -389,6 +389,7 @@ func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
 	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
 	defer cancel()
 	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 9)
 	s.Contains(cmd.Env, agentutil.MarkerTaskID)
 	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
 	s.Contains(cmd.Env, "TEMP")
@@ -396,7 +397,6 @@ func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
 	s.Contains(cmd.Env, "TMPDIR")
 	s.Contains(cmd.Env, "GOCACHE")
 	s.Contains(cmd.Env, "CI")
-	s.Contains(cmd.Env, "XDG_CACHE_HOME")
 	for k, v := range s.conf.Expansions.Map() {
 		s.Equal(v, cmd.Env[k])
 	}
@@ -445,24 +445,24 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 				tmpDir:     "tmp_dir",
 			}
 			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
+			assert.Len(t, env, 7)
 			assert.Equal(t, opts.taskID, env[agentutil.MarkerTaskID])
 			assert.Contains(t, strconv.Itoa(os.Getpid()), env[agentutil.MarkerAgentPID])
 			assert.Contains(t, opts.tmpDir, env["TEMP"])
 			assert.Contains(t, opts.tmpDir, env["TMP"])
 			assert.Contains(t, opts.tmpDir, env["TMPDIR"])
 			assert.Equal(t, filepath.Join(opts.workingDir, ".gocache"), env["GOCACHE"])
-			assert.Equal(t, filepath.Join(opts.workingDir, ".xdgcache"), env["XDG_CACHE_HOME"])
 			assert.Equal(t, "true", env["CI"])
 		},
 		"SetsDefaultAndRequiredEnvEvenWhenStandardValuesAreZero": func(t *testing.T, exp util.Expansions) {
 			env := defaultAndApplyExpansionsToEnv(map[string]string{}, modifyEnvOptions{})
+			assert.Len(t, env, 7)
 			assert.Contains(t, env, agentutil.MarkerTaskID)
 			assert.Contains(t, env, agentutil.MarkerAgentPID)
 			assert.Contains(t, env, "TEMP")
 			assert.Contains(t, env, "TMP")
 			assert.Contains(t, env, "TMPDIR")
 			assert.Equal(t, ".gocache", env["GOCACHE"])
-			assert.Equal(t, ".xdgcache", env["XDG_CACHE_HOME"])
 			assert.Equal(t, "true", env["CI"])
 		},
 		"AgentEnvVarsOverridesExplicitlySetEnvVars": func(t *testing.T, exp util.Expansions) {
