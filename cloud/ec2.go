@@ -327,6 +327,10 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		TagSpecifications:   makeTagSpecifications(makeTags(h)),
 	}
 
+	if ec2Settings.IAMInstanceProfileARN != "" {
+		input.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
+	}
+
 	if ec2Settings.IsVpc {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			{
@@ -523,6 +527,10 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			InstanceType:        aws.String(ec2Settings.InstanceType),
 			BlockDeviceMappings: blockDevices,
 		},
+	}
+
+	if ec2Settings.IAMInstanceProfileARN != "" {
+		spotRequest.LaunchSpecification.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
 	if ec2Settings.IsVpc {
