@@ -12,7 +12,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20230112233414-3f96d2cd90ff
+	github.com/evergreen-ci/cocoa v0.0.0-20230323210713-a34b158b096e
 	github.com/evergreen-ci/gimlet v0.0.0-20230317174941-7e759337ad2c
 	github.com/evergreen-ci/juniper v0.0.0-20230119161755-1aced8006202
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7

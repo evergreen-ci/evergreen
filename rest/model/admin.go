@@ -1834,6 +1834,8 @@ type APIECSConfig struct {
 	TaskDefinitionPrefix *string                  `json:"task_definition_prefix"`
 	TaskRole             *string                  `json:"task_role"`
 	ExecutionRole        *string                  `json:"execution_role"`
+	LogRegion            *string                  `json:"log_region"`
+	LogGroup             *string                  `json:"log_group"`
 	AWSVPC               *APIAWSVPCConfig         `json:"awsvpc"`
 	Clusters             []APIECSClusterConfig    `json:"clusters"`
 	CapacityProviders    []APIECSCapacityProvider `json:"capacity_providers"`
@@ -1845,6 +1847,8 @@ func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
 	a.TaskDefinitionPrefix = utility.ToStringPtr(conf.TaskDefinitionPrefix)
 	a.TaskRole = utility.ToStringPtr(conf.TaskRole)
 	a.ExecutionRole = utility.ToStringPtr(conf.ExecutionRole)
+	a.LogRegion = utility.ToStringPtr(conf.LogRegion)
+	a.LogGroup = utility.ToStringPtr(conf.LogGroup)
 	var apiAWSVPC APIAWSVPCConfig
 	apiAWSVPC.BuildFromService(conf.AWSVPC)
 	a.AWSVPC = &apiAWSVPC
@@ -1888,6 +1892,8 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 		TaskDefinitionPrefix: utility.FromStringPtr(a.TaskDefinitionPrefix),
 		TaskRole:             utility.FromStringPtr(a.TaskRole),
 		ExecutionRole:        utility.FromStringPtr(a.ExecutionRole),
+		LogRegion:            utility.FromStringPtr(a.LogRegion),
+		LogGroup:             utility.FromStringPtr(a.LogGroup),
 		AWSVPC:               a.AWSVPC.ToService(),
 		Clusters:             clusters,
 		CapacityProviders:    providers,
