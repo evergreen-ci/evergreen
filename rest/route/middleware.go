@@ -173,7 +173,7 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	ctx := r.Context()
 	user := MustHaveUser(ctx)
 
-	isAdmin, err := user.HasProjectCreatePermission()
+	canCreate, err := user.HasProjectCreatePermission()
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -181,7 +181,7 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		}))
 		return
 	}
-	if !isAdmin {
+	if !canCreate {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
