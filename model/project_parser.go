@@ -816,7 +816,16 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	return projectFileBytes, nil
 }
 
+// fetchProjectFilesTimeout is the maximum timeout to fetch project
+// configuration files from its source.
+const fetchProjectFilesTimeout = time.Minute
+
+// GetProjectFromFile fetches project configuration files from its source (e.g.
+// from a patch diff, GitHub, etc).
 func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, fetchProjectFilesTimeout)
+	defer cancel()
+
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {
 		return ProjectInfo{}, err

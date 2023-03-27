@@ -1,0 +1,120 @@
+{
+  "tests": [
+    {
+      "query_file": "task_logs_all.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "taskLogs": {
+              "systemLogs": [
+                {
+                  "type": "S",
+                  "severity": "I",
+                  "message": "    [javac]     protected void finalize() {",
+                  "timestamp": "2019-12-07T13:31:19.393-05:00",
+                  "version": 1
+                }
+              ],
+              "eventLogs": [
+                {
+                  "timestamp": "2020-03-03T10:45:27.543-05:00",
+                  "eventType": "TASK_DISPATCHED",
+                  "data": {
+                    "hostId": "i-08f7b38b217d21c13",
+                    "jiraIssue": "",
+                    "jiraLink": "",
+                    "priority": 0,
+                    "status": "",
+                    "timestamp": null,
+                    "userId": ""
+                  }
+                },
+                {
+                  "timestamp": "2020-03-03T10:45:27.83-05:00",
+                  "eventType": "TASK_STARTED",
+                  "data": {
+                    "hostId": "hostid",
+                    "jiraIssue": "an_issue",
+                    "jiraLink": "https://https://jira.mongodb.org/browse/an_issue",
+                    "priority": 55,
+                    "status": "success",
+                    "timestamp": "2020-03-03T10:45:27.83-05:00",
+                    "userId": "super user"
+                  }
+                },
+                {
+                  "timestamp": "2020-03-03T10:46:00.709-05:00",
+                  "eventType": "TASK_FINISHED",
+                  "data": {
+                    "hostId": "",
+                    "jiraIssue": "",
+                    "jiraLink": "",
+                    "priority": 0,
+                    "status": "success",
+                    "timestamp": null,
+                    "userId": ""
+                  }
+                }
+              ],
+              "taskLogs": [
+                {
+                  "type": "T",
+                  "severity": "I",
+                  "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
+                  "timestamp": "2019-12-07T13:31:19.637-05:00",
+                  "version": 1
+                },
+                {
+                  "type": "T",
+                  "severity": "I",
+                  "message": "    [javac] 9 warnings",
+                  "timestamp": "2019-12-07T13:31:19.637-05:00",
+                  "version": 1
+                }
+              ],
+              "agentLogs": [
+                {
+                  "type": "E",
+                  "severity": "I",
+                  "message": "    [javac]                    ^",
+                  "timestamp": "2019-12-07T13:31:19.393-05:00",
+                  "version": 1
+                }
+              ],
+              "allLogs": [
+                {
+                  "type": "T",
+                  "severity": "I",
+                  "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
+                  "timestamp": "2019-12-07T13:31:19.637-05:00",
+                  "version": 1
+                },
+                {
+                  "type": "T",
+                  "severity": "I",
+                  "message": "    [javac] 9 warnings",
+                  "timestamp": "2019-12-07T13:31:19.637-05:00",
+                  "version": 1
+                },
+                {
+                  "type": "E",
+                  "severity": "I",
+                  "message": "    [javac]                    ^",
+                  "timestamp": "2019-12-07T13:31:19.393-05:00",
+                  "version": 1
+                },
+                {
+                  "type": "S",
+                  "severity": "I",
+                  "message": "    [javac]     protected void finalize() {",
+                  "timestamp": "2019-12-07T13:31:19.393-05:00",
+                  "version": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

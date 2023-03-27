@@ -1,0 +1,44 @@
+{
+  "tests": [
+    {
+      "query_file": "spawn_host_link.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "spawnHostLink": "http://localhost/spawn?distro_id=localhost1&task_id=task1"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "spawn_host_link_no_host.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "spawnHostLink": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "spawn_host_link_distro_provider_static.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "spawnHostLink": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "spawn_host_link_spawn_not_allowed.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "spawnHostLink": null
+          }
+        }
+      }
+    }
+  ]
+}

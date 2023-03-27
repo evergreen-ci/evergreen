@@ -1,0 +1,10 @@
+{
+    task(taskId: "mainline_commit_2"){
+        id
+        status
+        baseTask {
+            id
+            status
+        }
+    }
+}

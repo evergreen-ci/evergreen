@@ -1,0 +1,52 @@
+{
+  "tests": [
+    {
+      "query_file": "build_variant_stats.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "buildVariantStats": [
+              {
+                "variant": "lint",
+                "displayName": "Lint",
+                "statusCounts": [
+                  {
+                    "count": 1,
+                    "status": "failed"
+                  },
+                  {
+                    "count": 1,
+                    "status": "success"
+                  }
+                ]
+              },
+              {
+                "variant": "ubuntu1604",
+                "displayName": "Ubuntu 16.04",
+                "statusCounts": [
+                  {
+                    "count": 1,
+                    "status": "failed"
+                  },
+                  {
+                    "count": 1,
+                    "status": "setup-failed"
+                  },
+                  {
+                    "count": 1,
+                    "status": "success"
+                  },
+                  {
+                    "count": 1,
+                    "status": "undispatched"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

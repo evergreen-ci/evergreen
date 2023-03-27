@@ -567,7 +567,7 @@ func TestHostNextTask(t *testing.T) {
 
 			pref := &model.ProjectRef{
 				Id:      "exists",
-				Enabled: utility.TruePtr(),
+				Enabled: true,
 			}
 
 			require.NoError(t, task1.Insert())
@@ -892,7 +892,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		}
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
@@ -917,7 +917,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 
 		})
 		Convey("tasks with a disabled project should be removed from the queue", func() {
-			pref.Enabled = utility.FalsePtr()
+			pref.Enabled = false
 			So(pref.Upsert(), ShouldBeNil)
 
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
@@ -1243,7 +1243,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		}
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)

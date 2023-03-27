@@ -1,0 +1,50 @@
+{
+  "tasks": [
+    {
+      "_id": "taskity_task",
+      "order": 2567,
+      "version": "5e4ff3abe3c3317e352062e4",
+      "host_id": "i-0bb70e2ac4c1a9ac8",
+      "distro": "archlinux-small",
+      "r": "github_pull_request",
+      "execution": 0,
+      "details": {
+        "oom_killer": {
+          "detected": true,
+          "pids": [
+            1234,
+            5678,
+            9101,
+            1235
+          ]
+        }
+      },
+      "depends_on": [
+        {
+          "_id": "dep1",
+          "status": "*",
+          "unattainable": true
+        },
+        {
+          "_id": "dep2",
+          "status": "*",
+          "unattainable": false
+        }
+      ]
+    },
+    {
+      "_id": "some_task",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "status": "dispatched",
+      "branch": "spruce",
+      "distro": "macos-1014",
+      "execution": 1,
+      "host_id": "host2"
+    }
+  ]
+}

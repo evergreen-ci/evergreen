@@ -1,7 +1,7 @@
 """
-requireSuperUser is used to restrict certain actions to superusers.
+canCreateProject is used to restrict certain actions to admins.
 """
-directive @requireSuperUser on FIELD_DEFINITION
+directive @canCreateProject on ARGUMENT_DEFINITION 
 
 """
 requireProjectAccess is used to restrict view and edit access for project settings.

@@ -1,0 +1,8 @@
+{
+  yes: task(taskId: "some_task_4") {
+    blocked
+  }
+  no: task(taskId: "some_task", execution: 1) {
+    blocked
+  }
+}

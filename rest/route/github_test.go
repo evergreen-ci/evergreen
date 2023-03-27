@@ -134,7 +134,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 		Owner:            "baxterthehacker",
 		Repo:             "public-repo",
 		Branch:           "main",
-		Enabled:          utility.TruePtr(),
+		Enabled:          true,
 		BatchTime:        10,
 		Id:               "ident0",
 		PRTestingEnabled: utility.TruePtr(),
@@ -227,7 +227,7 @@ func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) 
 func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	ref := &model.ProjectRef{
 		Id:      "meh",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "changes",
@@ -257,7 +257,7 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "main",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -404,7 +404,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 func TestGetHelpTextFromProjects(t *testing.T) {
 	cqAndPREnabledProject := model.ProjectRef{
 		Id:      "cqEnabled",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -412,31 +412,44 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 	}
 	manualPRProject := model.ProjectRef{
 		Id:                     "manualEnabled",
-		Enabled:                utility.TruePtr(),
+		Enabled:                true,
 		ManualPRTestingEnabled: utility.TruePtr(),
 	}
 	cqDisabledWithTextProject := model.ProjectRef{
 		Id:      "cqDisabled",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 			Message: "this commit queue isn't enabled",
 		},
 	}
+	disabledProject := model.ProjectRef{
+		Id:      "disabled",
+		Enabled: false,
+	}
+	repoRefWithPRTesting := &model.RepoRef{ProjectRef: model.ProjectRef{
+		Id:                     "enabled",
+		PRTestingEnabled:       utility.TruePtr(),
+		ManualPRTestingEnabled: utility.TruePtr(),
+	}}
+	repoRefWithoutPRTesting := &model.RepoRef{ProjectRef: model.ProjectRef{
+		Id:               "notEnabled",
+		PRTestingEnabled: nil,
+	}}
 
 	for testCase, test := range map[string]func(*testing.T){
 		"cqEnabledAndDisabled": func(t *testing.T) {
 			pRefs := []model.ProjectRef{cqAndPREnabledProject, cqDisabledWithTextProject}
-			helpText := getHelpTextFromProjects(pRefs)
+			helpText := getHelpTextFromProjects(nil, pRefs)
 			assert.Contains(t, helpText, refreshStatusComment)
 			assert.Contains(t, helpText, commitQueueMergeComment)
 			assert.NotContains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
 			assert.Contains(t, helpText, retryComment)
-			assert.Contains(t, helpText, patchComment)
+			assert.NotContains(t, helpText, patchComment)
 		},
 		"manualAndAutomaticPRTestingEnabled": func(t *testing.T) {
 			pRefs := []model.ProjectRef{cqAndPREnabledProject, manualPRProject}
-			helpText := getHelpTextFromProjects(pRefs)
+			helpText := getHelpTextFromProjects(nil, pRefs)
 			assert.Contains(t, helpText, refreshStatusComment)
 			assert.Contains(t, helpText, commitQueueMergeComment)
 			assert.Contains(t, helpText, patchComment)
@@ -444,20 +457,47 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 		},
 		"manualPRTestingEnabled": func(t *testing.T) {
 			pRefs := []model.ProjectRef{manualPRProject}
-			helpText := getHelpTextFromProjects(pRefs)
+			helpText := getHelpTextFromProjects(nil, pRefs)
 			assert.Contains(t, helpText, refreshStatusComment)
 			assert.Contains(t, helpText, patchComment)
-			assert.Contains(t, helpText, retryComment)
+			assert.NotContains(t, helpText, retryComment)
 			assert.NotContains(t, helpText, commitQueueMergeComment)
 		},
 		"cqDisabled": func(t *testing.T) {
 			pRefs := []model.ProjectRef{cqDisabledWithTextProject}
-			helpText := getHelpTextFromProjects(pRefs)
+			helpText := getHelpTextFromProjects(nil, pRefs)
 			assert.Contains(t, helpText, commitQueueMergeComment)
 			assert.Contains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
 			assert.NotContains(t, helpText, refreshStatusComment)
 			assert.NotContains(t, helpText, retryComment)
 			assert.NotContains(t, helpText, patchComment)
+		},
+		"repoPRTestingEnabled": func(t *testing.T) {
+			pRefs := []model.ProjectRef{cqDisabledWithTextProject}
+			helpText := getHelpTextFromProjects(repoRefWithPRTesting, pRefs)
+			assert.Contains(t, helpText, commitQueueMergeComment)
+			assert.Contains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
+			assert.Contains(t, helpText, refreshStatusComment)
+			assert.Contains(t, helpText, patchComment)
+			assert.Contains(t, helpText, retryComment)
+		},
+		"repoNoTestingEnabled": func(t *testing.T) {
+			pRefs := []model.ProjectRef{cqDisabledWithTextProject}
+			helpText := getHelpTextFromProjects(repoRefWithoutPRTesting, pRefs)
+			assert.Contains(t, helpText, commitQueueMergeComment)
+			assert.Contains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
+			assert.NotContains(t, helpText, refreshStatusComment)
+			assert.NotContains(t, helpText, patchComment)
+			assert.NotContains(t, helpText, retryComment)
+		},
+		"repoPRTestingNotUsed": func(t *testing.T) {
+			// We only use repo PR testing if there are no disabled projects.
+			pRefs := []model.ProjectRef{disabledProject}
+			helpText := getHelpTextFromProjects(repoRefWithPRTesting, pRefs)
+			assert.NotContains(t, helpText, refreshStatusComment)
+			assert.NotContains(t, helpText, patchComment)
+			assert.NotContains(t, helpText, retryComment)
+			assert.NotContains(t, helpText, commitQueueMergeComment)
 		},
 	} {
 

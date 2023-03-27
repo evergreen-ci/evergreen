@@ -34,7 +34,7 @@ func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
 	u := gimlet.GetUser(ctx)
 	projects := []string{}
 	for _, r := range refs {
-		if r.IsEnabled() && (!r.IsPrivate() || u != nil) {
+		if r.Enabled && (!r.IsPrivate() || u != nil) {
 			projects = append(projects, r.Id)
 		}
 	}

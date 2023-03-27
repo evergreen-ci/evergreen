@@ -32,7 +32,7 @@ func TestProjectRoutes(t *testing.T) {
 		publicId := "pub"
 		public := &model.ProjectRef{
 			Id:      publicId,
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 			Repo:    "repo1",
 			Admins:  []string{},
 		}
@@ -83,7 +83,7 @@ func TestProjectRoutes(t *testing.T) {
 		privateId := "priv"
 		private := &model.ProjectRef{
 			Id:      privateId,
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 			Private: utility.TruePtr(),
 			Repo:    "repo1",
 			Admins:  []string{"testuser"},

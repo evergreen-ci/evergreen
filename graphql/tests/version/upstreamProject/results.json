@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "query_file": "upstream_project.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
+            "upstreamProject": {
+              "owner": "evergreen-ci",
+              "repo": "evergreen",
+              "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+              "project": "evergreen",
+              "triggerID": "1",
+              "triggerType": "task",
+              "task": {
+                "id": "1"
+              },
+              "version": null
+            }
+          }
+        }
+      }
+    }
+  ]
+}

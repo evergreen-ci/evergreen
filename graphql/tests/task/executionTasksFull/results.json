@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "query_file": "execution_tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "display_task",
+            "executionTasksFull": [
+              {
+                "id": "execution_task",
+                "status": "success"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -48,14 +48,6 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionProjectCreate,
-		RequiredLevel: evergreen.ProjectCreate.Value,
-	}
-	canCreate := dbUser.HasPermission(opts)
-
 	spruceLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
@@ -66,11 +58,10 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		AllProjects []model.ProjectRef
-		CanCreate   bool
 		ViewData
 		NewUILink    string
 		SlackAppName string
-	}{allProjects, canCreate, uis.GetCommonViewData(w, r, true, true), newUILink, slackAppName}
+	}{allProjects, uis.GetCommonViewData(w, r, true, true), newUILink, slackAppName}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
@@ -357,7 +348,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		statusCode, err := model.ValidateEnabledProjectsLimit(responseRef.Id, settings, &origProjectRef, &model.ProjectRef{
-			Enabled: utility.ToBoolPtr(responseRef.Enabled),
+			Enabled: responseRef.Enabled,
 			Owner:   responseRef.Owner,
 			Repo:    responseRef.Repo,
 		})
@@ -586,7 +577,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.SpawnHostScriptPath = responseRef.SpawnHostScriptPath
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
-	projectRef.Enabled = &responseRef.Enabled
+	projectRef.Enabled = responseRef.Enabled
 	projectRef.Private = &responseRef.Private
 	projectRef.Restricted = &responseRef.Restricted
 	projectRef.Owner = responseRef.Owner
@@ -802,87 +793,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		AllProjects []model.ProjectRef
 	}{allProjects}
-
-	gimlet.WriteJSON(w, data)
-}
-
-func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
-
-	dbUser := MustHaveUser(r)
-	_ = MustHaveProjectContext(r)
-
-	identifier := gimlet.GetVars(r)["project_id"]
-
-	projectRef, err := model.FindBranchProjectRef(identifier)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if projectRef != nil {
-		http.Error(w, "Project already exists", http.StatusBadRequest)
-		return
-	}
-	newProject := model.ProjectRef{Identifier: identifier}
-
-	// the immutable ID may have optionally been passed in
-	projectWithId := struct {
-		Id string `json:"id"`
-	}{}
-
-	if err = utility.ReadJSON(utility.NewRequestReader(r), &projectWithId); err != nil {
-		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
-		return
-	}
-	newProject.Id = projectWithId.Id
-	if newProject.Id != "" { // verify that this is a unique ID
-		conflictingRef, err := model.FindBranchProjectRef(newProject.Id)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error checking for conflicting project ref: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-		if conflictingRef != nil {
-			http.Error(w, "ID already being used as ID or identifier for another project", http.StatusBadRequest)
-			return
-		}
-	}
-
-	err = newProject.Add(dbUser)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error adding project",
-		}))
-		errMsg := "error adding project"
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New(errMsg))
-		return
-	}
-
-	newProjectVars := model.ProjectVars{
-		Id: newProject.Id,
-	}
-
-	err = newProjectVars.Insert()
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	username := dbUser.DisplayName()
-	if err = model.LogProjectAdded(identifier, username); err != nil {
-		grip.Infof("Could not log new project %s", identifier)
-	}
-
-	allProjects, err := uis.filterViewableProjects(dbUser)
-
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	data := struct {
-		Available   bool
-		ProjectId   string
-		AllProjects []model.ProjectRef
-	}{true, identifier, allProjects}
 
 	gimlet.WriteJSON(w, data)
 }

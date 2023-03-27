@@ -88,7 +88,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 
-	if !projectRef.IsEnabled() || projectRef.IsRepotrackerDisabled() {
+	if !projectRef.Enabled || projectRef.IsRepotrackerDisabled() {
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
 		// projects.
@@ -177,7 +177,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":            "problem sorting revisions for repository",
+				"message":            "problem storing revisions for repository",
 				"runner":             RunnerName,
 				"project":            projectRef.Id,
 				"project_identifier": projectRef.Identifier,

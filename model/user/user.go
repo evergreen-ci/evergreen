@@ -381,6 +381,22 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 	return false
 }
 
+// HasProjectCreatePermission returns true if the user is an admin for any existing project.
+func (u *DBUser) HasProjectCreatePermission() (bool, error) {
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	roles, err := roleManager.GetRoles(u.Roles())
+	if err != nil {
+		return false, errors.Wrap(err, "getting roles")
+	}
+	for _, role := range roles {
+		level, hasPermission := role.Permissions[evergreen.PermissionProjectSettings]
+		if hasPermission && level >= evergreen.ProjectSettingsEdit.Value {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (u *DBUser) DeleteAllRoles() error {
 	info, err := db.FindAndModify(
 		Collection,

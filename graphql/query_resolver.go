@@ -324,7 +324,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 			IncludeBaseTasks:               false,
 			IncludeBuildVariantDisplayName: false,
 		}
-		tasks, _, err := task.GetTasksByVersion(id, opts)
+		tasks, _, err := task.GetTasksByVersion(ctx, id, opts)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 		}
@@ -332,7 +332,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
 				// add the child patch tasks to tasks so that we can consider their status
-				childPatchTasks, _, err := task.GetTasksByVersion(*cp.Id, opts)
+				childPatchTasks, _, err := task.GetTasksByVersion(ctx, *cp.Id, opts)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for child patch: %s ", err.Error()))
 				}
@@ -391,7 +391,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	// We have to iterate over the merged project refs to verify if they are enabled
 	enabledProjects := []model.ProjectRef{}
 	for _, p := range allProjects {
-		if p.IsEnabled() {
+		if p.Enabled {
 			enabledProjects = append(enabledProjects, p)
 		}
 	}
@@ -908,7 +908,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 		// If the version was created before we started caching activation status we must manually verify it and cache that value.
 		if v.Activated == nil {
-			err = setVersionActivationStatus(&v)
+			err = setVersionActivationStatus(ctx, &v)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
 			}

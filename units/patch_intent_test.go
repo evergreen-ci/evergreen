@@ -65,14 +65,16 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection, model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection,
+		model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection,
+		model.ProjectAliasCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Id:               "mci",
-		Enabled:          utility.TruePtr(),
+		Enabled:          true,
 		PatchingDisabled: utility.FalsePtr(),
 		Branch:           "main",
 		RemotePath:       "self-tests.yml",
@@ -95,7 +97,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "main",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		RemotePath: "self-tests.yml",
 	}).Insert())
 
@@ -1354,6 +1356,26 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 		Id: p.Id.Hex(),
 	}
 	s.NoError(pp.Insert())
+	latestVersion := model.Version{
+		Id:         "childProj-some-version",
+		Identifier: "childProj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	s.Require().NoError(latestVersion.Insert())
+
+	latestVersionParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
+buildvariants:
+- name: my-build-variant
+  display_name: my-build-variant
+  run_on:
+    - some-distro
+  tasks:
+    - my-task
+tasks:
+- name: my-task`), latestVersionParserProject))
+	latestVersionParserProject.Id = latestVersion.Id
+	s.Require().NoError(latestVersionParserProject.Insert())
 
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
@@ -1365,7 +1387,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 	s.NoError(err)
 
 	s.Len(p.Triggers.ChildPatches, 0)
-	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should succeed even with patch alias that doesn't match any defined aliases")
+	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 
 	dbPatch, err := patch.FindOneId(p.Id.Hex())

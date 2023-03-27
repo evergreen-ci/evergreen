@@ -8,8 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 const (
@@ -87,7 +89,10 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	uiService := uis.GetServiceApp()
 	apiService := as.GetServiceApp()
 
+	router := mux.NewRouter().UseEncodedPath()
+	router.Use(otelmux.Middleware("evergreen"))
+
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
-	return gimlet.MergeApplications(app, clients, uiService, rest, apiRestV2, apiService)
+	return gimlet.MergeApplicationsWithRouter(router, app, clients, uiService, rest, apiRestV2, apiService)
 }

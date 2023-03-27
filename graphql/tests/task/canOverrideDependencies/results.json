@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "can_override_dependencies.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "canOverrideDependencies": true
+          }
+        }
+      }
+    }
+  ]
+}

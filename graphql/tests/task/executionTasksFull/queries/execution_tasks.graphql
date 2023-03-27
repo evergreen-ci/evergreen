@@ -1,0 +1,9 @@
+{
+    task(taskId: "display_task") {
+      id
+      executionTasksFull {
+        id
+        status
+      }
+    }
+}
