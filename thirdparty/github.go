@@ -32,6 +32,7 @@ const (
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
+	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
 )
@@ -833,6 +834,40 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 
 	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, username)
 	return isMember, err
+}
+
+// AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
+// and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
+func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
+	httpClient := getGithubClientRetry(token, "AppAuthorizedForOrg")
+	defer utility.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+	opts := &github.ListOptions{PerPage: 100}
+	for {
+		installations, resp, err := client.Organizations.ListInstallations(ctx, requiredOrganization, opts)
+		if err != nil {
+			return false, err
+		}
+
+		for _, installation := range installations.Installations {
+			if installation.GetAppSlug() == name {
+				prPermission := installation.GetPermissions().GetPullRequests()
+				if prPermission == githubWrite {
+					return true, nil
+				}
+				return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
+			}
+		}
+
+		if resp.NextPage > 0 {
+			opts.Page = resp.NextPage
+		} else {
+			break
+		}
+	}
+
+	return false, nil
 }
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
