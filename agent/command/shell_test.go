@@ -195,6 +195,7 @@ func (s *shellExecuteCommandSuite) TestEnvIsSetAndDefaulted() {
 	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
 	defer cancel()
 	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 8)
 	s.Contains(cmd.Env, agentutil.MarkerTaskID)
 	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
 	s.Contains(cmd.Env, "TEMP")
@@ -202,7 +203,6 @@ func (s *shellExecuteCommandSuite) TestEnvIsSetAndDefaulted() {
 	s.Contains(cmd.Env, "TMPDIR")
 	s.Contains(cmd.Env, "GOCACHE")
 	s.Contains(cmd.Env, "CI")
-	s.Contains(cmd.Env, "XDG_CACHE_HOME")
 	s.Contains(cmd.Env, "foo")
 }
 
@@ -221,6 +221,7 @@ func (s *shellExecuteCommandSuite) TestEnvAddsExpansionsAndDefaults() {
 	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
 	defer cancel()
 	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 9)
 	s.Contains(cmd.Env, agentutil.MarkerTaskID)
 	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
 	s.Contains(cmd.Env, "TEMP")
@@ -228,7 +229,6 @@ func (s *shellExecuteCommandSuite) TestEnvAddsExpansionsAndDefaults() {
 	s.Contains(cmd.Env, "TMPDIR")
 	s.Contains(cmd.Env, "GOCACHE")
 	s.Contains(cmd.Env, "CI")
-	s.Contains(cmd.Env, "XDG_CACHE_HOME")
 	for k, v := range s.conf.Expansions.Map() {
 		s.Equal(v, cmd.Env[k])
 	}
