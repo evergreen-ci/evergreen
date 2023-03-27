@@ -843,21 +843,30 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
-	// We can assume no org will have more than 100 installations.
-	installations, _, err := client.Organizations.ListInstallations(ctx, requiredOrganization, &github.ListOptions{PerPage: 100})
-	if err != nil {
-		return false, err
-	}
+	opts := &github.ListOptions{PerPage: 100}
+	for {
+		installations, resp, err := client.Organizations.ListInstallations(ctx, requiredOrganization, opts)
+		if err != nil {
+			return false, err
+		}
 
-	for _, installation := range installations.Installations {
-		if installation.GetAppSlug() == name {
-			prPermission := installation.GetPermissions().GetPullRequests()
-			if prPermission == githubWrite {
-				return true, nil
+		for _, installation := range installations.Installations {
+			if installation.GetAppSlug() == name {
+				prPermission := installation.GetPermissions().GetPullRequests()
+				if prPermission == githubWrite {
+					return true, nil
+				}
+				return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
 			}
-			return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
+		}
+
+		if resp.NextPage > 0 {
+			opts.Page = resp.NextPage
+		} else {
+			break
 		}
 	}
+
 	return false, nil
 }
 
