@@ -29,6 +29,7 @@ const (
 	commitShaFlag       = "commit-sha"
 	commitMessageFlag   = "commit-message"
 	githubAuthorFlag    = "author"
+	patchAuthorFlag     = "author"
 
 	noCommits             = "No Commits Added"
 	commitQueuePatchLabel = "Commit Queue Merge:"

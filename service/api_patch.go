@@ -35,36 +35,102 @@ type PatchAPIResponse struct {
 	Patch   *patch.Patch `json:"patch"`
 }
 
+// getAuthor returns the author for the patch. If githubAuthor or patchAuthor is provided and exists, will use this instead
+// of the submitter if the submitter is authorized to submit patches on behalf of users.
+// Returns the author, status code, and error.
+func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, patchID string) (string, int, error) {
+	author := dbUser.Id
+	if data.GithubAuthor == "" && data.PatchAuthor == "" {
+		return author, http.StatusOK, nil
+	}
+
+	opts := gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	}
+	if !dbUser.HasPermission(opts) {
+		return "", http.StatusUnauthorized, errors.New("user is not authorized to patch on behalf of other users")
+	}
+
+	if data.GithubAuthor != "" {
+		specifiedUser, err := user.FindByGithubName(data.GithubAuthor)
+		if err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, "error looking for specified author")
+		}
+		if specifiedUser != nil {
+			grip.Info(message.Fields{
+				"message":               "overriding patch author as specified by the submitter",
+				"submitter":             dbUser.Id,
+				"new_author":            specifiedUser.Id,
+				"given_github_username": data.GithubAuthor,
+				"patch_id":              patchID,
+			})
+			author = specifiedUser.Id
+		}
+		grip.DebugWhen(specifiedUser == nil, message.Fields{
+			"message":         "github user not found",
+			"github_username": data.GithubAuthor,
+			"patch_id":        patchID,
+		})
+	} else if data.PatchAuthor != "" {
+		specifiedUser, err := user.FindOneById(data.PatchAuthor)
+		if err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, "error looking for specified author")
+		}
+		if specifiedUser != nil {
+			grip.Info(message.Fields{
+				"message":    "overriding patch author as specified by the submitter",
+				"submitter":  dbUser.Id,
+				"new_author": data.PatchAuthor,
+				"patch_id":   patchID,
+			})
+			author = specifiedUser.Id
+		}
+		grip.DebugWhen(specifiedUser == nil, message.Fields{
+			"message":  "patch user not found",
+			"username": data.PatchAuthor,
+			"patch_id": patchID,
+		})
+	}
+
+	return author, http.StatusOK, nil
+}
+
+type patchData struct {
+	Description       string             `json:"desc"`
+	Path              string             `json:"path"`
+	Project           string             `json:"project"`
+	BackportInfo      patch.BackportInfo `json:"backport_info"`
+	GitMetadata       *patch.GitMetadata `json:"git_metadata"`
+	PatchBytes        []byte             `json:"patch_bytes"`
+	Githash           string             `json:"githash"`
+	Parameters        []patch.Parameter  `json:"parameters"`
+	Variants          []string           `json:"buildvariants_new"`
+	Tasks             []string           `json:"tasks"`
+	RegexVariants     []string           `json:"regex_buildvariants"`
+	RegexTasks        []string           `json:"regex_tasks"`
+	SyncBuildVariants []string           `json:"sync_build_variants"`
+	SyncTasks         []string           `json:"sync_tasks"`
+	SyncStatuses      []string           `json:"sync_statuses"`
+	SyncTimeout       time.Duration      `json:"sync_timeout"`
+	Finalize          bool               `json:"finalize"`
+	TriggerAliases    []string           `json:"trigger_aliases"`
+	Alias             string             `json:"alias"`
+	RepeatFailed      bool               `json:"repeat_failed"`
+	RepeatDefinition  bool               `json:"reuse_definition"`
+	RepeatPatchId     string             `json:"repeat_patch_id"`
+	GithubAuthor      string             `json:"github_author"`
+	PatchAuthor       string             `json:"patch_author"`
+}
+
 // submitPatch creates the Patch document, adds the patched project config to it,
 // and saves the patches to GridFS to be retrieved
 func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
-	data := struct {
-		Description       string             `json:"desc"`
-		Path              string             `json:"path"`
-		Project           string             `json:"project"`
-		BackportInfo      patch.BackportInfo `json:"backport_info"`
-		GitMetadata       *patch.GitMetadata `json:"git_metadata"`
-		PatchBytes        []byte             `json:"patch_bytes"`
-		Githash           string             `json:"githash"`
-		Parameters        []patch.Parameter  `json:"parameters"`
-		Variants          []string           `json:"buildvariants_new"`
-		Tasks             []string           `json:"tasks"`
-		RegexVariants     []string           `json:"regex_buildvariants"`
-		RegexTasks        []string           `json:"regex_tasks"`
-		SyncBuildVariants []string           `json:"sync_build_variants"`
-		SyncTasks         []string           `json:"sync_tasks"`
-		SyncStatuses      []string           `json:"sync_statuses"`
-		SyncTimeout       time.Duration      `json:"sync_timeout"`
-		Finalize          bool               `json:"finalize"`
-		TriggerAliases    []string           `json:"trigger_aliases"`
-		Alias             string             `json:"alias"`
-		RepeatFailed      bool               `json:"repeat_failed"`
-		RepeatDefinition  bool               `json:"reuse_definition"`
-		RepeatPatchId     string             `json:"repeat_patch_id"`
-		GithubAuthor      string             `json:"github_author"`
-	}{}
+	data := patchData{}
 	if err := utility.ReadJSON(utility.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -81,17 +147,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("project '%s' is not found", data.Project),
 			})
-		return
-	}
-
-	opts := gimlet.PermissionOpts{
-		Resource:      pref.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionPatches,
-		RequiredLevel: evergreen.PatchSubmit.Value,
-	}
-	if !dbUser.HasPermission(opts) {
-		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("user is not authorized to patch this project"))
 		return
 	}
 
@@ -117,40 +172,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchID := mgobson.NewObjectId()
-	author := dbUser.Id
-	if data.GithubAuthor != "" {
-		opts := gimlet.PermissionOpts{
-			Resource:      pref.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionPatches,
-			RequiredLevel: evergreen.PatchSubmitAdmin.Value,
-		}
-		if !dbUser.HasPermission(opts) {
-			as.LoggedError(w, r, http.StatusUnauthorized, errors.New("user is not authorized to patch on behalf of other users"))
-			return
-		}
-		specifiedUser, err := user.FindByGithubName(data.GithubAuthor)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error looking for specified author"))
-			return
-		}
-		if specifiedUser != nil {
-			grip.Info(message.Fields{
-				"message":    "overriding patch author as specified by the submitter",
-				"submitter":  dbUser.Id,
-				"new_author": data.GithubAuthor,
-				"patch_id":   patchID,
-			})
-			author = specifiedUser.Id
-		}
-		grip.DebugWhen(specifiedUser == nil, message.Fields{
-			"message":         "github user not found",
-			"github_username": data.GithubAuthor,
-			"patch_id":        patchID,
-		})
-
+	author, statusCode, err := as.getAuthor(data, dbUser, pref.Id, patchID.Hex())
+	if err != nil {
+		as.LoggedError(w, r, statusCode, err)
+		return
 	}
-
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:             author,
 		Project:          pref.Id,
