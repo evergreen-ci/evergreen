@@ -203,7 +203,7 @@ func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
 }
 
 func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *GetProjectOpts, p *patch.Patch) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, fetchProjectFilesTimeout)
 	defer cancel()
 	env := evergreen.GetEnvironment()
 
@@ -894,10 +894,12 @@ func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
 
-// AbortPatchesWithGithubPatchData runs CancelPatch on patches created before
-// the given time, with the same pr number, and base repository. Tasks which
-// are abortable (see model/task.IsAbortable()) will be aborted, while
-// dispatched/running/completed tasks will not be affected
+// AbortPatchesWithGithubPatchData aborts patches and commit queue items created
+// before the given time, with the same PR number, and base repository. Tasks
+// which are abortable will be aborted, while completed tasks will not be
+// affected. This function makes one exception for commit queue items so that if
+// the item is currently running the merge task, then that patch is not aborted
+// and is allowed to finish.
 func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
@@ -923,6 +925,11 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				if mergeTask == nil {
 					return errors.New("no merge task found")
 				}
+				if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
+					// If the merge task already started, the PR merge is
+					// already ongoing, so it's better to just let it complete.
+					continue
+				}
 				catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
 			} else if err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -931,7 +938,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 					"owner":          owner,
 					"repo":           repo,
 					"message":        "failed to abort patch's version",
-					"patch_id":       p.Id,
+					"patch_id":       p.Id.Hex(),
 					"pr":             p.GithubPatchData.PRNumber,
 					"project":        p.Project,
 					"version":        p.Version,

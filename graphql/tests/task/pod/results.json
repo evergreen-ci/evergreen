@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "query_file": "pod.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_id0",
+            "execution": 0,
+            "pod": {
+              "id": "localhost",
+              "type": "agent",
+              "status": "running"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

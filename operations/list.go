@@ -118,7 +118,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	}
 	matching := []model.ProjectRef{}
 	for _, proj := range projs {
-		if utility.FromBoolPtr(proj.Enabled) {
+		if proj.Enabled {
 			matching = append(matching, proj)
 		}
 	}

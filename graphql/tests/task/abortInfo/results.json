@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "query_file": "abort_info.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "abortInfo": {
+              "user": "apiserver",
+              "taskID": "2",
+              "taskDisplayName": "validate_commit_message",
+              "buildVariantDisplayName": "~ Commit Queue"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_abort_info.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "abortInfo": null
+          }
+        }
+      }
+    }
+  ]
+}

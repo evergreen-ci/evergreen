@@ -270,7 +270,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions, requester string, logURL string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(ctx context.Context, versionId string, buildVariantOpts BuildVariantOptions, requester string, logURL string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName = map[string]string{}
 	var tasksByVariant = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -292,7 +292,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	}
 
 	start := time.Now()
-	tasks, _, err := task.GetTasksByVersion(versionId, opts)
+	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
 	}
@@ -603,7 +603,7 @@ func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions r
 	return nil
 }
 
-func setVersionActivationStatus(version *model.Version) error {
+func setVersionActivationStatus(ctx context.Context, version *model.Version) error {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
@@ -612,7 +612,7 @@ func setVersionActivationStatus(version *model.Version) error {
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := task.GetTasksByVersion(version.Id, opts)
+	tasks, _, err := task.GetTasksByVersion(ctx, version.Id, opts)
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks for version '%s'", version.Id)
 	}

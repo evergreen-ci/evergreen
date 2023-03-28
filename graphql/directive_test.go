@@ -76,7 +76,7 @@ func setupPermissions(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRequireSuperUser(t *testing.T) {
+func TestCanCreateProject(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
@@ -112,7 +112,7 @@ func TestRequireSuperUser(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	res, err := config.Directives.RequireSuperUser(ctx, obj, next)
+	res, err := config.Directives.CanCreateProject(ctx, obj, next)
 	require.Error(t, err, "user testuser does not have permission to access this resolver")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
@@ -120,10 +120,48 @@ func TestRequireSuperUser(t *testing.T) {
 	err = usr.AddRole("superuser")
 	require.NoError(t, err)
 
-	res, err = config.Directives.RequireSuperUser(ctx, obj, next)
+	res, err = config.Directives.CanCreateProject(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
+
+	err = usr.RemoveRole("superuser")
+	require.NoError(t, err)
+
+	err = usr.AddRole("admin_project")
+	require.NoError(t, err)
+
+	obj = map[string]interface{}{
+		"project": map[string]interface{}{
+			"identifier": "anything",
+		},
+	}
+	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 2, callCount)
+
+	// Should error if you are not an admin of project to copy
+	obj = map[string]interface{}{
+		"project": map[string]interface{}{
+			"projectIdToCopy": "anything",
+		},
+	}
+	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access this resolver")
+	require.Nil(t, res)
+	require.Equal(t, 2, callCount)
+
+	obj = map[string]interface{}{
+		"project": map[string]interface{}{
+			"projectIdToCopy": "project_id",
+		},
+	}
+	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 3, callCount)
+
 }
 
 func setupUser(t *testing.T) (*user.DBUser, error) {

@@ -57,11 +57,18 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
-		"GetInstanceStatusNonExistent": func(*testing.T) {
+		"GetInstanceStatusNonExistentInstance": func(*testing.T) {
 			awsError := awserr.New(EC2ErrorNotFound, "The instance ID 'test-id' does not exist", nil)
 			wrappedAwsError := errors.Wrap(awsError, "EC2 API returned error for DescribeInstances")
 			mockClient := m.client.(*awsClientMock)
 			mockClient.RequestGetInstanceInfoError = wrappedAwsError
+			status, err := m.GetInstanceStatus(context.Background(), h)
+			assert.NoError(t, err)
+			assert.Equal(t, StatusNonExistent, status)
+		},
+		"GetInstanceStatusNonExistentReservation": func(*testing.T) {
+			mockClient := m.client.(*awsClientMock)
+			mockClient.RequestGetInstanceInfoError = noReservationError
 			status, err := m.GetInstanceStatus(context.Background(), h)
 			assert.NoError(t, err)
 			assert.Equal(t, StatusNonExistent, status)
@@ -89,7 +96,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "ht_1", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateName)
 		},
 		"RequestFleet": func(*testing.T) {
-			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc", InstanceType: "instanceType0"}
+			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc", InstanceType: "instanceType0", IAMInstanceProfileARN: "my-profile"}
 
 			instanceID, err := m.requestFleet(context.Background(), h, ec2Settings)
 			assert.NoError(t, err)
@@ -101,7 +108,8 @@ func TestFleet(t *testing.T) {
 		},
 		"MakeOverrides": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{
-				InstanceType: "instanceType0",
+				InstanceType:          "instanceType0",
+				IAMInstanceProfileARN: "my-profile",
 			}
 			overrides, err := m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)
@@ -116,8 +124,9 @@ func TestFleet(t *testing.T) {
 			assert.Nil(t, overrides)
 
 			ec2Settings = &EC2ProviderSettings{
-				InstanceType: "instanceType0",
-				SubnetId:     "subnet-654321",
+				InstanceType:          "instanceType0",
+				IAMInstanceProfileARN: "my-profile",
+				SubnetId:              "subnet-654321",
 			}
 			overrides, err = m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)

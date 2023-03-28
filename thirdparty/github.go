@@ -32,6 +32,7 @@ const (
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
+	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
 )
@@ -660,7 +661,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get tag information from Github")
+		return "", errors.Wrap(err, "failed to get tag information from GitHub")
 	}
 	if resp == nil {
 		return "", errors.New("invalid github response")
@@ -694,7 +695,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 	}
 
 	if tagSha == "" {
-		return "", errors.New("empty SHA from Github")
+		return "", errors.New("empty SHA from GitHub")
 	}
 
 	return sha, nil
@@ -755,7 +756,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 
 	if user.Login == nil || user.ID == nil || user.Company == nil ||
 		user.Email == nil || user.OrganizationsURL == nil {
-		return nil, false, errors.New("Github user is missing required data")
+		return nil, false, errors.New("GitHub user is missing required data")
 	}
 
 	return &GithubLoginUser{
@@ -835,6 +836,40 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 	return isMember, err
 }
 
+// AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
+// and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
+func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
+	httpClient := getGithubClientRetry(token, "AppAuthorizedForOrg")
+	defer utility.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+	opts := &github.ListOptions{PerPage: 100}
+	for {
+		installations, resp, err := client.Organizations.ListInstallations(ctx, requiredOrganization, opts)
+		if err != nil {
+			return false, err
+		}
+
+		for _, installation := range installations.Installations {
+			if installation.GetAppSlug() == name {
+				prPermission := installation.GetPermissions().GetPullRequests()
+				if prPermission == githubWrite {
+					return true, nil
+				}
+				return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
+			}
+		}
+
+		if resp.NextPage > 0 {
+			opts.Page = resp.NextPage
+		} else {
+			break
+		}
+	}
+
+	return false, nil
+}
+
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GithubUserPermissionLevel")
 	defer utility.PutHTTPClient(httpClient)
@@ -901,49 +936,6 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	}
 
 	return pr, nil
-}
-
-func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, prNumber int) ([]*github.RepositoryCommit, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
-	defer utility.PutHTTPClient(httpClient)
-
-	client := github.NewClient(httpClient)
-
-	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
-	if err != nil {
-		return nil, err
-	}
-	if len(commits) == 0 {
-		return nil, errors.New("No commits received from github")
-	}
-
-	return commits, nil
-}
-
-// GetGithubPullRequestReviews retrieves a list of reviews for the given PR.
-func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string, prNumber int, reviewPage int) ([]*github.PullRequestReview, int, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
-	defer utility.PutHTTPClient(httpClient)
-
-	client := github.NewClient(httpClient)
-
-	opts := &github.ListOptions{
-		PerPage: 100,
-		Page:    reviewPage,
-	}
-
-	reviews, resp, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
-	if resp != nil {
-		defer resp.Body.Close()
-		if err != nil {
-			return nil, 0, parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from query for PR reviews in '%s/%s' prNumber %d : %v", owner, repo, prNumber, err)
-		return nil, 0, APIResponseError{errMsg}
-	}
-
-	return reviews, resp.NextPage, nil
 }
 
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
@@ -1154,17 +1146,39 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	return nil, errors.Errorf("no matching hooks found")
 }
 
+// MergePullRequest attempts to merge the given pull request. If commits are merged one after another, Github may
+// not have updated that this can be merged, so we allow retries.
 func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
-	httpClient := getGithubClient(token, "MergePullRequest")
+	httpClient := getGithubClientRetry(token, "MergePullRequest")
 	defer utility.PutHTTPClient(httpClient)
 	githubClient := github.NewClient(httpClient)
 	res, _, err := githubClient.PullRequests.Merge(ctx, owner, repo,
 		prNum, commitMessage, mergeOpts)
 	if err != nil {
-		return errors.Wrap(err, "can't access GitHub merge API")
+		return errors.Wrap(err, "accessing GitHub merge API")
 	}
 	if !res.GetMerged() {
-		return errors.Errorf("Github refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
+		return errors.Errorf("GitHub refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
+	}
+	return nil
+}
+
+// PostCommentToPullRequest posts the given comment to the associated PR.
+func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, prNum int, comment string) error {
+	httpClient := getGithubClient(token, "PostCommentToPullRequest")
+	defer utility.PutHTTPClient(httpClient)
+	githubClient := github.NewClient(httpClient)
+
+	githubComment := &github.IssueComment{
+		Body: &comment,
+	}
+	respComment, resp, err := githubClient.Issues.CreateComment(ctx, owner, repo, prNum, githubComment)
+	if err != nil {
+		return errors.Wrap(err, "can't access GitHub merge API")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
+		return errors.New("unexpected data from GitHub")
 	}
 	return nil
 }

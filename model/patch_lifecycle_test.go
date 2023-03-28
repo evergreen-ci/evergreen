@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1190,4 +1191,114 @@ func TestAddDisplayTasksToPatchReq(t *testing.T) {
 	assert.Len(t, req.VariantsTasks[0].Tasks, 1)
 	assert.Equal(t, "t1", req.VariantsTasks[0].Tasks[0])
 	assert.Len(t, req.VariantsTasks[0].DisplayTasks, 2)
+}
+
+func TestAbortPatchesWithGithubPatchData(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection, task.Collection, VersionCollection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task){
+		"AbortsGitHubPRPatch": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
+			require.NoError(t, p.Insert())
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.Aborted)
+		},
+		"IgnoresGitHubPRPatchCreatedAfterTimestamp": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
+			p.CreateTime = time.Now()
+			require.NoError(t, p.Insert())
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.Aborted)
+		},
+		"AbortsNonMergingCommitQueueItemForGitHubPR": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
+			p.Alias = evergreen.CommitQueueAlias
+			require.NoError(t, p.Insert())
+			tsk.CommitQueueMerge = true
+			tsk.Status = evergreen.TaskUndispatched
+			require.NoError(t, tsk.Insert())
+			cq := commitqueue.CommitQueue{
+				ProjectID: p.Project,
+				Queue: []commitqueue.CommitQueueItem{{
+					Issue:   p.Id.Hex(),
+					PatchId: p.Id.Hex(),
+					Version: v.Id,
+				}},
+			}
+			require.NoError(t, commitqueue.InsertQueue(&cq))
+
+			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+
+			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
+			require.NoError(t, err)
+			require.NotZero(t, dbCommitQueue)
+			assert.Empty(t, dbCommitQueue.Queue)
+		},
+		"SkipMergingCommitQueueItemForGitHubPR": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
+			p.Alias = evergreen.CommitQueueAlias
+			require.NoError(t, p.Insert())
+			tsk.CommitQueueMerge = true
+			tsk.Status = evergreen.TaskStarted
+			require.NoError(t, tsk.Insert())
+			cq := commitqueue.CommitQueue{
+				ProjectID: p.Project,
+				Queue: []commitqueue.CommitQueueItem{{
+					Issue:   p.Id.Hex(),
+					PatchId: p.Id.Hex(),
+					Version: v.Id,
+				}},
+			}
+			require.NoError(t, commitqueue.InsertQueue(&cq))
+
+			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+
+			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
+			require.NoError(t, err)
+			require.NotZero(t, dbCommitQueue)
+			assert.Len(t, dbCommitQueue.Queue, 1)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection, task.Collection, VersionCollection))
+			id := mgobson.NewObjectId()
+			v := Version{
+				Id:        id.Hex(),
+				Status:    evergreen.VersionStarted,
+				Activated: utility.TruePtr(),
+			}
+			require.NoError(t, v.Insert())
+			p := patch.Patch{
+				Id:         id,
+				Version:    v.Id,
+				Status:     evergreen.PatchStarted,
+				Activated:  true,
+				Project:    "project",
+				CreateTime: time.Now().Add(-time.Hour),
+				GithubPatchData: thirdparty.GithubPatch{
+					BaseOwner: "owner",
+					BaseRepo:  "repo",
+					PRNumber:  12345,
+				},
+			}
+			tsk := task.Task{
+				Id:        "task",
+				Version:   v.Id,
+				Status:    evergreen.TaskStarted,
+				Project:   p.Project,
+				Activated: true,
+			}
+
+			tCase(t, &p, &v, &tsk)
+		})
+	}
 }

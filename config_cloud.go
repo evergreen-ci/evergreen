@@ -170,6 +170,10 @@ type ECSConfig struct {
 	// ExecutionRole is the IAM role that ECS container instances can assume to
 	// make AWS requests.
 	ExecutionRole string `bson:"execution_role" json:"execution_role" yaml:"execution_role"`
+	// LogRegion is the region used by the task definition's log configuration.
+	LogRegion string `bson:"log_region" json:"log_region" yaml:"log_region"`
+	// LogRegion is the log group name used by the task definition's log configuration.
+	LogGroup string `bson:"log_group" json:"log_group" yaml:"log_group"`
 	// AWSVPC specifies configuration when ECS tasks use AWSVPC networking.
 	AWSVPC AWSVPCConfig `bson:"awsvpc" json:"awsvpc" yaml:"awsvpc"`
 	// Clusters specify the configuration of each particular ECS cluster.

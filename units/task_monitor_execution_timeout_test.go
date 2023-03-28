@@ -293,7 +293,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			pRef := model.ProjectRef{
 				Id:      "project_id",
-				Enabled: utility.TruePtr(),
+				Enabled: true,
 			}
 			require.NoError(t, pRef.Insert())
 

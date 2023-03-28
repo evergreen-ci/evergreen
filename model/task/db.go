@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -2026,7 +2027,7 @@ func recalculateTimeTaken() bson.M {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
+func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2091,8 +2092,6 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	}
 
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, 0, err
@@ -2470,6 +2469,11 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 	match[VersionKey] = versionID
 
+	// GeneratedJSON can often be large, so we filter it out by default
+	projectOut := bson.M{
+		GeneratedJSONAsStringKey: 0,
+	}
+
 	if len(opts.TaskNames) > 0 {
 		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
@@ -2479,6 +2483,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	pipeline := []bson.M{
+		{"$project": projectOut},
 		{"$match": match},
 	}
 

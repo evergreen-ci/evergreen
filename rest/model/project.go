@@ -171,11 +171,9 @@ func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
 }
 
 type APICommitQueueParams struct {
-	Enabled               *bool   `json:"enabled"`
-	RequireSigned         *bool   `json:"require_signed"`
-	RequiredApprovalCount *int    `json:"required_approval_count"`
-	MergeMethod           *string `json:"merge_method"`
-	Message               *string `json:"message"`
+	Enabled     *bool   `json:"enabled"`
+	MergeMethod *string `json:"merge_method"`
+	Message     *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition {
@@ -200,8 +198,6 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
-	cqParams.RequireSigned = utility.BoolPtrCopy(params.RequireSigned)
-	cqParams.RequiredApprovalCount = utility.ToIntPtr(params.RequiredApprovalCount)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
 }
@@ -209,8 +205,6 @@ func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueP
 func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
-	serviceParams.RequireSigned = utility.BoolPtrCopy(cqParams.RequireSigned)
-	serviceParams.RequiredApprovalCount = utility.FromIntPtr(cqParams.RequiredApprovalCount)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
@@ -521,7 +515,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		Owner:                  utility.FromStringPtr(p.Owner),
 		Repo:                   utility.FromStringPtr(p.Repo),
 		Branch:                 utility.FromStringPtr(p.Branch),
-		Enabled:                utility.BoolPtrCopy(p.Enabled),
+		Enabled:                utility.FromBoolPtr(p.Enabled),
 		Private:                utility.BoolPtrCopy(p.Private),
 		Restricted:             utility.BoolPtrCopy(p.Restricted),
 		BatchTime:              p.BatchTime,
@@ -619,7 +613,7 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	p.Owner = utility.ToStringPtr(projectRef.Owner)
 	p.Repo = utility.ToStringPtr(projectRef.Repo)
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
-	p.Enabled = utility.BoolPtrCopy(projectRef.Enabled)
+	p.Enabled = utility.ToBoolPtr(projectRef.Enabled)
 	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)
 	p.Private = utility.BoolPtrCopy(projectRef.Private)
 	p.Restricted = utility.BoolPtrCopy(projectRef.Restricted)

@@ -5,10 +5,9 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
 )
 
 // CanCreateProject is the resolver for the canCreateProject field.
@@ -17,12 +16,11 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 	if err != nil {
 		return false, ResourceNotFound.Send(ctx, "user not found")
 	}
-	return usr.HasPermission(gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionProjectCreate,
-		RequiredLevel: evergreen.ProjectCreate.Value,
-	}), nil
+	canCreate, err := usr.HasProjectCreatePermission()
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error checking user permission: %s", err.Error()))
+	}
+	return canCreate, nil
 }
 
 // Permissions returns PermissionsResolver implementation.

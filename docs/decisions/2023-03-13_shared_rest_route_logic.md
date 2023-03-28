@@ -1,22 +1,16 @@
-# 2023-03-13 Shared REST Route Logic
+# 2023-03-24 REST route authentication exception
 
 * status: accepted
-* date: 2023-03-13
+* date: 2023-03-24
 * authors: Malik Hadjri
 
 ## Context and Problem Statement
 
-Ticket: EVG-16701
+Ticket: EVG-19068
 
-A feature request was made for a new endpoint to perform a bulk operation on a group of versions. Since there was an existing GET endpoint to retrieve a list of versions based off of detailed request parameters, the 
-PR to implement the new endpoint was made to use the existing GET endpoint's logic to retrieve the list of versions and then perform the bulk operation on the list of versions. This was done to avoid duplicating request parsing and version retrieving
-logic. 
+Recently all REST endpoints in Evergreen have been changed to require authentication across the board. However, this has caused our /dockerfile endpoint to consistently return 401 codes to our docker client. Since all the route does is serve a static string, we initially thought it could be removed altogether and move the string to the docker client side of our code.
 
-However, this refactoring also included some cleanup of the existing GET endpoint, doing things such as tweaking the names of request variables and slightly changing the way that the request parameters were applied.
- The existing endpoint was a longstanding one that users' scripts were relying on, so this seemingly minor change caused a breaking change for users' scripts and a rollback was needed.
-
+However, there is some unexpected complexity here because of the way we use Docker's ImageBuild api which requires us to pass in some endpoint to retrieve the dockerfile from, which currently is our /dockerfile endpoint, and it's not straightforward to remove that logic and directly provide the dockerfile string.
 
 ## Decision Outcome
-Despite the potential similarities of the two routes, they ultimately serve different purposes and should be treated as such. The GET route is meant to be a general purpose route that can be used to retrieve a list of versions based off of a variety of request parameters. By contrast, the new route is meant to be a more specific route that is used to perform a priority-specific operation on a group of versions. 
-
-Because of this, we should consider that refactoring existing logic to suit new feature requests isn't always the ideal solution, especially when it requires that we make significant changes to existing endpoints and their logic. If we do go forward with such a decision, we'll want to at minimum communicate this beforehand.
+Since we are just serving a static string for this route, and given the non-trivial work needed to remove the route / give it auth, the simplest path forward was to make an exception to remove auth from only this route.

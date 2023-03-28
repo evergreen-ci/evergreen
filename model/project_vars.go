@@ -340,9 +340,13 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 
 func GetVarsByValue(val string) ([]*ProjectVars, error) {
 	matchingProjects := []*ProjectVars{}
-	filter := fmt.Sprintf("function() { for (var field in this.vars) { if (this.vars[field] == \"%s\") return true; } return false; }", val)
-	q := db.Query(bson.M{"$where": filter})
-	err := db.FindAllQ(ProjectVarsCollection, q, &matchingProjects)
+	pipeline := []bson.M{
+		{"$addFields": bson.M{projectVarsMapKey: bson.M{"$objectToArray": "$" + projectVarsMapKey}}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(projectVarsMapKey, "v"): val}},
+		{"$addFields": bson.M{projectVarsMapKey: bson.M{"$arrayToObject": "$" + projectVarsMapKey}}},
+	}
+
+	err := db.Aggregate(ProjectVarsCollection, pipeline, &matchingProjects)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil

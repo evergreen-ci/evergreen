@@ -796,7 +796,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Id:         "mci",
 		Branch:     "main",
 		RemotePath: "self-tests.yml",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 	}
 	s.rev = &model.Revision{
 		Author:          "me",

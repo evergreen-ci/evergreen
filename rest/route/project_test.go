@@ -632,7 +632,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
 	s.Equal(cachedProject.Branch, utility.FromStringPtr(projectRef.Branch))
-	s.Equal(cachedProject.Enabled, projectRef.Enabled)
+	s.Equal(cachedProject.Enabled, utility.FromBoolPtr(projectRef.Enabled))
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
 	s.Equal(cachedProject.RemotePath, utility.FromStringPtr(projectRef.RemotePath))
 	s.Equal(cachedProject.Id, utility.FromStringPtr(projectRef.Id))
@@ -811,7 +811,7 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		Owner:              "dimoxinil",
 		Repo:               "dimoxinil-enterprise-repo",
 		Branch:             "main",
-		Enabled:            utility.FalsePtr(),
+		Enabled:            false,
 		BatchTime:          0,
 		RemotePath:         "evergreen.yml",
 		Id:                 "dimoxinil",
@@ -934,6 +934,7 @@ func TestDeleteProject(t *testing.T) {
 		serviceModel.RepoRefCollection,
 		serviceModel.ProjectAliasCollection,
 		serviceModel.ProjectVarsCollection,
+		evergreen.ScopeCollection,
 		user.Collection,
 	))
 	u := user.DBUser{
@@ -943,10 +944,9 @@ func TestDeleteProject(t *testing.T) {
 
 	repo := serviceModel.RepoRef{
 		ProjectRef: serviceModel.ProjectRef{
-			Id:      "repo_ref",
-			Owner:   "mongodb",
-			Repo:    "test_repo",
-			Enabled: utility.TruePtr(),
+			Id:    "repo_ref",
+			Owner: "mongodb",
+			Repo:  "test_repo",
 		},
 	}
 	assert.NoError(t, repo.Upsert())
@@ -960,7 +960,7 @@ func TestDeleteProject(t *testing.T) {
 			Owner:                "mongodb",
 			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
-			Enabled:              utility.TruePtr(),
+			Enabled:              true,
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     utility.TruePtr(),
@@ -1012,7 +1012,7 @@ func TestDeleteProject(t *testing.T) {
 			Repo:      repo.Repo,
 			Branch:    projects[i].Branch,
 			RepoRefId: repo.Id,
-			Enabled:   utility.FalsePtr(),
+			Enabled:   false,
 			Hidden:    utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
@@ -1068,7 +1068,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 		Repo:       "evergreen",
 		Branch:     "main",
 		RepoRefId:  "hello",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		Admins:     []string{"me"},
 	}
 	assert.NoError(t, pRef.Insert())
@@ -1132,7 +1132,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "main",
-		Enabled:    utility.TruePtr(),
+		Enabled:    true,
 		Admins:     []string{"me"},
 	}
 	assert.NoError(t, pRef.Insert())

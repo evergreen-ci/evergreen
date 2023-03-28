@@ -1,5 +1,0 @@
-{
-  task(taskId: "some_task", execution: 1) {
-    blocked
-  }
-}

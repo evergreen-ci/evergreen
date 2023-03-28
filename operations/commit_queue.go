@@ -144,7 +144,7 @@ func mergeCommand() cli.Command {
 			},
 			cli.StringFlag{
 				Name: githubAuthorFlag,
-				Usage: "optionally define the patch author by providing a Github username (this will only work if the " +
+				Usage: "optionally define the patch author by providing a GitHub username (this will only work if the " +
 					"submitter has permission and the provided user has provided the username in their Evergreen settings)",
 			},
 		)),

@@ -1,0 +1,331 @@
+{
+  "tasks": [
+    {
+      "_id": "task1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_name": "dep1",
+      "build_variant": "ubuntu",
+      "host_id": "host1"
+    },
+    {
+      "_id": "task2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "host_id": "host2"
+    },
+    {
+      "_id": "task3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "host_id": "host3"
+    },
+    {
+      "_id": "task4",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "host_id": "host4"
+    },
+    {
+      "_id": "task5",
+      "version": "1e4ff3abe3c3317e352062e4"
+    }
+  ],
+  "hosts": [
+    {
+      "_id": "host1",
+      "distro": {
+        "_id": "localhost1",
+        "provider": "gce",
+        "spawn_allowed": true,
+        "provider_settings": [
+          {
+            "is_vpc": true,
+            "vpc_name": "stage_dynamic_vpc",
+            "docker_registry_user": "",
+            "key_name": "mci",
+            "jasper_credentials_path": "/etc/jasper-credentials.json",
+            "subnet_id": "subnet-517c941a",
+            "ami": "ami-049df09df40fc2c1c",
+            "docker_registry_pw": "",
+            "region": "us-east-1",
+            "security_group_ids": [
+              "sg-601a6c13"
+            ],
+            "curator_dir": "/usr/local/bin",
+            "mount_points": [
+              {
+                "virtual_name": "ephemeral0",
+                "device_name": "/dev/xvdd"
+              }
+            ],
+            "bid_price": 0.21,
+            "client_dir": "/opt/evergreen",
+            "instance_type": "c3.xlarge",
+            "security_group": "sg-601a6c13",
+            "shell_path": "/usr/bin/bash",
+            "user_data": "#!/usr/sbin/bash \ntouch hello-world"
+          }
+        ]
+      }
+    },
+    {
+      "_id": "host2",
+      "distro": {
+        "_id": "localhost2",
+        "provider": "static",
+        "spawn_allowed": true
+      }
+    },
+    {
+      "_id": "host3",
+      "distro": {
+        "_id": "localhost3",
+        "provider": "gce",
+        "spawn_allowed": false
+      }
+    },
+    {
+      "_id": "host4",
+      "distro": {
+        "_id": "localhost3",
+        "provider": "docker",
+        "spawn_allowed": true
+      }
+    }
+  ],
+  "distro": [
+    {
+      "_id": "archlinux-small",
+      "aliases": [
+        "archlinux",
+        "archlinux-test"
+      ],
+      "arch": "linux_amd64",
+      "work_dir": "/data/mci",
+      "provider": "ec2-fleet",
+      "provider_settings": [
+        {
+          "is_vpc": true,
+          "vpc_name": "stage_dynamic_vpc",
+          "docker_registry_user": "",
+          "key_name": "mci",
+          "jasper_credentials_path": "/etc/jasper-credentials.json",
+          "subnet_id": "subnet-517c941a",
+          "ami": "ami-049df09df40fc2c1c",
+          "docker_registry_pw": "",
+          "region": "us-east-1",
+          "security_group_ids": [
+            "sg-601a6c13"
+          ],
+          "curator_dir": "/usr/local/bin",
+          "mount_points": [
+            {
+              "virtual_name": "ephemeral0",
+              "device_name": "/dev/xvdd"
+            }
+          ],
+          "bid_price": 0.21,
+          "client_dir": "/opt/evergreen",
+          "instance_type": "c3.xlarge",
+          "security_group": "sg-601a6c13",
+          "shell_path": "/usr/bin/bash",
+          "user_data": "#!/usr/sbin/bash \ntouch hello-world"
+        }
+      ],
+      "setup": "#!/bin/bash\nset -o errexit\nset -o verbose\n\n# DNS tweak for drivers Kerberos tests\necho \"`host ldaptest.10gen.cc | awk '/has address/ { print $4 ; exit }'` ldaptest.10gen.cc\" | tee -a /etc/hosts\n\numount /mnt || true\numount /dev/xvdd || true\n/sbin/mkfs.xfs -m crc=0,finobt=0 -f /dev/xvdd\nmkdir -p /data\necho \"/dev/xvdd /data auto noatime 0 0\" | tee -a /etc/fstab\nmount /data\n\necho \"github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==\" | tee -a /root/.ssh/known_hosts\necho \"${github_private_key}\" | tee -a /root/.ssh/id_rsa\necho \"${github_public_key}\" | tee -a /root/.ssh/id_rsa.pub\n\nchmod 600 /root/.ssh/id_rsa\n\n# /tmp will be a symlink to this\n# \nmkdir /data/tmp\nchmod 1777 /data/tmp",
+      "user": "root",
+      "bootstrap_settings": {
+        "method": "user-data",
+        "communication": "rpc",
+        "client_dir": "/opt/evergreen",
+        "jasper_binary_dir": "/opt/evergreen",
+        "jasper_credentials_path": "/opt/evergreen/jasper_credentials.json",
+        "shell_path": "/bin/bash",
+        "resource_limits": {
+          "num_files": -1,
+          "num_processes": -1,
+          "locked_memory": -1,
+          "virtual_memory": -1
+        }
+      },
+      "clone_method": "legacy-ssh",
+      "ssh_key": "mci",
+      "ssh_options": [
+        "StrictHostKeyChecking=no",
+        "BatchMode=yes",
+        "ConnectTimeout=10"
+      ],
+      "spawn_allowed": true,
+      "expansions": [
+        {
+          "key": "decompress",
+          "value": "tar zxvf"
+        },
+        {
+          "key": "ps",
+          "value": "ps aux"
+        },
+        {
+          "key": "kill_pid",
+          "value": "kill -- -$(ps opgid= %v)"
+        },
+        {
+          "key": "scons_prune_ratio",
+          "value": "0.8"
+        }
+      ],
+      "finder_settings": {
+        "version": "legacy"
+      },
+      "planner_settings": {
+        "version": "tunable",
+        "target_time": {
+          "$numberLong": "0"
+        },
+        "group_versions": true,
+        "patch_zipper_factor": {
+          "$numberLong": "0"
+        },
+        "patch_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "commit_queue_factor": {
+          "$numberLong": "0"
+        },
+        "mainline_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "expected_runtime_factor": {
+          "$numberLong": "0"
+        }
+      },
+      "dispatcher_settings": {
+        "version": "revised"
+      },
+      "host_allocator_settings": {
+        "version": "utilization",
+        "minimum_hosts": 0,
+        "maximum_hosts": 7,
+        "acceptable_host_idle_time": {
+          "$numberLong": "0"
+        }
+      },
+      "disable_shallow_clone": false,
+      "note": "",
+      "is_virtual_workstation": false,
+      "is_cluster": false,
+      "home_volume_settings": {
+        "format_command": ""
+      },
+      "icecream_settings": {}
+    },
+    {
+      "_id": "macos-1014",
+      "arch": "darwin_amd64",
+      "work_dir": "/data/mci",
+      "provider": "static",
+      "provider_settings": [
+        {
+          "hosts": [
+            {
+              "name": "macos-1014-43.macstadium.build.10gen.cc"
+            }
+          ]
+        }
+      ],
+      "user": "mci",
+      "bootstrap_settings": {
+        "method": "ssh",
+        "communication": "ssh",
+        "client_dir": "/Users/mci/evergreen_provisioning",
+        "jasper_binary_dir": "/Users/mci/evergreen_provisioning",
+        "jasper_credentials_path": "/Users/mci/evergreen_provisioning/jasper_credentials.json",
+        "shell_path": "/bin/bash",
+        "resource_limits": {}
+      },
+      "clone_method": "legacy-ssh",
+      "ssh_key": "mci",
+      "ssh_options": [
+        "StrictHostKeyChecking=no",
+        "BatchMode=yes",
+        "ConnectTimeout=10"
+      ],
+      "spawn_allowed": false,
+      "expansions": [
+        {
+          "key": "decompress",
+          "value": "tar zxvf"
+        },
+        {
+          "key": "ps",
+          "value": "ps aux"
+        },
+        {
+          "key": "kill_pid",
+          "value": "kill -- -$(ps opgid= %v)"
+        },
+        {
+          "key": "scons",
+          "value": "/usr/local/bin/scons"
+        },
+        {
+          "key": "sha1sum",
+          "value": "/usr/bin/shasum"
+        },
+        {
+          "key": "sha256sum",
+          "value": "/usr/bin/shasum -a 256"
+        },
+        {
+          "key": "md5sum",
+          "value": "/sbin/md5 -r"
+        },
+        {
+          "key": "strip_command",
+          "value": "/usr/bin/strip -u"
+        }
+      ],
+      "finder_settings": {
+        "version": "legacy"
+      },
+      "planner_settings": {
+        "version": "legacy",
+        "target_time": {
+          "$numberLong": "0"
+        },
+        "group_versions": false,
+        "patch_zipper_factor": {
+          "$numberLong": "0"
+        },
+        "patch_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "commit_queue_factor": {
+          "$numberLong": "0"
+        },
+        "mainline_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "expected_runtime_factor": {
+          "$numberLong": "0"
+        }
+      },
+      "dispatcher_settings": {
+        "version": "revised"
+      },
+      "host_allocator_settings": {
+        "version": "utilization",
+        "minimum_hosts": 0,
+        "maximum_hosts": 0,
+        "acceptable_host_idle_time": {
+          "$numberLong": "0"
+        }
+      },
+      "disable_shallow_clone": false,
+      "note": "",
+      "is_virtual_workstation": false,
+      "is_cluster": false,
+      "home_volume_settings": {
+        "format_command": ""
+      },
+      "icecream_settings": {}
+    }
+  ]
+}

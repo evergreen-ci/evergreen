@@ -112,7 +112,11 @@ func TestFindProject(t *testing.T) {
 			So(p.Owner, ShouldEqual, "fakeowner")
 			So(v.Id, ShouldEqual, "good_version")
 		})
-
+		Convey("error if no version exists", func() {
+			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
+			_, _, _, err := FindLatestVersionWithValidProject("project_test")
+			So(err, ShouldNotBeNil)
+		})
 	})
 
 }
@@ -1396,7 +1400,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			{
 				Id:          "projectA",
 				Private:     utility.FalsePtr(),
-				Enabled:     utility.TruePtr(),
+				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "gimlet",
@@ -1405,7 +1409,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			{
 				Id:          "projectB",
 				Private:     utility.TruePtr(),
-				Enabled:     utility.TruePtr(),
+				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "evergreen",
@@ -1414,7 +1418,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			{
 				Id:          "projectC",
 				Private:     utility.TruePtr(),
-				Enabled:     utility.TruePtr(),
+				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
@@ -1562,7 +1566,7 @@ func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() 
 func (s *FindProjectsSuite) TestGetProjectSettings() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
@@ -1576,7 +1580,7 @@ func (s *FindProjectsSuite) TestGetProjectSettings() {
 func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
-		Enabled: utility.TruePtr(),
+		Enabled: true,
 		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},

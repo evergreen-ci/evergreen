@@ -62,6 +62,9 @@ type EC2ProviderSettings struct {
 	// SecurityGroupIDs is a list of security group IDs.
 	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
 
+	// IAMInstanceProfileARN is the Amazon Resource Name (ARN) of the instance profile.
+	IAMInstanceProfileARN string `mapstructure:"iam_instance_profile_arn,omitempty" json:"iam_instance_profile_arn,omitempty"  bson:"iam_instance_profile_arn,omitempty"`
+
 	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
 	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
 
@@ -324,6 +327,10 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		TagSpecifications:   makeTagSpecifications(makeTags(h)),
 	}
 
+	if ec2Settings.IAMInstanceProfileARN != "" {
+		input.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
+	}
+
 	if ec2Settings.IsVpc {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			{
@@ -520,6 +527,10 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			InstanceType:        aws.String(ec2Settings.InstanceType),
 			BlockDeviceMappings: blockDevices,
 		},
+	}
+
+	if ec2Settings.IAMInstanceProfileARN != "" {
+		spotRequest.LaunchSpecification.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
 	if ec2Settings.IsVpc {
@@ -1056,7 +1067,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 
 	instance, err := m.client.GetInstanceInfo(ctx, id)
 	if err != nil {
-		if err == noReservationError {
+		if isEC2InstanceNotFound(err) {
 			return StatusNonExistent, nil
 		}
 		grip.Error(message.WrapError(err, message.Fields{

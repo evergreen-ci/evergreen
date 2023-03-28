@@ -34,6 +34,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
 var (
@@ -209,6 +216,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.createRemoteQueues(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.setupRoleManager())
+	catcher.Add(e.initTracer(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -288,7 +296,7 @@ func (e *envState) initSettings(path string) error {
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
-		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetConnectTimeout(5 * time.Second).SetMonitor(otelmongo.NewMonitor())
 
 	if settings.HasAuth() {
 		ymlUser, ymlPwd, err := settings.GetAuth()
@@ -812,6 +820,45 @@ func (e *envState) initDepot(ctx context.Context) error {
 	if e.depot, err = certdepot.BootstrapDepotWithMongoClient(ctx, e.client, bootstrapConfig); err != nil {
 		return errors.Wrapf(err, "bootstrapping collection '%s'", CredentialsCollection)
 	}
+
+	return nil
+}
+
+func (e *envState) initTracer(ctx context.Context) error {
+	if !e.settings.Tracer.Enabled {
+		return nil
+	}
+
+	resource, err := resource.New(ctx,
+		resource.WithProcess(),
+		resource.WithHost(),
+		resource.WithAttributes(semconv.ServiceName("evergreen")),
+		resource.WithAttributes(semconv.ServiceVersion(BuildRevision)),
+	)
+	if err != nil {
+		return errors.Wrap(err, "making otel resource")
+	}
+
+	client := otlptracegrpc.NewClient(
+		otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint),
+	)
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return errors.Wrap(err, "initializing otel exporter")
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(exp),
+		trace.WithResource(resource),
+	)
+	otel.SetTracerProvider(tp)
+
+	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(tp.Shutdown(ctx))
+		catcher.Add(exp.Shutdown(ctx))
+		return nil
+	})
 
 	return nil
 }

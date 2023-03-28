@@ -191,6 +191,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.AWSVPC.Subnets, apiSettings.Providers.AWS.Pod.ECS.AWSVPC.Subnets)
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, apiSettings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups)
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.ExecutionRole))
+	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.LogRegion, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.LogRegion))
+	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.LogGroup, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.LogGroup))
 	require.Len(apiSettings.Providers.AWS.Pod.ECS.Clusters, len(testSettings.Providers.AWS.Pod.ECS.Clusters))
 	for i, cluster := range testSettings.Providers.AWS.Pod.ECS.Clusters {
 		assert.EqualValues(cluster.Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Name))
@@ -216,7 +218,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, apiSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, apiSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, apiSettings.ServiceFlags.ContainerConfigurationsDisabled)
-	assert.EqualValues(testSettings.ServiceFlags.ParserProjectS3StorageDisabled, apiSettings.ServiceFlags.ParserProjectS3StorageDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
 	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))
@@ -225,6 +226,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Spawnhost.SpawnHostsPerUser, *apiSettings.Spawnhost.SpawnHostsPerUser)
 	assert.Equal(testSettings.Spawnhost.UnexpirableHostsPerUser, *apiSettings.Spawnhost.UnexpirableHostsPerUser)
 	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, *apiSettings.Spawnhost.UnexpirableVolumesPerUser)
+	assert.Equal(testSettings.Tracer.Enabled, *apiSettings.Tracer.Enabled)
+	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
@@ -313,7 +316,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, dbSettings.ServiceFlags.CloudCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, dbSettings.ServiceFlags.ContainerConfigurationsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, dbSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
-	assert.EqualValues(testSettings.ServiceFlags.ParserProjectS3StorageDisabled, dbSettings.ServiceFlags.ParserProjectS3StorageDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)
@@ -328,7 +330,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Spawnhost.SpawnHostsPerUser, dbSettings.Spawnhost.SpawnHostsPerUser)
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableHostsPerUser, dbSettings.Spawnhost.UnexpirableHostsPerUser)
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableVolumesPerUser, dbSettings.Spawnhost.UnexpirableVolumesPerUser)
-
+	assert.EqualValues(testSettings.Tracer.Enabled, dbSettings.Tracer.Enabled)
+	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
 }
 
 func TestRestart(t *testing.T) {

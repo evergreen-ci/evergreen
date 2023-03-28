@@ -94,7 +94,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 }
 
 func disableStartingSettings(p *model.ProjectRef) {
-	p.Enabled = utility.FalsePtr()
+	p.Enabled = false
 	p.PRTestingEnabled = utility.FalsePtr()
 	p.ManualPRTestingEnabled = utility.FalsePtr()
 	p.GithubChecksEnabled = utility.FalsePtr()
@@ -250,7 +250,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.Wrapf(err, "enabling webhooks for project '%s'", projectId)
 			}
 			modified = true
-		} else if mergedSection.IsEnabled() && !mergedBeforeRef.IsEnabled() {
+		} else if mergedSection.Enabled && !mergedBeforeRef.Enabled {
 			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
 			}
@@ -260,7 +260,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
-		if mergedSection.IsEnabled() {
+		if mergedSection.Enabled {
 			config, err := evergreen.GetConfig()
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")

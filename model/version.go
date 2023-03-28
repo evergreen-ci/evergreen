@@ -101,6 +101,12 @@ const (
 	MaxMainlineCommitVersionLimit     = 300
 )
 
+// IsFinished returns whether or not the version has finished based on its
+// status.
+func (v *Version) IsFinished() bool {
+	return evergreen.IsFinishedVersionStatus(v.Status)
+}
+
 func (v *Version) LastSuccessful() (*Version, error) {
 	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
 		[]string{"-" + VersionRevisionOrderNumberKey}))

@@ -325,6 +325,8 @@ func MockConfig() *evergreen.Settings {
 						TaskDefinitionPrefix: "ecs_prefix",
 						TaskRole:             "task_role",
 						ExecutionRole:        "execution_role",
+						LogRegion:            "log_region",
+						LogGroup:             "log_group",
 						AWSVPC: evergreen.AWSVPCConfig{
 							Subnets:        []string{"subnet-12345"},
 							SecurityGroups: []string{"sg-12345"},
@@ -416,7 +418,6 @@ func MockConfig() *evergreen.Settings {
 			ContainerConfigurationsDisabled: true,
 			RestRoutePartialAuthDisabled:    true,
 			UIPartialAuthDisabled:           true,
-			ParserProjectS3StorageDisabled:  true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{
@@ -459,6 +460,10 @@ func MockConfig() *evergreen.Settings {
 			SpawnHostsPerUser:         5,
 			UnexpirableHostsPerUser:   2,
 			UnexpirableVolumesPerUser: 2,
+		},
+		Tracer: evergreen.TracerConfig{
+			Enabled:           true,
+			CollectorEndpoint: "localhost:4317",
 		},
 		ShutdownWaitSeconds: 15,
 	}

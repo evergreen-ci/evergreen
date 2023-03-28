@@ -1,14 +1,7 @@
 mutation {
   saveProjectSettingsForSection(
     projectSettings: {
-      projectRef: {
-        id: "sandbox_project_id"
-        commitQueue: {
-          enabled: true
-          requireSigned: true
-          requiredApprovalCount: 1
-        }
-      }
+      projectRef: { id: "sandbox_project_id", commitQueue: { enabled: true } }
       aliases: [
         {
           id: "5ffe393097b1d3759dd3c1aa"
@@ -27,8 +20,6 @@ mutation {
     projectRef {
       commitQueue {
         enabled ## unchanged
-        requireSigned
-        requiredApprovalCount
       }
     }
     vars {

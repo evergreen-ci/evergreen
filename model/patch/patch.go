@@ -237,6 +237,12 @@ type TaskSpecifier struct {
 	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
 }
 
+// IsFinished returns whether or not the patch has finished based on its
+// status.
+func (p *Patch) IsFinished() bool {
+	return evergreen.IsFinishedPatchStatus(p.Status)
+}
+
 // SetDescription sets a patch's description in the database
 func (p *Patch) SetDescription(desc string) error {
 	p.Description = desc

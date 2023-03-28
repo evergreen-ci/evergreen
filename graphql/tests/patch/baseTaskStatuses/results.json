@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "baseTaskStatuses.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "baseTaskStatuses": ["failed", "success"]
+          }
+        }
+      }
+    }
+  ]
+}

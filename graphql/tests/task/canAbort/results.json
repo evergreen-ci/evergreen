@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "can_abort.graphql",
+      "result": {
+        "data": {
+          "yes": {
+            "canAbort": true
+          },
+          "no": {
+            "canAbort": false
+          }
+        }
+      }
+    }
+  ]
+}

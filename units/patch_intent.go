@@ -183,12 +183,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if err = catcher.Resolve(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":     "failed to build patch document",
-			"job":         j.ID(),
-			"patch_id":    j.PatchID,
-			"intent_type": j.IntentType,
-			"intent_id":   j.IntentID,
-			"source":      "patch intents",
+			"message":      "failed to build patch document",
+			"job":          j.ID(),
+			"patch_id":     j.PatchID,
+			"intent_type":  j.IntentType,
+			"intent_id":    j.IntentID,
+			"github_error": j.gitHubError,
+			"source":       "patch intents",
 		}))
 
 		return err
@@ -217,7 +218,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	// hidden projects can only run PR patches
-	if !pref.IsEnabled() && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {
+	if !pref.Enabled && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {
 		j.gitHubError = ProjectDisabled
 		return errors.New("project is disabled")
 	}
@@ -354,6 +355,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
+		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
+			j.gitHubError = noChildPatchTasksOrVariants
+		}
 		return errors.Wrap(err, "processing trigger aliases")
 	}
 
@@ -906,15 +910,17 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
 
+	patchDoc.Githash = v.Revision
 	matchingTasks, err := project.VariantTasksForSelectors(intent.Definitions, patchDoc.GetRequester())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "matching tasks to alias definitions")
 	}
 	if len(matchingTasks) == 0 {
-		return nil, nil, nil
+		// Adding to Github error here directly doesn't work, since we need the parent patch to send the
+		// error to the Github PR, so instead we return it as an error that we case on.
+		return nil, nil, errors.New(noChildPatchTasksOrVariants)
 	}
 
-	patchDoc.Githash = v.Revision
 	patchDoc.VariantsTasks = matchingTasks
 
 	if intent.ParentAsModule != "" {
@@ -996,7 +1002,6 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	var err error
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser {
 		grip.Info(message.Fields{
@@ -1023,7 +1028,24 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		}))
 		return false, err
 	}
-	return isMember, nil
+	if isMember {
+		return isMember, nil
+	}
+
+	isInstalledForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, githubOauthToken, requiredOrganization, githubUser)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":          j.ID(),
+			"message":      "failed to check if user is an installed app",
+			"source":       "patch intents",
+			"creator":      githubUser,
+			"required_org": requiredOrganization,
+			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+		}))
+	}
+	return isInstalledForOrg, nil
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {

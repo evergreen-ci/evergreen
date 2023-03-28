@@ -43,6 +43,7 @@ func NewConfigModel() *APIAdminSettings {
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
+		Tracer:            &APITracerSettings{},
 	}
 }
 
@@ -93,6 +94,7 @@ type APIAdminSettings struct {
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
+	Tracer              *APITracerSettings                `json:"tracer,omitempty"`
 	ShutdownWaitSeconds *int                              `json:"shutdown_wait_seconds,omitempty"`
 }
 
@@ -1832,6 +1834,8 @@ type APIECSConfig struct {
 	TaskDefinitionPrefix *string                  `json:"task_definition_prefix"`
 	TaskRole             *string                  `json:"task_role"`
 	ExecutionRole        *string                  `json:"execution_role"`
+	LogRegion            *string                  `json:"log_region"`
+	LogGroup             *string                  `json:"log_group"`
 	AWSVPC               *APIAWSVPCConfig         `json:"awsvpc"`
 	Clusters             []APIECSClusterConfig    `json:"clusters"`
 	CapacityProviders    []APIECSCapacityProvider `json:"capacity_providers"`
@@ -1843,6 +1847,8 @@ func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
 	a.TaskDefinitionPrefix = utility.ToStringPtr(conf.TaskDefinitionPrefix)
 	a.TaskRole = utility.ToStringPtr(conf.TaskRole)
 	a.ExecutionRole = utility.ToStringPtr(conf.ExecutionRole)
+	a.LogRegion = utility.ToStringPtr(conf.LogRegion)
+	a.LogGroup = utility.ToStringPtr(conf.LogGroup)
 	var apiAWSVPC APIAWSVPCConfig
 	apiAWSVPC.BuildFromService(conf.AWSVPC)
 	a.AWSVPC = &apiAWSVPC
@@ -1886,6 +1892,8 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 		TaskDefinitionPrefix: utility.FromStringPtr(a.TaskDefinitionPrefix),
 		TaskRole:             utility.FromStringPtr(a.TaskRole),
 		ExecutionRole:        utility.FromStringPtr(a.ExecutionRole),
+		LogRegion:            utility.FromStringPtr(a.LogRegion),
+		LogGroup:             utility.FromStringPtr(a.LogGroup),
 		AWSVPC:               a.AWSVPC.ToService(),
 		Clusters:             clusters,
 		CapacityProviders:    providers,
@@ -2241,7 +2249,6 @@ type APIServiceFlags struct {
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
 	RestRoutePartialAuthDisabled    bool `json:"rest_route_partial_auth_disabled"`
 	UIPartialAuthDisabled           bool `json:"ui_partial_auth_disabled"`
-	ParserProjectS3StorageDisabled  bool `json:"parser_project_s3_storage_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2531,7 +2538,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 		as.RestRoutePartialAuthDisabled = v.RestRoutePartialAuthDisabled
 		as.UIPartialAuthDisabled = v.UIPartialAuthDisabled
-		as.ParserProjectS3StorageDisabled = v.ParserProjectS3StorageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2574,7 +2580,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
 		RestRoutePartialAuthDisabled:    as.RestRoutePartialAuthDisabled,
 		UIPartialAuthDisabled:           as.UIPartialAuthDisabled,
-		ParserProjectS3StorageDisabled:  as.ParserProjectS3StorageDisabled,
 	}, nil
 }
 
@@ -2799,6 +2804,31 @@ func (c *APISpawnHostConfig) ToService() (interface{}, error) {
 	}
 	if c.SpawnHostsPerUser != nil {
 		config.SpawnHostsPerUser = *c.SpawnHostsPerUser
+	}
+
+	return config, nil
+}
+
+type APITracerSettings struct {
+	Enabled           *bool   `json:"enabled"`
+	CollectorEndpoint *string `json:"collector_endpoint"`
+}
+
+func (c *APITracerSettings) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TracerConfig:
+		c.Enabled = &v.Enabled
+		c.CollectorEndpoint = &v.CollectorEndpoint
+	default:
+		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APITracerSettings) ToService() (interface{}, error) {
+	config := evergreen.TracerConfig{
+		Enabled:           utility.FromBoolPtr(c.Enabled),
+		CollectorEndpoint: utility.FromStringPtr(c.CollectorEndpoint),
 	}
 
 	return config, nil

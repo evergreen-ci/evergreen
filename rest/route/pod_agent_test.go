@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
@@ -178,7 +177,7 @@ func TestPodAgentNextTask(t *testing.T) {
 	getProject := func() model.ProjectRef {
 		return model.ProjectRef{
 			Id:      "proj",
-			Enabled: utility.TruePtr(),
+			Enabled: true,
 		}
 	}
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment){
