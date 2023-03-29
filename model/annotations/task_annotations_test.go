@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func init() { testutil.Setup() }
+
 func TestGetLatestExecutions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -81,6 +83,42 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	assert.NotNil(t, annotationFromDB)
 	assert.Len(t, annotationFromDB.Issues, 1)
 	assert.Equal(t, "not.annie.black", annotationFromDB.Issues[0].Source.Author)
+}
+
+func TestAddTaskLinkToAnnotation(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	taskLink := TaskLink{URL: "https://issuelink.com", Text: "Hello World"}
+	assert.NoError(t, AddTaskLinkToAnnotation("t1", 0, taskLink))
+
+	annotation, err := FindOneByTaskIdAndExecution("t1", 0)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotation)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Len(t, annotation.TaskLinks, 1)
+	assert.Equal(t, "Hello World", annotation.TaskLinks[0].Text)
+	assert.Equal(t, "https://issuelink.com", annotation.TaskLinks[0].URL)
+
+	taskLink.URL = "https://issuelink.com/2"
+	assert.NoError(t, AddTaskLinkToAnnotation("t1", 0, taskLink))
+	annotation, err = FindOneByTaskIdAndExecution("t1", 0)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotation)
+	assert.Len(t, annotation.TaskLinks, 2)
+	assert.Equal(t, "https://issuelink.com/2", annotation.TaskLinks[1].URL)
+}
+
+func TestRemoveTaskLinkFromAnnotation(t *testing.T) {
+	taskLink1 := TaskLink{URL: "https://issuelink.com", Text: "Hello World 1"}
+	taskLink2 := TaskLink{URL: "https://issuelink.com", Text: "Hello World 2"}
+	assert.NoError(t, db.Clear(Collection))
+	a := TaskAnnotation{TaskId: "t1", TaskLinks: []TaskLink{taskLink1, taskLink2}}
+	assert.NoError(t, a.Upsert())
+
+	assert.NoError(t, RemoveTaskLinkFromAnnotation("t1", 0, taskLink1))
+	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotationFromDB)
+	assert.Len(t, annotationFromDB.TaskLinks, 1)
 }
 
 func TestAddSuspectedIssueToAnnotation(t *testing.T) {

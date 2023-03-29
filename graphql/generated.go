@@ -97,6 +97,7 @@ type ComplexityRoot struct {
 		SuspectedIssues   func(childComplexity int) int
 		TaskExecution     func(childComplexity int) int
 		TaskId            func(childComplexity int) int
+		TaskLinks         func(childComplexity int) int
 		WebhookConfigured func(childComplexity int) int
 	}
 
@@ -443,6 +444,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
+		AddAnnotationTaskLink         func(childComplexity int, taskID string, execution int, apiTaskLink model.APITaskLink) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
 		AttachProjectToNewRepo        func(childComplexity int, project MoveProjectInput) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
@@ -465,6 +467,7 @@ type ComplexityRoot struct {
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		PromoteVarsToRepo             func(childComplexity int, projectID string, varNames []string) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
+		RemoveAnnotationTaskLink      func(childComplexity int, taskID string, execution int, apiTaskLink model.APITaskLink) int
 		RemoveFavoriteProject         func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue     func(childComplexity int, commitQueueID string, issue string) int
 		RemovePublicKey               func(childComplexity int, keyName string) int
@@ -1038,6 +1041,11 @@ type ComplexityRoot struct {
 		Name func(childComplexity int) int
 	}
 
+	TaskLink struct {
+		Text func(childComplexity int) int
+		URL  func(childComplexity int) int
+	}
+
 	TaskLogLinks struct {
 		AgentLogLink  func(childComplexity int) int
 		AllLogLink    func(childComplexity int) int
@@ -1318,6 +1326,8 @@ type MutationResolver interface {
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
+	AddAnnotationTaskLink(ctx context.Context, taskID string, execution int, apiTaskLink model.APITaskLink) (bool, error)
+	RemoveAnnotationTaskLink(ctx context.Context, taskID string, execution int, apiTaskLink model.APITaskLink) (bool, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -1693,6 +1703,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Annotation.TaskId(childComplexity), true
+
+	case "Annotation.taskLinks":
+		if e.complexity.Annotation.TaskLinks == nil {
+			break
+		}
+
+		return e.complexity.Annotation.TaskLinks(childComplexity), true
 
 	case "Annotation.webhookConfigured":
 		if e.complexity.Annotation.WebhookConfigured == nil {
@@ -3118,6 +3135,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
+	case "Mutation.addAnnotationTaskLink":
+		if e.complexity.Mutation.AddAnnotationTaskLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addAnnotationTaskLink_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddAnnotationTaskLink(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiTaskLink"].(model.APITaskLink)), true
+
 	case "Mutation.addFavoriteProject":
 		if e.complexity.Mutation.AddFavoriteProject == nil {
 			break
@@ -3376,6 +3405,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
+
+	case "Mutation.removeAnnotationTaskLink":
+		if e.complexity.Mutation.RemoveAnnotationTaskLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeAnnotationTaskLink_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveAnnotationTaskLink(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiTaskLink"].(model.APITaskLink)), true
 
 	case "Mutation.removeFavoriteProject":
 		if e.complexity.Mutation.RemoveFavoriteProject == nil {
@@ -6625,6 +6666,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskInfo.Name(childComplexity), true
 
+	case "TaskLink.text":
+		if e.complexity.TaskLink.Text == nil {
+			break
+		}
+
+		return e.complexity.TaskLink.Text(childComplexity), true
+
+	case "TaskLink.url":
+		if e.complexity.TaskLink.URL == nil {
+			break
+		}
+
+		return e.complexity.TaskLink.URL(childComplexity), true
+
 	case "TaskLogLinks.agentLogLink":
 		if e.complexity.TaskLogLinks.AgentLogLink == nil {
 			break
@@ -7871,6 +7926,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSubscriptionInput,
 		ec.unmarshalInputTaskAnnotationSettingsInput,
 		ec.unmarshalInputTaskFilterOptions,
+		ec.unmarshalInputTaskLinkInput,
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTaskSyncOptionsInput,
 		ec.unmarshalInputTestFilter,
@@ -8063,6 +8119,39 @@ func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.C
 		}
 	}
 	args["isIssue"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_addAnnotationTaskLink_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 model.APITaskLink
+	if tmp, ok := rawArgs["apiTaskLink"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiTaskLink"))
+		arg2, err = ec.unmarshalNTaskLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLink(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["apiTaskLink"] = arg2
 	return args, nil
 }
 
@@ -8672,6 +8761,39 @@ func (ec *executionContext) field_Mutation_removeAnnotationIssue_args(ctx contex
 		}
 	}
 	args["isIssue"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeAnnotationTaskLink_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 model.APITaskLink
+	if tmp, ok := rawArgs["apiTaskLink"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiTaskLink"))
+		arg2, err = ec.unmarshalNTaskLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLink(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["apiTaskLink"] = arg2
 	return args, nil
 }
 
@@ -10661,6 +10783,53 @@ func (ec *executionContext) fieldContext_Annotation_suspectedIssues(ctx context.
 				return ec.fieldContext_IssueLink_url(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type IssueLink", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Annotation_taskLinks(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Annotation_taskLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskLinks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APITaskLink)
+	fc.Result = res
+	return ec.marshalOTaskLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLink(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Annotation_taskLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Annotation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_TaskLink_url(ctx, field)
+			case "text":
+				return ec.fieldContext_TaskLink_text(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskLink", field.Name)
 		},
 	}
 	return fc, nil
@@ -20406,6 +20575,116 @@ func (ec *executionContext) fieldContext_Mutation_removeAnnotationIssue(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeAnnotationIssue_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addAnnotationTaskLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addAnnotationTaskLink(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddAnnotationTaskLink(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["apiTaskLink"].(model.APITaskLink))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addAnnotationTaskLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addAnnotationTaskLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeAnnotationTaskLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeAnnotationTaskLink(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveAnnotationTaskLink(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["apiTaskLink"].(model.APITaskLink))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeAnnotationTaskLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeAnnotationTaskLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -41769,6 +42048,8 @@ func (ec *executionContext) fieldContext_Task_annotation(ctx context.Context, fi
 				return ec.fieldContext_Annotation_note(ctx, field)
 			case "suspectedIssues":
 				return ec.fieldContext_Annotation_suspectedIssues(ctx, field)
+			case "taskLinks":
+				return ec.fieldContext_Annotation_taskLinks(ctx, field)
 			case "taskId":
 				return ec.fieldContext_Annotation_taskId(ctx, field)
 			case "taskExecution":
@@ -46601,6 +46882,94 @@ func (ec *executionContext) _TaskInfo_name(ctx context.Context, field graphql.Co
 func (ec *executionContext) fieldContext_TaskInfo_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskLink_url(ctx context.Context, field graphql.CollectedField, obj *model.APITaskLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskLink_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskLink_url(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskLink_text(ctx context.Context, field graphql.CollectedField, obj *model.APITaskLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskLink_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskLink_text(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskLink",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -59422,6 +59791,42 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTaskLinkInput(ctx context.Context, obj interface{}) (model.APITaskLink, error) {
+	var it model.APITaskLink
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"text", "url"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "text":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
+			it.Text, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "url":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			it.URL, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context, obj interface{}) (model.APITaskSpecifier, error) {
 	var it model.APITaskSpecifier
 	asMap := map[string]interface{}{}
@@ -60338,6 +60743,10 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 		case "suspectedIssues":
 
 			out.Values[i] = ec._Annotation_suspectedIssues(ctx, field, obj)
+
+		case "taskLinks":
+
+			out.Values[i] = ec._Annotation_taskLinks(ctx, field, obj)
 
 		case "taskId":
 
@@ -62665,6 +63074,24 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeAnnotationIssue(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "addAnnotationTaskLink":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addAnnotationTaskLink(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removeAnnotationTaskLink":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeAnnotationTaskLink(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -67930,6 +68357,41 @@ func (ec *executionContext) _TaskInfo(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var taskLinkImplementors = []string{"TaskLink"}
+
+func (ec *executionContext) _TaskLink(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskLinkImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskLink")
+		case "url":
+
+			out.Values[i] = ec._TaskLink_url(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "text":
+
+			out.Values[i] = ec._TaskLink_text(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var taskLogLinksImplementors = []string{"TaskLogLinks"}
 
 func (ec *executionContext) _TaskLogLinks(ctx context.Context, sel ast.SelectionSet, obj *model.LogLinks) graphql.Marshaler {
@@ -72520,6 +72982,11 @@ func (ec *executionContext) unmarshalNTaskFilterOptions2githubᚗcomᚋevergreen
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNTaskLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLink(ctx context.Context, v interface{}) (model.APITaskLink, error) {
+	res, err := ec.unmarshalInputTaskLinkInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNTaskLogLinks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
 	return ec._TaskLogLinks(ctx, sel, &v)
 }
@@ -75484,6 +75951,51 @@ func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
 	return ec._TaskInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOTaskLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLink(ctx context.Context, sel ast.SelectionSet, v model.APITaskLink) graphql.Marshaler {
+	return ec._TaskLink(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOTaskLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLink(ctx context.Context, sel ast.SelectionSet, v []model.APITaskLink) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOTaskLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskLink(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
 }
 
 func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {

@@ -19,6 +19,7 @@ var (
 	SuspectedIssuesKey = bsonutil.MustHaveTag(TaskAnnotation{}, "SuspectedIssues")
 	CreatedIssuesKey   = bsonutil.MustHaveTag(TaskAnnotation{}, "CreatedIssues")
 	IssueLinkIssueKey  = bsonutil.MustHaveTag(IssueLink{}, "IssueKey")
+	TaskLinksKey       = bsonutil.MustHaveTag(TaskAnnotation{}, "TaskLinks")
 )
 
 const (
@@ -71,6 +72,7 @@ func (a *TaskAnnotation) Upsert() error {
 		IssuesKey:          a.Issues,
 		SuspectedIssuesKey: a.SuspectedIssues,
 		CreatedIssuesKey:   a.CreatedIssues,
+		TaskLinksKey:       a.TaskLinks,
 	}
 	if a.Metadata != nil {
 		set[MetadataKey] = a.Metadata

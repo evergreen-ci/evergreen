@@ -8,6 +8,11 @@ input IssueLinkInput {
   url: String!
 }
 
+input TaskLinkInput {
+  text: String!
+  url: String!
+}
+
 ###### TYPES ######
 type IssueLink {
   confidenceScore: Float
@@ -15,4 +20,9 @@ type IssueLink {
   jiraTicket: JiraTicket
   source: Source
   url: String
+}
+
+type TaskLink {
+  url: String!
+  text: String!
 }

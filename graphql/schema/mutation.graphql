@@ -26,6 +26,16 @@ type Mutation {
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
+  addAnnotationTaskLink(
+    taskId: String!
+    execution: Int!
+    apiTaskLink: TaskLinkInput!
+  ): Boolean!
+  removeAnnotationTaskLink(
+    taskId: String!
+    execution: Int!
+    apiTaskLink: TaskLinkInput!
+  ): Boolean!
 
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!

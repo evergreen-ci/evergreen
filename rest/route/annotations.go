@@ -258,7 +258,7 @@ func (h *bulkPatchAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
 // PUT /rest/v2/tasks/{task_id}/annotation
 
 // Parsing logic for task annotation put and patch routes.
-func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
+func annotationByTaskPutOrPatchParser(r *http.Request) (string, *restModel.APITaskAnnotation, error) {
 	var taskId string
 	var annotation *restModel.APITaskAnnotation
 	var err error
@@ -311,6 +311,9 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 	if catcher.HasErrors() {
 		return "", nil, errors.Wrap(catcher.Resolve(), "invalid issue")
 	}
+	if err = restModel.ValidateTaskLinks(annotation.TaskLinks); err != nil {
+		return "", nil, errors.Wrap(err, "invalid task link")
+	}
 
 	if annotation.TaskId == nil {
 		annotation.TaskId = &taskId
@@ -340,7 +343,7 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
-	taskId, annotation, err := annotationByTaskPutOrPatchParser(ctx, r)
+	taskId, annotation, err := annotationByTaskPutOrPatchParser(r)
 	if err != nil {
 		return err
 	}
@@ -382,7 +385,7 @@ func (h *annotationByTaskPatchHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *annotationByTaskPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	taskId, annotation, err := annotationByTaskPutOrPatchParser(ctx, r)
+	taskId, annotation, err := annotationByTaskPutOrPatchParser(r)
 	if err != nil {
 		return err
 	}

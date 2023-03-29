@@ -108,6 +108,27 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 	}
 }
 
+// AddAnnotationTaskLink is the resolver for the addAnnotationTaskLink field.
+func (r *mutationResolver) AddAnnotationTaskLink(ctx context.Context, taskID string, execution int, apiTaskLink restModel.APITaskLink) (bool, error) {
+	taskLink := restModel.APITaskLinkToService(apiTaskLink)
+	if err := util.CheckURL(taskLink.URL); err != nil {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
+	}
+	if err := annotations.AddTaskLinkToAnnotation(taskID, execution, *taskLink); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
+	}
+	return true, nil
+}
+
+// RemoveAnnotationTaskLink is the resolver for the removeAnnotationTaskLink field.
+func (r *mutationResolver) RemoveAnnotationTaskLink(ctx context.Context, taskID string, execution int, apiTaskLink restModel.APITaskLink) (bool, error) {
+	taskLink := restModel.APITaskLinkToService(apiTaskLink)
+	if err := annotations.RemoveTaskLinkFromAnnotation(taskID, execution, *taskLink); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete task link: %s", err.Error()))
+	}
+	return true, nil
+}
+
 // ReprovisionToNew is the resolver for the reprovisionToNew field.
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)

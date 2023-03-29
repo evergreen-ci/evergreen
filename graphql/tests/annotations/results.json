@@ -25,6 +25,14 @@
       }
     },
     {
+      "query_file": "addAnnotationTaskLink.graphql",
+      "result": {
+        "data": {
+          "addAnnotationTaskLink": true
+        }
+      }
+    },
+    {
       "query_file": "addSuspectedIssue.graphql",
       "result": {
         "data": {
@@ -37,6 +45,14 @@
       "result": {
         "data": {
           "removeAnnotationIssue": true
+        }
+      }
+    },
+    {
+      "query_file": "removeAnnotationTaskLink.graphql",
+      "result": {
+        "data": {
+          "removeAnnotationTaskLink": true
         }
       }
     },

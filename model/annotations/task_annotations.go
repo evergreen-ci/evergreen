@@ -25,6 +25,16 @@ type TaskAnnotation struct {
 	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 	// links to tickets created from the task using a custom web hook
 	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
+	// non-ticket links to be displayed in the UI metadata sidebar
+	TaskLinks []TaskLink `bson:"task_links,omitempty" json:"task_links,omitempty"`
+}
+
+// TaskLink represents an arbitrary link to be associated with a task.
+type TaskLink struct {
+	// URL to link to
+	URL string `bson:"url" json:"url"`
+	// Text to be displayed
+	Text string `bson:"text" json:"text"`
 }
 
 type IssueLink struct {
@@ -125,6 +135,27 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	return errors.Wrapf(err, "updating note for task '%s'", taskId)
 }
 
+// AddTaskLinkToAnnotation adds a task link to the annotation for the given task.
+func AddTaskLinkToAnnotation(taskId string, execution int, taskLink TaskLink) error {
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$push": bson.M{TaskLinksKey: taskLink},
+		},
+	)
+	return errors.Wrapf(err, "updating task links for task '%s'", taskId)
+}
+
+// RemoveTaskLinkFromAnnotation removes a task link from the annotation for the given task.
+func RemoveTaskLinkFromAnnotation(taskId string, execution int, taskLink TaskLink) error {
+	return db.Update(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{"$pull": bson.M{TaskLinksKey: taskLink}},
+	)
+}
+
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
 	issue.Source = &Source{
 		Author:    username,
@@ -189,6 +220,9 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	if a.Note != nil {
 		a.Note.Source = source
 		update[NoteKey] = a.Note
+	}
+	if a.TaskLinks != nil {
+		update[TaskLinksKey] = a.TaskLinks
 	}
 	if a.Issues != nil {
 		for i := range a.Issues {
