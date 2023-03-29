@@ -516,6 +516,7 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	return res, nil
 }
 
+// GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
 	StartAfter     int    `json:"start"`
 	Requester      string `json:"requester"`
@@ -527,6 +528,8 @@ type GetVersionsOptions struct {
 	ByTask         string `json:"by_task"`
 }
 
+// GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
+// the input GetVersionsOptions.
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
@@ -633,6 +636,40 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
+}
+
+// ModifyVersionsOptions is a struct containing options necessary to modify versions.
+type ModifyVersionsOptions struct {
+	Priority      *int64 `json:"priority"`
+	StartTimeStr  string `json:"start_time_str"`
+	EndTimeStr    string `json:"end_time_str"`
+	RevisionStart int    `json:"revision_start"`
+	RevisionEnd   int    `json:"revision_end"`
+	Requester     string `json:"requester"`
+}
+
+// GetVersionsToModify returns a slice of versions intended to be modified that satisfy the given ModifyVersionsOptions.
+func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
+	projectId, err := GetIdForProject(projectName)
+	if err != nil {
+		return nil, err
+	}
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey:  opts.Requester,
+	}
+
+	// setting revision numbers will take precedence over setting start and end times
+	if opts.RevisionStart > 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.RevisionStart, "$gte": opts.RevisionEnd}
+	} else {
+		match[VersionCreateTimeKey] = bson.M{"$gte": startTime, "$lte": endTime}
+	}
+	versions, err := VersionFind(db.Query(match))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding versions")
+	}
+	return versions, nil
 }
 
 // constructManifest will construct a manifest from the given project and version.

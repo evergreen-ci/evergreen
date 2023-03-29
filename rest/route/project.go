@@ -973,6 +973,98 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
+// POST /rest/v2/projects/{project_id}/versions
+
+// modifyProjectVersionsHandler is a RequestHandler for setting the priority of versions.
+type modifyProjectVersionsHandler struct {
+	projectId string
+	url       string
+	opts      dbModel.ModifyVersionsOptions
+	startTime time.Time
+	endTime   time.Time
+}
+
+func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
+	return &modifyProjectVersionsHandler{url: url}
+}
+
+func (h *modifyProjectVersionsHandler) Factory() gimlet.RouteHandler {
+	return &modifyProjectVersionsHandler{url: h.url}
+}
+
+func (h *modifyProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectId = gimlet.GetVars(r)["project_id"]
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+	opts := &dbModel.ModifyVersionsOptions{}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, opts); err != nil {
+			return errors.Wrap(err, "unmarshalling JSON request body into version options")
+		}
+	}
+	if opts.RevisionStart < 0 || opts.RevisionEnd < 0 {
+		return errors.New("both start and end must be non-negative integers")
+	}
+	if opts.RevisionEnd > opts.RevisionStart {
+		return errors.New("end must be less than or equal to start")
+	}
+
+	if (opts.RevisionStart > 0 || opts.RevisionEnd > 0) && (opts.StartTimeStr != "" || opts.EndTimeStr != "") {
+		return errors.New("cannot specify both timestamps and order numbers")
+	}
+
+	if opts.StartTimeStr != "" && opts.RevisionStart != 0 {
+		return errors.New("cannot specify both timestamps and order numbers")
+	}
+
+	if opts.StartTimeStr == "" && opts.RevisionStart == 0 {
+		return errors.New("must specify either timestamps or order numbers")
+	}
+	if opts.Priority == nil {
+		return errors.New("must specify a priority")
+	}
+	h.opts = *opts
+	if h.opts.StartTimeStr != "" {
+		h.startTime, err = model.ParseTime(h.opts.StartTimeStr)
+		if err != nil {
+			return errors.Wrap(err, "parsing start time")
+		}
+		h.endTime, err = model.ParseTime(h.opts.EndTimeStr)
+		if err != nil {
+			return errors.Wrap(err, "parsing end time")
+		}
+	}
+	return nil
+}
+
+func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	priority := utility.FromInt64Ptr(h.opts.Priority)
+	// Check for a valid priority and perform the update.
+	if ok := validPriority(priority, h.projectId, user); !ok {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
+				"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
+			StatusCode: http.StatusForbidden,
+		})
+	}
+	versions, err := dbModel.GetVersionsToModify(h.projectId, h.opts, h.startTime, h.endTime)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectId))
+	}
+	var versionIds []string
+	for _, v := range versions {
+		versionIds = append(versionIds, v.Id)
+	}
+	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/projects/{project_id}/tasks/{task_id}
