@@ -869,7 +869,11 @@ func (e *envState) initTracer(ctx context.Context) error {
 func (e *envState) initHTTPClientPool() {
 	clientFactory := func() *http.Client {
 		client := utility.NewBaseConfiguredHttpClient()
-		client.Transport = otelhttp.NewTransport(client.Transport)
+		client.Transport = otelhttp.NewTransport(client.Transport, otelhttp.WithFilter(
+			func(r *http.Request) bool {
+				return utility.StringSliceContains(e.settings.Tracer.ExternalHostsToTrace, r.URL.Host)
+			},
+		))
 		return client
 	}
 	utility.InitHTTPPool(clientFactory)

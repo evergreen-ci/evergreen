@@ -9,8 +9,9 @@ import (
 
 // TracerConfig configures the OpenTelemetry tracer provider. If not enabled traces will not be sent.
 type TracerConfig struct {
-	Enabled           bool   `yaml:"enabled" bson:"enabled" json:"enabled"`
-	CollectorEndpoint string `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
+	Enabled              bool     `yaml:"enabled" bson:"enabled" json:"enabled"`
+	CollectorEndpoint    string   `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
+	ExternalHostsToTrace []string `yaml:"external_hosts_to_trace" bson:"external_hosts_to_trace" json:"external_hosts_to_trace"`
 }
 
 // SectionId returns the ID of this config section.
