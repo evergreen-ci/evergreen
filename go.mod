@@ -2,8 +2,6 @@ module github.com/evergreen-ci/evergreen
 
 go 1.19
 
-replace github.com/evergreen-ci/utility => /Users/jonathan.brill/repos/utility
-
 require (
 	github.com/99designs/gqlgen v0.17.20
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -21,7 +19,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20230210160503-ba8cf383fac5
-	github.com/evergreen-ci/utility v0.0.0-20230216205613-b8156d58f1e5
+	github.com/evergreen-ci/utility v0.0.0-20230329160933-c10e893cefce
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
