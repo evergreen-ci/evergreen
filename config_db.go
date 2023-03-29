@@ -116,7 +116,8 @@ var (
 	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnHostConfig{}, "SpawnHostsPerUser")
 
 	tracerEnabledKey        = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
-	tracerCollectorEndpoint = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
+	collectorEndpointKey    = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
+	externalHostsToTraceKey = bsonutil.MustHaveTag(TracerConfig{}, "ExternalHostsToTrace")
 )
 
 func byId(id string) bson.M {

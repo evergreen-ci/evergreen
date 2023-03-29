@@ -462,8 +462,9 @@ func MockConfig() *evergreen.Settings {
 			UnexpirableVolumesPerUser: 2,
 		},
 		Tracer: evergreen.TracerConfig{
-			Enabled:           true,
-			CollectorEndpoint: "localhost:4317",
+			Enabled:              true,
+			CollectorEndpoint:    "localhost:4317",
+			ExternalHostsToTrace: []string{"www.github.com"},
 		},
 		ShutdownWaitSeconds: 15,
 	}
