@@ -35,8 +35,8 @@ type PatchAPIResponse struct {
 	Patch   *patch.Patch `json:"patch"`
 }
 
-// getAuthor returns the author for the patch. If githubAuthor or patchAuthor is provided and exists, will use this instead
-// of the submitter if the submitter is authorized to submit patches on behalf of users.
+// getAuthor returns the author for the patch. If githubAuthor or patchAuthor is provided and exists, will use that
+// author instead of the submitter if the submitter is authorized to submit patches on behalf of users.
 // Returns the author, status code, and error.
 func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, patchID string) (string, int, error) {
 	author := dbUser.Id
@@ -57,7 +57,7 @@ func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, p
 	if data.GithubAuthor != "" {
 		specifiedUser, err := user.FindByGithubName(data.GithubAuthor)
 		if err != nil {
-			return "", http.StatusInternalServerError, errors.Wrap(err, "error looking for specified author")
+			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for github author '%s'", data.GithubAuthor)
 		}
 		if specifiedUser != nil {
 			grip.Info(message.Fields{
@@ -77,7 +77,7 @@ func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, p
 	} else if data.PatchAuthor != "" {
 		specifiedUser, err := user.FindOneById(data.PatchAuthor)
 		if err != nil {
-			return "", http.StatusInternalServerError, errors.Wrap(err, "error looking for specified author")
+			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for author '%s'", data.PatchAuthor)
 		}
 		if specifiedUser != nil {
 			grip.Info(message.Fields{
