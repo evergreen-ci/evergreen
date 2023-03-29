@@ -53,6 +53,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 			"start":       start,
 			"end":         end,
 			"user":        usr.Username(),
+			"origin":      rc.Headers.Get("Origin"),
 		})
 
 	}()
