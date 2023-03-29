@@ -228,6 +228,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, *apiSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.Equal(testSettings.Tracer.Enabled, *apiSettings.Tracer.Enabled)
 	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
+	assert.Equal(testSettings.Tracer.ExternalHostsToTrace, utility.FromStringPtrSlice(apiSettings.Tracer.ExternalHostsToTrace))
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
@@ -331,7 +332,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableHostsPerUser, dbSettings.Spawnhost.UnexpirableHostsPerUser)
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableVolumesPerUser, dbSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.EqualValues(testSettings.Tracer.Enabled, dbSettings.Tracer.Enabled)
-	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
+	assert.Equal(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
+	assert.Equal(testSettings.Tracer.ExternalHostsToTrace, dbSettings.Tracer.ExternalHostsToTrace)
 }
 
 func TestRestart(t *testing.T) {

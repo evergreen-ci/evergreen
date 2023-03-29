@@ -50,7 +50,8 @@ func (c *TracerConfig) Set() error {
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			tracerEnabledKey:        c.Enabled,
-			tracerCollectorEndpoint: c.CollectorEndpoint,
+			collectorEndpointKey:    c.CollectorEndpoint,
+			externalHostsToTraceKey: c.ExternalHostsToTrace,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())

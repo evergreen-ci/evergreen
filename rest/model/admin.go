@@ -2810,8 +2810,9 @@ func (c *APISpawnHostConfig) ToService() (interface{}, error) {
 }
 
 type APITracerSettings struct {
-	Enabled           *bool   `json:"enabled"`
-	CollectorEndpoint *string `json:"collector_endpoint"`
+	Enabled              *bool     `json:"enabled"`
+	CollectorEndpoint    *string   `json:"collector_endpoint"`
+	ExternalHostsToTrace []*string `json:"external_hosts_to_trace"`
 }
 
 func (c *APITracerSettings) BuildFromService(h interface{}) error {
@@ -2819,6 +2820,7 @@ func (c *APITracerSettings) BuildFromService(h interface{}) error {
 	case evergreen.TracerConfig:
 		c.Enabled = &v.Enabled
 		c.CollectorEndpoint = &v.CollectorEndpoint
+		c.ExternalHostsToTrace = utility.ToStringPtrSlice(v.ExternalHostsToTrace)
 	default:
 		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
 	}
@@ -2827,8 +2829,9 @@ func (c *APITracerSettings) BuildFromService(h interface{}) error {
 
 func (c *APITracerSettings) ToService() (interface{}, error) {
 	config := evergreen.TracerConfig{
-		Enabled:           utility.FromBoolPtr(c.Enabled),
-		CollectorEndpoint: utility.FromStringPtr(c.CollectorEndpoint),
+		Enabled:              utility.FromBoolPtr(c.Enabled),
+		CollectorEndpoint:    utility.FromStringPtr(c.CollectorEndpoint),
+		ExternalHostsToTrace: utility.FromStringPtrSlice(c.ExternalHostsToTrace),
 	}
 
 	return config, nil
