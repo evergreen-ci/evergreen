@@ -108,18 +108,11 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 	}
 }
 
-// AddAnnotationTaskLink is the resolver for the addAnnotationTaskLink field.
-func (r *mutationResolver) AddAnnotationTaskLink(ctx context.Context, taskID string, execution int, apiTaskLink restModel.APITaskLink) (bool, error) {
-	settings := evergreen.GetEnvironment().Settings()
-	taskLink := restModel.APITaskLinkToService(apiTaskLink)
-	if err := util.CheckURL(taskLink.URL); err != nil {
-		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
-	}
-	if !utility.StringMatchesAnyRegex(taskLink.URL, settings.Ui.CORSOrigins) {
-		return false, InputValidationError.Send(ctx, fmt.Sprintf("task link URL '%s' must match a CORS origin", taskLink.URL))
-	}
-	if taskLink.Text == "" {
-		return false, InputValidationError.Send(ctx, "link text cannot be empty")
+// AddAnnotationMetadataLink is the resolver for the addAnnotationMetadataLink field.
+func (r *mutationResolver) AddAnnotationMetadataLink(ctx context.Context, taskID string, execution int, apiMetadataLink restModel.APIMetadataLink) (bool, error) {
+	metadataLink := restModel.APIMetadataLinkToService(apiMetadataLink)
+	if err := annotations.ValidateMetadataLinks(*metadataLink); err != nil {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("invalid metadata link: %s", err.Error()))
 	}
 	annotation, err := annotations.FindOneByTaskIdAndExecution(taskID, execution)
 	if err != nil {
@@ -128,19 +121,19 @@ func (r *mutationResolver) AddAnnotationTaskLink(ctx context.Context, taskID str
 	if annotation == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("annotation for task '%s' not found", taskID))
 	}
-	if len(annotation.TaskLinks) >= annotations.MaxTaskLinks {
-		return false, InputValidationError.Send(ctx, fmt.Sprintf("cannot have more than %d task links per annotation", annotations.MaxTaskLinks))
+	if len(annotation.MetadataLinks) >= annotations.MaxMetadataLinks {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("cannot have more than %d task links per annotation", annotations.MaxMetadataLinks))
 	}
-	if err = annotations.AddTaskLinkToAnnotation(taskID, execution, *taskLink); err != nil {
+	if err = annotations.AddMetadataLinkToAnnotation(taskID, execution, *metadataLink); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
 	}
 	return true, nil
 }
 
-// RemoveAnnotationTaskLink is the resolver for the removeAnnotationTaskLink field.
-func (r *mutationResolver) RemoveAnnotationTaskLink(ctx context.Context, taskID string, execution int, apiTaskLink restModel.APITaskLink) (bool, error) {
-	taskLink := restModel.APITaskLinkToService(apiTaskLink)
-	if err := annotations.RemoveTaskLinkFromAnnotation(taskID, execution, *taskLink); err != nil {
+// RemoveAnnotationMetadataLink is the resolver for the removeAnnotationMetadataLink field.
+func (r *mutationResolver) RemoveAnnotationMetadataLink(ctx context.Context, taskID string, execution int, apiMetadataLink restModel.APIMetadataLink) (bool, error) {
+	metadataLink := restModel.APIMetadataLinkToService(apiMetadataLink)
+	if err := annotations.RemoveMetadataLinkFromAnnotation(taskID, execution, *metadataLink); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete task link: %s", err.Error()))
 	}
 	return true, nil

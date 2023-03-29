@@ -9,7 +9,7 @@ type Annotation {
   issues: [IssueLink]
   note: Note
   suspectedIssues: [IssueLink]
-  taskLinks: [TaskLink]
+  metadataLinks: [MetadataLink]
   taskId: String!
   taskExecution: Int!
   webhookConfigured: Boolean!

@@ -25,10 +25,10 @@
       }
     },
     {
-      "query_file": "addAnnotationTaskLink.graphql",
+      "query_file": "addAnnotationMetadataLink.graphql",
       "result": {
         "data": {
-          "addAnnotationTaskLink": true
+          "addAnnotationMetadataLink": true
         }
       }
     },
@@ -49,10 +49,10 @@
       }
     },
     {
-      "query_file": "removeAnnotationTaskLink.graphql",
+      "query_file": "removeAnnotationMetadataLink.graphql",
       "result": {
         "data": {
-          "removeAnnotationTaskLink": true
+          "removeAnnotationMetadataLink": true
         }
       }
     },

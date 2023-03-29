@@ -1,0 +1,7 @@
+mutation {
+    addAnnotationMetadataLink(
+        taskId: "task-1234",
+        execution: 1,
+        apiMetadataLink: {url: "https://issuelink.com/browse/ticket", text:"Hello World"}
+    )
+}

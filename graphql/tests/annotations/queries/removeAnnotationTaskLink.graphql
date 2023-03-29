@@ -1,7 +1,0 @@
-mutation {
-  removeAnnotationTaskLink(
-    taskId: "task-1234"
-    execution: 1
-    apiTaskLink: { url: "https://issuelink.com/browse/ticket", text: "Hello World" }
-  )
-}

@@ -26,15 +26,15 @@ type Mutation {
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
-  addAnnotationTaskLink(
+  addAnnotationMetadataLink(
     taskId: String!
     execution: Int!
-    apiTaskLink: TaskLinkInput!
+    apiMetadataLink: MetadataLinkInput!
   ): Boolean!
-  removeAnnotationTaskLink(
+  removeAnnotationMetadataLink(
     taskId: String!
     execution: Int!
-    apiTaskLink: TaskLinkInput!
+    apiMetadataLink: MetadataLinkInput!
   ): Boolean!
 
   # hosts

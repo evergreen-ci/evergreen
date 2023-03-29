@@ -1,6 +1,9 @@
 package annotations
 
 import (
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -25,12 +28,12 @@ type TaskAnnotation struct {
 	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 	// links to tickets created from the task using a custom web hook
 	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
-	// non-ticket links to be displayed in the UI metadata sidebar
-	TaskLinks []TaskLink `bson:"task_links,omitempty" json:"task_links,omitempty"`
+	// links to be displayed in the UI metadata sidebar
+	MetadataLinks []MetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
 }
 
-// TaskLink represents an arbitrary link to be associated with a task.
-type TaskLink struct {
+// MetadataLink represents an arbitrary link to be associated with a task.
+type MetadataLink struct {
 	// URL to link to
 	URL string `bson:"url" json:"url"`
 	// Text to be displayed
@@ -135,24 +138,24 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	return errors.Wrapf(err, "updating note for task '%s'", taskId)
 }
 
-// AddTaskLinkToAnnotation adds a task link to the annotation for the given task.
-func AddTaskLinkToAnnotation(taskId string, execution int, taskLink TaskLink) error {
+// AddMetadataLinkToAnnotation adds a task link to the annotation for the given task.
+func AddMetadataLinkToAnnotation(taskId string, execution int, metadataLink MetadataLink) error {
 	_, err := db.Upsert(
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
-			"$push": bson.M{TaskLinksKey: taskLink},
+			"$push": bson.M{MetadataLinksKey: metadataLink},
 		},
 	)
 	return errors.Wrapf(err, "updating task links for task '%s'", taskId)
 }
 
-// RemoveTaskLinkFromAnnotation removes a task link from the annotation for the given task.
-func RemoveTaskLinkFromAnnotation(taskId string, execution int, taskLink TaskLink) error {
+// RemoveMetadataLinkFromAnnotation removes a task link from the annotation for the given task.
+func RemoveMetadataLinkFromAnnotation(taskId string, execution int, metadataLink MetadataLink) error {
 	return db.Update(
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
-		bson.M{"$pull": bson.M{TaskLinksKey: taskLink}},
+		bson.M{"$pull": bson.M{MetadataLinksKey: metadataLink}},
 	)
 }
 
@@ -221,8 +224,8 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		a.Note.Source = source
 		update[NoteKey] = a.Note
 	}
-	if a.TaskLinks != nil {
-		update[TaskLinksKey] = a.TaskLinks
+	if a.MetadataLinks != nil {
+		update[MetadataLinksKey] = a.MetadataLinks
 	}
 	if a.Issues != nil {
 		for i := range a.Issues {
@@ -346,4 +349,27 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 		},
 	)
 	return errors.Wrapf(err, "adding ticket to task '%s'", taskId)
+}
+
+// ValidateMetadataLinks will validate the given metadata links, ensuring that they are valid URLs, that they match Evergreen's approved
+// CORS origins, and that they are not too long. It also ensures that there are not more than MaxMetadataLinks links provided.
+func ValidateMetadataLinks(links ...MetadataLink) error {
+	settings := evergreen.GetEnvironment().Settings()
+	catcher := grip.NewBasicCatcher()
+	if len(links) > MaxMetadataLinks {
+		catcher.Errorf("cannot have more than %d task links per annotation", MaxMetadataLinks)
+	}
+	for _, link := range links {
+		catcher.Add(util.CheckURL(link.URL))
+		if !utility.StringMatchesAnyRegex(link.URL, settings.Ui.CORSOrigins) {
+			catcher.Errorf("task link URL '%s' must match a CORS origin", link.URL)
+		}
+		if link.Text == "" {
+			catcher.Errorf("link text cannot be empty")
+		}
+		if len(link.URL) > MaxMetadataLinkLength {
+			catcher.Errorf("link URL cannot be longer than %d characters", MaxMetadataLinkLength)
+		}
+	}
+	return catcher.Resolve()
 }

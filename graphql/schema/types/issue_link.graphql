@@ -8,7 +8,7 @@ input IssueLinkInput {
   url: String!
 }
 
-input TaskLinkInput {
+input MetadataLinkInput {
   text: String!
   url: String!
 }
@@ -22,7 +22,7 @@ type IssueLink {
   url: String
 }
 
-type TaskLink {
+type MetadataLink {
   url: String!
   text: String!
 }

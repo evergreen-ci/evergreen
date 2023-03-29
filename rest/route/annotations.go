@@ -311,7 +311,8 @@ func annotationByTaskPutOrPatchParser(r *http.Request) (string, *restModel.APITa
 	if catcher.HasErrors() {
 		return "", nil, errors.Wrap(catcher.Resolve(), "invalid issue")
 	}
-	if err = restModel.ValidateTaskLinks(annotation.TaskLinks); err != nil {
+	metadataLinks := restModel.ArrAPIMetadataLinkArrtaskannotationsMetadataLink(annotation.MetadataLinks)
+	if err = annotations.ValidateMetadataLinks(metadataLinks...); err != nil {
 		return "", nil, errors.Wrap(err, "invalid task link")
 	}
 
