@@ -115,13 +115,23 @@ func (r *mutationResolver) AddAnnotationTaskLink(ctx context.Context, taskID str
 	if err := util.CheckURL(taskLink.URL); err != nil {
 		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
 	}
-	if utility.StringMatchesAnyRegex(taskLink.URL, settings.Ui.CORSOrigins) {
+	if !utility.StringMatchesAnyRegex(taskLink.URL, settings.Ui.CORSOrigins) {
 		return false, InputValidationError.Send(ctx, fmt.Sprintf("task link URL '%s' must match a CORS origin", taskLink.URL))
 	}
 	if taskLink.Text == "" {
 		return false, InputValidationError.Send(ctx, "link text cannot be empty")
 	}
-	if err := annotations.AddTaskLinkToAnnotation(taskID, execution, *taskLink); err != nil {
+	annotation, err := annotations.FindOneByTaskIdAndExecution(taskID, execution)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding annotation: %s", err.Error()))
+	}
+	if annotation == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("annotation for task '%s' not found", taskID))
+	}
+	if len(annotation.TaskLinks) >= annotations.MaxTaskLinks {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("cannot have more than %d task links per annotation", annotations.MaxTaskLinks))
+	}
+	if err = annotations.AddTaskLinkToAnnotation(taskID, execution, *taskLink); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
 	}
 	return true, nil

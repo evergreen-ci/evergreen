@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func init() { testutil.Setup() }
-
 func TestGetLatestExecutions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

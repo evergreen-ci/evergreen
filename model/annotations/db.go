@@ -27,6 +27,7 @@ const (
 	UIRequester      = "ui"
 	APIRequester     = "api"
 	WebhookRequester = "webhook"
+	MaxTaskLinks     = 1
 )
 
 // FindOne gets one TaskAnnotation for the given query.

@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func init() { testutil.Setup() }
+
 const apiKey = "testapikey"
 const apiUser = "testuser"
 const pathToTests = "../../graphql"

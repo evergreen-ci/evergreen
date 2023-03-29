@@ -256,7 +256,7 @@ func ValidateTaskLinks(links []APITaskLink) error {
 	catcher := grip.NewBasicCatcher()
 	for _, link := range links {
 		catcher.Add(util.CheckURL(utility.FromStringPtr(link.URL)))
-		if utility.StringMatchesAnyRegex(utility.FromStringPtr(link.URL), settings.Ui.CORSOrigins) {
+		if !utility.StringMatchesAnyRegex(utility.FromStringPtr(link.URL), settings.Ui.CORSOrigins) {
 			catcher.Errorf("task link URL '%s' must match a CORS origin", utility.FromStringPtr(link.URL))
 		}
 		if utility.FromStringPtr(link.Text) == "" {
