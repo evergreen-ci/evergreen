@@ -1500,20 +1500,21 @@ func TestHasMatchingTasks(t *testing.T) {
 	opts := HasMatchingTasksOptions{
 		Statuses: []string{evergreen.TaskFailed},
 	}
-	hasMatchingTasks, err := HasMatchingTasks("v1", opts)
+	ctx := context.TODO()
+	hasMatchingTasks, err := HasMatchingTasks(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.True(t, hasMatchingTasks)
 
 	opts.Statuses = []string{evergreen.TaskWillRun}
 
-	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	hasMatchingTasks, err = HasMatchingTasks(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.False(t, hasMatchingTasks)
 
 	opts = HasMatchingTasksOptions{
 		Variants: []string{"bv1"},
 	}
-	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	hasMatchingTasks, err = HasMatchingTasks(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.True(t, hasMatchingTasks)
 
@@ -1524,7 +1525,7 @@ func TestHasMatchingTasks(t *testing.T) {
 	// assert.True(t, hasMatchingTasks)
 
 	opts.Variants = []string{"DNE"}
-	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	hasMatchingTasks, err = HasMatchingTasks(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.False(t, hasMatchingTasks)
 }
