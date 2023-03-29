@@ -2,6 +2,8 @@ module github.com/evergreen-ci/evergreen
 
 go 1.19
 
+replace github.com/evergreen-ci/utility => /Users/jonathan.brill/repos/utility
+
 require (
 	github.com/99designs/gqlgen v0.17.20
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -161,7 +163,9 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib v1.10.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.40.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect
+	go.opentelemetry.io/otel/metric v0.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
