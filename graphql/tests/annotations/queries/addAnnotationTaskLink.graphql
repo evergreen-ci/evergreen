@@ -2,6 +2,6 @@ mutation {
     addAnnotationTaskLink(
         taskId: "task-1234",
         execution: 1,
-        apiTaskLink: {url: "https://external-link.com", text:"Hello World"}
+        apiTaskLink: {url: "http://localhost:3000", text:"Hello World"}
     )
 }

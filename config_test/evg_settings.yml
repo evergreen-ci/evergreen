@@ -119,6 +119,7 @@ ui:
   logfile: "/tmp/ui_test.log"
   url: "http://localhost"
   httplistenaddr: ":9090"
+  cors_origins: ["http://localhost:3000"]
 
 monitor:
   logfile: ""

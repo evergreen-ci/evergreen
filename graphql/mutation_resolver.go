@@ -110,9 +110,16 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 
 // AddAnnotationTaskLink is the resolver for the addAnnotationTaskLink field.
 func (r *mutationResolver) AddAnnotationTaskLink(ctx context.Context, taskID string, execution int, apiTaskLink restModel.APITaskLink) (bool, error) {
+	settings := evergreen.GetEnvironment().Settings()
 	taskLink := restModel.APITaskLinkToService(apiTaskLink)
 	if err := util.CheckURL(taskLink.URL); err != nil {
 		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
+	}
+	if utility.StringMatchesAnyRegex(taskLink.URL, settings.Ui.CORSOrigins) {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("task link URL '%s' must match a CORS origin", taskLink.URL))
+	}
+	if taskLink.Text == "" {
+		return false, InputValidationError.Send(ctx, "link text cannot be empty")
 	}
 	if err := annotations.AddTaskLinkToAnnotation(taskID, execution, *taskLink); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
