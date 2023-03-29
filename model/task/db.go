@@ -2393,7 +2393,7 @@ type HasMatchingTasksOptions struct {
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
-func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
+func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTasksOptions) (bool, error) {
 	options := GetTasksByVersionOptions{
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
@@ -2410,12 +2410,11 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 	}
 	pipeline = append(pipeline, bson.M{"$count": "count"})
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return false, err
 	}
+
 	type Count struct {
 		Count int `bson:"count"`
 	}

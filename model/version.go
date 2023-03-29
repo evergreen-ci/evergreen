@@ -410,7 +410,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func getMostRecentMainlineCommit(projectId string) (*Version, error) {
+func getMostRecentMainlineCommit(ctx context.Context, projectId string) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
@@ -420,8 +420,14 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: -1}}, {"$limit": 1}}
 	res := []Version{}
 
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(res) == 0 {
@@ -431,13 +437,13 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 }
 
 // GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit
-func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, requesters []string) (*int, error) {
+func GetPreviousPageCommitOrderNumber(ctx context.Context, projectId string, order int, limit int, requesters []string) (*int, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
 		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	// First check if we are already looking at the most recent commit.
-	mostRecentCommit, err := getMostRecentMainlineCommit(projectId)
+	mostRecentCommit, err := getMostRecentMainlineCommit(ctx, projectId)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -460,8 +466,14 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, re
 
 	res := []Version{}
 
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
 	}
 
 	// If there are no newer mainline commits, return nil to indicate that we are already on the first page.
@@ -484,7 +496,7 @@ type MainlineCommitVersionOptions struct {
 	Requesters      []string
 }
 
-func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
+func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
 		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
@@ -508,9 +520,14 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	pipeline = append(pipeline, bson.M{"$limit": limit})
 
 	res := []Version{}
-
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
 	}
 
 	return res, nil
