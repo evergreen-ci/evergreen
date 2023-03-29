@@ -2586,6 +2586,44 @@ Admin Settings
 										<label>Collector Endpoint</label>
 										<input type="string" ng-model="Settings.tracer.collector_endpoint">
 									</md-input-container>
+									<md-card style="margin-bottom:20px;">
+										<md-card-title>
+											<md-card-title-text>
+												<span>Traced External Hosts</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="ec2-list" class="form-group"
+												ng-repeat="(index, host) in Settings.tracer.external_hosts_to_trace">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="host"
+															placeholder="Host">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteExternalHostToTrace(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="newExternalHostToTrace"
+														placeholder="Host">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="new_subnet.length === 0" type="button"
+														style="float: left" ng-click="addExternalHostToTrace()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidExternalHostToTrace ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
 								</md-card-content>
 							</md-card>
 						</section>
