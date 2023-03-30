@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -19,17 +20,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-type gitMergePr struct {
+type gitMergePR struct {
 	Token string `mapstructure:"token"`
 
 	statusSender send.Sender
 	base
 }
 
-func gitMergePrFactory() Command   { return &gitMergePr{} }
-func (c *gitMergePr) Name() string { return "git.merge_pr" }
+const (
+	mergePRAttempts      = 3
+	mergePRRetryMinDelay = 10 * time.Second
+	mergePRRetryMaxDelay = 30 * time.Second
+)
 
-func (c *gitMergePr) ParseParams(params map[string]interface{}) error {
+func gitMergePRFactory() Command   { return &gitMergePR{} }
+func (c *gitMergePR) Name() string { return "git.merge_pr" }
+
+func (c *gitMergePR) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
@@ -38,7 +45,7 @@ func (c *gitMergePr) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 	defer func() {
 		pErr := recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("unexpected error in '%s'", c.Name()))
@@ -82,7 +89,7 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		return nil
 	}
 	// only successful patches should get past here. Failed patches will just send the failed
-	// status to github
+	// status to GitHub.
 
 	githubCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -94,7 +101,21 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	}
 
 	// Do the merge and assign to error so the defer statement handles this correctly.
-	err = thirdparty.MergePullRequest(githubCtx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
-		patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
+	// Add retry logic in case multiple PRs are merged in quick succession, since
+	// it takes GitHub some time to put the PR back in a mergeable state.
+	err = utility.Retry(ctx, func() (bool, error) {
+		err = thirdparty.MergePullRequest(githubCtx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+			patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
+		if err != nil {
+			return true, errors.Wrap(err, "getting pull request data from GitHub")
+		}
+
+		return false, nil
+	}, utility.RetryOptions{
+		MaxAttempts: mergePRAttempts,
+		MinDelay:    mergePRRetryMinDelay,
+		MaxDelay:    mergePRRetryMaxDelay,
+	})
+
 	return err
 }
