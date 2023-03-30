@@ -10,13 +10,29 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
-// Type is the resolver for the type field.
-func (r *podResolver) Type(ctx context.Context, obj *model.APIPod) (string, error) {
-	return string(obj.Type), nil
+// Events is the resolver for the events field.
+func (r *podResolver) Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error) {
+	events, count, err := event.MostRecentPaginatedPodEvents(utility.FromStringPtr(obj.ID), *limit, *page)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod events: %s", err.Error()))
+	}
+	apiEventLogEntries := []*model.PodAPIEventLogEntry{}
+	for _, e := range events {
+		apiEventLog := model.PodAPIEventLogEntry{}
+		err = apiEventLog.BuildFromService(e)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
+		}
+		apiEventLogEntries = append(apiEventLogEntries, &apiEventLog)
+	}
+	podEvents := PodEvents{
+		EventLogEntries: apiEventLogEntries,
+		Count:           count,
+	}
+	return &podEvents, nil
 }
 
 // Status is the resolver for the status field.
@@ -43,25 +59,9 @@ func (r *podResolver) Task(ctx context.Context, obj *model.APIPod) (*model.APITa
 	return apiTask, nil
 }
 
-func (r *podResolver) Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error) {
-	events, count, err := event.MostRecentPaginatedPodEvents(utility.FromStringPtr(obj.ID), *limit, *page)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod events: %s", err.Error()))
-	}
-	apiEventLogEntries := []*restModel.PodAPIEventLogEntry{}
-	for _, e := range events {
-		apiEventLog := restModel.PodAPIEventLogEntry{}
-		err = apiEventLog.BuildFromService(e)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
-		}
-		apiEventLogEntries = append(apiEventLogEntries, &apiEventLog)
-	}
-	podEvents := PodEvents{
-		EventLogEntries: apiEventLogEntries,
-		Count:           count,
-	}
-	return &podEvents, nil
+// Type is the resolver for the type field.
+func (r *podResolver) Type(ctx context.Context, obj *model.APIPod) (string, error) {
+	return string(obj.Type), nil
 }
 
 // Os is the resolver for the os field.

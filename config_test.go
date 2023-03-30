@@ -924,9 +924,8 @@ func (s *AdminSuite) TestCedarConfig() {
 
 func (s *AdminSuite) TestTracerConfig() {
 	config := TracerConfig{
-		Enabled:              true,
-		CollectorEndpoint:    "localhost:4316",
-		ExternalHostsToTrace: []string{"www.github.com"},
+		Enabled:           true,
+		CollectorEndpoint: "localhost:4316",
 	}
 
 	err := config.Set()
