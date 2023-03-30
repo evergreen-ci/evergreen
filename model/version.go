@@ -410,7 +410,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func getMostRecentMainlineCommit(projectId string) (*Version, error) {
+func getMostRecentMainlineCommit(ctx context.Context, projectId string) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
@@ -420,8 +420,14 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: -1}}, {"$limit": 1}}
 	res := []Version{}
 
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(res) == 0 {
@@ -431,13 +437,13 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 }
 
 // GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit
-func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, requesters []string) (*int, error) {
+func GetPreviousPageCommitOrderNumber(ctx context.Context, projectId string, order int, limit int, requesters []string) (*int, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
 		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	// First check if we are already looking at the most recent commit.
-	mostRecentCommit, err := getMostRecentMainlineCommit(projectId)
+	mostRecentCommit, err := getMostRecentMainlineCommit(ctx, projectId)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -460,8 +466,14 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, re
 
 	res := []Version{}
 
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
 	}
 
 	// If there are no newer mainline commits, return nil to indicate that we are already on the first page.
@@ -484,7 +496,7 @@ type MainlineCommitVersionOptions struct {
 	Requesters      []string
 }
 
-func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
+func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
 		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
@@ -508,14 +520,20 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	pipeline = append(pipeline, bson.M{"$limit": limit})
 
 	res := []Version{}
-
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
 	}
 
 	return res, nil
 }
 
+// GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
 	StartAfter     int    `json:"start"`
 	Requester      string `json:"requester"`
@@ -527,6 +545,8 @@ type GetVersionsOptions struct {
 	ByTask         string `json:"by_task"`
 }
 
+// GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
+// the input GetVersionsOptions.
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
@@ -633,6 +653,40 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
+}
+
+// ModifyVersionsOptions is a struct containing options necessary to modify versions.
+type ModifyVersionsOptions struct {
+	Priority      *int64 `json:"priority"`
+	StartTimeStr  string `json:"start_time_str"`
+	EndTimeStr    string `json:"end_time_str"`
+	RevisionStart int    `json:"revision_start"`
+	RevisionEnd   int    `json:"revision_end"`
+	Requester     string `json:"requester"`
+}
+
+// GetVersionsToModify returns a slice of versions intended to be modified that satisfy the given ModifyVersionsOptions.
+func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
+	projectId, err := GetIdForProject(projectName)
+	if err != nil {
+		return nil, err
+	}
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey:  opts.Requester,
+	}
+
+	// setting revision numbers will take precedence over setting start and end times
+	if opts.RevisionStart > 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.RevisionStart, "$gte": opts.RevisionEnd}
+	} else {
+		match[VersionCreateTimeKey] = bson.M{"$gte": startTime, "$lte": endTime}
+	}
+	versions, err := VersionFind(db.Query(match))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding versions")
+	}
+	return versions, nil
 }
 
 // constructManifest will construct a manifest from the given project and version.

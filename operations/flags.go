@@ -92,6 +92,7 @@ func addProjectFlag(flags ...cli.Flag) []cli.Flag {
 		Usage: "specify the name of an existing Evergreen project",
 	})
 }
+
 func addLargeFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(largeFlagName, "l"),

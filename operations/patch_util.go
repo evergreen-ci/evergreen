@@ -85,6 +85,7 @@ type patchParams struct {
 	RepeatFailed      bool
 	RepeatPatchId     string
 	GithubAuthor      string
+	PatchAuthor       string
 }
 
 type patchSubmission struct {
@@ -111,6 +112,7 @@ type patchSubmission struct {
 	repeatFailed      bool
 	repeatPatchId     string
 	githubAuthor      string
+	patchAuthor       string
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -138,6 +140,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		repeatPatchId:     p.RepeatPatchId,
 		path:              p.Path,
 		githubAuthor:      p.GithubAuthor,
+		patchAuthor:       p.PatchAuthor,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)

@@ -273,7 +273,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
-		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}))
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for build '%s'", buildId)
 		}
@@ -285,29 +285,28 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 	return nil
 }
 
-// SetVersionPriority updates the priority field of all tasks associated with the given version id.
-func SetVersionPriority(versionId string, priority int64, caller string) error {
+// SetVersionsPriority updates the priority field of all tasks associated with the given version ids.
+func SetVersionsPriority(versionIds []string, priority int64, caller string) error {
 	_, err := task.UpdateAll(
-		bson.M{task.VersionKey: versionId},
+		bson.M{task.VersionKey: bson.M{"$in": versionIds}},
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
-		return errors.Wrapf(err, "setting priority for version '%s'", versionId)
+		return errors.Wrap(err, "setting priority for versions")
 	}
 
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: bson.M{"$in": versionIds}}))
 		if err != nil {
-			return errors.Wrapf(err, "getting tasks for version '%s'", versionId)
+			return errors.Wrap(err, "getting tasks for versions")
 		}
 		err = SetActiveState(caller, false, tasks...)
 		if err != nil {
-			return errors.Wrapf(err, "deactivating tasks for version '%s'", versionId)
+			return errors.Wrap(err, "deactivating tasks for versions")
 		}
 	}
-
 	return nil
 }
 
