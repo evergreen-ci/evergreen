@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -361,9 +360,6 @@ func ValidateMetadataLinks(links ...MetadataLink) error {
 	}
 	for _, link := range links {
 		catcher.Add(util.CheckURL(link.URL))
-		if !utility.StringMatchesAnyRegex(link.URL, settings.Ui.CORSOrigins) {
-			catcher.Errorf("task link URL '%s' must match a CORS origin", link.URL)
-		}
 		if link.Text == "" {
 			catcher.Errorf("link text cannot be empty")
 		}

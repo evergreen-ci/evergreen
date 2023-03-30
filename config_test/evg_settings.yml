@@ -119,7 +119,6 @@ ui:
   logfile: "/tmp/ui_test.log"
   url: "http://localhost"
   httplistenaddr: ":9090"
-  cors_origins: ["https://issuelink.com/browse/ticket"]
 
 monitor:
   logfile: ""
