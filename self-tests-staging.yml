@@ -6,8 +6,8 @@ containers:
     working_dir: /
     image: "hadjri/evg-e2e-test-ubuntu"
     resources:
-      cpu: 8192
-      memory_mb: 31010
+      cpu: 4096
+      memory_mb: 8192
     system:
       cpu_architecture: x86_64
       operating_system: linux
