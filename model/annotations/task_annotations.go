@@ -353,7 +353,6 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 // ValidateMetadataLinks will validate the given metadata links, ensuring that they are valid URLs, that they match Evergreen's approved
 // CORS origins, and that they are not too long. It also ensures that there are not more than MaxMetadataLinks links provided.
 func ValidateMetadataLinks(links ...MetadataLink) error {
-	settings := evergreen.GetEnvironment().Settings()
 	catcher := grip.NewBasicCatcher()
 	if len(links) > MaxMetadataLinks {
 		catcher.Errorf("cannot have more than %d task links per annotation", MaxMetadataLinks)
