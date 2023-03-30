@@ -2449,8 +2449,12 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, t1, evergreen.User))
-	cq, err := commitqueue.FindOneId("my-project")
+	removed, err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t1.Id, "some merge error", evergreen.User)
+	assert.NoError(t, err)
+	require.NotZero(t, removed)
+	assert.Equal(t, p.Id.Hex(), removed.PatchId)
+
+	cq, err = commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem(patchID), -1)
 	assert.Len(t, cq.Queue, 1)
@@ -2533,8 +2537,12 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, m.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, t1, evergreen.User))
-	cq, err := commitqueue.FindOneId("my-project")
+	removed, err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t1.Id, "some merge error", evergreen.User)
+	assert.NoError(t, err)
+	require.NotZero(t, removed)
+	assert.Equal(t, p.Id.Hex(), removed.PatchId)
+
+	cq, err = commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)
 	assert.Len(t, cq.Queue, 1)
@@ -2562,7 +2570,135 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NotNil(t, p)
 }
 
-func TestDequeueAndRestart(t *testing.T) {
+func TestDequeueAndRestartForTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, patch.Collection, build.Collection, task.Collection, commitqueue.Collection, task.OldCollection))
+	v1 := bson.NewObjectId()
+	v2 := bson.NewObjectId()
+	v3 := bson.NewObjectId()
+	t1 := task.Task{
+		Id:               "1",
+		Version:          v1.Hex(),
+		BuildId:          "1",
+		Project:          "p",
+		Status:           evergreen.TaskSucceeded,
+		Requester:        evergreen.MergeTestRequester,
+		CommitQueueMerge: true,
+	}
+	require.NoError(t, t1.Insert())
+	t2 := task.Task{
+		Id:               "2",
+		Version:          v2.Hex(),
+		BuildId:          "2",
+		Project:          "p",
+		Status:           evergreen.TaskFailed,
+		Requester:        evergreen.MergeTestRequester,
+		CommitQueueMerge: true,
+	}
+	require.NoError(t, t2.Insert())
+	t3 := task.Task{
+		Id:               "3",
+		Version:          v3.Hex(),
+		BuildId:          "3",
+		Project:          "p",
+		Status:           evergreen.TaskUndispatched,
+		Requester:        evergreen.MergeTestRequester,
+		CommitQueueMerge: true,
+		DependsOn: []task.Dependency{
+			{TaskId: t2.Id, Status: "*", Finished: true},
+		},
+	}
+	require.NoError(t, t3.Insert())
+	t4 := task.Task{
+		Id:        "4",
+		Version:   v3.Hex(),
+		BuildId:   "3",
+		Project:   "p",
+		Status:    evergreen.TaskSucceeded,
+		Requester: evergreen.MergeTestRequester,
+	}
+	require.NoError(t, t4.Insert())
+	b1 := build.Build{
+		Id:      "1",
+		Version: v1.Hex(),
+	}
+	require.NoError(t, b1.Insert())
+	b2 := build.Build{
+		Id:      "2",
+		Version: v2.Hex(),
+	}
+	require.NoError(t, b2.Insert())
+	b3 := build.Build{
+		Id:      "3",
+		Version: v3.Hex(),
+	}
+	require.NoError(t, b3.Insert())
+	p1 := patch.Patch{
+		Id:      v1,
+		Alias:   evergreen.CommitQueueAlias,
+		Version: v1.Hex(),
+	}
+	require.NoError(t, p1.Insert())
+	p2 := patch.Patch{
+		Id:      v2,
+		Alias:   evergreen.CommitQueueAlias,
+		Version: v2.Hex(),
+	}
+	require.NoError(t, p2.Insert())
+	p3 := patch.Patch{
+		Id:      v3,
+		Alias:   evergreen.CommitQueueAlias,
+		Version: v3.Hex(),
+	}
+	require.NoError(t, p3.Insert())
+	version1 := Version{
+		Id: v1.Hex(),
+	}
+	require.NoError(t, version1.Insert())
+	version2 := Version{
+		Id: v2.Hex(),
+	}
+	require.NoError(t, version2.Insert())
+	version3 := Version{
+		Id: v3.Hex(),
+	}
+	require.NoError(t, version3.Insert())
+	cq := commitqueue.CommitQueue{
+		ProjectID: "p",
+		Queue: []commitqueue.CommitQueueItem{
+			{Issue: v1.Hex(), Version: v1.Hex()},
+			{Issue: v2.Hex(), Version: v2.Hex()},
+			{Issue: v3.Hex(), Version: v3.Hex()},
+		},
+	}
+	require.NoError(t, commitqueue.InsertQueue(&cq))
+
+	assert.NoError(t, DequeueAndRestartForTask(&cq, &t2, message.GithubStateFailure, "", ""))
+	dbCq, err := commitqueue.FindOneId(cq.ProjectID)
+	assert.NoError(t, err)
+	assert.Len(t, dbCq.Queue, 2)
+	assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
+	assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
+	dbTask1, err := task.FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask1.Execution)
+	dbTask2, err := task.FindOneId(t2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask2.Execution)
+	dbTask3, err := task.FindOneId(t3.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask3.Execution)
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
+	require.Len(t, dbTask3.DependsOn, 1)
+	assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
+	assert.False(t, dbTask3.DependsOn[0].Finished)
+	dbTask4, err := task.FindOneId(t4.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, dbTask4.Execution)
+}
+
+// kim: TODO: this is just copy-pasted from TestDequeueAndRestartForTask. Write
+// an actual test.
+func TestDequeueAndRestartForVersion(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, patch.Collection, build.Collection, task.Collection, commitqueue.Collection, task.OldCollection))
 	v1 := bson.NewObjectId()
 	v2 := bson.NewObjectId()

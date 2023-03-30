@@ -775,8 +775,8 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 	return catcher.Resolve()
 }
 
-// DequeueAndRestartForTask restarts all items after the given task's version, aborts/dequeues the current version,
-// and sends an updated status to GitHub.
+// DequeueAndRestartForTask restarts all items after the given task's version,
+// aborts/dequeues the current version, and sends an updated status to GitHub.
 func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubState message.GithubState, caller, reason string) error {
 	if cq == nil {
 		var err error
@@ -800,7 +800,12 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 	if p == nil {
 		return errors.Errorf("patch '%s' not found", t.Version)
 	}
-	if err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t, caller); err != nil {
+	// kim: TODO: maybe fill in a generic merge error message.
+	mergeErrMsg := fmt.Sprintf("commit queue item '%s' is being dequeued", p.Id.Hex())
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		mergeErrMsg = "Merge task failed on setup, which likely means a merge conflict was introduced. Please try merging with the base branch."
+	}
+	if _, err := tryDequeueAndAbortCommitQueueVersion(p, *cq, "", mergeErrMsg, caller); err != nil {
 		return err
 	}
 	grip.Info(message.Fields{
@@ -817,6 +822,43 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 	}))
 
 	return nil
+}
+
+// DequeueAndRestartForVersion restarts all items after the commit queue
+// item, aborts/dequeues this version, and sends an updated status to GitHub. If
+// it succeeds, it returns the removed item.
+// kim: TODO: add tests
+func DequeueAndRestartForVersion(cq *commitqueue.CommitQueue, project, version, user string) (*commitqueue.CommitQueueItem, error) {
+	// kim: NOTE: logic stolen from ModifyVersion.
+	if err := RestartItemsAfterVersion(nil, project, version, user); err != nil {
+		return nil, errors.Wrap(err, "restarting later commit queue items")
+	}
+	// kim: NOTE: we don't have to call this because it already gets removed
+	// from the commit queue by tryDequeueAndAbortCommitQueueVersion
+	// item, err := RemoveCommitQueueItemForVersion(project, version, user)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "removing patch from commit queue")
+	// }
+	p, err := patch.FindOneId(version)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding patch")
+	}
+	if p == nil {
+		return nil, errors.Errorf("patch '%s' not found", version)
+	}
+	mergeErrMsg := fmt.Sprintf("commit queue item '%s' is being dequeued", p.Id.Hex())
+	removed, err := tryDequeueAndAbortCommitQueueVersion(p, *cq, "", mergeErrMsg, user)
+	if err != nil {
+		return nil, errors.Wrap(err, "dequeueing and aborting commit queue item")
+	}
+	if err := SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by user '%s'", user)); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to send GitHub status",
+			"patch":   p.Id.Hex(),
+		}))
+	}
+
+	return removed, nil
 }
 
 // HandleEndTaskForCommitQueueTask handles necessary dequeues and stepback restarts for
@@ -889,7 +931,7 @@ func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, ca
 	return DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
 }
 
-func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, t *task.Task, caller string) error {
+func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, taskID, mergeErrMsg string, caller string) (*commitqueue.CommitQueueItem, error) {
 	issue := p.Id.Hex()
 	err := removeNextMergeTaskDependency(cq, issue)
 	grip.Error(message.WrapError(err, message.Fields{
@@ -906,26 +948,31 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 		"caller":  caller,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "removing and preventing merge for item '%s' from queue '%s'", p.Version, p.Project)
+		return nil, errors.Wrapf(err, "removing and preventing merge for item '%s' from queue '%s'", p.Version, p.Project)
 	}
 	if removed == nil {
-		return errors.Errorf("no commit queue entry removed for '%s'", issue)
+		return nil, errors.Errorf("no commit queue entry removed for '%s'", issue)
 	}
 
-	if p.IsPRMergePatch() {
-		err = SendCommitQueueResult(p, message.GithubStateFailure, "merge test failed")
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error sending github status",
-			"patch":   p.Id.Hex(),
-		}))
-	}
+	// kim: TODO: remove since it's redundant. DequeueAndRestartForTask and
+	// DequeueAndRestartForVersion already send a GitHub status.
+	// if p.IsPRMergePatch() {
+	//     // kim: QUESTION: is it necessary to send the commit queue result here?
+	//     // Seems like its only caller (DequeueAndRestartForTask) already sends a
+	//     // result back to GitHub
+	//     err = SendCommitQueueResult(p, message.GithubStateFailure, "merge test failed")
+	//     grip.Error(message.WrapError(err, message.Fields{
+	//         "message": "error sending github status",
+	//         "patch":   p.Id.Hex(),
+	//     }))
+	// }
 	// If the commit queue merge task failed on setup, there is likely a merge conflict.
-	var mergeError string
-	if t.Details.Type == evergreen.CommandTypeSetup {
-		mergeError = "Merge task failed on setup, which likely means a merge conflict was introduced. Please try merging with the base branch."
+	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeErrMsg)
+	if err := CancelPatch(p, task.AbortInfo{TaskID: taskID, User: caller}); err != nil {
+		return nil, errors.Wrap(err, "aborting failed commit queue patch")
 	}
-	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeError)
-	return errors.Wrap(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "aborting failed commit queue patch")
+
+	return removed, nil
 }
 
 // removeNextMergeTaskDependency basically removes the given merge task from a linked list of
