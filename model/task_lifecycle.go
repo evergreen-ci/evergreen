@@ -1334,24 +1334,8 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else {
-		if err = p.UpdateStatus(patchStatus); err != nil {
-			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
-		}
-		if p.IsGithubPRPatch() {
-			input := thirdparty.SendGithubStatusInput{
-				VersionId: p.Id.Hex(),
-				Owner:     p.GithubPatchData.BaseOwner,
-				Repo:      p.GithubPatchData.BaseRepo,
-				Ref:       p.GithubPatchData.HeadHash,
-				Desc:      "patch status change",
-				Caller:    "pr-task-reset",
-				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
-			}
-			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
-				return errors.Wrapf(err, "sending patch '%s' status to GitHub", p.Id.Hex())
-			}
-		}
+	} else if err = p.UpdateStatus(patchStatus); err != nil {
+		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 	}
 
 	isDone, parentPatch, err := p.GetFamilyInformation()
