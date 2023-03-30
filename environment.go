@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"math"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -36,7 +35,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -219,7 +217,6 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.setupRoleManager())
 	catcher.Add(e.initTracer(ctx))
-	e.initHTTPClientPool()
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -864,19 +861,6 @@ func (e *envState) initTracer(ctx context.Context) error {
 	})
 
 	return nil
-}
-
-func (e *envState) initHTTPClientPool() {
-	clientFactory := func() *http.Client {
-		client := utility.NewBaseConfiguredHttpClient()
-		client.Transport = otelhttp.NewTransport(client.Transport, otelhttp.WithFilter(
-			func(r *http.Request) bool {
-				return utility.StringSliceContains(e.settings.Tracer.ExternalHostsToTrace, r.URL.Host)
-			},
-		))
-		return client
-	}
-	utility.InitHTTPPool(clientFactory)
 }
 
 func (e *envState) setupRoleManager() error {
