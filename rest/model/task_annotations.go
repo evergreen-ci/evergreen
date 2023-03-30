@@ -149,10 +149,10 @@ func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnn
 	m.TaskExecution = &t.TaskExecution
 	m.TaskId = StringStringPtr(t.TaskId)
 	m.Metadata = t.Metadata
-	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
-	m.SuspectedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectedIssues)
-	m.CreatedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.CreatedIssues)
-	m.MetadataLinks = ArrtaskannotationsMetadataLinkArrAPIMetadataLink(t.MetadataLinks)
+	m.Issues = BuildAPIIssueLinks(t.Issues)
+	m.SuspectedIssues = BuildAPIIssueLinks(t.SuspectedIssues)
+	m.CreatedIssues = BuildAPIIssueLinks(t.CreatedIssues)
+	m.MetadataLinks = BuildAPIMetadataLinks(t.MetadataLinks)
 	m.Note = APINoteBuildFromService(t.Note)
 	return &m
 }
@@ -165,15 +165,16 @@ func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation
 	out.TaskExecution = *m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
 	out.Metadata = m.Metadata
-	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
-	out.SuspectedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectedIssues)
-	out.CreatedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.CreatedIssues)
-	out.MetadataLinks = ArrAPIMetadataLinkArrtaskannotationsMetadataLink(m.MetadataLinks)
+	out.Issues = BuildIssueLinks(m.Issues)
+	out.SuspectedIssues = BuildIssueLinks(m.SuspectedIssues)
+	out.CreatedIssues = BuildIssueLinks(m.CreatedIssues)
+	out.MetadataLinks = BuildMetadataLinks(m.MetadataLinks)
 	out.Note = APINoteToService(m.Note)
 	return out
 }
 
-func ArrtaskannotationsIssueLinkArrAPIIssueLink(t []annotations.IssueLink) []APIIssueLink {
+// BuildAPIIssueLinks converts a slice of annotations.IssueLink to a slice of APIIssueLink
+func BuildAPIIssueLinks(t []annotations.IssueLink) []APIIssueLink {
 	if t == nil {
 		return nil
 	}
@@ -184,7 +185,8 @@ func ArrtaskannotationsIssueLinkArrAPIIssueLink(t []annotations.IssueLink) []API
 	return m
 }
 
-func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.IssueLink {
+// BuildIssueLinks converts a slice of APIIssueLink to a slice of annotations.IssueLink
+func BuildIssueLinks(t []APIIssueLink) []annotations.IssueLink {
 	if t == nil {
 		return nil
 	}
@@ -195,7 +197,8 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 	return m
 }
 
-func ArrtaskannotationsMetadataLinkArrAPIMetadataLink(t []annotations.MetadataLink) []APIMetadataLink {
+// BuildAPIMetadataLinks converts a slice of annotations.MetadataLink to a slice of APIMetadataLink
+func BuildAPIMetadataLinks(t []annotations.MetadataLink) []APIMetadataLink {
 	if t == nil {
 		return nil
 	}
@@ -206,7 +209,8 @@ func ArrtaskannotationsMetadataLinkArrAPIMetadataLink(t []annotations.MetadataLi
 	return m
 }
 
-func ArrAPIMetadataLinkArrtaskannotationsMetadataLink(t []APIMetadataLink) []annotations.MetadataLink {
+// BuildMetadataLinks converts a slice of APIMetadataLink to a slice of annotations.MetadataLink
+func BuildMetadataLinks(t []APIMetadataLink) []annotations.MetadataLink {
 	if t == nil {
 		return nil
 	}

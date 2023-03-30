@@ -28,7 +28,7 @@ const (
 	APIRequester          = "api"
 	WebhookRequester      = "webhook"
 	MaxMetadataLinks      = 1
-	MaxMetadataLinkLength = 1024
+	MaxMetadataTextLength = 40
 )
 
 // FindOne gets one TaskAnnotation for the given query.

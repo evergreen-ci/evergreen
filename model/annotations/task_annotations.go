@@ -367,8 +367,8 @@ func ValidateMetadataLinks(links ...MetadataLink) error {
 		if link.Text == "" {
 			catcher.Errorf("link text cannot be empty")
 		}
-		if len(link.URL) > MaxMetadataLinkLength {
-			catcher.Errorf("link URL cannot be longer than %d characters", MaxMetadataLinkLength)
+		if len(link.Text) > MaxMetadataTextLength {
+			catcher.Errorf("link text cannot exceed %d characters", MaxMetadataTextLength)
 		}
 	}
 	return catcher.Resolve()
