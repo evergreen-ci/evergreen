@@ -34,7 +34,7 @@ var (
 	// ClientVersion is the commandline version string used to control auto-updating.
 	ClientVersion = "2023-03-30"
 
-	// AgentVersion is the version string used to control agent rollover.
+	// Agent version to control agent rollover.
 	AgentVersion = "2023-03-22"
 )
 
