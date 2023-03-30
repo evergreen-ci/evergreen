@@ -1657,7 +1657,8 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			}
 			assert.NoError(t, version3.Insert())
 			b := &build.Build{
-				Id: "build",
+				Id:      "build",
+				Version: p1,
 			}
 			assert.NoError(t, b.Insert())
 			patch1 := patch.Patch{
