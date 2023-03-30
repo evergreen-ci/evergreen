@@ -234,6 +234,8 @@ func getGithubClient(token, caller string) *http.Client {
 	return utility.GetOAuth2HTTPClient(token)
 }
 
+// getGithubClientRetry will retry github operations if the error is temporary, resp is nil,
+// or we hit a bad gateway error.
 func getGithubClientRetry(token, caller string) *http.Client {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
