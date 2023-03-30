@@ -29,6 +29,7 @@ const (
 	commitShaFlag       = "commit-sha"
 	commitMessageFlag   = "commit-message"
 	githubAuthorFlag    = "author"
+	patchAuthorFlag     = "author"
 
 	noCommits             = "No Commits Added"
 	commitQueuePatchLabel = "Commit Queue Merge:"
@@ -88,11 +89,11 @@ func listQueue() cli.Command {
 func deleteItem() cli.Command {
 	return cli.Command{
 		Name:  "delete",
-		Usage: "delete an item from a project's commit queue",
+		Usage: "delete a patch from a project's commit queue",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  joinFlagNames(itemFlagName, "i"),
-				Usage: "specify the patch ID for the item to delete",
+				Usage: "specify the patch ID or PR number to delete",
 			},
 		},
 		Before: mergeBeforeFuncs(

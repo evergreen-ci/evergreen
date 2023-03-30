@@ -119,7 +119,13 @@ func (j *podHealthCheckJob) Run(ctx context.Context) {
 
 	info, err := j.ecsPod.LatestStatusInfo(ctx)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "getting cloud pod's status info"))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "unable to get cloud pod's status info",
+			"pod":               j.PodID,
+			"status":            j.pod.Status,
+			"last_communicated": j.pod.TimeInfo.LastCommunicated,
+			"job":               j.ID(),
+		}))
 		return
 	}
 

@@ -471,6 +471,10 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		TagSpecifications:   makeTagTemplate(makeTags(h)),
 	}
 
+	if ec2Settings.IAMInstanceProfileARN != "" {
+		launchTemplate.IamInstanceProfile = &ec2.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
+	}
+
 	if ec2Settings.IsVpc {
 		launchTemplate.NetworkInterfaces = []*ec2.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{

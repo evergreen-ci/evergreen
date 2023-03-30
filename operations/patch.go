@@ -284,6 +284,11 @@ func PatchFile() cli.Command {
 				Name:  diffPathFlagName,
 				Usage: "path to a file for diff of the patch",
 			},
+			cli.StringFlag{
+				Name: patchAuthorFlag,
+				Usage: "optionally define the patch author by providing an Evergreen username; " +
+					"if not found or provided, will default to the submitter",
+			},
 		),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
@@ -304,9 +309,16 @@ func PatchFile() cli.Command {
 				ShowSummary:     c.Bool(patchVerboseFlagName),
 				Large:           c.Bool(largeFlagName),
 				SyncTasks:       utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
+				PatchAuthor:     c.String(patchAuthorFlag),
 			}
+			var err error
 			diffPath := c.String(diffPathFlagName)
 			base := c.String(baseFlagName)
+			paramsPairs := c.StringSlice(parameterFlagName)
+			params.Parameters, err = getParametersFromInput(paramsPairs)
+			if err != nil {
+				return err
+			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

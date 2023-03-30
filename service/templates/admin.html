@@ -1941,6 +1941,14 @@ Admin Settings
 										<label>Pod ECS Execution Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.execution_role">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Pod ECS Log Region</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_region">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Pod ECS Log Group Name</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_group">
+									</md-input-container>
 									<md-card-title>
 										<md-card-title-text>
 											<span>Pod ECS AWSVPC Subnets</span>

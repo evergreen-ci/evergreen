@@ -24,14 +24,15 @@ import (
 )
 
 const (
-	NumGithubAttempts   = 3
-	GithubRetryMinDelay = time.Second
-	GithubAccessURL     = "https://github.com/login/oauth/access_token"
+	numGithubAttempts   = 3
+	githubRetryMinDelay = time.Second
+	githubAccessURL     = "https://github.com/login/oauth/access_token"
 	githubHookURL       = "%s/rest/v2/hooks/github"
 
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
+	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
 )
@@ -106,7 +107,7 @@ var (
 
 func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		if index >= NumGithubAttempts {
+		if index >= numGithubAttempts {
 			return false
 		}
 
@@ -172,7 +173,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 // are returned.
 func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		if index >= NumGithubAttempts {
+		if index >= numGithubAttempts {
 			return false
 		}
 
@@ -217,8 +218,8 @@ func getGithubClientRetryWith404s(token, caller string) *http.Client {
 		token,
 		githubShouldRetryWith404s(caller),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
+			MaxAttempts: numGithubAttempts,
+			MinDelay:    githubRetryMinDelay,
 		}),
 	)
 }
@@ -233,6 +234,8 @@ func getGithubClient(token, caller string) *http.Client {
 	return utility.GetOAuth2HTTPClient(token)
 }
 
+// getGithubClientRetry will retry github operations if the error is temporary, resp is nil,
+// or we hit a bad gateway error.
 func getGithubClientRetry(token, caller string) *http.Client {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
@@ -243,8 +246,8 @@ func getGithubClientRetry(token, caller string) *http.Client {
 		token,
 		githubShouldRetry(caller),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
+			MaxAttempts: numGithubAttempts,
+			MinDelay:    githubRetryMinDelay,
 		}),
 	)
 }
@@ -573,8 +576,8 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 
 		return false, nil
 	}, utility.RetryOptions{
-		MaxAttempts: NumGithubAttempts,
-		MinDelay:    GithubRetryMinDelay,
+		MaxAttempts: numGithubAttempts,
+		MinDelay:    githubRetryMinDelay,
 	})
 
 	if err != nil {
@@ -628,7 +631,7 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 		ClientSecret: clientSecret,
 		Code:         code,
 	}
-	resp, err := tryGithubPost(ctx, GithubAccessURL, "", authParameters)
+	resp, err := tryGithubPost(ctx, githubAccessURL, "", authParameters)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -833,6 +836,40 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 
 	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, username)
 	return isMember, err
+}
+
+// AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
+// and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
+func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
+	httpClient := getGithubClientRetry(token, "AppAuthorizedForOrg")
+	defer utility.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+	opts := &github.ListOptions{PerPage: 100}
+	for {
+		installations, resp, err := client.Organizations.ListInstallations(ctx, requiredOrganization, opts)
+		if err != nil {
+			return false, err
+		}
+
+		for _, installation := range installations.Installations {
+			if installation.GetAppSlug() == name {
+				prPermission := installation.GetPermissions().GetPullRequests()
+				if prPermission == githubWrite {
+					return true, nil
+				}
+				return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
+			}
+		}
+
+		if resp.NextPage > 0 {
+			opts.Page = resp.NextPage
+		} else {
+			break
+		}
+	}
+
+	return false, nil
 }
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
@@ -1114,7 +1151,7 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 // MergePullRequest attempts to merge the given pull request. If commits are merged one after another, Github may
 // not have updated that this can be merged, so we allow retries.
 func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
-	httpClient := getGithubClientRetry(token, "MergePullRequest")
+	httpClient := getGithubClient(token, "MergePullRequest")
 	defer utility.PutHTTPClient(httpClient)
 	githubClient := github.NewClient(httpClient)
 	res, _, err := githubClient.PullRequests.Merge(ctx, owner, repo,

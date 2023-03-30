@@ -856,7 +856,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		Requesters:      requesters,
 	}
 
-	versions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+	versions, err := model.GetMainlineCommitVersionsWithOptions(ctx, projectId, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
 	}
@@ -866,7 +866,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 	// We only want to return the PrevPageOrderNumber if a user is not on the first page
 	if options.SkipOrderNumber != nil {
-		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit, requesters)
+		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(ctx, projectId, utility.FromIntPtr(options.SkipOrderNumber), limit, requesters)
 
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
@@ -924,7 +924,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				Statuses:                   getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 				IncludeNeverActivatedTasks: true,
 			}
-			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
+			hasTasks, err := task.HasMatchingTasks(ctx, v.Id, opts)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking if version has tasks: %s", err.Error()))
 			}
@@ -970,7 +970,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				Requesters:      requesters,
 			}
 
-			versions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+			versions, err = model.GetMainlineCommitVersionsWithOptions(ctx, projectId, opts)
 			if err != nil {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
 			}
