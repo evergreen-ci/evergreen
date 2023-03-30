@@ -171,8 +171,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
-	// Scopes & roles for testing viewable projects for testuser
-	// project grumpyCat
+	// Scopes and roles for testing viewable projects for testuser
 	projectGrumpyCatScope := gimlet.Scope{
 		ID:        "project_grumpyCat_scope",
 		Name:      "grumpyCat",
@@ -192,7 +191,6 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	err = roleManager.UpdateRole(projectGrumpyCatRole)
 	require.NoError(t, err)
 
-	// project happyAbyssinian
 	projectHappyAbyssinianScope := gimlet.Scope{
 		ID:        "project_happyAbyssinian_scope",
 		Name:      "happyAbyssinian",

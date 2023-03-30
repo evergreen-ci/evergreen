@@ -1,11 +1,4 @@
 {
-  "repo_ref": [
-    {
-      "_id": "animals",
-      "identifier": "animals",
-      "display_name": "animals_display"
-    }
-  ],
   "project_ref": [
     {
       "_id": "evergreen",
@@ -16,87 +9,8 @@
       "repoRefId": "something"
     },
     {
-      "_id": "evergreen_2",
-      "identifier": "evergreen",
-      "owner_name": "evergreen-ci",
-      "repo_name": "evergreen",
-      "enabled": true,
-      "repoRefId": "something"
-    },
-    {
       "_id": "logkeeper",
       "identifier": "keeperOfLogs"
-    }
-  ],
-  "project_vars": [
-    {
-      "_id": "evergreen",
-      "vars": {"hello": "world", "foo":  "bar"},
-      "private_vars": {"hello":  true, "foo":  false}
-    }
-  ],
-  "patches": [
-    {
-      "branch": "evergreen",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
-      "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:01Z" },
-      "desc": "1",
-      "status": "created",
-      "alias": "__commit_queue"
-    },
-    {
-      "branch": "evergreen",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e5" },
-      "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:02Z" },
-      "desc": "222",
-      "status": "created",
-      "alias": "__commit_queue"
-    },
-    {
-      "branch": "evergreen",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e6" },
-      "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:03Z" },
-      "desc": "1",
-      "status": "created",
-      "alias": "__commit_queue"
-    },
-    {
-      "branch": "evergreen",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e7" },
-      "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:04Z" },
-      "desc": "222",
-      "status": "failed",
-      "alias": "__github"
-    },
-    {
-      "branch": "evergreen",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e8" },
-      "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:05Z" },
-      "desc": "1",
-      "status": "created",
-      "alias": "__github"
-    },
-    {
-      "branch": "evergreen",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e9" },
-      "author": "testuser",
-      "create_time": { "$date": "2019-01-01T00:00:06Z" },
-      "desc": "222",
-      "status": "failed",
-      "alias": "__github"
-    },
-    {
-      "_id": { "$oid": "6e4ff3abe3c3317e352062e9" },
-      "author": "user1",
-      "create_time": { "$date": "2019-01-01T00:00:06Z" },
-      "desc": "222",
-      "status": "failed",
-      "alias": "__github"
     }
   ]
 }
