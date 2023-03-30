@@ -546,6 +546,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		RepeatFailed      bool               `json:"repeat_failed"`
 		RepeatPatchId     string             `json:"repeat_patch_id"`
 		GithubAuthor      string             `json:"github_author"`
+		PatchAuthor       string             `json:"patch_author"`
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectName,
@@ -570,6 +571,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		RepeatFailed:      incomingPatch.repeatFailed,
 		RepeatPatchId:     incomingPatch.repeatPatchId,
 		GithubAuthor:      incomingPatch.githubAuthor,
+		PatchAuthor:       incomingPatch.patchAuthor,
 	}
 
 	rPipe, wPipe := io.Pipe()
