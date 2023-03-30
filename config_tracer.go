@@ -9,9 +9,8 @@ import (
 
 // TracerConfig configures the OpenTelemetry tracer provider. If not enabled traces will not be sent.
 type TracerConfig struct {
-	Enabled              bool     `yaml:"enabled" bson:"enabled" json:"enabled"`
-	CollectorEndpoint    string   `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
-	ExternalHostsToTrace []string `yaml:"external_hosts_to_trace" bson:"external_hosts_to_trace" json:"external_hosts_to_trace"`
+	Enabled           bool   `yaml:"enabled" bson:"enabled" json:"enabled"`
+	CollectorEndpoint string `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
 }
 
 // SectionId returns the ID of this config section.
@@ -50,8 +49,7 @@ func (c *TracerConfig) Set() error {
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			tracerEnabledKey:        c.Enabled,
-			collectorEndpointKey:    c.CollectorEndpoint,
-			externalHostsToTraceKey: c.ExternalHostsToTrace,
+			tracerCollectorEndpoint: c.CollectorEndpoint,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())

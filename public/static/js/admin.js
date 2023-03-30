@@ -562,25 +562,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     });
   }
 
-  $scope.addExternalHostToTrace = function () {
-    if ($scope.Settings.tracer.external_hosts_to_trace === null) {
-      $scope.Settings.tracer.external_hosts_to_trace = [];
-    }
-
-    if ($scope.newExternalHostToTrace.length === 0) {
-      $scope.invalidExternalHostToTrace = "Host must have a non-zero length";
-      return
-    }
-
-    $scope.Settings.tracer.external_hosts_to_trace.push($scope.newExternalHostToTrace);
-    $scope.newExternalHostToTrace = "";
-    $scope.invalidExternalHostToTrace = "";
-  }
-
-  $scope.deleteExternalHostToTrace = function (index) {
-    $scope.Settings.tracer.external_hosts_to_trace.splice(index, 1);
-  }
-
   timestamp = function (ts) {
     return "[" + moment(ts, "YYYY-MM-DDTHH:mm:ss").format("lll") + "] ";
   }
