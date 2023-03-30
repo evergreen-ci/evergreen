@@ -28,11 +28,11 @@ import (
 )
 
 var (
-	// Should be specified with -ldflags at build time
+	// BuildRevision should be specified with -ldflags at build time
 	BuildRevision = ""
 
-	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2023-03-23"
+	// ClientVersion is the commandline version string used to control auto-updating.
+	ClientVersion = "2023-03-30"
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2023-03-22"
@@ -41,13 +41,13 @@ var (
 // ConfigSection defines a sub-document in the evergreen config
 // any config sections must also be added to registry.go
 type ConfigSection interface {
-	// SectionId() returns the ID of the section to be used in the database document and struct tag
+	// SectionId returns the ID of the section to be used in the database document and struct tag
 	SectionId() string
-	// Get() populates the section from the DB
+	// Get populates the section from the DB
 	Get(Environment) error
-	// Set() upserts the section document into the DB
+	// Set upserts the section document into the DB
 	Set() error
-	// ValidateAndDefault() validates input and sets defaults
+	// ValidateAndDefault validates input and sets defaults
 	ValidateAndDefault() error
 }
 
