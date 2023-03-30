@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	NumGithubAttempts   = 3
-	GithubRetryMinDelay = time.Second
-	GithubAccessURL     = "https://github.com/login/oauth/access_token"
+	numGithubAttempts   = 3
+	githubRetryMinDelay = time.Second
+	githubAccessURL     = "https://github.com/login/oauth/access_token"
 	githubHookURL       = "%s/rest/v2/hooks/github"
 
 	Github502Error   = "502 Server Error"
@@ -107,7 +107,7 @@ var (
 
 func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		if index >= NumGithubAttempts {
+		if index >= numGithubAttempts {
 			return false
 		}
 
@@ -173,7 +173,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 // are returned.
 func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		if index >= NumGithubAttempts {
+		if index >= numGithubAttempts {
 			return false
 		}
 
@@ -218,8 +218,8 @@ func getGithubClientRetryWith404s(token, caller string) *http.Client {
 		token,
 		githubShouldRetryWith404s(caller),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
+			MaxAttempts: numGithubAttempts,
+			MinDelay:    githubRetryMinDelay,
 		}),
 	)
 }
@@ -246,8 +246,8 @@ func getGithubClientRetry(token, caller string) *http.Client {
 		token,
 		githubShouldRetry(caller),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
+			MaxAttempts: numGithubAttempts,
+			MinDelay:    githubRetryMinDelay,
 		}),
 	)
 }
@@ -576,8 +576,8 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 
 		return false, nil
 	}, utility.RetryOptions{
-		MaxAttempts: NumGithubAttempts,
-		MinDelay:    GithubRetryMinDelay,
+		MaxAttempts: numGithubAttempts,
+		MinDelay:    githubRetryMinDelay,
 	})
 
 	if err != nil {
@@ -631,7 +631,7 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 		ClientSecret: clientSecret,
 		Code:         code,
 	}
-	resp, err := tryGithubPost(ctx, GithubAccessURL, "", authParameters)
+	resp, err := tryGithubPost(ctx, githubAccessURL, "", authParameters)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
