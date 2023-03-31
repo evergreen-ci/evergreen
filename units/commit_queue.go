@@ -139,8 +139,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	j.TryUnstick(ctx, cq, projectRef, githubToken)
 
 	if cq.Processing() {
-		// kim: NOTE: this returns early when there's at least one finalized
-		// version in the commit queue.
 		return
 	}
 
@@ -218,8 +216,6 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 	var prevMergeTask string
 	for i, currentItem := range cq.Queue {
 		if currentItem.Version == "" {
-			// kim: NOTE: this implies that we've reached an item that's not
-			// finalized yet.
 			return nil
 		}
 		mergeTask, err := task.FindMergeTaskForVersion(currentItem.Version)

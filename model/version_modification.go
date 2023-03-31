@@ -57,29 +57,6 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 			if _, err := DequeueAndRestartForVersion(cq, version.Identifier, version.Id, user.Id, "merge task is being deactivated"); err != nil {
 				return http.StatusInternalServerError, err
 			}
-			// kim: TODO: remove and subsume into
-			// DequeueAndRestartForCommitQueueItem
-			// err := RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
-			// if err != nil {
-			//     return http.StatusInternalServerError, errors.Wrap(err, "restarting later commit queue items")
-			// }
-			// _, err = RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
-			// if err != nil {
-			//     return http.StatusInternalServerError, errors.Wrap(err, "removing patch from commit queue")
-			// }
-			// p, err := patch.FindOneId(version.Id)
-			// if err != nil {
-			//     return http.StatusInternalServerError, errors.Wrap(err, "finding patch")
-			// }
-			// if p == nil {
-			//     return http.StatusNotFound, errors.New("patch not found")
-			// }
-			// err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by user '%s'", user.DisplayName()))
-			// grip.Error(message.WrapError(err, message.Fields{
-			//     "message": "unable to send github status",
-			//     "patch":   version.Id,
-			// }))
-
 		}
 	case evergreen.SetPriorityAction:
 		projId := version.Identifier

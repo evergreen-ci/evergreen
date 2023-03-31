@@ -2571,7 +2571,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NotNil(t, p)
 }
 
-func TestDequeueAndRestartForTask(t *testing.T) {
+func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, patch.Collection, build.Collection, task.Collection, commitqueue.Collection, task.OldCollection))
 	v1 := bson.NewObjectId()
 	v2 := bson.NewObjectId()
@@ -2703,7 +2703,7 @@ func TestDequeueAndRestartForTask(t *testing.T) {
 	assert.Equal(t, 1, dbTask4.Execution)
 }
 
-func TestDequeueAndRestartForVersion(t *testing.T) {
+func TestDequeueAndRestartForItemInMiddleOfBatch(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, patch.Collection, build.Collection, task.Collection, commitqueue.Collection, task.OldCollection))
 	v1 := bson.NewObjectId()
 	v2 := bson.NewObjectId()
@@ -2815,30 +2815,31 @@ func TestDequeueAndRestartForVersion(t *testing.T) {
 	require.NotZero(t, removed)
 	assert.Equal(t, v2.Hex(), removed.Issue)
 
-	// kim: TODO: uncomment these once we know what the desired restart behavior
-	// is for other items in the batch when dequeueing a version.
-	// dbCq, err := commitqueue.FindOneId(cq.ProjectID)
-	// assert.NoError(t, err)
-	// require.Len(t, dbCq.Queue, 3)
-	// assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
-	// assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
-	// assert.Equal(t, p4.Id.Hex(), dbCq.Queue[2].Issue)
-	// dbTask1, err := task.FindOneId(t1.Id)
-	// assert.NoError(t, err)
-	// assert.Equal(t, 0, dbTask1.Execution)
-	// dbTask2, err := task.FindOneId(t2.Id)
-	// assert.NoError(t, err)
-	// assert.Equal(t, 0, dbTask2.Execution)
-	// dbTask3, err := task.FindOneId(t3.Id)
-	// assert.NoError(t, err)
-	// assert.Equal(t, 0, dbTask3.Execution)
-	// assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
-	// require.Len(t, dbTask3.DependsOn, 1)
-	// assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
-	// assert.False(t, dbTask3.DependsOn[0].Finished)
-	// dbTask4, err := task.FindOneId(t4.Id)
-	// assert.NoError(t, err)
-	// assert.Equal(t, 1, dbTask4.Execution)
+	dbCq, err := commitqueue.FindOneId(cq.ProjectID)
+	assert.NoError(t, err)
+	require.Len(t, dbCq.Queue, 3)
+	assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
+	assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
+	assert.Equal(t, p4.Id.Hex(), dbCq.Queue[2].Issue)
+	dbTask1, err := task.FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask1.Execution)
+	assert.Equal(t, t1.Status, dbTask1.Status)
+	dbTask2, err := task.FindOneId(t2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask2.Execution)
+	assert.Equal(t, t1.Status, dbTask1.Status)
+	dbTask3, err := task.FindOneId(t3.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask3.Execution)
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
+	require.Len(t, dbTask3.DependsOn, 1)
+	assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
+	assert.False(t, dbTask3.DependsOn[0].Finished)
+	dbTask4, err := task.FindOneId(t4.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, dbTask4.Execution)
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask4.Status)
 }
 
 func TestMarkStart(t *testing.T) {
