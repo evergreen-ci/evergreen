@@ -14,6 +14,9 @@ Evergreen can notify you based on the outcome of your patches. To enable these, 
 ### Patch Finish
 For all new patches you create in the future (including Github Pull Requests), you'll receive an email or slack message when the patch has completed.
 
+### Tasks
+For new tasks that fit the desired requester and finish type, you'll receive a notification. Note that for system unresponsive tasks, we only send a notification on the last execution, since we auto-retry these.
+
 ### Spawn Host Outcome
 For your spawn hosts, you will receive notifications when a host is started, stopped, modified, or terminated.
 
