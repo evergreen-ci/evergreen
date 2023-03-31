@@ -74,6 +74,7 @@ type cloneOpts struct {
 	cloneParams        string
 	recurseSubmodules  bool
 	mergeTestRequester bool
+	useVerbose         bool
 	cloneDepth         int
 }
 
@@ -183,6 +184,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
+	if opts.useVerbose {
+		clone = fmt.Sprintf(" GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", clone)
+	}
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
@@ -207,6 +211,9 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
 	if opts.recurseSubmodules {
 		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
+	}
+	if opts.useVerbose {
+		cloneCmd = fmt.Sprintf(" GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", cloneCmd)
 	}
 	if opts.cloneDepth > 0 {
 		cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, opts.cloneDepth)
@@ -460,12 +467,22 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return err
 	}
 
+	var attemptNum int
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			err := c.fetch(ctx, comm, logger, conf, opts)
-			if err != nil {
-				return true, err
+			if attemptNum > 2 {
+				opts.useVerbose = true // use verbose for the last 2 attempts
+				logger.Task().Error(message.Fields{
+					"message":      "running git clone with verbose output",
+					"num_attempts": GitFetchProjectRetries,
+					"attempt":      attemptNum,
+				})
+			}
+
+			if err := c.fetch(ctx, comm, logger, conf, opts); err != nil {
+				attemptNum++
+				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
 			return false, nil
 		}, utility.RetryOptions{
