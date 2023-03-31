@@ -843,7 +843,7 @@ func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQu
 
 	p, err := patch.FindOneId(opts.versionID)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding patch")
+		return nil, errors.Wrapf(err, "finding patch '%s'", opts.versionID)
 	}
 	if p == nil {
 		return nil, errors.Errorf("patch '%s' not found", opts.versionID)
@@ -851,7 +851,7 @@ func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQu
 
 	removed, err := tryDequeueAndAbortCommitQueueVersion(p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
 	if err != nil {
-		return nil, errors.Wrap(err, "dequeueing and aborting commit queue item")
+		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.versionID)
 	}
 
 	grip.Info(message.Fields{
@@ -962,10 +962,10 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 		"caller":  caller,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "removing and preventing merge for item '%s' from queue '%s'", p.Version, p.Project)
+		return nil, errors.Wrapf(err, "removing and preventing merge for item '%s' from queue '%s'", issue, p.Project)
 	}
 	if removed == nil {
-		return nil, errors.Errorf("no commit queue entry removed for '%s'", issue)
+		return nil, errors.Errorf("no commit queue entry removed for issue '%s'", issue)
 	}
 
 	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeErrMsg)
