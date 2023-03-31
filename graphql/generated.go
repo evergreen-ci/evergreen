@@ -449,7 +449,6 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		AddAnnotationMetadataLink     func(childComplexity int, taskID string, execution int, apiMetadataLink model.APIMetadataLink) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
 		AttachProjectToNewRepo        func(childComplexity int, project MoveProjectInput) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
@@ -472,7 +471,6 @@ type ComplexityRoot struct {
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		PromoteVarsToRepo             func(childComplexity int, projectID string, varNames []string) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		RemoveAnnotationMetadataLink  func(childComplexity int, taskID string, execution int, apiMetadataLink model.APIMetadataLink) int
 		RemoveFavoriteProject         func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue     func(childComplexity int, commitQueueID string, issue string) int
 		RemovePublicKey               func(childComplexity int, keyName string) int
@@ -488,6 +486,7 @@ type ComplexityRoot struct {
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
 		ScheduleTasks                 func(childComplexity int, taskIds []string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
+		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, apiMetadataLinks []*model.APIMetadataLink) int
 		SetPatchPriority              func(childComplexity int, patchID string, priority int) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
@@ -1326,8 +1325,7 @@ type MutationResolver interface {
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
-	AddAnnotationMetadataLink(ctx context.Context, taskID string, execution int, apiMetadataLink model.APIMetadataLink) (bool, error)
-	RemoveAnnotationMetadataLink(ctx context.Context, taskID string, execution int, apiMetadataLink model.APIMetadataLink) (bool, error)
+	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, apiMetadataLinks []*model.APIMetadataLink) (bool, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -3149,18 +3147,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
-	case "Mutation.addAnnotationMetadataLink":
-		if e.complexity.Mutation.AddAnnotationMetadataLink == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_addAnnotationMetadataLink_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.AddAnnotationMetadataLink(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiMetadataLink"].(model.APIMetadataLink)), true
-
 	case "Mutation.addFavoriteProject":
 		if e.complexity.Mutation.AddFavoriteProject == nil {
 			break
@@ -3420,18 +3406,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
-	case "Mutation.removeAnnotationMetadataLink":
-		if e.complexity.Mutation.RemoveAnnotationMetadataLink == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_removeAnnotationMetadataLink_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.RemoveAnnotationMetadataLink(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiMetadataLink"].(model.APIMetadataLink)), true
-
 	case "Mutation.removeFavoriteProject":
 		if e.complexity.Mutation.RemoveFavoriteProject == nil {
 			break
@@ -3611,6 +3585,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ScheduleUndispatchedBaseTasks(childComplexity, args["patchId"].(string)), true
+
+	case "Mutation.setAnnotationMetadataLinks":
+		if e.complexity.Mutation.SetAnnotationMetadataLinks == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setAnnotationMetadataLinks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetAnnotationMetadataLinks(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiMetadataLinks"].([]*model.APIMetadataLink)), true
 
 	case "Mutation.setPatchPriority":
 		if e.complexity.Mutation.SetPatchPriority == nil {
@@ -8122,39 +8108,6 @@ func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.C
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_addAnnotationMetadataLink_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["taskId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskId"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["execution"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["execution"] = arg1
-	var arg2 model.APIMetadataLink
-	if tmp, ok := rawArgs["apiMetadataLink"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiMetadataLink"))
-		arg2, err = ec.unmarshalNMetadataLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["apiMetadataLink"] = arg2
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -8764,39 +8717,6 @@ func (ec *executionContext) field_Mutation_removeAnnotationIssue_args(ctx contex
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_removeAnnotationMetadataLink_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["taskId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskId"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["execution"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["execution"] = arg1
-	var arg2 model.APIMetadataLink
-	if tmp, ok := rawArgs["apiMetadataLink"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiMetadataLink"))
-		arg2, err = ec.unmarshalNMetadataLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["apiMetadataLink"] = arg2
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -9082,6 +9002,39 @@ func (ec *executionContext) field_Mutation_scheduleUndispatchedBaseTasks_args(ct
 		}
 	}
 	args["patchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setAnnotationMetadataLinks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 []*model.APIMetadataLink
+	if tmp, ok := rawArgs["apiMetadataLinks"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiMetadataLinks"))
+		arg2, err = ec.unmarshalNMetadataLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["apiMetadataLinks"] = arg2
 	return args, nil
 }
 
@@ -20669,8 +20622,8 @@ func (ec *executionContext) fieldContext_Mutation_removeAnnotationIssue(ctx cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_addAnnotationMetadataLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_addAnnotationMetadataLink(ctx, field)
+func (ec *executionContext) _Mutation_setAnnotationMetadataLinks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setAnnotationMetadataLinks(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -20683,7 +20636,7 @@ func (ec *executionContext) _Mutation_addAnnotationMetadataLink(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddAnnotationMetadataLink(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["apiMetadataLink"].(model.APIMetadataLink))
+		return ec.resolvers.Mutation().SetAnnotationMetadataLinks(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["apiMetadataLinks"].([]*model.APIMetadataLink))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -20700,7 +20653,7 @@ func (ec *executionContext) _Mutation_addAnnotationMetadataLink(ctx context.Cont
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_addAnnotationMetadataLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_setAnnotationMetadataLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -20717,62 +20670,7 @@ func (ec *executionContext) fieldContext_Mutation_addAnnotationMetadataLink(ctx 
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_addAnnotationMetadataLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_removeAnnotationMetadataLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_removeAnnotationMetadataLink(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemoveAnnotationMetadataLink(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["apiMetadataLink"].(model.APIMetadataLink))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_removeAnnotationMetadataLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_removeAnnotationMetadataLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_setAnnotationMetadataLinks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -63114,19 +63012,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "addAnnotationMetadataLink":
+		case "setAnnotationMetadataLinks":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_addAnnotationMetadataLink(ctx, field)
-			})
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "removeAnnotationMetadataLink":
-
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_removeAnnotationMetadataLink(ctx, field)
+				return ec._Mutation_setAnnotationMetadataLinks(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -71794,9 +71683,26 @@ func (ec *executionContext) marshalNMetStatus2githubᚗcomᚋevergreenᚑciᚋev
 	return v
 }
 
-func (ec *executionContext) unmarshalNMetadataLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx context.Context, v interface{}) (model.APIMetadataLink, error) {
+func (ec *executionContext) unmarshalNMetadataLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx context.Context, v interface{}) ([]*model.APIMetadataLink, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.APIMetadataLink, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNMetadataLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNMetadataLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx context.Context, v interface{}) (*model.APIMetadataLink, error) {
 	res, err := ec.unmarshalInputMetadataLinkInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNModule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModule(ctx context.Context, sel ast.SelectionSet, v model.APIModule) graphql.Marshaler {

@@ -1,6 +1,7 @@
 package annotations
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -12,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type TaskAnnotation struct {
@@ -137,25 +139,14 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	return errors.Wrapf(err, "updating note for task '%s'", taskId)
 }
 
-// AddMetadataLinkToAnnotation adds a task link to the annotation for the given task.
-func AddMetadataLinkToAnnotation(taskId string, execution int, metadataLink MetadataLink) error {
-	_, err := db.Upsert(
-		Collection,
-		ByTaskIdAndExecution(taskId, execution),
-		bson.M{
-			"$push": bson.M{MetadataLinksKey: metadataLink},
-		},
-	)
-	return errors.Wrapf(err, "updating task links for task '%s'", taskId)
-}
-
-// RemoveMetadataLinkFromAnnotation removes a task link from the annotation for the given task.
-func RemoveMetadataLinkFromAnnotation(taskId string, execution int, metadataLink MetadataLink) error {
-	return db.Update(
-		Collection,
-		ByTaskIdAndExecution(taskId, execution),
-		bson.M{"$pull": bson.M{MetadataLinksKey: metadataLink}},
-	)
+// SetAnnotationMetadataLinks sets the metadata links for a task annotation.
+func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution int, metadataLinks ...MetadataLink) error {
+	query := ByTaskIdAndExecution(taskId, execution)
+	update := bson.M{
+		"$set": bson.M{MetadataLinksKey: metadataLinks},
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update, options.Update().SetUpsert(true))
+	return errors.Wrapf(err, "setting task links for task '%s'", taskId)
 }
 
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
@@ -350,8 +341,8 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	return errors.Wrapf(err, "adding ticket to task '%s'", taskId)
 }
 
-// ValidateMetadataLinks will validate the given metadata links, ensuring that they are valid URLs, that they match Evergreen's approved
-// CORS origins, and that they are not too long. It also ensures that there are not more than MaxMetadataLinks links provided.
+// ValidateMetadataLinks will validate the given metadata links, ensuring that they are valid URLs,
+// that their text is not too long, and that there are not more than MaxMetadataLinks links provided.
 func ValidateMetadataLinks(links ...MetadataLink) error {
 	catcher := grip.NewBasicCatcher()
 	if len(links) > MaxMetadataLinks {
@@ -361,8 +352,7 @@ func ValidateMetadataLinks(links ...MetadataLink) error {
 		catcher.Add(util.CheckURL(link.URL))
 		if link.Text == "" {
 			catcher.Errorf("link text cannot be empty")
-		}
-		if len(link.Text) > MaxMetadataTextLength {
+		} else if len(link.Text) > MaxMetadataTextLength {
 			catcher.Errorf("link text cannot exceed %d characters", MaxMetadataTextLength)
 		}
 	}

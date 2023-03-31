@@ -83,10 +83,12 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	assert.Equal(t, "not.annie.black", annotationFromDB.Issues[0].Source.Author)
 }
 
-func TestAddMetadataLinkToAnnotation(t *testing.T) {
+func TestSetAnnotationMetadataLinks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert.NoError(t, db.Clear(Collection))
 	taskLink := MetadataLink{URL: "https://issuelink.com", Text: "Hello World"}
-	assert.NoError(t, AddMetadataLinkToAnnotation("t1", 0, taskLink))
+	assert.NoError(t, SetAnnotationMetadataLinks(ctx, "t1", 0, taskLink))
 
 	annotation, err := FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
@@ -97,26 +99,12 @@ func TestAddMetadataLinkToAnnotation(t *testing.T) {
 	assert.Equal(t, "https://issuelink.com", annotation.MetadataLinks[0].URL)
 
 	taskLink.URL = "https://issuelink.com/2"
-	assert.NoError(t, AddMetadataLinkToAnnotation("t1", 0, taskLink))
+	assert.NoError(t, SetAnnotationMetadataLinks(ctx, "t1", 0, taskLink))
 	annotation, err = FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
 	assert.Len(t, annotation.MetadataLinks, 2)
 	assert.Equal(t, "https://issuelink.com/2", annotation.MetadataLinks[1].URL)
-}
-
-func TestRemoveMetadataLinkFromAnnotation(t *testing.T) {
-	taskLink1 := MetadataLink{URL: "https://issuelink.com", Text: "Hello World 1"}
-	taskLink2 := MetadataLink{URL: "https://issuelink.com", Text: "Hello World 2"}
-	assert.NoError(t, db.Clear(Collection))
-	a := TaskAnnotation{TaskId: "t1", MetadataLinks: []MetadataLink{taskLink1, taskLink2}}
-	assert.NoError(t, a.Upsert())
-
-	assert.NoError(t, RemoveMetadataLinkFromAnnotation("t1", 0, taskLink1))
-	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
-	assert.NoError(t, err)
-	assert.NotNil(t, annotationFromDB)
-	assert.Len(t, annotationFromDB.MetadataLinks, 1)
 }
 
 func TestAddSuspectedIssueToAnnotation(t *testing.T) {
