@@ -1,0 +1,146 @@
+{
+  "tests": [
+    {
+      "query_file": "task_success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "build_success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "version_success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "project_success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "task_not_found_error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id not-real",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+
+    {
+      "query_file": "build_success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "build_success_2.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "build_not_found_error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find build with id not-real",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "project_not_found_error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding project by id not-real: 404 (Not Found): project 'not-real' not found",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "version_not_found_error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find version with id not-real",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "error_regex_selectors.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error saving subscription: 400 (Bad Request): invalid subscription: selector has an empty type\nselector '' has no data",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "invalid_input_format.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Field \"SubscriptionInput.trigger_data\" of required type \"StringMap!\" was not provided.",
+            "locations": [{ "line": 3, "column": 19 }],
+            "extensions": { "code": "GRAPHQL_VALIDATION_FAILED" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "input_validation_error_1.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "input_validation_error_2.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "input_validation_error_3.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}

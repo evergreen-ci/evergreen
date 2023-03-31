@@ -70,7 +70,7 @@ Pass in either a single commit hash, or a range `<commit_hash1>..<commit_hash2>`
 
 * `--force` 
 
-This flag forces the item to the front of the queue. Use this sparingly and only for urgent scenarios, such as an urgent revert.
+This flag forces the patch to the front of the queue. Use this sparingly and only for urgent scenarios, such as an urgent revert.
 
 #### Feedback
 The merge is performed by a "Commit Queue Merge" task added to the patch when the changes reach the head of the queue.
@@ -140,7 +140,7 @@ Additionally, the Evergreen CLI exposes two subcommands under `evergreen commit-
 ### List
 `evergreen commit-queue list --project <project_id>`
 
-List the items on one project's queue.
+List the patches on the project's queue.
 
 #### Options
 * `--project PROJECT, -p PROJECT` list the queue of PROJECT
@@ -148,15 +148,14 @@ List the items on one project's queue.
 ### Delete
 `evergreen commit-queue delete --item <item>`
 
-Delete an item from a queue. Must be the user who uploaded the item or a project admin.
-If the item is already picked up by the commit queue it will not be aborted.
+Delete a patch from a queue. Must be the user who uploaded the patch or a project admin.
+If the patch is already picked up by the commit queue it will not be allowed to merge.
 
 #### Options
 
 * `--item ITEM, -i ITEM` 
 
-delete the ITEM specified. 
-Item can be either the patch ID or PR number (if applicable)
+Specify the patch ID to delete or PR number (if applicable) to delete. 
 
 ## Backport
 Trivial backports can be automated with the commit queue. Create a backport patch to test the changes on the target branch, choosing the tasks necessary to validate the changes on the target branch. When the backport patch passes the changes are automatically added to the target branch's commit queue. **The backport patch is not added to the commit queue until tasks chosen have passed.**

@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+      "query_file": "schedule_tasks.graphql",
+      "result": {
+        "data": {
+          "scheduleTasks": [
+            {
+              "status": "started"
+            }
+          ]
+        }
+      } 
+    },
+    {
+      "query_file": "schedule_tasks_failure.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "Failed to schedule tasks : input: tasks not found",
+            "path": [
+              "scheduleTasks"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

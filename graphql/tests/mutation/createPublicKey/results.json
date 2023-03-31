@@ -1,0 +1,48 @@
+{
+  "tests": [
+    {
+      "query_file": "name_collision_err.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Provided key name, z, already exists.",
+            "path": ["createPublicKey"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "invalid_key_err.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Provided public key is invalid : ssh: no key found",
+            "path": ["createPublicKey"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "createPublicKey": [
+            { "name": "a", "key": "aKey" },
+            { "name": "b", "key": "bKey" },
+            { "name": "c", "key": "cKey" },
+            { "name": "d", "key": "dKey" },
+            {
+              "name": "my_key!!",
+              "key": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAklOUpkDHrfHY17SbrmTIpNLTGK9Tjom/BWDSUGPl+nafzlHDTYW7hdI4yZ5ew18JH4JW9jbhUFrviQzM7xlELEVf4h9lFX5QVkbPppSwg0cda3Pbv7kOdJ/MTyBlWXFCR+HAo3FXRitBqxiX1nKhXpHAZsMciLq8V6RjsNAQwdsdMFvSlVK/7XAt3FaoJoAsncM1Q9x5+3V0Ww68/eIFmb1zuUFljQJKprrX88XypNDvjYNby6vw/Pb0rwert/EnmZ+AW4OZPnTPI89ZPmVMLuayrD2cE86Z/il8b+gw3r3+1nKatmIkjn2so1d01QraTlMqVSsbxNrRFi9wrf+M7Q== schacon@mylaptop.local"
+            },
+            { "name": "z", "key": "zKey" }
+          ]
+        }
+      }
+    }
+  ]
+}
