@@ -1,0 +1,66 @@
+{
+  "tests": [
+    {
+      "query_file": "general_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "enabled": true,
+              "remotePath": "my_path_is_new",
+              "spawnHostScriptPath": ""
+            },
+            "vars": {
+              "vars": { "hello": "", "foo": "bar" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "commit_queue_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "commitQueue": {
+                "enabled": true
+              }
+            },
+            "vars": {
+              "vars": { "hello": "", "foo": "bar" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "vars_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "vars": {
+              "vars": { "goodbye": "" },
+              "privateVars": ["goodbye"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "change_identifier.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "identifier 'sandbox_project_id' is already being used for another project",
+            "path": ["saveProjectSettingsForSection"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

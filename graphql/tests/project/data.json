@@ -26,6 +26,48 @@
     {
       "_id": "logkeeper",
       "identifier": "keeperOfLogs"
+    },
+    {
+      "_id": "grumpyCat",
+      "identifier": "catVideos",
+      "display_name": "",
+      "private": true,
+      "owner_name": "theCat",
+      "repo_name": "catGenerator",
+      "branch_name": "main",
+      "remote_path": "",
+      "batch_time": 0,
+      "triggers": null,
+      "patch_trigger_aliases": null,
+      "github_trigger_aliases": null,
+      "periodic_builds": null,
+      "commit_queue": {
+        "enabled": null,
+        "merge_method": ""
+      },
+      "admins": null,
+      "repo_ref_id": "animals"
+    },
+    {
+      "_id": "happyAbyssinian",
+      "identifier": "abyssinianVideos",
+      "display_name": "",
+      "private": true,
+      "owner_name": "theCat",
+      "repo_name": "catGenerator",
+      "branch_name": "main",
+      "remote_path": "",
+      "batch_time": 0,
+      "triggers": null,
+      "patch_trigger_aliases": null,
+      "github_trigger_aliases": null,
+      "periodic_builds": null,
+      "commit_queue": {
+        "enabled": null,
+        "merge_method": ""
+      },
+      "admins": null,
+      "repo_ref_id": "animals"
     }
   ],
   "project_vars": [

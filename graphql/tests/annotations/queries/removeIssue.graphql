@@ -1,8 +1,0 @@
-mutation {
-  removeAnnotationIssue(
-    taskId: "task-1234"
-    execution: 1
-    apiIssue: { url: "https://link.com", issueKey: "EVG-2016" }
-    isIssue: true
-  )
-}

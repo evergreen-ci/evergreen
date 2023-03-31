@@ -1,0 +1,35 @@
+{
+  "tests": [
+    {
+      "query_file": "invalid_input.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Cannot apply an expiration time AND set volume as non-expirable",
+            "path": ["updateVolume"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "update_display_name.graphql",
+      "result": { "data": { "updateVolume": true } }
+    },
+    {
+      "query_file": "check_update.graphql",
+      "result": {
+        "data": { "myVolumes": [{ "displayName": "i like turtles" }] }
+      }
+    },
+    {
+      "query_file": "set_no_expiration.graphql",
+      "result": { "data": { "updateVolume": true } }
+    },
+    {
+      "query_file": "update_expiration_time.graphql",
+      "result": { "data": { "updateVolume": true } }
+    }
+  ]
+}

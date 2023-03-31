@@ -69,7 +69,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
 		{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 	}
-	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser"}
+	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "project_grumpyCat", "project_happyAbyssinian"}
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
@@ -169,6 +169,45 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		Resources: []string{"super_user", "sandbox_project_id", "second_project_id", "repo_id", "vars_test"},
 	}
 	err = roleManager.AddScope(superUserScope)
+	require.NoError(t, err)
+
+	// Scopes and roles for testing viewable projects for testuser
+	projectGrumpyCatScope := gimlet.Scope{
+		ID:        "project_grumpyCat_scope",
+		Name:      "grumpyCat",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"grumpyCat"},
+	}
+	err = roleManager.AddScope(projectGrumpyCatScope)
+	require.NoError(t, err)
+
+	projectGrumpyCatRole := gimlet.Role{
+		ID:          "project_grumpyCat",
+		Name:        "grumpyCat",
+		Scope:       projectGrumpyCatScope.ID,
+		Permissions: map[string]int{"project_settings": 20, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
+		Owners:      []string{"testuser"},
+	}
+	err = roleManager.UpdateRole(projectGrumpyCatRole)
+	require.NoError(t, err)
+
+	projectHappyAbyssinianScope := gimlet.Scope{
+		ID:        "project_happyAbyssinian_scope",
+		Name:      "happyAbyssinian",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"happyAbyssinian"},
+	}
+	err = roleManager.AddScope(projectHappyAbyssinianScope)
+	require.NoError(t, err)
+
+	projectHappyAbyssinianRole := gimlet.Role{
+		ID:          "project_happyAbyssinian",
+		Name:        "happyAbyssinian",
+		Scope:       projectHappyAbyssinianScope.ID,
+		Permissions: map[string]int{"project_settings": 20, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
+		Owners:      []string{"testuser"},
+	}
+	err = roleManager.UpdateRole(projectHappyAbyssinianRole)
 	require.NoError(t, err)
 
 	state.ApiKey = apiKey
@@ -305,12 +344,12 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
 	m := map[string][]setupFn{
-		"attachVolumeToHost":   {spawnTestHostAndVolume},
-		"detachVolumeFromHost": {spawnTestHostAndVolume},
-		"removeVolume":         {spawnTestHostAndVolume},
-		"spawnVolume":          {spawnTestHostAndVolume, addSubnets},
-		"updateVolume":         {spawnTestHostAndVolume},
-		"schedulePatch":        {persistTestSettings},
+		"mutation/attachVolumeToHost":   {spawnTestHostAndVolume},
+		"mutation/detachVolumeFromHost": {spawnTestHostAndVolume},
+		"mutation/removeVolume":         {spawnTestHostAndVolume},
+		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
+		"mutation/updateVolume":         {spawnTestHostAndVolume},
+		"mutation/schedulePatch":        {persistTestSettings},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
@@ -323,7 +362,7 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"spawnVolume": {clearSubnets},
+		"mutation/spawnVolume": {clearSubnets},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {

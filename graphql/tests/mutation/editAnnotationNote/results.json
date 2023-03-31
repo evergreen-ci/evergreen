@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "query_file": "edit_note.graphql",
+      "result": {
+        "data": {
+          "editAnnotationNote": true
+        }
+      }
+    },
+    {
+      "query_file": "edit_note_invalid.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "couldn't update note: note is out of sync, please try again",
+            "path": [
+              "editAnnotationNote"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}

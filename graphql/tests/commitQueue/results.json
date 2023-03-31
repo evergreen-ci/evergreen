@@ -65,22 +65,6 @@
           }
         ]
       }
-    },
-    {
-      "query_file": "cli-remove-item-from-commit-queue.graphql",
-      "result": {
-        "data": {
-          "removeItemFromCommitQueue": "5e6bb9e23066155a993effff"
-        }
-      }
-    },
-    {
-      "query_file": "pr-remove-item-from-commit-queue.graphql",
-      "result": {
-        "data": {
-          "removeItemFromCommitQueue": "5678"
-        }
-      }
     }
   ]
 }

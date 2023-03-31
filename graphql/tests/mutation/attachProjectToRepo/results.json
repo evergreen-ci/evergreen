@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "query_file": "attach_project_to_repo.graphql",
+      "result": {
+        "data": {
+          "attachProjectToRepo": {
+            "repoRefId": "repo_id"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "bad_project.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user testuser does not have permission to access settings for the project nonexistent",
+            "path": [
+              "attachProjectToRepo",
+              "projectId"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

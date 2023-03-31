@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "query_file": "schedule_patch_tasks_error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Unable to find version with id: `washington`",
+            "path": ["schedulePatchTasks"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": {
+          "schedulePatchTasks": null
+        }
+      }
+    },
+    {
+      "query_file": "schedule_patch_tasks.graphql",
+      "result": {
+        "data": {
+          "schedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "schedule_commit_queue_merge.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "commit queue merges cannot be manually scheduled",
+            "path": ["schedulePatchTasks"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": {
+          "schedulePatchTasks": null
+        }
+      }
+    }
+  ]
+}
