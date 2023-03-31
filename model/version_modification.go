@@ -54,7 +54,7 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 			if cq == nil {
 				return http.StatusNotFound, errors.Errorf("commit queue '%s' for version '%s' not found", version.Identifier, version.Id)
 			}
-			if _, err := DequeueAndRestartForVersion(cq, version.Identifier, version.Id, user.Id); err != nil {
+			if _, err := DequeueAndRestartForVersion(cq, version.Identifier, version.Id, user.Id, "merge task is being deactivated"); err != nil {
 				return http.StatusInternalServerError, err
 			}
 			// kim: TODO: remove and subsume into

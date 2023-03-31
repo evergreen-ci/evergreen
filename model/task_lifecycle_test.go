@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -2436,7 +2437,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	}
 
 	q := []commitqueue.CommitQueueItem{
-		{Issue: patchID, Source: commitqueue.SourceDiff, Version: patchID},
+		{Issue: patchID, PatchId: patchID, Source: commitqueue.SourceDiff, Version: patchID},
 		{Issue: "42"},
 	}
 	cq := &commitqueue.CommitQueue{
@@ -2523,7 +2524,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 		BuildId:          b.Id,
 	}
 	q := []commitqueue.CommitQueueItem{
-		{Issue: v.Id, Source: commitqueue.SourceDiff, Version: v.Id},
+		{Issue: versionId.Hex(), PatchId: versionId.Hex(), Source: commitqueue.SourceDiff, Version: v.Id},
 		{Issue: "42", Source: commitqueue.SourceDiff},
 	}
 	cq := &commitqueue.CommitQueue{ProjectID: "my-project", Queue: q}
@@ -2649,6 +2650,10 @@ func TestDequeueAndRestartForTask(t *testing.T) {
 		Alias:   evergreen.CommitQueueAlias,
 		Version: v3.Hex(),
 	}
+	p4 := patch.Patch{
+		Id:    mgobson.NewObjectId(),
+		Alias: evergreen.CommitQueueAlias,
+	}
 	require.NoError(t, p3.Insert())
 	version1 := Version{
 		Id: v1.Hex(),
@@ -2665,9 +2670,10 @@ func TestDequeueAndRestartForTask(t *testing.T) {
 	cq := commitqueue.CommitQueue{
 		ProjectID: "p",
 		Queue: []commitqueue.CommitQueueItem{
-			{Issue: v1.Hex(), Version: v1.Hex()},
-			{Issue: v2.Hex(), Version: v2.Hex()},
-			{Issue: v3.Hex(), Version: v3.Hex()},
+			{Issue: v1.Hex(), PatchId: p1.Id.Hex(), Version: v1.Hex()},
+			{Issue: v2.Hex(), PatchId: p2.Id.Hex(), Version: v2.Hex()},
+			{Issue: v3.Hex(), PatchId: p3.Id.Hex(), Version: v3.Hex()},
+			{Issue: p4.Id.Hex(), PatchId: p4.Id.Hex()},
 		},
 	}
 	require.NoError(t, commitqueue.InsertQueue(&cq))
@@ -2675,9 +2681,10 @@ func TestDequeueAndRestartForTask(t *testing.T) {
 	assert.NoError(t, DequeueAndRestartForTask(&cq, &t2, message.GithubStateFailure, "", ""))
 	dbCq, err := commitqueue.FindOneId(cq.ProjectID)
 	assert.NoError(t, err)
-	assert.Len(t, dbCq.Queue, 2)
+	require.Len(t, dbCq.Queue, 3)
 	assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
 	assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
+	assert.Equal(t, p4.Id.Hex(), dbCq.Queue[2].Issue)
 	dbTask1, err := task.FindOneId(t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, dbTask1.Execution)
@@ -2696,8 +2703,6 @@ func TestDequeueAndRestartForTask(t *testing.T) {
 	assert.Equal(t, 1, dbTask4.Execution)
 }
 
-// kim: TODO: this is just copy-pasted from TestDequeueAndRestartForTask. Write
-// an actual test.
 func TestDequeueAndRestartForVersion(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, patch.Collection, build.Collection, task.Collection, commitqueue.Collection, task.OldCollection))
 	v1 := bson.NewObjectId()
@@ -2777,6 +2782,10 @@ func TestDequeueAndRestartForVersion(t *testing.T) {
 		Alias:   evergreen.CommitQueueAlias,
 		Version: v3.Hex(),
 	}
+	p4 := patch.Patch{
+		Id:    mgobson.NewObjectId(),
+		Alias: evergreen.CommitQueueAlias,
+	}
 	require.NoError(t, p3.Insert())
 	version1 := Version{
 		Id: v1.Hex(),
@@ -2793,35 +2802,43 @@ func TestDequeueAndRestartForVersion(t *testing.T) {
 	cq := commitqueue.CommitQueue{
 		ProjectID: "p",
 		Queue: []commitqueue.CommitQueueItem{
-			{Issue: v1.Hex(), Version: v1.Hex()},
-			{Issue: v2.Hex(), Version: v2.Hex()},
-			{Issue: v3.Hex(), Version: v3.Hex()},
+			{Issue: v1.Hex(), PatchId: p1.Id.Hex(), Version: v1.Hex()},
+			{Issue: v2.Hex(), PatchId: p2.Id.Hex(), Version: v2.Hex()},
+			{Issue: v3.Hex(), PatchId: p3.Id.Hex(), Version: v3.Hex()},
+			{Issue: p4.Id.Hex(), PatchId: p4.Id.Hex()},
 		},
 	}
 	require.NoError(t, commitqueue.InsertQueue(&cq))
 
-	assert.NoError(t, DequeueAndRestartForTask(&cq, &t2, message.GithubStateFailure, "", ""))
-	dbCq, err := commitqueue.FindOneId(cq.ProjectID)
+	removed, err := DequeueAndRestartForVersion(&cq, cq.ProjectID, v2.Hex(), "user", "reason")
 	assert.NoError(t, err)
-	assert.Len(t, dbCq.Queue, 2)
-	assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
-	assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
-	dbTask1, err := task.FindOneId(t1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, dbTask1.Execution)
-	dbTask2, err := task.FindOneId(t2.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, dbTask2.Execution)
-	dbTask3, err := task.FindOneId(t3.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, dbTask3.Execution)
-	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
-	require.Len(t, dbTask3.DependsOn, 1)
-	assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
-	assert.False(t, dbTask3.DependsOn[0].Finished)
-	dbTask4, err := task.FindOneId(t4.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, dbTask4.Execution)
+	require.NotZero(t, removed)
+	assert.Equal(t, v2.Hex(), removed.Issue)
+
+	// kim: TODO: uncomment these once we know what the desired restart behavior
+	// is for other items in the batch when dequeueing a version.
+	// dbCq, err := commitqueue.FindOneId(cq.ProjectID)
+	// assert.NoError(t, err)
+	// require.Len(t, dbCq.Queue, 3)
+	// assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
+	// assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
+	// assert.Equal(t, p4.Id.Hex(), dbCq.Queue[2].Issue)
+	// dbTask1, err := task.FindOneId(t1.Id)
+	// assert.NoError(t, err)
+	// assert.Equal(t, 0, dbTask1.Execution)
+	// dbTask2, err := task.FindOneId(t2.Id)
+	// assert.NoError(t, err)
+	// assert.Equal(t, 0, dbTask2.Execution)
+	// dbTask3, err := task.FindOneId(t3.Id)
+	// assert.NoError(t, err)
+	// assert.Equal(t, 0, dbTask3.Execution)
+	// assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
+	// require.Len(t, dbTask3.DependsOn, 1)
+	// assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
+	// assert.False(t, dbTask3.DependsOn[0].Finished)
+	// dbTask4, err := task.FindOneId(t4.Id)
+	// assert.NoError(t, err)
+	// assert.Equal(t, 1, dbTask4.Execution)
 }
 
 func TestMarkStart(t *testing.T) {

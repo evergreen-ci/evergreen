@@ -106,6 +106,7 @@ func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 	s.Equal(utility.ToStringPtr("mci"), cq.ProjectID)
 }
 
+// kim: TODO: add tests for dequeue and restart for finalized item
 func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
@@ -117,11 +118,11 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
 
-	found, err := CommitQueueRemoveItem("mci", "not_here", "user")
+	found, err := CommitQueueRemoveItem("mci", "not_here", "user", "reason")
 	s.Error(err)
 	s.Nil(found)
 
-	found, err = CommitQueueRemoveItem("mci", "1", "user")
+	found, err = CommitQueueRemoveItem("mci", "1", "user", "reason")
 	s.NoError(err)
 	s.NotNil(found)
 	cq, err := FindCommitQueueForProject("mci")
@@ -262,11 +263,11 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
 
-	found, err := CommitQueueRemoveItem("mci", "not_here", "user")
+	found, err := CommitQueueRemoveItem("mci", "not_here", "user", "reason")
 	s.Error(err)
 	s.Nil(found)
 
-	found, err = CommitQueueRemoveItem("mci", "1", "user")
+	found, err = CommitQueueRemoveItem("mci", "1", "user", "reason")
 	s.NoError(err)
 	s.NotNil(found)
 	cq, err := FindCommitQueueForProject("mci")
