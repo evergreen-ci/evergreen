@@ -74,6 +74,13 @@ func (r *taskContainerCreationOptsResolver) Arch(ctx context.Context, obj *model
 	return string(obj.Arch), nil
 }
 
+func (r *podEventLogDataResolver) Task(ctx context.Context, obj *restModel.PodAPIEventData) (*restModel.APITask, error) {
+	if utility.FromStringPtr(obj.TaskID) == "" || obj.TaskExecution == nil {
+		return nil, nil
+	}
+	return getTask(ctx, *obj.TaskID, obj.TaskExecution, r.sc.GetURL())
+}
+
 // Pod returns PodResolver implementation.
 func (r *Resolver) Pod() PodResolver { return &podResolver{r} }
 
@@ -82,5 +89,10 @@ func (r *Resolver) TaskContainerCreationOpts() TaskContainerCreationOptsResolver
 	return &taskContainerCreationOptsResolver{r}
 }
 
+func (r *Resolver) PodEventLogData() PodEventLogDataResolver {
+	return &podEventLogDataResolver{r}
+}
+
 type podResolver struct{ *Resolver }
 type taskContainerCreationOptsResolver struct{ *Resolver }
+type podEventLogDataResolver struct{ *Resolver }

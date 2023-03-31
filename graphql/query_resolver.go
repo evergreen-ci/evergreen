@@ -545,18 +545,7 @@ func (r *queryResolver) LogkeeperBuildMetadata(ctx context.Context, buildID stri
 
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-	if dbTask == nil {
-		return nil, werrors.Errorf("unable to find task %s", taskID)
-	}
-	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, "error converting task")
-	}
-	return apiTask, err
+	return getTask(ctx, taskID, execution, r.sc.GetURL())
 }
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.
