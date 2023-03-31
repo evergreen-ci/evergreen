@@ -22,6 +22,8 @@ const apiKey = "testapikey"
 const apiUser = "testuser"
 const pathToTests = "../../graphql"
 
+func init() { testutil.Setup() }
+
 func TestAtomicGQLQueries(t *testing.T) {
 	grip.Warning(grip.SetSender(send.MakePlainLogger()))
 	settings := testutil.TestConfig()

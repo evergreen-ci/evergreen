@@ -103,8 +103,8 @@ func TestSetAnnotationMetadataLinks(t *testing.T) {
 	annotation, err = FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
-	assert.Len(t, annotation.MetadataLinks, 2)
-	assert.Equal(t, "https://issuelink.com/2", annotation.MetadataLinks[1].URL)
+	assert.Len(t, annotation.MetadataLinks, 1)
+	assert.Equal(t, "https://issuelink.com/2", annotation.MetadataLinks[0].URL)
 }
 
 func TestAddSuspectedIssueToAnnotation(t *testing.T) {
