@@ -512,7 +512,14 @@ func (t *Task) IsPatchRequest() bool {
 	return utility.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
-func (t *Task) IsSystemUnresponsive() bool {
+// going to check
+// if isSystemUnresponsive && t.Execution == evergreen.MaxTaskExecution { still return notification }
+
+// IsFinishedSystemUnresponsive returns true if the task is on its final execution, i.e. it won't auto-retry anymore.
+func (t *Task) IsFinishedSystemUnresponsive() bool {
+	if t.Execution < evergreen.MaxTaskExecution {
+		return false
+	}
 	// this is a legacy case
 	if t.Status == evergreen.TaskSystemUnresponse {
 		return true
