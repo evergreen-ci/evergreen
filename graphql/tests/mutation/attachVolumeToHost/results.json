@@ -1,0 +1,73 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": { "data": { "attachVolumeToHost": true } }
+    },
+    {
+      "query_file": "different_availability_zones.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "host and volume must have same availability zone",
+            "path": ["attachVolumeToHost"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "empty_host.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "must specify host ID",
+            "path": ["attachVolumeToHost"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "empty_volume.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "must specify volume ID",
+            "path": ["attachVolumeToHost"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "nonexistent_host.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "host 'i-114astast943f' not found",
+            "path": ["attachVolumeToHost"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "nonexistent_volume.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "volume 'vol-4db5' not found",
+            "path": ["attachVolumeToHost"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "attach_project_to_new_repo.graphql",
+      "result": {
+        "data": {
+          "attachProjectToNewRepo": {
+            "id": "sandbox_project_id",
+            "owner": "newOwner",
+            "repo": "box",
+            "repoRefId": "different"
+          }
+        }
+      }
+    }
+  ]
+}
