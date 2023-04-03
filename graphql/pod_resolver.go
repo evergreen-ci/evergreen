@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
