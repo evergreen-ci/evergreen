@@ -425,7 +425,8 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if !t.task.IsFinishedSystemUnresponsive() {
+	// Shouldn't alert on a system unresponsive task that is still retrying.
+	if t.task.IsUnfinishedSystemUnresponsive() {
 		return nil, nil
 	}
 
@@ -479,7 +480,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-	if t.data.Status != evergreen.TaskFailed || !t.task.IsFinishedSystemUnresponsive() {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsUnfinishedSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInBuild, t.task)
@@ -497,7 +498,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-	if t.data.Status != evergreen.TaskFailed || !t.task.IsFinishedSystemUnresponsive() {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsUnfinishedSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, event.TriggerTaskFirstFailureInVersion, t.task)
@@ -512,7 +513,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskFailed || !t.task.IsFinishedSystemUnresponsive() {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsUnfinishedSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInVersionWithName, t.task)
@@ -547,7 +548,7 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 
 func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 	if t.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) ||
-		!t.IsFinishedSystemUnresponsive() {
+		t.IsUnfinishedSystemUnresponsive() {
 		return false, nil, nil
 	}
 

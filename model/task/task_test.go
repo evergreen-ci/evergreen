@@ -1007,39 +1007,36 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[9]}).SetupFailed)
 }
 
-func TestIsSystemUnresponsive(t *testing.T) {
+func TestIsUnfinishedSystemUnresponsive(t *testing.T) {
 	var task Task
 
 	task = Task{
-		Status:    evergreen.TaskFailed,
-		Execution: evergreen.MaxTaskExecution,
-		Details:   apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat},
+		Status:  evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat},
 	}
-	assert.True(t, task.IsFinishedSystemUnresponsive(), "current definition")
+	assert.True(t, task.IsUnfinishedSystemUnresponsive(), "current definition")
 
 	task = Task{
-		Status:    evergreen.TaskSystemUnresponse,
-		Execution: evergreen.MaxTaskExecution,
+		Status: evergreen.TaskSystemUnresponse,
 	}
-	assert.True(t, task.IsFinishedSystemUnresponsive(), "legacy definition")
+	assert.True(t, task.IsUnfinishedSystemUnresponsive(), "legacy definition")
 
 	task = Task{
 		Status:    evergreen.TaskFailed,
 		Execution: evergreen.MaxTaskExecution,
 		Details:   apimodels.TaskEndDetail{TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
-	assert.False(t, task.IsFinishedSystemUnresponsive(), "normal timeout")
+	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "normal timeout")
 
 	task = Task{
-		Status:    evergreen.TaskSucceeded,
-		Execution: evergreen.MaxTaskExecution,
+		Status: evergreen.TaskSucceeded,
 	}
-	assert.False(t, task.IsFinishedSystemUnresponsive(), "success")
+	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "success")
 
 	task = Task{
 		Status:    evergreen.TaskSystemUnresponse,
-		Execution: 0,
+		Execution: evergreen.MaxTaskExecution,
 	}
-	assert.False(t, task.IsFinishedSystemUnresponsive(), "still restarting")
+	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "finished restarting")
 }
 
 func TestTaskStatusCount(t *testing.T) {
