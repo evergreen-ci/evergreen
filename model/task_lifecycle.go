@@ -778,7 +778,7 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 // DequeueAndRestartForTask restarts all items after the given task's version,
 // aborts/dequeues the current version, and sends an updated status to GitHub.
 func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubState message.GithubState, caller, reason string) error {
-	mergeErrMsg := fmt.Sprintf("commit queue item '%s' is being dequeued", t.Version)
+	mergeErrMsg := fmt.Sprintf("commit queue item '%s' is being dequeued: %s", t.Version, reason)
 	if t.Details.Type == evergreen.CommandTypeSetup {
 		// If the commit queue merge task failed on setup, there is likely a merge conflict.
 		mergeErrMsg = "Merge task failed on setup, which likely means a merge conflict was introduced. Please try merging with the base branch."
@@ -807,7 +807,7 @@ func DequeueAndRestartForVersion(cq *commitqueue.CommitQueue, project, version, 
 		versionID:    version,
 		caller:       user,
 		reason:       reason,
-		mergeErrMsg:  fmt.Sprintf("commit queue item '%s' is being dequeued", version),
+		mergeErrMsg:  fmt.Sprintf("commit queue item '%s' is being dequeued: %s", version, reason),
 		githubStatus: message.GithubStateFailure,
 	})
 }

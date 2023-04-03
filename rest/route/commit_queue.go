@@ -87,7 +87,8 @@ func (h *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	removed, err := data.CommitQueueRemoveItem(h.project, h.item, gimlet.GetUser(ctx).DisplayName(), "removed by user")
+	username := gimlet.GetUser(ctx).DisplayName()
+	removed, err := data.CommitQueueRemoveItem(h.project, h.item, username, fmt.Sprintf("removed by user '%s'", username))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting commit queue item '%s' from commit queue for project '%s'", h.item, h.project))
 	}
