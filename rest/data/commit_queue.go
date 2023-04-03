@@ -220,7 +220,8 @@ func CommitQueueRemoveItem(cqId, issue, user, reason string) (*restModel.APIComm
 			Message:    fmt.Sprintf("commit queue item '%s' not found", issue),
 		}
 	}
-	patchID := cq.Queue[itemIdx].PatchId
+	item := cq.Queue[itemIdx]
+	patchID := item.PatchId
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding patch '%s'", issue)

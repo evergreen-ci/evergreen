@@ -113,6 +113,32 @@
       "activated": false,
       "alias": "",
       "patched_config": "some config"
+    },
+    {
+      "_id": { "$oid": "5e6bb9e23066155a993efff1" },
+      "desc": "pls delete",
+      "branch": "evergreen",
+      "githash": "25ab18d7ed2775f27be77d8135ddd841c78cfe28",
+      "patch_number": 212,
+      "author": "me",
+      "version": "",
+      "status": "created",
+      "create_time": { "$date": "2020-03-13T16:50:42.981Z" },
+      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "finish_time": { "$date": "0001-01-01T00:00:00Z" },
+      "build_variants": ["ubuntu1604"],
+      "tasks": ["test-graphql"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1604",
+          "tasks": ["test-graphql"],
+          "displaytasks": []
+        }
+      ],
+      "patches": [],
+      "activated": false,
+      "alias": "",
+      "patched_config": "some config"
     }
   ],
   "commit_queue": [
@@ -161,6 +187,7 @@
       "queue": [
         {
           "issue": "5678",
+          "patch_id": "5e6bb9e23066155a993efff1",
           "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
         }
       ]
