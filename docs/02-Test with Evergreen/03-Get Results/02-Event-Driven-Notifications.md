@@ -1,4 +1,4 @@
-# Event-Driven Notifications
+# Set Up Notifications
 
 Evergreen has the ability to issue notifications based on events that happen in the system.
 

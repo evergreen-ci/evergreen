@@ -1,4 +1,4 @@
-# Github Integrations
+# Run Tests with Github
 
 Specific Github pull request behavior can trigger behavior in Evergreen.
 

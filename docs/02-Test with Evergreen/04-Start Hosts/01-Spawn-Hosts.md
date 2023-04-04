@@ -1,4 +1,4 @@
-# Spawn Hosts
+# Spawn a Host
 
 If a test fails on a platform other than the one you develop on locally, you'll likely want to get access to a machine of that type in order to investigate the source of the failure. You can accomplish this using the spawn hosts feature of evergreen.
 
@@ -16,11 +16,11 @@ Visit `/spawn` to view the spawn hosts control panel. Click on "Spawn Host" and 
 
 Alternately, for a task that ran on a distro where spawning is enabled, you will see a "Spawn..." or "Spawn Host" link on its task page. 
 
-![task_page_spawn_host.png](images/task_page_spawn_host.png)
+![task_page_spawn_host.png](../../images/task_page_spawn_host.png)
 
 Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro, along with the option to fetch binaries and artifacts associated with the task and any tasks that it depended on.
 
-![spawn_host_modal.png](images/spawn_host_modal.png)
+![spawn_host_modal.png](../../images/spawn_host_modal.png)
 
 Fetching artifacts can also be performed manually; see [fetch](https://github.com/evergreen-ci/evergreen/wiki/Using-the-Command-Line-Tool#fetch) in the Evergreen command line tool documentation.
 
