@@ -121,9 +121,6 @@ func FindByNeedsTermination() ([]Pod, error) {
 				StatusKey: StatusStarting,
 				bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey): bson.M{"$lte": staleCutoff},
 			},
-			{
-				StatusKey: StatusDecommissioned,
-			},
 		},
 	}))
 }

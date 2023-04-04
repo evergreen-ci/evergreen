@@ -49,7 +49,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 			require.Len(t, pods, 1)
 			assert.Equal(t, stalePod.ID, pods[0].ID)
 		},
-		"ReturnsMatchingDecommissionedPod": func(t *testing.T) {
+		"SkipsDecommissionedPod": func(t *testing.T) {
 			decommissionedPod := Pod{
 				ID:     "pod_id",
 				Status: StatusDecommissioned,
@@ -58,8 +58,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 
 			pods, err := FindByNeedsTermination()
 			require.NoError(t, err)
-			require.Len(t, pods, 1)
-			assert.Equal(t, decommissionedPod.ID, pods[0].ID)
+			require.Len(t, pods, 0)
 		},
 		"ReturnsMatchingStaleInitializingPod": func(t *testing.T) {
 			stalePod := Pod{
