@@ -69,7 +69,7 @@ This sidebar is your best friend when it comes to diagnosing test failures.
 ## Task Statuses
 
 Evergreen's New UI has the following task statuses.  These statuses are described below. 
-> ![image](https://user-../../images.githubusercontent.com/94386332/176959251-0f71c73a-9c79-4c7b-909a-6869558142ac.png)
+> ![image](https://user-images.githubusercontent.com/94386332/176959251-0f71c73a-9c79-4c7b-909a-6869558142ac.png)
 
 * Succeeded - Task completed successfully
 * Failed -  Task has failed. A task can fail either because a test failed or because a task command exited non-zero.
