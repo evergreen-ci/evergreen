@@ -221,24 +221,13 @@ func CommitQueueRemoveItem(cqId, issue, user, reason string) (*restModel.APIComm
 		}
 	}
 	item := cq.Queue[itemIdx]
-	patchID := item.PatchId
-	p, err := patch.FindOneId(patchID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding patch '%s' for issue '%s'", patchID, issue)
-	}
-	if p == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch '%s' for commit queue item '%s' not found", patchID, issue),
-		}
-	}
 
 	var removed *commitqueue.CommitQueueItem
-	if p.Version != "" {
+	if item.Version != "" {
 		// If the patch has been finalized, it may already be running in a
 		// batch, so it has to restart later items that are running in its
 		// batch.
-		removed, err = model.DequeueAndRestartForVersion(cq, p.Project, p.Version, user, reason)
+		removed, err = model.DequeueAndRestartForVersion(cq, cq.ProjectID, item.Version, user, reason)
 		if err != nil {
 			return nil, errors.Wrap(err, "dequeueing and restarting finalized commit queue item")
 		}
