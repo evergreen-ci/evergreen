@@ -49,7 +49,7 @@ Once builds are scheduled, an internal heuristic decides how many cloud machines
 Evergreen sends an executable agent binary to each test machine, which begins running its given task.
 Logs are streamed back to the main server, along with system statistics and formatted test results.
 
-# Spruce: The New Evergreen UI
+## Spruce: The New Evergreen UI
 
 Evergreen's UI has a few different levels of information for a given patch build. The level of hierarchy determines which information gets surfaced on the page. Although this is true to some extent in both the legacy UI and the new UI, the new UI strives to keep only information relevant to the current level on the page.
 
