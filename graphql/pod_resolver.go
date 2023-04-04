@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -65,6 +64,14 @@ func (r *podResolver) Type(ctx context.Context, obj *model.APIPod) (string, erro
 	return string(obj.Type), nil
 }
 
+// Task is the resolver for the task field.
+func (r *podEventLogDataResolver) Task(ctx context.Context, obj *model.PodAPIEventData) (*model.APITask, error) {
+	if utility.FromStringPtr(obj.TaskID) == "" || obj.TaskExecution == nil {
+		return nil, nil
+	}
+	return getTask(ctx, *obj.TaskID, obj.TaskExecution, r.sc.GetURL())
+}
+
 // Os is the resolver for the os field.
 func (r *taskContainerCreationOptsResolver) Os(ctx context.Context, obj *model.APIPodTaskContainerCreationOptions) (string, error) {
 	return string(obj.OS), nil
@@ -75,25 +82,17 @@ func (r *taskContainerCreationOptsResolver) Arch(ctx context.Context, obj *model
 	return string(obj.Arch), nil
 }
 
-func (r *podEventLogDataResolver) Task(ctx context.Context, obj *restModel.PodAPIEventData) (*restModel.APITask, error) {
-	if utility.FromStringPtr(obj.TaskID) == "" || obj.TaskExecution == nil {
-		return nil, nil
-	}
-	return getTask(ctx, *obj.TaskID, obj.TaskExecution, r.sc.GetURL())
-}
-
 // Pod returns PodResolver implementation.
 func (r *Resolver) Pod() PodResolver { return &podResolver{r} }
+
+// PodEventLogData returns PodEventLogDataResolver implementation.
+func (r *Resolver) PodEventLogData() PodEventLogDataResolver { return &podEventLogDataResolver{r} }
 
 // TaskContainerCreationOpts returns TaskContainerCreationOptsResolver implementation.
 func (r *Resolver) TaskContainerCreationOpts() TaskContainerCreationOptsResolver {
 	return &taskContainerCreationOptsResolver{r}
 }
 
-func (r *Resolver) PodEventLogData() PodEventLogDataResolver {
-	return &podEventLogDataResolver{r}
-}
-
 type podResolver struct{ *Resolver }
-type taskContainerCreationOptsResolver struct{ *Resolver }
 type podEventLogDataResolver struct{ *Resolver }
+type taskContainerCreationOptsResolver struct{ *Resolver }
