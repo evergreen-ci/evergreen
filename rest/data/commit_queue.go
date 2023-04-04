@@ -224,7 +224,7 @@ func CommitQueueRemoveItem(cqId, issue, user, reason string) (*restModel.APIComm
 	patchID := item.PatchId
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding patch '%s'", issue)
+		return nil, errors.Wrapf(err, "finding patch '%s' for issue '%s'", patchID, issue)
 	}
 	if p == nil {
 		return nil, gimlet.ErrorResponse{
