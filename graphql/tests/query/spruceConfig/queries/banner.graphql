@@ -1,0 +1,6 @@
+query {
+  spruceConfig {
+    banner
+    bannerTheme
+  }
+}

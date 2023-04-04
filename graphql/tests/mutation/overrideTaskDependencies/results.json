@@ -1,7 +1,7 @@
 {
     "tests": [
         {
-            "query_file": "override_task_dependencies.graphql",
+            "query_file": "overrideTaskDependencies.graphql",
             "result": {
                 "data": {
                     "overrideTaskDependencies": {

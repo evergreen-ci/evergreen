@@ -1,0 +1,22 @@
+query {
+  hosts(
+    currentTaskId: "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20"
+  ) {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      distroId
+      status
+      startedBy
+      hostUrl
+      totalIdleTime
+      uptime
+      elapsed
+      runningTask {
+        id
+        name
+      }
+    }
+  }
+}

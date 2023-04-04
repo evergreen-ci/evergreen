@@ -156,32 +156,6 @@
           }
         }
       }
-    },
-    {
-      "query_file":"viewableProjects.graphql",
-      "result": {
-        "data": {
-          "viewableProjectRefs": [
-            {
-              "groupDisplayName": "animals_display",
-              "projects": [
-                {
-                  "identifier": "catVideos",
-                  "repo": "catGenerator",
-                  "owner": "theCat",
-                  "repoRefId": "animals"
-                },
-                {
-                  "identifier": "abyssinianVideos",
-                  "repo": "catGenerator",
-                  "owner": "theCat",
-                  "repoRefId": "animals"
-                }
-              ]
-            }
-          ]
-        }
-      }
     }
   ]
 }

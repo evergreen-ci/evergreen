@@ -1,0 +1,6 @@
+query {
+    buildVariantsForTaskName(projectIdentifier: "evergreen", taskName: "test-agent"){
+        displayName
+        buildVariant
+    }
+}

@@ -1,0 +1,13 @@
+query {
+  myHosts {
+    id
+    distroId
+    distro {
+      workDir
+      id
+    }
+    volumes {
+      id
+    }
+  }
+}

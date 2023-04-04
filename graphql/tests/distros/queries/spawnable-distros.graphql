@@ -1,5 +1,0 @@
-{
-  distros(onlySpawnable: true){
-    name
-  }
-}

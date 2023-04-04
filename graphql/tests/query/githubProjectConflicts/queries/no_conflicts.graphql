@@ -1,0 +1,7 @@
+query {
+    githubProjectConflicts(projectId: "wrong-repo") {
+        commitQueueIdentifiers
+        prTestingIdentifiers
+        commitCheckIdentifiers
+    }
+}

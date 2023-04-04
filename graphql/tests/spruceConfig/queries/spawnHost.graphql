@@ -1,9 +1,0 @@
-{
-  spruceConfig {
-    spawnHost {
-      unexpirableHostsPerUser
-      unexpirableVolumesPerUser
-      spawnHostsPerUser
-    }
-  }
-}
