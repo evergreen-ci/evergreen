@@ -1,4 +1,4 @@
-# Developer Workstations
+# Spawn a Workstation
 
 ## Overview
 

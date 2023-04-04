@@ -1,4 +1,4 @@
-# Home
+# What is Evergreen?
 
 ## Evergreen
 Evergreen is a continuous integration system built by MongoDB.
@@ -48,3 +48,13 @@ Once builds are scheduled, an internal heuristic decides how many cloud machines
 
 Evergreen sends an executable agent binary to each test machine, which begins running its given task.
 Logs are streamed back to the main server, along with system statistics and formatted test results.
+
+## Spruce: The New Evergreen UI
+
+Evergreen's UI has a few different levels of information for a given patch build. The level of hierarchy determines which information gets surfaced on the page. Although this is true to some extent in both the legacy UI and the new UI, the new UI strives to keep only information relevant to the current level on the page.
+
+The top-most level for a given patch build is the [patch details page](https://spruce.mongodb.com/version/60b68d7da4cf47179e15accf/tasks?sorts=STATUS%3AASC%3BBASE_STATUS%3ADESC). This page contains information about the patch overall, e.g., patch title, which files are changed as of the patch, and which tasks are included in the patch.
+
+The next level is the [task details page](https://spruce.mongodb.com/task/mongodb_mongo_master_enterprise_rhel_80_64_bit_dynamic_all_feature_flags_required_jsCore_patch_0ec70f6ac70716d9296a014d52e4cc99bf4e5695_60b68d7da4cf47179e15accf_21_06_01_19_43_26/logs?execution=0), which contains information relevant to that specific task. This includes ETA if the task is running, estimated time to start and position in the task queue if the task is scheduled to run, as well as any results of the task if it has already run. Notably, the information about which files were changed in the patch are not included on this page, although they are included on the corresponding page in the legacy UI.
+
+Here are some resources to get started with Evergreen's Project health page: Here are some resources that demonstrate the new UI: [Project Health](https://app.tango.us/app/workflow/Evergreen--Onboarding-guide-for-the-new-project-health-page--7b74b28c80f448869a01730a450bc246) (Waterfall), [Filtering by status](https://app.tango.us/app/workflow/Status-icon-behavior--1db9909b454f4800b05774fa408f2924), [Variant history page](https://app.tango.us/app/workflow/Variant-History-fa73d48662f24e48842fc315130c483f), and [Task history page](https://app.tango.us/app/workflow/Task-History--23e6b3f043234a19988d6ab0a0729598).

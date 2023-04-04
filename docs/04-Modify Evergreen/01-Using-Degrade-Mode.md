@@ -1,4 +1,4 @@
-# Using Degraded Mode
+# Degrade a Service
 
 ## Overview
 

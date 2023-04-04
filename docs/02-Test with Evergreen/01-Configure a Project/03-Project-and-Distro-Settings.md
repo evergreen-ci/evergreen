@@ -1,4 +1,4 @@
-# Project and Distro Settings
+# Define Project and Distro Settings
 
 The Project and Distro settings pages can be found at the right side
 dropdown on the navigation menu. All users can access the distro
@@ -127,7 +127,7 @@ those define what tasks will be run in this patch.
 If you'd like the option of creating patches but wouldn't like it to happen automatically,
 you can enable \"Manual Testing\".
 
-![github_settings.png](images/github_settings.png)
+![github_settings.png](../../images/github_settings.png)
 
 You can also have tasks run for a *different* project for
 each pull request opened in the repository as well as each subsequent
@@ -135,7 +135,7 @@ push to each pull request. To do that, add a trigger aliases to the
 \"Github Trigger Alias\" section. Before an alias can be added, it needs
 to be defined in the \"Patch Trigger Aliases\" section.
 
-![github_trigger_alias.png](images/github_trigger_alias.png)
+![github_trigger_alias.png](../../images/github_trigger_alias.png)
 
 For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
