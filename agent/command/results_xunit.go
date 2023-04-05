@@ -134,6 +134,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		file       *os.File
 		testSuites []testSuite
 	)
+	numInvalid := 0
 	for _, reportFileLoc := range reportFilePaths {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while parsing xunit file '%s'", reportFileLoc)
@@ -141,11 +142,13 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 		stat, err := os.Stat(reportFileLoc)
 		if os.IsNotExist(err) {
+			numInvalid += 1
 			logger.Task().Infof("Result file '%s' does not exist.", reportFileLoc)
 			continue
 		}
 
 		if stat.IsDir() {
+			numInvalid += 1
 			logger.Task().Infof("Result file '%s' is a directory, not a file.", reportFileLoc)
 			continue
 		}
@@ -171,6 +174,9 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		for idx, suite := range testSuites {
 			cumulative = addTestCasesForSuite(suite, idx, conf, cumulative)
 		}
+	}
+	if len(reportFilePaths) == numInvalid {
+		return errors.New("all given file paths are invalid")
 	}
 
 	succeeded := 0

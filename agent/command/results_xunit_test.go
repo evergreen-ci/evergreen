@@ -211,6 +211,13 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			assert.Error(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 		},
+		"DirectoryErrors": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			xr := xunitResults{
+				Files: []string{conf.WorkDir},
+			}
+			assert.Error(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
+			assert.NoError(t, logger.Close())
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
