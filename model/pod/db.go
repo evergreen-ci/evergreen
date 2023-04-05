@@ -108,7 +108,7 @@ func UpdateOne(query interface{}, update interface{}) error {
 // FindByNeedsTermination finds all pods running agents that need to be
 // terminated, which includes:
 // * Pods that have been provisioning for too long.
-// * Pods that are decommissioned.
+// * Pods that are decommissioned and have no running task.
 func FindByNeedsTermination() ([]Pod, error) {
 	staleCutoff := time.Now().Add(-15 * time.Minute)
 	return Find(db.Query(bson.M{
@@ -123,6 +123,7 @@ func FindByNeedsTermination() ([]Pod, error) {
 			},
 			{
 				StatusKey: StatusDecommissioned,
+				bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskIDKey): nil,
 			},
 		},
 	}))
