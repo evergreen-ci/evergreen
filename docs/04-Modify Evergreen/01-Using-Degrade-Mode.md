@@ -17,7 +17,7 @@ appropriate.
 
 The interface to enable/disable each Evergreen service is available in
 the Evergreen UI from the Admin Settings page of the dropdown in the top
-right, and is also available from the \"evergreen admin\" CLI commands.
+right, and is also available from the "evergreen admin" CLI commands.
 Any changes to the service flags should be communicated to other
 superusers. If making a change that will be noticed by end-users (such
 as disabling task dispatch), the banner message should be set as well.
@@ -38,7 +38,7 @@ quickly and safely fixed, consider instead deploying the fix and forcing
 agents to roll over to the new revision. One thing to keep in mind is
 that disabling task dispatch for over 15 minutes will cause the monitor
 to start terminating hosts for being idle, because idle is defined as
-\"not processing tasks for 15 minutes.\"
+"not processing tasks for 15 minutes."
 
 Enable task dispatch when the problem is fixed or will be fixed by
 getting a new agent revision.

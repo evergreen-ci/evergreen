@@ -110,19 +110,19 @@ The format is as follows:
 }
 ```
 
-The available fields for each json object in the \"results\" array above
+The available fields for each json object in the "results" array above
 are the following. Note that all fields are optional and there is very
 little validation on the data, so the server may accept inputs that are
 logically nonsensical.
 
 | Name        | Type          | Description                                                                                                            |
 |--------------------|---------|-------------------------------------------|
-| `status`    | string (enum) | The final status of the test. Should be one of: \"fail\", \"pass\", \"silentfail\", \"skip\".                          |
+| `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                          |
 | `test_file` | string        | The name of the test. This is what will be displayed in the test results section of the UI as the test identifier.     |
 | `group_id`  | string        | The group ID if the test is associated with a group. This is mostly used for tests logging directly to cedar.          |
 | `url`       | string        | The URL containing the rich-text view of the test logs.                                                                |
 | `url_raw`   | string        | The URL containing the plain-text view of the test logs.                                                               |
-| `line_num`  | int           | The line number of the test within the \"url\" parameter, if the URL actually contains the logs for multiple tests.    |
+| `line_num`  | int           | The line number of the test within the "url" parameter, if the URL actually contains the logs for multiple tests.    |
 | `exit_code` | int           | The status with which the test command exited. For the most part this does nothing.                                    |
 | `task_id`   | string        | The ID of the task with which this test should be associated. The test will appear on the page for the specified task. |
 | `execution` | int           | The execution of the task above with which this test should be associated.                                             |
@@ -274,7 +274,7 @@ Parameters:
         "echo-hi": {
             "command": "shell.exec",
             "params": {
-                "script": "echo \"hi\"\n"
+                "script": "echo hi"
             }
         }
     },
@@ -347,12 +347,12 @@ Parameters:
     `<module_name> : ${<module_name>_rev}`. For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
-    [\"modules\"](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#modules)
+    ["modules"](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#modules)
     section of the project config will not change the checked out hash.
 -   `token`: Use a token to clone instead of the ssh key on the host.
     Since this is a secret, it should be provided as a project
     expansion. For example, you could provide an expansion called
-    \"github_token\" and then set this field to \${github_token}.
+    "github_token" and then set this field to \${github_token}.
     Evergreen will populate the expansion when it parses the project
     yaml.
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
@@ -848,7 +848,7 @@ Parameters:
 -   `local_file`: the local file to post
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
-    30, 2020 containing dots (\".\") are not supported.
+    30, 2020 containing dots (".") are not supported.
 -   `permissions`: the permissions string to upload with
 -   `content_type`: the MIME type of the file
 -   `optional`: boolean to indicate if failure to find or upload this
@@ -866,10 +866,10 @@ Parameters:
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
     you can use this parameter.
--   `visibility`: one of \"private\", which allows logged-in users to
-    see the file; \"public\" (the default), which allows anyone to see
-    the file; \"none\", which hides the file from the UI for everybody;
-    or \"signed\", which creates a pre signed url, allowing logged-in
+-   `visibility`: one of "private", which allows logged-in users to
+    see the file; "public" (the default), which allows anyone to see
+    the file; "none", which hides the file from the UI for everybody;
+    or "signed", which creates a pre signed url, allowing logged-in
     users to see the file (even if it's private on s3). Visibility:
     signed should not be combined with permissions: public-read or
     permissions: public-read-write.
@@ -1005,7 +1005,7 @@ Parameters:
 -   `s3_copy_files`: a map of `source` (`bucket` and `path`),
     `destination`, `build_variants` (a list of strings), `display_name`,
     and `optional` (suppresses errors). Note: destination buckets
-    created after Sept. 30, 2020 containing dots (\".\") are not
+    created after Sept. 30, 2020 containing dots (".") are not
     supported.
 
 ## shell.exec
@@ -1029,10 +1029,10 @@ Parameters:
     conflicting environment variables defined by `add_expansions_to_env` or
     `include_expansions_in_env`, this has the lowest priority. Unless
     overridden, the following environment variables will be set by default:
-    - \"CI\" will be set to \"true\".
-    - \"GOCACHE\" will be set to `${workdir}/.gocache`.
-    - \"EVR_TASK_ID\" will be set to the running task's ID.
-    - \"TMP\", \"TMPDIR\", and \"TEMP\" will be set to `${workdir}/tmp`.
+    - "CI" will be set to "true".
+    - "GOCACHE" will be set to `${workdir}/.gocache`.
+    - "EVR_TASK_ID" will be set to the running task's ID.
+    - "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
 -   `add_expansions_to_env`: when true, add all expansions to the
     command's environment. In case of conflicting environment variables
     defined by `env` or `include_expansions_in_env`, this has higher
@@ -1064,8 +1064,8 @@ Parameters:
 -   `ignore_standard_error`: if true, discards output sent to stderr
 -   `redirect_standard_error_to_output`: if true, sends stderr to
     stdout. Can be used to synchronize these 2 streams
--   `exec_as_string`: if true, executes as \"sh -c \'your script
-    here\'\". By default, shell.exec runs sh then pipes your script to
+-   `exec_as_string`: if true, executes as "sh -c 'your script
+    here'". By default, shell.exec runs sh then pipes your script to
     its stdin. Use this parameter if your script will be doing something
     that may change stdin, such as sshing
 
@@ -1097,10 +1097,10 @@ Parameters:
     conflicting environment variables defined by `add_expansions_to_env` or
     `include_expansions_in_env`, this has the lowest priority. Unless
     overridden, the following environment variables will be set by default:
-    - \"CI\" will be set to \"true\".
-    - \"GOCACHE\" will be set to `${workdir}/.gocache`.
-    - \"EVR_TASK_ID\" will be set to the running task's ID.
-    - \"TMP\", \"TMPDIR\", and \"TEMP\" will be set to `${workdir}/tmp`.
+    - "CI" will be set to "true".
+    - "GOCACHE" will be set to `${workdir}/.gocache`.
+    - "EVR_TASK_ID" will be set to the running task's ID.
+    - "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
 -   `command`: a command string (cannot use with `binary` or `args`),
     split on spaces for use as arguments\--note that expansions will
     *not* be split on spaces; each expansion represents its own

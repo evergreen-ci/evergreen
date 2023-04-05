@@ -63,8 +63,8 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-[\'Using Repo Level
-Settings\'](https://github.com/evergreen-ci/evergreen/wiki/Using-Repo-Level-Settings).
+['Using Repo Level
+Settings'](https://github.com/evergreen-ci/evergreen/wiki/Using-Repo-Level-Settings).
 
 ### Access and Admin Settings
 
@@ -109,8 +109,8 @@ github checks, git tag triggers, project triggers, and patch triggers.
 For most aliases, you must define a variant regex or tags, and a task
 regex or tags. The matching variants/tasks will be included for the
 alias. Tags should be listed as they are defined under the task
-definition (i.e. without the \".\") and tag negation is also supported
-(by prefixing the tag name with \"!\"). Multiple tags should be
+definition (i.e. without the ".") and tag negation is also supported
+(by prefixing the tag name with "!"). Multiple tags should be
 comma-delimited.
 
 Aliases can also be defined locally as shown
@@ -118,22 +118,22 @@ Aliases can also be defined locally as shown
 
 ### GitHub Pull Request Testing
 
-Enabling \"Automated Testing\" will have Evergreen automatically create a patch for
+Enabling "Automated Testing" will have Evergreen automatically create a patch for
 each pull request opened in the repository as well as each subsequent
 push to each pull request. In order for this to work, you must fill out
-at least 1 row in the section titled \"GitHub Patch Definitions,\" as
+at least 1 row in the section titled "GitHub Patch Definitions," as
 those define what tasks will be run in this patch.
 
 If you'd like the option of creating patches but wouldn't like it to happen automatically,
-you can enable \"Manual Testing\".
+you can enable "Manual Testing".
 
 ![github_settings.png](../../images/github_settings.png)
 
 You can also have tasks run for a *different* project for
 each pull request opened in the repository as well as each subsequent
 push to each pull request. To do that, add a trigger aliases to the
-\"Github Trigger Alias\" section. Before an alias can be added, it needs
-to be defined in the \"Patch Trigger Aliases\" section.
+"Github Trigger Alias" section. Before an alias can be added, it needs
+to be defined in the "Patch Trigger Aliases" section.
 
 ![github_trigger_alias.png](../../images/github_trigger_alias.png)
 
@@ -160,8 +160,8 @@ This allows for versions to be created from pushed git tags.
 -   Versions are displayed on the waterfall page.
 -   The author of the version matches the author from the original
     waterfall version.
--   The version is titled \"Triggered From Git Tag \'\<git tag\>\':
-    \<commit message for this revision\>\"
+-   The version is titled "Triggered From Git Tag '\<git tag\>':
+    \<commit message for this revision\>"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
     was pushed.
 -   If the revision exists for multiple projects, it will check if a
@@ -218,10 +218,10 @@ Ambiguous behavior is outlined here:
 
 ### Project Triggers
 
-Users can specify that commits to another project (the \"upstream\"
-project) will trigger builds in their project (the \"downstream\"
+Users can specify that commits to another project (the "upstream"
+project) will trigger builds in their project (the "downstream"
 project). Configure triggers in the downstream project from the project
-configuration page. Click \"NEW TRIGGER\".
+configuration page. Click "NEW TRIGGER".
 
 Options:
 
@@ -240,9 +240,9 @@ Options:
 ### Patch Trigger Aliases
 
 Users can create aliases that can be used in patch builds (in the
-\"upstream\" project) to kick off a child patch (in the \"downstream\"
+"upstream" project) to kick off a child patch (in the "downstream"
 project). Create aliases in the upstream project in the Patch Trigger
-Aliases section of the project configuration page. Click \"NEW ALIAS\".
+Aliases section of the project configuration page. Click "NEW ALIAS".
 
 Options:
 
@@ -293,8 +293,8 @@ Options:
 Periodic builds can be viewed on the project waterfall page, and can be
 filtered on on Spruce. You can also find out about the results of
 periodic builds by adding a notification subscription on the project
-settings page. In the notification popup, select \"when any version
-finishes\" with Build Initiator = Periodic Build.
+settings page. In the notification popup, select "when any version
+finishes" with Build Initiator = Periodic Build.
 
 Also note that periodic builds cannot currently be used to schedule
 tasks for which you hope to use performance tooling, like performance
@@ -327,8 +327,8 @@ virtual workstation.
 Options:
 
 -   Enable Git Clone: A git clone will automatically be run on the
-    defined project, i.e. \"git clone -b v20210623
-    <git@github.com>:10gen/mms.git\"
+    defined project, i.e. "git clone -b v20210623
+    <git@github.com>:10gen/mms.git"
 -   Commands: Specify commands to be run on the project in order using
     the setup CLI command from the workstation, allowing for an optional
     working subdirectory to be passed in.
@@ -378,18 +378,18 @@ The process of scheduling tasks contains a number of distinct phases
 that all execute independently:
 
 1.  *Task Finding* identifies all runable undispatched runnable tasks
-    for a disto. You can choose to include tasks which have unsatisfied
+    for a distro. You can choose to include tasks which have unsatisfied
     dependencies, if the task dispatcher supports having these tasks in
     the queue. There are multiple implementations of the task finder in
     evergreen, which use different approaches to returning these
-    queries. Evergreen typically uses the \"Legacy\" implementation in
+    queries. Evergreen typically uses the "Legacy" implementation in
     production because it is the most stable, but the other
     implementations are equivalent.
 
 2.  *Task Planning* manages how tasks are ordered in the queue. There
     are two implementations, Evergreen's Legacy implementation which
     orders tasks using a short circuiting list of comparison operation,
-    and the \"Tunable\" implementation which uses a point-based
+    and the "Tunable" implementation which uses a point-based
     algorithim that makes it possible to tune the factors that impact
     the ordering of a task. The tunable factors are:
 
@@ -440,9 +440,9 @@ that all execute independently:
 
 Enabling version control for configurations on the project page will
 allow a number of the settings detailed above to also be specified in
-the project yaml alongside the settings that are specified in [\'Project
+the project yaml alongside the settings that are specified in ['Project
 Configuration
-Files\'](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files).
+Files'](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files).
 Evergreen will merge the settings in the project page, repo page, then the yaml, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
 defined in the yaml. 
 
