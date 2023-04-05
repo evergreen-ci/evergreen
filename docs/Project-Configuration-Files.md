@@ -241,11 +241,11 @@ Fields:
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
--   `cron`: define with cron syntax (i.e. Min \| Hour \| DayOfMonth \|
+-   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
     Month \| DayOfWeekOptional) when (in UTC) a variant should be activated
     (Cannot be combined with batchtime). This also accepts descriptors
     such as `@daily` (reference
-    [cron](https://godoc.org/github.com/robfig/cron) for more examples),
+    [cron](https://godoc.org/github.com/robfig/cron) for more example),
     but [does not accept intervals.]{.title-ref} (i.e.
     `@every <duration>`). Only applies to tasks from mainline commits.
 -   `task_group`: a [task
