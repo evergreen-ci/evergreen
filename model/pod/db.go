@@ -123,7 +123,7 @@ func FindByNeedsTermination() ([]Pod, error) {
 			},
 			{
 				StatusKey: StatusDecommissioned,
-				bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskIDKey): bson.M{"$exists": false},
+				bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskIDKey): nil,
 			},
 		},
 	}))

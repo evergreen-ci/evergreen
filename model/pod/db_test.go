@@ -54,7 +54,14 @@ func TestFindByNeedsTermination(t *testing.T) {
 				ID:     "pod_id",
 				Status: StatusDecommissioned,
 			}
-			// this pod should not be returned because it has a running task
+			require.NoError(t, decommissionedPod.Insert())
+
+			pods, err := FindByNeedsTermination()
+			require.NoError(t, err)
+			require.Len(t, pods, 1)
+			assert.Equal(t, decommissionedPod.ID, pods[0].ID)
+		},
+		"SkipsDecommissionedPodWithRunningTask": func(t *testing.T) {
 			decommissionedPodWithTask := Pod{
 				ID:     "pod_id_with_task",
 				Status: StatusDecommissioned,
@@ -62,13 +69,11 @@ func TestFindByNeedsTermination(t *testing.T) {
 					RunningTaskID: "task_id",
 				},
 			}
-			require.NoError(t, decommissionedPod.Insert())
 			require.NoError(t, decommissionedPodWithTask.Insert())
 
 			pods, err := FindByNeedsTermination()
 			require.NoError(t, err)
-			require.Len(t, pods, 1)
-			assert.Equal(t, decommissionedPod.ID, pods[0].ID)
+			require.Len(t, pods, 0)
 		},
 		"ReturnsMatchingStaleInitializingPod": func(t *testing.T) {
 			stalePod := Pod{
