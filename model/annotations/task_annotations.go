@@ -37,7 +37,8 @@ type MetadataLink struct {
 	// URL to link to
 	URL string `bson:"url" json:"url"`
 	// Text to be displayed
-	Text string `bson:"text" json:"text"`
+	Text   string  `bson:"text" json:"text"`
+	Source *Source `bson:"source,omitempty" json:"source,omitempty"`
 }
 
 type IssueLink struct {
@@ -139,7 +140,15 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 }
 
 // SetAnnotationMetadataLinks sets the metadata links for a task annotation.
-func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution int, metadataLinks ...MetadataLink) error {
+func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution int, username string, metadataLinks ...MetadataLink) error {
+	for i := range metadataLinks {
+		metadataLinks[i].Source = &Source{
+			Author:    username,
+			Time:      time.Now(),
+			Requester: UIRequester,
+		}
+	}
+
 	_, err := db.Upsert(
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
@@ -216,6 +225,9 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		update[NoteKey] = a.Note
 	}
 	if a.MetadataLinks != nil {
+		for i := range a.MetadataLinks {
+			a.MetadataLinks[i].Source = source
+		}
 		update[MetadataLinksKey] = a.MetadataLinks
 	}
 	if a.Issues != nil {
@@ -284,6 +296,12 @@ func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) 
 			annotation.SuspectedIssues[i].Source = source
 		}
 		update[SuspectedIssuesKey] = bson.M{"$each": annotation.SuspectedIssues}
+	}
+	if annotation.MetadataLinks != nil {
+		for i := range annotation.MetadataLinks {
+			annotation.MetadataLinks[i].Source = source
+		}
+		update[MetadataLinksKey] = bson.M{"$each": annotation.MetadataLinks}
 	}
 	return update
 }

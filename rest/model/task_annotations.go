@@ -43,8 +43,9 @@ type APIIssueLink struct {
 	ConfidenceScore *float64   `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 type APIMetadataLink struct {
-	URL  *string `bson:"url" json:"url"`
-	Text *string `bson:"text" json:"text"`
+	URL    *string    `bson:"url" json:"url"`
+	Text   *string    `bson:"text" json:"text"`
+	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
@@ -83,6 +84,7 @@ func APIMetadataLinkBuildFromService(t annotations.MetadataLink) *APIMetadataLin
 	m := APIMetadataLink{}
 	m.URL = StringStringPtr(t.URL)
 	m.Text = StringStringPtr(t.Text)
+	m.Source = APISourceBuildFromService(t.Source)
 	return &m
 }
 
@@ -92,6 +94,7 @@ func APIMetadataLinkToService(m APIMetadataLink) *annotations.MetadataLink {
 	out := &annotations.MetadataLink{}
 	out.URL = StringPtrString(m.URL)
 	out.Text = StringPtrString(m.Text)
+	out.Source = APISourceToService(m.Source)
 	return out
 }
 

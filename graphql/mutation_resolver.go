@@ -110,6 +110,7 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 
 // SetAnnotationMetadataLinks is the resolver for the setAnnotationMetadataLinks field.
 func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, apiMetadataLinks []*restModel.APIMetadataLink) (bool, error) {
+	usr := mustHaveUser(ctx)
 	var restModelMetadataLinks []restModel.APIMetadataLink
 	for _, apiMetadataLink := range apiMetadataLinks {
 		restModelMetadataLinks = append(restModelMetadataLinks, *apiMetadataLink)
@@ -118,7 +119,7 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 	if err := annotations.ValidateMetadataLinks(metadataLinks...); err != nil {
 		return false, InputValidationError.Send(ctx, fmt.Sprintf("invalid metadata link: %s", err.Error()))
 	}
-	if err := annotations.SetAnnotationMetadataLinks(ctx, taskID, execution, metadataLinks...); err != nil {
+	if err := annotations.SetAnnotationMetadataLinks(ctx, taskID, execution, usr.Username(), metadataLinks...); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
 	}
 	return true, nil
