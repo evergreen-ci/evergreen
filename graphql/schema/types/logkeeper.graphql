@@ -15,4 +15,5 @@ type LogkeeperBuild {
   taskId: String!
   taskExecution: Int!
   tests: [LogkeeperTest!]!
+  task: Task!
 }

@@ -1007,21 +1007,36 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[9]}).SetupFailed)
 }
 
-func TestIsSystemUnresponsive(t *testing.T) {
+func TestIsUnfinishedSystemUnresponsive(t *testing.T) {
 	var task Task
 
-	task = Task{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
-	assert.True(t, task.IsSystemUnresponsive(), "current definition")
+	task = Task{
+		Status:  evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat},
+	}
+	assert.True(t, task.IsUnfinishedSystemUnresponsive(), "current definition")
 
-	task = Task{Status: evergreen.TaskSystemUnresponse}
-	assert.True(t, task.IsSystemUnresponsive(), "legacy definition")
+	task = Task{
+		Status: evergreen.TaskSystemUnresponse,
+	}
+	assert.True(t, task.IsUnfinishedSystemUnresponsive(), "legacy definition")
 
-	task = Task{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
-	assert.False(t, task.IsSystemUnresponsive(), "normal timeout")
+	task = Task{
+		Status:    evergreen.TaskFailed,
+		Execution: evergreen.MaxTaskExecution,
+		Details:   apimodels.TaskEndDetail{TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
+	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "normal timeout")
 
-	task = Task{Status: evergreen.TaskSucceeded}
-	assert.False(t, task.IsSystemUnresponsive(), "success")
+	task = Task{
+		Status: evergreen.TaskSucceeded,
+	}
+	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "success")
 
+	task = Task{
+		Status:    evergreen.TaskSystemUnresponse,
+		Execution: evergreen.MaxTaskExecution,
+	}
+	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "finished restarting")
 }
 
 func TestTaskStatusCount(t *testing.T) {
