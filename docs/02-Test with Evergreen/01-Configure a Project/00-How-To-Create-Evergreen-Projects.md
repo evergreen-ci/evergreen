@@ -1,4 +1,4 @@
-# How to Create Evergreen Projects
+# Create Evergreen Projects
 
 This guide is meant to help users create their own projects on Evergreen. 
 
@@ -11,7 +11,7 @@ Note that that projects can only be created in spruce as it has been deprecated 
 
 ## Steps to Create
 
-![create_project_modal.png](images/create_project_modal.png)
+![create_project_modal.png](../../images/create_project_modal.png)
 1. Visit the projects page in the new UI https://spruce.mongodb.com/projects/.
 2. Click New Project. If you want to copy the current project, click Duplicate Current Project. Otherwise, click Create New Project.
 3. Enter the project name, repo org ("Owner"), and repo name ("Repo").

@@ -1,4 +1,6 @@
-# Project Commands
+# Select Project Commands
+
+Project Commands are the fundamental units of functionality in an Evergreen task.
 
 ## archive.targz_extract
 

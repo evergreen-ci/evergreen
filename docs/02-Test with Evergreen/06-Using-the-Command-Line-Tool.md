@@ -1,3 +1,5 @@
+# Test Builds from the Command Line
+
 How to set up and use the command-line tool
 ==
 

@@ -1,4 +1,4 @@
-# Decisions
+# View Decisions
 
 This directory contains decision records for Evergreen.
 
