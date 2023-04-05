@@ -1,0 +1,12 @@
+{
+    "tests": [
+        {
+            "query_file": "subnet_availability_zones.graphql",
+            "result": {
+                "data": {
+                    "subnetAvailabilityZones":[]
+                }
+            }
+        }
+    ]
+}

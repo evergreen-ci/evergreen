@@ -1,0 +1,20 @@
+query {
+  hosts(distroId: "macos-1014") {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      distroId
+      status
+      startedBy
+      hostUrl
+      totalIdleTime
+      uptime
+      elapsed
+      runningTask {
+        id
+        name
+      }
+    }
+  }
+}

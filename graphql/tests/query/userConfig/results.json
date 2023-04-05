@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "user_config.graphql",
+      "result": {
+        "data": {
+          "userConfig": {
+            "api_key": "testapikey",
+            "api_server_host": "https://localhost:8443/api",
+            "ui_server_host": "http://localhost",
+            "user": "testuser"
+          }
+        }
+      }
+    }
+  ]
+}

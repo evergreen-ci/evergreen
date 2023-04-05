@@ -1,0 +1,34 @@
+query {
+  hostEvents(
+    hostId: "i-0f81a2d39744003dd"
+    hostTag: "evg-ubuntu1604-large-20200720180108-7236635000257959768"
+  ) {
+    eventLogEntries {
+      id
+      resourceType
+      processedAt
+      timestamp
+      eventType
+      data {
+        agentRevision
+        agentBuild
+        agentBuild
+        oldStatus
+        newStatus
+        logs
+        hostname
+        provisioningMethod
+        taskId
+        taskPid
+        taskStatus
+        execution
+        monitorOp
+        user
+        successful
+        duration
+      }
+      resourceId
+    }
+    count
+  }
+}

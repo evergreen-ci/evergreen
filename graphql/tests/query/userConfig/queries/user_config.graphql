@@ -1,0 +1,8 @@
+query {
+  userConfig {
+    api_key
+    api_server_host
+    ui_server_host
+    user
+  }
+}
