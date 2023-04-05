@@ -274,7 +274,7 @@ Parameters:
         "echo-hi": {
             "command": "shell.exec",
             "params": {
-                "script": "echo "hi"\n"
+                "script": "echo hi"
             }
         }
     },
