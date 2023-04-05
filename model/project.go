@@ -1441,11 +1441,6 @@ func (p *Project) findProjectTasksWithTag(tags []string) []string {
 
 func (p *Project) GetModuleByName(name string) (*Module, error) {
 	for _, v := range p.Modules {
-		grip.Info(message.Fields{
-			"bynnbynn": "checking module",
-			"name":     v.Name,
-			"module":   v,
-		})
 		if v.Name == name {
 			return &v, nil
 		}
