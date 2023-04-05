@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "query_file": "setAnnotationMetadataLinks.graphql",
+      "result": {
+        "data": {
+          "setAnnotationMetadataLinks": true
+        }
+      }
+    }
+  ]
+}

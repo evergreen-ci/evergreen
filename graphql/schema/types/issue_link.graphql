@@ -8,6 +8,11 @@ input IssueLinkInput {
   url: String!
 }
 
+input MetadataLinkInput {
+  text: String!
+  url: String!
+}
+
 ###### TYPES ######
 type IssueLink {
   confidenceScore: Float
@@ -15,4 +20,10 @@ type IssueLink {
   jiraTicket: JiraTicket
   source: Source
   url: String
+}
+
+type MetadataLink {
+  url: String!
+  text: String!
+  source: Source
 }

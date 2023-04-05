@@ -1,12 +1,15 @@
 package annotations
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -25,6 +28,17 @@ type TaskAnnotation struct {
 	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 	// links to tickets created from the task using a custom web hook
 	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
+	// links to be displayed in the UI metadata sidebar
+	MetadataLinks []MetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
+}
+
+// MetadataLink represents an arbitrary link to be associated with a task.
+type MetadataLink struct {
+	// URL to link to
+	URL string `bson:"url" json:"url"`
+	// Text to be displayed
+	Text   string  `bson:"text" json:"text"`
+	Source *Source `bson:"source,omitempty" json:"source,omitempty"`
 }
 
 type IssueLink struct {
@@ -125,6 +139,27 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	return errors.Wrapf(err, "updating note for task '%s'", taskId)
 }
 
+// SetAnnotationMetadataLinks sets the metadata links for a task annotation.
+func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution int, username string, metadataLinks ...MetadataLink) error {
+	now := time.Now()
+	for i := range metadataLinks {
+		metadataLinks[i].Source = &Source{
+			Author:    username,
+			Time:      now,
+			Requester: UIRequester,
+		}
+	}
+
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$set": bson.M{MetadataLinksKey: metadataLinks},
+		},
+	)
+	return errors.Wrapf(err, "setting task links for task '%s'", taskId)
+}
+
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
 	issue.Source = &Source{
 		Author:    username,
@@ -189,6 +224,12 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	if a.Note != nil {
 		a.Note.Source = source
 		update[NoteKey] = a.Note
+	}
+	if a.MetadataLinks != nil {
+		for i := range a.MetadataLinks {
+			a.MetadataLinks[i].Source = source
+		}
+		update[MetadataLinksKey] = a.MetadataLinks
 	}
 	if a.Issues != nil {
 		for i := range a.Issues {
@@ -257,6 +298,12 @@ func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) 
 		}
 		update[SuspectedIssuesKey] = bson.M{"$each": annotation.SuspectedIssues}
 	}
+	if annotation.MetadataLinks != nil {
+		for i := range annotation.MetadataLinks {
+			annotation.MetadataLinks[i].Source = source
+		}
+		update[MetadataLinksKey] = bson.M{"$each": annotation.MetadataLinks}
+	}
 	return update
 }
 
@@ -312,4 +359,22 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 		},
 	)
 	return errors.Wrapf(err, "adding ticket to task '%s'", taskId)
+}
+
+// ValidateMetadataLinks will validate the given metadata links, ensuring that they are valid URLs,
+// that their text is not too long, and that there are not more than MaxMetadataLinks links provided.
+func ValidateMetadataLinks(links ...MetadataLink) error {
+	catcher := grip.NewBasicCatcher()
+	if len(links) > MaxMetadataLinks {
+		catcher.Errorf("cannot have more than %d task links per annotation", MaxMetadataLinks)
+	}
+	for _, link := range links {
+		catcher.Add(util.CheckURL(link.URL))
+		if link.Text == "" {
+			catcher.Errorf("link text cannot be empty")
+		} else if len(link.Text) > MaxMetadataTextLength {
+			catcher.Errorf("link text cannot exceed %d characters", MaxMetadataTextLength)
+		}
+	}
+	return catcher.Resolve()
 }
