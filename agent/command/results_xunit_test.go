@@ -195,6 +195,22 @@ func TestXUnitParseAndUpload(t *testing.T) {
 
 			assert.Len(t, cedarSrv.TestResults.Results, 1)
 		},
+		"EmptyTestsForValidPathCauseNoError": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			xr := xunitResults{
+				Files: []string{filepath.Join(conf.WorkDir, "empty.xml")},
+			}
+			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
+			assert.NoError(t, logger.Close())
+
+			assert.Len(t, cedarSrv.TestResults.Results, 0)
+		},
+		"EmptyTestsForInvalidPathErrors": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			xr := xunitResults{
+				Files: []string{filepath.Join(conf.WorkDir, "nonexistent.xml")},
+			}
+			assert.Error(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
+			assert.NoError(t, logger.Close())
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)

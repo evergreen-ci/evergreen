@@ -108,6 +108,10 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 	if catcher.HasErrors() {
 		return nil, errors.Wrapf(catcher.Resolve(), "%d incorrect file specifications", catcher.Len())
 	}
+	// Only error for no files if the user provided files.
+	if len(out) == 0 && len(files) > 0 {
+		return nil, errors.New("Files provided but no files found")
+	}
 
 	return out, nil
 }
@@ -169,10 +173,6 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		}
 	}
 
-	if len(cumulative.tests) == 0 {
-		return errors.New("no test results found")
-	}
-
 	succeeded := 0
 	for i, log := range cumulative.logs {
 		if err := ctx.Err(); err != nil {
@@ -188,8 +188,10 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
 	logger.Task().Infof("Posting test logs succeeded for %d of %d files.", succeeded, len(cumulative.logs))
-
-	return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
+	if len(cumulative.tests) > 0 {
+		return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
+	}
+	return nil
 }
 
 type testcaseAccumulator struct {
