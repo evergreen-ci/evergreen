@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type TaskAnnotation struct {
@@ -141,11 +140,13 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 
 // SetAnnotationMetadataLinks sets the metadata links for a task annotation.
 func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution int, metadataLinks ...MetadataLink) error {
-	query := ByTaskIdAndExecution(taskId, execution)
-	update := bson.M{
-		"$set": bson.M{MetadataLinksKey: metadataLinks},
-	}
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update, options.Update().SetUpsert(true))
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$set": bson.M{MetadataLinksKey: metadataLinks},
+		},
+	)
 	return errors.Wrapf(err, "setting task links for task '%s'", taskId)
 }
 
