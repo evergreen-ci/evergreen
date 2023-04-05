@@ -430,8 +430,9 @@ type ComplexityRoot struct {
 	}
 
 	MetadataLink struct {
-		Text func(childComplexity int) int
-		URL  func(childComplexity int) int
+		Source func(childComplexity int) int
+		Text   func(childComplexity int) int
+		URL    func(childComplexity int) int
 	}
 
 	Module struct {
@@ -3066,6 +3067,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Manifest.Revision(childComplexity), true
+
+	case "MetadataLink.source":
+		if e.complexity.MetadataLink.Source == nil {
+			break
+		}
+
+		return e.complexity.MetadataLink.Source(childComplexity), true
 
 	case "MetadataLink.text":
 		if e.complexity.MetadataLink.Text == nil {
@@ -10781,6 +10789,8 @@ func (ec *executionContext) fieldContext_Annotation_metadataLinks(ctx context.Co
 				return ec.fieldContext_MetadataLink_url(ctx, field)
 			case "text":
 				return ec.fieldContext_MetadataLink_text(ctx, field)
+			case "source":
+				return ec.fieldContext_MetadataLink_source(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MetadataLink", field.Name)
 		},
@@ -20072,6 +20082,55 @@ func (ec *executionContext) fieldContext_MetadataLink_text(ctx context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MetadataLink_source(ctx context.Context, field graphql.CollectedField, obj *model.APIMetadataLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MetadataLink_source(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Source, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISource)
+	fc.Result = res
+	return ec.marshalOSource2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MetadataLink_source(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MetadataLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "author":
+				return ec.fieldContext_Source_author(ctx, field)
+			case "requester":
+				return ec.fieldContext_Source_requester(ctx, field)
+			case "time":
+				return ec.fieldContext_Source_time(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Source", field.Name)
 		},
 	}
 	return fc, nil
@@ -62859,6 +62918,10 @@ func (ec *executionContext) _MetadataLink(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "source":
+
+			out.Values[i] = ec._MetadataLink_source(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

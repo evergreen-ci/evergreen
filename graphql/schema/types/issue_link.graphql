@@ -25,4 +25,5 @@ type IssueLink {
 type MetadataLink {
   url: String!
   text: String!
+  source: Source
 }
