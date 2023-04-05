@@ -1,4 +1,4 @@
-{
+mutation {
   myVolumes {
     displayName
   }
