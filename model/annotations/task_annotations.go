@@ -141,10 +141,11 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 
 // SetAnnotationMetadataLinks sets the metadata links for a task annotation.
 func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution int, username string, metadataLinks ...MetadataLink) error {
+	now := time.Now()
 	for i := range metadataLinks {
 		metadataLinks[i].Source = &Source{
 			Author:    username,
-			Time:      time.Now(),
+			Time:      now,
 			Requester: UIRequester,
 		}
 	}
