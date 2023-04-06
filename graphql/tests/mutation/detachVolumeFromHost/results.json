@@ -1,0 +1,60 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": { "data": { "detachVolumeFromHost": true } }
+    },
+    {
+      "query_file": "empty_volume.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "must specify volume ID",
+            "path": ["detachVolumeFromHost"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "nonexistent_volume.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "volume 'vol-4db5' does not exist",
+            "path": ["detachVolumeFromHost"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "no_host_attached.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "volume 'vol-three' is not attached",
+            "path": ["detachVolumeFromHost"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "nonexistent_host.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "host 'not-real' for volume 'vol-two' not found",
+            "path": ["detachVolumeFromHost"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}

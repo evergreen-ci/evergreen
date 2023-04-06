@@ -1,0 +1,51 @@
+{
+  "tests": [
+    {
+      "query_file": "copy_project.graphql",
+      "result": {
+        "data": {
+          "copyProject": {
+            "id": "newAndImproved",
+            "identifier": "spruce",
+            "owner": "evergreen-ci",
+            "enabled": false
+          }
+        }
+      }
+    },
+    {
+      "query_file": "copy_project_dup_identifier.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot use existing project name 'logkeeper'",
+            "path": [
+              "copyProject"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "copy_project_dup_id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot use existing project name 'keeperOfLogs'",
+            "path": [
+              "copyProject"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

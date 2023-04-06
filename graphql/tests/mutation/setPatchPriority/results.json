@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "query_file": "set_priority_bad_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Unable to find version with id: `washington`",
+            "path": ["setPatchPriority"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": {
+          "setPatchPriority": null
+        }
+      }
+    },
+    {
+      "query_file": "set_priority.graphql",
+      "result": {
+        "data": {
+          "setPatchPriority": "5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "set_priority_too_high_for_permission_level.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "insufficient access to set priority 999, can only set priority less than or equal to 100",
+            "path": ["setPatchPriority"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ],
+        "data": {
+          "setPatchPriority": null
+        }
+      }
+    }
+  ]
+}

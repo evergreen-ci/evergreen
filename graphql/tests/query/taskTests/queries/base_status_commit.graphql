@@ -1,0 +1,12 @@
+query {
+  taskTests(
+    taskId: "commit_task"
+    limit: 1
+    execution: 0
+  ) {
+    testResults {
+      status
+      baseStatus
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "taskStatuses.graphql",
+      "query_file": "task_statuses.graphql",
       "result": {
         "data": {
           "patch": {

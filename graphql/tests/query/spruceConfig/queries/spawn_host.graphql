@@ -1,0 +1,9 @@
+query {
+  spruceConfig {
+    spawnHost {
+      unexpirableHostsPerUser
+      unexpirableVolumesPerUser
+      spawnHostsPerUser
+    }
+  }
+}

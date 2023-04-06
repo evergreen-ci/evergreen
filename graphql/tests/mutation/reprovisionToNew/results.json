@@ -1,0 +1,58 @@
+{
+  "tests": [
+    {
+      "query_file": "empty_array.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "hostIds cannot be empty",
+            "path": ["reprovisionToNew"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "multiple_hosts.graphql",
+      "result": {
+        "data": {
+          "reprovisionToNew": 2
+        }
+      }
+    },
+    {
+      "query_file": "no_hosts_found.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "No matching hosts found",
+            "path": ["reprovisionToNew"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "single_host.graphql",
+      "result": {
+        "data": {
+          "reprovisionToNew": 1
+        }
+      }
+    },
+    {
+      "query_file": "user_has_no_permission_to_edit_host.graphql",
+      "result": {
+        "data": {
+          "reprovisionToNew": 0
+        }
+      }
+    }
+  ]
+}

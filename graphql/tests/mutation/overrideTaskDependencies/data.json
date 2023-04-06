@@ -1,0 +1,29 @@
+{
+  "tasks": [
+    {
+      "_id": "t1",
+      "display_name": "cq merge",
+      "branch": "p1",
+      "status": "undispatched",
+      "build_id": "b1",
+      "r": "merge_test",
+      "commit_queue_merge": true,
+      "activated": true,
+      "version": "123456789012345678901234",
+        "depends_on": [
+        {
+          "_id": "dep1",
+          "status": "success",
+          "unattainable": true
+        }
+      ]
+    },
+    {
+        "_id": "dep1",
+        "status": "failed",
+        "display_name": "a dep",
+        "build_id": "b1",
+        "version": "123456789012345678901234"
+    }
+  ]
+}

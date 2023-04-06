@@ -16,14 +16,15 @@ import (
 )
 
 type APITaskAnnotation struct {
-	Id              *string         `bson:"_id" json:"id"`
-	TaskId          *string         `bson:"task_id" json:"task_id"`
-	TaskExecution   *int            `bson:"task_execution" json:"task_execution"`
-	Metadata        *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
-	Note            *APINote        `bson:"note,omitempty" json:"note,omitempty"`
-	Issues          []APIIssueLink  `bson:"issues,omitempty" json:"issues,omitempty"`
-	SuspectedIssues []APIIssueLink  `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
-	CreatedIssues   []APIIssueLink  `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
+	Id              *string           `bson:"_id" json:"id"`
+	TaskId          *string           `bson:"task_id" json:"task_id"`
+	TaskExecution   *int              `bson:"task_execution" json:"task_execution"`
+	Metadata        *birch.Document   `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	Note            *APINote          `bson:"note,omitempty" json:"note,omitempty"`
+	Issues          []APIIssueLink    `bson:"issues,omitempty" json:"issues,omitempty"`
+	SuspectedIssues []APIIssueLink    `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	CreatedIssues   []APIIssueLink    `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
+	MetadataLinks   []APIMetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
 }
 
 type APINote struct {
@@ -40,6 +41,11 @@ type APIIssueLink struct {
 	IssueKey        *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 	Source          *APISource `bson:"source,omitempty" json:"source,omitempty"`
 	ConfidenceScore *float64   `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+}
+type APIMetadataLink struct {
+	URL    *string    `bson:"url" json:"url"`
+	Text   *string    `bson:"text" json:"text"`
+	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
@@ -69,6 +75,26 @@ func APISourceToService(m *APISource) *annotations.Source {
 	} else {
 		out.Time = time.Time{}
 	}
+	return out
+}
+
+// APIMetadataLinkBuildFromService takes the annotations.MetadataLink DB struct and
+// returns the REST struct *APIIssueLink with the corresponding fields populated
+func APIMetadataLinkBuildFromService(t annotations.MetadataLink) *APIMetadataLink {
+	m := APIMetadataLink{}
+	m.URL = StringStringPtr(t.URL)
+	m.Text = StringStringPtr(t.Text)
+	m.Source = APISourceBuildFromService(t.Source)
+	return &m
+}
+
+// APIMetadataLinkToService takes the APIMetadataLink REST struct and returns the DB struct
+// *annotations.MetadataLink with the corresponding fields populated
+func APIMetadataLinkToService(m APIMetadataLink) *annotations.MetadataLink {
+	out := &annotations.MetadataLink{}
+	out.URL = StringPtrString(m.URL)
+	out.Text = StringPtrString(m.Text)
+	out.Source = APISourceToService(m.Source)
 	return out
 }
 
@@ -126,9 +152,10 @@ func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnn
 	m.TaskExecution = &t.TaskExecution
 	m.TaskId = StringStringPtr(t.TaskId)
 	m.Metadata = t.Metadata
-	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
-	m.SuspectedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectedIssues)
-	m.CreatedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.CreatedIssues)
+	m.Issues = BuildAPIIssueLinks(t.Issues)
+	m.SuspectedIssues = BuildAPIIssueLinks(t.SuspectedIssues)
+	m.CreatedIssues = BuildAPIIssueLinks(t.CreatedIssues)
+	m.MetadataLinks = BuildAPIMetadataLinks(t.MetadataLinks)
 	m.Note = APINoteBuildFromService(t.Note)
 	return &m
 }
@@ -141,14 +168,16 @@ func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation
 	out.TaskExecution = *m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
 	out.Metadata = m.Metadata
-	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
-	out.SuspectedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectedIssues)
-	out.CreatedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.CreatedIssues)
+	out.Issues = BuildIssueLinks(m.Issues)
+	out.SuspectedIssues = BuildIssueLinks(m.SuspectedIssues)
+	out.CreatedIssues = BuildIssueLinks(m.CreatedIssues)
+	out.MetadataLinks = BuildMetadataLinks(m.MetadataLinks)
 	out.Note = APINoteToService(m.Note)
 	return out
 }
 
-func ArrtaskannotationsIssueLinkArrAPIIssueLink(t []annotations.IssueLink) []APIIssueLink {
+// BuildAPIIssueLinks converts a slice of annotations.IssueLink to a slice of APIIssueLink
+func BuildAPIIssueLinks(t []annotations.IssueLink) []APIIssueLink {
 	if t == nil {
 		return nil
 	}
@@ -159,13 +188,38 @@ func ArrtaskannotationsIssueLinkArrAPIIssueLink(t []annotations.IssueLink) []API
 	return m
 }
 
-func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.IssueLink {
+// BuildIssueLinks converts a slice of APIIssueLink to a slice of annotations.IssueLink
+func BuildIssueLinks(t []APIIssueLink) []annotations.IssueLink {
 	if t == nil {
 		return nil
 	}
 	m := []annotations.IssueLink{}
 	for _, e := range t {
 		m = append(m, *APIIssueLinkToService(e))
+	}
+	return m
+}
+
+// BuildAPIMetadataLinks converts a slice of annotations.MetadataLink to a slice of APIMetadataLink
+func BuildAPIMetadataLinks(t []annotations.MetadataLink) []APIMetadataLink {
+	if t == nil {
+		return nil
+	}
+	m := []APIMetadataLink{}
+	for _, e := range t {
+		m = append(m, *APIMetadataLinkBuildFromService(e))
+	}
+	return m
+}
+
+// BuildMetadataLinks converts a slice of APIMetadataLink to a slice of annotations.MetadataLink
+func BuildMetadataLinks(t []APIMetadataLink) []annotations.MetadataLink {
+	if t == nil {
+		return nil
+	}
+	m := []annotations.MetadataLink{}
+	for _, e := range t {
+		m = append(m, *APIMetadataLinkToService(e))
 	}
 	return m
 }

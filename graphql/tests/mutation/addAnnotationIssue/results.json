@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "query_file": "add_issue.graphql",
+      "result": {
+        "data": {
+          "addAnnotationIssue": true
+        }
+      }
+    },
+    {
+      "query_file": "add_suspected_issue.graphql",
+      "result": {
+        "data": {
+          "addAnnotationIssue": true
+        }
+      }
+    }
+  ]
+}

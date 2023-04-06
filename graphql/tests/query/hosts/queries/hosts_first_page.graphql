@@ -1,0 +1,20 @@
+query {
+  hosts(limit: 5, page: 0) {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      distroId
+      status
+      startedBy
+      hostUrl
+      totalIdleTime
+      uptime
+      elapsed
+      runningTask {
+        id
+        name
+      }
+    }
+  }
+}

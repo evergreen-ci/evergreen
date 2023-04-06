@@ -1,0 +1,65 @@
+{
+    "tests": [
+        {
+            "query_file": "default_project.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "ui": {
+                            "defaultProject": "evergreen"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "user_voice.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "ui": {
+                            "userVoice": "https://uservoice.com"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "banner.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "banner": "This is an important notification",
+                        "bannerTheme": "important"
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "jira.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "jira": {
+                            "host": "jira.mongodb.org"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "spawn_host.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "spawnHost": {
+                            "unexpirableHostsPerUser": 0,
+                            "unexpirableVolumesPerUser": 0,
+                            "spawnHostsPerUser": 0
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

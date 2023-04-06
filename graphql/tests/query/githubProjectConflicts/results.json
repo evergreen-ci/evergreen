@@ -1,0 +1,27 @@
+{
+  "tests": [{
+    "query_file": "conflicts.graphql",
+    "result": {
+      "data": {
+        "githubProjectConflicts": {
+          "commitQueueIdentifiers": ["some-features-enabled", "enabled_on_repo"],
+          "prTestingIdentifiers": ["enabled_on_repo"],
+          "commitCheckIdentifiers": ["some-features-enabled", "enabled_on_repo"]
+        }
+      }
+    }
+  },
+  {
+    "query_file": "no_conflicts.graphql",
+    "result": {
+      "data": {
+        "githubProjectConflicts": {
+          "commitQueueIdentifiers": null,
+          "prTestingIdentifiers": null,
+          "commitCheckIdentifiers": null
+        }
+      }
+    }
+  }
+  ]
+}

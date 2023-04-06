@@ -1,7 +1,7 @@
 {
    "tests":[
       {
-         "query_file":"disabledQuery.graphql",
+         "query_file":"disabled_query.graphql",
          "result":{
             "data":null,
             "errors":[
@@ -15,7 +15,7 @@
          }
       },
       {
-         "query_file":"enabledQuery.graphql",
+         "query_file":"enabled_query.graphql",
          "result":{
             "data": {
               "projects": []

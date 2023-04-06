@@ -512,7 +512,12 @@ func (t *Task) IsPatchRequest() bool {
 	return utility.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
-func (t *Task) IsSystemUnresponsive() bool {
+// IsUnfinishedSystemUnresponsive returns true only if this is an unfinished system unresponsive task (i.e. not on max execution)
+func (t *Task) IsUnfinishedSystemUnresponsive() bool {
+	return t.isSystemUnresponsive() && t.Execution < evergreen.MaxTaskExecution
+}
+
+func (t *Task) isSystemUnresponsive() bool {
 	// this is a legacy case
 	if t.Status == evergreen.TaskSystemUnresponse {
 		return true
@@ -521,7 +526,6 @@ func (t *Task) IsSystemUnresponsive() bool {
 	if t.Details.Type == evergreen.CommandTypeSystem && t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
 		return true
 	}
-
 	return false
 }
 

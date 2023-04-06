@@ -1,0 +1,48 @@
+{
+  "task_annotations": [
+    {
+      "_id": {
+        "$oid": "5e4aa5abe3c3317e35201abc"
+      },
+      "task_id": "task-1234",
+      "task_execution": 0,
+      "issues": [
+        {
+          "url": "https://link.com",
+          "issue_key": "EVG-1212",
+          "source": {
+            "author": "chaya.malik"
+          }
+        }
+      ],
+      "suspected_issues": [
+        {
+          "url": "https://link.com",
+          "issue_key": "EVG-2121",
+          "source": {
+            "author": "annie.black"
+          }
+        }
+      ],
+      "note": {
+        "message": "my message",
+        "source": {
+          "author": "annie.black"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "5e3aa5bbe3c3317e35206abc"
+      },
+      "task_id": "task-5678",
+      "task_execution": 0,
+      "note": {
+        "message": "my other message",
+        "source": {
+          "author": "annie.black"
+        }
+      }
+    }
+  ]
+}
