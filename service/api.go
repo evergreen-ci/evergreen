@@ -266,11 +266,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	} else {
 		errs = append(errs, validator.CheckProjectWarnings(project)...)
 		// Check project aliases
-		var repoId string
-		if projectRef.UseRepoSettings() {
-			repoId = projectRef.RepoRefId
-		}
-		aliases, err := model.FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef, projectConfig, repoId)
+		aliases, err := model.ConstructMergedAliasesByPrecedence(projectRef, projectConfig, projectRef.GetRepoSettingsId())
 		if err != nil {
 			errs = append(errs, validator.ValidationError{
 				Message: "problem finding aliases; validation will proceed without checking alias coverage",

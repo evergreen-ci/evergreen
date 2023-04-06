@@ -32,35 +32,53 @@ func (a *AliasSuite) SetupTest() {
 			ProjectID: "project_id",
 			Alias:     "foo",
 			Variant:   "variant",
-			Task:      "task",
+			Task:      "project_ref_task",
 		},
 		{
 			ProjectID: "project_id",
 			Alias:     "bar",
 			Variant:   "not_this_variant",
-			Task:      "not_this_task",
+			Task:      "project_ref_task",
 		},
 		{
 			ProjectID: "project_id",
 			Alias:     "foo",
 			Variant:   "another_variant",
-			Task:      "another_task",
+			Task:      "project_ref_task",
+		},
+		{
+			ProjectID: "project_id",
+			Alias:     evergreen.CommitQueueAlias,
+			Variant:   "commit_queue_variant",
+			Task:      "project_ref_task",
 		},
 		{
 			ProjectID: "other_project_id",
 			Alias:     "baz",
 			Variant:   "variant",
-			Task:      "task",
+			Task:      "project_ref_task",
 		},
 		{
 			ProjectID: "other_project_id",
 			Alias:     "delete_me",
 			Variant:   "variant",
-			Task:      "task",
+			Task:      "project_ref_task",
 		},
 		{
 			ProjectID: "repo_id",
 			Alias:     "from_repo",
+			Variant:   "repo_variant",
+			Task:      "repo_task",
+		},
+		{
+			ProjectID: "repo_id",
+			Alias:     evergreen.CommitQueueAlias,
+			Variant:   "repo_variant",
+			Task:      "repo_task",
+		},
+		{
+			ProjectID: "repo_id",
+			Alias:     evergreen.GithubPRAlias,
 			Variant:   "repo_variant",
 			Task:      "repo_task",
 		},
@@ -87,11 +105,13 @@ func (a *AliasSuite) SetupTest() {
 					ID:        mgobson.NewObjectId(),
 					ProjectID: "project-1",
 					Alias:     "alias-2",
+					Task:      "project_config_task",
 				},
 				{
 					ID:        mgobson.NewObjectId(),
 					ProjectID: "project-1",
 					Alias:     "alias-1",
+					Task:      "project_config_task",
 				},
 			},
 			CommitQueueAliases: []model.ProjectAlias{
@@ -99,6 +119,15 @@ func (a *AliasSuite) SetupTest() {
 					ID:        mgobson.NewObjectId(),
 					ProjectID: "project-1",
 					Alias:     evergreen.CommitQueueAlias,
+					Task:      "project_config_task",
+				},
+			},
+			GitHubPRAliases: []model.ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+					Alias:     evergreen.GithubPRAlias,
+					Task:      "project_config_task",
 				},
 			},
 			GitHubChecksAliases: []model.ProjectAlias{
@@ -106,6 +135,7 @@ func (a *AliasSuite) SetupTest() {
 					ID:        mgobson.NewObjectId(),
 					ProjectID: "project-1",
 					Alias:     evergreen.GithubChecksAlias,
+					Task:      "project_config_task",
 				},
 			},
 		}}
@@ -121,39 +151,60 @@ func (a *AliasSuite) SetupTest() {
 func (a *AliasSuite) TestFindProjectAliasesMergedWithProjectConfig() {
 	found, err := FindMergedProjectAliases("project_id", "", nil, true)
 	a.Require().NoError(err)
-	a.Require().Len(found, 5)
+	a.Require().Len(found, 6)
 	sort.Slice(found, func(i, j int) bool {
 		return utility.FromStringPtr(found[i].Alias) < utility.FromStringPtr(found[j].Alias)
 	})
 	a.Equal(utility.FromStringPtr(found[0].Alias), evergreen.CommitQueueAlias)
-	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubChecksAlias)
-	a.Equal(utility.FromStringPtr(found[2].Alias), "bar")
-	a.Equal(utility.FromStringPtr(found[3].Alias), "foo")
+	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubPRAlias)
+	a.Equal(utility.FromStringPtr(found[2].Alias), evergreen.GithubChecksAlias)
+	a.Equal(utility.FromStringPtr(found[3].Alias), "bar")
 	a.Equal(utility.FromStringPtr(found[4].Alias), "foo")
+	a.Equal(utility.FromStringPtr(found[5].Alias), "foo")
 }
 
 func (a *AliasSuite) TestFindMergedProjectAliases() {
+	// project ref only
 	found, err := FindMergedProjectAliases("project_id", "", nil, false)
 	a.NoError(err)
-	a.Len(found, 3)
+	a.Len(found, 4)
 
+	// project ref merged with repo
 	found, err = FindMergedProjectAliases("project_id", "repo_id", nil, false)
 	a.NoError(err)
-	a.Len(found, 3) // ignore repo
+	a.Len(found, 5)
 
-	found, err = FindMergedProjectAliases("non-existent", "", nil, false)
+	// all non-existent
+	found, err = FindMergedProjectAliases("non-existent", "non-existent", nil, false)
 	a.NoError(err)
 	a.Len(found, 0)
 
+	// repo only
 	found, err = FindMergedProjectAliases("non-existent", "repo_id", nil, false)
 	a.NoError(err)
-	a.Len(found, 1) // from repo
+	a.Len(found, 3)
 
-	found, err = FindMergedProjectAliases("", "repo_id", nil, false)
+	// project ref, repo, project config and added aliases
+	aliasesToAdd := []restModel.APIProjectAlias{
+		{Alias: utility.ToStringPtr(evergreen.GitTagAlias), Task: utility.ToStringPtr("added_task")},
+	}
+	found, err = FindMergedProjectAliases("project_id", "repo_id", aliasesToAdd, true)
 	a.NoError(err)
-	a.Len(found, 1)
-
-	// TODO: add test
+	a.Len(found, 7)
+	for _, alias := range found {
+		switch utility.FromStringPtr(alias.Alias) {
+		case evergreen.CommitQueueAlias:
+			a.Equal(utility.FromStringPtr(alias.Task), "project_ref_task")
+		case evergreen.GithubPRAlias:
+			a.Equal(utility.FromStringPtr(alias.Task), "repo_task")
+		case evergreen.GithubChecksAlias:
+			a.Equal(utility.FromStringPtr(alias.Task), "project_config_task")
+		case evergreen.GitTagAlias:
+			a.Equal(utility.FromStringPtr(alias.Task), "added_task")
+		default:
+			a.Equal(utility.FromStringPtr(alias.Task), "project_ref_task")
+		}
+	}
 }
 
 func (a *AliasSuite) TestCopyProjectAliases() {

@@ -9,21 +9,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// FindMergedProjectAliases queries the database to find all aliases.
-// If the repoId is given, we default to repo aliases if there are no project aliases.
-// If aliasesToAdd are given, then we fold those aliases in and remove any that are marked as deleted.
-// If includeProjectConfig, a merged list of aliases defined on the project page and the project config YAML will be returned,
-// with aliases set on the project page taking precedence.
+// FindMergedProjectAliases returns a merged list of aliases, with the order of precedence being:
+// 1. aliases defined on the project page
+// 2. aliases defined on the repo page
+// 3. aliases defined in the project config YAML
+// The includeProjectConfig flag determines whether to include aliases defined in the project config YAML.
+// If the aliasesToAdd parameter is defined, we fold those aliases in and remove any that are marked as deleted.
 func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
-	aliasesToDelete := []string{}
-	aliasModels := []restModel.APIProjectAlias{}
-	for _, a := range aliasesToAdd {
-		if a.Delete {
-			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(a.ID))
-		} else {
-			aliasModels = append(aliasModels, a)
-		}
-	}
 	projectRef, err := model.FindBranchProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref for project '%s'", projectId)
@@ -35,12 +27,21 @@ func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel
 			return nil, errors.Wrapf(err, "finding project config for project '%s'", projectId)
 		}
 	}
-	aliases, err := model.FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef, projectConfig, repoId)
+	aliases, err := model.ConstructMergedAliasesByPrecedence(projectRef, projectConfig, repoId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged aliases for project '%s'", projectId)
 	}
 	if aliases == nil {
 		return nil, nil
+	}
+	aliasesToDelete := []string{}
+	aliasModels := []restModel.APIProjectAlias{}
+	for _, a := range aliasesToAdd {
+		if a.Delete {
+			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(a.ID))
+		} else {
+			aliasModels = append(aliasModels, a)
+		}
 	}
 	for _, alias := range aliases {
 		if utility.StringSliceContains(aliasesToDelete, alias.ID.Hex()) {

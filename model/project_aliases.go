@@ -249,10 +249,9 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 // patchAliasKey is used internally to group patch aliases together.
 const patchAliasKey = "patch_alias"
 
-// FindMergedAliasesFromProjectRepoOrProjectConfig returns all aliases tht would be used by this project ref configuration,
-// by merging together repo and config aliases, if defined by the project.
-// Sets source equal to where the alias was defined.
-func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, projectConfig *ProjectConfig, repoId string) ([]ProjectAlias, error) {
+// ConstructMergedAliasesByPrecedence will construct a merged list of aliases based on what aliases
+// are found at the project level, repo level, and project config level.
+func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *ProjectConfig, repoId string) ([]ProjectAlias, error) {
 	var projectAliases []ProjectAlias
 	var err error
 	if projectRef != nil {
