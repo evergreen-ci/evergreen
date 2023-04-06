@@ -212,10 +212,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 
 	job.env = s.env
 	job.Run(context.Background())
-	s.False(job.HasErrors())
-	if job.HasErrors() {
-		fmt.Println(job.Error())
-	}
+	s.Zero(job.Error())
 
 	status := s.getAndValidateStatus(s.env.InternalSender)
 	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)

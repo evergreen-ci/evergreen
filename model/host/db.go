@@ -1124,7 +1124,7 @@ func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
 		message.Fields{
 			"host_id":   h.Id,
 			"volume_id": newVolume.VolumeID,
-			"op":        "host volume acocunting",
+			"op":        "host volume accounting",
 			"message":   "problem setting host info on volume records",
 		}))
 

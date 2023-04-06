@@ -104,7 +104,6 @@ func (j *githubStatusRefreshJob) fetch() error {
 		}
 	}
 	if j.patch == nil {
-		fmt.Println("do we refretch the patch?")
 		j.patch, err = patch.FindOneId(j.FetchID)
 		if err != nil {
 			return errors.Wrap(err, "finding patch")
@@ -113,7 +112,6 @@ func (j *githubStatusRefreshJob) fetch() error {
 			return errors.New("patch not found")
 		}
 	}
-	fmt.Println(j.patch.Status)
 
 	j.builds, err = build.Find(build.ByVersion(j.FetchID))
 	if err != nil {
