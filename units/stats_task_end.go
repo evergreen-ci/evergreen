@@ -80,14 +80,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	// The task was restarted before the job ran.
-	if j.task == nil {
-		j.task, err = task.FindOneOldByIdAndExecution(j.TaskID, j.Execution)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "finding old task '%s' with execution %d", j.TaskID, j.Execution))
-			return
-		}
-	}
+
 	if j.task == nil {
 		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
