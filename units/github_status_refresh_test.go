@@ -157,7 +157,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-tasks?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
@@ -225,7 +225,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-tasks?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStateSuccess, status.State)
 	s.Equal("child patch finished in 12m0s", status.Description)
@@ -292,7 +292,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-tasks?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
 	s.Equal("child patch finished in 12m0s", status.Description)
