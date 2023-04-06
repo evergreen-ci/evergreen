@@ -216,11 +216,11 @@ func (a *AliasSuite) TestCopyProjectAliases() {
 
 	res, err = FindMergedProjectAliases("project_id", "", nil, false)
 	a.NoError(err)
-	a.Len(res, 3)
+	a.Len(res, 4)
 
 	res, err = FindMergedProjectAliases("new_project_id", "", nil, false)
 	a.NoError(err)
-	a.Len(res, 3)
+	a.Len(res, 4)
 
 }
 
@@ -260,7 +260,7 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 func (a *AliasSuite) TestUpdateAliasesForSection() {
 	originalAliases, err := model.FindAliasesForProjectFromDb("project_id")
 	a.NoError(err)
-	a.Len(originalAliases, 3)
+	a.Len(originalAliases, 4)
 
 	// delete one alias, add one alias, modify one alias
 	aliasToKeep := restModel.APIProjectAlias{}
@@ -277,7 +277,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 	newInternalAlias := restModel.APIProjectAlias{
 		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
-		Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias), //internal alias shouldn't be added
+		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), //internal alias shouldn't be added
 		Variant: utility.ToStringPtr("var"),
 		Task:    utility.ToStringPtr("task"),
 	}
@@ -289,11 +289,11 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 
 	aliasesFromDb, err := model.FindAliasesForProjectFromDb("project_id")
 	a.NoError(err)
-	a.Len(aliasesFromDb, 3)
+	a.Len(aliasesFromDb, 4)
 	for _, alias := range aliasesFromDb {
-		a.NotEqual(alias.ID, originalAliases[2].ID)         // removed the alias that we didn't add to the new alias list
-		a.NotEqual(alias.Alias, evergreen.CommitQueueAlias) // didn't add the internal alias on the patch alias section
-		if alias.ID == originalAliases[1].ID {              // verify we modified the second alias
+		a.NotEqual(alias.ID, originalAliases[2].ID)          // removed the alias that we didn't add to the new alias list
+		a.NotEqual(alias.Alias, evergreen.GithubChecksAlias) // didn't add the internal alias on the patch alias section
+		if alias.ID == originalAliases[1].ID {               // verify we modified the second alias
 			a.Equal(alias.Alias, "this is a new alias")
 		}
 	}
