@@ -9,14 +9,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// FindProjectAliases queries the database to find all aliases.
+// FindMergedProjectAliases queries the database to find all aliases.
 // If the repoId is given, we default to repo aliases if there are no project aliases.
 // If aliasesToAdd are given, then we fold those aliases in and remove any that are marked as deleted.
 // If includeProjectConfig, a merged list of aliases defined on the project page and the project config YAML will be returned,
 // with aliases set on the project page taking precedence.
-func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
-	var err error
-	var aliases model.ProjectAliases
+func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
 	aliasesToDelete := []string{}
 	aliasModels := []restModel.APIProjectAlias{}
 	for _, a := range aliasesToAdd {
@@ -26,24 +24,20 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 			aliasModels = append(aliasModels, a)
 		}
 	}
-	// TODO EVG-17952: modify to correctly merge aliases based on type
-	if projectId != "" {
-		aliases, err = model.FindAliasesForProjectFromDb(projectId)
+	projectRef, err := model.FindBranchProjectRef(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding project ref for project '%s'", projectId)
+	}
+	var projectConfig *model.ProjectConfig
+	if includeProjectConfig {
+		projectConfig, err = model.FindLastKnownGoodProjectConfig(projectId)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "finding project config for project '%s'", projectId)
 		}
 	}
-	if len(aliases) == 0 && repoId != "" {
-		aliases, err = model.FindAliasesForRepo(repoId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding project aliases for repo '%s'", repoId)
-		}
-	}
-	if projectId != "" && includeProjectConfig {
-		aliases, err = model.GetAliasesMergedWithProjectConfig(projectId, aliases)
-		if err != nil {
-			return nil, err
-		}
+	aliases, err := model.FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef, projectConfig, repoId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding merged aliases for project '%s'", projectId)
 	}
 	if aliases == nil {
 		return nil, nil

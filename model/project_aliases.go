@@ -252,13 +252,14 @@ const patchAliasKey = "patch_alias"
 // FindMergedAliasesFromProjectRepoOrProjectConfig returns all aliases tht would be used by this project ref configuration,
 // by merging together repo and config aliases, if defined by the project.
 // Sets source equal to where the alias was defined.
-func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, projectConfig *ProjectConfig) ([]ProjectAlias, error) {
-	if projectRef == nil {
-		return nil, nil
-	}
-	projectAliases, err := FindAliasesForProjectFromDb(projectRef.Id)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding project aliases")
+func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, projectConfig *ProjectConfig, repoId string) ([]ProjectAlias, error) {
+	var projectAliases []ProjectAlias
+	var err error
+	if projectRef != nil {
+		projectAliases, err = FindAliasesForProjectFromDb(projectRef.Id)
+		if err != nil {
+			return nil, errors.Wrap(err, "finding project aliases")
+		}
 	}
 	aliasesToReturn := map[string]ProjectAliases{}
 	for _, alias := range projectAliases {
@@ -271,9 +272,9 @@ func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, pro
 	}
 	// If all aliases are covered in the project, so there's no reason to look at other sources
 	uncoveredAliases := uncoveredAliasTypes(aliasesToReturn)
-	if len(uncoveredAliases) > 0 && projectRef.UseRepoSettings() {
+	if len(uncoveredAliases) > 0 {
 		// Get repo aliases and merge with project aliases
-		repoAliases, err := FindAliasesForRepo(projectRef.RepoRefId)
+		repoAliases, err := FindAliasesForRepo(repoId)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding repo aliases")
 		}
@@ -292,7 +293,7 @@ func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, pro
 		uncoveredAliases = uncoveredAliasTypes(aliasesToReturn)
 	}
 	res := aliasesFromMap(aliasesToReturn)
-	if len(uncoveredAliases) > 0 && projectRef.IsVersionControlEnabled() {
+	if len(uncoveredAliases) > 0 && projectRef != nil && projectRef.IsVersionControlEnabled() {
 		mergedAliases := mergeProjectConfigAndAliases(projectConfig, res)
 		// If we've added any new aliases, ensure they're given the config source
 		if len(mergedAliases) > len(res) {
