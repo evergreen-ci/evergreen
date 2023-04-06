@@ -29,7 +29,7 @@ type Mutation {
   setAnnotationMetadataLinks(
     taskId: String!
     execution: Int!
-    apiMetadataLinks: [MetadataLinkInput!]!
+    metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
 
   # hosts

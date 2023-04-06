@@ -490,7 +490,7 @@ type ComplexityRoot struct {
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
 		ScheduleTasks                 func(childComplexity int, taskIds []string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
-		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, apiMetadataLinks []*model.APIMetadataLink) int
+		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetPatchPriority              func(childComplexity int, patchID string, priority int) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
@@ -1333,7 +1333,7 @@ type MutationResolver interface {
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
-	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, apiMetadataLinks []*model.APIMetadataLink) (bool, error)
+	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -3621,7 +3621,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetAnnotationMetadataLinks(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiMetadataLinks"].([]*model.APIMetadataLink)), true
+		return e.complexity.Mutation.SetAnnotationMetadataLinks(childComplexity, args["taskId"].(string), args["execution"].(int), args["metadataLinks"].([]*model.APIMetadataLink)), true
 
 	case "Mutation.setPatchPriority":
 		if e.complexity.Mutation.SetPatchPriority == nil {
@@ -9059,14 +9059,14 @@ func (ec *executionContext) field_Mutation_setAnnotationMetadataLinks_args(ctx c
 	}
 	args["execution"] = arg1
 	var arg2 []*model.APIMetadataLink
-	if tmp, ok := rawArgs["apiMetadataLinks"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiMetadataLinks"))
+	if tmp, ok := rawArgs["metadataLinks"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metadataLinks"))
 		arg2, err = ec.unmarshalNMetadataLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["apiMetadataLinks"] = arg2
+	args["metadataLinks"] = arg2
 	return args, nil
 }
 
@@ -20907,7 +20907,7 @@ func (ec *executionContext) _Mutation_setAnnotationMetadataLinks(ctx context.Con
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetAnnotationMetadataLinks(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["apiMetadataLinks"].([]*model.APIMetadataLink))
+		return ec.resolvers.Mutation().SetAnnotationMetadataLinks(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["metadataLinks"].([]*model.APIMetadataLink))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
