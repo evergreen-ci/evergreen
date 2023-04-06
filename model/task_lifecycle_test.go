@@ -2408,7 +2408,7 @@ func TestAbortTask(t *testing.T) {
 	})
 
 }
-func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
+func TestTryDequeueAndAbortBlockedCommitQueueItem(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
 	patchID := "aabbccddeeff001122334455"
 	v := &Version{
@@ -2450,7 +2450,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	removed, err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t1.Id, "some merge error", evergreen.User)
+	removed, err := tryDequeueAndAbortCommitQueueItem(p, *cq, t1.Id, "some merge error", evergreen.User)
 	assert.NoError(t, err)
 	require.NotZero(t, removed)
 	assert.Equal(t, p.Id.Hex(), removed.PatchId)
@@ -2469,7 +2469,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NotNil(t, p)
 }
 
-func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
+func TestTryDequeueAndAbortCommitQueueItem(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
 
 	versionId := bson.NewObjectId()
@@ -2538,7 +2538,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, m.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	removed, err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t1.Id, "some merge error", evergreen.User)
+	removed, err := tryDequeueAndAbortCommitQueueItem(p, *cq, t1.Id, "some merge error", evergreen.User)
 	assert.NoError(t, err)
 	require.NotZero(t, removed)
 	assert.Equal(t, p.Id.Hex(), removed.PatchId)

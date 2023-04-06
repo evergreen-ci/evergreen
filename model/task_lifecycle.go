@@ -785,14 +785,14 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 	}
 
 	_, err := dequeueAndRestartItem(dequeueAndRestartOptions{
-		cq:           cq,
-		projectID:    t.Project,
-		versionID:    t.Version,
-		taskID:       t.Id,
-		caller:       caller,
-		reason:       reason,
-		mergeErrMsg:  mergeErrMsg,
-		githubStatus: githubState,
+		cq:            cq,
+		projectID:     t.Project,
+		itemVersionID: t.Version,
+		taskID:        t.Id,
+		caller:        caller,
+		reason:        reason,
+		mergeErrMsg:   mergeErrMsg,
+		githubStatus:  githubState,
 	})
 	return err
 }
@@ -802,25 +802,25 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 // it succeeds, it returns the removed item.
 func DequeueAndRestartForVersion(cq *commitqueue.CommitQueue, project, version, user, reason string) (*commitqueue.CommitQueueItem, error) {
 	return dequeueAndRestartItem(dequeueAndRestartOptions{
-		cq:           cq,
-		projectID:    project,
-		versionID:    version,
-		caller:       user,
-		reason:       reason,
-		mergeErrMsg:  fmt.Sprintf("commit queue item '%s' is being dequeued: %s", version, reason),
-		githubStatus: message.GithubStateFailure,
+		cq:            cq,
+		projectID:     project,
+		itemVersionID: version,
+		caller:        user,
+		reason:        reason,
+		mergeErrMsg:   fmt.Sprintf("commit queue item '%s' is being dequeued: %s", version, reason),
+		githubStatus:  message.GithubStateFailure,
 	})
 }
 
 type dequeueAndRestartOptions struct {
-	cq           *commitqueue.CommitQueue
-	projectID    string
-	versionID    string
-	taskID       string
-	caller       string
-	reason       string
-	mergeErrMsg  string
-	githubStatus message.GithubState
+	cq            *commitqueue.CommitQueue
+	projectID     string
+	itemVersionID string
+	taskID        string
+	caller        string
+	reason        string
+	mergeErrMsg   string
+	githubStatus  message.GithubState
 }
 
 func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQueueItem, error) {
@@ -837,21 +837,21 @@ func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQu
 
 	// Restart later items before dequeueing this item so that we know which
 	// entries to restart.
-	if err := RestartItemsAfterVersion(opts.cq, opts.projectID, opts.versionID, opts.caller); err != nil {
+	if err := RestartItemsAfterVersion(opts.cq, opts.projectID, opts.itemVersionID, opts.caller); err != nil {
 		return nil, errors.Wrap(err, "restarting later commit queue items")
 	}
 
-	p, err := patch.FindOneId(opts.versionID)
+	p, err := patch.FindOneId(opts.itemVersionID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding patch '%s'", opts.versionID)
+		return nil, errors.Wrapf(err, "finding patch '%s'", opts.itemVersionID)
 	}
 	if p == nil {
-		return nil, errors.Errorf("patch '%s' not found", opts.versionID)
+		return nil, errors.Errorf("patch '%s' not found", opts.itemVersionID)
 	}
 
-	removed, err := tryDequeueAndAbortCommitQueueVersion(p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
+	removed, err := tryDequeueAndAbortCommitQueueItem(p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
 	if err != nil {
-		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.versionID)
+		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.itemVersionID)
 	}
 
 	grip.Info(message.Fields{
@@ -859,8 +859,10 @@ func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQu
 		"source":       "commit queue",
 		"reason":       opts.reason,
 		"caller":       opts.caller,
-		"project_id":   opts.projectID,
-		"version":      opts.versionID,
+		"project":      opts.projectID,
+		"issue":        removed.Issue,
+		"patch":        removed.PatchId,
+		"version":      opts.itemVersionID,
 		"task":         opts.taskID,
 		"queue_length": len(opts.cq.Queue),
 	})
@@ -945,7 +947,7 @@ func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, ca
 	return DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
 }
 
-func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, taskID, mergeErrMsg string, caller string) (*commitqueue.CommitQueueItem, error) {
+func tryDequeueAndAbortCommitQueueItem(p *patch.Patch, cq commitqueue.CommitQueue, taskID, mergeErrMsg string, caller string) (*commitqueue.CommitQueueItem, error) {
 	issue := p.Id.Hex()
 	err := removeNextMergeTaskDependency(cq, issue)
 	grip.Error(message.WrapError(err, message.Fields{
