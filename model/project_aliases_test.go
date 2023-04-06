@@ -366,7 +366,7 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			tempRef := ProjectRef{ // This ref has nothing else enabled so merging should only return project aliases
 				Id: pRef.Id,
 			}
-			res, err := FindMergedAliasesFromProjectRepoOrProjectConfig(&tempRef, &projectConfig)
+			res, err := FindMergedAliasesFromProjectRepoOrProjectConfig(&tempRef, &projectConfig, "")
 			assert.NoError(t, err)
 			require.Len(t, res, 2)
 			assert.Equal(t, res[0].ProjectID, pRef.Id)
@@ -376,7 +376,7 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.Id))
 			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.RepoRefId))
 			assert.NoError(t, UpsertAliasesForProject(gitTagAliases, pRef.RepoRefId))
-			res, err := FindMergedAliasesFromProjectRepoOrProjectConfig(&pRef, &projectConfig)
+			res, err := FindMergedAliasesFromProjectRepoOrProjectConfig(&pRef, &projectConfig, pRef.RepoRefId)
 			assert.NoError(t, err)
 			// Uses aliases from project, repo, and config
 			require.Len(t, res, 5)
@@ -400,7 +400,7 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.Id))
 			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.RepoRefId))
 			assert.NoError(t, UpsertAliasesForProject(patchAliases, pRef.RepoRefId))
-			res, err := FindMergedAliasesFromProjectRepoOrProjectConfig(&pRef, &projectConfig)
+			res, err := FindMergedAliasesFromProjectRepoOrProjectConfig(&pRef, &projectConfig, pRef.RepoRefId)
 			assert.NoError(t, err)
 			// Ignores config aliases because they're already used
 			require.Len(t, res, 4)
