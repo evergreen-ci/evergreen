@@ -98,12 +98,29 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	route := makeDeleteCommitQueueItems(env).(*commitQueueDeleteItemHandler)
-	pos, err := data.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	p1 := patch.Patch{
+		Id: mgobson.NewObjectId(),
+	}
+	s.Require().NoError(p1.Insert())
+	pos1, err := data.EnqueueItem("mci", model.APICommitQueueItem{
+		Source:  utility.ToStringPtr(commitqueue.SourceDiff),
+		PatchId: utility.ToStringPtr(p1.Id.Hex()),
+		Issue:   utility.ToStringPtr("1"),
+	}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-	pos, err = data.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
+	s.Require().Equal(0, pos1)
+
+	p2 := patch.Patch{
+		Id: mgobson.NewObjectId(),
+	}
+	s.Require().NoError(p2.Insert())
+	pos2, err := data.EnqueueItem("mci", model.APICommitQueueItem{
+		Source:  utility.ToStringPtr(commitqueue.SourceDiff),
+		PatchId: utility.ToStringPtr(p2.Id.Hex()),
+		Issue:   utility.ToStringPtr("2"),
+	}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(1, pos2)
 
 	route.project = "mci"
 

@@ -52,8 +52,8 @@ func (cq *commitQueueGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type commitQueueDeleteItemHandler struct {
-	project string
 	item    string
+	project string
 	env     evergreen.Environment
 }
 
@@ -87,15 +87,16 @@ func (h *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBGithubConnector{}
-
-	removed, err := data.CommitQueueRemoveItem(h.project, h.item, gimlet.GetUser(ctx).DisplayName())
+	username := gimlet.GetUser(ctx).DisplayName()
+	removed, err := data.CommitQueueRemoveItem(h.project, h.item, username, fmt.Sprintf("removed by user '%s'", username))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting commit queue item '%s' from commit queue for project '%s'", h.item, h.project))
 	}
 
 	// Send GitHub status
 	if utility.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
+		dc := data.DBGithubConnector{}
+
 		projectRef, err := data.FindProjectById(h.project, true, false)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.project))
