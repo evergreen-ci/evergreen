@@ -549,7 +549,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting display task"))
 	}
 	queue := h.env.RemoteQueue()
-	job := units.NewCollectTaskEndDataJob(*t, nil, p, p.ID)
+	job := units.NewCollectTaskEndDataJob(*t, p.ID)
 	if err = queue.Put(ctx, job); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing job to update task stats accounting"))
 	}

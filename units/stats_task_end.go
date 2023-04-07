@@ -34,8 +34,6 @@ type collectTaskEndDataJob struct {
 
 	// internal cache
 	task *task.Task
-	host *host.Host
-	pod  *pod.Pod
 	env  evergreen.Environment
 }
 
@@ -54,16 +52,12 @@ func newTaskEndJob() *collectTaskEndDataJob {
 // NewCollectTaskEndDataJob logs information a task after it
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
-func NewCollectTaskEndDataJob(t task.Task, h *host.Host, p *pod.Pod, id string) amboy.Job {
+func NewCollectTaskEndDataJob(t task.Task, id string) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
 	j.Execution = t.Execution
-	// TODO: Remove HostID and its usages in favor of RuntimeEnvID
-	j.HostID = id
 	j.RuntimeEnvID = id
-	j.pod = p
 	j.task = &t
-	j.host = h
 	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.RuntimeEnvID, job.GetNumber()))
 	j.SetPriority(-2)
 	return j
@@ -126,47 +120,41 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 
 	isHostMode := j.task.IsHostTask()
 	if isHostMode {
-		var id string
-		if j.HostID != "" {
-			id = j.HostID
-		} else {
-			id = j.RuntimeEnvID
-		}
-		j.host, err = host.FindOneId(id)
+		taskHost, err := host.FindOneId(j.RuntimeEnvID)
 		j.AddError(err)
 		if err != nil {
 			return
 		}
-		if j.host == nil {
-			j.AddError(errors.Errorf("host '%s' not found", id))
+		if taskHost == nil {
+			j.AddError(errors.Errorf("host '%s' not found", j.RuntimeEnvID))
 			return
 		}
-		msg["host_id"] = j.host.Id
-		msg["distro"] = j.host.Distro.Id
-		msg["provider"] = j.host.Distro.Provider
-		if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
-			instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+		msg["host_id"] = taskHost.Id
+		msg["distro"] = taskHost.Distro.Id
+		msg["provider"] = taskHost.Distro.Provider
+		if cloud.IsEc2Provider(taskHost.Distro.Provider) && len(taskHost.Distro.ProviderSettingsList) > 0 {
+			instanceType, ok := taskHost.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
 			if ok {
 				msg["instance_type"] = instanceType
 			}
 		}
 	} else {
-		j.pod, err = pod.FindOneByID(j.RuntimeEnvID)
+		taskPod, err := pod.FindOneByID(j.RuntimeEnvID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding pod '%s'", j.RuntimeEnvID))
 			return
 		}
-		if j.pod == nil {
+		if taskPod == nil {
 			j.AddError(errors.Errorf("pod '%s' not found", j.RuntimeEnvID))
 			return
 		}
-		msg["pod_id"] = j.pod.ID
-		msg["pod_os"] = j.pod.TaskContainerCreationOpts.OS
-		msg["pod_arch"] = j.pod.TaskContainerCreationOpts.Arch
-		msg["cpu"] = j.pod.TaskContainerCreationOpts.CPU
-		msg["memory_mb"] = j.pod.TaskContainerCreationOpts.MemoryMB
-		if j.pod.TaskContainerCreationOpts.OS.Matches(evergreen.ECSOS(pod.OSWindows)) {
-			msg["windows_version"] = j.pod.TaskContainerCreationOpts.WindowsVersion
+		msg["pod_id"] = taskPod.ID
+		msg["pod_os"] = taskPod.TaskContainerCreationOpts.OS
+		msg["pod_arch"] = taskPod.TaskContainerCreationOpts.Arch
+		msg["cpu"] = taskPod.TaskContainerCreationOpts.CPU
+		msg["memory_mb"] = taskPod.TaskContainerCreationOpts.MemoryMB
+		if taskPod.TaskContainerCreationOpts.OS.Matches(evergreen.ECSOS(pod.OSWindows)) {
+			msg["windows_version"] = taskPod.TaskContainerCreationOpts.WindowsVersion
 		}
 	}
 

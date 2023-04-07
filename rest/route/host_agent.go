@@ -1294,7 +1294,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	queue := h.env.RemoteQueue()
-	job := units.NewCollectTaskEndDataJob(*t, currentHost, nil, currentHost.Id)
+	job := units.NewCollectTaskEndDataJob(*t, currentHost.Id)
 	if err = queue.Put(ctx, job); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "queueing job to update task stats accounting"))
 	}
