@@ -1969,6 +1969,9 @@ func resetSystemFailedTask(settings *evergreen.Settings, t *task.Task, descripti
 	if err := t.MarkSystemFailed(description); err != nil {
 		return errors.Wrap(err, "marking task as system failed")
 	}
+	if err := logTaskEndStats(t); err != nil {
+		return errors.Wrap(err, "logging task end stats")
+	}
 
 	return errors.Wrap(ResetTaskOrDisplayTask(settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
 }
