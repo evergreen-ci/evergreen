@@ -1,0 +1,7 @@
+query {
+  myHosts {
+    id
+    expiration
+    noExpiration
+  }
+}

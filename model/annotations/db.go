@@ -19,13 +19,16 @@ var (
 	SuspectedIssuesKey = bsonutil.MustHaveTag(TaskAnnotation{}, "SuspectedIssues")
 	CreatedIssuesKey   = bsonutil.MustHaveTag(TaskAnnotation{}, "CreatedIssues")
 	IssueLinkIssueKey  = bsonutil.MustHaveTag(IssueLink{}, "IssueKey")
+	MetadataLinksKey   = bsonutil.MustHaveTag(TaskAnnotation{}, "MetadataLinks")
 )
 
 const (
-	Collection       = "task_annotations"
-	UIRequester      = "ui"
-	APIRequester     = "api"
-	WebhookRequester = "webhook"
+	Collection            = "task_annotations"
+	UIRequester           = "ui"
+	APIRequester          = "api"
+	WebhookRequester      = "webhook"
+	MaxMetadataLinks      = 1
+	MaxMetadataTextLength = 40
 )
 
 // FindOne gets one TaskAnnotation for the given query.
@@ -71,6 +74,7 @@ func (a *TaskAnnotation) Upsert() error {
 		IssuesKey:          a.Issues,
 		SuspectedIssuesKey: a.SuspectedIssues,
 		CreatedIssuesKey:   a.CreatedIssues,
+		MetadataLinksKey:   a.MetadataLinks,
 	}
 	if a.Metadata != nil {
 		set[MetadataKey] = a.Metadata

@@ -52,8 +52,8 @@ Notice that tasks contain:
 1.  A name
 2.  A set of dependencies on other tasks
 3.  A distro or list of distros to run on (documented more under
-    [\"Build
-    Variants\"](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#build-variants)).
+    ["Build
+    Variants"](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#build-variants)).
     If run_on is set at the task level, it takes precedent over the
     default set for the buildvariant (unless run_on is explicitly
     defined for this task under a specific build variant).
@@ -241,11 +241,11 @@ Fields:
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
--   `cron`: define with cron syntax (i.e. Min \| Hour \| DayOfMonth \|
+-   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
     Month \| DayOfWeekOptional) when (in UTC) a variant should be activated
     (Cannot be combined with batchtime). This also accepts descriptors
     such as `@daily` (reference
-    [cron](https://godoc.org/github.com/robfig/cron) for more examples),
+    [cron](https://godoc.org/github.com/robfig/cron) for more example),
     but [does not accept intervals.]{.title-ref} (i.e.
     `@every <duration>`). Only applies to tasks from mainline commits.
 -   `task_group`: a [task
@@ -269,10 +269,9 @@ allowing tasks within a build variant to be run on different distros.
 This is useful for optimizing tasks like compilations, that can benefit
 from larger, more powerful machines.
 
-Version Controlled Project Settings \-\-\-\-\-\-\-\-\-\-\-\-\--Project
-configurations can version control some select project settings (e.g.
-aliases, plugins) directly within the yaml rather than on the project
-page UI, for better accessibility and maintainability. Read more
+### Version Controlled Project Settings
+Project configurations can version control some select project settings (e.g. aliases, plugins) directly within the yaml
+rather than on the project page UI, for better accessibility and maintainability. Read more
 [here](https://github.com/evergreen-ci/evergreen/wiki/Project-and-Distro-Settings#version-control).
 
 ## Advanced Features
@@ -323,23 +322,23 @@ We will maintain the following merge rules:
 #### Validating changes to config files
 
 When editing yaml project files, you can verify that the file will work
-correctly after committing by checking it with the \"validate\" command.
+correctly after committing by checking it with the "validate" command.
 To validate local changes within modules, use the `local_modules` flag
 to list out module name and path pairs.
 
 Note: Must include a local path for includes that use a module.
 
-`` ` evergreen validate <path-to-yaml-project-file> -lm <module-name>=<path-to-yaml> ``\`
+``` evergreen validate <path-to-yaml-project-file> -lm <module-name>=<path-to-yaml> ```
 
-The validation step will check for
+The validation step will check for:
 
-:   -   valid yaml syntax
-    -   correct names for all commands used in the file
-    -   logical errors, like duplicated variant or task names
-    -   invalid sets of parameters to commands
-    -   warning conditions such as referencing a distro pool that does
-        not exist
-    -   merging errors from include files
+-   valid yaml syntax
+-   correct names for all commands used in the file
+-   logical errors, like duplicated variant or task names
+-   invalid sets of parameters to commands
+-   warning conditions such as referencing a distro pool that does
+    not exist
+-   merging errors from include files
 
 ### Modules
 
@@ -347,7 +346,7 @@ For patches that run tests based off of changes across multiple
 projects, the modules field may be defined to specify other git projects
 with configurations specifying the way that changes across them are
 applied within the patch at runtime. If configured correctly, the left
-hand side of the Spruce UI under \"Version Manifest\" will contain
+hand side of the Spruce UI under "Version Manifest" will contain
 details on how the modules were parsed from YAML and which git revisions
 are being used.
 
@@ -582,7 +581,7 @@ Every task has some expansions available by default:
 
 -   `${is_patch}` is "true" if the running task is in a patch build and
     undefined if it is not.
--   `${is_stepback}` is \"true\" if the running task was stepped back.
+-   `${is_stepback}` is "true" if the running task was stepped back.
 -   `${author}` is the patch author's username for patch tasks or the
     git commit author for git tasks
 -   `${author_email}` is the patch or the git commit authors email
@@ -624,7 +623,7 @@ Every task has some expansions available by default:
     or PR triggered commit queue item
 -   `${triggered_by_git_tag}` is the name of the tag that triggered this
     version, if applicable
--   `${is_commit_queue}` is the string \"true\" if this is a commit
+-   `${is_commit_queue}` is the string "true" if this is a commit
     queue task
 -   `${commit_message}` is the commit message if this is a commit queue
     task
@@ -636,7 +635,7 @@ inter-project dependency:
 
 -   `${trigger_event_identifier}` is the ID of the task or build that
     initiated this trigger
--   `${trigger_event_type}` will be \"task\" or \"build,\" identifying
+-   `${trigger_event_type}` will be "task" or "build," identifying
     what type of ID `${trigger_event_identifier}` is
 -   `${trigger_status}` is the task or build status of whatever
     initiated this trigger
@@ -771,8 +770,8 @@ For Example:
 -   `red` would return the item named "red"
 -   `.primary` would return all items with the tag "primary"
 -   `!.primary` would return all items that are NOT tagged "primary"
--   `.cool !blue` would return all items that are tagged \"cool\" and
-    NOT named \"blue\"
+-   `.cool !blue` would return all items that are tagged "cool" and
+    NOT named "blue"
 -   `.cool !.primary` would return all items that are tagged "cool" and
     NOT tagged "primary"
 -   `*` would return all items
@@ -1272,11 +1271,11 @@ A task can be made to depend on other tasks by adding the depended on
 tasks to the task's depends_on field. The following additional
 parameters are available:
 
--   `status` - string (default: \"success\"). One of \[\"success\",
-    \"failed\", or \"*\"\]. \"*\" includes any finished status as well
+-   `status` - string (default: "success"). One of ["success",
+    "failed", or "*"]. "*" includes any finished status as well
     as when the task is blocked.
 -   `variant` - string (by default, uses existing variant). Can specify a 
-     variant for the dependency to exist in, or \"*\" will depend on the task
+     variant for the dependency to exist in, or "*" will depend on the task
      for all matching variants.
 -   `patch_optional` - boolean (default: false). If true the dependency
     will only exist when the depended on task is present in the version
@@ -1458,12 +1457,12 @@ is complete (or when the task is complete, if `should_continue` is set).
 
     POST localhost:2285/task_status
 
-| Name            | Type    | Description                                                                                                                                                 |
-|--------------------|---------|-------------------------------------------|
-| status          | string  | Required. The overall task status. This can be \"success\" or \"failed\". If this is configured incorrectly, the task will system fail.                     |
-| type            | string  | The failure type. This can be \"setup\", \"system\", or \"test\" (see above section for corresponding colors). Will default to the command's failure type. |
-| desc            | string  | Provide details on the task failure. This is limited to 500 characters. Will default to the command's display name.                                        |
-| should_continue | boolean | Defaults to false. If set, will finish running the task before setting the status.                                                                          |
+| Name            | Type    | Description                                                                                                                                          |
+|-----------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| status          | string  | Required. The overall task status. This can be "success" or "failed". If this is configured incorrectly, the task will system fail.                  |
+| type            | string  | The failure type. This can be "setup", "system", or "test" (see above section for corresponding colors). Will default to the command's failure type. |
+| desc            | string  | Provide details on the task failure. This is limited to 500 characters. Will default to the command's display name.                                  |
+| should_continue | boolean | Defaults to false. If set, will finish running the task before setting the status.                                                                   |
 
 Example in a command:
 

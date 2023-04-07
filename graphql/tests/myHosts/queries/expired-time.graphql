@@ -1,7 +1,0 @@
-{
-  myHosts {
-    id
-    expiration
-    noExpiration
-  }
-}

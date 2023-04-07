@@ -108,6 +108,19 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 	}
 }
 
+// SetAnnotationMetadataLinks is the resolver for the setAnnotationMetadataLinks field.
+func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*restModel.APIMetadataLink) (bool, error) {
+	usr := mustHaveUser(ctx)
+	modelMetadataLinks := restModel.APIMetadataLinksToService(metadataLinks)
+	if err := annotations.ValidateMetadataLinks(modelMetadataLinks...); err != nil {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("invalid metadata link: %s", err.Error()))
+	}
+	if err := annotations.SetAnnotationMetadataLinks(ctx, taskID, execution, usr.Username(), modelMetadataLinks...); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
+	}
+	return true, nil
+}
+
 // ReprovisionToNew is the resolver for the reprovisionToNew field.
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)
@@ -1111,7 +1124,8 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 
 // RemoveItemFromCommitQueue is the resolver for the removeItemFromCommitQueue field.
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
-	result, err := data.CommitQueueRemoveItem(commitQueueID, issue, gimlet.GetUser(ctx).DisplayName())
+	username := gimlet.GetUser(ctx).DisplayName()
+	result, err := data.CommitQueueRemoveItem(commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))

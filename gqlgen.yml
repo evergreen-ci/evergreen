@@ -295,6 +295,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
+  MetadataLink:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
+  MetadataLinkInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskLogs:

@@ -1,7 +1,0 @@
-{
-  spruceConfig {
-    jira {
-        host
-    }
-  }
-}

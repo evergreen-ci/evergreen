@@ -1,7 +1,0 @@
-query {
-  task(
-    taskId: "mongodb_mongo_v3.0.11_osx_108_ssl_compile_336e39e76e7a65af1ec534f28e69f568ca97695c_16_06_13_21_07_12"
-  ) {
-    minQueuePosition
-  }
-}

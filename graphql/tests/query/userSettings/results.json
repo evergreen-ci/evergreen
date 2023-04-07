@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "query_file": "user_settings.graphql",
+      "result": {
+        "data": {
+          "userSettings": {
+            "timezone": "America/New_York",
+            "region": "",
+            "githubUser": { "lastKnownAs": "" },
+            "slackUsername": "testslackuser",
+            "slackMemberId": "12345member"
+          }
+        }
+      }
+    }
+  ]
+}

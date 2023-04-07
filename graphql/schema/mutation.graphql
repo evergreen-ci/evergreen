@@ -26,6 +26,11 @@ type Mutation {
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
+  setAnnotationMetadataLinks(
+    taskId: String!
+    execution: Int!
+    metadataLinks: [MetadataLinkInput!]!
+  ): Boolean!
 
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!

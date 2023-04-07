@@ -1,16 +1,13 @@
 package model
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -50,27 +47,16 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
-			err := RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
+			cq, err := commitqueue.FindOneId(version.Identifier)
 			if err != nil {
-				return http.StatusInternalServerError, errors.Wrap(err, "restarting later commit queue items")
+				return http.StatusInternalServerError, errors.Wrapf(err, "finding commit queue '%s'", version.Identifier)
 			}
-			_, err = RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
-			if err != nil {
-				return http.StatusInternalServerError, errors.Wrap(err, "removing patch from commit queue")
+			if cq == nil {
+				return http.StatusNotFound, errors.Errorf("commit queue '%s' for version '%s' not found", version.Identifier, version.Id)
 			}
-			p, err := patch.FindOneId(version.Id)
-			if err != nil {
-				return http.StatusInternalServerError, errors.Wrap(err, "finding patch")
+			if _, err := DequeueAndRestartForVersion(cq, version.Identifier, version.Id, user.Id, "merge task is being deactivated"); err != nil {
+				return http.StatusInternalServerError, err
 			}
-			if p == nil {
-				return http.StatusNotFound, errors.New("patch not found")
-			}
-			err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by user '%s'", user.DisplayName()))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to send github status",
-				"patch":   version.Id,
-			}))
-
 		}
 	case evergreen.SetPriorityAction:
 		projId := version.Identifier
