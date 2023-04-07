@@ -1,0 +1,27 @@
+query {
+    projectEvents(identifier: "evergreen") {
+        eventLogEntries {
+            user
+            timestamp
+            before {
+                projectRef {
+                    branch
+                }
+                githubWebhooksEnabled
+                 vars{
+                    vars
+                }
+            }
+            after {
+                projectRef {
+                    branch
+                }
+                githubWebhooksEnabled  
+                vars{
+                    vars
+                }
+            }
+        }
+        count
+    }
+}

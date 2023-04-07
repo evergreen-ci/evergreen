@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -34,14 +36,14 @@ type CommitQueueSuite struct {
 }
 
 func TestCommitQueueSuite(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	s := &CommitQueueSuite{settings: testConfig}
 	suite.Run(t, s)
 }
 
 func (s *CommitQueueSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
+	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection, model.VersionCollection, patch.Collection, task.Collection))
 	s.projectRef = &model.ProjectRef{
 		Id:               "mci",
 		Owner:            "evergreen-ci",
@@ -106,28 +108,92 @@ func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 	s.Equal(utility.ToStringPtr("mci"), cq.ProjectID)
 }
 
-func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
-	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("3")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
-
-	found, err := CommitQueueRemoveItem("mci", "not_here", "user")
+func (s *CommitQueueSuite) TestCommitQueueRemoveNonexistentItem() {
+	found, err := CommitQueueRemoveItem("mci", "not_here", "user", "reason")
 	s.Error(err)
 	s.Nil(found)
+}
 
-	found, err = CommitQueueRemoveItem("mci", "1", "user")
+func (s *CommitQueueSuite) TestCommitQueueRemoveUnfinalizedItem() {
+	const project = "mci"
+
+	for i := 0; i < 3; i++ {
+		patchID := mgobson.NewObjectId()
+		p := patch.Patch{
+			Id:      patchID,
+			Project: project,
+		}
+		s.Require().NoError(p.Insert())
+
+		pos, err := EnqueueItem(project, restModel.APICommitQueueItem{
+			Source:  utility.ToStringPtr(commitqueue.SourceDiff),
+			PatchId: utility.ToStringPtr(p.Id.Hex()),
+			Issue:   utility.ToStringPtr(strconv.Itoa(i)),
+		}, false)
+		s.Require().NoError(err)
+		s.Require().Equal(i, pos)
+	}
+
+	found, err := CommitQueueRemoveItem(project, "0", "user", "reason")
 	s.NoError(err)
 	s.NotNil(found)
-	cq, err := FindCommitQueueForProject("mci")
+	cq, err := FindCommitQueueForProject(project)
 	s.NoError(err)
-	s.Equal(utility.ToStringPtr("2"), cq.Queue[0].Issue)
-	s.Equal(utility.ToStringPtr("3"), cq.Queue[1].Issue)
+	s.Require().Len(cq.Queue, 2)
+	s.Equal("1", utility.FromStringPtr(cq.Queue[0].Issue))
+	s.Equal("2", utility.FromStringPtr(cq.Queue[1].Issue))
+}
+
+func (s *CommitQueueSuite) TestCommitQueueRemoveFinalizedItem() {
+	const project = "mci"
+
+	for i := 0; i < 3; i++ {
+		patchID := mgobson.NewObjectId()
+		p := patch.Patch{
+			Id:      patchID,
+			Project: project,
+			Version: patchID.Hex(),
+		}
+		s.Require().NoError(p.Insert())
+		v := model.Version{
+			Id:         patchID.Hex(),
+			Identifier: project,
+		}
+		s.Require().NoError(v.Insert())
+		testTask := task.Task{
+			Id:      "test-" + strconv.Itoa(i),
+			Project: project,
+			Version: v.Id,
+			Status:  evergreen.TaskUndispatched,
+		}
+		s.Require().NoError(testTask.Insert())
+		mergeTask := task.Task{
+			Id:               "merge-task-" + strconv.Itoa(i),
+			CommitQueueMerge: true,
+			Project:          project,
+			Version:          v.Id,
+			Status:           evergreen.TaskUndispatched,
+		}
+		s.Require().NoError(mergeTask.Insert())
+
+		pos, err := EnqueueItem(project, restModel.APICommitQueueItem{
+			Source:  utility.ToStringPtr(commitqueue.SourceDiff),
+			PatchId: utility.ToStringPtr(p.Id.Hex()),
+			Issue:   utility.ToStringPtr(strconv.Itoa(i)),
+			Version: utility.ToStringPtr(v.Id),
+		}, false)
+		s.Require().NoError(err)
+		s.Require().Equal(i, pos)
+	}
+
+	found, err := CommitQueueRemoveItem(project, "0", "user", "reason")
+	s.NoError(err)
+	s.NotNil(found)
+	cq, err := FindCommitQueueForProject(project)
+	s.NoError(err)
+	s.Require().Len(cq.Queue, 2)
+	s.Equal("1", utility.FromStringPtr(cq.Queue[0].Issue))
+	s.Equal("2", utility.FromStringPtr(cq.Queue[1].Issue))
 }
 
 func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
@@ -157,7 +223,7 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 }
 
 func (s *CommitQueueSuite) TestCreatePatchForMerge() {
-	s.Require().NoError(db.ClearCollections(patch.Collection, model.ProjectAliasCollection, user.Collection))
+	s.Require().NoError(db.ClearCollections(model.ProjectAliasCollection, user.Collection))
 
 	u := &user.DBUser{Id: "octocat"}
 	s.Require().NoError(u.Insert())
@@ -249,30 +315,6 @@ func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
 	s.NoError(err)
 	s.Equal(utility.ToStringPtr("mci"), cq.ProjectID)
 	s.Equal(utility.ToStringPtr("1234"), cq.Queue[0].Issue)
-}
-
-func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
-	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("3")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
-
-	found, err := CommitQueueRemoveItem("mci", "not_here", "user")
-	s.Error(err)
-	s.Nil(found)
-
-	found, err = CommitQueueRemoveItem("mci", "1", "user")
-	s.NoError(err)
-	s.NotNil(found)
-	cq, err := FindCommitQueueForProject("mci")
-	s.NoError(err)
-	s.Equal(utility.ToStringPtr("2"), cq.Queue[0].Issue)
-	s.Equal(utility.ToStringPtr("3"), cq.Queue[1].Issue)
 }
 
 func (s *CommitQueueSuite) TestWritePatchInfo() {

@@ -1,0 +1,12 @@
+query {
+  projects {
+    groupDisplayName
+    projects{
+      identifier
+      repo
+      owner 
+      displayName
+      isFavorite
+    }
+  }
+}

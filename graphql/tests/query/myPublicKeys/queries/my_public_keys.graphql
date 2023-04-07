@@ -1,0 +1,6 @@
+query {
+  myPublicKeys {
+    name
+    key
+  }
+}

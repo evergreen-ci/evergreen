@@ -27,77 +27,6 @@
       }
     },
     {
-      "query_file": "create-project.graphql",
-      "result": {
-        "data": {
-          "createProject": {
-            "id": "grumpyCat",
-            "identifier": "catVideos",
-            "repo": "catGenerator"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "create-project_2.graphql",
-      "result": {
-        "data": {
-          "createProject": {
-            "id": "happyAbyssinian",
-            "identifier": "abyssinianVideos",
-            "repo": "catGenerator"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "copy-project.graphql",
-      "result": {
-        "data": {
-          "copyProject": {
-            "id": "newAndImproved",
-            "identifier": "spruce",
-            "owner": "evergreen-ci",
-            "enabled": false
-          }
-        }
-      }
-    },
-    {
-      "query_file": "copy-project-dup-identifier.graphql",
-      "result": {
-        "data": null,
-        "errors": [
-          {
-            "message": "cannot use existing project name 'logkeeper'",
-            "path": [
-              "copyProject"
-            ],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "query_file": "copy-project-dup-id.graphql",
-      "result": {
-        "data": null,
-        "errors": [
-          {
-            "message": "cannot use existing project name 'keeperOfLogs'",
-            "path": [
-              "copyProject"
-            ],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
-      }
-    },
-    {
       "query_file": "patches-default-params.graphql",
       "result": {
         "data": {
@@ -225,43 +154,6 @@
               "filteredPatchCount": 2
             }
           }
-        }
-      }
-    },
-    {
-      "query_file":"viewableProjects.graphql",
-      "result": {
-        "data": {
-          "viewableProjectRefs": [
-            {
-              "groupDisplayName": "",
-              "projects": [
-                {
-                  "identifier": "spruce",
-                  "repo": "evergreen",
-                  "owner": "evergreen-ci",
-                  "repoRefId": ""
-                }
-              ]
-            },
-            {
-              "groupDisplayName": "animals_display",
-              "projects": [
-                {
-                  "identifier": "catVideos",
-                  "repo": "catGenerator",
-                  "owner": "theCat",
-                  "repoRefId": "animals"
-                },
-                {
-                  "identifier": "abyssinianVideos",
-                  "repo": "catGenerator",
-                  "owner": "theCat",
-                  "repoRefId": "animals"
-                }
-              ]
-            }
-          ]
         }
       }
     }

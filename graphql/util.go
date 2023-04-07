@@ -29,6 +29,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	werrors "github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/ssh"
 )
@@ -267,6 +268,22 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
 	}
 	return &apiTask, nil
+}
+
+// getTask returns the task with the given id and execution number
+func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
+	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if dbTask == nil {
+		return nil, werrors.Errorf("unable to find task %s", taskID)
+	}
+	apiTask, err := getAPITaskFromTask(ctx, apiURL, *dbTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error converting task")
+	}
+	return apiTask, err
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.

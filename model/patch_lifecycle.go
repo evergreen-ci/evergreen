@@ -1229,6 +1229,8 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 	return nil
 }
 
+// SendCommitQueueResult sends an updated GitHub PR status for a commit queue
+// result. If the patch is not part of a PR, this is a no-op.
 func SendCommitQueueResult(p *patch.Patch, status message.GithubState, description string) error {
 	if p.GithubPatchData.PRNumber == 0 {
 		return nil

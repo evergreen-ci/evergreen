@@ -202,7 +202,9 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 	return apiCommitQueue, nil
 }
 
-func CommitQueueRemoveItem(cqId, issue, user string) (*restModel.APICommitQueueItem, error) {
+// CommitQueueRemoveItem dequeues an item from the commit queue. If the item is
+// already being tested in a batch, later items in the batch are restarted.
+func CommitQueueRemoveItem(cqId, issue, user, reason string) (*restModel.APICommitQueueItem, error) {
 	cq, err := commitqueue.FindOneId(cqId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting commit queue '%s'", cqId)
@@ -210,16 +212,40 @@ func CommitQueueRemoveItem(cqId, issue, user string) (*restModel.APICommitQueueI
 	if cq == nil {
 		return nil, errors.Errorf("commit queue '%s' not found", cqId)
 	}
-	removed, err := model.RemoveItemAndPreventMerge(cq, issue, user)
-	if err != nil {
-		return nil, errors.Wrapf(err, "removing item and preventing merge for commit queue item '%s'", issue)
-	}
-	if removed == nil {
+
+	itemIdx := cq.FindItem(issue)
+	if itemIdx == -1 {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    errors.Errorf("item '%s' not found in commit queue", issue).Error(),
+			Message:    fmt.Sprintf("commit queue item '%s' not found", issue),
 		}
 	}
+	item := cq.Queue[itemIdx]
+
+	var removed *commitqueue.CommitQueueItem
+	if item.Version != "" {
+		// If the patch has been finalized, it may already be running in a
+		// batch, so it has to restart later items that are running in its
+		// batch.
+		removed, err = model.DequeueAndRestartForVersion(cq, cq.ProjectID, item.Version, user, reason)
+		if err != nil {
+			return nil, errors.Wrap(err, "dequeueing and restarting finalized commit queue item")
+		}
+	} else {
+		// If the patch hasn't been finalized yet, it can simply be removed from
+		// the commit queue.
+		removed, err = model.RemoveItemAndPreventMerge(cq, issue, user)
+		if err != nil {
+			return nil, errors.Wrap(err, "removing unfinalized commit queue item")
+		}
+		if removed == nil {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    errors.Errorf("item '%s' not found in commit queue", issue).Error(),
+			}
+		}
+	}
+
 	apiRemovedItem := restModel.APICommitQueueItem{}
 	apiRemovedItem.BuildFromService(*removed)
 	return &apiRemovedItem, nil

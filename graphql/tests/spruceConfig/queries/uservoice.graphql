@@ -1,7 +1,0 @@
-{
-  spruceConfig {
-    ui {
-        userVoice
-    }
-  }
-}

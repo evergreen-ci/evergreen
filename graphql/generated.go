@@ -48,10 +48,12 @@ type ResolverRoot interface {
 	Annotation() AnnotationResolver
 	Host() HostResolver
 	IssueLink() IssueLinkResolver
+	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
 	Permissions() PermissionsResolver
 	Pod() PodResolver
+	PodEventLogData() PodEventLogDataResolver
 	Project() ProjectResolver
 	ProjectSettings() ProjectSettingsResolver
 	ProjectSubscriber() ProjectSubscriberResolver
@@ -93,6 +95,7 @@ type ComplexityRoot struct {
 		CreatedIssues     func(childComplexity int) int
 		Id                func(childComplexity int) int
 		Issues            func(childComplexity int) int
+		MetadataLinks     func(childComplexity int) int
 		Note              func(childComplexity int) int
 		SuspectedIssues   func(childComplexity int) int
 		TaskExecution     func(childComplexity int) int
@@ -392,6 +395,7 @@ type ComplexityRoot struct {
 		BuildNum      func(childComplexity int) int
 		Builder       func(childComplexity int) int
 		ID            func(childComplexity int) int
+		Task          func(childComplexity int) int
 		TaskExecution func(childComplexity int) int
 		TaskID        func(childComplexity int) int
 		Tests         func(childComplexity int) int
@@ -426,6 +430,12 @@ type ComplexityRoot struct {
 		Modules         func(childComplexity int) int
 		Project         func(childComplexity int) int
 		Revision        func(childComplexity int) int
+	}
+
+	MetadataLink struct {
+		Source func(childComplexity int) int
+		Text   func(childComplexity int) int
+		URL    func(childComplexity int) int
 	}
 
 	Module struct {
@@ -480,6 +490,7 @@ type ComplexityRoot struct {
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
 		ScheduleTasks                 func(childComplexity int, taskIds []string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
+		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetPatchPriority              func(childComplexity int, patchID string, priority int) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
@@ -609,6 +620,7 @@ type ComplexityRoot struct {
 		NewStatus     func(childComplexity int) int
 		OldStatus     func(childComplexity int) int
 		Reason        func(childComplexity int) int
+		Task          func(childComplexity int) int
 		TaskExecution func(childComplexity int) int
 		TaskID        func(childComplexity int) int
 		TaskStatus    func(childComplexity int) int
@@ -1312,12 +1324,16 @@ type HostResolver interface {
 type IssueLinkResolver interface {
 	JiraTicket(ctx context.Context, obj *model.APIIssueLink) (*thirdparty.JiraTicket, error)
 }
+type LogkeeperBuildResolver interface {
+	Task(ctx context.Context, obj *plank.Build) (*model.APITask, error)
+}
 type MutationResolver interface {
 	BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error)
 	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
+	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -1396,6 +1412,9 @@ type PodResolver interface {
 	Task(ctx context.Context, obj *model.APIPod) (*model.APITask, error)
 
 	Type(ctx context.Context, obj *model.APIPod) (string, error)
+}
+type PodEventLogDataResolver interface {
+	Task(ctx context.Context, obj *model.PodAPIEventData) (*model.APITask, error)
 }
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
@@ -1665,6 +1684,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Annotation.Issues(childComplexity), true
+
+	case "Annotation.metadataLinks":
+		if e.complexity.Annotation.MetadataLinks == nil {
+			break
+		}
+
+		return e.complexity.Annotation.MetadataLinks(childComplexity), true
 
 	case "Annotation.note":
 		if e.complexity.Annotation.Note == nil {
@@ -2898,6 +2924,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.LogkeeperBuild.ID(childComplexity), true
 
+	case "LogkeeperBuild.task":
+		if e.complexity.LogkeeperBuild.Task == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperBuild.Task(childComplexity), true
+
 	case "LogkeeperBuild.taskExecution":
 		if e.complexity.LogkeeperBuild.TaskExecution == nil {
 			break
@@ -3051,6 +3084,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Manifest.Revision(childComplexity), true
+
+	case "MetadataLink.source":
+		if e.complexity.MetadataLink.Source == nil {
+			break
+		}
+
+		return e.complexity.MetadataLink.Source(childComplexity), true
+
+	case "MetadataLink.text":
+		if e.complexity.MetadataLink.Text == nil {
+			break
+		}
+
+		return e.complexity.MetadataLink.Text(childComplexity), true
+
+	case "MetadataLink.url":
+		if e.complexity.MetadataLink.URL == nil {
+			break
+		}
+
+		return e.complexity.MetadataLink.URL(childComplexity), true
 
 	case "Module.issue":
 		if e.complexity.Module.Issue == nil {
@@ -3556,6 +3610,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ScheduleUndispatchedBaseTasks(childComplexity, args["patchId"].(string)), true
+
+	case "Mutation.setAnnotationMetadataLinks":
+		if e.complexity.Mutation.SetAnnotationMetadataLinks == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setAnnotationMetadataLinks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetAnnotationMetadataLinks(childComplexity, args["taskId"].(string), args["execution"].(int), args["metadataLinks"].([]*model.APIMetadataLink)), true
 
 	case "Mutation.setPatchPriority":
 		if e.complexity.Mutation.SetPatchPriority == nil {
@@ -4225,6 +4291,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PodEventLogData.Reason(childComplexity), true
+
+	case "PodEventLogData.task":
+		if e.complexity.PodEventLogData.Task == nil {
+			break
+		}
+
+		return e.complexity.PodEventLogData.Task(childComplexity), true
 
 	case "PodEventLogData.taskExecution":
 		if e.complexity.PodEventLogData.TaskExecution == nil {
@@ -7849,6 +7922,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputJiraFieldInput,
 		ec.unmarshalInputJiraIssueSubscriberInput,
 		ec.unmarshalInputMainlineCommitsOptions,
+		ec.unmarshalInputMetadataLinkInput,
 		ec.unmarshalInputMoveProjectInput,
 		ec.unmarshalInputNotificationsInput,
 		ec.unmarshalInputParameterInput,
@@ -8960,6 +9034,39 @@ func (ec *executionContext) field_Mutation_scheduleUndispatchedBaseTasks_args(ct
 		}
 	}
 	args["patchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setAnnotationMetadataLinks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 []*model.APIMetadataLink
+	if tmp, ok := rawArgs["metadataLinks"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metadataLinks"))
+		arg2, err = ec.unmarshalNMetadataLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["metadataLinks"] = arg2
 	return args, nil
 }
 
@@ -10661,6 +10768,55 @@ func (ec *executionContext) fieldContext_Annotation_suspectedIssues(ctx context.
 				return ec.fieldContext_IssueLink_url(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type IssueLink", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Annotation_metadataLinks(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Annotation_metadataLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MetadataLinks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIMetadataLink)
+	fc.Result = res
+	return ec.marshalOMetadataLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Annotation_metadataLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Annotation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_MetadataLink_url(ctx, field)
+			case "text":
+				return ec.fieldContext_MetadataLink_text(ctx, field)
+			case "source":
+				return ec.fieldContext_MetadataLink_source(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MetadataLink", field.Name)
 		},
 	}
 	return fc, nil
@@ -18899,6 +19055,194 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_tests(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _LogkeeperBuild_task(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperBuild_task(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.LogkeeperBuild().Task(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperBuild_task(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperBuild",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canSync":
+				return ec.fieldContext_Task_canSync(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "containerAllocatedTime":
+				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LogkeeperTest_id(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LogkeeperTest_id(ctx, field)
 	if err != nil {
@@ -19867,6 +20211,143 @@ func (ec *executionContext) fieldContext_Manifest_revision(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _MetadataLink_url(ctx context.Context, field graphql.CollectedField, obj *model.APIMetadataLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MetadataLink_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MetadataLink_url(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MetadataLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MetadataLink_text(ctx context.Context, field graphql.CollectedField, obj *model.APIMetadataLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MetadataLink_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MetadataLink_text(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MetadataLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MetadataLink_source(ctx context.Context, field graphql.CollectedField, obj *model.APIMetadataLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MetadataLink_source(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Source, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISource)
+	fc.Result = res
+	return ec.marshalOSource2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MetadataLink_source(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MetadataLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "author":
+				return ec.fieldContext_Source_author(ctx, field)
+			case "requester":
+				return ec.fieldContext_Source_requester(ctx, field)
+			case "time":
+				return ec.fieldContext_Source_time(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Source", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Module_issue(ctx context.Context, field graphql.CollectedField, obj *model.APIModule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Module_issue(ctx, field)
 	if err != nil {
@@ -20406,6 +20887,61 @@ func (ec *executionContext) fieldContext_Mutation_removeAnnotationIssue(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeAnnotationIssue_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setAnnotationMetadataLinks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setAnnotationMetadataLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetAnnotationMetadataLinks(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(int), fc.Args["metadataLinks"].([]*model.APIMetadataLink))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setAnnotationMetadataLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setAnnotationMetadataLinks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -28841,6 +29377,191 @@ func (ec *executionContext) fieldContext_PodEventLogData_taskStatus(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _PodEventLogData_task(ctx context.Context, field graphql.CollectedField, obj *model.PodAPIEventData) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PodEventLogData_task(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.PodEventLogData().Task(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PodEventLogData_task(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PodEventLogData",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canSync":
+				return ec.fieldContext_Task_canSync(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "containerAllocatedTime":
+				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PodEventLogEntry_id(ctx context.Context, field graphql.CollectedField, obj *model.PodAPIEventLogEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PodEventLogEntry_id(ctx, field)
 	if err != nil {
@@ -28936,6 +29657,8 @@ func (ec *executionContext) fieldContext_PodEventLogEntry_data(ctx context.Conte
 				return ec.fieldContext_PodEventLogData_taskExecution(ctx, field)
 			case "taskStatus":
 				return ec.fieldContext_PodEventLogData_taskStatus(ctx, field)
+			case "task":
+				return ec.fieldContext_PodEventLogData_task(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PodEventLogData", field.Name)
 		},
@@ -35716,6 +36439,8 @@ func (ec *executionContext) fieldContext_Query_logkeeperBuildMetadata(ctx contex
 				return ec.fieldContext_LogkeeperBuild_taskExecution(ctx, field)
 			case "tests":
 				return ec.fieldContext_LogkeeperBuild_tests(ctx, field)
+			case "task":
+				return ec.fieldContext_LogkeeperBuild_task(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogkeeperBuild", field.Name)
 		},
@@ -41769,6 +42494,8 @@ func (ec *executionContext) fieldContext_Task_annotation(ctx context.Context, fi
 				return ec.fieldContext_Annotation_note(ctx, field)
 			case "suspectedIssues":
 				return ec.fieldContext_Annotation_suspectedIssues(ctx, field)
+			case "metadataLinks":
+				return ec.fieldContext_Annotation_metadataLinks(ctx, field)
 			case "taskId":
 				return ec.fieldContext_Annotation_taskId(ctx, field)
 			case "taskExecution":
@@ -57417,6 +58144,42 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputMetadataLinkInput(ctx context.Context, obj interface{}) (model.APIMetadataLink, error) {
+	var it model.APIMetadataLink
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"text", "url"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "text":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
+			it.Text, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "url":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			it.URL, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputMoveProjectInput(ctx context.Context, obj interface{}) (MoveProjectInput, error) {
 	var it MoveProjectInput
 	asMap := map[string]interface{}{}
@@ -60339,6 +61102,10 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 
 			out.Values[i] = ec._Annotation_suspectedIssues(ctx, field, obj)
 
+		case "metadataLinks":
+
+			out.Values[i] = ec._Annotation_metadataLinks(ctx, field, obj)
+
 		case "taskId":
 
 			out.Values[i] = ec._Annotation_taskId(ctx, field, obj)
@@ -62281,43 +63048,63 @@ func (ec *executionContext) _LogkeeperBuild(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._LogkeeperBuild_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "builder":
 
 			out.Values[i] = ec._LogkeeperBuild_builder(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "buildNum":
 
 			out.Values[i] = ec._LogkeeperBuild_buildNum(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "taskId":
 
 			out.Values[i] = ec._LogkeeperBuild_taskId(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "taskExecution":
 
 			out.Values[i] = ec._LogkeeperBuild_taskExecution(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "tests":
 
 			out.Values[i] = ec._LogkeeperBuild_tests(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "task":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._LogkeeperBuild_task(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -62528,6 +63315,45 @@ func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var metadataLinkImplementors = []string{"MetadataLink"}
+
+func (ec *executionContext) _MetadataLink(ctx context.Context, sel ast.SelectionSet, obj *model.APIMetadataLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, metadataLinkImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MetadataLink")
+		case "url":
+
+			out.Values[i] = ec._MetadataLink_url(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "text":
+
+			out.Values[i] = ec._MetadataLink_text(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "source":
+
+			out.Values[i] = ec._MetadataLink_source(ctx, field, obj)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var moduleImplementors = []string{"Module"}
 
 func (ec *executionContext) _Module(ctx context.Context, sel ast.SelectionSet, obj *model.APIModule) graphql.Marshaler {
@@ -62665,6 +63491,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeAnnotationIssue(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "setAnnotationMetadataLinks":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setAnnotationMetadataLinks(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -64036,6 +64871,23 @@ func (ec *executionContext) _PodEventLogData(ctx context.Context, sel ast.Select
 
 			out.Values[i] = ec._PodEventLogData_taskStatus(ctx, field, obj)
 
+		case "task":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PodEventLogData_task(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -71332,6 +72184,28 @@ func (ec *executionContext) marshalNMetStatus2githubᚗcomᚋevergreenᚑciᚋev
 	return v
 }
 
+func (ec *executionContext) unmarshalNMetadataLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx context.Context, v interface{}) ([]*model.APIMetadataLink, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.APIMetadataLink, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNMetadataLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNMetadataLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx context.Context, v interface{}) (*model.APIMetadataLink, error) {
+	res, err := ec.unmarshalInputMetadataLinkInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNModule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModule(ctx context.Context, sel ast.SelectionSet, v model.APIModule) graphql.Marshaler {
 	return ec._Module(ctx, sel, &v)
 }
@@ -74454,6 +75328,51 @@ func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.Selecti
 	}
 	res := graphql.MarshalMap(v)
 	return res
+}
+
+func (ec *executionContext) marshalOMetadataLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx context.Context, sel ast.SelectionSet, v model.APIMetadataLink) graphql.Marshaler {
+	return ec._MetadataLink(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOMetadataLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx context.Context, sel ast.SelectionSet, v []model.APIMetadataLink) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMetadataLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLink(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
 }
 
 func (ec *executionContext) marshalOModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModuleᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIModule) graphql.Marshaler {

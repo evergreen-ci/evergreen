@@ -482,7 +482,7 @@ type versionLinkInput struct {
 func versionLink(i versionLinkInput) string {
 	url := fmt.Sprintf("%s/version/%s", i.uiBase, url.PathEscape(i.versionID))
 	if i.isChild {
-		url += "/downstream-tasks"
+		url += "/downstream-projects"
 	}
 	url += "?redirect_spruce_users=true"
 	return url

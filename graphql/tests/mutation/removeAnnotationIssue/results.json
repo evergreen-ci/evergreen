@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "query_file": "remove_issue.graphql",
+      "result": {
+        "data": {
+          "removeAnnotationIssue": true
+        }
+      }
+    },
+    {
+      "query_file": "remove_suspected_issue.graphql",
+      "result": {
+        "data": {
+          "removeAnnotationIssue": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+query {
+    taskNamesForBuildVariant(projectIdentifier: "evergreen", buildVariant: "ubuntu1604")
+}

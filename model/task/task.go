@@ -512,7 +512,12 @@ func (t *Task) IsPatchRequest() bool {
 	return utility.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
-func (t *Task) IsSystemUnresponsive() bool {
+// IsUnfinishedSystemUnresponsive returns true only if this is an unfinished system unresponsive task (i.e. not on max execution)
+func (t *Task) IsUnfinishedSystemUnresponsive() bool {
+	return t.isSystemUnresponsive() && t.Execution < evergreen.MaxTaskExecution
+}
+
+func (t *Task) isSystemUnresponsive() bool {
 	// this is a legacy case
 	if t.Status == evergreen.TaskSystemUnresponse {
 		return true
@@ -521,7 +526,6 @@ func (t *Task) IsSystemUnresponsive() bool {
 	if t.Details.Type == evergreen.CommandTypeSystem && t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
 		return true
 	}
-
 	return false
 }
 
@@ -1919,7 +1923,7 @@ func (t *Task) Reset() error {
 }
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
-// tasks instead of a single one.
+// tasks instead of a single one, and verifies that priority isn't disabled.
 func ResetTasks(tasks []Task) error {
 	if len(tasks) == 0 {
 		return nil
@@ -1938,6 +1942,9 @@ func ResetTasks(tasks []Task) error {
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
+	}
+	if err := enableDisabledTasks(taskIDs); err != nil {
+		return errors.Wrap(err, "enabling disabled tasks")
 	}
 
 	return nil

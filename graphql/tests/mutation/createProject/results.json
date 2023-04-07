@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "query_file": "create_project.graphql",
+      "result": {
+        "data": {
+          "createProject": {
+            "id": "grumpyCat",
+            "identifier": "catVideos",
+            "repo": "catGenerator"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "create_project_2.graphql",
+      "result": {
+        "data": {
+          "createProject": {
+            "id": "happyAbyssinian",
+            "identifier": "abyssinianVideos",
+            "repo": "catGenerator"
+          }
+        }
+      }
+    }
+  ]
+}

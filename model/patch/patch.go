@@ -277,7 +277,7 @@ func (p *Patch) GetURL(uiHost string) string {
 	if p.Activated {
 		url = uiHost + "/version/" + p.Id.Hex()
 		if p.IsChild() {
-			url += "/downstream-tasks"
+			url += "/downstream-projects"
 		}
 	} else {
 		url = uiHost + "/patch/" + p.Id.Hex()

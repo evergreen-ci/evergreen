@@ -775,48 +775,106 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 	return catcher.Resolve()
 }
 
-// DequeueAndRestartForTask restarts all items after the given task's version, aborts/dequeues the current version,
-// and sends an updated status to GitHub.
+// DequeueAndRestartForTask restarts all items after the given task's version,
+// aborts/dequeues the current version, and sends an updated status to GitHub.
 func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubState message.GithubState, caller, reason string) error {
-	if cq == nil {
-		var err error
-		cq, err = commitqueue.FindOneId(t.Project)
+	mergeErrMsg := fmt.Sprintf("commit queue item '%s' is being dequeued: %s", t.Version, reason)
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		// If the commit queue merge task failed on setup, there is likely a merge conflict.
+		mergeErrMsg = "Merge task failed on setup, which likely means a merge conflict was introduced. Please try merging with the base branch."
+	}
+
+	_, err := dequeueAndRestartItem(dequeueAndRestartOptions{
+		cq:            cq,
+		projectID:     t.Project,
+		itemVersionID: t.Version,
+		taskID:        t.Id,
+		caller:        caller,
+		reason:        reason,
+		mergeErrMsg:   mergeErrMsg,
+		githubStatus:  githubState,
+	})
+	return err
+}
+
+// DequeueAndRestartForVersion restarts all items after the commit queue
+// item, aborts/dequeues this version, and sends an updated status to GitHub. If
+// it succeeds, it returns the removed item.
+func DequeueAndRestartForVersion(cq *commitqueue.CommitQueue, project, version, user, reason string) (*commitqueue.CommitQueueItem, error) {
+	return dequeueAndRestartItem(dequeueAndRestartOptions{
+		cq:            cq,
+		projectID:     project,
+		itemVersionID: version,
+		caller:        user,
+		reason:        reason,
+		mergeErrMsg:   fmt.Sprintf("commit queue item '%s' is being dequeued: %s", version, reason),
+		githubStatus:  message.GithubStateFailure,
+	})
+}
+
+type dequeueAndRestartOptions struct {
+	cq            *commitqueue.CommitQueue
+	projectID     string
+	itemVersionID string
+	taskID        string
+	caller        string
+	reason        string
+	mergeErrMsg   string
+	githubStatus  message.GithubState
+}
+
+func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQueueItem, error) {
+	if opts.cq == nil {
+		cq, err := commitqueue.FindOneId(opts.projectID)
 		if err != nil {
-			return errors.Wrapf(err, "getting commit queue for project '%s'", t.Project)
+			return nil, errors.Wrapf(err, "getting commit queue for project '%s'", opts.projectID)
 		}
 		if cq == nil {
-			return errors.Errorf("commit queue for project '%s' not found", t.Project)
+			return nil, errors.Errorf("commit queue for project '%s' not found", opts.projectID)
 		}
-	}
-	// this must be done before dequeuing so that we know which entries to restart
-	if err := RestartItemsAfterVersion(cq, t.Project, t.Version, caller); err != nil {
-		return errors.Wrapf(err, "restarting items after version '%s'", t.Version)
+		opts.cq = cq
 	}
 
-	p, err := patch.FindOneId(t.Version)
+	// Restart later items before dequeueing this item so that we know which
+	// entries to restart.
+	if err := RestartItemsAfterVersion(opts.cq, opts.projectID, opts.itemVersionID, opts.caller); err != nil {
+		return nil, errors.Wrap(err, "restarting later commit queue items")
+	}
+
+	p, err := patch.FindOneId(opts.itemVersionID)
 	if err != nil {
-		return errors.Wrap(err, "finding patch")
+		return nil, errors.Wrapf(err, "finding patch '%s'", opts.itemVersionID)
 	}
 	if p == nil {
-		return errors.Errorf("patch '%s' not found", t.Version)
+		return nil, errors.Errorf("patch '%s' not found", opts.itemVersionID)
 	}
-	if err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t, caller); err != nil {
-		return err
-	}
-	grip.Info(message.Fields{
-		"source":       "commit queue",
-		"version":      t.Version,
-		"project_id":   cq.ProjectID,
-		"queue_length": len(cq.Queue),
-		"message":      "commit queue item failed, dequeueing and restarting later versions",
-	})
-	err = SendCommitQueueResult(p, githubState, reason)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": "unable to send github status",
-		"patch":   t.Version,
-	}))
 
-	return nil
+	removed, err := tryDequeueAndAbortCommitQueueItem(p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
+	if err != nil {
+		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.itemVersionID)
+	}
+
+	grip.Info(message.Fields{
+		"message":      "commit queue item was dequeued and later items were restarted",
+		"source":       "commit queue",
+		"reason":       opts.reason,
+		"caller":       opts.caller,
+		"project":      opts.projectID,
+		"issue":        removed.Issue,
+		"patch":        removed.PatchId,
+		"version":      opts.itemVersionID,
+		"task":         opts.taskID,
+		"queue_length": len(opts.cq.Queue),
+	})
+
+	if err := SendCommitQueueResult(p, opts.githubStatus, opts.reason); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to send GitHub status",
+			"patch":   p.Id.Hex(),
+		}))
+	}
+
+	return removed, nil
 }
 
 // HandleEndTaskForCommitQueueTask handles necessary dequeues and stepback restarts for
@@ -889,7 +947,7 @@ func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, ca
 	return DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
 }
 
-func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, t *task.Task, caller string) error {
+func tryDequeueAndAbortCommitQueueItem(p *patch.Patch, cq commitqueue.CommitQueue, taskID, mergeErrMsg string, caller string) (*commitqueue.CommitQueueItem, error) {
 	issue := p.Id.Hex()
 	err := removeNextMergeTaskDependency(cq, issue)
 	grip.Error(message.WrapError(err, message.Fields{
@@ -906,26 +964,18 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 		"caller":  caller,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "removing and preventing merge for item '%s' from queue '%s'", p.Version, p.Project)
+		return nil, errors.Wrapf(err, "removing and preventing merge for item '%s' from queue '%s'", issue, p.Project)
 	}
 	if removed == nil {
-		return errors.Errorf("no commit queue entry removed for '%s'", issue)
+		return nil, errors.Errorf("no commit queue entry removed for issue '%s'", issue)
 	}
 
-	if p.IsPRMergePatch() {
-		err = SendCommitQueueResult(p, message.GithubStateFailure, "merge test failed")
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error sending github status",
-			"patch":   p.Id.Hex(),
-		}))
+	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeErrMsg)
+	if err := CancelPatch(p, task.AbortInfo{TaskID: taskID, User: caller}); err != nil {
+		return nil, errors.Wrap(err, "aborting failed commit queue patch")
 	}
-	// If the commit queue merge task failed on setup, there is likely a merge conflict.
-	var mergeError string
-	if t.Details.Type == evergreen.CommandTypeSetup {
-		mergeError = "Merge task failed on setup, which likely means a merge conflict was introduced. Please try merging with the base branch."
-	}
-	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeError)
-	return errors.Wrap(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "aborting failed commit queue patch")
+
+	return removed, nil
 }
 
 // removeNextMergeTaskDependency basically removes the given merge task from a linked list of

@@ -1,7 +1,0 @@
-{
-  githubProjectConflicts(projectId: "mci") {
-      commitQueueIdentifiers
-      prTestingIdentifiers
-      commitCheckIdentifiers
-  }
-}

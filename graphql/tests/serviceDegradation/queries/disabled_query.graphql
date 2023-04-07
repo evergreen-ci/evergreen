@@ -1,0 +1,13 @@
+query DisabledQuery {
+  projects {
+      groupDisplayName
+      projects {
+        id
+        identifier
+        repo
+        owner
+        displayName
+        isFavorite
+      }
+  }
+}
