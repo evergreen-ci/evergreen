@@ -548,11 +548,6 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting display task"))
 	}
-	queue := h.env.RemoteQueue()
-	job := units.NewCollectTaskEndDataJob(*t, p.ID)
-	if err = queue.Put(ctx, job); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing job to update task stats accounting"))
-	}
 
 	if p.Status != pod.StatusRunning {
 		j := units.NewPodTerminationJob(h.podID, "pod is no longer running", utility.RoundPartOfMinute(0))

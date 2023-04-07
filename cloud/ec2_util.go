@@ -146,14 +146,14 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	}
 
 	systemTags := []host.Tag{
-		host.Tag{Key: evergreen.TagName, Value: intentHost.Id, CanBeModified: false},
-		host.Tag{Key: evergreen.TagDistro, Value: intentHost.Distro.Id, CanBeModified: false},
-		host.Tag{Key: evergreen.TagEvergreenService, Value: hostname, CanBeModified: false},
-		host.Tag{Key: evergreen.TagUsername, Value: username, CanBeModified: false},
-		host.Tag{Key: evergreen.TagOwner, Value: intentHost.StartedBy, CanBeModified: false},
-		host.Tag{Key: evergreen.TagMode, Value: "production", CanBeModified: false},
-		host.Tag{Key: evergreen.TagStartTime, Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
-		host.Tag{Key: evergreen.TagExpireOn, Value: expireOn, CanBeModified: false},
+		{Key: evergreen.TagName, Value: intentHost.Id, CanBeModified: false},
+		{Key: evergreen.TagDistro, Value: intentHost.Distro.Id, CanBeModified: false},
+		{Key: evergreen.TagEvergreenService, Value: hostname, CanBeModified: false},
+		{Key: evergreen.TagUsername, Value: username, CanBeModified: false},
+		{Key: evergreen.TagOwner, Value: intentHost.StartedBy, CanBeModified: false},
+		{Key: evergreen.TagMode, Value: "production", CanBeModified: false},
+		{Key: evergreen.TagStartTime, Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
+		{Key: evergreen.TagExpireOn, Value: expireOn, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
@@ -491,30 +491,6 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 	return catcher.Resolve()
 }
 
-func IsEc2Provider(provider string) bool {
-	return provider == evergreen.ProviderNameEc2OnDemand ||
-		provider == evergreen.ProviderNameEc2Spot ||
-		provider == evergreen.ProviderNameEc2Fleet
-}
-
-func IsDockerProvider(provider string) bool {
-	return provider == evergreen.ProviderNameDocker ||
-		provider == evergreen.ProviderNameDockerMock
-}
-
-func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
-	region := settings.Region
-	if region == "" {
-		region = evergreen.DefaultEC2Region
-	}
-	return ManagerOpts{
-		Provider:       provider,
-		Region:         region,
-		ProviderKey:    settings.AWSKeyID,
-		ProviderSecret: settings.AWSSecret,
-	}
-}
-
 // Get EC2 key and secret from the AWS configuration
 func GetEC2Key(s *evergreen.Settings) (string, string, error) {
 	if len(s.Providers.AWS.EC2Keys) == 0 {
@@ -530,6 +506,19 @@ func GetEC2Key(s *evergreen.Settings) (string, string, error) {
 	}
 
 	return key, secret, nil
+}
+
+func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
+	region := settings.Region
+	if region == "" {
+		region = evergreen.DefaultEC2Region
+	}
+	return ManagerOpts{
+		Provider:       provider,
+		Region:         region,
+		ProviderKey:    settings.AWSKeyID,
+		ProviderSecret: settings.AWSSecret,
+	}
 }
 
 func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {

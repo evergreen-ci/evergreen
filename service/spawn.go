@@ -175,7 +175,7 @@ func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Requ
 			errors.Errorf("Host '%s' not found", hostId))
 		return
 	}
-	if cloud.IsEc2Provider(h.Provider) {
+	if evergreen.IsEc2Provider(h.Provider) {
 		allowedTypes := uis.Settings.Providers.AWS.AllowedInstanceTypes
 		// add the original instance type to the list if applicable
 		if len(h.Distro.ProviderSettingsList) > 0 {

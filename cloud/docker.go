@@ -33,7 +33,7 @@ func (*dockerSettings) FromDistroSettings(distro.Distro, string) error { return 
 
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
-	if !IsDockerProvider(h.Distro.Provider) {
+	if !evergreen.IsDockerProvider(h.Distro.Provider) {
 		return nil, errors.Errorf("can't spawn instance of provider '%s' for distro '%s': distro provider is '%s'", evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
 
