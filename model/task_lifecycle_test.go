@@ -1841,6 +1841,7 @@ func TestMarkEnd(t *testing.T) {
 			BuildId:   b.Id,
 			Status:    evergreen.TaskStarted,
 			Version:   "version1",
+			HostId:    taskHost.Id,
 		}
 		t2 := &task.Task{
 			Id:        "execTask2",
@@ -3597,7 +3598,11 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Identifier: utility.ToStringPtr("sample"),
 	}
 	require.NoError(pp.Insert())
-
+	taskHost := host.Host{
+		Id:          "myHost",
+		RunningTask: "testone",
+	}
+	assert.NoError(taskHost.Insert())
 	buildID := "buildtest"
 	testTask := &task.Task{
 		Id:          "testone",
@@ -3608,14 +3613,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
-		HostId:      "myHost",
+		HostId:      taskHost.Id,
 	}
 	assert.NoError(testTask.Insert())
-	taskHost := host.Host{
-		Id:          "myHost",
-		RunningTask: testTask.Id,
-	}
-	assert.NoError(taskHost.Insert())
 	anotherTask := &task.Task{
 		Id:          "two",
 		DisplayName: "test 2",
@@ -3625,6 +3625,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      taskHost.Id,
 	}
 	assert.NoError(anotherTask.Insert())
 	displayTask := &task.Task{
@@ -3649,6 +3650,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      taskHost.Id,
 	}
 	assert.True(exeTask0.IsPartOfDisplay())
 	assert.NoError(exeTask0.Insert())
@@ -3661,6 +3663,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      taskHost.Id,
 	}
 	assert.True(exeTask1.IsPartOfDisplay())
 	assert.NoError(exeTask1.Insert())
@@ -3922,6 +3925,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			ActivatedTime: time.Now().Add(-task.UnschedulableThreshold - time.Minute),
 			BuildId:       "b2",
 			Version:       "version2",
+			HostId:        "h1",
 			Requester:     evergreen.PatchVersionRequester,
 		},
 		{
@@ -4304,6 +4308,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 		Activated:     true,
 		ActivatedTime: time.Now(),
 		BuildId:       "b",
+		HostId:        "h1",
 	}
 	assert.NoError(t, dispTask.Insert())
 	assert.NoError(t, execTask.Insert())
@@ -4832,6 +4837,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Version:         "v",
 		MustHaveResults: true,
 		ResultsService:  testresult.TestResultsServiceLocal,
+		HostId:          "hostId",
 	}
 	assert.NoError(t, testTask2.Insert())
 	b := build.Build{
@@ -5181,7 +5187,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 }
 
 func TestAbortedTaskDelayedRestart(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, host.Collection, build.Collection, VersionCollection))
 	task1 := task.Task{
 		Id:                "task1",
 		BuildId:           "b",
