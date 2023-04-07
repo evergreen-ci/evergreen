@@ -97,7 +97,7 @@ comprise a suite of tests or generation of a set of artifacts.
 | `expected_duration_ms` | int           | Number of milliseconds expected for this task to execute                                                                                                                                                                                                |
 | `previous_executions`  | []Task        | Contains previous executions of the task if they were requested, and available. May be empty.                                                                                                                                                           |
 | `parent_task_id`       | string        | The ID of the task's parent display task, if requested and available                                                                                                                                                                                    |
-| `artifacts`            | []File        | The list of artifacts associated with the task.
+| `artifacts`            | []File        | The list of artifacts associated with the task.                                                                                                                                                                                                         |
 
 **Logs**
 
@@ -221,6 +221,8 @@ Task Annotations give users more context about task failures.
 | note             | note_object            | Comment about the task failure                                                                                   |
 | issues           | []issue_link           | Links to tickets definitely related                                                                              |
 | suspected_issues | []issue_link           | Links to tickets possibly related                                                                                |
+| metadata_links   | []metadata_link        | List of links associated with a task, to be displayed in the task metadata sidebar, currently limited to 1       |
+
 
 **Note**
 
@@ -245,6 +247,14 @@ Task Annotations give users more context about task failures.
 | issue_key        | string        | Text to be displayed              |
 | source           | source_object | The source of the edit            |
 | confidence_score | float32       | The confidence score of the issue |
+
+**Metadata Link**
+
+| Name             | Type          | Description            |
+|------------------|---------------|------------------------|
+| url              | string        | The url of the link    |
+| text             | string        | Text to be displayed   |
+| source           | source_object | The source of the edit |
 
 #### Endpoints
 
