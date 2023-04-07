@@ -171,7 +171,11 @@ func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation
 	out.Issues = BuildIssueLinks(m.Issues)
 	out.SuspectedIssues = BuildIssueLinks(m.SuspectedIssues)
 	out.CreatedIssues = BuildIssueLinks(m.CreatedIssues)
-	out.MetadataLinks = BuildMetadataLinks(m.MetadataLinks)
+	apiMetadataLinks := []*APIMetadataLink{}
+	for _, link := range m.MetadataLinks {
+		apiMetadataLinks = append(apiMetadataLinks, &link)
+	}
+	out.MetadataLinks = APIMetadataLinksToService(apiMetadataLinks)
 	out.Note = APINoteToService(m.Note)
 	return out
 }
@@ -212,14 +216,14 @@ func BuildAPIMetadataLinks(t []annotations.MetadataLink) []APIMetadataLink {
 	return m
 }
 
-// BuildMetadataLinks converts a slice of APIMetadataLink to a slice of annotations.MetadataLink
-func BuildMetadataLinks(t []APIMetadataLink) []annotations.MetadataLink {
+// APIMetadataLinksToService converts a slice of APIMetadataLink to a slice of annotations.MetadataLink
+func APIMetadataLinksToService(t []*APIMetadataLink) []annotations.MetadataLink {
 	if t == nil {
 		return nil
 	}
 	m := []annotations.MetadataLink{}
 	for _, e := range t {
-		m = append(m, *APIMetadataLinkToService(e))
+		m = append(m, *APIMetadataLinkToService(*e))
 	}
 	return m
 }
