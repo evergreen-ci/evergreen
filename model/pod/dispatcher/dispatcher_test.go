@@ -486,6 +486,8 @@ func TestRemovePod(t *testing.T) {
 			assert.Empty(t, dbDisp.PodIDs)
 		},
 		"SucceedsAndFixesTasksWhenTheLastPodIsBeingRemoved": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
+			const podID = "pod_id"
+
 			t0 := task.Task{
 				Id:                     "task_id0",
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
@@ -493,6 +495,7 @@ func TestRemovePod(t *testing.T) {
 				Activated:              true,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
+				PodID:                  podID,
 			}
 			require.NoError(t, t0.Insert())
 
@@ -516,10 +519,10 @@ func TestRemovePod(t *testing.T) {
 				ContainerAllocated:          true,
 				ContainerAllocatedTime:      time.Now(),
 				ContainerAllocationAttempts: 100,
+				PodID:                       podID,
 			}
 			require.NoError(t, t1.Insert())
 
-			const podID = "pod_id"
 			pd := NewPodDispatcher("group_id", []string{t0.Id, t1.Id}, []string{podID})
 			require.NoError(t, pd.Insert())
 
