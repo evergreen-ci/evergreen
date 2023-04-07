@@ -4822,6 +4822,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Id:          "hostId",
 		RunningTask: testTask1.Id,
 	}
+	assert.NoError(t, taskHost.Insert())
 	testTask2 := task.Task{
 		Id:              "t2",
 		Status:          evergreen.TaskStarted,
