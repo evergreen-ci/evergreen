@@ -110,7 +110,7 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 	}
 	// Only error for no files if the user provided files.
 	if len(out) == 0 && len(files) > 0 {
-		return nil, errors.New("Files provided but no files found")
+		return nil, errors.New("Files parameter was provided but no XML files matched")
 	}
 
 	return out, nil
@@ -176,7 +176,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		}
 	}
 	if len(reportFilePaths) == numInvalid {
-		return errors.New("all given file paths are invalid")
+		return errors.New("all given file paths do not exist or are directories")
 	}
 
 	succeeded := 0
