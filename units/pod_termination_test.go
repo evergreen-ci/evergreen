@@ -218,6 +218,7 @@ func TestPodTerminationJob(t *testing.T) {
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
+				PodID:                  j.pod.ID,
 			}
 			require.NoError(t, t0.Insert())
 			v := model.Version{

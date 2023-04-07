@@ -26,6 +26,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Status:  evergreen.TaskStarted,
 				BuildId: "b",
 				Version: "v",
+				HostId:  "container2",
 			}
 			require.NoError(t, t1.Insert())
 			b := build.Build{Id: "b", Version: "v"}
@@ -78,6 +79,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Status:  evergreen.TaskStarted,
 				BuildId: "b",
 				Version: "v",
+				HostId:  "runningTask",
 			}
 			require.NoError(t, t1.Insert())
 			b := build.Build{Id: "b", Version: "v"}

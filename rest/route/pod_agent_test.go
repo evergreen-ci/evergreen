@@ -454,6 +454,7 @@ func TestPodAgentEndTask(t *testing.T) {
 				BuildId:   buildID,
 				Version:   versionID,
 				Project:   projID,
+				PodID:     podID,
 			}
 			require.NoError(t, taskToInsert.Insert())
 			buildToInsert := &build.Build{
@@ -497,6 +498,7 @@ func TestPodAgentEndTask(t *testing.T) {
 				BuildId:   buildID,
 				Version:   versionID,
 				Project:   projID,
+				PodID:     podID,
 			}
 			require.NoError(t, taskToInsert.Insert())
 			buildToInsert := &build.Build{
@@ -538,6 +540,7 @@ func TestPodAgentEndTask(t *testing.T) {
 				BuildId:      buildID,
 				Version:      versionID,
 				Project:      projID,
+				PodID:        podID,
 				BuildVariant: "bv1",
 				Requester:    evergreen.MergeTestRequester,
 				DisplayName:  "some_task",
