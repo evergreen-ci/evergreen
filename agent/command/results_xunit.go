@@ -108,6 +108,10 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 	if catcher.HasErrors() {
 		return nil, errors.Wrapf(catcher.Resolve(), "%d incorrect file specifications", catcher.Len())
 	}
+	// Only error for no files if the user provided files.
+	if len(out) == 0 && len(files) > 0 {
+		return nil, errors.New("Files parameter was provided but no XML files matched")
+	}
 
 	return out, nil
 }
@@ -130,6 +134,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		file       *os.File
 		testSuites []testSuite
 	)
+	numInvalid := 0
 	for _, reportFileLoc := range reportFilePaths {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while parsing xunit file '%s'", reportFileLoc)
@@ -137,11 +142,13 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 		stat, err := os.Stat(reportFileLoc)
 		if os.IsNotExist(err) {
+			numInvalid += 1
 			logger.Task().Infof("Result file '%s' does not exist.", reportFileLoc)
 			continue
 		}
 
 		if stat.IsDir() {
+			numInvalid += 1
 			logger.Task().Infof("Result file '%s' is a directory, not a file.", reportFileLoc)
 			continue
 		}
@@ -168,9 +175,8 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 			cumulative = addTestCasesForSuite(suite, idx, conf, cumulative)
 		}
 	}
-
-	if len(cumulative.tests) == 0 {
-		return errors.New("no test results found")
+	if len(reportFilePaths) == numInvalid {
+		return errors.New("all given file paths do not exist or are directories")
 	}
 
 	succeeded := 0
@@ -188,8 +194,10 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
 	logger.Task().Infof("Posting test logs succeeded for %d of %d files.", succeeded, len(cumulative.logs))
-
-	return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
+	if len(cumulative.tests) > 0 {
+		return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
+	}
+	return nil
 }
 
 type testcaseAccumulator struct {

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+    <testsuite package="org.spectral" time="0" tests="0" errors="0" failures="0" name="/data/mci/dc338b2d553255be279914976430fbf8/bc/4a0b4e7624db0d6931a042affd549813/sandbox/linux-sandbox/3225/execroot/com_xgen_svc/bazel-out/k8-fastbuild/bin/scripts/evergreen/openapi/ensure_api_is_valid.runfiles/com_xgen_svc/server/openapi/atlas/openapi.yaml">
+    </testsuite>
+</testsuites>
