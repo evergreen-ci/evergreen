@@ -221,7 +221,7 @@ Task Annotations give users more context about task failures.
 | note             | note_object            | Comment about the task failure                                                                                   |
 | issues           | []issue_link           | Links to tickets definitely related                                                                              |
 | suspected_issues | []issue_link           | Links to tickets possibly related                                                                                |
-| metadata_links   | []metadata_link        | List of arbitrary links associated with a task, meant to be displayed in the task metadata sidebar               |
+| metadata_links   | []metadata_link        | List of links associated with a task, to be displayed in the task metadata sidebar, currently limited to 1       |
 
 
 **Note**
