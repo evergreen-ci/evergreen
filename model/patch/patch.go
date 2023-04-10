@@ -769,7 +769,8 @@ func (p *Patch) IsChild() bool {
 func (p *Patch) CollectiveStatus() (string, error) {
 	parentPatch := p
 	if p.IsChild() {
-		parentPatch, err := FindOneId(p.Triggers.ParentPatch)
+		var err error
+		parentPatch, err = FindOneId(p.Triggers.ParentPatch)
 		if err != nil {
 			return "", errors.Wrap(err, "getting parent patch")
 		}
@@ -1190,7 +1191,7 @@ func CollectiveStatus(patchId string) (string, error) {
 }
 
 // GetCollectiveStatus answers the question of what the patch status should be
-// when the patch status and the status of it's children are different
+// when the patch status and the status of its children are different
 func GetCollectiveStatus(statuses []string) string {
 	hasCreated := false
 	hasFailure := false
