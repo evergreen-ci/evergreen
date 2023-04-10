@@ -1849,6 +1849,7 @@ func TestMarkEnd(t *testing.T) {
 			BuildId:   b.Id,
 			Status:    evergreen.TaskStarted,
 			Version:   "version1",
+			HostId:    taskHost.Id,
 		}
 		So(t1.Insert(), ShouldBeNil)
 		So(t2.Insert(), ShouldBeNil)
