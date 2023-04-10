@@ -708,6 +708,7 @@ func MarkEnd(settings *evergreen.Settings, t *task.Task, caller string, finishTi
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
 func logTaskEndStats(t *task.Task) error {
+	now := time.Now()
 	msg := message.Fields{
 		"abort":                t.Aborted,
 		"activated_by":         t.ActivatedBy,
@@ -785,6 +786,7 @@ func logTaskEndStats(t *task.Task) error {
 		msg["container_allocated_time"] = t.ContainerAllocatedTime
 	}
 
+	timeForHistoricRuntime := time.Now()
 	historicRuntime, err := t.GetHistoricRuntime()
 	if err != nil {
 		msg[message.FieldsMsgName] = "problem computing historic runtime"
@@ -793,6 +795,12 @@ func logTaskEndStats(t *task.Task) error {
 		msg["average_runtime_secs"] = historicRuntime.Seconds()
 		grip.Info(msg)
 	}
+	grip.Debug(message.Fields{
+		"message":                        "ran task-end-stats",
+		"time_taken_ms":                  time.Since(now).Milliseconds(),
+		"time_taken_historic_runtime_ms": time.Since(timeForHistoricRuntime).Milliseconds(),
+		"task":                           t.Id,
+	})
 	return nil
 }
 
