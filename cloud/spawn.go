@@ -107,7 +107,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if d == nil {
 		return nil, errors.Errorf("distro '%s' not found", so.DistroId)
 	}
-	if so.Region == "" && IsEc2Provider(d.Provider) {
+	if so.Region == "" && evergreen.IsEc2Provider(d.Provider) {
 		u := gimlet.GetUser(ctx)
 		dbUser, ok := u.(*user.DBUser)
 		if !ok {
@@ -116,7 +116,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		so.Region = dbUser.GetRegion()
 	}
 	if so.Userdata != "" {
-		if !IsEc2Provider(d.Provider) {
+		if !evergreen.IsEc2Provider(d.Provider) {
 			return nil, errors.Errorf("cannot set user data for non-EC2 provider '%s'", d.Provider)
 		}
 		if _, err = parseUserData(so.Userdata); err != nil {

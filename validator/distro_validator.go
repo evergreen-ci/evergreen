@@ -132,7 +132,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 			Level:   Error,
 		})
 	}
-	if cloud.IsEc2Provider(d.Provider) && len(d.ProviderSettingsList) > 1 {
+	if evergreen.IsEc2Provider(d.Provider) && len(d.ProviderSettingsList) > 1 {
 		return append(errs, validateMultipleProviderSettings(d)...)
 	} else if err := validateSingleProviderSettings(d); err != nil {
 		errs = append(errs, ValidationError{

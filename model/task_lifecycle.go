@@ -689,14 +689,110 @@ func MarkEnd(settings *evergreen.Settings, t *task.Task, caller string, finishTi
 		}
 	}
 
-	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
+	if err = UpdateBuildAndVersionStatusForTask(t); err != nil {
 		return errors.Wrap(err, "updating build/version status")
+	}
+
+	if err = logTaskEndStats(t); err != nil {
+		return errors.Wrap(err, "logging task end stats")
 	}
 
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		return TryResetTask(settings, t.Id, evergreen.APIServerTaskActivator, "", detail)
 	}
 
+	return nil
+}
+
+// logTaskEndStats logs information a task after it
+// completes. It also logs information about the total runtime and instance
+// type, which can be used to measure the cost of running a task.
+func logTaskEndStats(t *task.Task) error {
+	msg := message.Fields{
+		"abort":                t.Aborted,
+		"activated_by":         t.ActivatedBy,
+		"build":                t.BuildId,
+		"current_runtime_secs": t.FinishTime.Sub(t.StartTime).Seconds(),
+		"display_task":         t.DisplayOnly,
+		"execution":            t.Execution,
+		"generator":            t.GenerateTask,
+		"group":                t.TaskGroup,
+		"group_max_hosts":      t.TaskGroupMaxHosts,
+		"priority":             t.Priority,
+		"project":              t.Project,
+		"requester":            t.Requester,
+		"stat":                 "task-end-stats",
+		"status":               t.GetDisplayStatus(),
+		"task":                 t.DisplayName,
+		"task_id":              t.Id,
+		"total_wait_secs":      t.FinishTime.Sub(t.ActivatedTime).Seconds(),
+		"start_time":           t.StartTime,
+		"scheduled_time":       t.ScheduledTime,
+		"variant":              t.BuildVariant,
+		"version":              t.Version,
+	}
+
+	if t.IsPartOfDisplay() {
+		msg["display_task_id"] = t.DisplayTaskId
+	}
+
+	pRef, _ := FindBranchProjectRef(t.Project)
+	if pRef != nil {
+		msg["project_identifier"] = pRef.Identifier
+	}
+
+	isHostMode := t.IsHostTask()
+	if isHostMode {
+		taskHost, err := host.FindOneId(t.HostId)
+		if err != nil {
+			return err
+		}
+		if taskHost == nil {
+			return errors.Errorf("host '%s' not found", t.HostId)
+		}
+		msg["host_id"] = taskHost.Id
+		msg["distro"] = taskHost.Distro.Id
+		msg["provider"] = taskHost.Distro.Provider
+		if evergreen.IsEc2Provider(taskHost.Distro.Provider) && len(taskHost.Distro.ProviderSettingsList) > 0 {
+			instanceType, ok := taskHost.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+			if ok {
+				msg["instance_type"] = instanceType
+			}
+		}
+	} else {
+		taskPod, err := pod.FindOneByID(t.PodID)
+		if err != nil {
+			return errors.Wrapf(err, "finding pod '%s'", t.PodID)
+		}
+		if taskPod == nil {
+			return errors.Errorf("pod '%s' not found", t.PodID)
+		}
+		msg["pod_id"] = taskPod.ID
+		msg["pod_os"] = taskPod.TaskContainerCreationOpts.OS
+		msg["pod_arch"] = taskPod.TaskContainerCreationOpts.Arch
+		msg["cpu"] = taskPod.TaskContainerCreationOpts.CPU
+		msg["memory_mb"] = taskPod.TaskContainerCreationOpts.MemoryMB
+		if taskPod.TaskContainerCreationOpts.OS.Matches(evergreen.ECSOS(pod.OSWindows)) {
+			msg["windows_version"] = taskPod.TaskContainerCreationOpts.WindowsVersion
+		}
+	}
+
+	if !t.DependenciesMetTime.IsZero() {
+		msg["dependencies_met_time"] = t.DependenciesMetTime
+	}
+
+	if !t.ContainerAllocatedTime.IsZero() {
+		msg["container_allocated_time"] = t.ContainerAllocatedTime
+	}
+
+	historicRuntime, err := t.GetHistoricRuntime()
+	if err != nil {
+		msg[message.FieldsMsgName] = "problem computing historic runtime"
+		grip.Warning(message.WrapError(err, msg))
+	} else {
+		msg["average_runtime_secs"] = historicRuntime.Seconds()
+		grip.Info(msg)
+	}
 	return nil
 }
 
@@ -1922,6 +2018,9 @@ func resetSystemFailedTask(settings *evergreen.Settings, t *task.Task, descripti
 
 	if err := t.MarkSystemFailed(description); err != nil {
 		return errors.Wrap(err, "marking task as system failed")
+	}
+	if err := logTaskEndStats(t); err != nil {
+		return errors.Wrap(err, "logging task end stats")
 	}
 
 	return errors.Wrap(ResetTaskOrDisplayTask(settings, t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")

@@ -476,6 +476,19 @@ const (
 	DefaultEBSAvailabilityZone = "us-east-1a"
 )
 
+// IsEc2Provider returns true if the provider is ec2.
+func IsEc2Provider(provider string) bool {
+	return provider == ProviderNameEc2OnDemand ||
+		provider == ProviderNameEc2Spot ||
+		provider == ProviderNameEc2Fleet
+}
+
+// IsDockerProvider returns true if the provider is docker.
+func IsDockerProvider(provider string) bool {
+	return provider == ProviderNameDocker ||
+		provider == ProviderNameDockerMock
+}
+
 var (
 	// ProviderSpawnable includes all cloud provider types where hosts can be
 	// dynamically created and terminated according to need. This has no

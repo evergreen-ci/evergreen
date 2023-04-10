@@ -288,7 +288,7 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 				"remote":     params.remoteAddr,
 				"request_id": gimlet.GetRequestID(ctx),
 			}
-			if cloud.IsEc2Provider(params.host.Distro.Provider) {
+			if evergreen.IsEc2Provider(params.host.Distro.Provider) {
 				msg["ec2_instance_id"] = params.ec2InstanceID
 			}
 			grip.Warning(msg)
@@ -305,7 +305,7 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 // host is still believed to be an intent host but somehow the agent is running
 // on an EC2 instance associated with that intent host.
 func (h *hostAgentNextTask) fixIntentHostRunningAgent(ctx context.Context, host *host.Host, instanceID string) error {
-	if !cloud.IsEc2Provider(host.Provider) {
+	if !evergreen.IsEc2Provider(host.Provider) {
 		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
 		return nil
 	}
@@ -1293,12 +1293,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 	}
 
-	queue := h.env.RemoteQueue()
-	job := units.NewCollectTaskEndDataJob(*t, currentHost, nil, currentHost.Id)
-	if err = queue.Put(ctx, job); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "queueing job to update task stats accounting"))
-	}
-
 	if checkHostHealth(currentHost) {
 		if _, err := prepareHostForAgentExit(ctx, agentExitParams{
 			host:       currentHost,
@@ -1403,7 +1397,7 @@ func prepareHostForAgentExit(ctx context.Context, params agentExitParams, env ev
 				"remote":     params.remoteAddr,
 				"request_id": gimlet.GetRequestID(ctx),
 			}
-			if cloud.IsEc2Provider(params.host.Distro.Provider) {
+			if evergreen.IsEc2Provider(params.host.Distro.Provider) {
 				msg["ec2_instance_id"] = params.ec2InstanceID
 			}
 			grip.Warning(msg)

@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -420,7 +419,7 @@ func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if !cloud.IsEc2Provider(d.Provider) {
+	if !evergreen.IsEc2Provider(d.Provider) {
 		return gimlet.NewJSONResponse("")
 	}
 
@@ -502,7 +501,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, d := range allDistros {
-		if !cloud.IsEc2Provider(d.Provider) || len(d.ProviderSettingsList) <= 1 {
+		if !evergreen.IsEc2Provider(d.Provider) || len(d.ProviderSettingsList) <= 1 {
 			continue
 		}
 		originalAMI := d.GetDefaultAMI()

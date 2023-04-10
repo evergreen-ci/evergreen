@@ -134,9 +134,16 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		"RestartsStaleContainerTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			j.task.ExecutionPlatform = task.ExecutionPlatformContainer
 			j.task.HostId = ""
+			p := pod.Pod{
+				ID:     "pod_id",
+				Status: pod.StatusRunning,
+			}
+
+			j.task.PodID = p.ID
 			j.task.ContainerAllocated = true
 			require.NoError(t, j.task.Insert())
 			require.NoError(t, v.Insert())
+			require.NoError(t, p.Insert())
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())

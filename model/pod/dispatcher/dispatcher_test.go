@@ -457,13 +457,12 @@ func TestRemovePod(t *testing.T) {
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
+	const podID = "pod_id"
 
 	for tName, tCase := range map[string]func(ctx context.Context, env evergreen.Environment, t *testing.T){
 		"SucceedsWithSomePodsRemaining": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
-			const podID = "pod_id"
 			pd := NewPodDispatcher("group_id", nil, []string{podID, "other_pod_id", "another_pod_id"})
 			require.NoError(t, pd.Insert())
-
 			require.NoError(t, pd.RemovePod(ctx, env, podID))
 
 			dbDisp, err := FindOneByID(pd.ID)
@@ -473,7 +472,6 @@ func TestRemovePod(t *testing.T) {
 			assert.ElementsMatch(t, dbDisp.PodIDs, []string{"other_pod_id", "another_pod_id"})
 		},
 		"SucceedsWhenTheLastPodIsBeingRemovedWithoutAnyTasks": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
-			const podID = "pod_id"
 			pd := NewPodDispatcher("group_id", nil, []string{podID})
 			require.NoError(t, pd.Insert())
 
@@ -493,6 +491,7 @@ func TestRemovePod(t *testing.T) {
 				Activated:              true,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
+				PodID:                  podID,
 			}
 			require.NoError(t, t0.Insert())
 
@@ -516,10 +515,10 @@ func TestRemovePod(t *testing.T) {
 				ContainerAllocated:          true,
 				ContainerAllocatedTime:      time.Now(),
 				ContainerAllocationAttempts: 100,
+				PodID:                       podID,
 			}
 			require.NoError(t, t1.Insert())
 
-			const podID = "pod_id"
 			pd := NewPodDispatcher("group_id", []string{t0.Id, t1.Id}, []string{podID})
 			require.NoError(t, pd.Insert())
 
@@ -567,6 +566,8 @@ func TestRemovePod(t *testing.T) {
 			assert.Equal(t, pd.PodIDs, []string{"pod_id"})
 		},
 		"FailsWhenDBDispatcherIsModified": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
+			const modCount = 10
+
 			tsk := task.Task{
 				Id:                     "task_id",
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
@@ -574,11 +575,9 @@ func TestRemovePod(t *testing.T) {
 				Activated:              true,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
+				PodID:                  podID,
 			}
-			const (
-				podID    = "pod_id"
-				modCount = 10
-			)
+
 			pd := NewPodDispatcher("group_id", []string{tsk.Id}, []string{podID})
 			pd.ModificationCount = modCount
 			require.NoError(t, pd.Insert())
@@ -600,6 +599,10 @@ func TestRemovePod(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, build.Collection, model.VersionCollection))
 
+			tskPod := pod.Pod{
+				ID: podID,
+			}
+			assert.NoError(t, tskPod.Insert())
 			tCase(tctx, env, t)
 		})
 	}

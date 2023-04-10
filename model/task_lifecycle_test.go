@@ -1638,6 +1638,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				BuildId:     b.Id,
 				Project:     "p1",
 				Version:     b.Version,
+				HostId:      "myHost",
+			}
+			taskHost := &host.Host{
+				Id:          "myHost",
+				RunningTask: testTask.Id,
 			}
 			pp := &ParserProject{
 				Id:         b.Version,
@@ -1653,13 +1658,15 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			pRef := ProjectRef{Id: "p1"}
 			pConfig := ProjectConfig{Id: "p1"}
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection, ProjectConfigCollection, ParserProjectCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, host.Collection,
+				ProjectRefCollection, ProjectConfigCollection, ParserProjectCollection))
 			So(pRef.Insert(), ShouldBeNil)
 			So(pConfig.Insert(), ShouldBeNil)
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
 			So(pp.Insert(), ShouldBeNil)
+			So(taskHost.Insert(), ShouldBeNil)
 		}
 
 		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
@@ -1728,7 +1735,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 func TestMarkEnd(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection, ParserProjectCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, host.Collection,
+		VersionCollection, ProjectRefCollection, ParserProjectCollection))
 
 	displayName := "testName"
 	userName := "testUser"
@@ -1753,6 +1761,11 @@ func TestMarkEnd(t *testing.T) {
 		Project:     "p1",
 		Status:      evergreen.TaskStarted,
 		Version:     b.Version,
+		HostId:      "taskHost",
+	}
+	taskHost := host.Host{
+		Id:          "taskHost",
+		RunningTask: testTask.Id,
 	}
 	dependentTask := task.Task{
 		Id:        "dependentTask",
@@ -1776,6 +1789,7 @@ func TestMarkEnd(t *testing.T) {
 	require.NoError(v.Insert())
 	require.NoError(pp.Insert())
 	require.NoError(dependentTask.Insert())
+	require.NoError(taskHost.Insert())
 
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
@@ -1828,6 +1842,7 @@ func TestMarkEnd(t *testing.T) {
 			BuildId:   b.Id,
 			Status:    evergreen.TaskStarted,
 			Version:   "version1",
+			HostId:    taskHost.Id,
 		}
 		t2 := &task.Task{
 			Id:        "execTask2",
@@ -1835,6 +1850,7 @@ func TestMarkEnd(t *testing.T) {
 			BuildId:   b.Id,
 			Status:    evergreen.TaskStarted,
 			Version:   "version1",
+			HostId:    taskHost.Id,
 		}
 		So(t1.Insert(), ShouldBeNil)
 		So(t2.Insert(), ShouldBeNil)
@@ -1886,6 +1902,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 		DistroId:          "my_distro",
 		Version:           "abc",
 		BuildVariant:      "a_variant",
+		HostId:            "h1",
 	}
 	otherTask := &task.Task{
 		Id:                "say-bye-123",
@@ -3717,7 +3734,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, event.EventCollection, ProjectRefCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, ParserProjectCollection, event.EventCollection, ProjectRefCollection))
 
 	projRef := &ProjectRef{
 		Id: "sample",
@@ -3736,7 +3753,11 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Identifier: utility.ToStringPtr("sample"),
 	}
 	require.NoError(pp.Insert())
-
+	taskHost := host.Host{
+		Id:          "myHost",
+		RunningTask: "testone",
+	}
+	assert.NoError(taskHost.Insert())
 	buildID := "buildtest"
 	testTask := &task.Task{
 		Id:          "testone",
@@ -3747,6 +3768,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      taskHost.Id,
 	}
 	assert.NoError(testTask.Insert())
 	anotherTask := &task.Task{
@@ -3758,6 +3780,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      taskHost.Id,
 	}
 	assert.NoError(anotherTask.Insert())
 	displayTask := &task.Task{
@@ -3782,6 +3805,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      taskHost.Id,
 	}
 	assert.True(exeTask0.IsPartOfDisplay())
 	assert.NoError(exeTask0.Insert())
@@ -3794,6 +3818,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      taskHost.Id,
 	}
 	assert.True(exeTask1.IsPartOfDisplay())
 	assert.NoError(exeTask1.Insert())
@@ -3866,7 +3891,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, event.EventCollection))
 	v := &Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,
@@ -3884,8 +3909,14 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      "myHost",
 	}
-	require.NoError(testTask.Insert())
+	assert.NoError(testTask.Insert())
+	taskHost := host.Host{
+		Id:          "myHost",
+		RunningTask: testTask.Id,
+	}
+	assert.NoError(taskHost.Insert())
 	anotherTask := task.Task{
 		Id:          "two",
 		Activated:   true,
@@ -3942,7 +3973,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, event.EventCollection))
 
 	v := &Version{
 		Id:        "sample_version",
@@ -3961,8 +3992,14 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		Version:     v.Id,
+		HostId:      "myHost",
 	}
-	require.NoError(testTask.Insert())
+	assert.NoError(testTask.Insert())
+	taskHost := host.Host{
+		Id:          "myHost",
+		RunningTask: testTask.Id,
+	}
+	assert.NoError(taskHost.Insert())
 	anotherTask := task.Task{
 		Id:          "two",
 		DisplayName: "test 2",
@@ -4026,6 +4063,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			ActivatedTime: time.Now(),
 			BuildId:       "b",
 			Version:       "version",
+			HostId:        "h1",
 		},
 		{
 			Id:            "t2",
@@ -4042,6 +4080,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			ActivatedTime: time.Now().Add(-task.UnschedulableThreshold - time.Minute),
 			BuildId:       "b2",
 			Version:       "version2",
+			HostId:        "h1",
 			Requester:     evergreen.PatchVersionRequester,
 		},
 		{
@@ -4174,6 +4213,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 		ActivatedTime: utility.ZeroTime,
 		BuildId:       "b",
 		Version:       "version",
+		HostId:        "h1",
 	}
 	assert.NoError(runningTask.Insert())
 
@@ -4223,6 +4263,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 		Activated:     true,
 		ActivatedTime: time.Now(),
 		BuildId:       "b",
+		HostId:        "h1",
 	}
 
 	execTask2 := &task.Task{
@@ -4368,7 +4409,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, pod.Collection, VersionCollection, event.EventCollection))
 			v := Version{
 				Id:     "version_id",
 				Status: evergreen.VersionStarted,
@@ -4380,6 +4421,10 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 				Status:  evergreen.BuildStarted,
 			}
 			require.NoError(t, b.Insert())
+			taskPod := pod.Pod{
+				ID: "myPod",
+			}
+			require.NoError(t, taskPod.Insert())
 			tsk := task.Task{
 				Id:                          "task_id",
 				Execution:                   1,
@@ -4390,6 +4435,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 				Activated:                   true,
 				ContainerAllocated:          true,
 				ContainerAllocationAttempts: 100,
+				PodID:                       taskPod.ID,
 			}
 			tCase(t, tsk, b, v)
 		})
@@ -4417,6 +4463,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 		Activated:     true,
 		ActivatedTime: time.Now(),
 		BuildId:       "b",
+		HostId:        "h1",
 	}
 	assert.NoError(t, dispTask.Insert())
 	assert.NoError(t, execTask.Insert())
@@ -4698,6 +4745,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 				ActivatedTime:          time.Now(),
 				BuildId:                b.Id,
 				Version:                v.Id,
+				PodID:                  "pod_id",
 			}
 			p := pod.Pod{
 				ID: "pod_id",
@@ -4893,6 +4941,10 @@ func TestResetStaleTask(t *testing.T) {
 				Status: evergreen.VersionStarted,
 			}
 			require.NoError(t, v.Insert())
+			taskPod := pod.Pod{
+				ID: "pod_id",
+			}
+			require.NoError(t, taskPod.Insert())
 			tsk := task.Task{
 				Id:                     "task_id",
 				Execution:              1,
@@ -4905,6 +4957,7 @@ func TestResetStaleTask(t *testing.T) {
 				LastHeartbeat:          time.Now().Add(-30 * time.Hour),
 				BuildId:                b.Id,
 				Version:                v.Id,
+				PodID:                  taskPod.ID,
 			}
 			tCase(t, tsk)
 		})
@@ -4912,7 +4965,7 @@ func TestResetStaleTask(t *testing.T) {
 }
 
 func TestMarkEndWithNoResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, event.EventCollection))
 
 	testTask1 := task.Task{
 		Id:              "t1",
@@ -4922,8 +4975,14 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		BuildId:         "b",
 		Version:         "v",
 		MustHaveResults: true,
+		HostId:          "hostId",
 	}
 	assert.NoError(t, testTask1.Insert())
+	taskHost := host.Host{
+		Id:          "hostId",
+		RunningTask: testTask1.Id,
+	}
+	assert.NoError(t, taskHost.Insert())
 	testTask2 := task.Task{
 		Id:              "t2",
 		Status:          evergreen.TaskStarted,
@@ -4933,6 +4992,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Version:         "v",
 		MustHaveResults: true,
 		ResultsService:  testresult.TestResultsServiceLocal,
+		HostId:          "hostId",
 	}
 	assert.NoError(t, testTask2.Insert())
 	b := build.Build{
@@ -5282,7 +5342,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 }
 
 func TestAbortedTaskDelayedRestart(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, host.Collection, build.Collection, VersionCollection))
 	task1 := task.Task{
 		Id:                "task1",
 		BuildId:           "b",
@@ -5291,8 +5351,13 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 		Aborted:           true,
 		ResetWhenFinished: true,
 		Activated:         true,
+		HostId:            "hostId",
 	}
 	assert.NoError(t, task1.Insert())
+	taskHost := host.Host{
+		Id: "hostId",
+	}
+	assert.NoError(t, taskHost.Insert())
 	b := build.Build{
 		Id:      "b",
 		Version: "version",

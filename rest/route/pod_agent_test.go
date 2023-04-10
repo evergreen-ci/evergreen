@@ -449,11 +449,13 @@ func TestPodAgentEndTask(t *testing.T) {
 			}
 			require.NoError(t, podToInsert.Insert())
 			taskToInsert := &task.Task{
-				Id:        taskID,
-				Execution: taskExecution,
-				BuildId:   buildID,
-				Version:   versionID,
-				Project:   projID,
+				Id:                taskID,
+				Execution:         taskExecution,
+				BuildId:           buildID,
+				Version:           versionID,
+				Project:           projID,
+				PodID:             podID,
+				ExecutionPlatform: task.ExecutionPlatformContainer,
 			}
 			require.NoError(t, taskToInsert.Insert())
 			buildToInsert := &build.Build{
@@ -492,11 +494,13 @@ func TestPodAgentEndTask(t *testing.T) {
 			}
 			require.NoError(t, podToInsert.Insert())
 			taskToInsert := &task.Task{
-				Id:        taskID,
-				Execution: taskExecution,
-				BuildId:   buildID,
-				Version:   versionID,
-				Project:   projID,
+				Id:                taskID,
+				Execution:         taskExecution,
+				BuildId:           buildID,
+				Version:           versionID,
+				Project:           projID,
+				PodID:             podID,
+				ExecutionPlatform: task.ExecutionPlatformContainer,
 			}
 			require.NoError(t, taskToInsert.Insert())
 			buildToInsert := &build.Build{
@@ -533,14 +537,16 @@ func TestPodAgentEndTask(t *testing.T) {
 			}
 			require.NoError(t, podToInsert.Insert())
 			taskToInsert := &task.Task{
-				Id:           taskID,
-				Execution:    taskExecution,
-				BuildId:      buildID,
-				Version:      versionID,
-				Project:      projID,
-				BuildVariant: "bv1",
-				Requester:    evergreen.MergeTestRequester,
-				DisplayName:  "some_task",
+				Id:                taskID,
+				Execution:         taskExecution,
+				BuildId:           buildID,
+				Version:           versionID,
+				Project:           projID,
+				PodID:             podID,
+				ExecutionPlatform: task.ExecutionPlatformContainer,
+				BuildVariant:      "bv1",
+				Requester:         evergreen.MergeTestRequester,
+				DisplayName:       "some_task",
 			}
 			taskToInsert2 := &task.Task{
 				Id:               "task2",

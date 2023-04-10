@@ -148,6 +148,7 @@ func TestPodTerminationJob(t *testing.T) {
 				Execution:          1,
 				BuildId:            b.Id,
 				Version:            v.Id,
+				PodID:              j.PodID,
 				ExecutionPlatform:  task.ExecutionPlatformContainer,
 				Status:             evergreen.TaskStarted,
 				Activated:          true,
@@ -218,6 +219,7 @@ func TestPodTerminationJob(t *testing.T) {
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
+				PodID:                  j.pod.ID,
 			}
 			require.NoError(t, t0.Insert())
 			v := model.Version{
@@ -235,6 +237,7 @@ func TestPodTerminationJob(t *testing.T) {
 				Id:                          "task_id1",
 				BuildId:                     b.Id,
 				Version:                     v.Id,
+				PodID:                       j.PodID,
 				Activated:                   true,
 				ExecutionPlatform:           task.ExecutionPlatformContainer,
 				Status:                      evergreen.TaskUndispatched,
@@ -313,6 +316,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j, ok := NewPodTerminationJob(p.ID, "reason", utility.RoundPartOfMinute(0)).(*podTerminationJob)
 			require.True(t, ok)
 			j.pod = &p
+			j.PodID = p.ID
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			j.env = env

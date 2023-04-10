@@ -246,7 +246,7 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 }
 
 func MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
-	if cloud.IsDockerProvider(createHost.CloudProvider) {
+	if evergreen.IsDockerProvider(createHost.CloudProvider) {
 		return makeDockerIntentHost(taskID, userID, createHost)
 	}
 	return makeEC2IntentHost(taskID, userID, publicKey, createHost)
@@ -263,7 +263,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	if d == nil {
 		return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 	}
-	if !cloud.IsDockerProvider(d.Provider) {
+	if !evergreen.IsDockerProvider(d.Provider) {
 		return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
 	}
 
