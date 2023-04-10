@@ -1485,8 +1485,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 }
 
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
-// builds associated with the given input list of build IDs. For PR patches, builds whose
-// statuses have changed to an unfinished status are changed to pending in GitHub.
+// builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
@@ -1496,24 +1495,19 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		return errors.Wrapf(err, "fetching builds")
 	}
 
-	// Maintain a list of builds for each version because we may
-	// be updating many builds for the same version.
-	versionSet := make(map[string]bool)
+	versionsToUpdate := make(map[string]bool)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
 		if err != nil {
 			return errors.Wrapf(err, "updating build '%s' status", build.Id)
 		}
-		// If the build status has not changed, then the version and patch statuses must have also not changed.
+		// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
 		if !buildStatusChanged {
 			continue
 		}
-		if err = checkUpdateBuildPRStatusPending(&build); err != nil {
-			return errors.Wrapf(err, "updating build '%s' PR status", build.Id)
-		}
-		versionSet[build.Version] = true
+		versionsToUpdate[build.Version] = true
 	}
-	for versionId := range versionSet {
+	for versionId := range versionsToUpdate {
 		buildVersion, err := VersionFindOneId(versionId)
 		if err != nil {
 			return errors.Wrapf(err, "getting version '%s'", versionId)
