@@ -723,10 +723,8 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	}
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-	if p.Enabled {
-		if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-			return errors.Wrap(err, "validating new owner/repo")
-		}
+	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+		return errors.Wrap(err, "validating new owner/repo")
 	}
 
 	if p.UseRepoSettings() {
