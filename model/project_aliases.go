@@ -271,7 +271,7 @@ func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *P
 	}
 	// If all aliases are covered in the project, so there's no reason to look at other sources
 	uncoveredAliases := uncoveredAliasTypes(aliasesToReturn)
-	if len(uncoveredAliases) > 0 {
+	if len(uncoveredAliases) > 0 && repoId != "" {
 		// Get repo aliases and merge with project aliases
 		repoAliases, err := FindAliasesForRepo(repoId)
 		if err != nil {

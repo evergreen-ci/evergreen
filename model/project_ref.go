@@ -394,14 +394,6 @@ func (p *ProjectRef) UseRepoSettings() bool {
 	return p.RepoRefId != ""
 }
 
-// GetRepoSettingsId returns the repo settings id if the project is using repo settings, otherwise it returns an empty string
-func (p *ProjectRef) GetRepoSettingsId() string {
-	if !p.UseRepoSettings() {
-		return ""
-	}
-	return p.RepoRefId
-}
-
 func (p *ProjectRef) DoesTrackPushEvents() bool {
 	return utility.FromBoolPtr(p.TracksPushEvents)
 }

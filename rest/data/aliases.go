@@ -16,7 +16,7 @@ import (
 // The includeProjectConfig flag determines whether to include aliases defined in the project config YAML.
 // If the aliasesToAdd parameter is defined, we fold those aliases in and remove any that are marked as deleted.
 func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
-	projectRef, err := model.FindBranchProjectRef(projectId)
+	projectRef, err := model.FindMergedProjectRef(projectId, "", false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref for project '%s'", projectId)
 	}
@@ -30,9 +30,6 @@ func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel
 	aliases, err := model.ConstructMergedAliasesByPrecedence(projectRef, projectConfig, repoId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged aliases for project '%s'", projectId)
-	}
-	if aliases == nil {
-		return nil, nil
 	}
 	aliasesToDelete := []string{}
 	aliasModels := []restModel.APIProjectAlias{}
