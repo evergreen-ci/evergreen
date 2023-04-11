@@ -33,7 +33,7 @@ require (
 	github.com/mongodb/amboy v0.0.0-20221207220239-4ab00e3ea9da
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
-	github.com/mongodb/grip v0.0.0-20230406142903-1971082781d0
+	github.com/mongodb/grip v0.0.0-20230411155312-e4c567a6a15f
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.11.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
