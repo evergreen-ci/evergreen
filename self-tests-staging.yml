@@ -22,7 +22,7 @@ buildvariants:
       goarch: amd64
       IS_DOCKER: true
       GOROOT: /usr/local/go
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.18.tgz
       decompress: tar zxvf
     tasks:
       - name: "dist-unsigned"
