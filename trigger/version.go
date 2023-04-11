@@ -149,7 +149,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	}
 	finishTime := t.version.FinishTime
 	if utility.IsZeroTime(finishTime) {
-		finishTime = time.Now() // this might be true for github check statuses
+		finishTime = time.Now() // this might be true for GitHub check statuses
 	}
 	slackColor := evergreenFailColor
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
@@ -173,6 +173,14 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
 	}
+	grip.DebugWhen(slackColor == evergreenFailColor && data.PastTenseStatus == "succeeded", message.Fields{
+		"ticket":              "EVG-19227",
+		"message":             "encountered failing slack color with successful status",
+		"past_tense_override": pastTenseOverride,
+		"version":             t.version.Id,
+		"subscription_id":     sub.ID,
+		"event_id":            t.event.ID,
+	})
 
 	return &data, nil
 }
