@@ -56,7 +56,7 @@ func NewAPIError(resp *http.Response) APIError {
 
 func NewAuthError(resp *http.Response) APIError {
 	apiError := NewAPIError(resp)
-	apiError.body = strings.Join([]string{apiError.body, client.AuthError}, "")
+	apiError.body = fmt.Sprintf("%s (%s)", apiError.body, client.AuthError)
 	return apiError
 }
 
