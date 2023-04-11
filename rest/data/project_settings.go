@@ -237,6 +237,17 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
+		if mergedSection.Owner != "" && mergedSection.Repo != "" {
+			// Validating owner/repo is cheap, and regardless of whether or not the project
+			// is enabled or we're using a repo, it makes sense to be strict about this.
+			config, err := evergreen.GetConfig()
+			if err != nil {
+				return nil, errors.Wrap(err, "getting evergreen config")
+			}
+			if err = mergedSection.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+				return nil, errors.Wrap(err, "validating new owner/repo")
+			}
+		}
 		// Only need to check Github conflicts once so we use else if statements to handle this.
 		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.
 		if mergedSection.Owner != mergedBeforeRef.Owner || mergedSection.Repo != mergedBeforeRef.Repo {
