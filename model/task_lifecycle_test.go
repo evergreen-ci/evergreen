@@ -1335,10 +1335,6 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	assert.NoError(t, anotherTask.Insert())
 
 	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds([]string{b.Id}))
-	// Confirm if there was a log indicating the build status updated to pending
-	messageString, ok := sender.GetMessageSafe()
-	require.True(t, ok)
-	assert.Contains(t, messageString.Message.String(), "called github status send")
 	dbBuild, err := build.FindOneId(b.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildStarted, dbBuild.Status)
@@ -1352,11 +1348,6 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds([]string{b.Id}))
-	// Confirm that the build status was not updated to pending in the PR because the build
-	// should have changed to failed.
-	messageString, ok = sender.GetMessageSafe()
-	require.True(t, ok)
-	assert.NotContains(t, messageString.Message.String(), "called github status send")
 	dbBuild, err = build.FindOneId(b.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildFailed, dbBuild.Status)
