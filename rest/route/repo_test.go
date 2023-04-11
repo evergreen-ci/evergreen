@@ -245,7 +245,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
 		dbModel.ProjectAliasCollection, dbModel.GithubHooksCollection, commitqueue.Collection, user.Collection,
-		dbModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+		dbModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
 
 	independentProject := &dbModel.ProjectRef{
 		Id:         "branch1",
@@ -312,6 +312,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	settings, err := evergreen.GetConfig()
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{branchProject.Owner}
+	assert.NoError(t, settings.Set())
 	attachProjectHandler := attachProjectToRepoHandler{}
 	// Test that turning on repo settings doesn't impact existing restricted values
 	req, _ := http.NewRequest(http.MethodPost, "rest/v2/projects/branch2/attach_to_repo", nil)
@@ -321,7 +322,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	resp := attachProjectHandler.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, resp.Status(), http.StatusOK)
-
+	fmt.Println(resp.Data())
 	pRefs, err := dbModel.FindMergedEnabledProjectRefsByRepoAndBranch("owner", "repo", "main")
 	assert.NoError(t, err)
 	require.Len(t, pRefs, 2)

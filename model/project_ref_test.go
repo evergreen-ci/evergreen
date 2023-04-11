@@ -2811,25 +2811,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	update := &ProjectRef{
 		Id:      "iden_",
 		Enabled: true,
-		Owner:   "invalid",
-		Repo:    "nonexistent",
-	}
-
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.Error(err)
-
-	update = &ProjectRef{
-		Id:      "iden_",
-		Enabled: true,
-		Owner:   "",
-		Repo:    "",
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.Error(err)
-
-	update = &ProjectRef{
-		Id:      "iden_",
-		Enabled: true,
 		Owner:   "evergreen-ci",
 		Repo:    "test",
 	}

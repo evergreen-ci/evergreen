@@ -692,8 +692,11 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
-	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "getting config")
+	}
+	if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 		return errors.Wrap(err, "validating new owner/repo")
 	}
 	before, err := GetProjectSettingsById(p.Id, false)
@@ -2327,6 +2330,8 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 
 func validateOwner(owner string, validOrgs []string) error {
 	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, owner) {
+		fmt.Println("valid orgs: ", validOrgs)
+		fmt.Println(owner)
 		return errors.New("owner not authorized")
 	}
 	return nil
