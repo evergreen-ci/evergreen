@@ -107,6 +107,10 @@ clientsLoop:
 					j.AddError(j.terminateUnknownHosts(ctx, err.Error()))
 					continue clientsLoop
 				}
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "getting instance statuses from AWS",
+					"job":     j.ID(),
+				}))
 				j.AddError(errors.Wrap(err, "getting host statuses for providers"))
 				continue clientsLoop
 			}
