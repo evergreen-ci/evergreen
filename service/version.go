@@ -21,12 +21,18 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	grip.DebugWhen(err != nil, message.Fields{
+		"message": "error getting project for version page",
+		"project": project,
+		"projCtx": projCtx,
+	})
+
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)) {
 		return
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)) {
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
