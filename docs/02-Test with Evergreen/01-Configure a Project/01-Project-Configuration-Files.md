@@ -110,13 +110,20 @@ and they are referenced within a task definition by
 ``` yaml
 - name: taskName
   commands:
-  - func: "function name"
-
-  ## real example from the MongoDB server
   - func: "run tests"
+  - func: "example with multiple args"
+
+
+  - func: "run tests" ## real example from the MongoDB server
     vars:
       resmoke_args: --help
       run_multiple_jobs: false
+  - func: "example with multiple args"
+    vars:
+      resmoke_args: >- ## syntax needed to allow multiple arguments.
+        --hello=world
+        --its=me
+      
 ```
 
 Notice that the function reference can define a set of `vars` which are
