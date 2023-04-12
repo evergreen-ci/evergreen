@@ -228,7 +228,7 @@ func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, c
 		// logs are only created when a test case does not succeed
 		test, log := tc.toModelTestResultAndLog(conf)
 		if log != nil {
-			if systemLogs := constructSystemLogs(tc.SysOut, tc.SysErr); len(systemLogs) > 0 {
+			if systemLogs := constructSystemLogs(suite.SysOut, suite.SysErr); len(systemLogs) > 0 {
 				log.Lines = append(log.Lines, systemLogs...)
 			}
 			cumulative.logs = append(cumulative.logs, log)
