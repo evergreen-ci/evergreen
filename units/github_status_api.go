@@ -226,7 +226,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.State = message.GithubStateFailure
 
 	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
-		status.Context = commitqueue.GithubContext
+		status.Context = evergreen.GithubContext
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
 		if j.FetchID != "" {
