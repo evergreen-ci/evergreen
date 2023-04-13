@@ -1056,7 +1056,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	defer cancel()
 	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
-		evergreen.ScopeCollection, evergreen.RoleCollection))
+		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())

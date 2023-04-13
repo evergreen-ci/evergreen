@@ -49,6 +49,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			// Shouldn't succeed if the new owner isn't in the config.
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
 			assert.Error(t, err)
+			assert.Nil(t, settings)
 
 			config.GithubOrgs = append(config.GithubOrgs, ref.Owner) // Add the new owner
 			assert.NoError(t, config.Set())
