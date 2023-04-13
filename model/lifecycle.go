@@ -429,7 +429,15 @@ func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error 
 	if err := build.SetBuildStartedForTasks(allFinishedTasks, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
-
+	builds, err := build.FindBuildsForTasks(allFinishedTasks)
+	if err != nil {
+		return errors.Wrap(err, "finding builds for tasks")
+	}
+	for _, b := range builds {
+		if err = checkUpdateBuildPRStatusPending(&b); err != nil {
+			return errors.Wrapf(err, "updating build '%s' PR status", b.Id)
+		}
+	}
 	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
 }
 

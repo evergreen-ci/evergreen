@@ -22,9 +22,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1277,6 +1280,80 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		})
 	}
 
+}
+
+func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, patch.Collection, task.Collection, VersionCollection))
+	uiConfig := evergreen.UIConfig{Url: "http://localhost"}
+	require.NoError(t, uiConfig.Set())
+
+	sender := send.MakeInternalLogger()
+	assert.NoError(t, grip.SetSender(sender))
+	defer func() {
+		assert.NoError(t, grip.SetSender(send.MakeNative()))
+	}()
+
+	b := &build.Build{
+		Id:        "buildtest",
+		Status:    evergreen.BuildFailed,
+		Requester: evergreen.GithubPRRequester,
+		Version:   "aaaaaaaaaaff001122334455",
+		Activated: true,
+	}
+	p := &patch.Patch{
+		Id:              patch.NewId(b.Version),
+		Status:          evergreen.PatchFailed,
+		GithubPatchData: thirdparty.GithubPatch{HeadOwner: "q"},
+	}
+	v := &Version{
+		Id:        b.Version,
+		Status:    evergreen.VersionFailed,
+		Requester: evergreen.GithubPRRequester,
+	}
+	testTask := task.Task{
+		Id:        "testone",
+		Activated: true,
+		BuildId:   b.Id,
+		Project:   "sample",
+		Status:    evergreen.TaskUndispatched,
+		Version:   b.Version,
+	}
+	anotherTask := task.Task{
+		Id:        "two",
+		Activated: true,
+		BuildId:   b.Id,
+		Project:   "sample",
+		Status:    evergreen.TaskFailed,
+		StartTime: time.Now().Add(-time.Hour),
+		Version:   b.Version,
+	}
+
+	assert.NoError(t, b.Insert())
+	assert.NoError(t, p.Insert())
+	assert.NoError(t, v.Insert())
+	assert.NoError(t, testTask.Insert())
+	assert.NoError(t, anotherTask.Insert())
+
+	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds([]string{b.Id}))
+	dbBuild, err := build.FindOneId(b.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.BuildStarted, dbBuild.Status)
+	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.PatchStarted, dbPatch.Status)
+
+	err = task.UpdateOne(
+		bson.M{task.IdKey: testTask.Id},
+		bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskFailed}},
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds([]string{b.Id}))
+	dbBuild, err = build.FindOneId(b.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.BuildFailed, dbBuild.Status)
+	dbPatch, err = patch.FindOneId(p.Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.PatchFailed, dbPatch.Status)
 }
 
 func TestUpdateBuildStatusForTaskReset(t *testing.T) {
