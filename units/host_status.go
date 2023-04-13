@@ -108,7 +108,7 @@ clientsLoop:
 					continue clientsLoop
 				}
 				grip.Debug(message.WrapError(err, message.Fields{
-					"message": "getting instance statuses from AWS",
+					"message": "error getting instance statuses from AWS",
 					"job":     j.ID(),
 				}))
 				j.AddError(errors.Wrap(err, "getting host statuses for providers"))
