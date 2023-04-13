@@ -18,6 +18,8 @@
             assert a == 1
             AssertionError
         </failure>
+        <system-out>sysout-testcase</system-out>
+        <system-err>syserr-testcase</system-err>
     </testcase>
     <testcase classname="pkg1.test.test_things" name="test_params_func_multi_arg:1" time="0.000094" />
     <testcase classname="pkg1.test.test_things" name="test_params_func_multi_arg:2" time="0.000089">
@@ -70,4 +72,6 @@
             AssertionError
         </failure>
     </testcase>
+    <system-out>sysout-suite</system-out>
+    <system-err>syserr-suite</system-err>
 </testsuite>

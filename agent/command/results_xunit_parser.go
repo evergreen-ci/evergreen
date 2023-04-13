@@ -59,6 +59,8 @@ type testCase struct {
 	ClassName string          `xml:"classname,attr"`
 	Failure   *failureDetails `xml:"failure"`
 	Error     *failureDetails `xml:"error"`
+	SysOut    string          `xml:"system-out"`
+	SysErr    string          `xml:"system-err"`
 	Skipped   *failureDetails `xml:"skipped"`
 }
 
@@ -122,6 +124,13 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (testresul
 		res.Status = evergreen.TestSkippedStatus
 	default:
 		res.Status = evergreen.TestSucceededStatus
+	}
+
+	if systemLogs := constructSystemLogs(tc.SysOut, tc.SysErr); len(systemLogs) > 0 {
+		if log == nil {
+			log = &model.TestLog{}
+		}
+		log.Lines = append(log.Lines, systemLogs...)
 	}
 
 	if log != nil {
