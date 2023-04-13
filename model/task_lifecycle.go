@@ -1440,7 +1440,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
 	}
 
-	if newVersionStatus != taskVersion.Status {
+	if !evergreen.IsFinishedVersionStatus(newVersionStatus) && evergreen.IsFinishedVersionStatus(taskVersion.Status) {
 		if err = checkUpdateBuildPRStatusPending(taskBuild); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
