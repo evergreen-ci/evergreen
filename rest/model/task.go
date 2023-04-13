@@ -88,7 +88,7 @@ type APITask struct {
 	OverrideDependencies bool   `json:"-"`
 	Archived             bool   `json:"archived"`
 	ResultsService       string `json:"-"`
-	HasCedarResults      bool   `json"-"`
+	HasCedarResults      bool   `json:"-"`
 	ResultsFailed        bool   `json:"-"`
 }
 
