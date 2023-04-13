@@ -91,9 +91,6 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	// only successful patches should get past here. Failed patches will just send the failed
 	// status to GitHub.
 
-	githubCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	mergeOpts := &github.PullRequestOptions{
 		MergeMethod:        conf.ProjectRef.CommitQueue.MergeMethod,
 		CommitTitle:        patchDoc.GithubPatchData.CommitTitle,
@@ -104,7 +101,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	// Add retry logic in case multiple PRs are merged in quick succession, since
 	// it takes GitHub some time to put the PR back in a mergeable state.
 	err = utility.Retry(ctx, func() (bool, error) {
-		err = thirdparty.MergePullRequest(githubCtx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+		err = thirdparty.MergePullRequest(ctx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 			patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
 		if err != nil {
 			return true, errors.Wrap(err, "getting pull request data from GitHub")
