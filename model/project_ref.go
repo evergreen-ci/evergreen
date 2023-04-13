@@ -2330,8 +2330,6 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 
 func validateOwner(owner string, validOrgs []string) error {
 	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, owner) {
-		fmt.Println("valid orgs: ", validOrgs)
-		fmt.Println(owner)
 		return errors.New("owner not authorized")
 	}
 	return nil

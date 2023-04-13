@@ -237,9 +237,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
-		if mergedSection.Owner != "" && mergedSection.Repo != "" {
-			// Validating owner/repo is cheap, and regardless of whether or not the project
-			// is enabled or we're using a repo, it makes sense to be strict about this.
+		// Validate owner/repo if the project is enabled or owner/repo is populated.
+		// This validation is cheap so it makes sense to be strict about this.
+		if mergedSection.Enabled || (mergedSection.Owner != "" && mergedSection.Repo != "") {
 			config, err := evergreen.GetConfig()
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")

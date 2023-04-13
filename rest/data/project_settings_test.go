@@ -52,8 +52,8 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 
 			config.GithubOrgs = append(config.GithubOrgs, ref.Owner) // Add the new owner
 			assert.NoError(t, config.Set())
-			
-			// ensure that we're saving settings without a special case
+
+			// Ensure that we're saving settings without a special case
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)

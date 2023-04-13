@@ -322,7 +322,6 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	resp := attachProjectHandler.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, resp.Status(), http.StatusOK)
-	fmt.Println(resp.Data())
 	pRefs, err := dbModel.FindMergedEnabledProjectRefsByRepoAndBranch("owner", "repo", "main")
 	assert.NoError(t, err)
 	require.Len(t, pRefs, 2)
