@@ -2841,7 +2841,7 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
-			time.Now().Add(-taskCompletionEstimateWindow), time.Now(), false)
+			time.Now().Add(-taskCompletionEstimateWindow), time.Now(), true)
 		grip.Notice(message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
 			"id":        t.Id,
