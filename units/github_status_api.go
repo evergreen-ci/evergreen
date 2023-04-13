@@ -209,7 +209,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Description = j.Description
 
 	} else if j.UpdateType == githubUpdateTypeSuccessMessage {
-		status.Context = commitqueue.GithubContext
+		status.Context = evergreenContext
 		status.State = message.GithubStateSuccess
 		status.Description = j.Description
 

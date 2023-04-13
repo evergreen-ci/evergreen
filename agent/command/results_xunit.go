@@ -27,6 +27,11 @@ type xunitResults struct {
 	base
 }
 
+const (
+	systemOut = "system-out:"
+	systemErr = "system-err:"
+)
+
 func xunitResultsFactory() Command   { return &xunitResults{} }
 func (c *xunitResults) Name() string { return evergreen.AttachXUnitResultsCommandName }
 
@@ -223,11 +228,8 @@ func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, c
 		// logs are only created when a test case does not succeed
 		test, log := tc.toModelTestResultAndLog(conf)
 		if log != nil {
-			if suite.SysOut != "" {
-				log.Lines = append(log.Lines, "system-out:", suite.SysOut)
-			}
-			if suite.SysErr != "" {
-				log.Lines = append(log.Lines, "system-err:", suite.SysErr)
+			if systemLogs := constructSystemLogs(suite.SysOut, suite.SysErr); len(systemLogs) > 0 {
+				log.Lines = append(log.Lines, systemLogs...)
 			}
 			cumulative.logs = append(cumulative.logs, log)
 			cumulative.logIdxToTestIdx = append(cumulative.logIdxToTestIdx, len(cumulative.tests))
@@ -238,4 +240,15 @@ func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, c
 		cumulative = addTestCasesForSuite(*suite.NestedSuites, idx, conf, cumulative)
 	}
 	return cumulative
+}
+
+func constructSystemLogs(sysOut, sysErr string) []string {
+	var lines []string
+	if sysOut != "" {
+		lines = append(lines, systemOut, sysOut)
+	}
+	if sysErr != "" {
+		lines = append(lines, systemErr, sysErr)
+	}
+	return lines
 }

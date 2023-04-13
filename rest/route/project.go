@@ -382,7 +382,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		var allAliases []model.APIProjectAlias
 		if mergedProjectRef.AliasesNeeded() {
-			allAliases, err = data.FindProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases, false)
+			allAliases, err = data.FindMergedProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases, false)
 			if err != nil {
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "checking existing patch definitions for project '%s'", h.project))
 			}
@@ -859,7 +859,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for project '%s'", project.Id))
 	}
 	projectModel.Variables = *variables
-	if projectModel.Aliases, err = data.FindProjectAliases(project.Id, repoId, nil, h.includeProjectConfig); err != nil {
+	if projectModel.Aliases, err = data.FindMergedProjectAliases(project.Id, repoId, nil, h.includeProjectConfig); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for project '%s'", project.Id))
 	}
 	if projectModel.Subscriptions, err = data.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {
