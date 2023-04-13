@@ -2803,7 +2803,8 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 }
 
 func (t *Task) GetHistoricRuntime() (time.Duration, error) {
-	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, t.FinishTime.Add(-oneMonthIsh), t.FinishTime.Add(-time.Second))
+	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
+		t.FinishTime.Add(-oneMonthIsh), t.FinishTime.Add(-time.Second), false)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
@@ -2839,7 +2840,8 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
-		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, time.Now().Add(-taskCompletionEstimateWindow), time.Now())
+		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
+			time.Now().Add(-taskCompletionEstimateWindow), time.Now(), true)
 		grip.Notice(message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
 			"id":        t.Id,
