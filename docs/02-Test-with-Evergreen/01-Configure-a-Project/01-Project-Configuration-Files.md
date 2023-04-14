@@ -60,8 +60,7 @@ Notice that tasks contain:
 4.  A list of commands and/or functions that tell Evergreen how to run
     it.
 
-Another useful feature is [task
-tags](#task-tags),
+Another useful feature is [task tags](#task-and-variant-tags),
 which allows grouping tasks to limit whether [those tasks should run on
 patches/git
 tags/etc.](#limiting-when-a-task-will-run)
@@ -825,7 +824,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](02-Project-Commands#generate-tasks)
+[generate.tasks](../01-Configure-a-Project/02-Project-Commands.md#generate-tasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
