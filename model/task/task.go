@@ -2518,6 +2518,11 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "creating test results task options")
 	}
+	grip.Info(message.Fields{
+		"name":        "julian:",
+		"has_results": t.HasResults(),
+		"task_opts":   taskOpts,
+	})
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
 	}
@@ -2591,8 +2596,12 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 			})
 		}
 	} else if t.HasResults() {
+		taskID := t.Id
+		if t.Archived {
+			taskID = t.OldTaskId
+		}
 		taskOpts = append(taskOpts, testresult.TaskOptions{
-			TaskID:         t.Id,
+			TaskID:         taskID,
 			Execution:      t.Execution,
 			ResultsService: t.ResultsService,
 		})
