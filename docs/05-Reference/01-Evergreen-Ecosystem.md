@@ -40,7 +40,7 @@ You can start an Evergreen patch from other CI systems.
   Driver interface.
 * [aviation](https://github.com/evergreen-ci/aviation) is middleware for gRPC.
   It is similar to gimlet, Evergreen's HTTP middleware.
-* [birch](https://github.com/evergreen-ci/bich) is a library for building and manipulating bson documents.
+* [birch](https://github.com/evergreen-ci/birch) is a library for building and manipulating bson documents.
 * [bond](https://github.com/evergreen-ci/bond) is a library to interact with MongoDB
   release feeds.
 * [certdepot](https://github.com/evergreen-ci/certdepot) is a set of tools for
