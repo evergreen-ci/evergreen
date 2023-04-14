@@ -3838,6 +3838,17 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			tsk:  &Task{Id: "task"},
 		},
 		{
+			name: "RegularTaskResultsLegacyCedarResultsFlag",
+			tsk: &Task{
+				Id:              "task",
+				Execution:       1,
+				HasCedarResults: true,
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "task", Execution: 1},
+			},
+		},
+		{
 			name: "RegularTaskResults",
 			tsk: &Task{
 				Id:             "task",
@@ -3846,6 +3857,33 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			},
 			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "task", Execution: 1, ResultsService: "some_service"},
+			},
+		},
+		{
+
+			name: "ArchivedRegularTaskResultsLegacyCedarResultsFlags",
+			tsk: &Task{
+				Id:              "task_0",
+				OldTaskId:       "task",
+				Execution:       0,
+				HasCedarResults: true,
+				Archived:        true,
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "task", Execution: 0},
+			},
+		},
+		{
+			name: "ArchivedRegularTaskResults",
+			tsk: &Task{
+				Id:             "task_0",
+				OldTaskId:      "task",
+				Execution:      0,
+				ResultsService: "some_service",
+				Archived:       true,
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "task", Execution: 0, ResultsService: "some_service"},
 			},
 		},
 		{

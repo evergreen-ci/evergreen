@@ -2591,8 +2591,12 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 			})
 		}
 	} else if t.HasResults() {
+		taskID := t.Id
+		if t.Archived {
+			taskID = t.OldTaskId
+		}
 		taskOpts = append(taskOpts, testresult.TaskOptions{
-			TaskID:         t.Id,
+			TaskID:         taskID,
 			Execution:      t.Execution,
 			ResultsService: t.ResultsService,
 		})
