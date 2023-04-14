@@ -68,7 +68,7 @@ foo       bar           this is a demonstration
 ```
 If testing local changes, you can use ``--path <path_to_file>`` instead of ``--project``.
 
-Parameters can also be retrieved with rest route [/projects/<project_id>/parameters](https://github.com/evergreen-ci/evergreen/wiki/REST-V2-Usage#get-current-parameters-for-a-project), although descriptions are not returned here.
+Parameters can also be retrieved with rest route [/projects/<project_id>/parameters](../05-Use-the-API/01-REST-V2-Usage#get-current-parameters-for-a-project), although descriptions are not returned here.
 
 #### Get Parameters for a Specific Patch
 

@@ -53,7 +53,7 @@ Notice that tasks contain:
 2.  A set of dependencies on other tasks
 3.  A distro or list of distros to run on (documented more under
     ["Build
-    Variants"](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#build-variants)).
+    Variants"](#build-variants)).
     If run_on is set at the task level, it takes precedent over the
     default set for the buildvariant (unless run_on is explicitly
     defined for this task under a specific build variant).
@@ -61,10 +61,10 @@ Notice that tasks contain:
     it.
 
 Another useful feature is [task
-tags](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#task-tags),
+tags](#task-tags),
 which allows grouping tasks to limit whether [those tasks should run on
 patches/git
-tags/etc.](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#limiting-when-a-task-will-run)
+tags/etc.](#limiting-when-a-task-will-run)
 
 #### Commands
 
@@ -238,8 +238,8 @@ Fields:
 -   `tasks`: a list of tasks to run, using `name`. This can also include
     batchtime/cron/activate (defined below), which will overwrite all
     other defaults. We can also [define when a task will
-    run](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#limiting-when-a-task-will-run)
-    under this list or [add dependencies](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#task-dependencies), also demonstrated in the example above.
+    run](#limiting-when-a-task-will-run)
+    under this list or [add dependencies](#task-dependencies), also demonstrated in the example above.
 -   `batchtime`: interval of time in minutes that Evergreen should wait
     before activating this variant. The default is set on the project
     settings page. This can also be set for individual tasks. Only applies to tasks from mainline commits.
@@ -256,11 +256,11 @@ Fields:
     but [does not accept intervals.]{.title-ref} (i.e.
     `@every <duration>`). Only applies to tasks from mainline commits.
 -   `task_group`: a [task
-    group](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#task-groups)
+    group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
     variant task. This is an alternative to referencing a task group
     defined in `task_groups` under the tasks of a given build variant.
--   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#task-and-variant-tags))
+-   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 -   `disable`: determines whether or not a build variant will run or not. Set to false by default
 
 Additionally, an item in the `tasks` list can be of the form
@@ -279,7 +279,7 @@ from larger, more powerful machines.
 ### Version Controlled Project Settings
 Project configurations can version control some select project settings (e.g. aliases, plugins) directly within the yaml
 rather than on the project page UI, for better accessibility and maintainability. Read more
-[here](https://github.com/evergreen-ci/evergreen/wiki/Project-and-Distro-Settings#version-control).
+[here](03-Project-and-Distro-Settings#version-control).
 
 ## Advanced Features
 
@@ -360,7 +360,7 @@ are being used.
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version. You can change
 the git revision for modules by setting a module manually with
-[evergreen set-module](https://github.com/evergreen-ci/evergreen/wiki/Using-the-Command-Line-Tool#operating-on-existing-patches)
+[evergreen set-module](../06-Using-the-Command-Line-Tool#operating-on-existing-patches)
 or by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
@@ -442,7 +442,7 @@ or task to the maximum allowed length of execution time. This timeout
 defaults to 6 hours. `exec_timeout_secs` can only be set on the project
 or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](https://github.com/evergreen-ci/evergreen/wiki/Project-Commands#timeoutupdate). 
+You can also set exec_timeout_secs using [timeout.update](02-Project-Commands#timeoutupdate). 
 
 You may also force a specific command to trigger a failure if it does
 not appear to generate any output on `stdout`/`stderr` for more than a
@@ -526,7 +526,7 @@ will apply this behavior to all tasks in the build variant.
 -   Disabling its dependencies will still allow the task to run
 
 Can also set batchtime or cron on tasks or build variants, detailed
-[here](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#build-variants).
+[here](#build-variants).
 
 ### Expansions
 
@@ -825,7 +825,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](https://github.com/evergreen-ci/evergreen/wiki/Project-Commands#generate-tasks)
+[generate.tasks](02-Project-Commands#generate-tasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
@@ -1183,7 +1183,7 @@ setup and teardown blocks.
 
 Task groups have additional options available that can be configured
 directly inline inside the config's [build
-variants](https://github.com/evergreen-ci/evergreen/wiki/Project-Configuration-Files#build-variants).
+variants](#build-variants).
 
 ``` yaml
 task_groups:
