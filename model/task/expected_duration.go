@@ -29,7 +29,7 @@ type expectedDurationResults struct {
 	StdDev           float64 `bson:"std_dev"`
 }
 
-func getExpectedDurationsForWindow(name, project, buildVariant string, start, end time.Time, withStdDev bool) ([]expectedDurationResults, error) {
+func getExpectedDurationsForWindow(name, project, buildVariant string, start, end time.Time) ([]expectedDurationResults, error) {
 	match := bson.M{
 		BuildVariantKey: buildVariant,
 		ProjectKey:      project,
@@ -51,17 +51,6 @@ func getExpectedDurationsForWindow(name, project, buildVariant string, start, en
 		match[DisplayNameKey] = name
 	}
 
-	group := bson.M{
-		"_id": fmt.Sprintf("$%s", DisplayNameKey),
-		"exp_dur": bson.M{
-			"$avg": fmt.Sprintf("$%s", TimeTakenKey),
-		},
-	}
-	if withStdDev {
-		group["std_dev"] = bson.M{
-			"$stdDevPop": fmt.Sprintf("$%s", TimeTakenKey),
-		}
-	}
 	pipeline := []bson.M{
 		{
 			"$match": match,
@@ -74,7 +63,15 @@ func getExpectedDurationsForWindow(name, project, buildVariant string, start, en
 			},
 		},
 		{
-			"$group": group,
+			"$group": bson.M{
+				"_id": fmt.Sprintf("$%s", DisplayNameKey),
+				"exp_dur": bson.M{
+					"$avg": fmt.Sprintf("$%s", TimeTakenKey),
+				},
+				"std_dev": bson.M{
+					"$stdDevPop": fmt.Sprintf("$%s", TimeTakenKey),
+				},
+			},
 		},
 	}
 

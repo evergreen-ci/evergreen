@@ -2806,20 +2806,6 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 	return deps, nil
 }
 
-func (t *Task) GetHistoricRuntime() (time.Duration, error) {
-	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
-		t.FinishTime.Add(-oneMonthIsh), t.FinishTime.Add(-time.Second), false)
-	if err != nil {
-		return 0, errors.WithStack(err)
-	}
-
-	if len(runtimes) != 1 {
-		return 0, errors.Errorf("expected exactly one task runtime data point, but actually got %d", len(runtimes))
-	}
-
-	return time.Duration(runtimes[0].ExpectedDuration), nil
-}
-
 func (t *Task) FetchExpectedDuration() util.DurationStats {
 	if t.DurationPrediction.TTL == 0 {
 		t.DurationPrediction.TTL = utility.JitterInterval(predictionTTL)
@@ -2845,7 +2831,7 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
-			time.Now().Add(-taskCompletionEstimateWindow), time.Now(), true)
+			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
 		grip.Notice(message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
 			"id":        t.Id,
