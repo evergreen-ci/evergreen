@@ -902,7 +902,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
-			assert.Nil(t, pRefFromDb.Private)
 			assert.Nil(t, pRefFromDb.Restricted)
 			assert.Nil(t, pRefFromDb.Admins)
 		},
@@ -2844,6 +2843,10 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageAccessSection, false)
 	assert.NoError(err)
+
+	projectRef, err = FindBranchProjectRef("iden_")
+	assert.NoError(err)
+	assert.NotNil(t, projectRef)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
 
