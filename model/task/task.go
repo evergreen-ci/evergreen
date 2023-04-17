@@ -1923,7 +1923,7 @@ func (t *Task) Reset() error {
 }
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
-// tasks instead of a single one, and verifies that priority isn't disabled.
+// tasks instead of a single one.
 func ResetTasks(tasks []Task) error {
 	if len(tasks) == 0 {
 		return nil
@@ -1942,9 +1942,6 @@ func ResetTasks(tasks []Task) error {
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
-	}
-	if err := enableDisabledTasks(taskIDs); err != nil {
-		return errors.Wrap(err, "enabling disabled tasks")
 	}
 
 	return nil
