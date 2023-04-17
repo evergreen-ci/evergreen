@@ -21,11 +21,29 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
 
-	if err != nil || project == nil || projCtx.Version == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+	grip.DebugWhen(err != nil || project == nil || projCtx.Version == nil, message.Fields{
+		"message": "error getting project for version page",
+		"project": project,
+		"projCtx": projCtx,
+	})
+
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)) {
 		return
 	}
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)) {
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if project == nil || projCtx.Version == nil {
+		grip.Debug(message.Fields{
+			"message": "project or version not found",
+			"project": project,
+			"projCtx": projCtx,
+			"version": projCtx.Version,
+		})
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
