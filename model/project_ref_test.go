@@ -2797,6 +2797,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Id:               "iden_",
 		Identifier:       "identifier",
 		PRTestingEnabled: utility.TruePtr(),
+		Private:          utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
 	projectRef, err := FindBranchProjectRef("identifier")
@@ -2836,6 +2837,15 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Error(err)
 	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
 	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
+
+	// Test private field does not get updated
+	update = &ProjectRef{
+		Restricted: utility.TruePtr(),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageAccessSection, false)
+	assert.NoError(err)
+	assert.True(utility.FromBoolPtr(projectRef.Restricted))
+	assert.True(utility.FromBoolPtr(projectRef.Private))
 
 }
 
