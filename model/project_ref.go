@@ -1963,7 +1963,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					ProjectRefPrivateKey:    p.Private,
 					ProjectRefRestrictedKey: p.Restricted,
 					ProjectRefAdminsKey:     p.Admins,
 				},
