@@ -11,9 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// this is about a month.
-const oneMonthIsh = 30 * 24 * time.Hour
-
 var DurationIndex = bson.D{
 	{Key: ProjectKey, Value: 1},
 	{Key: BuildVariantKey, Value: 1},
