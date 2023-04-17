@@ -689,8 +689,16 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
-// a Github project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
+// a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
+	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "getting config")
+	}
+	if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+		return errors.Wrap(err, "validating new owner/repo")
+	}
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
@@ -723,10 +731,8 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	}
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-	if p.Enabled {
-		if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-			return errors.Wrap(err, "validating new owner/repo")
-		}
+	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+		return errors.Wrap(err, "validating new owner/repo")
 	}
 
 	if p.UseRepoSettings() {
@@ -1907,18 +1913,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if p.TracksPushEvents != nil {
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
+		// Allow a user to modify owner and repo only if they are editing an unattached project
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
-			config, err := evergreen.GetConfig()
-			if err != nil {
-				return false, errors.Wrap(err, "getting evergreen config")
-			}
-			// Allow a user to modify owner and repo only if they are editing an unattached project
-			if p.Enabled {
-				if err = p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-					return false, errors.Wrap(err, "validating new owner/repo")
-				}
-			}
-
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
 

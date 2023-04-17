@@ -32,8 +32,12 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 
 	for name, test := range map[string]func(t *testing.T, ref model.RepoRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.RepoRef) {
-			assert.Empty(t, ref.SpawnHostScriptPath)
+			config, err := evergreen.GetConfig()
+			assert.NoError(t, err)
+			config.GithubOrgs = []string{ref.Owner}
+			assert.NoError(t, config.Set())
 
+			assert.Empty(t, ref.SpawnHostScriptPath)
 			ref.SpawnHostScriptPath = "my script path"
 			ref.Owner = "something different"
 			apiProjectRef := restModel.APIProjectRef{}
@@ -41,8 +45,17 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			// ensure that we're saving settings without a special case
+
+			// Shouldn't succeed if the new owner isn't in the config.
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
+			assert.Error(t, err)
+			assert.Nil(t, settings)
+
+			config.GithubOrgs = append(config.GithubOrgs, ref.Owner) // Add the new owner
+			assert.NoError(t, config.Set())
+
+			// Ensure that we're saving settings without a special case
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			repoRefFromDB, err := model.FindOneRepoRef(ref.Id)
@@ -248,7 +261,10 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.ProjectRef) {
 			assert.Empty(t, ref.SpawnHostScriptPath)
-
+			config, err := evergreen.GetConfig()
+			assert.NoError(t, err)
+			config.GithubOrgs = []string{ref.Owner}
+			assert.NoError(t, config.Set())
 			ref.SpawnHostScriptPath = "my script path"
 			ref.Owner = "something different"
 			apiProjectRef := restModel.APIProjectRef{}
@@ -256,8 +272,16 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			// ensure that we're saving settings without a special case
+			// Shouldn't succeed if the new owner isn't in the config.
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			assert.Error(t, err)
+			assert.Nil(t, settings)
+
+			config.GithubOrgs = append(config.GithubOrgs, ref.Owner) // Add the new owner
+			assert.NoError(t, config.Set())
+
+			// Ensure that we're saving settings without a special case
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			assert.Equal(t, "myRepoId", utility.FromStringPtr(settings.ProjectRef.RepoRefId))
@@ -512,7 +536,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,
-			model.GithubHooksCollection))
+			model.GithubHooksCollection, evergreen.ConfigCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{
