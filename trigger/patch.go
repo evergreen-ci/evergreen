@@ -191,7 +191,9 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
 
-	collectiveStatus := t.patch.Status
+	// For parent patches, we want to look at the collective status of the child patches.
+	// For child patches, we only want to look at its own status.
+	collectiveStatus := t.data.Status
 	if t.patch.IsParent() {
 		var err error
 		collectiveStatus, err = t.patch.CollectiveStatus()
