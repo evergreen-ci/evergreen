@@ -786,21 +786,12 @@ func logTaskEndStats(t *task.Task) error {
 		msg["container_allocated_time"] = t.ContainerAllocatedTime
 	}
 
-	timeForHistoricRuntime := time.Now()
-	historicRuntime, err := t.GetHistoricRuntime()
-	if err != nil {
-		msg[message.FieldsMsgName] = "problem computing historic runtime"
-		grip.Warning(message.WrapError(err, msg))
-	} else {
-		msg["average_runtime_secs"] = historicRuntime.Seconds()
-		grip.Info(msg)
-	}
+	grip.Info(msg)
 	grip.Debug(message.Fields{
-		"ticket":                         "EVG-19293",
-		"message":                        "ran task-end-stats",
-		"time_taken_ms":                  time.Since(now).Milliseconds(),
-		"time_taken_historic_runtime_ms": time.Since(timeForHistoricRuntime).Milliseconds(),
-		"task":                           t.Id,
+		"ticket":        "EVG-19293",
+		"message":       "ran task-end-stats",
+		"time_taken_ms": time.Since(now).Milliseconds(),
+		"task":          t.Id,
 	})
 	return nil
 }

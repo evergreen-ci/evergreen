@@ -62,7 +62,7 @@ func TestExpectedDuration(t *testing.T) {
 	}
 	assert.NoError(t4.Insert())
 
-	results, err := getExpectedDurationsForWindow("", project, bv, now.Add(-1*time.Hour), now, true)
+	results, err := getExpectedDurationsForWindow("", project, bv, now.Add(-1*time.Hour), now)
 	assert.NoError(err)
 	assert.EqualValues(25*time.Minute, results[0].ExpectedDuration)
 	assert.InDelta(9.35*float64(time.Minute), results[0].StdDev, 0.01*float64(time.Minute))
