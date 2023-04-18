@@ -727,8 +727,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	}
 
 	for _, task := range creationInfo.BuildVariant.Tasks {
-		// kim: NOTE: this is where tasksToCreate is initialized, which later
-		// funnels to createOneTask to actually make tasks.
 		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
 			if task.IsDisabled() || task.SkipOnRequester(creationInfo.Build.Requester) {
@@ -782,8 +780,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 		// set Tags based on the spec
 		newTask.Tags = creationInfo.Project.GetSpecForTask(t.Name).Tags
-		// kim: NOTE: this is most likely where `snapshot` should have set its
-		// dependent task IDs when scheduled.
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
 		newTask.GeneratedBy = creationInfo.GeneratedBy
 		if generatorIsGithubCheck {

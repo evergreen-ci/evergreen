@@ -43,8 +43,9 @@ func makeCheckBlockedTasksJob() *checkBlockedTasksJob {
 	return j
 }
 
-// NewCheckBlockedTasksJob creates a job to check dependency state for tasks
-// waiting to be dispatched.
+// NewCheckBlockedTasksJob creates a job to audit the dependency state for tasks
+// in the task queues. If it finds any mismatches in dependency state, it fixes
+// them.
 func NewCheckBlockedTasksJob(distroId string, ts time.Time) amboy.Job {
 	job := makeCheckBlockedTasksJob()
 	job.DistroId = distroId

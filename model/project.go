@@ -1345,8 +1345,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			}
 		}
 		if tg, ok := tgMap[bvt.Name]; ok {
-			// kim: NOTE: this is the logic that drills down into the task group
-			// to find the particular tasks within a task group.
 			for _, t := range tg.Tasks {
 				if t == task {
 					bvt.Variant = variant

@@ -60,8 +60,6 @@ func VariantTasksToTVPairs(in []patch.VariantTasks) TaskVariantPairs {
 func (tvp *TaskVariantPairs) TVPairsToVariantTasks() []patch.VariantTasks {
 	vtMap := map[string]patch.VariantTasks{}
 	for _, pair := range tvp.ExecTasks {
-		// kim: NOTE: this should add the regular (i.e. execution) tasks,
-		// including the dependencies.
 		vt := vtMap[pair.Variant]
 		vt.Variant = pair.Variant
 		vt.Tasks = append(vt.Tasks, pair.TaskName)
@@ -98,12 +96,10 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return err
 	}
-	// kim: NOTE: create build docs for configured patch.
 	_, err = addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	// kim: NOTE: create task docs for configured patch.
 	_, err = addNewTasks(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
@@ -121,8 +117,6 @@ type PatchUpdate struct {
 
 // ConfigurePatch validates and creates the updated tasks/variants, and updates description if needed.
 // Returns an http status code and error.
-// kim: NOTE: this is most likely the code path that patch the went down in
-// EVG-18977.
 func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
 	var err error
 	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
@@ -132,20 +126,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
 	tasks := VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
-	// kim: NOTE: this is one place where dependencies are included in
-	// preparation for addNewTasksAndBuildsForPatch. This is a likely source of
-	// the bug, because it's not including the variant-task dependencies within
-	// the task group.
-	grip.Info(message.Fields{
-		"message": "kim: started including all relevant dependencies in variants-tasks",
-		"patch":   p.Id.Hex(),
-	})
 	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil)
-	grip.Info(message.Fields{
-		"message":  "kim: ended including all relevant dependencies in variants-tasks",
-		"tv_pairs": tasks.ExecTasks,
-		"patch":    p.Id,
-	})
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for patch",
 		"patch":   p.Id.Hex(),
@@ -167,7 +148,6 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 	}
 
 	// update the description for both reconfigured and new patches
-	// kim: NOTE: this is where the patch document sets the variants-tasks
 	if err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}

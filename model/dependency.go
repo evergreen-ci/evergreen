@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -20,13 +19,6 @@ type dependencyIncluder struct {
 // This function can return an error, but it should be treated as an informational warning.
 func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo) ([]TVPair, error) {
 	di := &dependencyIncluder{Project: project, requester: requester}
-	grip.Info(message.Fields{
-		"message":         "kim: including dependencies",
-		"project":         project.DisplayName,
-		"tv_pairs":        tvpairs,
-		"requester":       requester,
-		"activation_info": activationInfo,
-	})
 	return di.include(tvpairs, activationInfo, nil)
 }
 
@@ -50,10 +42,6 @@ func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *spec
 	// handle each pairing, recursively adding and pruning based
 	// on the task's dependencies
 	for _, d := range initialDeps {
-		grip.Info(message.Fields{
-			"message": "kim: handling one dependency",
-			"dep":     d,
-		})
 		_, err := di.handle(d, activationInfo, generatedVariants, true)
 		warnings.Add(err)
 	}
@@ -184,27 +172,12 @@ func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair, depe
 
 // expandDependencies finds all tasks depended on by the current task/variant pair.
 func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnitDependency) []TVPair {
-	grip.Info(message.Fields{
-		"message":      "kim: expanding dependencies",
-		"task":         pair.TaskName,
-		"variant":      pair.Variant,
-		"dependencies": depends,
-	})
 	deps := []TVPair{}
 	for _, d := range depends {
 		// don't automatically add dependencies if they are marked patch_optional
 		if d.PatchOptional {
 			continue
 		}
-		grip.Info(message.Fields{
-			"message":                       "kim: expanding one dependency",
-			"dependency":                    d,
-			"dep_variant":                   d.Variant,
-			"dep_task":                      d.Name,
-			"task":                          pair.TaskName,
-			"variant":                       pair.Variant,
-			"dependency_includer_requester": di.requester,
-		})
 		switch {
 		case d.Variant == AllVariants && d.Name == AllDependencies: // task = *, variant = *
 			// Here we get all variants and tasks (excluding the current task)
@@ -227,38 +200,14 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 		case d.Variant == AllVariants: // specific task, variant = *
 			// In the case where we depend on a task on all variants, we fetch the task's
 			// dependencies, then add that task for all variants that have it.
-			grip.Info(message.Fields{
-				"message":                       "kim: searching for '*' variant dependency matches for specific task",
-				"dependency":                    d,
-				"dep_variant":                   d.Variant,
-				"dep_task":                      d.Name,
-				"task":                          pair.TaskName,
-				"variant":                       pair.Variant,
-				"dependency_includer_requester": di.requester,
-			})
 			for _, v := range di.Project.BuildVariants {
 				for _, t := range v.Tasks {
-					grip.Info(message.Fields{
-						"message":           "kim: searching for matching task within a build variant for '*' variant dependency",
-						"curr_task_name":    t.Name,
-						"curr_variant_name": v.Name,
-						"dep_variant":       d.Variant,
-						"dep_task":          d.Name,
-						"source_task":       pair.TaskName,
-						"source_variant":    pair.Variant,
-					})
+					if t.Name == pair.TaskName && v.Name == pair.Variant {
+						continue
+					}
+
 					if t.IsGroup {
-						grip.Info(message.Fields{
-							"message":           "kim: '*' variant dependency searching build variant -> task list -> task group -> matching task",
-							"curr_task_name":    t.Name,
-							"curr_variant_name": v.Name,
-							"dep_variant":       d.Variant,
-							"dep_task":          d.Name,
-							"source_task":       pair.TaskName,
-							"source_variant":    pair.Variant,
-						})
-						// kim: TODO: write test for this
-						// Expand task groups and search for tasks matching the
+						// For a task group, search for tasks matching the
 						// dependency within the group.
 						tg := di.Project.FindTaskGroup(t.Name)
 						if tg == nil {
@@ -267,7 +216,6 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 						var foundInTaskGroup bool
 						for _, tgTaskName := range tg.Tasks {
 							if tgTaskName == pair.TaskName && v.Name == pair.Variant {
-								// Exclude self.
 								continue
 							}
 							if tgTaskName == d.Name {
@@ -279,29 +227,14 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 							continue
 						}
 					} else if t.Name != d.Name {
-						// kim: NOTE: exclude non-matching task names.
 						continue
 					}
-					if t.Name == pair.TaskName && v.Name == pair.Variant {
-						// kim: NOTE: exclude self.
-						continue
-					}
-					// kim: NOTE: for all variants, this needs to find a task
-					// within a task group.
+
 					projectTask := di.Project.FindTaskForVariant(t.Name, v.Name)
 					if projectTask != nil {
 						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
 						}
-						grip.Info(message.Fields{
-							"message":                       "kim: added matching task dependency for '*' variant dependency",
-							"dependency":                    d,
-							"dep_variant":                   d.Variant,
-							"dep_task":                      d.Name,
-							"tv_pair":                       pair,
-							"dependency_includer_requester": di.requester,
-							"project_task":                  projectTask.Name,
-						})
 						deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
 					}
 				}
