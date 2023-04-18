@@ -221,7 +221,7 @@ func (s *localService) filterAndSortTestResults(ctx context.Context, results []T
 func (s *localService) validateFilterOptions(opts *FilterOptions) error {
 	catcher := grip.NewBasicCatcher()
 
-	seenSortByKeys := map[string]int{}
+	seenSortByKeys := map[string]bool{}
 	for _, sortBy := range opts.Sort {
 		switch sortBy.Key {
 		case SortByStartKey, SortByDurationKey, SortByTestNameKey, SortByStatusKey, SortByBaseStatusKey, "":
@@ -230,13 +230,13 @@ func (s *localService) validateFilterOptions(opts *FilterOptions) error {
 			continue
 		}
 
-		if seenSortByKeys[sortBy.Key] == 1 {
+		if seenSortByKeys[sortBy.Key] {
 			catcher.Errorf("duplicate sort by key '%s'", sortBy.Key)
 		} else {
 			catcher.NewWhen(sortBy.Key == SortByBaseStatusKey && len(opts.BaseTasks) == 0, "must specify base task ID when sorting by base status")
 		}
 
-		seenSortByKeys[sortBy.Key] += 1
+		seenSortByKeys[sortBy.Key] = true
 	}
 
 	catcher.NewWhen(opts.Limit < 0, "limit cannot be negative")
