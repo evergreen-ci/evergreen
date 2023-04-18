@@ -190,10 +190,16 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
-	collectiveStatus, err := patch.CollectiveStatus(t.patch.Id.Hex())
-	if err != nil {
-		return nil, errors.Wrap(err, "getting collective status for patch")
+
+	collectiveStatus := t.patch.Status
+	if t.patch.IsParent() {
+		var err error
+		collectiveStatus, err = t.patch.CollectiveStatus()
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting collective patch status for patch '%s'", t.patch.Id)
+		}
 	}
+
 	grip.NoticeWhen(collectiveStatus != t.data.Status, message.Fields{
 		"message":                 "patch's current collective status does not match the patch event data's status",
 		"patch_collective_status": collectiveStatus,
