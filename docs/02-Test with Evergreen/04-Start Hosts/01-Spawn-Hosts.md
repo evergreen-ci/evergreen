@@ -22,7 +22,7 @@ Clicking it will pre-populate the spawn host page with a request to spawn a host
 
 ![spawn_host_modal.png](../../images/spawn_host_modal.png)
 
-Fetching artifacts can also be performed manually; see [fetch](../06-Using the Command Line Tool.md#fetch) in the Evergreen command line tool documentation.
+Fetching artifacts can also be performed manually; see [fetch](../06-Using-the-Command-Line-Tool.md#fetch) in the Evergreen command line tool documentation.
 
 Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching. 
 

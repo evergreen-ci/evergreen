@@ -358,8 +358,8 @@ are being used.
 
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version. You can change
-lhe git revision for modules by setting a module manually with
-[evergreen set module](../06-Using the Command Line Tool#operating-on-existing-patches)
+the git revision for modules by setting a module manually with
+[evergreen set module](../06-Using-the-Command-Line-Tool#operating-on-existing-patches)
 or by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
@@ -824,7 +824,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](../01-Configure a Project/02 Project Commands.md#generate-tasks)
+[generate.tasks](../01-Configure a Project/02-Project-Commands.md#generate-tasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
