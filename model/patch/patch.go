@@ -30,11 +30,11 @@ import (
 const SizeLimit = 1024 * 1024 * 100
 const backportFmtString = "Backport: %s"
 
-// VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
+// VariantTasks contains the variant name and the set of tasks to be scheduled for that variant
 type VariantTasks struct {
-	Variant      string
-	Tasks        []string
-	DisplayTasks []DisplayTask
+	Variant      string        `bson:"variant"`
+	Tasks        []string      `bson:"tasks"`
+	DisplayTasks []DisplayTask `bson:"displaytasks"`
 }
 
 // MergeVariantsTasks merges two slices of VariantsTasks into a single set.

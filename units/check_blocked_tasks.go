@@ -43,9 +43,8 @@ func makeCheckBlockedTasksJob() *checkBlockedTasksJob {
 	return j
 }
 
-// NewCheckBlockedTasksJob creates a job to run repotracker against a repository.
-// The code creating this job is responsible for verifying that the project
-// should track push events. We want to limit this job to once an hour for each distro.
+// NewCheckBlockedTasksJob creates a job to check dependency state for tasks
+// waiting to be dispatched.
 func NewCheckBlockedTasksJob(distroId string, ts time.Time) amboy.Job {
 	job := makeCheckBlockedTasksJob()
 	job.DistroId = distroId

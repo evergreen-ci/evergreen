@@ -224,6 +224,8 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 }
 
 // SchedulePatch is the resolver for the schedulePatch field.
+// kim: NOTE: this is where configuring a patch starts after selecting tasks in
+// the UI.
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := model.VersionFindOneId(patchID)

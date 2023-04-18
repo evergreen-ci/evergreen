@@ -30,3 +30,54 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: test-db-auth
+  - name: kim-test-1
+    display_name: Kim's Dependency Test (1)
+    run_on:
+      - ubuntu2004-small
+    tasks:
+      - child-task
+  - name: kim-test-2
+    display_name: Kim's Dependency Test (2)
+    run_on:
+      - ubuntu2004-small
+    tasks:
+      - parent-task-0
+      - parent-group
+
+tasks:
+  - name: child-task
+    depends_on:
+      - name: parent-task-0
+        variant: '*'
+      - name: parent-task-2-0
+        variant: '*'
+    commands:
+      - command: shell.exec
+        params:
+          script: "echo ${task_name}"
+  - name: parent-task-0
+    commands:
+      - command: shell.exec
+        params:
+          script: "echo ${task_name}"
+  - name: parent-task-1-0
+    depends_on:
+      - name: parent-task-0
+    commands:
+      - command: shell.exec
+        params:
+          script: "echo ${task_name}"
+  - name: parent-task-2-0
+    depends_on:
+      - name: parent-task-0
+    commands:
+      - command: shell.exec
+        params:
+          script: "echo ${task_name}"
+
+task_groups:
+  - name: parent-group
+    max_hosts: 2
+    tasks:
+      - parent-task-1-0
+      - parent-task-2-0
