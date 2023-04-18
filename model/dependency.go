@@ -207,23 +207,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 					}
 
 					if t.IsGroup {
-						// For a task group, search for tasks matching the
-						// dependency within the group.
-						tg := di.Project.FindTaskGroup(t.Name)
-						if tg == nil {
-							continue
-						}
-						var foundInTaskGroup bool
-						for _, tgTaskName := range tg.Tasks {
-							if tgTaskName == pair.TaskName && v.Name == pair.Variant {
-								continue
-							}
-							if tgTaskName == d.Name {
-								foundInTaskGroup = true
-								break
-							}
-						}
-						if !foundInTaskGroup {
+						if !di.dependencyMatchesTaskGroupTask(pair, t, d) {
 							continue
 						}
 					} else if t.Name != d.Name {
@@ -250,7 +234,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 			variant := di.Project.FindBuildVariant(v)
 			if variant != nil {
 				for _, t := range variant.Tasks {
-					if t.Name == pair.TaskName {
+					if t.Name == pair.TaskName && variant.Name == pair.Variant {
 						continue
 					}
 					projectTask := di.Project.FindTaskForVariant(t.Name, v)
@@ -278,4 +262,21 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 		}
 	}
 	return deps
+}
+
+func (di *dependencyIncluder) dependencyMatchesTaskGroupTask(depSrc TVPair, bvt BuildVariantTaskUnit, dep TaskUnitDependency) bool {
+	tg := di.Project.FindTaskGroup(bvt.Name)
+	if tg == nil {
+		return false
+	}
+	for _, tgTaskName := range tg.Tasks {
+		if tgTaskName == depSrc.TaskName && bvt.Variant == depSrc.Variant {
+			// Exclude self.
+			continue
+		}
+		if tgTaskName == dep.Name {
+			return true
+		}
+	}
+	return false
 }
