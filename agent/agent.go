@@ -49,19 +49,20 @@ type Options struct {
 	HostID     string
 	HostSecret string
 	// PodID and PodSecret only apply in pod mode.
-	PodID                 string
-	PodSecret             string
-	StatusPort            int
-	LogPrefix             string
-	LogkeeperURL          string
-	WorkingDirectory      string
-	HeartbeatInterval     time.Duration
-	AgentSleepInterval    time.Duration
-	MaxAgentSleepInterval time.Duration
-	Cleanup               bool
-	S3Opts                pail.S3Options
-	SetupData             apimodels.AgentSetupData
-	CloudProvider         string
+	PodID                  string
+	PodSecret              string
+	StatusPort             int
+	LogPrefix              string
+	LogkeeperURL           string
+	WorkingDirectory       string
+	HeartbeatInterval      time.Duration
+	AgentSleepInterval     time.Duration
+	MaxAgentSleepInterval  time.Duration
+	Cleanup                bool
+	S3Opts                 pail.S3Options
+	SetupData              apimodels.AgentSetupData
+	CloudProvider          string
+	TraceCollectorEndpoint string
 }
 
 // Mode represents a mode that the agent will run in.
@@ -149,6 +150,7 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 			Permissions: pail.S3PermissionsPublicRead,
 			ContentType: "text/plain",
 		}
+		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
 	}
 
 	return &Agent{
