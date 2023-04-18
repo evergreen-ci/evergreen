@@ -8,7 +8,7 @@ Specific Github pull request behavior can trigger behavior in Evergreen.
 evergreen help
 ```
 
-We have documentation here but we also provide it on the PR itself. It will display commands that are available for your project, with some context about when to use them. If the commit queue is disabled but there is an available message, we will still display the message. If PR testing isn't enabled for the branch but [PR testing is set up for untracked branches](../01-Configure-a-Project/04-Using-Repo-Level-Settings#how-to-use-pr-testing-for-untracked-branches) then we will also still show the related Github Pull request commands (detailed below).
+We have documentation here but we also provide it on the PR itself. It will display commands that are available for your project, with some context about when to use them. If the commit queue is disabled but there is an available message, we will still display the message. If PR testing isn't enabled for the branch but [PR testing is set up for untracked branches](../01-Configure a Project/04 Using Repo Level Settings#how-to-use-pr-testing-for-untracked-branches) then we will also still show the related Github Pull request commands (detailed below).
 
 
 ## Github Pull Request Testing
@@ -19,7 +19,7 @@ If "Automated Testing" is enabled, Evergreen will automatically create a patch f
 
 If you'd like the option of creating patches but wouldn't like it to happen automatically, you can enable "Manual Testing".
 
-You can read more about these options [here](../01-Configure-a-Project/03-Project-and-Distro-Settings.md#github-pull-request-testing).
+You can read more about these options [here](../01-Configure a Project/03 Project and Distro Settings.md#github-pull-request-testing).
 
 #### Retry a patch
 

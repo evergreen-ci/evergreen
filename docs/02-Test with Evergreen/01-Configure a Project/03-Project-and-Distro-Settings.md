@@ -113,7 +113,7 @@ definition (i.e. without the ".") and tag negation is also supported
 comma-delimited.
 
 Aliases can also be defined locally as shown
-[here](../06-Using-the-Command-Line-Tool#local-aliases).
+[here](../06-Using the Command Line Tool#local-aliases).
 
 ### GitHub Pull Request Testing
 
@@ -309,7 +309,7 @@ the
 or
 [s3.pull](02-Project-Commands#s3pull)
 project commands, or using it from [the
-CLI](../06-Using-the-Command-Line-Tool#task-sync).
+CLI](../06-Using the Command Line Tool#task-sync).
 
 Options:
 
