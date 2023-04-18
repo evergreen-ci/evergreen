@@ -597,35 +597,38 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if sortCategory != nil {
 		switch *sortCategory {
 		case TestSortCategoryStatus:
-			sortBy = testresult.SortByStatus
+			sortBy = testresult.SortByStatusKey
 		case TestSortCategoryDuration:
-			sortBy = testresult.SortByDuration
+			sortBy = testresult.SortByDurationKey
 		case TestSortCategoryTestName:
-			sortBy = testresult.SortByTestName
+			sortBy = testresult.SortByTestNameKey
 		case TestSortCategoryStartTime:
-			sortBy = testresult.SortByStart
+			sortBy = testresult.SortByStartKey
 		case TestSortCategoryBaseStatus:
 			if len(baseTaskOpts) > 0 {
 				// Only sort by base status if we know there
 				// are base task options we can send to the
 				// results service.
-				sortBy = testresult.SortByBaseStatus
+				sortBy = testresult.SortByBaseStatusKey
 			}
 		}
+	}
+	var sort []testresult.SortBy
+	if sortBy != "" {
+		sort = []testresult.SortBy{{Key: sortBy, OrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc}}
 	}
 
 	taskResults, err := dbTask.GetTestResults(
 		ctx,
 		evergreen.GetEnvironment(),
 		&testresult.FilterOptions{
-			TestName:     utility.FromStringPtr(testName),
-			Statuses:     statuses,
-			GroupID:      utility.FromStringPtr(groupID),
-			SortBy:       sortBy,
-			SortOrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc,
-			Limit:        utility.FromIntPtr(limit),
-			Page:         utility.FromIntPtr(page),
-			BaseTasks:    baseTaskOpts,
+			TestName:  utility.FromStringPtr(testName),
+			Statuses:  statuses,
+			GroupID:   utility.FromStringPtr(groupID),
+			Sort:      sort,
+			Limit:     utility.FromIntPtr(limit),
+			Page:      utility.FromIntPtr(page),
+			BaseTasks: baseTaskOpts,
 		},
 	)
 	if err != nil {
