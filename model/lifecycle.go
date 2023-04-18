@@ -63,6 +63,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller.
 	if active {
+		// test if this deactivates child patches
 		if err := SetVersionActivated(versionId, active); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 		}
