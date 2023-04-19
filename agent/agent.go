@@ -47,6 +47,7 @@ type Agent struct {
 	// applies to EC2 hosts.
 	ec2InstanceID string
 	endTaskResp   *TriggerEndTaskResp
+	closers       []closerOp
 }
 
 // Options contains startup options for an Agent.
@@ -161,17 +162,26 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
 	}
 
-	agent := &Agent{
+	a := &Agent{
 		opts:   opts,
 		comm:   comm,
 		jasper: jpm,
 	}
 
-	if err := agent.initTracerProvider(ctx); err != nil {
+	a.closers = append(a.closers, closerOp{
+		name: "communicator close",
+		closerFn: func(ctx context.Context) error {
+			if a.comm != nil {
+				a.comm.Close()
+			}
+			return nil
+		}})
+
+	if err := a.initTracerProvider(ctx); err != nil {
 		return nil, errors.Wrap(err, "initializing tracer provider")
 	}
 
-	return agent, nil
+	return a, nil
 }
 
 func (a *Agent) initTracerProvider(ctx context.Context) error {
@@ -204,13 +214,47 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 	)
 	otel.SetTracerProvider(tp)
 
+	a.closers = append(a.closers, closerOp{
+		name: "shutdown tracer",
+		closerFn: func(ctx context.Context) error {
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(tp.Shutdown(ctx), "trace provider shutdown")
+			catcher.Wrap(exp.Shutdown(ctx), "trace exporter shutdown")
+
+			return catcher.Resolve()
+		}})
+
 	return nil
 }
 
-func (a *Agent) Close() {
-	if a.comm != nil {
-		a.comm.Close()
+type closerOp struct {
+	name     string
+	closerFn func(context.Context) error
+}
+
+func (a *Agent) Close(ctx context.Context) {
+	catcher := grip.NewBasicCatcher()
+	wg := &sync.WaitGroup{}
+	for idx, closer := range a.closers {
+		if closer.closerFn == nil {
+			continue
+		}
+
+		grip.Info(message.Fields{
+			"message": "calling closer",
+			"index":   idx,
+			"closer":  closer.name,
+		})
+
+		catcher.Add(closer.closerFn(ctx))
 	}
+
+	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		"message": "calling agent closers",
+		"host_id": a.opts.HostID,
+	}))
+
+	wg.Wait()
 }
 
 // Start starts the agent loop. The agent polls the API server for new tasks
