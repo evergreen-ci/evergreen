@@ -734,7 +734,6 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 			GithashKey:              p.Githash,
 			PatchesKey:              p.Patches,
 			ProjectStorageMethodKey: p.ProjectStorageMethod,
-			PatchedParserProjectKey: p.PatchedParserProject,
 			PatchedProjectConfigKey: p.PatchedProjectConfig,
 			VariantsTasksKey:        p.VariantsTasks,
 			BuildVariantsKey:        p.BuildVariants,

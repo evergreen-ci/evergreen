@@ -97,7 +97,8 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 	// populate tasks/variants matching the commitqueue alias
 	proj.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
-	if err = units.AddMergeTaskAndVariant(patchDoc, proj, &projectRef, commitqueue.SourcePullRequest); err != nil {
+	pp, err = units.AddMergeTaskAndVariant(ctx, patchDoc, proj, &projectRef, commitqueue.SourcePullRequest)
+	if err != nil {
 		return nil, err
 	}
 

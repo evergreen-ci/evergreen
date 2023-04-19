@@ -250,20 +250,22 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	patchDoc := &patch.Patch{}
 	ref := &model.ProjectRef{}
 
-	s.NoError(AddMergeTaskAndVariant(patchDoc, project, ref, commitqueue.SourceDiff))
+	pp, err := AddMergeTaskAndVariant(s.ctx, patchDoc, project, ref, commitqueue.SourceDiff)
+	s.NoError(err)
+	s.NotZero(pp)
 
 	s.Require().Len(patchDoc.BuildVariants, 1)
 	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])
 	s.Require().Len(patchDoc.Tasks, 1)
 	s.Equal(evergreen.MergeTaskName, patchDoc.Tasks[0])
 
-	s.Require().Len(project.BuildVariants, 1)
-	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Name)
-	s.Require().Len(project.BuildVariants[0].Tasks, 1)
+	s.Require().Len(pp.BuildVariants, 1)
+	s.Equal(evergreen.MergeTaskVariant, pp.BuildVariants[0].Name)
+	s.Require().Len(pp.BuildVariants[0].Tasks, 1)
 	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
-	s.Require().Len(project.Tasks, 1)
+	s.Require().Len(pp.Tasks, 1)
 	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
-	s.Require().Len(project.TaskGroups, 1)
+	s.Require().Len(pp.TaskGroups, 1)
 	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0].Name)
 }
 

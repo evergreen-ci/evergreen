@@ -1802,7 +1802,10 @@ func activateExistingInactiveTasks(creationInfo TaskCreationInfo, existingBuilds
 
 func getTaskIdTables(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
-	taskIdTable := NewPatchTaskIdTable(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
+	taskIdTable, err := NewPatchTaskIdTable(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
+	if err != nil {
+		return TaskIdConfig{}, errors.Wrap(err, "creating patch's task ID table")
+	}
 	existingTasks, err := task.FindAll(db.Query(task.ByVersion(creationInfo.Version.Id)).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "getting existing task IDs")
