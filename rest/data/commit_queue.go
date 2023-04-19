@@ -150,7 +150,7 @@ func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, 
 		PatchSet: patch.PatchSet{
 			PatchFileId:    patchFileID,
 			Summary:        patchSummaries,
-			CommitMessages: []string{patchDoc.GithubPatchData.CommitMessage},
+			CommitMessages: []string{patchDoc.GithubPatchData.CommitTitle},
 		},
 	})
 

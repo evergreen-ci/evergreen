@@ -323,15 +323,18 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 	patchDoc := &patch.Patch{
 		Id:      mgobson.ObjectIdHex("aabbccddeeff112233445566"),
 		Githash: "abcdef",
-		GithubPatchData:
+		GithubPatchData: thirdparty.GithubPatch{
+			CommitTitle:   "my title",
+			CommitMessage: "more info",
+		},
 	}
 
 	patchSummaries := []thirdparty.Summary{
-		thirdparty.Summary{
+		{
 			Name:      "myfile.go",
 			Additions: 1,
 			Deletions: 0,
-		},
+				},
 	}
 
 	patchContents := `diff --git a/myfile.go b/myfile.go
@@ -344,8 +347,10 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 	`
 
 	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContents))
-	s.Len(patchDoc.Patches, 1)
+	s.Require().Len(patchDoc.Patches, 1)
 	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
+	s.Require().Len(patchDoc.Patches[0].PatchSet.CommitMessages, 1)
+	s.Equal(patchDoc.Patches[0].PatchSet.CommitMessages[0], patchDoc.GithubPatchData.CommitTitle)
 	storedPatchContents, err := patch.FetchPatchContents(patchDoc.Patches[0].PatchSet.PatchFileId)
 	s.NoError(err)
 	s.Equal(patchContents, storedPatchContents)
