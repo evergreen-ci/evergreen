@@ -334,7 +334,7 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 			Name:      "myfile.go",
 			Additions: 1,
 			Deletions: 0,
-				},
+		},
 	}
 
 	patchContents := `diff --git a/myfile.go b/myfile.go
