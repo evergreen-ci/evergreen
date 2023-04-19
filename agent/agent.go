@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,12 +31,17 @@ import (
 	"go.opentelemetry.io/contrib/detectors/aws/ec2"
 	"go.opentelemetry.io/contrib/detectors/aws/ecs"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer trace.Tracer
 
 // Agent manages the data necessary to run tasks in a runtime environment.
 type Agent struct {
@@ -208,11 +214,12 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
 
-	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
-		trace.WithResource(resource),
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(resource),
 	)
 	otel.SetTracerProvider(tp)
+	tracer = tp.Tracer("EvergreenAgent")
 
 	a.closers = append(a.closers, closerOp{
 		name: "shutdown tracer",
@@ -222,7 +229,8 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 			catcher.Wrap(exp.Shutdown(ctx), "trace exporter shutdown")
 
 			return catcher.Resolve()
-		}})
+		},
+	})
 
 	return nil
 }
@@ -598,6 +606,17 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
+	tskCtx, span := tracer.Start(tskCtx, "runTask", trace.WithAttributes(
+		attribute.String("evergreen.task_id", taskConfig.Task.Id),
+		attribute.String("evergreen.task_display_name", taskConfig.Task.DisplayName),
+		attribute.String("evergreen.version_id", taskConfig.Task.Version),
+		attribute.String("evergreen.build_id", taskConfig.Task.BuildId),
+		attribute.String("evergreen.project_identifier", taskConfig.ProjectRef.Identifier),
+		attribute.String("evergreen.project_id", taskConfig.ProjectRef.Id),
+		attribute.String("evergreen.requester", taskConfig.Task.Requester),
+	))
+	defer span.End()
+
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	// Pass in idle timeout context to heartbeat to enforce the idle timeout.
@@ -737,6 +756,11 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		return nil, errors.Wrap(err, "marking task complete")
 	}
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
+
+	if detail.Status != evergreen.TaskSucceeded {
+		span := trace.SpanFromContext(ctx)
+		span.SetStatus(codes.Error, fmt.Sprintf("task had status '%s'", detail.Status))
+	}
 
 	return resp, nil
 }
