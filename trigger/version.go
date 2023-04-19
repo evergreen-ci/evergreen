@@ -111,6 +111,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	status := t.data.Status
 	if evergreen.IsPatchRequester(t.version.Requester) {
 		var err error
+		// Look at collective status because we don't know whether the last patch to finish in the version was a child or a parent.
 		status, err = patch.CollectiveStatus(t.version.Id)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
