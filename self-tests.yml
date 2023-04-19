@@ -404,12 +404,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
     name: test-operations
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-operations-metabuild-generator
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-operations-metabuild-model
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
