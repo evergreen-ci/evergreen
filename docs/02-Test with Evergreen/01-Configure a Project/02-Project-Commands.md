@@ -925,7 +925,7 @@ s3.push is restarted, it will replace the existing one.
 Users also have the option to inspect the task working directory after
 it has finished pushing (e.g. for debugging a failed task). This can be
 achieved by either pulling the task working directory from S3 onto a
-spawn host (from the UI) or their local machines (using [evergreen pull](../06-Using-the-Command-Line-Tool#pull)).
+spawn host (from the UI) or their local machines (using [evergreen pull](../06-Using-the-Command-Line-Tool.md#pull)).
 
 The working directory is put in a private S3 bucket shared between all
 projects. Any other logged in user can pull and view the directory
@@ -1160,4 +1160,4 @@ Parameters:
 Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
-Commands can also be configured to run if timeout occurs, as documented [here](01-Project-Configuration-Files#pre-post-and-timeout).
+Commands can also be configured to run if timeout occurs, as documented [here](01-Project-Configuration-Files.md#pre-post-and-timeout).

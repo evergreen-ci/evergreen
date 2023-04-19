@@ -578,7 +578,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = responseRef.Enabled
-	projectRef.Private = &responseRef.Private
 	projectRef.Restricted = &responseRef.Restricted
 	projectRef.Owner = responseRef.Owner
 	projectRef.DeactivatePrevious = &responseRef.DeactivatePrevious
