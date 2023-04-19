@@ -27,6 +27,8 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/contrib/detectors/aws/ec2"
+	"go.opentelemetry.io/contrib/detectors/aws/ecs"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -182,6 +184,7 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen-agent")),
 		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
+		resource.WithDetectors(ec2.NewResourceDetector(), ecs.NewResourceDetector()),
 	)
 	if err != nil {
 		return errors.Wrap(err, "making otel resource")
