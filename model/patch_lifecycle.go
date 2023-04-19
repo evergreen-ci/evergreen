@@ -484,17 +484,35 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			return nil, err
 		}
 	}
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
+	// unmarshal the project YAML for storage
+	project := &Project{}
+	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("project '%s' not found", p.Project)
+		return nil, errors.Wrap(err, "fetching project options for patch")
 	}
 
-	project, intermediateProject, err := FindAndTranslateProjectForPatch(ctx, settings, p)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
+	// It used to be that the parser project was not stored until patches were
+	// finalized. Newer patches always store the parser project when the patch
+	// is created rather than when it's finalized. For backward compatibility
+	// with existing unfinalized patches, the parser project must be inserted
+	// now if an old patch is being finalized.
+	mustInsertParserProjectDuringFinalization := p.PatchedParserProject != ""
+	var intermediateProject *ParserProject
+	// TODO (EVG-18700): this if-else most likely is equivalent to just calling
+	// FindAndTranslateProjectForPatch. Try removing the if block in a follow-up
+	// commit.
+	if mustInsertParserProjectDuringFinalization {
+		intermediateProject, err = LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
+		if err != nil {
+			return nil, errors.Wrapf(err,
+				"marshalling patched parser project from repository revision '%s'",
+				p.Githash)
+		}
+	} else {
+		project, intermediateProject, err = FindAndTranslateProjectForPatch(ctx, settings, p)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
+		}
 	}
 	var config *ProjectConfig
 	if projectRef.IsVersionControlEnabled() {
@@ -667,18 +685,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		)
 	}
 
-	// Newer patches always stored the parser project during patch creation.
-	// However, it used to be that the parser project was not stored until
-	// patches were finalized. For backward compatibility with the old
-	// unfinalized patches, try storing the parser project now that it's
-	// finalizing.
-
 	ppStorageMethod := p.ProjectStorageMethod
 	if ppStorageMethod == "" {
+		// It used to be that the parser project was not stored until patches
+		// were finalized, so for backward compatibility with existing
+		// unfinalized patches, try storing the parser project in in the DB.
 		ppStorageMethod = evergreen.ProjectStorageMethodDB
 	}
-
-	if p.PatchedParserProject != "" {
+	if mustInsertParserProjectDuringFinalization {
 		intermediateProject.Init(p.Id.Hex(), patchVersion.CreateTime)
 		ppStorageMethod, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, ppStorageMethod, intermediateProject)
 		if err != nil {
