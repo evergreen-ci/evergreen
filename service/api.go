@@ -265,7 +265,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = errs.AtLevel(validator.Error)
 	} else if projectRef == nil {
 		validationErr = validator.ValidationError{
-			Message: "project does not exist; validation will proceed without checking alias coverage",
+			Message: "no project specified; validation will proceed without checking alias coverage",
 			Level:   validator.Warning,
 		}
 		errs = append(errs, validationErr)
