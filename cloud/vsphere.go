@@ -208,7 +208,7 @@ func (m *vsphereManager) ModifyVolume(context.Context, *host.Volume, *model.Volu
 	return errors.New("can't modify volume with vSphere provider")
 }
 
-func (m *vsphereManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+func (m *vsphereManager) GetVolumeAttachment(context.Context, string) (*VolumeAttachment, error) {
 	return nil, errors.New("can't get volume attachment with vSphere provider")
 }
 

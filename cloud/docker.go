@@ -235,7 +235,7 @@ func (m *dockerManager) ModifyVolume(context.Context, *host.Volume, *model.Volum
 	return errors.New("can't modify volume with Docker provider")
 }
 
-func (m *dockerManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+func (m *dockerManager) GetVolumeAttachment(context.Context, string) (*VolumeAttachment, error) {
 	return nil, errors.New("can't get volume attachment with Docker provider")
 }
 
