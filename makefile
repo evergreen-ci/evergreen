@@ -263,7 +263,7 @@ $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(un
 	touch $@
 
 dist-staging:
-	STAGING_ONLY=1 SIGN_MACOS= $(MAKE) dist
+	STAGING_ONLY=1 DEBUG_ENABLED=1 SIGN_MACOS= $(MAKE) dist
 dist-unsigned:
 	SIGN_MACOS= $(MAKE) dist
 dist:$(buildDir)/dist.tar.gz
