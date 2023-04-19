@@ -27,6 +27,12 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
 // Agent manages the data necessary to run tasks in a runtime environment.
@@ -153,11 +159,49 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
 	}
 
-	return &Agent{
+	agent := &Agent{
 		opts:   opts,
 		comm:   comm,
 		jasper: jpm,
-	}, nil
+	}
+
+	if err := agent.initTracerProvider(ctx); err != nil {
+		return nil, errors.Wrap(err, "initializing tracer provider")
+	}
+
+	return agent, nil
+}
+
+func (a *Agent) initTracerProvider(ctx context.Context) error {
+	if a.opts.TraceCollectorEndpoint == "" {
+		return nil
+	}
+
+	resource, err := resource.New(ctx,
+		resource.WithProcess(),
+		resource.WithHost(),
+		resource.WithAttributes(semconv.ServiceName("evergreen-agent")),
+		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
+	)
+	if err != nil {
+		return errors.Wrap(err, "making otel resource")
+	}
+
+	client := otlptracegrpc.NewClient(
+		otlptracegrpc.WithEndpoint(a.opts.TraceCollectorEndpoint),
+	)
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return errors.Wrap(err, "initializing otel exporter")
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(exp),
+		trace.WithResource(resource),
+	)
+	otel.SetTracerProvider(tp)
+
+	return nil
 }
 
 func (a *Agent) Close() {
