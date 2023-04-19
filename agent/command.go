@@ -14,11 +14,41 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type runCommandsOptions struct {
 	isTaskCommands bool
 	failPreAndPost bool
+}
+
+// runTaskCommands runs all commands for the task currently assigned to the agent and
+// returns the task status
+func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
+	ctx, span := tracer.Start(ctx, "task-commands")
+	defer span.End()
+
+	conf := tc.taskConfig
+	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
+
+	if task == nil {
+		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
+	}
+
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, "canceled while running task commands")
+	}
+	tc.logger.Execution().Info("Running task commands.")
+	start := time.Now()
+	opts := runCommandsOptions{isTaskCommands: true}
+	err := a.runCommands(ctx, tc, task.Commands, opts)
+	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
@@ -60,106 +90,101 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		}()
 	}
 
+	ctx, commandSetSpan := tracer.Start(ctx, "command-set", trace.WithAttributes(
+		attribute.String("evergreen.function", commandInfo.Function),
+	))
+	defer commandSetSpan.End()
+
 	for idx, cmd := range cmds {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running command list")
 		}
-
 		cmd.SetJasperManager(a.jasper)
 
 		fullCommandName := getCommandName(commandInfo, cmd)
-
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
 			tc.logger.Task().Infof("Skipping command %s on variant %s (step %d of %d).",
 				fullCommandName, tc.taskConfig.BuildVariant.Name, index, total)
 			continue
 		}
-
 		if len(cmds) == 1 {
 			tc.logger.Task().Infof("Running command %s (step %d of %d).", fullCommandName, index, total)
 		} else {
 			// for functions with more than one command
 			tc.logger.Task().Infof("Running command %s (step %d.%d of %d).", fullCommandName, index, idx+1, total)
 		}
-		for key, val := range commandInfo.Vars {
-			var newVal string
-			newVal, err = tc.taskConfig.Expansions.ExpandString(val)
-			if err != nil {
-				return errors.Wrapf(err, "expanding '%s'", val)
-			}
-			tc.taskConfig.Expansions.Put(key, newVal)
-		}
 
-		if options.isTaskCommands || options.failPreAndPost {
-			tc.setCurrentCommand(cmd)
-			tc.setCurrentIdleTimeout(cmd)
-			a.comm.UpdateLastMessageTime()
-		} else {
-			tc.setCurrentIdleTimeout(nil)
-		}
-
-		start := time.Now()
-		// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
-		// the process has called subprocesses. It will wait until a subprocess
-		// finishes, instead of returning immediately when the context is canceled.
-		// We therefore check both if the context is cancelled and if Wait() has finished.
-		cmdChan := make(chan error, 1)
-		go func() {
-			defer func() {
-				// this channel will get read from twice even though we only send once, hence why it's buffered
-				cmdChan <- recovery.HandlePanicWithError(recover(), nil,
-					fmt.Sprintf("running command %s", fullCommandName))
-			}()
-			cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
-		}()
-		select {
-		case err = <-cmdChan:
-			if err != nil {
-				tc.logger.Task().Errorf("Command %s failed: %s.", fullCommandName, err)
-				if options.isTaskCommands || options.failPreAndPost ||
-					(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
-					// any git.get_project in the commit queue should fail
-					return errors.Wrap(err, "command failed")
-				}
-			}
-		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", fullCommandName, int(tc.timeout.idleTimeoutDuration.Seconds()))
-			} else {
-				tc.logger.Task().Errorf("Command %s stopped early: %s.", fullCommandName, ctx.Err())
-			}
-			return errors.Wrap(ctx.Err(), "agent stopped early")
-		}
-		tc.logger.Task().Infof("Finished command %s in %s.", fullCommandName, time.Since(start).String())
-		if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
-			// only error if we're running a command that should fail, and we don't want to continue to run other tasks
-			return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
+		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, fullCommandName, options); err != nil {
+			commandSetSpan.SetStatus(codes.Error, "running command")
+			commandSetSpan.RecordError(err)
+			return errors.Wrap(err, "running command")
 		}
 	}
 	return nil
 }
 
-// runTaskCommands runs all commands for the task currently assigned to the agent and
-// returns the task status
-func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
-	conf := tc.taskConfig
-	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
+func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
+	cmd command.Command, fullCommandName string, options runCommandsOptions) error {
+	ctx, commandSpan := tracer.Start(ctx, "command", trace.WithAttributes(
+		attribute.String("evergreen.command_name", cmd.Name()),
+	))
+	defer commandSpan.End()
 
-	if task == nil {
-		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
+	for key, val := range commandInfo.Vars {
+		var newVal string
+		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
+		if err != nil {
+			return errors.Wrapf(err, "expanding '%s'", val)
+		}
+		tc.taskConfig.Expansions.Put(key, newVal)
 	}
 
-	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceled while running task commands")
+	if options.isTaskCommands || options.failPreAndPost {
+		tc.setCurrentCommand(cmd)
+		tc.setCurrentIdleTimeout(cmd)
+		a.comm.UpdateLastMessageTime()
+	} else {
+		tc.setCurrentIdleTimeout(nil)
 	}
-	tc.logger.Execution().Info("Running task commands.")
+
 	start := time.Now()
-	opts := runCommandsOptions{isTaskCommands: true}
-	err := a.runCommands(ctx, tc, task.Commands, opts)
-	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
-	if err != nil {
-		return err
+	// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
+	// the process has called subprocesses. It will wait until a subprocess
+	// finishes, instead of returning immediately when the context is canceled.
+	// We therefore check both if the context is cancelled and if Wait() has finished.
+	cmdChan := make(chan error, 1)
+	go func() {
+		defer func() {
+			// this channel will get read from twice even though we only send once, hence why it's buffered
+			cmdChan <- recovery.HandlePanicWithError(recover(), nil,
+				fmt.Sprintf("running command %s", fullCommandName))
+		}()
+		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
+	}()
+	select {
+	case err := <-cmdChan:
+		if err != nil {
+			tc.logger.Task().Errorf("Command %s failed: %s.", fullCommandName, err)
+			if options.isTaskCommands || options.failPreAndPost ||
+				(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
+				// any git.get_project in the commit queue should fail
+				return errors.Wrap(err, "command failed")
+			}
+		}
+	case <-ctx.Done():
+		if ctx.Err() == context.DeadlineExceeded {
+			tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", fullCommandName, int(tc.timeout.idleTimeoutDuration.Seconds()))
+		} else {
+			tc.logger.Task().Errorf("Command %s stopped early: %s.", fullCommandName, ctx.Err())
+		}
+		return errors.Wrap(ctx.Err(), "agent stopped early")
 	}
+	tc.logger.Task().Infof("Finished command %s in %s.", fullCommandName, time.Since(start).String())
+	if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
+		// only error if we're running a command that should fail, and we don't want to continue to run other tasks
+		return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
+	}
+
 	return nil
 }
 
