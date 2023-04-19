@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -20,6 +21,8 @@ type VersionModification struct {
 	TaskIds           []string                     `json:"task_ids"` // deprecated
 }
 
+// ModifyVersion handles making particular changes to the version, such as restarting, setting active, etc,
+// as well as for child patches if relevant.
 func ModifyVersion(version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
 	case evergreen.RestartAction:
@@ -42,7 +45,7 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
 		// the deactivation is in progress
 		if modifications.Abort {
-			if err := task.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
+			if err := AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "aborting patch")
 			}
 		}
@@ -74,7 +77,16 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 				return http.StatusUnauthorized, errors.Errorf("insufficient access to set priority %d, can only set priority less than or equal to %d", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
-		if err := SetVersionsPriority([]string{version.Id}, modifications.Priority, user.Id); err != nil {
+		versionIds := []string{version.Id}
+		if evergreen.IsPatchRequester(version.Requester) {
+			// Only modify the child patch if it is finalized.
+			childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(version.Id)
+			if err != nil {
+				return http.StatusNotFound, errors.Wrap(err, "finding finalized patch ids")
+			}
+			versionIds = append(versionIds, childPatchIds...)
+		}
+		if err := SetVersionsPriority(versionIds, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting version priority")
 		}
 	default:

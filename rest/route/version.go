@@ -213,7 +213,7 @@ func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := task.AbortVersion(h.versionId, task.AbortInfo{User: h.userId}); err != nil {
+	if err := dbModel.AbortVersion(h.versionId, task.AbortInfo{User: h.userId}); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting version '%s'", h.versionId))
 	}
 

@@ -888,7 +888,7 @@ func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 		if err := SetVersionActivation(p.Version, false, reason.User); err != nil {
 			return errors.WithStack(err)
 		}
-		return errors.WithStack(task.AbortVersion(p.Version, reason))
+		return errors.WithStack(dbModel.AbortVersion(p.Version, reason))
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))

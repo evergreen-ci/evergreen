@@ -197,3 +197,44 @@ func TestFindLatestRevisionForProject(t *testing.T) {
 		t.Run(name, test)
 	}
 }
+
+func TestAbortVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+	finishedExecTask := &task.Task{
+		Id:      "et1",
+		Version: "v1",
+		Status:  evergreen.TaskSucceeded,
+	}
+	failingExecTask := &task.Task{
+		Id:      "et2",
+		Version: "v1",
+		Status:  evergreen.TaskFailed,
+	}
+	otherExecTask := &task.Task{
+		Id:      "et3",
+		Version: "v1",
+		Status:  evergreen.TaskStarted,
+	}
+	dt := &task.Task{
+		Id:             "dt",
+		Version:        "v1",
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"et1", "et2", "et3"},
+	}
+	assert.NoError(t, db.InsertMany(task.Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
+
+	assert.NoError(t, AbortVersion("v1", task.AbortInfo{TaskID: "et2"}))
+
+	var err error
+	dt, err = task.FindOneId("dt")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.False(t, dt.Aborted)
+	assert.Empty(t, dt.AbortInfo.TaskID)
+
+	otherExecTask, err = task.FindOneId("et3")
+	assert.NoError(t, err)
+	require.NotNil(t, otherExecTask)
+	assert.True(t, otherExecTask.Aborted)
+	assert.NotEmpty(t, otherExecTask.AbortInfo.TaskID)
+}

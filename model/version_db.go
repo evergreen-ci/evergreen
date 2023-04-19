@@ -6,6 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -404,4 +406,25 @@ func FindProjectForVersion(versionID string) (string, error) {
 		return "", errors.New("version not found")
 	}
 	return v.Identifier, nil
+}
+
+// AbortVersion sets the abort flag on all tasks associated with the version which are in an
+// abortable state. Also handles child patches.
+func AbortVersion(versionId string, reason task.AbortInfo) error {
+	childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(versionId)
+	if err != nil {
+		return errors.Wrap(err, "getting finalized child patch IDs")
+	}
+	allVersionIds := append(childPatchIds, versionId)
+	q := bson.M{
+		task.VersionKey: bson.M{"$in": allVersionIds},
+		task.StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+	}
+	if reason.TaskID != "" {
+		q[task.IdKey] = bson.M{"$ne": reason.TaskID}
+		// if the aborting task is part of a display task, we also don't want to mark it as aborted
+		q[task.ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
+	}
+
+	return task.AbortTasksByQuery(q, reason)
 }
