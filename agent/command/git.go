@@ -298,6 +298,8 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 				commitToTest = conf.GithubPatchData.HeadHash
 				logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
 				logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
+			} else {
+				logger.Task().Debugf("Testing commit '%s.'", commitToTest)
 			}
 			ref = "merge"
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
@@ -346,8 +348,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
 		if info.Mergeable == nil {
-			logger.Execution().Info("Mergeable check is not ready.")
-			return true, nil
+			return true, errors.New("mergeable check is not ready")
 		}
 		if *info.Mergeable {
 			if info.MergeCommitSHA != "" {
@@ -355,10 +356,8 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 			} else {
 				return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
 			}
-		} else {
-			return false, errors.New("pull request is not mergeable, which likely means a merge conflict was just introduced")
 		}
-		return false, nil
+		return false, errors.New("pull request is not mergeable, which likely means a merge conflict was just introduced")
 	}, utility.RetryOptions{
 		MaxAttempts: getPRAttempts,
 		MinDelay:    getPRRetryMinDelay,
