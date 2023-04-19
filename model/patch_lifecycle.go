@@ -618,7 +618,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
 		return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 	}
-	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
+	taskIds, err := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating patch's task ID table")
+	}
 	variantsProcessed := map[string]bool{}
 
 	creationInfo := TaskCreationInfo{
