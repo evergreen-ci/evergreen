@@ -384,8 +384,10 @@ func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
 // GetFinalizedChildPatchIdsForPatch returns patchIds for any finalized children of the given patch.
 // We don't return an error if the patch isn't found, since we may be calling this for a version.
 func GetFinalizedChildPatchIdsForPatch(patchID string) ([]string, error) {
+	if !IsValidId(patchID) {
+		return nil, nil
+	}
 	withKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
-	//do the same for child patches
 	p, err := FindOne(ByStringId(patchID).WithFields(withKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding patch '%s'", patchID)
