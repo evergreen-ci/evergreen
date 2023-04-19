@@ -323,6 +323,7 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 	patchDoc := &patch.Patch{
 		Id:      mgobson.ObjectIdHex("aabbccddeeff112233445566"),
 		Githash: "abcdef",
+		GithubPatchData:
 	}
 
 	patchSummaries := []thirdparty.Summary{

@@ -137,6 +137,7 @@ func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken
 	return patchContent, summaries, config, patchConfig.PatchedParserProject, nil
 }
 
+// writePatchInfo writes a PR patch's contents to gridFS and stores this info with the patch.
 func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, patchContent string) error {
 	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
@@ -147,8 +148,9 @@ func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, 
 	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 		Githash: patchDoc.Githash,
 		PatchSet: patch.PatchSet{
-			PatchFileId: patchFileID,
-			Summary:     patchSummaries,
+			PatchFileId:    patchFileID,
+			Summary:        patchSummaries,
+			CommitMessages: []string{patchDoc.GithubPatchData.CommitMessage},
 		},
 	})
 
