@@ -230,6 +230,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	errs := validator.ValidationErrors{}
 	var projectRef *model.ProjectRef
+	var isConfigDefined bool
 	if input.ProjectID != "" {
 		projectRef, err = model.FindMergedProjectRef(input.ProjectID, "", false)
 		if err != nil {
@@ -245,7 +246,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 			}
 			errs = append(errs, validationErr)
 		} else {
-			isConfigDefined := projectConfig != nil
+			isConfigDefined = projectConfig != nil
 			errs = append(errs, validator.CheckProjectSettings(project, projectRef, isConfigDefined)...)
 		}
 	} else {
@@ -263,7 +264,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)
-	} else if projectRef != nil {
+	} else if projectRef != nil || !isConfigDefined {
 		validationErr = validator.ValidationError{
 			Message: "project does not exist; validation will proceed without checking alias coverage",
 			Level:   validator.Warning,
