@@ -219,10 +219,10 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 		sdktrace.WithResource(resource),
 	)
 	otel.SetTracerProvider(tp)
-	tracer = tp.Tracer("EvergreenAgent")
+	tracer = tp.Tracer("evergreen_agent")
 
 	a.closers = append(a.closers, closerOp{
-		name: "shutdown tracer",
+		name: "tracer provider shutdown",
 		closerFn: func(ctx context.Context) error {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(tp.Shutdown(ctx), "trace provider shutdown")
