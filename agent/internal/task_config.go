@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -13,7 +15,21 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/baggage"
+)
+
+const (
+	taskIDKey            = "evergreen.task.id"
+	taskNameKey          = "evergreen.task.name"
+	taskNameExecutionKey = "evergreen.task.execution"
+	versionIDKey         = "evergreen.version.id"
+	versionRequesterKey  = "evergreen.version.requester"
+	buildIDKey           = "evergreen.build.id"
+	buildNameKey         = "evergreen.build.name"
+	projectIdentifierKey = "evergreen.project.identifier"
+	projectIDKey         = "evergreen.project.id"
 )
 
 type TaskConfig struct {
@@ -159,4 +175,31 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 		tg.Timeout = tc.Project.Timeout
 	}
 	return tg, nil
+}
+
+func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context, error) {
+	catcher := grip.NewBasicCatcher()
+
+	bag := baggage.FromContext(ctx)
+	for key, val := range map[string]string{
+		taskIDKey:            tc.Task.Id,
+		taskNameKey:          tc.Task.DisplayName,
+		taskNameExecutionKey: strconv.Itoa(tc.Task.Execution),
+		versionIDKey:         tc.Task.Version,
+		versionRequesterKey:  tc.Task.Requester,
+		buildIDKey:           tc.Task.BuildId,
+		buildNameKey:         tc.Task.BuildVariant,
+		projectIdentifierKey: tc.ProjectRef.Identifier,
+		projectIDKey:         tc.ProjectRef.Id,
+	} {
+		member, err := baggage.NewMember(key, val)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "making member for key '%s' val '%s'", key, val))
+			continue
+		}
+		bag, err = bag.SetMember(member)
+		catcher.Add(err)
+	}
+
+	return baggage.ContextWithBaggage(ctx, bag), catcher.Resolve()
 }

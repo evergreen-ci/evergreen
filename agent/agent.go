@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -218,7 +219,9 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 		sdktrace.WithBatcher(exp),
 		sdktrace.WithResource(resource),
 	)
+	tp.RegisterSpanProcessor(honeycomb.NewBaggageSpanProcessor())
 	otel.SetTracerProvider(tp)
+
 	tracer = tp.Tracer("evergreen_agent")
 
 	a.closers = append(a.closers, closerOp{
@@ -606,17 +609,10 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
-	tskCtx, span := tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName), trace.WithAttributes(
-		attribute.String("evergreen.task.id", taskConfig.Task.Id),
-		attribute.String("evergreen.task.name", taskConfig.Task.DisplayName),
-		attribute.Int("evergreen.task.execution", taskConfig.Task.Execution),
-		attribute.String("evergreen.version.id", taskConfig.Task.Version),
-		attribute.String("evergreen.version.requester", taskConfig.Task.Requester),
-		attribute.String("evergreen.build.id", taskConfig.Task.BuildId),
-		attribute.String("evergreen.build.name", taskConfig.Task.BuildVariant),
-		attribute.String("evergreen.project.identifier", taskConfig.ProjectRef.Identifier),
-		attribute.String("evergreen.project.id", taskConfig.ProjectRef.Id),
-	))
+	tskCtx, err = taskConfig.AddTaskBaggageToCtx(tskCtx)
+	grip.Error(errors.Wrap(err, "adding task baggage to context"))
+
+	tskCtx, span := tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
 	defer span.End()
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
