@@ -534,11 +534,26 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 					name = info.name
 					tags = info.tags
 				} else {
+					// kim: NOTE: this returns the task group name, not the
+					// task name.
 					name, tags, _ = p.GetTaskNameAndTags(t)
 					// Even if we can't find the name/tags, still store it, so we don't try again.
 					bvtCache[t.Name] = taskInfo{name: name, tags: tags}
 				}
 				if name != "" {
+					if t.IsGroup {
+						// kim: TODO: test
+						// kim: NOTE: check every task within the task group
+						// rather than just task names and task group names.
+						matchesTaskGroupTask, err := aliasMatchesTaskGroupTask(p, alias, name)
+						if err != nil {
+							return nil, nil, err
+						}
+						if matchesTaskGroupTask {
+							aliasNeedsVariant[aliasID] = false
+							break
+						}
+					}
 					matchesThisTask, err := alias.HasMatchingTask(name, tags)
 					if err != nil {
 						return nil, nil, err
@@ -552,6 +567,29 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 		}
 	}
 	return aliasNeedsVariant, aliasNeedsTask, nil
+}
+
+func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgName string) (bool, error) {
+	tg := p.FindTaskGroup(tgName)
+	if tg == nil {
+		return false, errors.Errorf("definition for task group '%s' not found", tgName)
+	}
+	for _, tgTask := range tg.Tasks {
+		// kim: QUESTION: do we have to dereference tasks in the task group to
+		// get their tags? Seems like we do.
+		t := p.FindProjectTask(tgTask)
+		if t == nil {
+			return false, errors.Errorf("task '%s' in task group '%s' not found")
+		}
+		matchesTaskInTaskGroup, err := alias.HasMatchingTask(t.Name, t.Tags)
+		if err != nil {
+			return false, err
+		}
+		if matchesTaskInTaskGroup {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
