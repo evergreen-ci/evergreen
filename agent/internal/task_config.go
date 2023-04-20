@@ -20,18 +20,6 @@ import (
 	"go.opentelemetry.io/otel/baggage"
 )
 
-const (
-	taskIDKey            = "evergreen.task.id"
-	taskNameKey          = "evergreen.task.name"
-	taskNameExecutionKey = "evergreen.task.execution"
-	versionIDKey         = "evergreen.version.id"
-	versionRequesterKey  = "evergreen.version.requester"
-	buildIDKey           = "evergreen.build.id"
-	buildNameKey         = "evergreen.build.name"
-	projectIdentifierKey = "evergreen.project.identifier"
-	projectIDKey         = "evergreen.project.id"
-)
-
 type TaskConfig struct {
 	Distro             *apimodels.DistroView
 	ProjectRef         *model.ProjectRef
@@ -182,15 +170,15 @@ func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context,
 
 	bag := baggage.FromContext(ctx)
 	for key, val := range map[string]string{
-		taskIDKey:            tc.Task.Id,
-		taskNameKey:          tc.Task.DisplayName,
-		taskNameExecutionKey: strconv.Itoa(tc.Task.Execution),
-		versionIDKey:         tc.Task.Version,
-		versionRequesterKey:  tc.Task.Requester,
-		buildIDKey:           tc.Task.BuildId,
-		buildNameKey:         tc.Task.BuildVariant,
-		projectIdentifierKey: tc.ProjectRef.Identifier,
-		projectIDKey:         tc.ProjectRef.Id,
+		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
+		evergreen.TaskNameOtelAttribute:          tc.Task.DisplayName,
+		evergreen.TaskExecutionOtelAttribute:     strconv.Itoa(tc.Task.Execution),
+		evergreen.VersionIDOtelAttribute:         tc.Task.Version,
+		evergreen.VersionRequesterOtelAttribute:  tc.Task.Requester,
+		evergreen.BuildIDOtelAttribute:           tc.Task.BuildId,
+		evergreen.BuildNameOtelAttribute:         tc.Task.BuildVariant,
+		evergreen.ProjectIdentifierOtelAttribute: tc.ProjectRef.Identifier,
+		evergreen.ProjectIDOtelAttribute:         tc.ProjectRef.Id,
 	} {
 		member, err := baggage.NewMember(key, val)
 		if err != nil {

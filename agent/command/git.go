@@ -31,10 +31,11 @@ import (
 )
 
 const (
-	GitFetchProjectRetries = 5
-	defaultCommitterName   = "Evergreen Agent"
-	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
-	shallowCloneDepth      = 100
+	GitFetchProjectRetries  = 5
+	defaultCommitterName    = "Evergreen Agent"
+	defaultCommitterEmail   = "no-reply@evergreen.mongodb.com"
+	shallowCloneDepth       = 100
+	moduleNameOtelAttribute = "evergreen.module.name"
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -660,7 +661,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
-		attribute.String("evergreen.module_name", module.Name),
+		attribute.String(moduleNameOtelAttribute, module.Name),
 	))
 	defer span.End()
 

@@ -24,33 +24,6 @@ type runCommandsOptions struct {
 	failPreAndPost bool
 }
 
-// runTaskCommands runs all commands for the task currently assigned to the agent and
-// returns the task status
-func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
-	ctx, span := tracer.Start(ctx, "task-commands")
-	defer span.End()
-
-	conf := tc.taskConfig
-	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
-
-	if task == nil {
-		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
-	}
-
-	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceled while running task commands")
-	}
-	tc.logger.Execution().Info("Running task commands.")
-	start := time.Now()
-	opts := runCommandsOptions{isTaskCommands: true}
-	err := a.runCommands(ctx, tc, task.Commands, opts)
-	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
 	options runCommandsOptions) (err error) {
 	var cmds []command.Command
@@ -187,6 +160,32 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
 	}
 
+	return nil
+}
+
+// runTaskCommands runs all commands for the task currently assigned to the agent.
+func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
+	ctx, span := tracer.Start(ctx, "task-commands")
+	defer span.End()
+
+	conf := tc.taskConfig
+	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
+
+	if task == nil {
+		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
+	}
+
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, "canceled while running task commands")
+	}
+	tc.logger.Execution().Info("Running task commands.")
+	start := time.Now()
+	opts := runCommandsOptions{isTaskCommands: true}
+	err := a.runCommands(ctx, tc, task.Commands, opts)
+	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

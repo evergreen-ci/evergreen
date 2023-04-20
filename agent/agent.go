@@ -197,8 +197,6 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 	}
 
 	resource, err := resource.New(ctx,
-		resource.WithProcess(),
-		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen-agent")),
 		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
 		resource.WithDetectors(ec2.NewResourceDetector(), ecs.NewResourceDetector()),
@@ -245,7 +243,6 @@ type closerOp struct {
 
 func (a *Agent) Close(ctx context.Context) {
 	catcher := grip.NewBasicCatcher()
-	wg := &sync.WaitGroup{}
 	for idx, closer := range a.closers {
 		if closer.closerFn == nil {
 			continue
@@ -264,8 +261,6 @@ func (a *Agent) Close(ctx context.Context) {
 		"message": "calling agent closers",
 		"host_id": a.opts.HostID,
 	}))
-
-	wg.Wait()
 }
 
 // Start starts the agent loop. The agent polls the API server for new tasks
@@ -756,7 +751,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
 
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String("evergreen.task.status", detail.Status))
+	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
 	if detail.Status != evergreen.TaskSucceeded {
 		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
 	}
