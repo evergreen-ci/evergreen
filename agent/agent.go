@@ -606,14 +606,16 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
-	tskCtx, span := tracer.Start(tskCtx, "runTask", trace.WithAttributes(
-		attribute.String("evergreen.task_id", taskConfig.Task.Id),
-		attribute.String("evergreen.task_display_name", taskConfig.Task.DisplayName),
-		attribute.String("evergreen.version_id", taskConfig.Task.Version),
-		attribute.String("evergreen.build_id", taskConfig.Task.BuildId),
-		attribute.String("evergreen.project_identifier", taskConfig.ProjectRef.Identifier),
-		attribute.String("evergreen.project_id", taskConfig.ProjectRef.Id),
-		attribute.String("evergreen.requester", taskConfig.Task.Requester),
+	tskCtx, span := tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName), trace.WithAttributes(
+		attribute.String("evergreen.task.id", taskConfig.Task.Id),
+		attribute.String("evergreen.task.name", taskConfig.Task.DisplayName),
+		attribute.Int("evergreen.task.execution", taskConfig.Task.Execution),
+		attribute.String("evergreen.version.id", taskConfig.Task.Version),
+		attribute.String("evergreen.version.requester", taskConfig.Task.Requester),
+		attribute.String("evergreen.build.id", taskConfig.Task.BuildId),
+		attribute.String("evergreen.build.name", taskConfig.Task.BuildVariant),
+		attribute.String("evergreen.project.identifier", taskConfig.ProjectRef.Identifier),
+		attribute.String("evergreen.project.id", taskConfig.ProjectRef.Id),
 	))
 	defer span.End()
 
@@ -757,9 +759,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
 
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String("evergreen.task.status", detail.Status))
 	if detail.Status != evergreen.TaskSucceeded {
-		span := trace.SpanFromContext(ctx)
-		span.SetStatus(codes.Error, fmt.Sprintf("task had status '%s'", detail.Status))
+		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
 	}
 
 	return resp, nil
@@ -816,6 +819,9 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
+	ctx, span := tracer.Start(ctx, "post-task-commands")
+	defer span.End()
+
 	start := time.Now()
 	a.killProcs(ctx, tc, false)
 	defer a.killProcs(ctx, tc, false)

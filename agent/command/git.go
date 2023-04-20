@@ -444,9 +444,6 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	ctx, span := getTracer().Start(ctx, "git.get_project")
-	defer span.End()
-
 	const (
 		fetchRetryMinDelay = time.Second
 		fetchRetryMaxDelay = 10 * time.Second
@@ -539,9 +536,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	}
 	logger.Execution().Debugf("Commands are: %s", redactedCmds)
 
-	ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
-		attribute.String("evergreen.clone_command", redactedCmds),
-	))
+	ctx, span := getTracer().Start(ctx, "clone_source")
 	defer span.End()
 
 	err = fetchSourceCmd.Run(ctx)

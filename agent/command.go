@@ -90,10 +90,13 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		}()
 	}
 
-	ctx, commandSetSpan := tracer.Start(ctx, "command-set", trace.WithAttributes(
-		attribute.String("evergreen.function", commandInfo.Function),
-	))
-	defer commandSetSpan.End()
+	if commandInfo.Function != "" {
+		var commandSetSpan trace.Span
+		ctx, commandSetSpan = tracer.Start(ctx, fmt.Sprintf("function: '%s'", commandInfo.Function), trace.WithAttributes(
+			attribute.String("evergreen.function", commandInfo.Function),
+		))
+		defer commandSetSpan.End()
+	}
 
 	for idx, cmd := range cmds {
 		if err := ctx.Err(); err != nil {
@@ -114,21 +117,20 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			tc.logger.Task().Infof("Running command %s (step %d.%d of %d).", fullCommandName, index, idx+1, total)
 		}
 
+		ctx, commandSpan := tracer.Start(ctx, cmd.Name())
 		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, fullCommandName, options); err != nil {
-			commandSetSpan.SetStatus(codes.Error, "running command")
-			commandSetSpan.RecordError(err)
+			commandSpan.SetStatus(codes.Error, "running command")
+			commandSpan.RecordError(err)
+			commandSpan.End()
 			return errors.Wrap(err, "running command")
 		}
+		commandSpan.End()
 	}
 	return nil
 }
 
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
 	cmd command.Command, fullCommandName string, options runCommandsOptions) error {
-	ctx, commandSpan := tracer.Start(ctx, "command", trace.WithAttributes(
-		attribute.String("evergreen.command_name", cmd.Name()),
-	))
-	defer commandSpan.End()
 
 	for key, val := range commandInfo.Vars {
 		var newVal string
