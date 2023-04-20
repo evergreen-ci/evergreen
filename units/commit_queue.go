@@ -456,7 +456,8 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	if err = AddMergeTaskAndVariant(patchDoc, project, projectRef, commitqueue.SourceDiff); err != nil {
+	pp, err = AddMergeTaskAndVariant(ctx, patchDoc, project, projectRef, commitqueue.SourceDiff)
+	if err != nil {
 		j.logError(err, "can't set patch project config", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, *nextItem)
@@ -558,10 +559,13 @@ func validateBranch(branch *github.Branch) error {
 	return nil
 }
 
-func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) error {
+// AddMergeTaskAndVariant adds the merge task, the merge task's dependencies,
+// and the merge build variant to the project and returns the modified parser
+// project.
+func AddMergeTaskAndVariant(ctx context.Context, patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) (*model.ParserProject, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrap(err, "retrieving admin settings")
+		return nil, errors.Wrap(err, "retrieving admin settings")
 	}
 
 	modules := make([]string, 0, len(patchDoc.Patches))
@@ -599,7 +603,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 
 	mergeTaskCmds, err := getMergeTaskCommands(settings, source)
 	if err != nil {
-		return errors.Wrap(err, "getting merge task commands")
+		return nil, errors.Wrap(err, "getting merge task commands")
 	}
 
 	mergeTask := model.ProjectTask{
@@ -628,14 +632,19 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		catcher.Add(validationErr)
 	}
 	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "validating project")
+		return nil, errors.Wrap(catcher.Resolve(), "validating project")
 	}
 	yamlBytes, err := yaml.Marshal(project)
 	if err != nil {
-		return errors.Wrap(err, "marshalling remote config file")
+		return nil, errors.Wrap(err, "marshalling remote config file")
 	}
 
-	patchDoc.PatchedParserProject = string(yamlBytes)
+	var updatedProject model.Project
+	updatedPP, err := model.LoadProjectInto(ctx, yamlBytes, nil, patchDoc.Project, &updatedProject)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting updated project YAML to parser project")
+	}
+
 	patchDoc.BuildVariants = append(patchDoc.BuildVariants, evergreen.MergeTaskVariant)
 	patchDoc.Tasks = append(patchDoc.Tasks, evergreen.MergeTaskName)
 	patchDoc.VariantsTasks = append(patchDoc.VariantsTasks, patch.VariantTasks{
@@ -643,7 +652,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		Tasks:   []string{evergreen.MergeTaskName},
 	})
 
-	return nil
+	return updatedPP, nil
 }
 
 func getMergeTaskCommands(settings *evergreen.Settings, source string) ([]model.PluginCommandConf, error) {

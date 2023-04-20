@@ -247,7 +247,7 @@ func (m *openStackManager) ModifyVolume(context.Context, *host.Volume, *model.Vo
 	return errors.New("can't modify volume with OpenStack provider")
 }
 
-func (m *openStackManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+func (m *openStackManager) GetVolumeAttachment(context.Context, string) (*VolumeAttachment, error) {
 	return nil, errors.New("can't get volume attachment with OpenStack provider")
 }
 

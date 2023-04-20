@@ -283,23 +283,28 @@ type TaskOptions struct {
 	ResultsService string
 }
 
-// FilterOptions represents the filtering arguments for fetching test results.
-type FilterOptions struct {
-	TestName     string
-	Statuses     []string
-	GroupID      string
-	SortBy       string
-	SortOrderDSC bool
-	Limit        int
-	Page         int
-	BaseTasks    []TaskOptions
+// SortBy describes the properties by which to sort a set of test results.
+type SortBy struct {
+	Key      string
+	OrderDSC bool
 }
 
 // Valid sort by keys.
 const (
-	SortByStart      = "start"
-	SortByDuration   = "duration"
-	SortByTestName   = "test_name"
-	SortByStatus     = "status"
-	SortByBaseStatus = "base_status"
+	SortByStartKey      = "start"
+	SortByDurationKey   = "duration"
+	SortByTestNameKey   = "test_name"
+	SortByStatusKey     = "status"
+	SortByBaseStatusKey = "base_status"
 )
+
+// FilterOptions represents the filtering arguments for fetching test results.
+type FilterOptions struct {
+	TestName  string
+	Statuses  []string
+	GroupID   string
+	Sort      []SortBy
+	Limit     int
+	Page      int
+	BaseTasks []TaskOptions
+}

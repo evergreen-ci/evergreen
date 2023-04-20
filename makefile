@@ -5,7 +5,7 @@ nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
-packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
+packages += model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
 testOnlyPackages := service-graphql # has only test files so can't undergo all operations
@@ -263,7 +263,7 @@ $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(un
 	touch $@
 
 dist-staging:
-	STAGING_ONLY=1 SIGN_MACOS= $(MAKE) dist
+	STAGING_ONLY=1 DEBUG_ENABLED=1 SIGN_MACOS= $(MAKE) dist
 dist-unsigned:
 	SIGN_MACOS= $(MAKE) dist
 dist:$(buildDir)/dist.tar.gz

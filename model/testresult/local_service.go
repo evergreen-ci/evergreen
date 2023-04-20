@@ -221,11 +221,24 @@ func (s *localService) filterAndSortTestResults(ctx context.Context, results []T
 func (s *localService) validateFilterOptions(opts *FilterOptions) error {
 	catcher := grip.NewBasicCatcher()
 
-	switch opts.SortBy {
-	case SortByStart, SortByDuration, SortByTestName, SortByStatus, SortByBaseStatus, "":
-	default:
-		catcher.Errorf("unrecognized sort by criteria '%s'", opts.SortBy)
+	seenSortByKeys := map[string]bool{}
+	for _, sortBy := range opts.Sort {
+		switch sortBy.Key {
+		case SortByStartKey, SortByDurationKey, SortByTestNameKey, SortByStatusKey, SortByBaseStatusKey, "":
+		default:
+			catcher.Errorf("unrecognized sort by key '%s'", sortBy.Key)
+			continue
+		}
+
+		if seenSortByKeys[sortBy.Key] {
+			catcher.Errorf("duplicate sort by key '%s'", sortBy.Key)
+		} else {
+			catcher.NewWhen(sortBy.Key == SortByBaseStatusKey && len(opts.BaseTasks) == 0, "must specify base task ID when sorting by base status")
+		}
+
+		seenSortByKeys[sortBy.Key] = true
 	}
+
 	catcher.NewWhen(opts.Limit < 0, "limit cannot be negative")
 	catcher.NewWhen(opts.Page < 0, "page cannot be negative")
 	catcher.NewWhen(opts.Limit == 0 && opts.Page > 0, "cannot specify a page without a limit")
@@ -266,44 +279,52 @@ func (s *localService) filterTestResults(results []TestResult, opts *FilterOptio
 }
 
 func (s *localService) sortTestResults(results []TestResult, opts *FilterOptions, baseStatusMap map[string]string) {
-	switch opts.SortBy {
-	case SortByStart:
-		sort.SliceStable(results, func(i, j int) bool {
-			if opts.SortOrderDSC {
-				return results[i].TestStartTime.After(results[j].TestStartTime)
+	sort.SliceStable(results, func(i, j int) bool {
+		for _, sortBy := range opts.Sort {
+			switch sortBy.Key {
+			case SortByStartKey:
+				if results[i].TestStartTime == results[j].TestStartTime {
+					continue
+				}
+				if sortBy.OrderDSC {
+					return results[i].TestStartTime.After(results[j].TestStartTime)
+				}
+				return results[i].TestStartTime.Before(results[j].TestStartTime)
+			case SortByDurationKey:
+				if results[i].Duration() == results[j].Duration() {
+					continue
+				}
+				if sortBy.OrderDSC {
+					return results[i].Duration() > results[j].Duration()
+				}
+				return results[i].Duration() < results[j].Duration()
+			case SortByTestNameKey:
+				if results[i].GetDisplayTestName() == results[j].GetDisplayTestName() {
+					continue
+				}
+				if sortBy.OrderDSC {
+					return results[i].GetDisplayTestName() > results[j].GetDisplayTestName()
+				}
+				return results[i].GetDisplayTestName() < results[j].GetDisplayTestName()
+			case SortByStatusKey:
+				if results[i].Status == results[j].Status {
+					continue
+				}
+				if sortBy.OrderDSC {
+					return results[i].Status > results[j].Status
+				}
+				return results[i].Status < results[j].Status
+			case SortByBaseStatusKey:
+				if baseStatusMap[results[i].GetDisplayTestName()] == baseStatusMap[results[j].GetDisplayTestName()] {
+					continue
+				}
+				if sortBy.OrderDSC {
+					return baseStatusMap[results[i].GetDisplayTestName()] > baseStatusMap[results[j].GetDisplayTestName()]
+				}
+				return baseStatusMap[results[i].GetDisplayTestName()] < baseStatusMap[results[j].GetDisplayTestName()]
 			}
-			return results[i].TestStartTime.Before(results[j].TestStartTime)
-		})
-	case SortByDuration:
-		sort.SliceStable(results, func(i, j int) bool {
-			if opts.SortOrderDSC {
-				return results[i].Duration() > results[j].Duration()
-			}
-			return results[i].Duration() < results[j].Duration()
-		})
-	case SortByTestName:
-		sort.SliceStable(results, func(i, j int) bool {
-			if opts.SortOrderDSC {
-				return results[i].GetDisplayTestName() > results[j].GetDisplayTestName()
-			}
-			return results[i].GetDisplayTestName() < results[j].GetDisplayTestName()
-		})
-	case SortByStatus:
-		sort.SliceStable(results, func(i, j int) bool {
-			if opts.SortOrderDSC {
-				return results[i].Status > results[j].Status
-			}
-			return results[i].Status < results[j].Status
-		})
-	case SortByBaseStatus:
-		if len(baseStatusMap) == 0 {
-			break
 		}
-		sort.SliceStable(results, func(i, j int) bool {
-			if opts.SortOrderDSC {
-				return baseStatusMap[results[i].GetDisplayTestName()] > baseStatusMap[results[j].GetDisplayTestName()]
-			}
-			return baseStatusMap[results[i].GetDisplayTestName()] < baseStatusMap[results[j].GetDisplayTestName()]
-		})
-	}
+
+		return false
+	})
 }
