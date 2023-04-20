@@ -25,15 +25,16 @@ type runCommandsOptions struct {
 }
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
-	options runCommandsOptions) (err error) {
+	options runCommandsOptions, block string) (err error) {
 	var cmds []command.Command
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
 
+	//here
 	for i, commandInfo := range commands {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")
 		}
-		cmds, err = command.Render(commandInfo, tc.taskConfig.Project)
+		cmds, err = command.Render(commandInfo, tc.taskConfig.Project, block)
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
@@ -181,7 +182,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
 	opts := runCommandsOptions{isTaskCommands: true}
-	err := a.runCommands(ctx, tc, task.Commands, opts)
+	err := a.runCommands(ctx, tc, task.Commands, opts, "")
 	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
 	if err != nil {
 		return err
