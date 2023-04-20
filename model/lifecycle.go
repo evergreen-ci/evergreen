@@ -67,7 +67,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	var tasksToModify []task.Task
 
 	if active {
-		if err := setVersionsActivated(childPatchIds, active); err != nil {
+		if err := setVersionsActivated(allVersionIds, active); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 		}
 		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))

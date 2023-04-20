@@ -143,8 +143,11 @@ func setVersionActivated(versionId string, activated bool) error {
 	return setVersionsActivated([]string{versionId}, activated)
 }
 
-// setVersionsActivated sets activated field to specified boolean given a list of version IDs..
+// setVersionsActivated sets activated field to specified boolean given a list of version IDs.
 func setVersionsActivated(versionIds []string, activated bool) error {
+	if len(versionIds) == 0 {
+		return nil
+	}
 	return VersionUpdateOne(
 		bson.M{
 			VersionIdKey: bson.M{"$in": versionIds}},
