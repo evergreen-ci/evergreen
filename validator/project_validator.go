@@ -550,7 +550,7 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 							return nil, nil, err
 						}
 						if matchesTaskGroupTask {
-							aliasNeedsVariant[aliasID] = false
+							aliasNeedsTask[aliasID] = false
 							break
 						}
 					}
@@ -575,11 +575,9 @@ func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgNam
 		return false, errors.Errorf("definition for task group '%s' not found", tgName)
 	}
 	for _, tgTask := range tg.Tasks {
-		// kim: QUESTION: do we have to dereference tasks in the task group to
-		// get their tags? Seems like we do.
 		t := p.FindProjectTask(tgTask)
 		if t == nil {
-			return false, errors.Errorf("task '%s' in task group '%s' not found")
+			return false, errors.Errorf("task '%s' in task group '%s' not found", tgTask, tgName)
 		}
 		matchesTaskInTaskGroup, err := alias.HasMatchingTask(t.Name, t.Tags)
 		if err != nil {
