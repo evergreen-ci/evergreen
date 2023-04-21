@@ -402,7 +402,7 @@ Send a Newly Created Ticket For a Task
 
     PUT /tasks/<task_id>/created_ticket 
 
-If a [file ticket webhook](<../../03-Apply and Analyze Evergreen Data/01-Webhooks.md#task-annotations-file-ticket-webhook>)
+If a [file ticket webhook](../../03-Apply and Analyze Evergreen Data/01-Webhooks.md#task-annotations-file-ticket-webhook)
 is configured for a project, this endpoint should be used to let
 evergreen know when a ticket was filed for a task so that it can be
 stored and displayed to the user. The request body should include the
@@ -451,7 +451,7 @@ A test is a sub-operation of a task performed by Evergreen.
 
 Fetches a paginated list of tests that ran as part of the given task. To
 filter the tasks, add the following parameters into the query string
-(reference [Pagination](<../05-Use the API/01-REST-V2-Usage.md#pagination>)
+(reference [Pagination](../05-Use the API/01-REST-V2-Usage.md#pagination)
 to see this format).
 
 **Parameters**
@@ -850,7 +850,7 @@ buildvariant.
 | `actual_makespan_ms`    | int      | Actual makespan measured during execution                                                                                                                                                                                                                                        |
 | `origin`                | string   | The source of the patch, a commit or a patch                                                                                                                                                                                                                                     |
 | `status_counts`         | Object   | Contains aggregated data about the statuses of tasks in this build. The keys of this object are statuses and the values are the number of tasks within this build in that status. Note that this field provides data that you can get yourself by querying tasks for this build. |
-| `task_cache`            | Object   | Contains a subset of information about tasks for the build; this is not provided/accurate for most routes ([get versions for project](<../05-Use the API/01-REST-V2-Usage.md#get-versions-for-a-project>) is an exception).                                 |
+| `task_cache`            | Object   | Contains a subset of information about tasks for the build; this is not provided/accurate for most routes ([get versions for project](../05-Use the API/01-REST-V2-Usage.md#get-versions-for-a-project) is an exception).                                 |
 | `definition_info`       | Object   | Some routes will return information about the variant as defined in the project. Does not expand expansions; they will be returned as written in the project yaml (i.e. `${syntax}`)                                                                                             |
 
 
@@ -858,8 +858,8 @@ buildvariant.
 
 | Name      | Type   | Description                                                                                                                                                      |
 |-----------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| cron      | string | The cron defined for the variant, if provided, as defined [here](<../01-Configure a Project/01-Project-Configuration-Files.md#build-variants>)      |
-| batchtime | int    | The batchtime defined for the variant, if provided, as defined [here](<../01-Configure a Project/01-Project-Configuration-Files.md#build-variants>) |
+| cron      | string | The cron defined for the variant, if provided, as defined [here](../01-Configure a Project/01-Project-Configuration-Files.md#build-variants)      |
+| batchtime | int    | The batchtime defined for the variant, if provided, as defined [here](../01-Configure a Project/01-Project-Configuration-Files.md#build-variants) |
 
 
 #### Endpoints
@@ -969,7 +969,7 @@ Fetches a list of builds associated with a version
 
 
 Returns a list of
-[Builds](<../05-Use the API/01-REST-V2-Usage.md#build>).
+[Builds](../05-Use the API/01-REST-V2-Usage.md#build).
 
 ##### Create a New Version
 
@@ -1352,7 +1352,7 @@ this route is legacy, and is no longer supported.
 | Name                 | Type      | Description                                                                                                                                       |
 | -------------------- | --------- | -------------------------------------------                                                                                                       |
 | `build_variant`      | string    | the identifier of each of the build variant objects below (all are the same variant)                                                              |
-| `builds`             | object    | The keys of this object are build IDs. The values are the [full build objects](<../05-Use the API/01-REST-V2-Usage.md#id12>) |
+| `builds`             | object    | The keys of this object are build IDs. The values are the [full build objects](../05-Use the API/01-REST-V2-Usage.md#id12) |
 
 
 **APIVersions**

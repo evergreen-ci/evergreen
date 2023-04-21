@@ -1255,7 +1255,8 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 		},
 	}
 
-	config := NewPatchTaskIdTable(p, v, pairs, "project_identifier")
+	config, err := NewPatchTaskIdTable(p, v, pairs, "project_identifier")
+	s.Require().NoError(err)
 	s.Len(config.DisplayTasks, 0)
 	s.Len(config.ExecutionTasks, 2)
 	s.Equal("project_identifier_test_task1_revision_01_01_01_00_00_00",
