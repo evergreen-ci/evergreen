@@ -534,17 +534,12 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 					name = info.name
 					tags = info.tags
 				} else {
-					// kim: NOTE: this returns the task group name, not the
-					// task name.
 					name, tags, _ = p.GetTaskNameAndTags(t)
 					// Even if we can't find the name/tags, still store it, so we don't try again.
 					bvtCache[t.Name] = taskInfo{name: name, tags: tags}
 				}
 				if name != "" {
 					if t.IsGroup {
-						// kim: TODO: test
-						// kim: NOTE: check every task within the task group
-						// rather than just task names and task group names.
 						matchesTaskGroupTask, err := aliasMatchesTaskGroupTask(p, alias, name)
 						if err != nil {
 							return nil, nil, err

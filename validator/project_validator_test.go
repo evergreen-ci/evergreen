@@ -1138,9 +1138,6 @@ func TestValidatePlugins(t *testing.T) {
 }
 
 func TestValidateAliasCoverage(t *testing.T) {
-	// kim: TODO: add test for matching tasks within a task group by task
-	// regexp.
-	// kim: TODO: add test for matching tasks within a task group by task tag.
 	for testName, testCase := range map[string]func(*testing.T, *model.Project){
 		"matchesNothing": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
