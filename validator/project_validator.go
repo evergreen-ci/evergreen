@@ -539,6 +539,16 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 					bvtCache[t.Name] = taskInfo{name: name, tags: tags}
 				}
 				if name != "" {
+					if t.IsGroup {
+						matchesTaskGroupTask, err := aliasMatchesTaskGroupTask(p, alias, name)
+						if err != nil {
+							return nil, nil, err
+						}
+						if matchesTaskGroupTask {
+							aliasNeedsTask[aliasID] = false
+							break
+						}
+					}
 					matchesThisTask, err := alias.HasMatchingTask(name, tags)
 					if err != nil {
 						return nil, nil, err
@@ -552,6 +562,27 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 		}
 	}
 	return aliasNeedsVariant, aliasNeedsTask, nil
+}
+
+func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgName string) (bool, error) {
+	tg := p.FindTaskGroup(tgName)
+	if tg == nil {
+		return false, errors.Errorf("definition for task group '%s' not found", tgName)
+	}
+	for _, tgTask := range tg.Tasks {
+		t := p.FindProjectTask(tgTask)
+		if t == nil {
+			return false, errors.Errorf("task '%s' in task group '%s' not found", tgTask, tgName)
+		}
+		matchesTaskInTaskGroup, err := alias.HasMatchingTask(t.Name, t.Tags)
+		if err != nil {
+			return false, err
+		}
+		if matchesTaskInTaskGroup {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
