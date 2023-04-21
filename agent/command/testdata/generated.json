@@ -1,7 +1,7 @@
 {
   "buildvariants": [
     {
-      "name": "ubuntu1604",
+      "name": "localhost",
       "tasks": [
         {
           "name": "task_to_add_via_generator"
@@ -17,7 +17,7 @@
           "command": "shell.exec",
           "params": {
             "working_dir": "src",
-            "script": "exit 1"
+            "script": "exit 0"
           }
         }
       ]
