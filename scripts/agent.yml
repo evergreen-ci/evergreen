@@ -38,7 +38,6 @@ task_groups:
       - first_task_in_task_group
       - second_task_in_task_group
       - test
-      - generate_task
       - third_task_in_task_group
       - fourth_task_in_task_group
 
@@ -232,6 +231,7 @@ buildvariants:
       - localhost
     tasks:
       - name: my_group
+      - name: generate_task
   - name: pod_bv
     display_name: pod_bv
     run_on:
