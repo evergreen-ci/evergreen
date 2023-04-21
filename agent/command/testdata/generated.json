@@ -16,7 +16,7 @@
         {
           "command": "shell.exec",
           "params": {
-            "script": "exit 0"
+            "script": "echo generated_task"
           }
         }
       ]
