@@ -278,7 +278,7 @@ from larger, more powerful machines.
 ### Version Controlled Project Settings
 Project configurations can version control some select project settings (e.g. aliases, plugins) directly within the yaml
 rather than on the project page UI, for better accessibility and maintainability. Read more
-[here](03-Project-and-Distro-Settings.md#version-control).
+[here](03-Project-and-Distro-Settings#version-control).
 
 ## Advanced Features
 
@@ -362,7 +362,7 @@ are being used.
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version. You can change
 the git revision for modules by setting a module manually with
-[evergreen set-module](../06-Using-the-Command-Line-Tool.md#operating-on-existing-patches)
+[evergreen set-module](../06-Using-the-Command-Line-Tool#operating-on-existing-patches)
 or by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
@@ -444,7 +444,7 @@ or task to the maximum allowed length of execution time. This timeout
 defaults to 6 hours. `exec_timeout_secs` can only be set on the project
 or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](02-Project-Commands.md#timeoutupdate). 
+You can also set exec_timeout_secs using [timeout.update](02-Project-Commands#timeoutupdate). 
 
 You may also force a specific command to trigger a failure if it does
 not appear to generate any output on `stdout`/`stderr` for more than a
@@ -827,7 +827,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](<../01-Configure a Project/02-Project-Commands.md#generatetasks>)
+[generate.tasks](../01-Configure-a-Project/02-Project-Commands.md#generate-tasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
