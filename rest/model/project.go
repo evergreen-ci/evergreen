@@ -170,6 +170,23 @@ func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
 	t.DisplayName = utility.ToStringPtr(h.DisplayName)
 }
 
+type APIProjectBanner struct {
+	Theme *string `json:"theme"`
+	Text  *string `json:"text"`
+}
+
+func (t *APIProjectBanner) ToService() model.ProjectBanner {
+	return model.ProjectBanner{
+		Theme: utility.FromStringPtr(t.Theme),
+		Text:  utility.FromStringPtr(t.Text),
+	}
+}
+
+func (t *APIProjectBanner) BuildFromService(h model.ProjectBanner) {
+	t.Theme = utility.ToStringPtr(h.Theme)
+	t.Text = utility.ToStringPtr(h.Text)
+}
+
 type APICommitQueueParams struct {
 	Enabled     *bool   `json:"enabled"`
 	MergeMethod *string `json:"merge_method"`
@@ -507,6 +524,7 @@ type APIProjectRef struct {
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
 	DeleteContainerSecrets []string          `json:"delete_container_secrets,omitempty"`
 	ExternalLinks          []APIExternalLink `json:"external_links"`
+	Banner                 APIProjectBanner  `json:"banner"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -549,6 +567,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		GitTagAuthorizedUsers:  utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
 		GitTagAuthorizedTeams:  utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
 		GithubTriggerAliases:   utility.FromStringPtrSlice(p.GithubTriggerAliases),
+		Banner:                 p.Banner.ToService(),
 	}
 
 	// Copy triggers
@@ -652,6 +671,10 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	buildbaronConfig := APIBuildBaronSettings{}
 	buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings)
 	p.BuildBaronSettings = buildbaronConfig
+
+	projectBanner := APIProjectBanner{}
+	projectBanner.BuildFromService(projectRef.Banner)
+	p.Banner = projectBanner
 
 	// Copy triggers
 	if projectRef.Triggers != nil {

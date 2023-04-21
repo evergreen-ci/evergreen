@@ -53,7 +53,28 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
+// Theme is the resolver for the theme field.
+func (r *projectBannerResolver) Theme(ctx context.Context, obj *restModel.APIProjectBanner) (BannerTheme, error) {
+	return BannerTheme(utility.FromStringPtr(obj.Theme)), nil
+}
+
+// Theme is the resolver for the theme field.
+func (r *projectBannerInputResolver) Theme(ctx context.Context, obj *restModel.APIProjectBanner, data BannerTheme) error {
+	obj.Theme = utility.ToStringPtr(string(data))
+	return nil
+}
+
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 
+// ProjectBanner returns ProjectBannerResolver implementation.
+func (r *Resolver) ProjectBanner() ProjectBannerResolver { return &projectBannerResolver{r} }
+
+// ProjectBannerInput returns ProjectBannerInputResolver implementation.
+func (r *Resolver) ProjectBannerInput() ProjectBannerInputResolver {
+	return &projectBannerInputResolver{r}
+}
+
 type projectResolver struct{ *Resolver }
+type projectBannerResolver struct{ *Resolver }
+type projectBannerInputResolver struct{ *Resolver }

@@ -55,6 +55,7 @@ type ResolverRoot interface {
 	Pod() PodResolver
 	PodEventLogData() PodEventLogDataResolver
 	Project() ProjectResolver
+	ProjectBanner() ProjectBannerResolver
 	ProjectSettings() ProjectSettingsResolver
 	ProjectSubscriber() ProjectSubscriberResolver
 	ProjectVars() ProjectVarsResolver
@@ -68,6 +69,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
+	ProjectBannerInput() ProjectBannerInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
 
@@ -643,6 +645,7 @@ type ComplexityRoot struct {
 
 	Project struct {
 		Admins                   func(childComplexity int) int
+		Banner                   func(childComplexity int) int
 		BatchTime                func(childComplexity int) int
 		Branch                   func(childComplexity int) int
 		BuildBaronSettings       func(childComplexity int) int
@@ -697,6 +700,11 @@ type ComplexityRoot struct {
 		TaskTags    func(childComplexity int) int
 		Variant     func(childComplexity int) int
 		VariantTags func(childComplexity int) int
+	}
+
+	ProjectBanner struct {
+		Text  func(childComplexity int) int
+		Theme func(childComplexity int) int
 	}
 
 	ProjectBuildVariant struct {
@@ -1421,6 +1429,9 @@ type ProjectResolver interface {
 
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
 }
+type ProjectBannerResolver interface {
+	Theme(ctx context.Context, obj *model.APIProjectBanner) (BannerTheme, error)
+}
 type ProjectSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
@@ -1596,6 +1607,9 @@ type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
+type ProjectBannerInputResolver interface {
+	Theme(ctx context.Context, obj *model.APIProjectBanner, data BannerTheme) error
+}
 type SubscriberInputResolver interface {
 	Target(ctx context.Context, obj *model.APISubscriber, data string) error
 }
@@ -4390,6 +4404,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Admins(childComplexity), true
 
+	case "Project.banner":
+		if e.complexity.Project.Banner == nil {
+			break
+		}
+
+		return e.complexity.Project.Banner(childComplexity), true
+
 	case "Project.batchTime":
 		if e.complexity.Project.BatchTime == nil {
 			break
@@ -4751,6 +4772,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectAlias.VariantTags(childComplexity), true
+
+	case "ProjectBanner.text":
+		if e.complexity.ProjectBanner.Text == nil {
+			break
+		}
+
+		return e.complexity.ProjectBanner.Text(childComplexity), true
+
+	case "ProjectBanner.theme":
+		if e.complexity.ProjectBanner.Theme == nil {
+			break
+		}
+
+		return e.complexity.ProjectBanner.Theme(childComplexity), true
 
 	case "ProjectBuildVariant.displayName":
 		if e.complexity.ProjectBuildVariant.DisplayName == nil {
@@ -7931,6 +7966,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPatchesInput,
 		ec.unmarshalInputPeriodicBuildInput,
 		ec.unmarshalInputProjectAliasInput,
+		ec.unmarshalInputProjectBannerInput,
 		ec.unmarshalInputProjectInput,
 		ec.unmarshalInputProjectSettingsInput,
 		ec.unmarshalInputProjectVarsInput,
@@ -15122,6 +15158,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21830,6 +21868,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21975,6 +22015,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22120,6 +22162,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22265,6 +22309,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22410,6 +22456,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22607,6 +22655,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22862,6 +22912,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -27133,6 +27185,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -32540,6 +32594,53 @@ func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_banner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Banner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIProjectBanner)
+	fc.Result = res
+	return ec.marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_banner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "text":
+				return ec.fieldContext_ProjectBanner_text(ctx, field)
+			case "theme":
+				return ec.fieldContext_ProjectBanner_theme(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectBanner", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectAlias_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectAlias_id(ctx, field)
 	if err != nil {
@@ -32887,6 +32988,94 @@ func (ec *executionContext) fieldContext_ProjectAlias_variantTags(ctx context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectBanner_text(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectBanner) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectBanner_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectBanner_text(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectBanner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectBanner_theme(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectBanner) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectBanner_theme(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectBanner().Theme(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(BannerTheme)
+	fc.Result = res
+	return ec.marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectBanner_theme(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectBanner",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BannerTheme does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33445,6 +33634,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -33885,6 +34076,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -35842,6 +36035,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -45089,6 +45284,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -53536,6 +53733,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -58691,6 +58890,45 @@ func (ec *executionContext) unmarshalInputProjectAliasInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputProjectBannerInput(ctx context.Context, obj interface{}) (model.APIProjectBanner, error) {
+	var it model.APIProjectBanner
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"text", "theme"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "text":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
+			it.Text, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "theme":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("theme"))
+			data, err := ec.unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ProjectBannerInput().Theme(ctx, &it, data); err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
 	var it model.APIProjectRef
 	asMap := map[string]interface{}{}
@@ -58698,7 +58936,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions", "externalLinks"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions", "externalLinks", "banner"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59042,6 +59280,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
 			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "banner":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
+			it.Banner, err = ec.unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -65261,6 +65507,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 
 			out.Values[i] = ec._Project_externalLinks(ctx, field, obj)
 
+		case "banner":
+
+			out.Values[i] = ec._Project_banner(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -65338,6 +65588,54 @@ func (ec *executionContext) _ProjectAlias(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var projectBannerImplementors = []string{"ProjectBanner"}
+
+func (ec *executionContext) _ProjectBanner(ctx context.Context, sel ast.SelectionSet, obj *model.APIProjectBanner) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectBannerImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectBanner")
+		case "text":
+
+			out.Values[i] = ec._ProjectBanner_text(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "theme":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectBanner_theme(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -71099,6 +71397,16 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx context.Context, v interface{}) (BannerTheme, error) {
+	var res BannerTheme
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v BannerTheme) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -75811,6 +76119,15 @@ func (ec *executionContext) unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergr
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx context.Context, sel ast.SelectionSet, v model.APIProjectBanner) graphql.Marshaler {
+	return ec._ProjectBanner(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx context.Context, v interface{}) (model.APIProjectBanner, error) {
+	res, err := ec.unmarshalInputProjectBannerInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOProjectEventSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectEventSettings(ctx context.Context, sel ast.SelectionSet, v model.APIProjectEventSettings) graphql.Marshaler {

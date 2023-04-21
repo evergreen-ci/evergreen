@@ -412,6 +412,51 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type BannerTheme string
+
+const (
+	BannerThemeAnnouncement BannerTheme = "ANNOUNCEMENT"
+	BannerThemeInformation  BannerTheme = "INFORMATION"
+	BannerThemeWarning      BannerTheme = "WARNING"
+	BannerThemeImportant    BannerTheme = "IMPORTANT"
+)
+
+var AllBannerTheme = []BannerTheme{
+	BannerThemeAnnouncement,
+	BannerThemeInformation,
+	BannerThemeWarning,
+	BannerThemeImportant,
+}
+
+func (e BannerTheme) IsValid() bool {
+	switch e {
+	case BannerThemeAnnouncement, BannerThemeInformation, BannerThemeWarning, BannerThemeImportant:
+		return true
+	}
+	return false
+}
+
+func (e BannerTheme) String() string {
+	return string(e)
+}
+
+func (e *BannerTheme) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BannerTheme(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BannerTheme", str)
+	}
+	return nil
+}
+
+func (e BannerTheme) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type HostSortBy string
 
 const (
