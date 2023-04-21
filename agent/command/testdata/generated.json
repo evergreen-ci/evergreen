@@ -16,7 +16,6 @@
         {
           "command": "shell.exec",
           "params": {
-            "working_dir": "src",
             "script": "exit 0"
           }
         }
