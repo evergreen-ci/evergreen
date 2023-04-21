@@ -272,7 +272,7 @@ To pass information from the upstream patch to the downstream patch use
 Evergreen has the capability to periodically run a set of tasks in the
 project. This section holds settings allowing you to specify
 what should be run periodically, and how often. **This is different than build variant crons** because
-a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify 
+a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify
 (so if you want it to run daily, it’ll activate the most recent build variant at that time daily),
 whereas a new periodic build will be created each interval regardless of whether there are new commits.
 
@@ -348,7 +348,7 @@ Options:
 -   Ticket Search Projects: JIRA projects for the build baron to search
     in when looking for failures.
 
-### Task Annotation Settings 
+### Task Annotation Settings
 
 Configure custom API integrations when generating build failure tickets.
 
@@ -438,12 +438,15 @@ that all execute independently:
 
 Enabling version control for configurations on the project page will
 allow a number of the settings detailed above to also be specified in
-the project yaml alongside the settings that are specified in ['Project Configuration Files'](01-Project-Configuration-Files.md).
-Evergreen will merge the settings in the project page, repo page, then the yaml, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
-defined in the yaml. 
+the project YAML alongside the settings that are specified in ['Project Configuration Files'](01-Project-Configuration-Files.md).
+Evergreen will merge the settings in the project page, repo page, then the YAML, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
+defined in the YAML.
+
+Note: [included files](01-Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
+be defined in the main YAML file for it to take effect.
 
 Below shows example configurations for these settings that can be
-included within the project yaml and the configuration structure
+included within the project YAML and the configuration structure
 associated with each setting.
 
 ## Aliases
@@ -500,7 +503,7 @@ github_checks_aliases:
    task: "^test.*$"
 ```
 
-### Scheduling Settings 
+### Scheduling Settings
 
 [View setting definition](#scheduling-settings)
 
@@ -508,7 +511,7 @@ github_checks_aliases:
 deactivate_previous: true
 ```
 
-### Virtual Workstation Commands 
+### Virtual Workstation Commands
 
 [View setting definition](#virtual-workstation-commands)
 
@@ -541,13 +544,13 @@ build_baron_settings:
     - EVG
 ```
 
-### Task Annotation Settings 
+### Task Annotation Settings
 
 [View setting definition](#task-annotation-settings)
 
 ``` yaml
 task_annotation_settings:
-  web_hook: 
+  web_hook:
     endpoint: "/api/route"
     secret: ""
   jira_custom_fields:

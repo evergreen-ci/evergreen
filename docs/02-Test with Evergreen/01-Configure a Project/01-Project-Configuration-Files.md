@@ -293,6 +293,9 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
+Note: included files do not support [version-controlled project settings
+configuration](03-Project-And-Distro_Settings.md#version-control)
+
 ``` yaml
 include: 
    - filename: other.yml
