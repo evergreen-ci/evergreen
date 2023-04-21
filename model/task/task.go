@@ -2180,9 +2180,9 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	return nil
 }
 
-// AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
+// AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
 // state
-func AbortBuild(buildId string, reason AbortInfo) error {
+func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
 		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
@@ -2190,10 +2190,25 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 	}
-	return AbortTasksByQuery(q, reason)
+	return abortTasksByQuery(q, reason)
 }
 
-func AbortTasksByQuery(q bson.M, reason AbortInfo) error {
+// AbortVersionTasks sets the abort flag on all tasks associated with the version which are in an
+// abortable state. This also handles child patches since they share a version.
+func AbortVersionTasks(versionId string, reason AbortInfo) error {
+	q := bson.M{
+		VersionKey: versionId,
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+	}
+	if reason.TaskID != "" {
+		q[IdKey] = bson.M{"$ne": reason.TaskID}
+		// if the aborting task is part of a display task, we also don't want to mark it as aborted
+		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
+	}
+	return abortTasksByQuery(q, reason)
+}
+
+func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
 		return errors.Wrap(err, "finding updated tasks")
