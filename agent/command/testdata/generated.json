@@ -1,0 +1,73 @@
+{
+  "buildvariants": [
+    {
+      "name": "testBV1",
+      "tasks": [
+        {
+          "name": "shouldDependOnVersionGen",
+          "activate": false
+        }
+      ],
+      "activate": false
+    },
+    {
+      "name": "testBV2",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask",
+          "activate": false
+        }
+      ],
+      "activate": false
+    },
+    {
+      "name": "testBV3",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask",
+          "activate": false
+        }
+      ],
+      "activate": false
+    },
+    {
+      "name": "testBV5",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "shouldDependOnVersionGen",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "working_dir": "src",
+            "script": "echo noop"
+          }
+        }
+      ]
+    },
+    {
+      "name": "shouldDependOnDependencyTask",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "working_dir": "src",
+            "script": "echo noop"
+          }
+        }
+      ],
+      "depends_on": [
+        {
+          "name": "dependencyTask"
+        }
+      ]
+    }
+  ]
+}

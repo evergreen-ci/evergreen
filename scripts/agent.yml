@@ -40,6 +40,7 @@ task_groups:
       - test
       - third_task_in_task_group
       - fourth_task_in_task_group
+      - generate_task
 
 tasks:
   - name: first_task_in_task_group
@@ -82,6 +83,12 @@ tasks:
             set -o verbose
             set -o errexit
             echo "container task"
+  - name: generate_task
+    commands:
+      - command: generate.tasks
+        params:
+          files:
+            - "agent/command/testdata/generated.json"
   - name: test
     commands:
       - command: git.get_project
