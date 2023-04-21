@@ -708,7 +708,6 @@ func MarkEnd(settings *evergreen.Settings, t *task.Task, caller string, finishTi
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
 func logTaskEndStats(t *task.Task) error {
-	now := time.Now()
 	msg := message.Fields{
 		"abort":                t.Aborted,
 		"activated_by":         t.ActivatedBy,
