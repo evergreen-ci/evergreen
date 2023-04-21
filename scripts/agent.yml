@@ -38,9 +38,9 @@ task_groups:
       - first_task_in_task_group
       - second_task_in_task_group
       - test
+      - generate_task
       - third_task_in_task_group
       - fourth_task_in_task_group
-      - generate_task
 
 tasks:
   - name: first_task_in_task_group
