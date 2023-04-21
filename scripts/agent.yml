@@ -87,7 +87,7 @@ tasks:
       - command: generate.tasks
         params:
           files:
-            - "agent/command/testdata/generated.json"
+            - "src/agent/command/testdata/generated.json"
   - name: test
     commands:
       - command: git.get_project
