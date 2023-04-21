@@ -269,6 +269,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User login and logout
 	app.AddRoute("/login").Handler(uis.loginPage).Get()
 	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.login).Post()
+	app.AddRoute("/login").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 	app.AddRoute("/login/key").Handler(uis.userGetKey).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
 
@@ -414,7 +415,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
-	app.AddRoute("/settings/newkey").Wrap(needsLogin, needsContext).Handler(uis.newAPIKey).Post()
+	app.AddRoute("/settings/newkey").Wrap(allowsCORS, needsLogin, needsContext).Handler(uis.newAPIKey).Post()
+	app.AddRoute("/settings/newkey").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 	app.AddRoute("/settings/cleartoken").Wrap(needsLogin).Handler(uis.clearUserToken).Post()
 	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.notificationsPage).Get()
 
