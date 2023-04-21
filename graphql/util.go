@@ -955,54 +955,54 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 		return nil, nil
 	}
 
-	sortBy, sortOrderDSC, baseTaskOpts, err := convertTestSortOptions(ctx, dbTask, opts.Sort)
+	sort, baseTaskOpts, err := convertTestSortOptions(ctx, dbTask, opts.Sort)
 	if err != nil {
 		return nil, err
 	}
 
 	return &testresult.FilterOptions{
-		TestName:     utility.FromStringPtr(opts.TestName),
-		Statuses:     opts.Statuses,
-		GroupID:      utility.FromStringPtr(opts.GroupID),
-		SortBy:       sortBy,
-		SortOrderDSC: sortOrderDSC,
-		Limit:        utility.FromIntPtr(opts.Limit),
-		Page:         utility.FromIntPtr(opts.Page),
-		BaseTasks:    baseTaskOpts,
+		TestName:  utility.FromStringPtr(opts.TestName),
+		Statuses:  opts.Statuses,
+		GroupID:   utility.FromStringPtr(opts.GroupID),
+		Sort:      sort,
+		Limit:     utility.FromIntPtr(opts.Limit),
+		Page:      utility.FromIntPtr(opts.Page),
+		BaseTasks: baseTaskOpts,
 	}, nil
 }
 
-func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) (string, bool, []testresult.TaskOptions, error) {
-	// TODO (EVG-14306): Enable multi-sort parameters once it is supported
-	// by the test results interface.
-	if len(opts) == 0 {
-		return "", false, nil, nil
-	}
-
+func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) ([]testresult.SortBy, []testresult.TaskOptions, error) {
 	baseTaskOpts, err := getBaseTaskTestResultsOptions(ctx, dbTask)
 	if err != nil {
-		return "", false, nil, err
+		return nil, nil, err
 	}
 
-	var sortBy string
-	switch opts[0].SortBy {
-	case TestSortCategoryStatus:
-		sortBy = testresult.SortByStatus
-	case TestSortCategoryDuration:
-		sortBy = testresult.SortByDuration
-	case TestSortCategoryTestName:
-		sortBy = testresult.SortByTestName
-	case TestSortCategoryStartTime:
-		sortBy = testresult.SortByStart
-	case TestSortCategoryBaseStatus:
-		if len(baseTaskOpts) > 0 {
-			// Only sort by base status if we know there are base
-			// task options we can send to the results service.
-			sortBy = testresult.SortByBaseStatus
+	var sort []testresult.SortBy
+	for _, o := range opts {
+		var key string
+		switch o.SortBy {
+		case TestSortCategoryStatus:
+			key = testresult.SortByStatusKey
+		case TestSortCategoryDuration:
+			key = testresult.SortByDurationKey
+		case TestSortCategoryTestName:
+			key = testresult.SortByTestNameKey
+		case TestSortCategoryStartTime:
+			key = testresult.SortByStartKey
+		case TestSortCategoryBaseStatus:
+			if len(baseTaskOpts) == 0 {
+				// Only sort by base status if we know there
+				// are base task options we can send to the
+				// results service.
+				continue
+			}
+			key = testresult.SortByBaseStatusKey
 		}
+
+		sort = append(sort, testresult.SortBy{Key: key, OrderDSC: o.Direction == SortDirectionDesc})
 	}
 
-	return sortBy, opts[0].Direction == SortDirectionDesc, baseTaskOpts, nil
+	return sort, baseTaskOpts, nil
 }
 
 func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]testresult.TaskOptions, error) {

@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -785,14 +784,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
 			DisplayTasks: []displayTask{
-				{
+				displayTask{
 					Name: "bv1DisplayTask1",
 					ExecutionTasks: []string{
 						"taskA",
 						"taskB",
 					},
 				},
-				{
+				displayTask{
 					Name: "bv1DisplayTask2",
 					ExecutionTasks: []string{
 						"taskC",
@@ -2101,12 +2100,11 @@ func TestVersionRestart(t *testing.T) {
 	for _, t := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, t.Status)
 		assert.True(t.Activated)
-		assert.True(t.Priority >= 0, fmt.Sprintf("task '%s' is priority '%d'", t.Id, t.Priority))
+
 		if t.Id == "task3" {
 			require.Len(t.DependsOn, 1)
 			assert.Equal("task1", t.DependsOn[0].TaskId)
 			assert.False(t.DependsOn[0].Finished, "restarting task1 should have marked dependency as unfinished")
-			assert.Equal(t.Priority, int64(100))
 		}
 	}
 	for _, b := range builds {
@@ -2308,7 +2306,6 @@ func resetTaskData() error {
 		BuildId:     build1.Id,
 		Version:     v.Id,
 		Status:      evergreen.TaskSucceeded,
-		Priority:    -1,
 	}
 	if err := task1.Insert(); err != nil {
 		return err
@@ -2329,7 +2326,6 @@ func resetTaskData() error {
 		BuildId:     build2.Id,
 		Version:     v.Id,
 		Status:      evergreen.TaskSucceeded,
-		Priority:    100,
 		DependsOn: []task.Dependency{
 			{
 				TaskId:   task1.Id,

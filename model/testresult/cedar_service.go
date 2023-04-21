@@ -121,6 +121,13 @@ func (s *cedarService) convertOpts(taskOpts []TaskOptions, filterOpts *FilterOpt
 
 	var cedarFilterOpts *testresults.FilterOptions
 	if filterOpts != nil {
+		var sort []testresults.SortBy
+		for _, sortBy := range filterOpts.Sort {
+			sort = append(sort, testresults.SortBy{
+				Key:      sortBy.Key,
+				OrderDSC: sortBy.OrderDSC,
+			})
+		}
 		var baseTasks []testresults.TaskOptions
 		for _, task := range filterOpts.BaseTasks {
 			baseTasks = append(baseTasks, testresults.TaskOptions{
@@ -128,16 +135,14 @@ func (s *cedarService) convertOpts(taskOpts []TaskOptions, filterOpts *FilterOpt
 				Execution: task.Execution,
 			})
 		}
-
 		cedarFilterOpts = &testresults.FilterOptions{
-			TestName:     filterOpts.TestName,
-			Statuses:     filterOpts.Statuses,
-			GroupID:      filterOpts.GroupID,
-			SortBy:       filterOpts.SortBy,
-			SortOrderDSC: filterOpts.SortOrderDSC,
-			Limit:        filterOpts.Limit,
-			Page:         filterOpts.Page,
-			BaseTasks:    baseTasks,
+			TestName:  filterOpts.TestName,
+			Statuses:  filterOpts.Statuses,
+			GroupID:   filterOpts.GroupID,
+			Sort:      sort,
+			Limit:     filterOpts.Limit,
+			Page:      filterOpts.Page,
+			BaseTasks: baseTasks,
 		}
 	}
 

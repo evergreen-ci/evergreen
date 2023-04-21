@@ -1539,7 +1539,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 	return errors.Wrapf(volume.Remove(), "deleting volume '%s' in DB", volume.ID)
 }
 
-func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*host.VolumeAttachment, error) {
+func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*VolumeAttachment, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
@@ -1569,7 +1569,7 @@ func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (
 		return nil, errors.Errorf("AWS returned an invalid volume attachment %+v", ec2Attachment)
 	}
 
-	attachment := &host.VolumeAttachment{
+	attachment := &VolumeAttachment{
 		VolumeID:   *ec2Attachment.VolumeId,
 		DeviceName: *ec2Attachment.Device,
 		HostID:     *ec2Attachment.InstanceId,

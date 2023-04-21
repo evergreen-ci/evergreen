@@ -439,7 +439,7 @@ func (m *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opt
 	return nil
 }
 
-func (m *mockManager) GetVolumeAttachment(ctx context.Context, volumeID string) (*host.VolumeAttachment, error) {
+func (m *mockManager) GetVolumeAttachment(ctx context.Context, volumeID string) (*VolumeAttachment, error) {
 	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -447,7 +447,7 @@ func (m *mockManager) GetVolumeAttachment(ctx context.Context, volumeID string) 
 	for id, instance := range m.Instances {
 		for _, device := range instance.BlockDevices {
 			if device == volumeID {
-				return &host.VolumeAttachment{HostID: id, VolumeID: volumeID}, nil
+				return &VolumeAttachment{HostID: id, VolumeID: volumeID}, nil
 			}
 		}
 	}

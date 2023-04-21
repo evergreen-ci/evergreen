@@ -429,7 +429,15 @@ func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error 
 	if err := build.SetBuildStartedForTasks(allFinishedTasks, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
-
+	builds, err := build.FindBuildsForTasks(allFinishedTasks)
+	if err != nil {
+		return errors.Wrap(err, "finding builds for tasks")
+	}
+	for _, b := range builds {
+		if err = checkUpdateBuildPRStatusPending(&b); err != nil {
+			return errors.Wrapf(err, "updating build '%s' PR status", b.Id)
+		}
+	}
 	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
 }
 
@@ -1794,7 +1802,10 @@ func activateExistingInactiveTasks(creationInfo TaskCreationInfo, existingBuilds
 
 func getTaskIdTables(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
-	taskIdTable := NewPatchTaskIdTable(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
+	taskIdTable, err := NewPatchTaskIdTable(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
+	if err != nil {
+		return TaskIdConfig{}, errors.Wrap(err, "creating patch's task ID table")
+	}
 	existingTasks, err := task.FindAll(db.Query(task.ByVersion(creationInfo.Version.Id)).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "getting existing task IDs")

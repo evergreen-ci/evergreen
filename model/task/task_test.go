@@ -2044,14 +2044,24 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		assert.NoError(t, db.Clear(Collection))
 	}()
 
-	getDispatchableContainerTask := func() Task {
-		return Task{
-			Id:                 utility.RandomString(),
-			Activated:          true,
-			ActivatedTime:      time.Now(),
-			Status:             evergreen.TaskUndispatched,
-			ContainerAllocated: true,
-			ExecutionPlatform:  ExecutionPlatformContainer,
+	getDispatchableContainerTasks := func() []Task {
+		return []Task{
+			{
+				Id:                 "should_not_be_dispatched",
+				Activated:          true,
+				ActivatedTime:      time.Now(),
+				Status:             evergreen.TaskUndispatched,
+				ContainerAllocated: true,
+				ExecutionPlatform:  ExecutionPlatformContainer,
+			},
+			{
+				Id:                 "should_be_dispatched",
+				Activated:          true,
+				ActivatedTime:      time.Now(),
+				Status:             evergreen.TaskUndispatched,
+				ContainerAllocated: true,
+				ExecutionPlatform:  ExecutionPlatformContainer,
+			},
 		}
 	}
 
@@ -2071,43 +2081,52 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
 	}
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
-		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.NoError(t, tsk.Insert())
-
-			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
-			checkTaskDispatched(t, tsk.Id)
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
+			for _, tsk := range tsks {
+				require.NoError(t, tsk.Insert())
+			}
+			require.NoError(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
+			checkTaskDispatched(t, tsks[1].Id)
 		},
-		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ContainerAllocated = false
-			require.NoError(t, tsk.Insert())
+		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
+			tsks[1].ContainerAllocated = false
+			for _, tsk := range tsks {
+				require.NoError(t, tsk.Insert())
+			}
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
+			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
-		"FailsWithDeactivatedTasks": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Activated = false
-			require.NoError(t, tsk.Insert())
+		"FailsWithDeactivatedTasks": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
+			tsks[1].Activated = false
+			for _, tsk := range tsks {
+				require.NoError(t, tsk.Insert())
+			}
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
+			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
-		"FailsWithDisabledTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Priority = evergreen.DisabledTaskPriority
-			require.NoError(t, tsk.Insert())
+		"FailsWithDisabledTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
+			tsks[1].Priority = evergreen.DisabledTaskPriority
+			for _, tsk := range tsks {
+				require.NoError(t, tsk.Insert())
+			}
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
+			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
-		"FailsWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.DependsOn = []Dependency{
+		"FailsWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
+			tsks[1].DependsOn = []Dependency{
 				{TaskId: "task", Finished: true, Unattainable: true},
 			}
-			require.NoError(t, tsk.Insert())
+			for _, tsk := range tsks {
+				require.NoError(t, tsk.Insert())
+			}
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
+			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
-		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
+		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
+			require.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(tsks[1].Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 		},
@@ -2118,7 +2137,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 
 			require.NoError(t, db.Clear(Collection))
 
-			tCase(tctx, t, env, getDispatchableContainerTask())
+			tCase(tctx, t, env, getDispatchableContainerTasks())
 		})
 	}
 }
@@ -3838,6 +3857,17 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			tsk:  &Task{Id: "task"},
 		},
 		{
+			name: "RegularTaskResultsLegacyCedarResultsFlag",
+			tsk: &Task{
+				Id:              "task",
+				Execution:       1,
+				HasCedarResults: true,
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "task", Execution: 1},
+			},
+		},
+		{
 			name: "RegularTaskResults",
 			tsk: &Task{
 				Id:             "task",
@@ -3846,6 +3876,33 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			},
 			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "task", Execution: 1, ResultsService: "some_service"},
+			},
+		},
+		{
+
+			name: "ArchivedRegularTaskResultsLegacyCedarResultsFlags",
+			tsk: &Task{
+				Id:              "task_0",
+				OldTaskId:       "task",
+				Execution:       0,
+				HasCedarResults: true,
+				Archived:        true,
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "task", Execution: 0},
+			},
+		},
+		{
+			name: "ArchivedRegularTaskResults",
+			tsk: &Task{
+				Id:             "task_0",
+				OldTaskId:      "task",
+				Execution:      0,
+				ResultsService: "some_service",
+				Archived:       true,
+			},
+			expectedOpts: []testresult.TaskOptions{
+				{TaskID: "task", Execution: 0, ResultsService: "some_service"},
 			},
 		},
 		{

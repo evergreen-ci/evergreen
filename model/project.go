@@ -875,7 +875,7 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 }
 
 // NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
-func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, projectIdentifier string) TaskIdConfig {
+func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, projectIdentifier string) (TaskIdConfig, error) {
 	config := TaskIdConfig{ExecutionTasks: TaskIdTable{}, DisplayTasks: TaskIdTable{}}
 	processedVariants := map[string]bool{}
 
@@ -911,7 +911,11 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, proj
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		config.ExecutionTasks = generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks, tgMap, projectIdentifier)
+		execTasks, err := generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks, tgMap, projectIdentifier)
+		if err != nil {
+			return TaskIdConfig{}, errors.Wrapf(err, "generating task IDs for variant '%s'", vt.Variant)
+		}
+		config.ExecutionTasks = execTasks
 	}
 	processedVariants = map[string]bool{}
 	for _, vt := range tasks.DisplayTasks {
@@ -920,13 +924,17 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, proj
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		config.DisplayTasks = generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks, tgMap, projectIdentifier)
+		displayTasks, err := generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks, tgMap, projectIdentifier)
+		if err != nil {
+			return TaskIdConfig{}, errors.Wrapf(err, "generating task IDs for variant '%s'", vt.Variant)
+		}
+		config.DisplayTasks = displayTasks
 	}
-	return config
+	return config, nil
 }
 
 func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet, table TaskIdTable,
-	tgMap map[string]TaskGroup, projectIdentifier string) TaskIdTable {
+	tgMap map[string]TaskGroup, projectIdentifier string) (TaskIdTable, error) {
 	if table == nil {
 		table = map[TVPair]string{}
 	}
@@ -934,6 +942,9 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 	// we must track the project's variants definitions as well,
 	// so that we don't create Ids for variants that don't exist.
 	projBV := proj.FindBuildVariant(vt.Variant)
+	if projBV == nil {
+		return nil, errors.Errorf("build variant '%s' not found in project", vt.Variant)
+	}
 	taskNamesForVariant := tasks.TaskNames(vt.Variant)
 	rev := v.Revision
 	if evergreen.IsPatchRequester(v.Requester) {
@@ -955,7 +966,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 		}
 	}
 
-	return table
+	return table, nil
 }
 
 // generateId generates a unique project ID. For tasks created for untracked branches,

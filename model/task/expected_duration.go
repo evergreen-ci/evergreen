@@ -11,9 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// this is about a month.
-const oneMonthIsh = 30 * 24 * time.Hour
-
 var DurationIndex = bson.D{
 	{Key: ProjectKey, Value: 1},
 	{Key: BuildVariantKey, Value: 1},
@@ -29,9 +26,9 @@ type expectedDurationResults struct {
 	StdDev           float64 `bson:"std_dev"`
 }
 
-func getExpectedDurationsForWindow(name, project, buildvariant string, start, end time.Time) ([]expectedDurationResults, error) {
+func getExpectedDurationsForWindow(name, project, buildVariant string, start, end time.Time) ([]expectedDurationResults, error) {
 	match := bson.M{
-		BuildVariantKey: buildvariant,
+		BuildVariantKey: buildVariant,
 		ProjectKey:      project,
 		StatusKey: bson.M{
 			"$in": []string{evergreen.TaskSucceeded, evergreen.TaskFailed},
@@ -91,22 +88,4 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 	}
 
 	return results, nil
-}
-
-// ExpectedTaskDuration takes a given project and buildvariant and computes
-// the average duration - grouped by task display name - for tasks that have
-// completed within a given threshold as determined by the window
-func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (map[string]time.Duration, error) {
-	results, err := getExpectedDurationsForWindow("", project, buildvariant, time.Now().Add(-window), time.Now())
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	expDurations := make(map[string]time.Duration)
-	for _, result := range results {
-		expDuration := time.Duration(result.ExpectedDuration) * time.Nanosecond
-		expDurations[result.DisplayName] = expDuration
-	}
-
-	return expDurations, nil
 }

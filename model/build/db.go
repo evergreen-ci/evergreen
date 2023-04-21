@@ -260,6 +260,23 @@ func FindProjectForBuild(buildID string) (string, error) {
 	return b.Project, nil
 }
 
+// FindBuildsForTasks returns all builds that cover the given tasks
+func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
+	buildIdsMap := map[string]bool{}
+	var buildIds []string
+	for _, t := range tasks {
+		buildIdsMap[t.BuildId] = true
+	}
+	for buildId := range buildIdsMap {
+		buildIds = append(buildIds, buildId)
+	}
+	builds, err := Find(ByIds(buildIds))
+	if err != nil {
+		return nil, errors.Wrap(err, "getting builds")
+	}
+	return builds, nil
+}
+
 // SetBuildStartedForTasks sets tasks' builds status to started and activates them
 func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}

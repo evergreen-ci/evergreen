@@ -247,7 +247,7 @@ func (m *gceManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeMo
 	return errors.New("can't modify volume with GCE provider")
 }
 
-func (m *gceManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+func (m *gceManager) GetVolumeAttachment(context.Context, string) (*VolumeAttachment, error) {
 	return nil, errors.New("can't get volume attachment with GCE provider")
 }
 

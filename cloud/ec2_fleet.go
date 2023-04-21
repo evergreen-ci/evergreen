@@ -416,7 +416,7 @@ func (m *ec2FleetManager) ModifyVolume(context.Context, *host.Volume, *model.Vol
 	return errors.New("can't modify volume with EC2 fleet provider")
 }
 
-func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*VolumeAttachment, error) {
 	return nil, errors.New("can't get volume attachment with EC2 fleet provider")
 }
 

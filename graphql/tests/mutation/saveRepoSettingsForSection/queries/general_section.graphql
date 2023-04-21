@@ -3,6 +3,8 @@ mutation {
         repoSettings: {
             projectRef: {
                 id: "repo_id"
+                owner: "hello",
+                repo: "world",
                 enabled: true,
                 remotePath: "my_path_is_new"
             }

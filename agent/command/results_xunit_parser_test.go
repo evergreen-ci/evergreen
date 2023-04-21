@@ -33,10 +33,14 @@ func TestXMLParsing(t *testing.T) {
 					So(res[0].Errors, ShouldEqual, 1)
 					So(res[0].Failures, ShouldEqual, 5)
 					So(res[0].Name, ShouldEqual, "nose2-junit")
+					So(res[0].SysOut, ShouldEqual, "sysout-suite")
+					So(res[0].SysErr, ShouldEqual, "syserr-suite")
 					So(res[0].TestCases[11].Name, ShouldEqual, "test_params_func:2")
 					So(res[0].TestCases[11].Time, ShouldEqual, 0.000098)
 					So(res[0].TestCases[11].Failure, ShouldNotBeNil)
 					So(res[0].TestCases[11].Failure.Message, ShouldEqual, "test failure")
+					So(res[0].TestCases[11].SysOut, ShouldEqual, "sysout-testcase")
+					So(res[0].TestCases[11].SysErr, ShouldEqual, "syserr-testcase")
 				})
 			})
 		})
@@ -253,6 +257,18 @@ func TestXMLToModelConversion(t *testing.T) {
 				Convey("and logs should be of the proper form", func() {
 					So(logs[0].Name, ShouldNotEqual, "")
 					So(len(logs[0].Lines), ShouldNotEqual, 0)
+					hasSystemErrTc := false
+					hasSystemOutTc := false
+					for _, line := range logs[0].Lines {
+						if line == "sysout-testcase" {
+							hasSystemOutTc = true
+						}
+						if line == "syserr-testcase" {
+							hasSystemErrTc = true
+						}
+					}
+					So(hasSystemErrTc, ShouldBeTrue)
+					So(hasSystemOutTc, ShouldBeTrue)
 				})
 			})
 		})

@@ -301,8 +301,31 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		hasErr          bool
 	}{
 		{
-			name:   "InvalidSortBy",
-			opts:   &FilterOptions{SortBy: "invalid"},
+			name: "InvalidSortByKey",
+			opts: &FilterOptions{
+				Sort: []SortBy{
+					{Key: SortByTestNameKey},
+					{Key: "invalid"},
+				},
+			},
+			hasErr: true,
+		},
+		{
+			name: "DuplicateSortByKey",
+			opts: &FilterOptions{
+				Sort: []SortBy{
+					{Key: SortByTestNameKey},
+					{Key: SortByStatusKey},
+					{Key: SortByTestNameKey},
+				},
+			},
+			hasErr: true,
+		},
+		{
+			name: "SortByBaseStatusWithoutBaseTasksFindOptions",
+			opts: &FilterOptions{
+				Sort: []SortBy{{Key: SortByBaseStatusKey}},
+			},
 			hasErr: true,
 		},
 		{
@@ -369,7 +392,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name: "SortByDurationASC",
-			opts: &FilterOptions{SortBy: SortByDuration},
+			opts: &FilterOptions{
+				Sort: []SortBy{{Key: SortByDurationKey}},
+			},
 			expectedResults: []TestResult{
 				results[3],
 				results[0],
@@ -381,8 +406,12 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByDurationDSC",
 			opts: &FilterOptions{
-				SortBy:       SortByDuration,
-				SortOrderDSC: true,
+				Sort: []SortBy{
+					{
+						Key:      SortByDurationKey,
+						OrderDSC: true,
+					},
+				},
 			},
 			expectedResults: []TestResult{
 				results[1],
@@ -394,7 +423,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name: "SortByTestNameASC",
-			opts: &FilterOptions{SortBy: SortByTestName},
+			opts: &FilterOptions{
+				Sort: []SortBy{{Key: SortByTestNameKey}},
+			},
 			expectedResults: []TestResult{
 				results[0],
 				results[2],
@@ -406,8 +437,12 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByTestNameDCS",
 			opts: &FilterOptions{
-				SortBy:       SortByTestName,
-				SortOrderDSC: true,
+				Sort: []SortBy{
+					{
+						Key:      SortByTestNameKey,
+						OrderDSC: true,
+					},
+				},
 			},
 			expectedResults: []TestResult{
 				results[1],
@@ -419,7 +454,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name: "SortByStatusASC",
-			opts: &FilterOptions{SortBy: SortByStatus},
+			opts: &FilterOptions{
+				Sort: []SortBy{{Key: SortByStatusKey}},
+			},
 			expectedResults: []TestResult{
 				results[1],
 				results[2],
@@ -431,8 +468,12 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByStatusDSC",
 			opts: &FilterOptions{
-				SortBy:       SortByStatus,
-				SortOrderDSC: true,
+				Sort: []SortBy{
+					{
+						Key:      SortByStatusKey,
+						OrderDSC: true,
+					},
+				},
 			},
 			expectedResults: []TestResult{
 				results[0],
@@ -444,7 +485,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name: "SortByStartTimeASC",
-			opts: &FilterOptions{SortBy: SortByStart},
+			opts: &FilterOptions{
+				Sort: []SortBy{{Key: SortByStartKey}},
+			},
 			expectedResults: []TestResult{
 				results[0],
 				results[2],
@@ -454,10 +497,14 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			expectedCount: 4,
 		},
 		{
-			name: "SortByStartTimeDCS",
+			name: "SortByStartTimeDSC",
 			opts: &FilterOptions{
-				SortBy:       SortByStart,
-				SortOrderDSC: true,
+				Sort: []SortBy{
+					{
+						Key:      SortByStartKey,
+						OrderDSC: true,
+					},
+				},
 			},
 			expectedResults: []TestResult{
 				results[3],
@@ -470,7 +517,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByBaseStatusASC",
 			opts: &FilterOptions{
-				SortBy:    SortByBaseStatus,
+				Sort:      []SortBy{{Key: SortByBaseStatusKey}},
 				BaseTasks: []TaskOptions{{TaskID: baseTaskID}},
 			},
 			expectedResults: []TestResult{
@@ -484,15 +531,40 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByBaseStatusDSC",
 			opts: &FilterOptions{
-				SortBy:       SortByBaseStatus,
-				SortOrderDSC: true,
-				BaseTasks:    []TaskOptions{{TaskID: baseTaskID}},
+				Sort: []SortBy{
+					{
+						Key:      SortByBaseStatusKey,
+						OrderDSC: true,
+					},
+				},
+				BaseTasks: []TaskOptions{{TaskID: baseTaskID}},
 			},
 			expectedResults: []TestResult{
 				resultsWithBaseStatus[0],
 				resultsWithBaseStatus[2],
 				resultsWithBaseStatus[1],
 				resultsWithBaseStatus[3],
+			},
+			expectedCount: 4,
+		},
+		{
+			name: "MultiSort",
+			opts: &FilterOptions{
+				Sort: []SortBy{
+					{
+						Key: SortByStatusKey,
+					},
+					{
+						Key:      SortByTestNameKey,
+						OrderDSC: true,
+					},
+				},
+			},
+			expectedResults: []TestResult{
+				results[1],
+				results[2],
+				results[3],
+				results[0],
 			},
 			expectedCount: 4,
 		},

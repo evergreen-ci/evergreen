@@ -458,6 +458,10 @@ func TestAttachToNewRepo(t *testing.T) {
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, GithubHooksCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(t, settings.Set())
 	pRef := ProjectRef{
 		Id:        "myProject",
 		Owner:     "evergreen-ci",
@@ -481,6 +485,11 @@ func TestAttachToNewRepo(t *testing.T) {
 		SystemRoles: []string{GetViewRepoRole("myRepo")},
 	}
 	assert.NoError(t, u.Insert())
+
+	// Can't attach to repo with an invalid owner
+	pRef.Owner = "invalid"
+	assert.Error(t, pRef.AttachToNewRepo(u))
+
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
 	hook := GithubHook{
@@ -550,9 +559,12 @@ func TestAttachToNewRepo(t *testing.T) {
 
 func TestAttachToRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, GithubHooksCollection))
+		evergreen.RoleCollection, user.Collection, GithubHooksCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
-
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(t, settings.Set())
 	pRef := ProjectRef{
 		Id:     "myProject",
 		Owner:  "evergreen-ci",
@@ -629,6 +641,16 @@ func TestAttachToRepo(t *testing.T) {
 	assert.False(t, pRefFromDB.CommitQueue.IsEnabled())
 	assert.False(t, pRefFromDB.IsGithubChecksEnabled())
 	assert.True(t, pRefFromDB.IsPRTestingEnabled())
+
+	// Try attaching with a disallowed owner.
+	pRef = ProjectRef{
+		Id:     "myBadProject",
+		Owner:  "nonexistent",
+		Repo:   "evergreen",
+		Branch: "main",
+	}
+	assert.NoError(t, pRef.Insert())
+	assert.Error(t, pRef.AttachToRepo(u))
 }
 
 func TestDetachFromRepo(t *testing.T) {
@@ -880,7 +902,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
-			assert.Nil(t, pRefFromDb.Private)
 			assert.Nil(t, pRefFromDb.Restricted)
 			assert.Nil(t, pRefFromDb.Admins)
 		},
@@ -2775,6 +2796,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Id:               "iden_",
 		Identifier:       "identifier",
 		PRTestingEnabled: utility.TruePtr(),
+		Private:          utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
 	projectRef, err := FindBranchProjectRef("identifier")
@@ -2787,25 +2809,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(settings.Set())
 
 	update := &ProjectRef{
-		Id:      "iden_",
-		Enabled: true,
-		Owner:   "invalid",
-		Repo:    "nonexistent",
-	}
-
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.Error(err)
-
-	update = &ProjectRef{
-		Id:      "iden_",
-		Enabled: true,
-		Owner:   "",
-		Repo:    "",
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.Error(err)
-
-	update = &ProjectRef{
 		Id:      "iden_",
 		Enabled: true,
 		Owner:   "evergreen-ci",
@@ -2833,6 +2836,19 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Error(err)
 	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
 	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
+
+	// Test private field does not get updated
+	update = &ProjectRef{
+		Restricted: utility.TruePtr(),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageAccessSection, false)
+	assert.NoError(err)
+
+	projectRef, err = FindBranchProjectRef("iden_")
+	assert.NoError(err)
+	assert.NotNil(t, projectRef)
+	assert.True(utility.FromBoolPtr(projectRef.Restricted))
+	assert.True(utility.FromBoolPtr(projectRef.Private))
 
 }
 

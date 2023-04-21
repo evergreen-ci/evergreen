@@ -866,6 +866,7 @@ func (t *Task) cacheExpectedDuration() error {
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
 	query := IsContainerTaskScheduledQuery()
+	query[IdKey] = t.Id
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true
 	update := bson.M{
@@ -1923,7 +1924,7 @@ func (t *Task) Reset() error {
 }
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
-// tasks instead of a single one, and verifies that priority isn't disabled.
+// tasks instead of a single one.
 func ResetTasks(tasks []Task) error {
 	if len(tasks) == 0 {
 		return nil
@@ -1942,9 +1943,6 @@ func ResetTasks(tasks []Task) error {
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
-	}
-	if err := enableDisabledTasks(taskIDs); err != nil {
-		return errors.Wrap(err, "enabling disabled tasks")
 	}
 
 	return nil
@@ -2591,8 +2589,12 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 			})
 		}
 	} else if t.HasResults() {
+		taskID := t.Id
+		if t.Archived {
+			taskID = t.OldTaskId
+		}
 		taskOpts = append(taskOpts, testresult.TaskOptions{
-			TaskID:         t.Id,
+			TaskID:         taskID,
 			Execution:      t.Execution,
 			ResultsService: t.ResultsService,
 		})
@@ -2802,19 +2804,6 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 	return deps, nil
 }
 
-func (t *Task) GetHistoricRuntime() (time.Duration, error) {
-	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, t.FinishTime.Add(-oneMonthIsh), t.FinishTime.Add(-time.Second))
-	if err != nil {
-		return 0, errors.WithStack(err)
-	}
-
-	if len(runtimes) != 1 {
-		return 0, errors.Errorf("expected exactly one task runtime data point, but actually got %d", len(runtimes))
-	}
-
-	return time.Duration(runtimes[0].ExpectedDuration), nil
-}
-
 func (t *Task) FetchExpectedDuration() util.DurationStats {
 	if t.DurationPrediction.TTL == 0 {
 		t.DurationPrediction.TTL = utility.JitterInterval(predictionTTL)
@@ -2839,7 +2828,8 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
-		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, time.Now().Add(-taskCompletionEstimateWindow), time.Now())
+		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
+			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
 		grip.Notice(message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
 			"id":        t.Id,

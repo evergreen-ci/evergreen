@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
@@ -285,18 +284,6 @@ func requireWorkingDirFlag(dirFlagName string) cli.BeforeFunc {
 				return errors.Wrap(err, "finding working directory")
 			}
 			return c.Set(dirFlagName, wd)
-		}
-		return nil
-	}
-}
-
-// cleanupFilePathSeparators fixes the file path separators to ensure they are
-// forward slashes (i.e. to clean up Windows file paths).
-func cleanupFilePathSeparators(names ...string) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		for _, name := range names {
-			cleanPath := util.ConsistentFilepath(c.String(name))
-			return errors.Wrapf(c.Set(name, cleanPath), "cleaning up flag '%s'", name)
 		}
 		return nil
 	}
