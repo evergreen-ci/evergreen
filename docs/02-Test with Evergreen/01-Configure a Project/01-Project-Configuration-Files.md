@@ -824,7 +824,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](../01-Configure a Project/02-Project-Commands.md#generatetasks)
+[generate.tasks](<../01-Configure a Project/02-Project-Commands.md#generatetasks>)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically

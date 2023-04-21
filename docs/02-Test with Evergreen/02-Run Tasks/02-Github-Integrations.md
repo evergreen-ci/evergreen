@@ -19,7 +19,7 @@ If "Automated Testing" is enabled, Evergreen will automatically create a patch f
 
 If you'd like the option of creating patches but wouldn't like it to happen automatically, you can enable "Manual Testing".
 
-You can read more about these options [here](../01-Configure a Project/03-Project-and-Distro-Settings.md#github-pull-request-testing).
+You can read more about these options [here](<../01-Configure a Project/03-Project-and-Distro-Settings.md#github-pull-request-testing>).
 
 #### Retry a patch
 

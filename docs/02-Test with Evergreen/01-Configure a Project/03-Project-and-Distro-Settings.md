@@ -388,11 +388,13 @@ that all execute independently:
     are two implementations, Evergreen's Legacy implementation which
     orders tasks using a short circuiting list of comparison operation,
     and the "Tunable" implementation which uses a point-based
-    algorithm that makes it possible to tune the factors that impact
+    algorithim that makes it possible to tune the factors that impact
     the ordering of a task. The tunable factors are:
 
     -   Target time for the queue, or the number of minutes that the
-        queue should take.
+        queue should take. (This will move to the host allocator
+        settings after
+        [EVG-703](https://jira.mongodb.org/browse/EVG-703)).
     -   *Patch Factor* how much to weight patches over non-patch builds.
         For most workloads, privileging patches over mainline builds
         will improve the throughput of your team to complete requests,
