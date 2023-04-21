@@ -84,11 +84,12 @@ tasks:
             echo "container task"
   - name: generate_task
     commands:
-      - command: generate.tasks
+      - command: shell.exec
         params:
-          working_dir: src
-          files:
-            - "agent/command/testdata/generated.json"
+          script: |
+            pwd
+            ls
+            echo "MALIK"
   - name: test
     commands:
       - command: git.get_project
