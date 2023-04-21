@@ -84,12 +84,21 @@ tasks:
             echo "container task"
   - name: generate_task
     commands:
+      - command: git.get_project
+        params:
+          directory: src
+          token: "token foo"
+      #need to git get project first. Nobody ever just starts with the generate.tasks command
       - command: shell.exec
         params:
           script: |
             pwd
             ls
             echo "MALIK"
+      - command: generate.tasks
+        params:
+          files:
+            - agent/command/testdata/generated.json
   - name: test
     commands:
       - command: git.get_project
