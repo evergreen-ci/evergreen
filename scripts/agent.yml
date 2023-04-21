@@ -86,8 +86,9 @@ tasks:
     commands:
       - command: generate.tasks
         params:
+          working_dir: src
           files:
-            - "src/agent/command/testdata/generated.json"
+            - "agent/command/testdata/generated.json"
   - name: test
     commands:
       - command: git.get_project
