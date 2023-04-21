@@ -787,12 +787,6 @@ func logTaskEndStats(t *task.Task) error {
 	}
 
 	grip.Info(msg)
-	grip.Debug(message.Fields{
-		"ticket":        "EVG-19293",
-		"message":       "ran task-end-stats",
-		"time_taken_ms": time.Since(now).Milliseconds(),
-		"task":          t.Id,
-	})
 	return nil
 }
 
