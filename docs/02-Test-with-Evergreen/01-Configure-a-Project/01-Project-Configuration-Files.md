@@ -817,7 +817,7 @@ must be present in the `tasks` array.
 
 Stepback is set to true if you want to stepback and test earlier commits
 in the case of a failing task. This can be set or unset at the
-top-level, and for individual tasks (in the task definition or for the
+top-level, at the build variant level, and for individual tasks (in the task definition or for the
 task within a specific build variant).
 
 ### OOM Tracker
