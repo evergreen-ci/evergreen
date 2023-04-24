@@ -417,6 +417,20 @@ func PatchStatusToVersionStatus(patchStatus string) (string, error) {
 
 type ModificationAction string
 
+// Common OTEL attribute keys
+const (
+	TaskIDOtelAttribute            = "evergreen.task.id"
+	TaskNameOtelAttribute          = "evergreen.task.name"
+	TaskExecutionOtelAttribute     = "evergreen.task.execution"
+	TaskStatusOtelAttribute        = "evergreen.task.status"
+	VersionIDOtelAttribute         = "evergreen.version.id"
+	VersionRequesterOtelAttribute  = "evergreen.version.requester"
+	BuildIDOtelAttribute           = "evergreen.build.id"
+	BuildNameOtelAttribute         = "evergreen.build.name"
+	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
+	ProjectIDOtelAttribute         = "evergreen.project.id"
+)
+
 const (
 	RestartAction     ModificationAction = "restart"
 	SetActiveAction   ModificationAction = "set_active"

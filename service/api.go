@@ -95,6 +95,7 @@ func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFu
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+			return
 		}
 
 		if flags.RestRoutePartialAuthDisabled {

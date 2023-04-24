@@ -1262,12 +1262,14 @@ func TestValidateAliasCoverage(t *testing.T) {
 			assert.False(t, needsVariants["negatedAlias"]) // Matches the second build variant
 			assert.False(t, needsTasks["negatedAlias"])
 
-			p.BuildVariants[1].Tags = []string{"variantTag"}
+			for i := 1; i < len(p.BuildVariants); i++ {
+				p.BuildVariants[i].Tags = []string{"variantTag"}
+			}
 			needsVariants, needsTasks, err = getAliasCoverage(p, aliasMap)
 			assert.NoError(t, err)
 			assert.Len(t, needsVariants, 1)
 			assert.Len(t, needsTasks, 1)
-			assert.True(t, needsVariants["negatedAlias"]) // Doesn't match either build variant
+			assert.True(t, needsVariants["negatedAlias"]) // Doesn't match any build variant
 			assert.True(t, needsTasks["negatedAlias"])    // Because the variants don't match
 
 			p.BuildVariants[1].Tags = nil
@@ -1278,6 +1280,48 @@ func TestValidateAliasCoverage(t *testing.T) {
 			assert.Len(t, needsTasks, 1)
 			assert.False(t, needsVariants["negatedAlias"]) // Matches the second build variant again
 			assert.True(t, needsTasks["negatedAlias"])     // Second build variant task doesn't match
+		},
+		"matchesTaskInTaskGroupWithTaskRegexp": func(t *testing.T, p *model.Project) {
+			a := model.ProjectAlias{
+				ID:      mgobson.NewObjectId(),
+				Alias:   "alias",
+				Variant: "bvWithTaskGroup",
+				Task:    "taskWithoutTag",
+			}
+			aliases := map[string]model.ProjectAlias{a.Alias: a}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliases)
+			require.NoError(t, err)
+			assert.Len(t, needsVariants, len(aliases))
+			assert.Len(t, needsTasks, len(aliases))
+			for _, noMatch := range needsVariants {
+				assert.False(t, noMatch)
+			}
+			for _, noMatch := range needsTasks {
+				assert.False(t, noMatch)
+			}
+			errs := validateAliasCoverage(p, model.ProjectAliases{a})
+			assert.Len(t, errs, 0)
+		},
+		"matchesTaskInTaskGroupWithTaskTag": func(t *testing.T, p *model.Project) {
+			a := model.ProjectAlias{
+				ID:       mgobson.NewObjectId(),
+				Alias:    "alias",
+				Variant:  "bvWithTaskGroup",
+				TaskTags: []string{"taskTag"},
+			}
+			aliases := map[string]model.ProjectAlias{a.Alias: a}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliases)
+			require.NoError(t, err)
+			assert.Len(t, needsVariants, len(aliases))
+			assert.Len(t, needsTasks, len(aliases))
+			for _, noMatch := range needsVariants {
+				assert.False(t, noMatch)
+			}
+			for _, noMatch := range needsTasks {
+				assert.False(t, noMatch)
+			}
+			errs := validateAliasCoverage(p, model.ProjectAliases{a})
+			assert.Len(t, errs, 0)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -1300,6 +1344,15 @@ func TestValidateAliasCoverage(t *testing.T) {
 							},
 						},
 					},
+					{
+						Name: "bvWithTaskGroup",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "taskGroup",
+								IsGroup: true,
+							},
+						},
+					},
 				},
 				Tasks: []model.ProjectTask{
 					{
@@ -1308,6 +1361,12 @@ func TestValidateAliasCoverage(t *testing.T) {
 					},
 					{
 						Name: "taskWithoutTag",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					{
+						Name:  "taskGroup",
+						Tasks: []string{"taskWithTag", "taskWithoutTag"},
 					},
 				},
 			}
@@ -2188,7 +2247,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 		})
 
 		Reset(func() {
-			So(db.Clear(distro.Collection), ShouldBeNil)
+			So(db.ClearCollections(distro.Collection, model.ParserProjectCollection, model.VersionCollection), ShouldBeNil)
 		})
 	})
 }

@@ -1,7 +1,7 @@
 # Legacy API v1
 ----------
 
-*Note*: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage.md).
+*Note*: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage).
 
 ## A note on authentication
 

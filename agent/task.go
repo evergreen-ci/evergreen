@@ -177,6 +177,9 @@ func (a *Agent) setupSystemMetricsCollector(ctx context.Context, tc *taskContext
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Task().Info("Running pre-task commands.")
+	ctx, preTaskSpan := tracer.Start(ctx, "pre-task-commands")
+	defer preTaskSpan.End()
+
 	opts := runCommandsOptions{}
 
 	if !tc.ranSetupGroup {

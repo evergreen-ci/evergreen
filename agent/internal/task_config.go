@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -13,7 +15,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/baggage"
 )
 
 type TaskConfig struct {
@@ -159,4 +163,31 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 		tg.Timeout = tc.Project.Timeout
 	}
 	return tg, nil
+}
+
+func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context, error) {
+	catcher := grip.NewBasicCatcher()
+
+	bag := baggage.FromContext(ctx)
+	for key, val := range map[string]string{
+		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
+		evergreen.TaskNameOtelAttribute:          tc.Task.DisplayName,
+		evergreen.TaskExecutionOtelAttribute:     strconv.Itoa(tc.Task.Execution),
+		evergreen.VersionIDOtelAttribute:         tc.Task.Version,
+		evergreen.VersionRequesterOtelAttribute:  tc.Task.Requester,
+		evergreen.BuildIDOtelAttribute:           tc.Task.BuildId,
+		evergreen.BuildNameOtelAttribute:         tc.Task.BuildVariant,
+		evergreen.ProjectIdentifierOtelAttribute: tc.ProjectRef.Identifier,
+		evergreen.ProjectIDOtelAttribute:         tc.ProjectRef.Id,
+	} {
+		member, err := baggage.NewMember(key, val)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "making member for key '%s' val '%s'", key, val))
+			continue
+		}
+		bag, err = bag.SetMember(member)
+		catcher.Add(err)
+	}
+
+	return baggage.ContextWithBaggage(ctx, bag), catcher.Resolve()
 }

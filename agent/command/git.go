@@ -26,6 +26,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -33,6 +35,15 @@ const (
 	defaultCommitterName   = "Evergreen Agent"
 	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
 	shallowCloneDepth      = 100
+
+	gitGetProjectOtelAttribute = "evergreen.command.git_get_project"
+)
+
+var (
+	cloneOwnerAttribure  = fmt.Sprintf("%s.clone_owner", gitGetProjectOtelAttribute)
+	cloneRepoAttribure   = fmt.Sprintf("%s.clone_repo", gitGetProjectOtelAttribute)
+	cloneBranchAttribure = fmt.Sprintf("%s.clone_branch", gitGetProjectOtelAttribute)
+	cloneModuleAttribure = fmt.Sprintf("%s.clone_module", gitGetProjectOtelAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -534,6 +545,13 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	}
 	logger.Execution().Debugf("Commands are: %s", redactedCmds)
 
+	ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
+		attribute.String(cloneOwnerAttribure, opts.owner),
+		attribute.String(cloneRepoAttribure, opts.repo),
+		attribute.String(cloneBranchAttribure, opts.branch),
+	))
+	defer span.End()
+
 	err = fetchSourceCmd.Run(ctx)
 	out := stdErr.String()
 	if out != "" {
@@ -654,6 +672,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return err
 	}
 
+	ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
+		attribute.String(cloneModuleAttribure, module.Name),
+	))
+	defer span.End()
+
 	// This needs to use a thread-safe buffer just in case the context errors
 	// (e.g. due to a timeout) while the command is running. A non-thread-safe
 	// buffer is only safe to read once the command exits, guaranteeing that all
@@ -683,6 +706,10 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 	td client.TaskData,
 	patchId string) error {
 	logger.Task().Infof("Applying changes from previous commit queue patch '%s'.", patchId)
+
+	ctx, span := getTracer().Start(ctx, "apply_commit_queue_patches")
+	defer span.End()
+
 	newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
 	if err != nil {
 		return errors.Wrap(err, "getting additional patch")
@@ -812,6 +839,9 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 		return errors.New("cannot get patch contents for nil patch")
 	}
 
+	ctx, span := getTracer().Start(ctx, "get_patches")
+	defer span.End()
+
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	for i, patchPart := range patch.Patches {
 		// If the patch isn't stored externally, no need to do anything.
@@ -892,6 +922,9 @@ func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, 
 // and then call the necessary git commands to apply the patch file
 func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerProducer,
 	conf *internal.TaskConfig, patches []patch.ModulePatch) error {
+
+	ctx, span := getTracer().Start(ctx, "apply_patches")
+	defer span.End()
 
 	jpm := c.JasperManager()
 
