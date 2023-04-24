@@ -31,11 +31,19 @@ import (
 )
 
 const (
-	GitFetchProjectRetries  = 5
-	defaultCommitterName    = "Evergreen Agent"
-	defaultCommitterEmail   = "no-reply@evergreen.mongodb.com"
-	shallowCloneDepth       = 100
-	moduleNameOtelAttribute = "evergreen.module.name"
+	GitFetchProjectRetries = 5
+	defaultCommitterName   = "Evergreen Agent"
+	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
+	shallowCloneDepth      = 100
+
+	gitGetProjectOtelAttribute = "evergreen.command.git_get_project"
+)
+
+var (
+	cloneOwnerAttribure  = fmt.Sprintf("%s.clone_owner", gitGetProjectOtelAttribute)
+	cloneRepoAttribure   = fmt.Sprintf("%s.clone_repo", gitGetProjectOtelAttribute)
+	cloneBranchAttribure = fmt.Sprintf("%s.clone_branch", gitGetProjectOtelAttribute)
+	cloneModuleAttribure = fmt.Sprintf("%s.clone_module", gitGetProjectOtelAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -537,7 +545,11 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	}
 	logger.Execution().Debugf("Commands are: %s", redactedCmds)
 
-	ctx, span := getTracer().Start(ctx, "clone_source")
+	ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
+		attribute.String(cloneOwnerAttribure, opts.owner),
+		attribute.String(cloneRepoAttribure, opts.repo),
+		attribute.String(cloneBranchAttribure, opts.branch),
+	))
 	defer span.End()
 
 	err = fetchSourceCmd.Run(ctx)
@@ -661,7 +673,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
-		attribute.String(moduleNameOtelAttribute, module.Name),
+		attribute.String(cloneModuleAttribure, module.Name),
 	))
 	defer span.End()
 
