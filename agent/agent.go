@@ -193,7 +193,7 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 
 func (a *Agent) initTracerProvider(ctx context.Context) error {
 	if a.opts.TraceCollectorEndpoint == "" {
-		tracer = otel.GetTracerProvider().Tracer("evergreen_agent")
+		tracer = otel.GetTracerProvider().Tracer("github.com/evergreen-ci/evergreen/agent")
 		return nil
 	}
 

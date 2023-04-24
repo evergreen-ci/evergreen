@@ -76,7 +76,7 @@ func getJoinedWithWorkDir(conf *internal.TaskConfig, path string) string {
 
 func getTracer() trace.Tracer {
 	if tracer == nil {
-		tracer = otel.GetTracerProvider().Tracer("evergreen_command")
+		tracer = otel.GetTracerProvider().Tracer("github.com/evergreen-ci/evergreen/agent/command")
 	}
 
 	return tracer
