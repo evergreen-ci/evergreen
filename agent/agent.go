@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,13 +22,27 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/contrib/detectors/aws/ec2"
+	"go.opentelemetry.io/contrib/detectors/aws/ecs"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer trace.Tracer
 
 // Agent manages the data necessary to run tasks in a runtime environment.
 type Agent struct {
@@ -39,6 +54,7 @@ type Agent struct {
 	// applies to EC2 hosts.
 	ec2InstanceID string
 	endTaskResp   *TriggerEndTaskResp
+	closers       []closerOp
 }
 
 // Options contains startup options for an Agent.
@@ -49,19 +65,20 @@ type Options struct {
 	HostID     string
 	HostSecret string
 	// PodID and PodSecret only apply in pod mode.
-	PodID                 string
-	PodSecret             string
-	StatusPort            int
-	LogPrefix             string
-	LogkeeperURL          string
-	WorkingDirectory      string
-	HeartbeatInterval     time.Duration
-	AgentSleepInterval    time.Duration
-	MaxAgentSleepInterval time.Duration
-	Cleanup               bool
-	S3Opts                pail.S3Options
-	SetupData             apimodels.AgentSetupData
-	CloudProvider         string
+	PodID                  string
+	PodSecret              string
+	StatusPort             int
+	LogPrefix              string
+	LogkeeperURL           string
+	WorkingDirectory       string
+	HeartbeatInterval      time.Duration
+	AgentSleepInterval     time.Duration
+	MaxAgentSleepInterval  time.Duration
+	Cleanup                bool
+	S3Opts                 pail.S3Options
+	SetupData              apimodels.AgentSetupData
+	CloudProvider          string
+	TraceCollectorEndpoint string
 }
 
 // Mode represents a mode that the agent will run in.
@@ -149,19 +166,102 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 			Permissions: pail.S3PermissionsPublicRead,
 			ContentType: "text/plain",
 		}
+		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
 	}
 
-	return &Agent{
+	a := &Agent{
 		opts:   opts,
 		comm:   comm,
 		jasper: jpm,
-	}, nil
+	}
+
+	a.closers = append(a.closers, closerOp{
+		name: "communicator close",
+		closerFn: func(ctx context.Context) error {
+			if a.comm != nil {
+				a.comm.Close()
+			}
+			return nil
+		}})
+
+	if err := a.initTracerProvider(ctx); err != nil {
+		return nil, errors.Wrap(err, "initializing tracer provider")
+	}
+
+	return a, nil
 }
 
-func (a *Agent) Close() {
-	if a.comm != nil {
-		a.comm.Close()
+func (a *Agent) initTracerProvider(ctx context.Context) error {
+	if a.opts.TraceCollectorEndpoint == "" {
+		tracer = otel.GetTracerProvider().Tracer("github.com/evergreen-ci/evergreen/agent")
+		return nil
 	}
+
+	resource, err := resource.New(ctx,
+		resource.WithAttributes(semconv.ServiceName("evergreen-agent")),
+		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
+		resource.WithDetectors(ec2.NewResourceDetector(), ecs.NewResourceDetector()),
+	)
+	if err != nil {
+		return errors.Wrap(err, "making otel resource")
+	}
+
+	client := otlptracegrpc.NewClient(
+		otlptracegrpc.WithEndpoint(a.opts.TraceCollectorEndpoint),
+	)
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return errors.Wrap(err, "initializing otel exporter")
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(resource),
+	)
+	tp.RegisterSpanProcessor(honeycomb.NewBaggageSpanProcessor())
+	otel.SetTracerProvider(tp)
+
+	tracer = tp.Tracer("evergreen_agent")
+
+	a.closers = append(a.closers, closerOp{
+		name: "tracer provider shutdown",
+		closerFn: func(ctx context.Context) error {
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(tp.Shutdown(ctx), "trace provider shutdown")
+			catcher.Wrap(exp.Shutdown(ctx), "trace exporter shutdown")
+
+			return catcher.Resolve()
+		},
+	})
+
+	return nil
+}
+
+type closerOp struct {
+	name     string
+	closerFn func(context.Context) error
+}
+
+func (a *Agent) Close(ctx context.Context) {
+	catcher := grip.NewBasicCatcher()
+	for idx, closer := range a.closers {
+		if closer.closerFn == nil {
+			continue
+		}
+
+		grip.Info(message.Fields{
+			"message": "calling closer",
+			"index":   idx,
+			"closer":  closer.name,
+		})
+
+		catcher.Add(closer.closerFn(ctx))
+	}
+
+	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		"message": "calling agent closers",
+		"host_id": a.opts.HostID,
+	}))
 }
 
 // Start starts the agent loop. The agent polls the API server for new tasks
@@ -505,6 +605,12 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
+	tskCtx, err = taskConfig.AddTaskBaggageToCtx(tskCtx)
+	grip.Error(errors.Wrap(err, "adding task baggage to context"))
+
+	tskCtx, span := tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
+	defer span.End()
+
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	// Pass in idle timeout context to heartbeat to enforce the idle timeout.
@@ -645,6 +751,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
 
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
+	if detail.Status != evergreen.TaskSucceeded {
+		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
+	}
+
 	return resp, nil
 }
 
@@ -699,6 +811,9 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
+	ctx, span := tracer.Start(ctx, "post-task-commands")
+	defer span.End()
+
 	start := time.Now()
 	a.killProcs(ctx, tc, false)
 	defer a.killProcs(ctx, tc, false)

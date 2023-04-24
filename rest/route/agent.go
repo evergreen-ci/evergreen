@@ -118,6 +118,10 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		EC2Keys:           h.settings.Providers.AWS.EC2Keys,
 		LogkeeperURL:      h.settings.LoggerConfig.LogkeeperURL,
 	}
+	if h.settings.Tracer.Enabled {
+		data.TraceCollectorEndpoint = h.settings.Tracer.CollectorEndpoint
+	}
+
 	return gimlet.NewJSONResponse(data)
 }
 
