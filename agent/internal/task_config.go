@@ -179,6 +179,7 @@ func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context,
 		evergreen.BuildNameOtelAttribute:         tc.Task.BuildVariant,
 		evergreen.ProjectIdentifierOtelAttribute: tc.ProjectRef.Identifier,
 		evergreen.ProjectIDOtelAttribute:         tc.ProjectRef.Id,
+		evergreen.DistroIDOtelAttribute:          tc.Task.DistroId,
 	} {
 		member, err := baggage.NewMember(key, val)
 		if err != nil {
