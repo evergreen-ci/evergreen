@@ -375,7 +375,7 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 	}
 	mergeableState := pr.GetMergeableState()
 
-	grip.Info(message.Fields{
+	grip.Debug(message.Fields{
 		"message":        "checking PR mergeable status",
 		"ticket":         "EVG-19680",
 		"owner":          info.Owner,
