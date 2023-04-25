@@ -94,9 +94,9 @@ func RequestS3Creds(projectIdentifier, userEmail string) error {
 	return nil
 }
 
-// CreateProject creates a new project ref from the given one and performs other
-// initial setup for new projects such as populating initial project variables
-// and creating new webhooks. If the given project ref already has container
+// CreateProject creates a new project ref by initializing its data from the given projectRef
+// input and performing other initial setup for new projects such as populating initial
+// project variables and creating new webhooks. If the given project ref already has container
 // secrets, the new project ref receives copies of the existing ones.
 // Returns true if the project was successfully created.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) (bool, error) {
@@ -106,9 +106,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 	if projectRef.Id == "" {
-		if projectRef.Id == "" {
-			projectRef.Id = mgobson.NewObjectId().Hex()
-		}
+		projectRef.Id = mgobson.NewObjectId().Hex()
 	}
 	if err := VerifyUniqueProject(projectRef.Id); err != nil {
 		return false, err
@@ -147,7 +145,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	grip.Warning(message.WrapError(tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef), message.Fields{
+	grip.Warning(message.WrapError(TryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef), message.Fields{
 		"message":            "failed to copy container secrets to new project",
 		"op":                 "CreateProject",
 		"project_id":         projectRef.Id,
@@ -175,7 +173,8 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	return true, warningCatcher.Resolve()
 }
 
-func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
+// TryCopyingContainerSecrets copies the given container secrets to the given project ref.
+func TryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
 	// TODO (PM-2950): remove this temporary error-checking once the AWS
 	// infrastructure is productionized and AWS admin settings are set.
 	smClient, err := cloud.MakeSecretsManagerClient(settings)

@@ -641,7 +641,7 @@ func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
 	return &projectIDPutHandler{env: h.env}
 }
 
-// Parse fetches the distroId and JSON payload from the http request.
+// Parse fetches the project name and JSON payload from the http request.
 func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 
@@ -694,6 +694,51 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return responder
+}
+
+// PUT /rest/v2/projects/{project_id}/pod_secret
+
+type projectPutPodSecretHandler struct {
+	projectName  string
+	shouldRotate bool
+	env          evergreen.Environment
+}
+
+func makePutPodSecretForProject(env evergreen.Environment) gimlet.RouteHandler {
+	return &projectPutPodSecretHandler{env: env}
+}
+
+func (h *projectPutPodSecretHandler) Factory() gimlet.RouteHandler {
+	return &projectPutPodSecretHandler{env: h.env}
+}
+
+// Parse fetches the project name from the http request.
+func (h *projectPutPodSecretHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectName = gimlet.GetVars(r)["project_id"]
+	h.shouldRotate = r.URL.Query().Get("should_rotate") == "true"
+	return nil
+}
+
+// Run creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
+func (h *projectPutPodSecretHandler) Run(ctx context.Context) gimlet.Responder {
+	p, err := data.FindProjectById(h.projectName, false, false)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project with identifier '%s' does not exist", h.projectName),
+		})
+	}
+	containerSecrets := p.ContainerSecrets
+	if h.shouldRotate {
+		containerSecrets = nil
+	}
+	if err = data.TryCopyingContainerSecrets(ctx, h.env.Settings(), containerSecrets, p); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "putting pod secret for project '%s'", h.projectName))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
