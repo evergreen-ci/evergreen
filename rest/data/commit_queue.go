@@ -375,14 +375,14 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 	}
 	mergeableState := pr.GetMergeableState()
 
-	grip.Info(message.WrapError(err, message.Fields{
+	grip.Info(message.Fields{
 		"message":        "checking PR mergeable status",
 		"ticket":         "EVG-19680",
 		"owner":          info.Owner,
 		"repo":           info.Repo,
 		"pr":             info.PR,
 		"mergeble_state": mergeableState,
-	}))
+	})
 	// If the PR is blocked, refresh status, and re-check PR.
 	// We do this even if the patch isn't finished since the PR checks may not rely on all variants.
 	if mergeableState == thirdparty.GithubPRBlocked {
