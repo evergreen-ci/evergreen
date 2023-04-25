@@ -20,12 +20,12 @@ import (
 )
 
 const (
-	commandsAttribute = "evergreen.commands"
+	commandsAttribute = "evergreen.command"
 )
 
 var (
-	commandNameAttribute  = fmt.Sprintf("%s.command", commandsAttribute)
-	functionNameAttribute = fmt.Sprintf("%s.function", commandsAttribute)
+	commandNameAttribute  = fmt.Sprintf("%s.command_name", commandsAttribute)
+	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
 type runCommandsOptions struct {
