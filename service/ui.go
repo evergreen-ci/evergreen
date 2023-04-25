@@ -450,7 +450,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// allow requests from an origin.
 	for _, r := range app.Routes() {
 		if r.HasMethod(http.MethodPost) {
-			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
+			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(w http.ResponseWriter, _ *http.Request) { gimlet.WriteJSON(w, "") }).Options()
 		}
 	}
 
