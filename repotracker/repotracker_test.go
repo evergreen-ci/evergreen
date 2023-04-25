@@ -772,13 +772,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	}
 	assert.NoError(AddBuildBreakSubscriptions(&v3, &proj2))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
-	assert.Equal(subs[0].Subscriber.Target, "HELL0173")
-	if _, ok := event.(*rawAdminEventData); !ok {
-		s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
-
-		s.NotEqual("resource_type", jsonTag, `'%s' has a json:"resource_type" tag, but should not`, t.String())
-		s.NotEqual("resource_type,omitempty", jsonTag, `'%s' has a json:"resource_type,omitempty" tag, but should not`, t.String())
-	}
+	assert.EqualValues(utility.ToStringPtr("HELL0173"), subs[0].Subscriber.Target)
 	assert.Len(subs, 2)
 }
 
