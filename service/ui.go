@@ -269,7 +269,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User login and logout
 	app.AddRoute("/login").Handler(uis.loginPage).Get()
 	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.login).Post()
-	app.AddRoute("/login").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 	app.AddRoute("/login/key").Handler(uis.userGetKey).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
 
@@ -302,8 +301,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
 	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
-	// this route is used solely to introspect the schema of the GQL server. OPTIONS request by design do not include auth headers; therefore must not require login.
-	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsLoginToggleableRedirect, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
@@ -416,7 +413,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
 	app.AddRoute("/settings/newkey").Wrap(allowsCORS, needsLogin, needsContext).Handler(uis.newAPIKey).Post()
-	app.AddRoute("/settings/newkey").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 	app.AddRoute("/settings/cleartoken").Wrap(needsLogin).Handler(uis.clearUserToken).Post()
 	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.notificationsPage).Get()
 
@@ -448,5 +444,15 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(bbGetNote).Get()
 	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(bbSaveNote).Put()
 	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.bbFileTicket).Post()
+
+	// Add an OPTIONS method to every POST request to handle preflight OPTIONS requests.
+	// These requests must not check for credentials. They exist to validate whether a route exists, and to
+	// allow requests from an origin.
+	for _, r := range app.Routes() {
+		if r.HasMethod(http.MethodPost) {
+			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Options().Handler(func(_ http.ResponseWriter, _ *http.Request) {})
+		}
+	}
+
 	return app
 }
