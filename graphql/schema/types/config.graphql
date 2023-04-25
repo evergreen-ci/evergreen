@@ -33,6 +33,16 @@ type CloudProviderConfig {
 
 type AWSConfig {
   maxVolumeSizePerUser: Int
+  pod: AWSPodConfig
+}
+
+type AWSPodConfig {
+  ecs: ECSConfig
+}
+
+type ECSConfig {
+  maxCPU: Int!
+  maxMemoryMb: Int!
 }
 
 type SpawnHostConfig {
