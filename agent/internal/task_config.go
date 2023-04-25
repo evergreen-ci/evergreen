@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 )
 
@@ -165,11 +166,8 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 	return tg, nil
 }
 
-func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context, error) {
-	catcher := grip.NewBasicCatcher()
-
-	bag := baggage.FromContext(ctx)
-	for key, val := range map[string]string{
+func (tc *TaskConfig) TaskAttributeMap() map[string]string {
+	return map[string]string{
 		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
 		evergreen.TaskNameOtelAttribute:          tc.Task.DisplayName,
 		evergreen.TaskExecutionOtelAttribute:     strconv.Itoa(tc.Task.Execution),
@@ -180,7 +178,14 @@ func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context,
 		evergreen.ProjectIdentifierOtelAttribute: tc.ProjectRef.Identifier,
 		evergreen.ProjectIDOtelAttribute:         tc.ProjectRef.Id,
 		evergreen.DistroIDOtelAttribute:          tc.Task.DistroId,
-	} {
+	}
+}
+
+func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context, error) {
+	catcher := grip.NewBasicCatcher()
+
+	bag := baggage.FromContext(ctx)
+	for key, val := range tc.TaskAttributeMap() {
 		member, err := baggage.NewMember(key, val)
 		if err != nil {
 			catcher.Add(errors.Wrapf(err, "making member for key '%s' val '%s'", key, val))
@@ -191,4 +196,13 @@ func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context,
 	}
 
 	return baggage.ContextWithBaggage(ctx, bag), catcher.Resolve()
+}
+
+func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
+	var attributes []attribute.KeyValue
+	for key, val := range tc.TaskAttributeMap() {
+		attributes = append(attributes, attribute.String(key, val))
+	}
+
+	return attributes
 }

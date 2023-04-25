@@ -104,7 +104,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		))
 		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, fullCommandName, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
-			commandSpan.RecordError(err)
+			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
 			return errors.Wrap(err, "running command")
 		}
