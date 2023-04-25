@@ -724,14 +724,16 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	proj2 := model.ProjectRef{
 		Id:                   "proj2",
 		NotifyOnBuildFailure: utility.TruePtr(),
-		Admins:               []string{"u2", "u3"},
+		Admins:               []string{"u2", "u3", "u4"},
 	}
 	u2 := user.DBUser{
 		Id:           "u2",
 		EmailAddress: "shaw@blizzard.com",
 		Settings: user.UserSettings{
+			SlackUsername: "hello.itsme",
+			SlackMemberId: "HELL0173",
 			Notifications: user.NotificationPreferences{
-				BuildBreak: user.PreferenceEmail,
+				BuildBreak: user.PreferenceSlack,
 			},
 		},
 	}
@@ -746,13 +748,6 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		},
 	}
 	assert.NoError(u3.Insert())
-	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj2))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
-	assert.Len(subs, 2)
-
-	// project has it enabled, but user doesn't want notifications
-	subs = []event.Subscription{}
-	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	u4 := user.DBUser{
 		Id:           "u4",
 		EmailAddress: "rehgar@blizzard.com",
@@ -761,9 +756,16 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		},
 	}
 	assert.NoError(u4.Insert())
+	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj2))
+	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.Len(subs, 2)
+
+	// project has it enabled, but user doesn't want notifications
+	subs = []event.Subscription{}
+	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	v3 := model.Version{
 		Id:         "v3",
-		Identifier: proj1.Id,
+		Identifier: proj2.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Branch:     "branch",
 		AuthorID:   u4.Id,
