@@ -731,7 +731,6 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		EmailAddress: "shaw@blizzard.com",
 		Settings: user.UserSettings{
 			SlackUsername: "hello.itsme",
-			SlackMemberId: "HELL0173",
 			Notifications: user.NotificationPreferences{
 				BuildBreak: user.PreferenceSlack,
 			},
@@ -772,7 +771,9 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	}
 	assert.NoError(AddBuildBreakSubscriptions(&v3, &proj2))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
-	assert.EqualValues(utility.ToStringPtr("HELL0173"), subs[0].Subscriber.Target)
+	targetString, ok := subs[0].Subscriber.Target.(*string)
+	assert.True(ok)
+	assert.EqualValues("@hello.itsme", utility.FromStringPtr(targetString))
 	assert.Len(subs, 2)
 }
 
