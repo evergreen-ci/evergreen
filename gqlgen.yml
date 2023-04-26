@@ -164,6 +164,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
   ProjectBanner:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectBanner
+  ProjectBannerInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectBanner
   ProjectEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   ProjectEventSettings:
@@ -211,8 +213,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   RepoRefInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-  ProjectBannerInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectBanner
   RepoSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
