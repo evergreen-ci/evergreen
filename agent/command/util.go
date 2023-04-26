@@ -7,7 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer trace.Tracer
 
 func dirExists(path string) (bool, error) {
 	stat, err := os.Stat(path)
@@ -68,4 +72,12 @@ func getJoinedWithWorkDir(conf *internal.TaskConfig, path string) string {
 		return path
 	}
 	return filepath.Join(conf.WorkDir, path)
+}
+
+func getTracer() trace.Tracer {
+	if tracer == nil {
+		tracer = otel.GetTracerProvider().Tracer("github.com/evergreen-ci/evergreen/agent/command")
+	}
+
+	return tracer
 }

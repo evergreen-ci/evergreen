@@ -164,7 +164,7 @@ func Agent() cli.Command {
 				return errors.Wrap(err, "constructing agent")
 			}
 
-			defer agt.Close()
+			defer agt.Close(ctx)
 
 			go hardShutdownForSignals(ctx, cancel)
 

@@ -82,6 +82,16 @@ tasks:
             set -o verbose
             set -o errexit
             echo "container task"
+  - name: generate_task
+    commands:
+      - command: git.get_project
+        params:
+          directory: src
+          token: "token foo"
+      - command: generate.tasks
+        params:
+          files:
+            - agent/command/testdata/generated.json
   - name: test
     commands:
       - command: git.get_project
@@ -225,6 +235,7 @@ buildvariants:
       - localhost
     tasks:
       - name: my_group
+      - name: generate_task
   - name: pod_bv
     display_name: pod_bv
     run_on:

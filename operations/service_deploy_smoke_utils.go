@@ -130,7 +130,22 @@ func checkHostTaskByCommit(username, key string) error {
 	}
 
 	// Check that the tasks eventually run after triggering the repotracker.
-	return checkTaskStatusAndLogs(client, agent.HostMode, builds[0].Tasks, username, key)
+	if err = checkTaskStatusAndLogs(client, agent.HostMode, builds[0].Tasks, username, key); err != nil {
+		return errors.Wrap(err, "checking task statuses and logs")
+	}
+
+	// Check the builds again now that the generated task should have been created.
+	originalTasks := builds[0].Tasks
+	builds, err = getAndCheckBuilds(username, key, client)
+	if err != nil {
+		return errors.Wrap(err, "getting and checking builds after generating tasks")
+	}
+	// Isolate the generated tasks from the original tasks.
+	_, generatedTasks := utility.StringSliceSymmetricDifference(originalTasks, builds[0].Tasks)
+	if len(generatedTasks) == 0 {
+		return errors.Errorf("no tasks were generated, expected at least one task to be generated")
+	}
+	return checkTaskStatusAndLogs(client, agent.HostMode, generatedTasks, username, key)
 }
 
 // triggerRepotracker makes a request to the Evergreen app server's REST API to
@@ -297,6 +312,18 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 	// Note that these checks have a direct dependency on the task configuration
 	// in the smoke test's project YAML (agent.yml).
 	if mode == agent.HostMode {
+		if strings.Contains(page, "generate_task") {
+			if !strings.Contains(page, "Finished command 'generate.tasks'") {
+				return errors.New("did not find expected log in generate.tasks command")
+			}
+			return nil
+		}
+		if strings.Contains(page, "task_to_add_via_generator") {
+			if !strings.Contains(page, "generated_task") {
+				return errors.New("did not find expected log in generated task")
+			}
+			return nil
+		}
 		// Validate that setup_group only runs in first task
 		if strings.Contains(page, "first") {
 			if !strings.Contains(page, "setup_group") {

@@ -18,7 +18,7 @@ To submit a patch, run this from your local copy of the mongodb/mongo repo:
 ```bash
 evergreen patch -p <project-id>
 ```
-
+    
 Variants and tasks for a patch can be specified with the `-v` and `-t`:
 ```bash
 evergreen patch -v enterprise-suse11-64 -t compile
@@ -145,7 +145,7 @@ Once the task finishes syncing, the task directory contents can be pulled into a
 
 
 #### Local Aliases
-Users can define local aliases in their `evergreen.yml` files and even override a patch alias defined by a project admin. Local aliases are defined at the project level.
+Users can define local aliases in their `evergreen.yml` files and even override a patch alias defined by a project admin. Local aliases are defined at the project level. 
 
 ```yaml
 api_server_host: #api
@@ -170,7 +170,7 @@ projects:
 Calling the command:
 
       evergreen patch -a alias_name
-
+ 
 will use the above local alias and schedule every variant with tasks named "compile" and tasks that end with "tests".
 
 Operating on existing patches
@@ -182,13 +182,13 @@ To list patches you've created:
 
 
 ##### To cancel a patch:
-
+ 
 ```
 evergreen cancel-patch -i <patch_id>
 ```
-
+    
 ##### To finalize a patch:
-
+ 
 ```
 evergreen finalize-patch -i <patch_id>
 ```
@@ -248,24 +248,24 @@ Flags `--tasks` and `--variants` can be added to only show expanded tasks and va
 
 Basic Host Usage
 --
-Evergreen Spawn Hosts can now be managed from the command line, and this can be explored via the command line `--help` arguments.
+Evergreen Spawn Hosts can now be managed from the command line, and this can be explored via the command line `--help` arguments. 
 
 ### Attaching an EBS Volume
 
-To create a new EBS volume:
+To create a new EBS volume: 
 ```
-evergreen volume create --size <size> --type <default=gp2> --zone <default=us-east-1a>
+evergreen volume create --size <size> --type <default=gp2> --zone <default=us-east-1a> 
 ```
-While the Availability Zone does have a default, this must be in the _same zone as the host_. If you don't know your host's availability zone, this can be found easily at `evergreen host list --mine`.
+While the Availability Zone does have a default, this must be in the _same zone as the host_. If you don't know your host's availability zone, this can be found easily at `evergreen host list --mine`. 
 
 To attach the volume to your host (assuming the same availability zone), use:
 ```
 evergreen host attach --host <host_id> --volume <volume_id>
 ```
-If you forget your volume ID, you can find this with `evergreen volume list`. If the volume is already attached, you will see a host ID given with this volume, and a volume can only have one host.
+If you forget your volume ID, you can find this with `evergreen volume list`. If the volume is already attached, you will see a host ID given with this volume, and a volume can only have one host. 
 
-A volume can only be deleted if detached, so removing a volume would for example be:
-```
+A volume can only be deleted if detached, so removing a volume would for example be: 
+``` 
 evergreen host detach --host <host_id> --volume <volume_id>
 evergreen volume delete --id <volume_id>
 ```
@@ -277,14 +277,14 @@ Tags can be modified for hosts using the following syntax:
 evergreen host modify --tag KEY=VALUE
 evergreen --delete-tag KEY
 ```
-Note these tags cannot overwrite Evergreen tags.
+Note these tags cannot overwrite Evergreen tags. 
 
-Hosts can be set to never expire using the `--no-expire` tag (although each user has a limit for these kinds of hosts). Hosts can be set to expire again using the `--expire` tag, which will set the host to expire in 24 hours (this can be extended using `--extend <hours>`.
+Hosts can be set to never expire using the `--no-expire` tag (although each user has a limit for these kinds of hosts). Hosts can be set to expire again using the `--expire` tag, which will set the host to expire in 24 hours (this can be extended using `--extend <hours>`. 
 
 
 ### Stop/Start Host to Change Instance Type
 
-Instance type can only be changed if the host is stopped. Hosts can be stopped and started using `evergreen host start/stop --host <id> --wait <set-to-block>`. To change instance type, `host modify --type` (approved types can be configured from the admin settings).
+Instance type can only be changed if the host is stopped. Hosts can be stopped and started using `evergreen host start/stop --host <id> --wait <set-to-block>`. To change instance type, `host modify --type` (approved types can be configured from the admin settings). 
 
 ### Run a script on a host
 Run a bash script on a host.
@@ -320,7 +320,7 @@ Specify the optional `--dir` argument to choose the destination path where the d
 
 #### Pull
 
-The command `evergreen pull` can download the task directory contents of a synced task after an [s3.push](../02 Test with Evergreen/01-Configure-a-Project/02-Project-Commands.md#s3push) command has finished or after a [patched task that has requested task sync](#task-sync) has completed.
+The command `evergreen pull` can download the task directory contents of a synced task after an [s3.push](../02-Test-with-Evergreen/01-Configure-a-Project/02-Project-Commands.md#s3push) command has finished or after a [patched task that has requested task sync](#task-sync) has completed.
 
 Example that downloads the artifacts for the given task ID and cloning its source:
 ```
@@ -328,7 +328,7 @@ evergreen pull --task <task_id>
 ```
 
 Specify the optional `--dir` argument to choose the destination path; if omitted, it defaults to the current working directory.
-
+ 
 #### List
 
 The command `evergreen list` can help you determine what projects, variants, and tasks are available for patching against.
@@ -348,7 +348,7 @@ The list command can take an optional `-f/--file` argument for specifying a loca
 #### Last Green
 
 The command `evergreen last-green` can help you find an entirely successful commit to patch against.
-To use it, specify the project you wish to query along with the set of variants to verify as passing.
+To use it, specify the project you wish to query along with the set of variants to verify as passing. 
 ```
 evergreen last-green -p <project_id> -v <variant1> -v <variant2> -v <variant...>
 ```
@@ -364,12 +364,12 @@ evergreen last-green -p mci -v ubuntu
 ```
 
 #### Commit Queue
-The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](../02-Test with Evergreen/02 Run Tasks/01-Commit-Queue.md).
+The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](../02-Test-with-Evergreen/02-Run-Tasks/01-Commit-Queue.md).
 
 #### Buildlogger Fetch
 
 The command `evergreen buildlogger fetch` downloads logs from cedar buildlogger.
-To use it, specify the task id and execution from which you would like to download logs.
+To use it, specify the task id and execution from which you would like to download logs. 
 
 To download all logs of a task (including test logs):
 ```
