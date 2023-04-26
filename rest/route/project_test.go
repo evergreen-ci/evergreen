@@ -15,6 +15,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -448,6 +449,95 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 
 	_, err = h.vault.GetValue(ctx, externalID)
 	s.Error(err, "secret should have been deleted from the vault")
+}
+
+// Tests for PUT /rest/v2/projects/{project_id}/pod_secret
+
+type ProjectPutPodSecretSuite struct {
+	rm     gimlet.RouteHandler
+	env    evergreen.Environment
+	cancel context.CancelFunc
+
+	suite.Suite
+}
+
+func TestProjectPutPodSecretSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := &ProjectPutPodSecretSuite{
+		env: testutil.NewEnvironment(ctx, t),
+	}
+	suite.Run(t, s)
+}
+
+func (s *ProjectPutPodSecretSuite) SetupTest() {
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, evergreen.ScopeCollection))
+	s.NoError(getTestProjectRef().Add(nil))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	env := testutil.NewEnvironment(ctx, s.T())
+	s.rm = makePutPodSecretForProject(env).(*projectPutPodSecretHandler)
+}
+
+func (s *ProjectPutPodSecretSuite) TearDownTest() {
+	s.cancel()
+}
+
+func (s *ProjectPutPodSecretSuite) TestParse() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/projects/dimoxinil/pod_secret?should_rotate=true", nil)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	h := s.rm.(*projectPutPodSecretHandler)
+	s.True(h.shouldRotate)
+	s.Equal("dimoxinil", h.projectName)
+}
+
+func (s *ProjectPutPodSecretSuite) TestPutProjectPodSecret() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h := s.rm.(*projectPutPodSecretHandler)
+	h.projectName = "dimoxinil"
+
+	cocoaMock.ResetGlobalSecretCache()
+	defer cocoaMock.ResetGlobalSecretCache()
+
+	resp := s.rm.Run(ctx)
+	s.Require().NotNil(resp)
+	s.Require().NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	dbProjRef, err := serviceModel.FindBranchProjectRef("dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(dbProjRef)
+	s.Require().Len(dbProjRef.ContainerSecrets, 1)
+	s.Equal(pod.PodSecretEnvVar, dbProjRef.ContainerSecrets[0].Name)
+	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
+
+	// Rotate the existing pod secret's value.
+	oldPodSecret := dbProjRef.ContainerSecrets[0]
+	h.shouldRotate = true
+	resp = s.rm.Run(ctx)
+	s.Require().NotNil(resp)
+	s.Require().NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(dbProjRef)
+	s.Require().Len(dbProjRef.ContainerSecrets, 1)
+	s.Equal(pod.PodSecretEnvVar, dbProjRef.ContainerSecrets[0].Name)
+	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
+	s.NotEqual(oldPodSecret.ExternalName, dbProjRef.ContainerSecrets[0].ExternalName)
+	s.NotEqual(oldPodSecret.ExternalID, dbProjRef.ContainerSecrets[0].ExternalID)
+	s.NotEqual(oldPodSecret.Value, dbProjRef.ContainerSecrets[0].Value)
 }
 
 ////////////////////////////////////////////////////////////////////////
