@@ -57,7 +57,7 @@ func TestRenderCommands(t *testing.T) {
 		info := model.PluginCommandConf{Command: "command.mock"}
 		project := model.Project{}
 
-		cmds, err := registry.renderCommands(info, &project)
+		cmds, err := registry.renderCommands(info, &project, "")
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, model.DefaultCommandType, cmds[0].Type())
@@ -67,7 +67,7 @@ func TestRenderCommands(t *testing.T) {
 		info := model.PluginCommandConf{Command: "command.mock"}
 		project := model.Project{CommandType: evergreen.CommandTypeSetup}
 
-		cmds, err := registry.renderCommands(info, &project)
+		cmds, err := registry.renderCommands(info, &project, "")
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, evergreen.CommandTypeSetup, cmds[0].Type())
@@ -80,7 +80,7 @@ func TestRenderCommands(t *testing.T) {
 		}
 		project := model.Project{}
 
-		cmds, err := registry.renderCommands(info, &project)
+		cmds, err := registry.renderCommands(info, &project, "")
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, evergreen.CommandTypeSystem, cmds[0].Type())
@@ -93,7 +93,7 @@ func TestRenderCommands(t *testing.T) {
 		}
 		project := model.Project{CommandType: evergreen.CommandTypeSetup}
 
-		cmds, err := registry.renderCommands(info, &project)
+		cmds, err := registry.renderCommands(info, &project, "")
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, evergreen.CommandTypeSystem, cmds[0].Type())
