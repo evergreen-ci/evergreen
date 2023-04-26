@@ -447,7 +447,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Add an OPTIONS method to every POST request to handle preflight OPTIONS requests.
 	// These requests must not check for credentials. They exist to validate whether a route exists, and to
-	// allow requests from an origin.
+	// allow requests from specific origins.
 	for _, r := range app.Routes() {
 		if r.HasMethod(http.MethodPost) {
 			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(w http.ResponseWriter, _ *http.Request) { gimlet.WriteJSON(w, "") }).Options()
