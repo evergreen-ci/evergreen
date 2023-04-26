@@ -128,8 +128,8 @@ type ProjectRef struct {
 }
 
 type ProjectBanner struct {
-	Theme string `bson:"theme" json:"theme"`
-	Text  string `bson:"text" json:"text"`
+	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
+	Text  string                `bson:"text" json:"text"`
 }
 type ExternalLink struct {
 	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`

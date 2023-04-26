@@ -20,6 +20,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   AWSPodConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
+  BannerTheme:
+    model: github.com/evergreen-ci/evergreen.BannerTheme
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
   BuildBaronSettings:

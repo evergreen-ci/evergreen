@@ -15,6 +15,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -55,7 +56,6 @@ type ResolverRoot interface {
 	Pod() PodResolver
 	PodEventLogData() PodEventLogDataResolver
 	Project() ProjectResolver
-	ProjectBanner() ProjectBannerResolver
 	ProjectSettings() ProjectSettingsResolver
 	ProjectSubscriber() ProjectSubscriberResolver
 	ProjectVars() ProjectVarsResolver
@@ -69,7 +69,6 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
-	ProjectBannerInput() ProjectBannerInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
 
@@ -1439,9 +1438,6 @@ type ProjectResolver interface {
 
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
 }
-type ProjectBannerResolver interface {
-	Theme(ctx context.Context, obj *model.APIProjectBanner) (BannerTheme, error)
-}
 type ProjectSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
@@ -1617,9 +1613,6 @@ type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
-type ProjectBannerInputResolver interface {
-	Theme(ctx context.Context, obj *model.APIProjectBanner, data BannerTheme) error
-}
 type SubscriberInputResolver interface {
 	Target(ctx context.Context, obj *model.APISubscriber, data string) error
 }
@@ -33271,7 +33264,7 @@ func (ec *executionContext) _ProjectBanner_theme(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.ProjectBanner().Theme(rctx, obj)
+		return obj.Theme, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33283,17 +33276,17 @@ func (ec *executionContext) _ProjectBanner_theme(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(BannerTheme)
+	res := resTmp.(*evergreen.BannerTheme)
 	fc.Result = res
-	return ec.marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx, field.Selections, res)
+	return ec.marshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ProjectBanner_theme(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectBanner",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type BannerTheme does not have child fields")
 		},
@@ -59136,11 +59129,8 @@ func (ec *executionContext) unmarshalInputProjectBannerInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("theme"))
-			data, err := ec.unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx, v)
+			it.Theme, err = ec.unmarshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, v)
 			if err != nil {
-				return it, err
-			}
-			if err = ec.resolvers.ProjectBannerInput().Theme(ctx, &it, data); err != nil {
 				return it, err
 			}
 		}
@@ -65898,28 +65888,15 @@ func (ec *executionContext) _ProjectBanner(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._ProjectBanner_text(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "theme":
-			field := field
 
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ProjectBanner_theme(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._ProjectBanner_theme(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
 			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -71681,14 +71658,26 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx context.Context, v interface{}) (BannerTheme, error) {
-	var res BannerTheme
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v interface{}) (*evergreen.BannerTheme, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := evergreen.BannerTheme(tmp)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v BannerTheme) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v *evergreen.BannerTheme) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	res := graphql.MarshalString(string(*v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
