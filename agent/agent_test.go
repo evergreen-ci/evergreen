@@ -737,6 +737,10 @@ task_groups:
 		},
 		Project: p,
 		WorkDir: s.tc.taskDirectory,
+		ProjectRef: &model.ProjectRef{
+			Id:         "abcdef",
+			Identifier: "project_identifier",
+		},
 		Timeout: &internal.Timeout{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())

@@ -580,7 +580,7 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 		if preference == user.PreferenceEmail {
 			subscriber.Target = u.Email()
 		} else if preference == user.PreferenceSlack {
-			slackTarget := u.Settings.SlackUsername
+			slackTarget := fmt.Sprintf("@%s", strings.TrimPrefix(u.Settings.SlackUsername, "@"))
 			if u.Settings.SlackMemberId != "" {
 				slackTarget = u.Settings.SlackMemberId
 			}
