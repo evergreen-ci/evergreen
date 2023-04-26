@@ -72,6 +72,7 @@ input ProjectInput {
   workstationConfig: WorkstationConfigInput
   containerSizeDefinitions: [ContainerResourcesInput!]
   externalLinks: [ExternalLinkInput!]
+  banner: ProjectBannerInput
 }
 
 ###### TYPES ######
