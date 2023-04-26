@@ -80,6 +80,11 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	AWSConfig struct {
 		MaxVolumeSizePerUser func(childComplexity int) int
+		Pod                  func(childComplexity int) int
+	}
+
+	AWSPodConfig struct {
+		ECS func(childComplexity int) int
 	}
 
 	AbortInfo struct {
@@ -205,6 +210,11 @@ type ComplexityRoot struct {
 		IsWindows            func(childComplexity int) int
 		User                 func(childComplexity int) int
 		WorkDir              func(childComplexity int) int
+	}
+
+	ECSConfig struct {
+		MaxCPU      func(childComplexity int) int
+		MaxMemoryMB func(childComplexity int) int
 	}
 
 	ExternalLink struct {
@@ -1622,6 +1632,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AWSConfig.MaxVolumeSizePerUser(childComplexity), true
 
+	case "AWSConfig.pod":
+		if e.complexity.AWSConfig.Pod == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.Pod(childComplexity), true
+
+	case "AWSPodConfig.ecs":
+		if e.complexity.AWSPodConfig.ECS == nil {
+			break
+		}
+
+		return e.complexity.AWSPodConfig.ECS(childComplexity), true
+
 	case "AbortInfo.buildVariantDisplayName":
 		if e.complexity.AbortInfo.BuildVariantDisplayName == nil {
 			break
@@ -2139,6 +2163,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DistroInfo.WorkDir(childComplexity), true
+
+	case "ECSConfig.maxCPU":
+		if e.complexity.ECSConfig.MaxCPU == nil {
+			break
+		}
+
+		return e.complexity.ECSConfig.MaxCPU(childComplexity), true
+
+	case "ECSConfig.maxMemoryMb":
+		if e.complexity.ECSConfig.MaxMemoryMB == nil {
+			break
+		}
+
+		return e.complexity.ECSConfig.MaxMemoryMB(childComplexity), true
 
 	case "ExternalLink.displayName":
 		if e.complexity.ExternalLink.DisplayName == nil {
@@ -10259,6 +10297,98 @@ func (ec *executionContext) fieldContext_AWSConfig_maxVolumeSizePerUser(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _AWSConfig_pod(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AWSConfig_pod(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pod, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAWSPodConfig)
+	fc.Result = res
+	return ec.marshalOAWSPodConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSPodConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AWSConfig_pod(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ecs":
+				return ec.fieldContext_AWSPodConfig_ecs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AWSPodConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AWSPodConfig_ecs(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSPodConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AWSPodConfig_ecs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ECS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIECSConfig)
+	fc.Result = res
+	return ec.marshalOECSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIECSConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AWSPodConfig_ecs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSPodConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "maxCPU":
+				return ec.fieldContext_ECSConfig_maxCPU(ctx, field)
+			case "maxMemoryMb":
+				return ec.fieldContext_ECSConfig_maxMemoryMb(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ECSConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AbortInfo_buildVariantDisplayName(ctx, field)
 	if err != nil {
@@ -12073,6 +12203,8 @@ func (ec *executionContext) fieldContext_CloudProviderConfig_aws(ctx context.Con
 			switch field.Name {
 			case "maxVolumeSizePerUser":
 				return ec.fieldContext_AWSConfig_maxVolumeSizePerUser(ctx, field)
+			case "pod":
+				return ec.fieldContext_AWSConfig_pod(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AWSConfig", field.Name)
 		},
@@ -13545,6 +13677,94 @@ func (ec *executionContext) fieldContext_DistroInfo_workDir(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ECSConfig_maxCPU(ctx context.Context, field graphql.CollectedField, obj *model.APIECSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ECSConfig_maxCPU(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxCPU, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ECSConfig_maxCPU(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ECSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ECSConfig_maxMemoryMb(ctx context.Context, field graphql.CollectedField, obj *model.APIECSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ECSConfig_maxMemoryMb(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxMemoryMB, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ECSConfig_maxMemoryMb(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ECSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -60995,6 +61215,35 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 
 			out.Values[i] = ec._AWSConfig_maxVolumeSizePerUser(ctx, field, obj)
 
+		case "pod":
+
+			out.Values[i] = ec._AWSConfig_pod(ctx, field, obj)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var aWSPodConfigImplementors = []string{"AWSPodConfig"}
+
+func (ec *executionContext) _AWSPodConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAWSPodConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aWSPodConfigImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AWSPodConfig")
+		case "ecs":
+
+			out.Values[i] = ec._AWSPodConfig_ecs(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -61760,6 +62009,41 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 
 			out.Values[i] = ec._DistroInfo_workDir(ctx, field, obj)
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var eCSConfigImplementors = []string{"ECSConfig"}
+
+func (ec *executionContext) _ECSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIECSConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, eCSConfigImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ECSConfig")
+		case "maxCPU":
+
+			out.Values[i] = ec._ECSConfig_maxCPU(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "maxMemoryMb":
+
+			out.Values[i] = ec._ECSConfig_maxMemoryMb(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -74341,6 +74625,13 @@ func (ec *executionContext) marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._AWSConfig(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOAWSPodConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSPodConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAWSPodConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AWSPodConfig(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOAbortInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAbortInfo(ctx context.Context, sel ast.SelectionSet, v *AbortInfo) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -74751,6 +75042,13 @@ func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	}
 	res := model.MarshalAPIDuration(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOECSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIECSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIECSConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ECSConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐEditSpawnHostInput(ctx context.Context, v interface{}) (*EditSpawnHostInput, error) {
