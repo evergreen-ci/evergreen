@@ -33276,9 +33276,9 @@ func (ec *executionContext) _ProjectBanner_theme(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*evergreen.BannerTheme)
+	res := resTmp.(evergreen.BannerTheme)
 	fc.Result = res
-	return ec.marshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, field.Selections, res)
+	return ec.marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ProjectBanner_theme(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -59129,7 +59129,7 @@ func (ec *executionContext) unmarshalInputProjectBannerInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("theme"))
-			it.Theme, err = ec.unmarshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, v)
+			it.Theme, err = ec.unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -71658,20 +71658,14 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) unmarshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v interface{}) (*evergreen.BannerTheme, error) {
+func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v interface{}) (evergreen.BannerTheme, error) {
 	tmp, err := graphql.UnmarshalString(v)
 	res := evergreen.BannerTheme(tmp)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v *evergreen.BannerTheme) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	res := graphql.MarshalString(string(*v))
+func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v evergreen.BannerTheme) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")

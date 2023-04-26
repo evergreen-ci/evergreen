@@ -171,19 +171,19 @@ func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
 }
 
 type APIProjectBanner struct {
-	Theme *evergreen.BannerTheme `json:"theme"`
-	Text  *string                `json:"text"`
+	Theme evergreen.BannerTheme `json:"theme"`
+	Text  *string               `json:"text"`
 }
 
 func (t *APIProjectBanner) ToService() model.ProjectBanner {
 	return model.ProjectBanner{
-		Theme: *t.Theme,
+		Theme: t.Theme,
 		Text:  utility.FromStringPtr(t.Text),
 	}
 }
 
 func (t *APIProjectBanner) BuildFromService(h model.ProjectBanner) {
-	t.Theme = &h.Theme
+	t.Theme = h.Theme
 	t.Text = utility.ToStringPtr(h.Text)
 }
 
