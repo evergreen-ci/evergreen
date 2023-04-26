@@ -129,6 +129,8 @@ Notice that the function reference can define a set of `vars` which are
 treated as expansions within the configuration of the commands in the
 function.
 
+A function cannot be called within another function.
+
 ### Tests
 
 As you've read above, a task is a single unit of work in Evergreen. A
