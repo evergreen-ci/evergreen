@@ -429,6 +429,7 @@ const (
 	BuildNameOtelAttribute         = "evergreen.build.name"
 	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
+	DistroIDOtelAttribute          = "evergreen.distro.id"
 )
 
 const (
