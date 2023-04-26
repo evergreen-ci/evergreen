@@ -34,15 +34,15 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	sdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
-
-var tracer trace.Tracer
 
 // Agent manages the data necessary to run tasks in a runtime environment.
 type Agent struct {
@@ -52,9 +52,11 @@ type Agent struct {
 	defaultLogger send.Sender
 	// ec2InstanceID is the instance ID from the instance metadata. This only
 	// applies to EC2 hosts.
-	ec2InstanceID string
-	endTaskResp   *TriggerEndTaskResp
-	closers       []closerOp
+	ec2InstanceID   string
+	endTaskResp     *TriggerEndTaskResp
+	tracer          trace.Tracer
+	metricsExporter sdk.Exporter
+	closers         []closerOp
 }
 
 // Options contains startup options for an Agent.
@@ -193,7 +195,7 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 
 func (a *Agent) initTracerProvider(ctx context.Context) error {
 	if a.opts.TraceCollectorEndpoint == "" {
-		tracer = otel.GetTracerProvider().Tracer("github.com/evergreen-ci/evergreen/agent")
+		a.tracer = otel.GetTracerProvider().Tracer("github.com/evergreen-ci/evergreen/agent")
 		return nil
 	}
 
@@ -221,7 +223,12 @@ func (a *Agent) initTracerProvider(ctx context.Context) error {
 	tp.RegisterSpanProcessor(honeycomb.NewBaggageSpanProcessor())
 	otel.SetTracerProvider(tp)
 
-	tracer = tp.Tracer("evergreen_agent")
+	a.tracer = tp.Tracer("github.com/evergreen-ci/evergreen/agent")
+
+	a.metricsExporter, err = otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpoint(a.opts.TraceCollectorEndpoint))
+	if err != nil {
+		return errors.Wrap(err, "making otel metrics exporter")
+	}
 
 	a.closers = append(a.closers, closerOp{
 		name: "tracer provider shutdown",
@@ -608,8 +615,11 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	tskCtx, err = taskConfig.AddTaskBaggageToCtx(tskCtx)
 	grip.Error(errors.Wrap(err, "adding task baggage to context"))
 
-	tskCtx, span := tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
+	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
 	defer span.End()
+
+	shutdown, err := a.initMetrics(tskCtx, taskConfig)
+	defer shutdown(ctx)
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
@@ -811,7 +821,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
-	ctx, span := tracer.Start(ctx, "post-task-commands")
+	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
 	start := time.Now()

@@ -48,7 +48,7 @@ func (s *CommandSuite) SetupTest() {
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
 
-	tracer = otel.GetTracerProvider().Tracer("test_tracer")
+	s.a.tracer = otel.GetTracerProvider().Tracer("test_tracer")
 
 	s.tc = &taskContext{
 		task: client.TaskData{
