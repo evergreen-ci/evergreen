@@ -78,7 +78,7 @@ type Manager interface {
 	ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error
 
 	// GetVolumeAttachment gets a volume's attachment
-	GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error)
+	GetVolumeAttachment(context.Context, string) (*VolumeAttachment, error)
 
 	// CheckInstanceType determines if the given instance type is available in the current region.
 	CheckInstanceType(context.Context, string) error
@@ -252,4 +252,11 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 		return cm, nil
 	}
 	return nil, errors.Errorf("programmer error: cannot convert manager %T to container manager", m)
+}
+
+// VolumeAttachment contains information about a volume attached to a host.
+type VolumeAttachment struct {
+	VolumeID   string
+	HostID     string
+	DeviceName string
 }

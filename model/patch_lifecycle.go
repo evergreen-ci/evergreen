@@ -110,7 +110,7 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 
 type PatchUpdate struct {
 	Description         string               `json:"description"`
-	Parameters          []patch.Parameter    `json:"parameters,omitempty"` // TODO: maybe shouldn't be API?
+	Parameters          []patch.Parameter    `json:"parameters,omitempty"`
 	PatchTriggerAliases []string             `json:"patch_trigger_aliases,omitempty"`
 	VariantsTasks       []patch.VariantTasks `json:"variants_tasks,omitempty"`
 }
@@ -129,7 +129,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for patch",
-		"patch":   p.Id,
+		"patch":   p.Id.Hex(),
 	}))
 	if err = ValidateTVPairs(project, tasks.ExecTasks); err != nil {
 		return http.StatusBadRequest, err
@@ -600,7 +600,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
 		return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 	}
-	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
+	taskIds, err := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating patch's task ID table")
+	}
 	variantsProcessed := map[string]bool{}
 
 	creationInfo := TaskCreationInfo{

@@ -866,6 +866,7 @@ func (t *Task) cacheExpectedDuration() error {
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
 	query := IsContainerTaskScheduledQuery()
+	query[IdKey] = t.Id
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true
 	update := bson.M{

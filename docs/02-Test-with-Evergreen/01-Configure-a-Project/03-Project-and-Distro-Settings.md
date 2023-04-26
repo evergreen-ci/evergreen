@@ -63,7 +63,7 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-['Using Repo Level Settings'](04-Using-Repo-Level-Settings.md).
+['Using Repo Level Settings'](04-Using-Repo-Level-Settings).
 
 ### Access and Admin Settings
 
@@ -113,7 +113,7 @@ definition (i.e. without the ".") and tag negation is also supported
 comma-delimited.
 
 Aliases can also be defined locally as shown
-[here](../06-Using-the-Command-Line-Tool.md#local-aliases).
+[here](../06-Using-the-Command-Line-Tool#local-aliases).
 
 ### GitHub Pull Request Testing
 
@@ -265,14 +265,14 @@ section to kick off a child patch for each pull request opened in the
 repository as well as each subsequent push to each pull request.
 
 To pass information from the upstream patch to the downstream patch use
-[downstream_expansions.set](02-Project-Commands.md#downstream_expansionsset)
+[downstream_expansions.set](02-Project-Commands#downstream_expansionsset)
 
 ### Periodic Builds
 
 Evergreen has the capability to periodically run a set of tasks in the
 project. This section holds settings allowing you to specify
 what should be run periodically, and how often. **This is different than build variant crons** because
-a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify 
+a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify
 (so if you want it to run daily, it’ll activate the most recent build variant at that time daily),
 whereas a new periodic build will be created each interval regardless of whether there are new commits.
 
@@ -305,10 +305,11 @@ use performance tooling.
 Enabling this feature allows users to push and pull their task working
 directory to and from a remote store (S3). This can be done either using
 the
-[s3.push](02-Project-Commands.md#s3-push)
+[s3.push](02-Project-Commands#s3-push)
 or
-[s3.pull](02-Project-Commands.md#s3pull)
-project commands, or using it from [the CLI](../06-Using-the-Command-Line-Tool.md#task-sync).
+[s3.pull](02-Project-Commands#s3pull)
+project commands, or using it from [the
+CLI](../06-Using-the-Command-Line-Tool#task-sync).
 
 Options:
 
@@ -348,7 +349,7 @@ Options:
 -   Ticket Search Projects: JIRA projects for the build baron to search
     in when looking for failures.
 
-### Task Annotation Settings 
+### Task Annotation Settings
 
 Configure custom API integrations when generating build failure tickets.
 
@@ -438,17 +439,21 @@ that all execute independently:
 
 Enabling version control for configurations on the project page will
 allow a number of the settings detailed above to also be specified in
-the project yaml alongside the settings that are specified in ['Project Configuration Files'](01-Project-Configuration-Files.md).
-Evergreen will merge the settings in the project page, repo page, then the yaml, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
-defined in the yaml. 
+the project YAML alongside the settings that are specified in ['Project Configuration Files'](01-Project-Configuration-Files).
+Evergreen will merge the settings in the project page, repo page, then the YAML, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
+defined in the YAML.
+
+Note: [included files](01-Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
+be defined in the main YAML file for it to take effect.
 
 Below shows example configurations for these settings that can be
-included within the project yaml and the configuration structure
+included within the project YAML and the configuration structure
 associated with each setting.
 
 ## Aliases
 
-[View setting definition](#aliases)
+[View setting
+definition](#aliases)
 
 ### Patch Aliases
 
@@ -500,17 +505,19 @@ github_checks_aliases:
    task: "^test.*$"
 ```
 
-### Scheduling Settings 
+### Scheduling Settings
 
-[View setting definition](#scheduling-settings)
+[View setting
+definition](#scheduling-settings)
 
 ``` yaml
 deactivate_previous: true
 ```
 
-### Virtual Workstation Commands 
+### Virtual Workstation Commands
 
-[View setting definition](#virtual-workstation-commands)
+[View setting
+definition](#virtual-workstation-commands)
 
 ``` yaml
 git_clone: true
@@ -521,7 +528,8 @@ setup_commands:
 
 ### Task Sync
 
-[View setting definition](#task-sync)
+[View setting
+definition](#task-sync)
 
 ``` yaml
 task_sync:
@@ -531,7 +539,8 @@ task_sync:
 
 ### Build Baron
 
-[View setting definition](#build-baron)
+[View setting
+definition](#build-baron)
 
 ``` yaml
 build_baron_settings:
@@ -541,13 +550,14 @@ build_baron_settings:
     - EVG
 ```
 
-### Task Annotation Settings 
+### Task Annotation Settings
 
-[View setting definition](#task-annotation-settings)
+[View setting
+definition](#task-annotation-settings)
 
 ``` yaml
 task_annotation_settings:
-  web_hook: 
+  web_hook:
     endpoint: "/api/route"
     secret: ""
   jira_custom_fields:

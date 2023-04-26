@@ -185,7 +185,6 @@ func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
 	patch.Patches = []ModulePatch{{Githash: "abcdef"}}
 	patch.Tasks = append(patch.Tasks, "task1")
 	patch.BuildVariants = append(patch.BuildVariants, "bv1")
-	patch.PatchedParserProject = "config"
 	patch.VariantsTasks = []VariantTasks{
 		{
 			Variant: "variant1",
@@ -198,7 +197,6 @@ func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
 	s.NoError(err)
 
 	s.Equal("abcdef", dbPatch.Githash)
-	s.Equal("config", dbPatch.PatchedParserProject)
 
 	s.Require().Len(dbPatch.Patches, 1)
 	s.Equal("abcdef", dbPatch.Patches[0].Githash)

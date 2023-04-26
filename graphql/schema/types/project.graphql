@@ -61,6 +61,18 @@ input ExternalLinkInput {
   urlTemplate: String!
 }
 
+enum BannerTheme {
+  ANNOUNCEMENT
+  INFORMATION
+  WARNING
+  IMPORTANT
+}
+
+input ProjectBannerInput {
+  text: String!
+  theme: BannerTheme!
+}
+
 input TaskAnnotationSettingsInput {
   fileTicketWebhook: WebhookInput
   jiraCustomFields: [JiraFieldInput!]
@@ -202,6 +214,7 @@ type Project {
   versionControlEnabled: Boolean @requireProjectFieldAccess
   workstationConfig: WorkstationConfig! @requireProjectFieldAccess
   externalLinks: [ExternalLink!]
+  banner: ProjectBanner
 }
 
 type CommitQueueParams {
@@ -223,4 +236,9 @@ type WorkstationConfig {
 type ExternalLink {
   displayName: String!
   urlTemplate: String!
+}
+
+type ProjectBanner {
+  text: String!
+  theme: BannerTheme!
 }

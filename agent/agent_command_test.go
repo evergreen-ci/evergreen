@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel"
 )
 
 type CommandSuite struct {
@@ -46,6 +47,8 @@ func (s *CommandSuite) SetupTest() {
 	s.tmpDirName = s.T().TempDir()
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
+
+	tracer = otel.GetTracerProvider().Tracer("test_tracer")
 
 	s.tc = &taskContext{
 		task: client.TaskData{

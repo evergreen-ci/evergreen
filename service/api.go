@@ -95,6 +95,7 @@ func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFu
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+			return
 		}
 
 		if flags.RestRoutePartialAuthDisabled {
@@ -263,6 +264,12 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)
+	} else if projectRef == nil {
+		validationErr = validator.ValidationError{
+			Message: "no project specified; validation will proceed without checking alias coverage",
+			Level:   validator.Warning,
+		}
+		errs = append(errs, validationErr)
 	} else {
 		errs = append(errs, validator.CheckProjectWarnings(project)...)
 		// Check project aliases
