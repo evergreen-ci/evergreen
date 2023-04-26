@@ -22,25 +22,15 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	"github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/contrib/detectors/aws/ec2"
-	"go.opentelemetry.io/contrib/detectors/aws/ecs"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdk "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -186,62 +176,11 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 			return nil
 		}})
 
-	if err := a.initTracerProvider(ctx); err != nil {
+	if err := a.initOtel(ctx); err != nil {
 		return nil, errors.Wrap(err, "initializing tracer provider")
 	}
 
 	return a, nil
-}
-
-func (a *Agent) initTracerProvider(ctx context.Context) error {
-	if a.opts.TraceCollectorEndpoint == "" {
-		a.tracer = otel.GetTracerProvider().Tracer("github.com/evergreen-ci/evergreen/agent")
-		return nil
-	}
-
-	resource, err := resource.New(ctx,
-		resource.WithAttributes(semconv.ServiceName("evergreen-agent")),
-		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
-		resource.WithDetectors(ec2.NewResourceDetector(), ecs.NewResourceDetector()),
-	)
-	if err != nil {
-		return errors.Wrap(err, "making otel resource")
-	}
-
-	client := otlptracegrpc.NewClient(
-		otlptracegrpc.WithEndpoint(a.opts.TraceCollectorEndpoint),
-	)
-	exp, err := otlptrace.New(ctx, client)
-	if err != nil {
-		return errors.Wrap(err, "initializing otel exporter")
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exp),
-		sdktrace.WithResource(resource),
-	)
-	tp.RegisterSpanProcessor(honeycomb.NewBaggageSpanProcessor())
-	otel.SetTracerProvider(tp)
-
-	a.tracer = tp.Tracer("github.com/evergreen-ci/evergreen/agent")
-
-	a.metricsExporter, err = otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpoint(a.opts.TraceCollectorEndpoint))
-	if err != nil {
-		return errors.Wrap(err, "making otel metrics exporter")
-	}
-
-	a.closers = append(a.closers, closerOp{
-		name: "tracer provider shutdown",
-		closerFn: func(ctx context.Context) error {
-			catcher := grip.NewBasicCatcher()
-			catcher.Wrap(tp.Shutdown(ctx), "trace provider shutdown")
-			catcher.Wrap(exp.Shutdown(ctx), "trace exporter shutdown")
-
-			return catcher.Resolve()
-		},
-	})
-
-	return nil
 }
 
 type closerOp struct {
@@ -618,7 +557,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
 	defer span.End()
 
-	shutdown, err := a.initMetrics(tskCtx, taskConfig)
+	shutdown, err := a.startMetrics(tskCtx, taskConfig)
 	defer shutdown(ctx)
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
