@@ -22,6 +22,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -44,24 +46,28 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		return errors.Wrap(err, "making otel resource")
 	}
 
-	client := otlptracegrpc.NewClient(
-		otlptracegrpc.WithEndpoint(a.opts.TraceCollectorEndpoint),
+	grpcConn, err := grpc.DialContext(ctx,
+		a.opts.TraceCollectorEndpoint,
+		grpc.WithTransportCredentials(credentials.NewTLS(nil)),
 	)
-	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return errors.Wrapf(err, "opening gRPC connection to '%s'", a.opts.TraceCollectorEndpoint)
+	}
+
+	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(grpcConn))
+	traceExporter, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
-
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exp),
+		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(r),
 	)
 	tp.RegisterSpanProcessor(honeycomb.NewBaggageSpanProcessor())
 	otel.SetTracerProvider(tp)
-
 	a.tracer = tp.Tracer(packageName)
 
-	a.metricsExporter, err = otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpoint(a.opts.TraceCollectorEndpoint))
+	a.metricsExporter, err = otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(grpcConn))
 	if err != nil {
 		return errors.Wrap(err, "making otel metrics exporter")
 	}
@@ -71,8 +77,9 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		closerFn: func(ctx context.Context) error {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(tp.Shutdown(ctx), "trace provider shutdown")
-			catcher.Wrap(exp.Shutdown(ctx), "trace exporter shutdown")
+			catcher.Wrap(traceExporter.Shutdown(ctx), "trace exporter shutdown")
 			catcher.Wrap(a.metricsExporter.Shutdown(ctx), "metrics exporter shutdown")
+			catcher.Wrap(grpcConn.Close(), "closing gRPC connection")
 
 			return catcher.Resolve()
 		},
@@ -95,8 +102,11 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 		sdk.WithResource(r),
 		sdk.WithReader(sdk.NewPeriodicReader(a.metricsExporter, sdk.WithInterval(exportInterval), sdk.WithTimeout(exportTimeout))),
 	)
-	meter := meterProvider.Meter(packageName)
 
+	return meterProvider.Shutdown, instrumentMeter(meterProvider.Meter(packageName), tc)
+}
+
+func instrumentMeter(meter metric.Meter, tc *internal.TaskConfig) error {
 	catcher := grip.NewBasicCatcher()
 	cpuPercent, err := meter.Float64ObservableGauge("cpu_percent")
 	catcher.Add(err)
@@ -128,7 +138,7 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 	}, memoryPercent)
 	catcher.Add(err)
 
-	return meterProvider.Shutdown, catcher.Resolve()
+	return catcher.Resolve()
 }
 
 func hostResource(ctx context.Context) (*resource.Resource, error) {
