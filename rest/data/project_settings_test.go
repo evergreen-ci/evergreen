@@ -459,6 +459,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 		},
 		"errors saving enabled project with no branch": func(t *testing.T, ref model.ProjectRef) {
+			ref.Enabled = true
 			ref.Branch = ""
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(ref))

@@ -1284,7 +1284,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
-	assert.Equal(t, "main", repoRef.Branch)
+	assert.Empty(t, repoRef.Branch)
 	assert.True(t, repoRef.DoesTrackPushEvents())
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
@@ -2174,8 +2174,7 @@ func TestAddEmptyBranch(t *testing.T) {
 	}
 	assert.NoError(t, p.Add(&u))
 	assert.NotEmpty(t, p.Id)
-	assert.NotEmpty(t, p.Branch)
-	assert.Equal(t, "", p.Branch)
+	assert.Empty(t, p.Branch)
 
 	cq, err := commitqueue.FindOneId(p.Id)
 	assert.NoError(t, err)
