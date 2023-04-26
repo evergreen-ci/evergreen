@@ -247,6 +247,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err = mergedSection.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 				return nil, errors.Wrap(err, "validating new owner/repo")
 			}
+			if mergedSection.Branch == "" {
+				return nil, errors.New("branch not set on enabled repo")
+			}
 		}
 		// Only need to check Github conflicts once so we use else if statements to handle this.
 		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.

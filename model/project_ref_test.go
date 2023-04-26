@@ -2175,7 +2175,7 @@ func TestAddEmptyBranch(t *testing.T) {
 	assert.NoError(t, p.Add(&u))
 	assert.NotEmpty(t, p.Id)
 	assert.NotEmpty(t, p.Branch)
-	assert.Equal(t, "main", p.Branch)
+	assert.Equal(t, "", p.Branch)
 
 	cq, err := commitqueue.FindOneId(p.Id)
 	assert.NoError(t, err)

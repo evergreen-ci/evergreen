@@ -39,8 +39,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const defaultBranch = "main"
-
 // The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
@@ -498,11 +496,6 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			}
 			return nil
 		}
-	}
-
-	// TODO EVG-17412: Remove the following code that defaults the branch to main.
-	if p.Branch == "" {
-		p.Branch = defaultBranch
 	}
 
 	err := db.Insert(ProjectRefCollection, p)
