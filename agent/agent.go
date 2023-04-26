@@ -558,7 +558,10 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer span.End()
 
 	shutdown, err := a.startMetrics(tskCtx, taskConfig)
-	defer shutdown(ctx)
+	grip.Error(errors.Wrap(err, "starting metrics collection"))
+	if shutdown != nil {
+		defer shutdown(ctx)
+	}
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
