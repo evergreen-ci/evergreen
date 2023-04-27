@@ -320,7 +320,7 @@ Specify the optional `--dir` argument to choose the destination path where the d
 
 #### Pull
 
-The command `evergreen pull` can download the task directory contents of a synced task after an [s3.push](../02-Test-with-Evergreen/01-Configure-a-Project/02-Project-Commands.md#s3push) command has finished or after a [patched task that has requested task sync](#task-sync) has completed.
+The command `evergreen pull` can download the task directory contents of a synced task after an [s3.push](02-Configure-a-Project/02-Project-Commands.md#s3push) command has finished or after a [patched task that has requested task sync](#task-sync) has completed.
 
 Example that downloads the artifacts for the given task ID and cloning its source:
 ```
@@ -364,7 +364,7 @@ evergreen last-green -p mci -v ubuntu
 ```
 
 #### Commit Queue
-The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](../02-Test-with-Evergreen/02-Run-Tasks/01-Commit-Queue.md).
+The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](03-Run-Tasks/01-Commit-Queue.md).
 
 #### Buildlogger Fetch
 
@@ -400,13 +400,13 @@ api:
         client_binaries:
            - os: "darwin"
              arch: "amd64"
-             url: "https://.../evergreen"
+             url: "https://.evergreen"
            - os: "linux"
              arch: "amd64"
-             url: "https://.../evergreen"
+             url: "https://.evergreen"
            - os: "windows"
              arch: "amd64"
-             url: "https://.../evergreen.exe"
+             url: "https://.evergreen.exe"
 ```
 
 The "url" keys in each list item should contain the appropriate URL to the binary for each architecture. The "latest_revision" key should contain the githash that was used to build the binary. It should match the output of `evergreen version` for *all* the binaries at the URLs listed in order for auto-updates to be successful.

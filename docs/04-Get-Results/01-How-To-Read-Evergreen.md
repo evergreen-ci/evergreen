@@ -21,7 +21,7 @@ In short, each commit to a git branch results in a new version, which runs multi
 There are three ways to get a view of the state of a project:
 
 ## Waterfall
-![waterfall.png](../../images/waterfall.png)
+![waterfall.png](../images/waterfall.png)
 This is Evergreen's default view.
 It displays a set of columns, each represents a version (commit) to the current project, the most recent commit being on the left (unlike it's namesake geographic formation, Evergreen's waterfall moves from left to right).
 Each row in the column is a build variant, and each bar in a row is a task.
@@ -30,13 +30,13 @@ Blank bars are not scheduled to run and gray bars are scheduled but waiting for 
 You can click on any task in order to see its task page, which contains detailed information and logs.
 
 ## Timeline
-![timeline.png](../../images/timeline.png)
+![timeline.png](../images/timeline.png)
 This view displays each version in a more verbose way than the waterfall page.
 Each version is presented in its own section of the page, with each variant given its own box within that section. 
 The variant headers or tasks can be clicked on for more information.
 
 ## Grid
-![grid.png](../../images/grid.png)
+![grid.png](../images/grid.png)
 This view shows the state of a single version.
 It displays each task as a square in a grid of build variants plotted against tasks.
 Clicking on a square will open a pop-up with task history information.
@@ -45,19 +45,19 @@ This view should be more familiar to users of other continuous integration tools
 ## Version, Build, and Task Visualizations
 
 ## Versions
-![version.png](../../images/version.png)
+![version.png](../images/version.png)
 The version page is mostly here to get you to other pages.
 The page contains links to each build variant and task created for the given version. 
 A panel on the right displays a condensed history of the versions for the commits surrounding it.
 
 ## Builds
-![build.png](../../images/build.png)
+![build.png](../images/build.png)
 The build page shows the status of one of a version's variants (e.g. Windows32 on commit 0bed4262da). 
 This page shows the status and time taken by each of the variant's tasks.
 The most recent completely-passing version for a build is given in the lower-left.
 
 ## Tasks
-![task.png](../../images/task.png)
+![task.png](../images/task.png)
 This is probably the page you'll be spending the most time with.
 Versions and build variants are the skeleton holding up Evergreen; tasks are the organs and muscles.
 
@@ -75,7 +75,7 @@ Evergreen's New UI has the following task statuses.  These statuses are describe
 * Failed -  Task has failed. A task can fail either because a test failed or because a task command exited non-zero.
 * Known Issue - This is a subset of Failed, and it means that a failed task contains a task annotation with a non-empty issues list.  Task annotations can be created by external services such as the Build Baron team’s failure triage tool, or can be added manually.  Task annotation permissions are managed through MANA. 
 * Setup Failed -  Users can set a default failure type of "test", "system", or "setup". They can also set that type for individual commands. These cause a failing command to turn the task into a test (red), system (purple), or setup (lavender) failure.
-* Task Timed Out -  A task timed out, whether due to a large cumulative time taken or a large amount of time for one single command.  Evergreen tasks have a default timeout duration of 6 hours, and Evergreen commands have a default timeout duration of 2 hours. [There](../01-Configure-a-Project/01-Project-Configuration-Files#pre-post-and-timeout.) are two types of timeouts in Evergreen, exec_timeout_secs and timeout_secs, and they are further documented here. 
+* Task Timed Out -  A task timed out, whether due to a large cumulative time taken or a large amount of time for one single command.  Evergreen tasks have a default timeout duration of 6 hours, and Evergreen commands have a default timeout duration of 2 hours. [There](../02-Configure-a-Project/01-Project-Configuration-Files#pre-post-and-timeout.) are two types of timeouts in Evergreen, exec_timeout_secs and timeout_secs, and they are further documented here. 
 * Dispatched - Evergreen has started to dispatch a task to a host, but the task is not yet being executed. 
 * Running - Task is currently running. 
 * Will Run - Task is in the task queue and will run in the future. Hasn’t been dispatched. 

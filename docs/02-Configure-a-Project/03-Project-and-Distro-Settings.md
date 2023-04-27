@@ -63,7 +63,7 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-['Using Repo Level Settings'](04-Using-Repo-Level-Settings).
+['Using Repo Level Settings'](04-Using-Repo-Level-Settings.md).
 
 ### Access and Admin Settings
 
@@ -113,7 +113,7 @@ definition (i.e. without the ".") and tag negation is also supported
 comma-delimited.
 
 Aliases can also be defined locally as shown
-[here](../06-Using-the-Command-Line-Tool#local-aliases).
+[here](../07-Using-the-Command-Line-Tool.md#local-aliases).
 
 ### GitHub Pull Request Testing
 
@@ -126,7 +126,7 @@ those define what tasks will be run in this patch.
 If you'd like the option of creating patches but wouldn't like it to happen automatically,
 you can enable "Manual Testing".
 
-![github_settings.png](../../images/github_settings.png)
+![github_settings.png](../images/github_settings.png)
 
 You can also have tasks run for a *different* project for
 each pull request opened in the repository as well as each subsequent
@@ -134,7 +134,7 @@ push to each pull request. To do that, add a trigger aliases to the
 "Github Trigger Alias" section. Before an alias can be added, it needs
 to be defined in the "Patch Trigger Aliases" section.
 
-![github_trigger_alias.png](../../images/github_trigger_alias.png)
+![github_trigger_alias.png](../images/github_trigger_alias.png)
 
 For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
@@ -265,7 +265,7 @@ section to kick off a child patch for each pull request opened in the
 repository as well as each subsequent push to each pull request.
 
 To pass information from the upstream patch to the downstream patch use
-[downstream_expansions.set](02-Project-Commands#downstream_expansionsset)
+[downstream_expansions.set](02-Project-Commands.md#downstream_expansionsset)
 
 ### Periodic Builds
 
@@ -305,11 +305,10 @@ use performance tooling.
 Enabling this feature allows users to push and pull their task working
 directory to and from a remote store (S3). This can be done either using
 the
-[s3.push](02-Project-Commands#s3-push)
+[s3.push](02-Project-Commands.md#s3-push)
 or
-[s3.pull](02-Project-Commands#s3pull)
-project commands, or using it from [the
-CLI](../06-Using-the-Command-Line-Tool#task-sync).
+[s3.pull](02-Project-Commands.md#s3pull)
+project commands, or using it from [the CLI](../07-Using-the-Command-Line-Tool.md#task-sync).
 
 Options:
 
@@ -439,7 +438,7 @@ that all execute independently:
 
 Enabling version control for configurations on the project page will
 allow a number of the settings detailed above to also be specified in
-the project YAML alongside the settings that are specified in ['Project Configuration Files'](01-Project-Configuration-Files).
+the project YAML alongside the settings that are specified in ['Project Configuration Files'](01-Project-Configuration-Files.md).
 Evergreen will merge the settings in the project page, repo page, then the YAML, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
 defined in the YAML.
 
