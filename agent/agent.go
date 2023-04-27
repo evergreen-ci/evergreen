@@ -82,6 +82,12 @@ const (
 	// PodMode indicates that the agent will run in a pod's container.
 	PodMode      Mode = "pod"
 	MessageLimit      = 500
+
+	taskTimeoutBlock = "task-timeout"
+	preBlock         = "pre"
+	postBlock        = "post"
+	endTaskBlock     = "end-task"
+	earlyTermBlock   = "early-termination"
 )
 
 type taskContext struct {
@@ -644,7 +650,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.Timeout != nil {
-		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{})
+		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{}, taskTimeoutBlock)
 		tc.logger.Execution().Error(errors.Wrap(err, "running timeout commands"))
 		tc.logger.Task().Infof("Finished running timeout commands in %s.", time.Since(start))
 	}
@@ -781,7 +787,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	}
 	if taskGroup.TeardownTask != nil {
 		opts.failPreAndPost = taskGroup.TeardownTaskCanFailTask
-		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), opts)
+		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), opts, postBlock)
 		if err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
 			if taskGroup.TeardownTaskCanFailTask {
@@ -820,7 +826,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{})
+		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{}, postBlock)
 		grip.Error(errors.Wrap(err, "running post-group commands"))
 		grip.Info("Finished running post-group commands.")
 	}
@@ -849,7 +855,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	}
 	defer cancel()
 
-	if err := a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{}); err != nil {
+	if err := a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{}, endTaskBlock); err != nil {
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message":    "error running task sync",
 			"total_time": time.Since(start).String(),

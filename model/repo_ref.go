@@ -52,7 +52,7 @@ func (r *RepoRef) Insert() error {
 // Ensures that fields that aren't relevant to repos aren't set.
 func (r *RepoRef) Upsert() error {
 	r.RepoRefId = ""
-	r.Branch = defaultBranch
+	r.Branch = ""
 	_, err := db.Upsert(
 		RepoRefCollection,
 		bson.M{

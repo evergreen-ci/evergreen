@@ -8,6 +8,7 @@ mutation {
                 remotePath: "my_path_is_new"
                 owner: "evergreen-ci"
                 repo: "commit-queue-sandbox"
+                branch: "main"
             }
         },
         section: GENERAL

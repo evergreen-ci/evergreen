@@ -458,6 +458,19 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, oldAdminFromDB)
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 		},
+		"errors saving enabled project with no branch": func(t *testing.T, ref model.ProjectRef) {
+			ref.Enabled = true
+			ref.Branch = ""
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "branch not set on enabled repo")
+			assert.Nil(t, settings)
+		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.ProjectRef) {
 			// remove a variable, modify a variable, delete/add a private variable, add a variable, leave a private variable unchanged
 			apiProjectVars := restModel.APIProjectVars{

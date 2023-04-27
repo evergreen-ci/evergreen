@@ -226,6 +226,8 @@ const (
 	awsLogsGroup = "awslogs-group"
 	// awsLogsGroup is the log configuration option name for specifying the AWS region.
 	awsLogsRegion = "awslogs-region"
+	// awsLogsStreamPrefix is the log configuration option name for specifying the log stream prefix.
+	awsLogsStreamPrefix = "awslogs-stream-prefix"
 )
 
 // ExportECSPodDefinitionOptions exports the ECS pod creation options into
@@ -273,10 +275,11 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 	if opts.RepoCredsExternalID != "" {
 		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().SetID(opts.RepoCredsExternalID))
 	}
-	if ecsConf.LogRegion != "" && ecsConf.LogGroup != "" {
+	if ecsConf.LogRegion != "" && ecsConf.LogGroup != "" && ecsConf.LogStreamPrefix != "" {
 		def.SetLogConfiguration(*cocoa.NewLogConfiguration().SetLogDriver(awsECS.LogDriverAwslogs).SetOptions(map[string]string{
-			awsLogsGroup:  ecsConf.LogGroup,
-			awsLogsRegion: ecsConf.LogRegion,
+			awsLogsGroup:        ecsConf.LogGroup,
+			awsLogsRegion:       ecsConf.LogRegion,
+			awsLogsStreamPrefix: ecsConf.LogStreamPrefix,
 		}))
 	}
 

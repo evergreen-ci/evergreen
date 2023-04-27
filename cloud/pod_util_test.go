@@ -365,8 +365,9 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 								Subnets:        []string{"subnet-12345"},
 								SecurityGroups: []string{"sg-12345"},
 							},
-							LogRegion: "us-east-1",
-							LogGroup:  "log_group",
+							LogRegion:       "us-east-1",
+							LogGroup:        "log_group",
+							LogStreamPrefix: "log_stream_prefix",
 						},
 						SecretsManager: evergreen.SecretsManagerConfig{
 							SecretPrefix: "secret_prefix",

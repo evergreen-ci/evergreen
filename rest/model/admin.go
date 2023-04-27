@@ -1836,6 +1836,7 @@ type APIECSConfig struct {
 	ExecutionRole        *string                  `json:"execution_role"`
 	LogRegion            *string                  `json:"log_region"`
 	LogGroup             *string                  `json:"log_group"`
+	LogStreamPrefix      *string                  `json:"log_stream_prefix"`
 	AWSVPC               *APIAWSVPCConfig         `json:"awsvpc"`
 	Clusters             []APIECSClusterConfig    `json:"clusters"`
 	CapacityProviders    []APIECSCapacityProvider `json:"capacity_providers"`
@@ -1848,6 +1849,7 @@ func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
 	a.TaskRole = utility.ToStringPtr(conf.TaskRole)
 	a.ExecutionRole = utility.ToStringPtr(conf.ExecutionRole)
 	a.LogRegion = utility.ToStringPtr(conf.LogRegion)
+	a.LogStreamPrefix = utility.ToStringPtr(conf.LogStreamPrefix)
 	a.LogGroup = utility.ToStringPtr(conf.LogGroup)
 	var apiAWSVPC APIAWSVPCConfig
 	apiAWSVPC.BuildFromService(conf.AWSVPC)
@@ -1893,6 +1895,7 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 		TaskRole:             utility.FromStringPtr(a.TaskRole),
 		ExecutionRole:        utility.FromStringPtr(a.ExecutionRole),
 		LogRegion:            utility.FromStringPtr(a.LogRegion),
+		LogStreamPrefix:      utility.FromStringPtr(a.LogStreamPrefix),
 		LogGroup:             utility.FromStringPtr(a.LogGroup),
 		AWSVPC:               a.AWSVPC.ToService(),
 		Clusters:             clusters,

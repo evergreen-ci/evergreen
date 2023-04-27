@@ -172,8 +172,10 @@ type ECSConfig struct {
 	ExecutionRole string `bson:"execution_role" json:"execution_role" yaml:"execution_role"`
 	// LogRegion is the region used by the task definition's log configuration.
 	LogRegion string `bson:"log_region" json:"log_region" yaml:"log_region"`
-	// LogRegion is the log group name used by the task definition's log configuration.
+	// LogGroup is the log group name used by the task definition's log configuration.
 	LogGroup string `bson:"log_group" json:"log_group" yaml:"log_group"`
+	// LogStreamPrefix is the prefix used to determine log group stream names.
+	LogStreamPrefix string `bson:"log_stream_prefix" json:"log_stream_prefix" yaml:"log_stream_prefix"`
 	// AWSVPC specifies configuration when ECS tasks use AWSVPC networking.
 	AWSVPC AWSVPCConfig `bson:"awsvpc" json:"awsvpc" yaml:"awsvpc"`
 	// Clusters specify the configuration of each particular ECS cluster.
