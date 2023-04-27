@@ -69,8 +69,8 @@ func GetCommandFactory(name string) (CommandFactory, bool) {
 	return evgRegistry.getCommandFactory(name)
 }
 
-func Render(c model.PluginCommandConf, project *model.Project) ([]Command, error) {
-	return evgRegistry.renderCommands(c, project)
+func Render(c model.PluginCommandConf, project *model.Project, block string) ([]Command, error) {
+	return evgRegistry.renderCommands(c, project, block)
 }
 
 func RegisteredCommandNames() []string { return evgRegistry.registeredCommandNames() }
@@ -131,13 +131,17 @@ func (r *commandRegistry) getCommandFactory(name string) (CommandFactory, bool) 
 }
 
 func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
-	project *model.Project) ([]Command, error) {
+	project *model.Project, block string) ([]Command, error) {
 
 	var (
 		parsed []model.PluginCommandConf
 		out    []Command
 	)
 	catcher := grip.NewBasicCatcher()
+
+	if block != "" {
+		block = fmt.Sprintf(`in "%v"`, block)
+	}
 
 	if name := commandInfo.Function; name != "" {
 		cmds, ok := project.Functions[name]
@@ -156,7 +160,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 				}
 
 				if c.DisplayName == "" {
-					c.DisplayName = fmt.Sprintf(`'%v' in "%v" (#%d)`, c.Command, name, i+1)
+					c.DisplayName = fmt.Sprintf(`'%v' in "%v" %s (#%d)`, c.Command, name, block, i+1)
 				}
 
 				if c.TimeoutSecs == 0 {
@@ -167,6 +171,9 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 			}
 		}
 	} else {
+		if commandInfo.DisplayName == "" {
+			commandInfo.DisplayName = fmt.Sprintf(`'%v' %s `, commandInfo.Command, block)
+		}
 		parsed = append(parsed, commandInfo)
 	}
 

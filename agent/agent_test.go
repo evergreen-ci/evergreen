@@ -248,7 +248,7 @@ func (s *AgentSuite) TestCancelRunCommands() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommands(ctx, s.tc, cmds, runCommandsOptions{})
+	err := s.a.runCommands(ctx, s.tc, cmds, runCommandsOptions{}, "post")
 	s.Require().Error(err)
 	s.Contains(err.Error(), context.Canceled.Error())
 }
@@ -737,6 +737,10 @@ task_groups:
 		},
 		Project: p,
 		WorkDir: s.tc.taskDirectory,
+		ProjectRef: &model.ProjectRef{
+			Id:         "abcdef",
+			Identifier: "project_identifier",
+		},
 		Timeout: &internal.Timeout{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())

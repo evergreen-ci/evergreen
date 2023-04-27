@@ -18,6 +18,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
   AWSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
+  AWSPodConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
+  BannerTheme:
+    model: github.com/evergreen-ci/evergreen.BannerTheme
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
   BuildBaronSettings:
@@ -54,6 +58,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
+  ECSConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIECSConfig
   ExternalLink:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
   ExternalLinkInput:
@@ -158,6 +164,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
   ProjectAliasInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
+  ProjectBanner:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectBanner
+  ProjectBannerInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectBanner
   ProjectEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   ProjectEventSettings:

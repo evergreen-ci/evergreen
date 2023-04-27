@@ -15,6 +15,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -80,6 +81,11 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	AWSConfig struct {
 		MaxVolumeSizePerUser func(childComplexity int) int
+		Pod                  func(childComplexity int) int
+	}
+
+	AWSPodConfig struct {
+		ECS func(childComplexity int) int
 	}
 
 	AbortInfo struct {
@@ -205,6 +211,11 @@ type ComplexityRoot struct {
 		IsWindows            func(childComplexity int) int
 		User                 func(childComplexity int) int
 		WorkDir              func(childComplexity int) int
+	}
+
+	ECSConfig struct {
+		MaxCPU      func(childComplexity int) int
+		MaxMemoryMB func(childComplexity int) int
 	}
 
 	ExternalLink struct {
@@ -643,6 +654,7 @@ type ComplexityRoot struct {
 
 	Project struct {
 		Admins                   func(childComplexity int) int
+		Banner                   func(childComplexity int) int
 		BatchTime                func(childComplexity int) int
 		Branch                   func(childComplexity int) int
 		BuildBaronSettings       func(childComplexity int) int
@@ -697,6 +709,11 @@ type ComplexityRoot struct {
 		TaskTags    func(childComplexity int) int
 		Variant     func(childComplexity int) int
 		VariantTags func(childComplexity int) int
+	}
+
+	ProjectBanner struct {
+		Text  func(childComplexity int) int
+		Theme func(childComplexity int) int
 	}
 
 	ProjectBuildVariant struct {
@@ -1622,6 +1639,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AWSConfig.MaxVolumeSizePerUser(childComplexity), true
 
+	case "AWSConfig.pod":
+		if e.complexity.AWSConfig.Pod == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.Pod(childComplexity), true
+
+	case "AWSPodConfig.ecs":
+		if e.complexity.AWSPodConfig.ECS == nil {
+			break
+		}
+
+		return e.complexity.AWSPodConfig.ECS(childComplexity), true
+
 	case "AbortInfo.buildVariantDisplayName":
 		if e.complexity.AbortInfo.BuildVariantDisplayName == nil {
 			break
@@ -2139,6 +2170,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DistroInfo.WorkDir(childComplexity), true
+
+	case "ECSConfig.maxCPU":
+		if e.complexity.ECSConfig.MaxCPU == nil {
+			break
+		}
+
+		return e.complexity.ECSConfig.MaxCPU(childComplexity), true
+
+	case "ECSConfig.maxMemoryMb":
+		if e.complexity.ECSConfig.MaxMemoryMB == nil {
+			break
+		}
+
+		return e.complexity.ECSConfig.MaxMemoryMB(childComplexity), true
 
 	case "ExternalLink.displayName":
 		if e.complexity.ExternalLink.DisplayName == nil {
@@ -4390,6 +4435,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Admins(childComplexity), true
 
+	case "Project.banner":
+		if e.complexity.Project.Banner == nil {
+			break
+		}
+
+		return e.complexity.Project.Banner(childComplexity), true
+
 	case "Project.batchTime":
 		if e.complexity.Project.BatchTime == nil {
 			break
@@ -4751,6 +4803,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectAlias.VariantTags(childComplexity), true
+
+	case "ProjectBanner.text":
+		if e.complexity.ProjectBanner.Text == nil {
+			break
+		}
+
+		return e.complexity.ProjectBanner.Text(childComplexity), true
+
+	case "ProjectBanner.theme":
+		if e.complexity.ProjectBanner.Theme == nil {
+			break
+		}
+
+		return e.complexity.ProjectBanner.Theme(childComplexity), true
 
 	case "ProjectBuildVariant.displayName":
 		if e.complexity.ProjectBuildVariant.DisplayName == nil {
@@ -7931,6 +7997,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPatchesInput,
 		ec.unmarshalInputPeriodicBuildInput,
 		ec.unmarshalInputProjectAliasInput,
+		ec.unmarshalInputProjectBannerInput,
 		ec.unmarshalInputProjectInput,
 		ec.unmarshalInputProjectSettingsInput,
 		ec.unmarshalInputProjectVarsInput,
@@ -10259,6 +10326,98 @@ func (ec *executionContext) fieldContext_AWSConfig_maxVolumeSizePerUser(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _AWSConfig_pod(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AWSConfig_pod(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pod, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAWSPodConfig)
+	fc.Result = res
+	return ec.marshalOAWSPodConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSPodConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AWSConfig_pod(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ecs":
+				return ec.fieldContext_AWSPodConfig_ecs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AWSPodConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AWSPodConfig_ecs(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSPodConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AWSPodConfig_ecs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ECS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIECSConfig)
+	fc.Result = res
+	return ec.marshalOECSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIECSConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AWSPodConfig_ecs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AWSPodConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "maxCPU":
+				return ec.fieldContext_ECSConfig_maxCPU(ctx, field)
+			case "maxMemoryMb":
+				return ec.fieldContext_ECSConfig_maxMemoryMb(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ECSConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AbortInfo_buildVariantDisplayName(ctx, field)
 	if err != nil {
@@ -12073,6 +12232,8 @@ func (ec *executionContext) fieldContext_CloudProviderConfig_aws(ctx context.Con
 			switch field.Name {
 			case "maxVolumeSizePerUser":
 				return ec.fieldContext_AWSConfig_maxVolumeSizePerUser(ctx, field)
+			case "pod":
+				return ec.fieldContext_AWSConfig_pod(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AWSConfig", field.Name)
 		},
@@ -13545,6 +13706,94 @@ func (ec *executionContext) fieldContext_DistroInfo_workDir(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ECSConfig_maxCPU(ctx context.Context, field graphql.CollectedField, obj *model.APIECSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ECSConfig_maxCPU(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxCPU, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ECSConfig_maxCPU(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ECSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ECSConfig_maxMemoryMb(ctx context.Context, field graphql.CollectedField, obj *model.APIECSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ECSConfig_maxMemoryMb(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxMemoryMB, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ECSConfig_maxMemoryMb(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ECSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -15122,6 +15371,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21830,6 +22081,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -21975,6 +22228,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22120,6 +22375,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22265,6 +22522,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22410,6 +22669,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22607,6 +22868,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22862,6 +23125,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -27133,6 +27398,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -32540,6 +32807,53 @@ func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_banner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Banner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIProjectBanner)
+	fc.Result = res
+	return ec.marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_banner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "text":
+				return ec.fieldContext_ProjectBanner_text(ctx, field)
+			case "theme":
+				return ec.fieldContext_ProjectBanner_theme(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectBanner", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectAlias_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectAlias_id(ctx, field)
 	if err != nil {
@@ -32887,6 +33201,94 @@ func (ec *executionContext) fieldContext_ProjectAlias_variantTags(ctx context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectBanner_text(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectBanner) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectBanner_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectBanner_text(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectBanner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectBanner_theme(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectBanner) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectBanner_theme(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Theme, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(evergreen.BannerTheme)
+	fc.Result = res
+	return ec.marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectBanner_theme(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectBanner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BannerTheme does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33445,6 +33847,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -33885,6 +34289,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -35842,6 +36248,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -45089,6 +45497,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -53536,6 +53946,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			case "externalLinks":
 				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -58691,6 +59103,42 @@ func (ec *executionContext) unmarshalInputProjectAliasInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputProjectBannerInput(ctx context.Context, obj interface{}) (model.APIProjectBanner, error) {
+	var it model.APIProjectBanner
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"text", "theme"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "text":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
+			it.Text, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "theme":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("theme"))
+			it.Theme, err = ec.unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
 	var it model.APIProjectRef
 	asMap := map[string]interface{}{}
@@ -58698,7 +59146,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions", "externalLinks"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions", "externalLinks", "banner"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59042,6 +59490,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
 			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "banner":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
+			it.Banner, err = ec.unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60995,6 +61451,35 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 
 			out.Values[i] = ec._AWSConfig_maxVolumeSizePerUser(ctx, field, obj)
 
+		case "pod":
+
+			out.Values[i] = ec._AWSConfig_pod(ctx, field, obj)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var aWSPodConfigImplementors = []string{"AWSPodConfig"}
+
+func (ec *executionContext) _AWSPodConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAWSPodConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aWSPodConfigImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AWSPodConfig")
+		case "ecs":
+
+			out.Values[i] = ec._AWSPodConfig_ecs(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -61760,6 +62245,41 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 
 			out.Values[i] = ec._DistroInfo_workDir(ctx, field, obj)
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var eCSConfigImplementors = []string{"ECSConfig"}
+
+func (ec *executionContext) _ECSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIECSConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, eCSConfigImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ECSConfig")
+		case "maxCPU":
+
+			out.Values[i] = ec._ECSConfig_maxCPU(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "maxMemoryMb":
+
+			out.Values[i] = ec._ECSConfig_maxMemoryMb(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -65261,6 +65781,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 
 			out.Values[i] = ec._Project_externalLinks(ctx, field, obj)
 
+		case "banner":
+
+			out.Values[i] = ec._Project_banner(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -65334,6 +65858,41 @@ func (ec *executionContext) _ProjectAlias(ctx context.Context, sel ast.Selection
 		case "variantTags":
 
 			out.Values[i] = ec._ProjectAlias_variantTags(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var projectBannerImplementors = []string{"ProjectBanner"}
+
+func (ec *executionContext) _ProjectBanner(ctx context.Context, sel ast.SelectionSet, obj *model.APIProjectBanner) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectBannerImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectBanner")
+		case "text":
+
+			out.Values[i] = ec._ProjectBanner_text(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "theme":
+
+			out.Values[i] = ec._ProjectBanner_theme(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -71099,6 +71658,22 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v interface{}) (evergreen.BannerTheme, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := evergreen.BannerTheme(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v evergreen.BannerTheme) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -74341,6 +74916,13 @@ func (ec *executionContext) marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._AWSConfig(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOAWSPodConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSPodConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAWSPodConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AWSPodConfig(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOAbortInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAbortInfo(ctx context.Context, sel ast.SelectionSet, v *AbortInfo) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -74751,6 +75333,13 @@ func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	}
 	res := model.MarshalAPIDuration(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOECSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIECSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIECSConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ECSConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐEditSpawnHostInput(ctx context.Context, v interface{}) (*EditSpawnHostInput, error) {
@@ -75811,6 +76400,15 @@ func (ec *executionContext) unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergr
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx context.Context, sel ast.SelectionSet, v model.APIProjectBanner) graphql.Marshaler {
+	return ec._ProjectBanner(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx context.Context, v interface{}) (model.APIProjectBanner, error) {
+	res, err := ec.unmarshalInputProjectBannerInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOProjectEventSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectEventSettings(ctx context.Context, sel ast.SelectionSet, v model.APIProjectEventSettings) graphql.Marshaler {

@@ -36,14 +36,14 @@ const (
 	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
 	shallowCloneDepth      = 100
 
-	gitGetProjectOtelAttribute = "evergreen.command.git_get_project"
+	gitGetProjectAttribute = "evergreen.command.git_get_project"
 )
 
 var (
-	cloneOwnerAttribure  = fmt.Sprintf("%s.clone_owner", gitGetProjectOtelAttribute)
-	cloneRepoAttribure   = fmt.Sprintf("%s.clone_repo", gitGetProjectOtelAttribute)
-	cloneBranchAttribure = fmt.Sprintf("%s.clone_branch", gitGetProjectOtelAttribute)
-	cloneModuleAttribure = fmt.Sprintf("%s.clone_module", gitGetProjectOtelAttribute)
+	cloneOwnerAttribute  = fmt.Sprintf("%s.clone_owner", gitGetProjectAttribute)
+	cloneRepoAttribute   = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
+	cloneBranchAttribute = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
+	cloneModuleAttribute = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -357,19 +357,16 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
 		if info.Mergeable == nil {
-			logger.Execution().Info("Mergeable check is not ready.")
-			return true, nil
+			return true, errors.New("mergeable check is not ready")
 		}
 		if *info.Mergeable {
 			if info.MergeCommitSHA != "" {
 				mergeSHA = info.MergeCommitSHA
-			} else {
-				return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
+				return false, nil
 			}
-		} else {
-			return false, errors.New("pull request is not mergeable, which likely means a merge conflict was just introduced")
+			return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
 		}
-		return false, nil
+		return false, errors.New("pull request is not mergeable, which likely means a merge conflict was just introduced")
 	}, utility.RetryOptions{
 		MaxAttempts: getPRAttempts,
 		MinDelay:    getPRRetryMinDelay,
@@ -546,9 +543,9 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	logger.Execution().Debugf("Commands are: %s", redactedCmds)
 
 	ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
-		attribute.String(cloneOwnerAttribure, opts.owner),
-		attribute.String(cloneRepoAttribure, opts.repo),
-		attribute.String(cloneBranchAttribure, opts.branch),
+		attribute.String(cloneOwnerAttribute, opts.owner),
+		attribute.String(cloneRepoAttribute, opts.repo),
+		attribute.String(cloneBranchAttribute, opts.branch),
 	))
 	defer span.End()
 
@@ -673,7 +670,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
-		attribute.String(cloneModuleAttribure, module.Name),
+		attribute.String(cloneModuleAttribute, module.Name),
 	))
 	defer span.End()
 

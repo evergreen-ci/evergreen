@@ -129,6 +129,32 @@ Notice that the function reference can define a set of `vars` which are
 treated as expansions within the configuration of the commands in the
 function.
 
+A function cannot be called within another function. However, it is still
+possible to reuse commands using YAML aliases and anchors. For example:
+
+```yaml
+variables:
+  - &download_something
+    command: shell.exec
+    params:
+      script: |
+          curl -LO https://example.com/something
+  - &download_something_else
+    command: shell.exec
+    params:
+      script: |
+        curl -LO https://example.com/something-else
+
+tasks:
+  - name: my-first-task
+    commands:
+      - *download_something
+  - name: my-second-task
+    commands:
+      - *download_something
+      - *download_something_else
+```
+
 ### Tests
 
 As you've read above, a task is a single unit of work in Evergreen. A
@@ -817,7 +843,7 @@ must be present in the `tasks` array.
 
 Stepback is set to true if you want to stepback and test earlier commits
 in the case of a failing task. This can be set or unset at the
-top-level, and for individual tasks (in the task definition or for the
+top-level, at the build variant level, and for individual tasks (in the task definition or for the
 task within a specific build variant).
 
 ### OOM Tracker
