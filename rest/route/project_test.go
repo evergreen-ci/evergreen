@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"net/http"
 	"testing"
 	"time"
@@ -501,6 +502,10 @@ func (s *ProjectPutPodSecretSuite) TestPutProjectPodSecret() {
 	defer cancel()
 	h := s.rm.(*projectPutPodSecretHandler)
 	h.projectName = "dimoxinil"
+	smClient := &cocoaMock.SecretsManagerClient{}
+	v, err := cloud.MakeSecretsManagerVault(smClient)
+	s.Require().NoError(err)
+	h.vault = cocoaMock.NewVault(v)
 
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()
@@ -519,8 +524,13 @@ func (s *ProjectPutPodSecretSuite) TestPutProjectPodSecret() {
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
 
+	externalID := dbProjRef.ContainerSecrets[0].ExternalID
+	s.Require().NotNil(h.vault)
+	initialStoredValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NoError(err)
+	s.NotZero(initialStoredValue)
+
 	// Rotate the existing pod secret's value.
-	oldPodSecret := dbProjRef.ContainerSecrets[0]
 	h.shouldRotate = true
 	resp = s.rm.Run(ctx)
 	s.Require().NotNil(resp)
@@ -535,9 +545,37 @@ func (s *ProjectPutPodSecretSuite) TestPutProjectPodSecret() {
 	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
-	s.NotEqual(oldPodSecret.ExternalName, dbProjRef.ContainerSecrets[0].ExternalName)
-	s.NotEqual(oldPodSecret.ExternalID, dbProjRef.ContainerSecrets[0].ExternalID)
-	s.NotEqual(oldPodSecret.Value, dbProjRef.ContainerSecrets[0].Value)
+
+	externalID = dbProjRef.ContainerSecrets[0].ExternalID
+	s.Require().NotNil(h.vault)
+	newStoredValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NoError(err)
+	s.NotZero(newStoredValue)
+	s.NotEqual(initialStoredValue, newStoredValue)
+
+	// Sending a request without shouldRotate should no-op.
+	h.shouldRotate = false
+	resp = s.rm.Run(ctx)
+	s.Require().NotNil(resp)
+	s.Require().NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(dbProjRef)
+	s.Require().Len(dbProjRef.ContainerSecrets, 1)
+	s.Equal(pod.PodSecretEnvVar, dbProjRef.ContainerSecrets[0].Name)
+	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
+
+	externalID = dbProjRef.ContainerSecrets[0].ExternalID
+	s.Require().NotNil(h.vault)
+	sameValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NoError(err)
+	s.NotZero(newStoredValue)
+	s.Equal(newStoredValue, sameValue)
+
 }
 
 ////////////////////////////////////////////////////////////////////////

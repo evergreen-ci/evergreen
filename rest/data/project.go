@@ -145,7 +145,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	grip.Warning(message.WrapError(TryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef), message.Fields{
+	grip.Warning(message.WrapError(tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef), message.Fields{
 		"message":            "failed to copy container secrets to new project",
 		"op":                 "CreateProject",
 		"project_id":         projectRef.Id,
@@ -173,8 +173,8 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	return true, warningCatcher.Resolve()
 }
 
-// TryCopyingContainerSecrets copies the given container secrets to the given project ref.
-func TryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
+// tryCopyingContainerSecrets copies the given container secrets to the given project ref.
+func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
 	// TODO (PM-2950): remove this temporary error-checking once the AWS
 	// infrastructure is productionized and AWS admin settings are set.
 	smClient, err := cloud.MakeSecretsManagerClient(settings)

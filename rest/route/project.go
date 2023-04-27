@@ -702,6 +702,7 @@ type projectPutPodSecretHandler struct {
 	projectName  string
 	shouldRotate bool
 	env          evergreen.Environment
+	vault        cocoa.Vault
 }
 
 func makePutPodSecretForProject(env evergreen.Environment) gimlet.RouteHandler {
@@ -716,6 +717,16 @@ func (h *projectPutPodSecretHandler) Factory() gimlet.RouteHandler {
 func (h *projectPutPodSecretHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	h.shouldRotate = r.URL.Query().Get("should_rotate") == "true"
+	smClient, err := cloud.MakeSecretsManagerClient(h.env.Settings())
+	if err != nil {
+		return errors.Wrap(err, "initializing Secrets Manager client")
+	}
+	defer smClient.Close(ctx)
+	vault, err := cloud.MakeSecretsManagerVault(smClient)
+	if err != nil {
+		return errors.Wrap(err, "initializing Secrets Manager vault")
+	}
+	h.vault = vault
 	return nil
 }
 
@@ -732,10 +743,24 @@ func (h *projectPutPodSecretHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	containerSecrets := p.ContainerSecrets
-	if h.shouldRotate {
-		containerSecrets = nil
+	if containerSecrets == nil {
+		containerSecrets = []dbModel.ContainerSecret{data.NewPodSecret()}
+	} else if h.shouldRotate {
+		for i := range containerSecrets {
+			if containerSecrets[i].Type == dbModel.ContainerSecretPodSecret {
+				containerSecrets[i].Value = utility.RandomString()
+			}
+		}
 	}
-	if err = data.TryCopyingContainerSecrets(ctx, h.env.Settings(), containerSecrets, p); err != nil {
+	validated, err := dbModel.ValidateContainerSecrets(h.env.Settings(), h.projectName, p.ContainerSecrets, containerSecrets)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "validating new container secrets"))
+	}
+	p.ContainerSecrets = validated
+	if err = p.Update(); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.projectName))
+	}
+	if err = data.UpsertContainerSecrets(ctx, h.vault, validated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "putting pod secret for project '%s'", h.projectName))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
