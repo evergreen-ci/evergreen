@@ -517,7 +517,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	// Find the build variant for this project/build
 	creationInfo.BuildVariant = creationInfo.Project.FindBuildVariant(creationInfo.Build.BuildVariant)
 	if creationInfo.BuildVariant == nil {
-		return nil, nil, errors.Errorf("finding build '%s' in project file '%s'",
+		return nil, nil, errors.Errorf("could not find build '%s' in project file '%s'",
 			creationInfo.Build.BuildVariant, creationInfo.Project.Identifier)
 	}
 
@@ -685,6 +685,7 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	return b, tasksForBuild, nil
 }
 
+// kim: TODO: validate that the BVTU passed in here always has variant set.
 func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
 	var willRun []BuildVariantTaskUnit
 	for _, bvt := range proj.tasksFromGroup(in) {

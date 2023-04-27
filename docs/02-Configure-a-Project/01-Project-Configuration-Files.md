@@ -1,4 +1,5 @@
 # Set Up a Project Configuration File
+kim: TODO: add section about setting priority at different definition levels.
 
 Project configurations are how you tell Evergreen what to do. They
 contain a set of tasks and variants to run those tasks on, and are

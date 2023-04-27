@@ -314,11 +314,13 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name          string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	DisplayName   string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	Expansions    util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
-	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
-	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	Name        string            `yaml:"name,omitempty" bson:"name,omitempty"`
+	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Expansions  util.Expansions   `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
+	Tags        parserStringSlice `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
+	Modules     parserStringSlice `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	// kim: TODO: verify if this Disable field works. If so, EVG-18405 only
+	// needs to address PatchOnly. (note to self: it doesn't work)
 	Disable       bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
@@ -328,7 +330,8 @@ type parserBV struct {
 	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	// If Activate is set to false, then we don't initially activate the build variant.
-	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	Activate  *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -392,6 +395,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.RunOn == nil &&
 		pbv.DependsOn == nil &&
 		pbv.Activate == nil &&
+		pbv.PatchOnly == nil &&
 		pbv.MatrixId == "" &&
 		pbv.MatrixVal == nil &&
 		pbv.Matrix == nil &&
@@ -507,9 +511,16 @@ func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
 
 // HasSpecificActivation returns if the build variant specifies an activation condition that
 // overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
-func (bvt *parserBV) hasSpecificActivation() bool {
-	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
-		!utility.FromBoolTPtr(bvt.Activate) || bvt.Disable
+// kim: NOTE: to deal with BV-level activation/disablement, this added special
+// logic to incorporate it with the existing BVTU/PT logic. It seems like this
+// could just be set on the the parserBVTaskUnit though, rather than duplicate
+// functionality to double-check BV level logic.
+// kim: NOTE: activation only needs to be considered for generated tasks
+// because users manually select which tasks are activated for non-generated
+// ones. Activate only affects default activation setting.
+func (bv *parserBV) hasSpecificActivation() bool {
+	return bv.BatchTime != nil || bv.CronBatchTime != "" ||
+		!utility.FromBoolTPtr(bv.Activate) || bv.Disable
 }
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into
@@ -1060,6 +1071,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			BatchTime:     pbv.BatchTime,
 			CronBatchTime: pbv.CronBatchTime,
 			Activate:      pbv.Activate,
+			PatchOnly:     pbv.PatchOnly,
 			Stepback:      pbv.Stepback,
 			RunOn:         pbv.RunOn,
 			Tags:          pbv.Tags,
@@ -1222,7 +1234,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			parserTask := tasksByName[name]
 			// create a new task by copying the task that selected it,
 			// so we can preserve the "Variant" and "Status" field.
-			t := getParserBuildVariantTaskUnit(name, parserTask, pbvt)
+			t := getParserBuildVariantTaskUnit(name, parserTask, pbvt, pbv)
 
 			// Task-level dependencies defined in the variant override variant-level dependencies which override
 			// task-level dependencies defined in the task.
@@ -1236,6 +1248,8 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			}
 			t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, dependsOn)
 			evalErrs = append(evalErrs, errs...)
+			// IsGroup indicates here that this build variant task unit is a
+			// task group.
 			t.IsGroup = isGroup
 
 			// add the new task if it doesn't already exists (we must avoid conflicting status fields)
@@ -1255,11 +1269,18 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 	return ts, evalErrs
 }
 
-// getParserBuildVariantTaskUnit combines the parser project's task definition with the build variant task definition.
-// DependsOn will be handled separately.
-func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit) BuildVariantTaskUnit {
+// getParserBuildVariantTaskUnit combines the parser project's build variant
+// task definition with its task definition and build variant definition.
+// DependsOn is handled separately. When there are conflicting settings defined
+// at different levels, the priority of settings are (from highest to lowest):
+// * Task settings within a build variant's list of tasks
+// * Task settings within a task group's list of tasks
+// * Project task's settings
+// * Build variant's settings
+func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) BuildVariantTaskUnit {
 	res := BuildVariantTaskUnit{
 		Name:             name,
+		Variant:          bv.Name,
 		Patchable:        bvt.Patchable,
 		PatchOnly:        bvt.PatchOnly,
 		Disable:          bvt.Disable,
@@ -1322,6 +1343,11 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if len(res.RunOn) == 0 {
 		res.RunOn = pt.RunOn
 	}
+
+	if res.PatchOnly == nil {
+		res.PatchOnly = bv.PatchOnly
+	}
+
 	return res
 }
 
