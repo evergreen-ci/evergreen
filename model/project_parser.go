@@ -314,13 +314,11 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name        string            `yaml:"name,omitempty" bson:"name,omitempty"`
-	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	Expansions  util.Expansions   `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
-	Tags        parserStringSlice `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
-	Modules     parserStringSlice `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	// kim: TODO: verify if this Disable field works. If so, EVG-18405 only
-	// needs to address PatchOnly. (note to self: it doesn't work)
+	Name          string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	DisplayName   string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Expansions    util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
+	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
+	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	Disable       bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
@@ -511,13 +509,6 @@ func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
 
 // HasSpecificActivation returns if the build variant specifies an activation condition that
 // overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
-// kim: NOTE: to deal with BV-level activation/disablement, this added special
-// logic to incorporate it with the existing BVTU/PT logic. It seems like this
-// could just be set on the the parserBVTaskUnit though, rather than duplicate
-// functionality to double-check BV level logic.
-// kim: NOTE: activation only needs to be considered for generated tasks
-// because users manually select which tasks are activated for non-generated
-// ones. Activate only affects default activation setting.
 func (bv *parserBV) hasSpecificActivation() bool {
 	return bv.BatchTime != nil || bv.CronBatchTime != "" ||
 		!utility.FromBoolTPtr(bv.Activate) || bv.Disable
@@ -893,8 +884,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 }
 
 // TranslateProject converts our intermediate project representation into
-// the Project type that Evergreen actually uses. Errors are added to
-// pp.errors and pp.warnings and must be checked separately.
+// the Project type that Evergreen actually uses.
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{

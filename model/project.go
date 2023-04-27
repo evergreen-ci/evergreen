@@ -275,8 +275,6 @@ func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
-	// kim: TODO: verify in staging that patch_only at build variant level is
-	// respected and set in the translated project.
 	return utility.FromBoolPtr(bvt.PatchOnly)
 }
 
@@ -311,10 +309,8 @@ type BuildVariant struct {
 	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
 	Expansions  map[string]string `yaml:"expansions,omitempty" bson:"expansions"`
 	Modules     []string          `yaml:"modules,omitempty" bson:"modules"`
-	// kim: NOTE: I think this field doesn't work. Get this field to actually
-	// work.
-	Disable bool     `yaml:"disable,omitempty" bson:"disable"`
-	Tags    []string `yaml:"tags,omitempty" bson:"tags"`
+	Disable     bool              `yaml:"disable,omitempty" bson:"disable"`
+	Tags        []string          `yaml:"tags,omitempty" bson:"tags"`
 
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
@@ -1550,12 +1546,19 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	if tg == nil {
 		return nil
 	}
-	// kim: TODO: should do some double-checking in staging to verify that this
-	// is always set in all places that rely on it (e.g. generate.tasks, manual
-	// patch, project validation).
 	bv := p.FindBuildVariant(bvTaskGroup.Variant)
 	if bv == nil {
-		return nil
+		// TODO (EVG-18405): remove this and return early after confirming that
+		// this does not log. Continuing on error with an empty build variant is
+		// inconsequential for now, since it is only necessary for checking
+		// build variant level patch_only.
+		grip.Error(message.Fields{
+			"message":       "found a task group that has no associated build variant (this is not supposed to happen), using an empty build variant configuration as a temporary workaround",
+			"task_group":    bvTaskGroup.Name,
+			"build_variant": bvTaskGroup.Variant,
+			"ticket":        "EVG-18405",
+		})
+		bv = &BuildVariant{}
 	}
 
 	tasks := []BuildVariantTaskUnit{}
