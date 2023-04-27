@@ -16,13 +16,13 @@ Visit `/spawn` to view the spawn hosts control panel. Click on "Spawn Host" and 
 
 Alternately, for a task that ran on a distro where spawning is enabled, you will see a "Spawn..." or "Spawn Host" link on its task page. 
 
-![task_page_spawn_host.png](../../images/task_page_spawn_host.png)
+![task_page_spawn_host.png](../images/task_page_spawn_host.png)
 
 Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro, along with the option to fetch binaries and artifacts associated with the task and any tasks that it depended on.
 
-![spawn_host_modal.png](../../images/spawn_host_modal.png)
+![spawn_host_modal.png](../images/spawn_host_modal.png)
 
-Fetching artifacts can also be performed manually; see [fetch](../06-Using-the-Command-Line-Tool.md#fetch) in the Evergreen command line tool documentation.
+Fetching artifacts can also be performed manually; see [fetch](../07-Using-the-Command-Line-Tool.md#fetch) in the Evergreen command line tool documentation.
 
 Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching. 
 
@@ -30,4 +30,4 @@ Artifacts are placed in /data/mci. Note that you will likely be able to ssh into
 If your project has a project setup script defined at the admin level, you can also check "Use project-specific setup script defined at ..." before creating the spawn host. You can check if there are errors fetching artifacts or running this script on the host page: ``https://spruce.mongodb.com/host/<host_id>``.
 
 
-EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../06-Using-the-Command-Line-Tool.md#basic-host-usage) in the Evergreen command line tool documentation.
+EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../07-Using-the-Command-Line-Tool.md#basic-host-usage) in the Evergreen command line tool documentation.
