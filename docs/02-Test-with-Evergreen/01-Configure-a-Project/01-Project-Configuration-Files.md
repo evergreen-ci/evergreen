@@ -129,7 +129,31 @@ Notice that the function reference can define a set of `vars` which are
 treated as expansions within the configuration of the commands in the
 function.
 
-A function cannot be called within another function.
+A function cannot be called within another function. However, it is still
+possible to reuse commands using YAML aliases and anchors. For example:
+
+```yaml
+variables:
+  - &download_something
+    command: shell.exec
+    params:
+      script: |
+          curl -LO https://example.com/something
+  - &download_something_else
+    command: shell.exec
+    params:
+      script: |
+        curl -LO https://example.com/something-else
+
+tasks:
+  - name: my-first-task
+    commands:
+      - *download_something
+  - name: my-second-task
+    commands:
+      - *download_something
+      - *download_something_else
+```
 
 ### Tests
 
