@@ -38,7 +38,8 @@ const (
 	cpuTimeInstrument = "system.cpu.time"
 	cpuUtilInstrument = "system.cpu.utilization"
 
-	memoryUsageInstrument = "system.memory.usage"
+	memoryUsageInstrument       = "system.memory.usage"
+	memoryUtilizationInstrument = "system.memory.utilization"
 
 	diskIOInstrument         = "system.disk.io"
 	diskOperationsInstrument = "system.disk.operations"
@@ -181,6 +182,9 @@ func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 	memoryUsage, err := meter.Int64ObservableUpDownCounter(memoryUsageInstrument, instrument.WithUnit("By"))
 	catcher.Add(err)
 
+	memoryUtil, err := meter.Float64ObservableGauge(memoryUtilizationInstrument, instrument.WithUnit("1"))
+	catcher.Add(err)
+
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		memStats, err := mem.VirtualMemoryWithContext(ctx)
 		if err != nil {
@@ -189,8 +193,10 @@ func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 		observer.ObserveInt64(memoryUsage, int64(memStats.Available), append(tc.TaskAttributes(), attribute.String("state", "available"))...)
 		observer.ObserveInt64(memoryUsage, int64(memStats.Used), append(tc.TaskAttributes(), attribute.String("state", "used"))...)
 
+		observer.ObserveFloat64(memoryUtil, float64(memStats.UsedPercent), tc.TaskAttributes()...)
+
 		return nil
-	}, memoryUsage)
+	}, memoryUsage, memoryUtil)
 	catcher.Add(err)
 
 	return catcher.Resolve()
