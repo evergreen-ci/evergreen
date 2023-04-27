@@ -56,10 +56,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 
 	r, err := hostResource(ctx)
 	if err != nil {
-		return errors.Wrap(err, "making resource")
-	}
-	if err != nil {
-		return errors.Wrap(err, "making otel resource")
+		return errors.Wrap(err, "making host resource")
 	}
 
 	grpcConn, err := grpc.DialContext(ctx,
@@ -119,7 +116,7 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 		sdk.WithReader(sdk.NewPeriodicReader(a.metricsExporter, sdk.WithInterval(exportInterval), sdk.WithTimeout(exportTimeout))),
 	)
 
-	return meterProvider.Shutdown, instrumentMeter(meterProvider.Meter(packageName), tc)
+	return meterProvider.Shutdown, errors.Wrap(instrumentMeter(meterProvider.Meter(packageName), tc), "instrumenting meter")
 }
 
 func instrumentMeter(meter metric.Meter, tc *internal.TaskConfig) error {
@@ -134,13 +131,15 @@ func instrumentMeter(meter metric.Meter, tc *internal.TaskConfig) error {
 }
 
 func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	catcher := grip.NewBasicCatcher()
-
 	cpuTime, err := meter.Float64ObservableCounter(cpuTimeInstrument, instrument.WithUnit("s"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making cpu time counter")
+	}
 
 	cpuUtil, err := meter.Float64ObservableGauge(cpuUtilInstrument, instrument.WithUnit("1"), instrument.WithDescription("Busy CPU time since the last measurement, divided by the elapsed time"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making cpu util gauge")
+	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		times, err := cpu.TimesWithContext(ctx, false)
@@ -158,7 +157,9 @@ func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 
 		return nil
 	}, cpuTime)
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "registering cpu time callback")
+	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		util, err := cpu.PercentWithContext(ctx, 0, false)
@@ -172,18 +173,19 @@ func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 
 		return nil
 	}, cpuUtil)
-	catcher.Add(err)
-
-	return catcher.Resolve()
+	return errors.Wrap(err, "registering cpu time callback")
 }
 
 func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	catcher := grip.NewBasicCatcher()
 	memoryUsage, err := meter.Int64ObservableUpDownCounter(memoryUsageInstrument, instrument.WithUnit("By"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making memory usage counter")
+	}
 
 	memoryUtil, err := meter.Float64ObservableGauge(memoryUtilizationInstrument, instrument.WithUnit("1"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making memory util gauge")
+	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		memStats, err := mem.VirtualMemoryWithContext(ctx)
@@ -197,22 +199,24 @@ func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 
 		return nil
 	}, memoryUsage, memoryUtil)
-	catcher.Add(err)
-
-	return catcher.Resolve()
+	return errors.Wrap(err, "registering memory callback")
 }
 
 func addDiskMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	catcher := grip.NewBasicCatcher()
-
 	diskIO, err := meter.Int64ObservableCounter(diskIOInstrument, instrument.WithUnit("By"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making disk io counter")
+	}
 
 	diskOperations, err := meter.Int64ObservableCounter(diskOperationsInstrument, instrument.WithUnit("{operation}"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making disk operations counter")
+	}
 
 	diskIOTime, err := meter.Float64ObservableCounter(diskIOTimeInstrument, instrument.WithUnit("s"), instrument.WithDescription("Time disk spent activated"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making disk io time counter")
+	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		ioCountersMap, err := disk.IOCountersWithContext(ctx)
@@ -231,16 +235,14 @@ func addDiskMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 
 		return nil
 	}, diskIO, diskOperations, diskIOTime)
-	catcher.Add(err)
-
-	return catcher.Resolve()
+	return errors.Wrap(err, "registering disk callback")
 }
 
 func addNetworkMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	catcher := grip.NewBasicCatcher()
-
 	networkIO, err := meter.Int64ObservableCounter(networkIOInstrument, instrument.WithUnit("by"))
-	catcher.Add(err)
+	if err != nil {
+		return errors.Wrap(err, "making network io counter")
+	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		counters, err := net.IOCountersWithContext(ctx, false)
@@ -258,9 +260,7 @@ func addNetworkMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 
 		return nil
 	}, networkIO)
-	catcher.Add(err)
-
-	return catcher.Resolve()
+	return errors.Wrap(err, "registering network io callback")
 }
 
 func hostResource(ctx context.Context) (*resource.Resource, error) {

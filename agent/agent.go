@@ -177,7 +177,7 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 		}})
 
 	if err := a.initOtel(ctx); err != nil {
-		return nil, errors.Wrap(err, "initializing tracer provider")
+		return nil, errors.Wrap(err, "initializing otel")
 	}
 
 	return a, nil
