@@ -407,7 +407,7 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 	}
 
 	if !thirdparty.IsUnblockedGithubStatus(mergeableState) {
-		errMsg := fmt.Sprintf("PR is not mergeable, status: %s", mergeableState)
+		errMsg := fmt.Sprintf("PR is '%s'; branch protection settings are likely not met", mergeableState)
 		grip.Debug(message.Fields{
 			"message":  errMsg,
 			"state":    pr.GetMergeableState(),

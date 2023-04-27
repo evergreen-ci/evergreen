@@ -272,6 +272,10 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 
 		if mergedSection.Enabled {
+			if mergedSection.Branch == "" {
+				return nil, errors.New("branch not set on enabled repo")
+			}
+
 			config, err := evergreen.GetConfig()
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")

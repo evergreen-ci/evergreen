@@ -19,21 +19,31 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	commandsAttribute = "evergreen.command"
+)
+
+var (
+	commandNameAttribute  = fmt.Sprintf("%s.command_name", commandsAttribute)
+	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
+)
+
 type runCommandsOptions struct {
 	isTaskCommands bool
 	failPreAndPost bool
 }
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
-	options runCommandsOptions) (err error) {
+	options runCommandsOptions, block string) (err error) {
 	var cmds []command.Command
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
 
+	//here
 	for i, commandInfo := range commands {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")
 		}
-		cmds, err = command.Render(commandInfo, tc.taskConfig.Project)
+		cmds, err = command.Render(commandInfo, tc.taskConfig.Project, block)
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
@@ -66,7 +76,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 	if commandInfo.Function != "" {
 		var commandSetSpan trace.Span
 		ctx, commandSetSpan = tracer.Start(ctx, fmt.Sprintf("function: '%s'", commandInfo.Function), trace.WithAttributes(
-			attribute.String("evergreen.function", commandInfo.Function),
+			attribute.String(functionNameAttribute, commandInfo.Function),
 		))
 		defer commandSetSpan.End()
 	}
@@ -90,10 +100,12 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			tc.logger.Task().Infof("Running command %s (step %d.%d of %d).", fullCommandName, index, idx+1, total)
 		}
 
-		ctx, commandSpan := tracer.Start(ctx, cmd.Name())
+		ctx, commandSpan := tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
+			attribute.String(commandNameAttribute, cmd.Name()),
+		))
 		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, fullCommandName, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
-			commandSpan.RecordError(err)
+			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
 			return errors.Wrap(err, "running command")
 		}
@@ -181,7 +193,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
 	opts := runCommandsOptions{isTaskCommands: true}
-	err := a.runCommands(ctx, tc, task.Commands, opts)
+	err := a.runCommands(ctx, tc, task.Commands, opts, "")
 	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
 	if err != nil {
 		return err

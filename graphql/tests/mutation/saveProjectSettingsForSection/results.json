@@ -61,6 +61,22 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "project_banner.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "banner": {
+                "text": "banner text!!",
+                "theme": "WARNING"
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

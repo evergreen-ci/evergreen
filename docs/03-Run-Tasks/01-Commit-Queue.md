@@ -11,15 +11,15 @@ Gating every merge on a green build means every commit on the tracked branch had
 The following is what logically happens, though Evergreen will parallelize tests for speed.
 1. Changes are ready to be introduced to the repo.
 
-![repo_tree.png](../../images/repo_tree.png)
+![repo_tree.png](../images/repo_tree.png)
 
 2. The changes are added to the end of the commit queue.
 
-![queue.png](../../images/queue.png)
+![queue.png](../images/queue.png)
 
 3. When the changes come to the front of the queue, a set of tests are run on the changes.
  
-![merge_test.png](../../images/merge_test.png)
+![merge_test.png](../images/merge_test.png)
 
 4. If the tests pass, the merge commit is pushed to GitHub.
 
@@ -30,21 +30,21 @@ For projects that use GitHub pull requests for code review, the commit queue int
 #### Trigger
 Add a PR to the commit queue by adding a comment on the PR: `evergreen merge` 
 
-![comment.png](../../images/comment.png)
+![comment.png](../images/comment.png)
 
 If successful, the PR will be merged with the PR title as the commit title. Any text after a newline in the "evergreen merge" comment will be added as the commit message.
 
 #### Feedback
 Evergreen sends a status to the PR when the changes are enqueued, when the merge test has begun, and when the merge test is complete. Once the merge test has begun, the status links to the version. Note that because the commit queue merge is itself a Github check, you should omit the "evergreen/commitqueue" check from branch protection settings, if you require that checks pass before a PR can merge.
 
-![github_status.png](../../images/github_status.png)
-![github_status_fail.png](../../images/github_status_fail.png)
+![github_status.png](../images/github_status.png)
+![github_status_fail.png](../images/github_status_fail.png)
 
 #### Set-Module
 NOTE: this feature isn't currently working as expected. Fix is being tracked in [EVG-18256](https://jira.mongodb.org/browse/EVG-18256).
 Add other PRs for repos defined as modules in the project's configuration file with the `--module MODULE:PR` option to the `evergreen merge` comment, where MODULE is the name of a module defined in the evergreen.yml project configuration file and PR is the PR number in the module's repo. When the test passes all the PRs will be merged. The option can be repeated for multiple modules. For instance: 
 
-![set-module_comment.png](../../images/set-module_comment.png)
+![set-module_comment.png](../images/set-module_comment.png)
 
 The module can only be set when initially adding the main PR to the commit queue since the test is immediately finalized.
 
@@ -75,7 +75,7 @@ This flag forces the patch to the front of the queue. Use this sparingly and onl
 #### Feedback
 The merge is performed by a "Commit Queue Merge" task added to the patch when the changes reach the head of the queue.
 
-![merge_task.png](../../images/merge_task.png)
+![merge_task.png](../images/merge_task.png)
 
 #### Set-Module
 `evergreen commit-queue set-module --patch <id> --module <module>` 
@@ -108,16 +108,16 @@ Module name as defined in the project configuration file.
 
 You can enqueue a **successful** patch to the commit queue using the Add to Commit Queue button (assuming that you own the patch or are a project administrator).
 
-![add_to_queue.png](../../images/add_to_queue.png)
+![add_to_queue.png](../images/add_to_queue.png)
 
 All commits in the patch will be squashed, unless the patch was created using `--preserve-commits`. In this case, the commits will be tested together but merged separately. The title of the testing patch will be "Commit Queue Merge: <commit 1> <- <commit 2>" and if merged successfully, each commit will be merged with the commit title (<commit 1> in the testing patch).
 
-![enqueue_patch.png](../../images/enqueue_patch.png)
+![enqueue_patch.png](../images/enqueue_patch.png)
 
 ## Notifications
 Adjust your notifications on commit queue milestones on the [Notifications page](https://evergreen.mongodb.com/notifications).
 
-![notifications.png](../../images/notifications.png)
+![notifications.png](../images/notifications.png)
 
 Milestones include:
 * Changes reached the head of the queue and merge test has begun.
@@ -160,7 +160,7 @@ Specify the patch ID to delete or PR number (if applicable) to delete.
 ## Backport
 Trivial backports can be automated with the commit queue. Create a backport patch to test the changes on the target branch, choosing the tasks necessary to validate the changes on the target branch. When the backport patch passes the changes are automatically added to the target branch's commit queue. **The backport patch is not added to the commit queue until tasks chosen have passed.**
 
-![backport.png](../../images/backport.png)
+![backport.png](../images/backport.png)
 
 ### Creating a backport patch
 `evergreen commit-queue backport`

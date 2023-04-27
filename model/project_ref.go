@@ -39,8 +39,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const defaultBranch = "main"
-
 // The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
@@ -124,8 +122,13 @@ type ProjectRef struct {
 	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
+	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
 }
 
+type ProjectBanner struct {
+	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
+	Text  string                `bson:"text" json:"text"`
+}
 type ExternalLink struct {
 	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
 	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
@@ -312,6 +315,7 @@ var (
 	projectRefContainerSecretsKey         = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
 	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
+	projectRefBannerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -492,11 +496,6 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			}
 			return nil
 		}
-	}
-
-	// TODO EVG-17412: Remove the following code that defaults the branch to main.
-	if p.Branch == "" {
-		p.Branch = defaultBranch
 	}
 
 	err := db.Insert(ProjectRefCollection, p)
@@ -1985,7 +1984,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
-				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure},
+				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure,
+					projectRefBannerKey: p.Banner},
 			})
 	case ProjectPageWorkstationsSection:
 		err = db.Update(coll,

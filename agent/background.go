@@ -134,7 +134,7 @@ func (a *Agent) startEarlyTerminationWatcher(ctx context.Context, tc *taskContex
 		case <-ticker.C:
 			if check() {
 				if tc != nil && tc.project != nil && tc.project.EarlyTermination != nil {
-					tc.logger.Execution().Error(a.runCommands(ctx, tc, tc.project.EarlyTermination.List(), runCommandsOptions{}))
+					tc.logger.Execution().Error(a.runCommands(ctx, tc, tc.project.EarlyTermination.List(), runCommandsOptions{}, earlyTermBlock))
 				}
 				action()
 				if doneChan != nil {
