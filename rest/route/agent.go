@@ -168,6 +168,15 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 		Mergeable:      pr.Mergeable,
 		MergeCommitSHA: pr.GetMergeCommitSHA(),
 	}
+	if h.req.LastRetry && (!utility.FromBoolPtr(resp.Mergeable) || resp.MergeCommitSHA == "") {
+		grip.Debug(message.Fields{
+			"message": "last attempt to retry getting pull request",
+			"route":   "/pull_request",
+			"ticket":  "EVG-19723",
+			"resp":    resp,
+			"request": h.req,
+		})
+	}
 	return gimlet.NewJSONResponse(resp)
 }
 

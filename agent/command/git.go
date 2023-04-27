@@ -350,9 +350,13 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 		getPRRetryMaxDelay = 15 * time.Second
 	)
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
+	attempt := 0
 	err := utility.Retry(ctx, func() (bool, error) {
-		info, err := comm.GetPullRequestInfo(ctx, td, conf.GithubPatchData.PRNumber, opts.owner, opts.repo)
+		var lastAttempt bool
+		if attempt == getPRAttempts-1 {
+			lastAttempt = true
+		}
+		info, err := comm.GetPullRequestInfo(ctx, td, conf.GithubPatchData.PRNumber, opts.owner, opts.repo, lastAttempt)
 		if err != nil {
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}

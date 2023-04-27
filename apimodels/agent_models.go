@@ -36,9 +36,10 @@ type HeartbeatResponse struct {
 
 // CheckMergeRequest holds information sent by the agent to get a PR and check mergeability.
 type CheckMergeRequest struct {
-	PRNum int    `json:"pr_num"`
-	Owner string `json:"owner"`
-	Repo  string `json:"repo"`
+	PRNum     int    `json:"pr_num"`
+	Owner     string `json:"owner"`
+	Repo      string `json:"repo"`
+	LastRetry bool   `json:"last_retry"` // Temporary field to help us understand if we are testing with the wrong commit.
 }
 
 type PullRequestInfo struct {
