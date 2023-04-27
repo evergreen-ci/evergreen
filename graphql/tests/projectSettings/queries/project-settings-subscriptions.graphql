@@ -34,6 +34,9 @@
                             key
                             value
                         }
+                        retries
+                        minDelayMs
+                        timeoutMs
                     }
                     jiraIssueSubscriber{
                         project

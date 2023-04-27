@@ -263,7 +263,10 @@
                           "key": "key",
                           "value": "val"
                         }
-                      ]
+                      ],
+                      "retries": 2,
+                      "minDelayMs": 500,
+                      "timeoutMs": 15000
                     },
                     "githubPRSubscriber": null,
                     "githubCheckSubscriber": null,
