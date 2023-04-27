@@ -357,19 +357,16 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
 		if info.Mergeable == nil {
-			logger.Execution().Info("Mergeable check is not ready.")
-			return true, nil
+			return true, errors.New("mergeable check is not ready")
 		}
 		if *info.Mergeable {
 			if info.MergeCommitSHA != "" {
 				mergeSHA = info.MergeCommitSHA
-			} else {
-				return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
+				return false, nil
 			}
-		} else {
-			return false, errors.New("pull request is not mergeable, which likely means a merge conflict was just introduced")
+			return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
 		}
-		return false, nil
+		return false, errors.New("pull request is not mergeable, which likely means a merge conflict was just introduced")
 	}, utility.RetryOptions{
 		MaxAttempts: getPRAttempts,
 		MinDelay:    getPRRetryMinDelay,
