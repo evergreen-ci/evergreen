@@ -730,7 +730,8 @@ func (h *projectPutPodSecretHandler) Parse(ctx context.Context, r *http.Request)
 	return nil
 }
 
-// Run creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
+// Run creates a new secret based on the Request-URI if none exists. If shouldRotate is true, the existing secret is
+// rotated. If shouldRotate is not set and a secret already exists, the existing secret is not changed.
 func (h *projectPutPodSecretHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := data.FindProjectById(h.projectName, false, false)
 	if err != nil {
