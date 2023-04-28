@@ -656,15 +656,12 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
       decompress: tar zxvf
     tasks:
-      - name: "dist-and-upload-clis"
-      - name: "dist-staging"
       - name: "dist-unsigned"
         activate: false
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
       - name: ".linter"
-      - name: "docker-cleanup"
       - name: test-db-auth
 
   - name: lint
@@ -719,7 +716,7 @@ buildvariants:
       - name: ".agent .test"
       - name: ".cli .test"
 
-
+# TODO: EVG-19745 Use a security-vetted image once one is available
 containers:
   - name: evg-container
     working_dir: /
