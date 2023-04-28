@@ -207,6 +207,7 @@ buildvariants:
 - name: ubuntu
   display_name: Ubuntu
   batchtime: 60
+  patch_only: true
   run_on:
   - ubuntu1404-test
   expansions:
@@ -250,7 +251,7 @@ Fields:
 -   `name`: an identification string for the variant
 -   `display_name`: how the variant is displayed in the Evergreen UI
 -   `run_on`: a list of acceptable distros to run tasks for that variant
-    on. The first distro in the list is the primary distro. The others
+    a. The first distro in the list is the primary distro. The others
     are secondary distros. Each distro has a primary queue, a queue of
     all tasks that have specified it as their primary distro; and a
     secondary queue, a queue of tasks that have specified it as a
@@ -286,6 +287,7 @@ Fields:
     defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 -   `disable`: determines whether or not a build variant will run or not. Set to false by default
+-   `patch_only`: if set, the tasks under the build variant can only run in patches.
 
 Additionally, an item in the `tasks` list can be of the form
 
