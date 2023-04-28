@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel"
 )
 
 type BackgroundSuite struct {
@@ -38,7 +39,8 @@ func (s *BackgroundSuite) SetupTest() {
 			StatusPort: 2286,
 			LogPrefix:  evergreen.LocalLoggingOverride,
 		},
-		comm: client.NewMock("url"),
+		comm:   client.NewMock("url"),
+		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
 	}
 	s.a.jasper, err = jasper.NewSynchronizedManager(true)
 	s.Require().NoError(err)

@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 )
 
 func TestGetSenderLocal(t *testing.T) {
@@ -43,7 +44,8 @@ func TestCommandFileLogging(t *testing.T) {
 			LogPrefix:        evergreen.LocalLoggingOverride,
 			WorkingDirectory: tmpDirName,
 		},
-		comm: client.NewHostCommunicator("www.example.com", "host", "secret"),
+		comm:   client.NewHostCommunicator("www.example.com", "host", "secret"),
+		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
 	}
 	jpm, err := jasper.NewSynchronizedManager(false)
 	require.NoError(err)
