@@ -28,6 +28,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	sdk "go.opentelemetry.io/otel/sdk/metric"
@@ -183,7 +184,8 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 		}})
 
 	if err := a.initOtel(ctx); err != nil {
-		return nil, errors.Wrap(err, "initializing otel")
+		grip.Error(errors.Wrap(err, "initializing otel"))
+		a.tracer = otel.GetTracerProvider().Tracer("noop_tracer")
 	}
 
 	return a, nil

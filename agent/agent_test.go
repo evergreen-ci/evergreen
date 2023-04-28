@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -47,7 +48,8 @@ func (s *AgentSuite) SetupTest() {
 			StatusPort: 2286,
 			LogPrefix:  evergreen.LocalLoggingOverride,
 		},
-		comm: client.NewMock("url"),
+		comm:   client.NewMock("url"),
+		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 	s.a.jasper, err = jasper.NewSynchronizedManager(true)
