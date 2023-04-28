@@ -251,7 +251,7 @@ Fields:
 -   `name`: an identification string for the variant
 -   `display_name`: how the variant is displayed in the Evergreen UI
 -   `run_on`: a list of acceptable distros to run tasks for that variant
-    a. The first distro in the list is the primary distro. The others
+    on. The first distro in the list is the primary distro. The others
     are secondary distros. Each distro has a primary queue, a queue of
     all tasks that have specified it as their primary distro; and a
     secondary queue, a queue of tasks that have specified it as a
