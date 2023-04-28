@@ -101,7 +101,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 	return nil
 }
 
-func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func(context.Context) error, error) {
+func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func(context.Context), error) {
 	if a.metricsExporter == nil {
 		return nil, nil
 	}
@@ -116,7 +116,9 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 		sdk.WithReader(sdk.NewPeriodicReader(a.metricsExporter, sdk.WithInterval(exportInterval), sdk.WithTimeout(exportTimeout))),
 	)
 
-	return meterProvider.Shutdown, errors.Wrap(instrumentMeter(meterProvider.Meter(packageName), tc), "instrumenting meter")
+	return func(ctx context.Context) {
+		grip.Error(errors.Wrap(meterProvider.Shutdown(ctx), "doing meter provider"))
+	}, errors.Wrap(instrumentMeter(meterProvider.Meter(packageName), tc), "instrumenting meter")
 }
 
 func instrumentMeter(meter metric.Meter, tc *internal.TaskConfig) error {
@@ -195,7 +197,7 @@ func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 		observer.ObserveInt64(memoryUsage, int64(memStats.Available), append(tc.TaskAttributes(), attribute.String("state", "available"))...)
 		observer.ObserveInt64(memoryUsage, int64(memStats.Used), append(tc.TaskAttributes(), attribute.String("state", "used"))...)
 
-		observer.ObserveFloat64(memoryUtil, float64(memStats.UsedPercent), tc.TaskAttributes()...)
+		observer.ObserveFloat64(memoryUtil, memStats.UsedPercent, tc.TaskAttributes()...)
 
 		return nil
 	}, memoryUsage, memoryUtil)
