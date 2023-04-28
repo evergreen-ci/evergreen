@@ -241,10 +241,12 @@ func TestValidateDependencyGraph(t *testing.T) {
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "compile",
+								Name:    "compile",
+								Variant: "bv1",
 							},
 							{
-								Name: "testOne",
+								Name:    "testOne",
+								Variant: "bv1",
 								DependsOn: []model.TaskUnitDependency{
 									{Name: "compile"},
 									{Name: "testSpecial", Variant: "bv2"},
@@ -254,7 +256,7 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "testSpecial", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: "bv1"}}}},
+							{Name: "testSpecial", Variant: "bv2", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: "bv1"}}}},
 					},
 				},
 			}
@@ -270,7 +272,7 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{Name: "compile", Variant: "bv1"},
 							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile"},
 								{Name: "testSpecial", Variant: "bv2"},
@@ -279,14 +281,14 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "testSpecial", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: model.AllVariants}}},
+							{Name: "testSpecial", Variant: "bv2", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: model.AllVariants}}},
 						},
 					},
 					{
 						Name: "bv3",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv3"},
+							{Name: "testOne", Variant: "bv3", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile"},
 								{Name: "testSpecial", Variant: "bv2"},
 							}}},
@@ -294,8 +296,8 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv4",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv4"},
+							{Name: "testOne", Variant: "bv4", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile"},
 								{Name: "testSpecial", Variant: "bv2"},
 							}}},
