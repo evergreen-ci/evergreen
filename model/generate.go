@@ -219,7 +219,7 @@ func cacheProjectData(p *Project) projectMaps {
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
 func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project) error {
-	// inherit priority from the parent task
+	// Inherit priority from the parent generator task.
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
 			p.BuildVariants[i].Tasks[j].Priority = g.Task.Priority
@@ -684,7 +684,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 
 func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-		bv.Disable || len(bv.Tags) > 0 ||
+		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.PatchOnly != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}

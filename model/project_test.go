@@ -640,7 +640,7 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name:    "bv_3",
-				Disable: true,
+				Disable: utility.TruePtr(),
 				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "disabled_task",

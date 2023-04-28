@@ -813,7 +813,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if ctx.Err() != nil {
 			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
 		}
-		if buildvariant.Disable {
+		// kim: TODO: check if this is correct with precedence rules. It may
+		// conflict with build variant task unit disable setting.
+		if utility.FromBoolPtr(buildvariant.Disable) {
 			continue
 		}
 		if len(aliases) > 0 {
