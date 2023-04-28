@@ -2395,16 +2395,24 @@ func resetTaskData() error {
 
 func TestCreateTasksFromGroup(t *testing.T) {
 	assert := assert.New(t)
+	const tgName = "name"
+	const bvName = "first_build_variant"
 	in := BuildVariantTaskUnit{
-		Name:            "name",
+		Name:            tgName,
 		IsGroup:         true,
-		GroupName:       "task_group",
+		Variant:         bvName,
 		Priority:        0,
 		DependsOn:       []TaskUnitDependency{{Name: "new_dependency"}},
 		RunOn:           []string{},
 		ExecTimeoutSecs: 0,
 	}
 	p := &Project{
+		BuildVariants: []BuildVariant{
+			{
+				Name:  "first_build_variant",
+				Tasks: []BuildVariantTaskUnit{in},
+			},
+		},
 		Tasks: []ProjectTask{
 			{
 				Name:      "first_task",
@@ -2420,13 +2428,13 @@ func TestCreateTasksFromGroup(t *testing.T) {
 		},
 		TaskGroups: []TaskGroup{
 			{
-				Name:  "name",
+				Name:  tgName,
 				Tasks: []string{"first_task", "second_task", "third_task"},
 			},
 		},
 	}
 	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
-	assert.Equal(2, len(bvts))
+	require.Equal(t, 2, len(bvts))
 	assert.Equal("new_dependency", bvts[0].DependsOn[0].Name)
 	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
 }

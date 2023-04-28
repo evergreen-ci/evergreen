@@ -1,5 +1,4 @@
 # Set Up a Project Configuration File
-
 Project configurations are how you tell Evergreen what to do. They
 contain a set of tasks and variants to run those tasks on, and are
 stored within the repository they test. Project files are written in a
@@ -208,6 +207,7 @@ buildvariants:
 - name: ubuntu
   display_name: Ubuntu
   batchtime: 60
+  patch_only: true
   run_on:
   - ubuntu1404-test
   expansions:
@@ -287,6 +287,7 @@ Fields:
     defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 -   `disable`: determines whether or not a build variant will run or not. Set to false by default
+-   `patch_only`: if set, the tasks under the build variant can only run in patches.
 
 Additionally, an item in the `tasks` list can be of the form
 
@@ -537,7 +538,9 @@ task).
 
 To cause a task to only run in commit builds, set `patchable: false`.
 
-To cause a task to only run in patches, set `patch_only: true`.
+To cause a task to only run in patches, set `patch_only: true`. `patch_only: true` can also be set at the build variant
+level to apply this behavior to all tasks in the build variant. The build variant level setting can be overridden if
+it's been explicitly set in the task definition or in the task listed under the build variant.
 
 To cause a task to only run in versions NOT triggered from git tags, set
 `allow_for_git_tag: false`.
