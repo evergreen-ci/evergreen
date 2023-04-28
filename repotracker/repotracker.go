@@ -811,13 +811,14 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	// build all pairsToCreate before creating builds, to handle dependencies (if applicable)
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		if ctx.Err() != nil {
-			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
+			return errors.Wrapf(ctx.Err(), "aborting version creation for version '%s'", v.Id)
 		}
-		// kim: TODO: check if this is correct with precedence rules. It may
-		// conflict with build variant task unit disable setting.
-		if utility.FromBoolPtr(buildvariant.Disable) {
-			continue
-		}
+		// kim: TODO: CreateBuildFromVersionNoInsert below already checks
+		// IsDisabled.
+		// kim: NOTE: removed because this violates precedence rules.
+		// if utility.FromBoolPtr(buildvariant.Disable) {
+		//     continue
+		// }
 		if len(aliases) > 0 {
 			var aliasesMatchingVariant model.ProjectAliases
 			aliasesMatchingVariant, err = aliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)

@@ -729,6 +729,9 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	for _, task := range creationInfo.BuildVariant.Tasks {
 		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
+			// kim: NOTE: seems like this, which is always used to create task
+			// documents, will always skip disabled tasks until explicitly
+			// enabled.
 			if task.IsDisabled() || task.SkipOnRequester(creationInfo.Build.Requester) {
 				continue
 			}

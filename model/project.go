@@ -215,6 +215,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	if bvt.PatchOnly == nil {
 		bvt.PatchOnly = bv.PatchOnly
 	}
+	if bvt.Disable == nil {
+		bvt.Disable = bv.Disable
+	}
 }
 
 // BuildVariantsByName represents a slice of project config build variants that
@@ -286,6 +289,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
+// IsDisabled returns whether or not this build variant task is disabled.
 // kim: TODO: check usages of this to see if there are conflicts or missing
 // cases compared to where the build variant disable field is referenced.
 func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
@@ -321,8 +325,16 @@ type BuildVariant struct {
 	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 
-	// If Activate is set to false, then we don't initially activate the build variant.
-	Activate  *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// If Activate is set to false, then we don't initially activate the build
+	// variant. By default, the build variant is activated.
+	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// Disable will disable tasks in the build variant, preventing them from
+	// running. By default, the build variant is not disabled.
+	// kim: NOTE: this is currently unused, so it should be safe to change the
+	// existing usages of it.
+	Disable *bool `yaml:"disable,omitempty" bson:"disable"`
+	// PatchOnly will only allow tasks in the build variant to run in patches.
+	// By default, the build variant runs for non-patches.
 	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
@@ -330,10 +342,6 @@ type BuildVariant struct {
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
 	Stepback *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-
-	// kim: NOTE: this is currently unused, so it should be safe to change the
-	// existing usages of it.
-	Disable *bool `yaml:"disable,omitempty" bson:"disable"`
 
 	// the default distros.  will be used to run a task if no distro field is
 	// provided for the task
@@ -1642,6 +1650,10 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 
 // BuildProjectTVPairs resolves the build variants and tasks into which build
 // variants will run and which tasks will run on each build variant.
+// kim: TODO: add test for whether it includes disabled tasks. If Annie's
+// interpretation is correct (i.e. users are allowed to schedule tasks with
+// disable: true), then this should still return those tasks. Otherwise, it will
+// likely skip those tasks.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
 }
@@ -1672,12 +1684,11 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
-			// kim: QUESTION: does this conflict with precedence rules, which
-			// allow disable to be defined at build variant task unit level? It
-			// seems like it would, so probably has to be fixed.
-			if utility.FromBoolPtr(bv.Disable) {
-				continue
-			}
+			// kim: NOTE: removing because it's already implicitly included in
+			// precedence rules for build variant task unit.
+			// if utility.FromBoolPtr(bv.Disable) {
+			//     continue
+			// }
 			bvs = append(bvs, bv.Name)
 		}
 	} else {
