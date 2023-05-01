@@ -794,8 +794,6 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 }
 
-// kim: TODO: fix this test. May have to check IsDisabled to get it to work
-// properly.
 func (s *projectSuite) TestBuildProjectTVPairs() {
 	// test all expansions
 	patchDoc := patch.Patch{
@@ -828,8 +826,6 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	s.Len(patchDoc.Tasks, 6)
 }
 
-// kim: TODO: fix this test. May have to check IsDisabled to get it to work
-// properly.
 func (s *projectSuite) TestResolvePatchVTs() {
 	// Specifying all.
 	patchDoc := patch.Patch{

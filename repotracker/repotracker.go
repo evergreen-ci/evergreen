@@ -813,12 +813,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if ctx.Err() != nil {
 			return errors.Wrapf(ctx.Err(), "aborting version creation for version '%s'", v.Id)
 		}
-		// kim: TODO: CreateBuildFromVersionNoInsert below already checks
-		// IsDisabled.
-		// kim: NOTE: removed because this violates precedence rules.
-		// if utility.FromBoolPtr(buildvariant.Disable) {
-		//     continue
-		// }
 		if len(aliases) > 0 {
 			var aliasesMatchingVariant model.ProjectAliases
 			aliasesMatchingVariant, err = aliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)

@@ -683,6 +683,8 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 }
 
 func isNonZeroBV(bv parserBV) bool {
+	// Note: this omits activate from consideration, but it's unclear if it's
+	// intentional or not.
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
 		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.PatchOnly != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {

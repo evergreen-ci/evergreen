@@ -327,9 +327,8 @@ type BuildVariant struct {
 	// variant. By default, the build variant is activated.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	// Disable will disable tasks in the build variant, preventing them from
-	// running. By default, the build variant is not disabled.
-	// kim: NOTE: this is currently unused, so it should be safe to change the
-	// existing usages of it.
+	// running and omitting them if they're dependencies. By default, the build
+	// variant is not disabled.
 	Disable *bool `yaml:"disable,omitempty" bson:"disable"`
 	// PatchOnly will only allow tasks in the build variant to run in patches.
 	// By default, the build variant runs for non-patches.
@@ -1648,30 +1647,14 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 
 // BuildProjectTVPairs resolves the build variants and tasks into which build
 // variants will run and which tasks will run on each build variant.
-// kim: TODO: add test for whether it includes disabled tasks. If Annie's
-// interpretation is correct (i.e. users are allowed to schedule tasks with
-// disable: true), then this should still return those tasks. Otherwise, it will
-// likely skip those tasks.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	// kim: TODO: figure out how patchDoc.BuildVariants/patchDoc.Tasks omits
-	// bvtu tasks with patchable: false. I don't see it anywhere in
-	// ResolvePatchVTs.
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
-	grip.Info(message.Fields{
-		"message":              "kim: set patch VTs",
-		"func":                 "BuildProjectTVPairs",
-		"requester":            patchDoc.GetRequester(),
-		"patch_build_variants": patchDoc.BuildVariants,
-		"patch_tasks":          patchDoc.Tasks,
-		"patch_variants_tasks": patchDoc.VariantsTasks,
-	})
 }
 
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of
 // all build variants that will run, a list of all tasks that will run, and a
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
-// kim: TODO: verify requester is always passed in
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
@@ -1694,12 +1677,6 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
-			// kim: NOTE: removing because it's already implicitly included in
-			// precedence rules for build variant task unit. Verify that it gets
-			// disabled later on in the task lifecycle, not here.
-			// if utility.FromBoolPtr(bv.Disable) {
-			//     continue
-			// }
 			bvs = append(bvs, bv.Name)
 		}
 	} else {
@@ -1723,22 +1700,6 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
 		for _, t := range p.Tasks {
-			// kim: TODO: we should probably try to remove this and replace with
-			// SkipOnRequester, as long as the requester passed in is correct.
-			// kim: TODO: verify that the old logic did not respect patchable
-			// precedence for bvtus
-			// kim: TODO: test
-			// if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
-			//     grip.Info(message.Fields{
-			//         "message":      "kim: project task is skipped",
-			//         "func":         "ResolvePatchVTs",
-			//         "patchable":    utility.FromBoolTPtr(t.Patchable),
-			//         "git_tag_only": utility.FromBoolPtr(t.GitTagOnly),
-			//         "task_name":    t.Name,
-			//         "requester":    requester,
-			//     })
-			//     continue
-			// }
 			tasks = append(tasks, t.Name)
 		}
 	} else {
@@ -1763,7 +1724,6 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	for _, v := range bvs {
 		for _, t := range tasks {
 			if bvt := p.FindTaskForVariant(t, v); bvt != nil {
-				// kim: TODO: test that requester precedence is obeyed.
 				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) {
 					continue
 				}
