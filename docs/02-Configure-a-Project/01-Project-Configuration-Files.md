@@ -1,5 +1,4 @@
 # Set Up a Project Configuration File
-
 Project configurations are how you tell Evergreen what to do. They
 contain a set of tasks and variants to run those tasks on, and are
 stored within the repository they test. Project files are written in a
@@ -129,6 +128,32 @@ Notice that the function reference can define a set of `vars` which are
 treated as expansions within the configuration of the commands in the
 function.
 
+A function cannot be called within another function. However, it is still
+possible to reuse commands using YAML aliases and anchors. For example:
+
+```yaml
+variables:
+  - &download_something
+    command: shell.exec
+    params:
+      script: |
+          curl -LO https://example.com/something
+  - &download_something_else
+    command: shell.exec
+    params:
+      script: |
+        curl -LO https://example.com/something-else
+
+tasks:
+  - name: my-first-task
+    commands:
+      - *download_something
+  - name: my-second-task
+    commands:
+      - *download_something
+      - *download_something_else
+```
+
 ### Tests
 
 As you've read above, a task is a single unit of work in Evergreen. A
@@ -182,6 +207,7 @@ buildvariants:
 - name: ubuntu
   display_name: Ubuntu
   batchtime: 60
+  patch_only: true
   run_on:
   - ubuntu1404-test
   expansions:
@@ -261,6 +287,7 @@ Fields:
     defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 -   `disable`: determines whether or not a build variant will run or not. Set to false by default
+-   `patch_only`: if set, the tasks under the build variant can only run in patches.
 
 Additionally, an item in the `tasks` list can be of the form
 
@@ -278,7 +305,7 @@ from larger, more powerful machines.
 ### Version Controlled Project Settings
 Project configurations can version control some select project settings (e.g. aliases, plugins) directly within the yaml
 rather than on the project page UI, for better accessibility and maintainability. Read more
-[here](03-Project-and-Distro-Settings#version-control).
+[here](03-Project-and-Distro-Settings.md#version-control).
 
 ## Advanced Features
 
@@ -293,8 +320,7 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
-Note: included files do not support [version-controlled project settings
-configuration](03-Project-And-Distro_Settings.md#version-control)
+Note: included files do not support [version-controlled project settings configuration](03-Project-and-Distro-Settings.md#version-control)
 
 ``` yaml
 include: 
@@ -361,9 +387,9 @@ are being used.
 
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version. You can change
-the git revision for modules by setting a module manually with
-[evergreen set-module](../06-Using-the-Command-Line-Tool#operating-on-existing-patches)
-or by specifying the `auto_update` option (as described below) to use the
+the git revision for modules by setting a module manually with 
+[evergreen set-module](../07-Using-the-Command-Line-Tool.md#operating-on-existing-patches) or
+by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
 ``` yaml
@@ -444,7 +470,7 @@ or task to the maximum allowed length of execution time. This timeout
 defaults to 6 hours. `exec_timeout_secs` can only be set on the project
 or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](02-Project-Commands#timeoutupdate). 
+You can also set exec_timeout_secs using [timeout.update](02-Project-Commands.md#timeoutupdate). 
 
 You may also force a specific command to trigger a failure if it does
 not appear to generate any output on `stdout`/`stderr` for more than a
@@ -512,7 +538,9 @@ task).
 
 To cause a task to only run in commit builds, set `patchable: false`.
 
-To cause a task to only run in patches, set `patch_only: true`.
+To cause a task to only run in patches, set `patch_only: true`. `patch_only: true` can also be set at the build variant
+level to apply this behavior to all tasks in the build variant. The build variant level setting can be overridden if
+it's been explicitly set in the task definition or in the task listed under the build variant.
 
 To cause a task to only run in versions NOT triggered from git tags, set
 `allow_for_git_tag: false`.
@@ -827,7 +855,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](../01-Configure-a-Project/02-Project-Commands.md#generate-tasks)
+[generate.tasks](02-Project-Commands.md#generate-tasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically

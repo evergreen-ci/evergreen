@@ -93,11 +93,16 @@ type BuildVariantTaskUnit struct {
 	// the project level, or an error will be thrown
 	Name string `yaml:"name,omitempty" bson:"name"`
 	// IsGroup indicates that it is a task group or a task within a task group.
+	// This is always populated after translating the parser project to the
+	// project.
 	IsGroup bool `yaml:"-" bson:"-"`
 	// GroupName is the task group name if this is a task in a task group. If
 	// it is the task group itself, it is not populated (Name is the task group
 	// name).
 	GroupName string `yaml:"-" bson:"-"`
+	// Variant is the build variant that the task unit is part of. This is
+	// always populated after translating the parser project to the project.
+	Variant string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
 	Patchable      *bool                `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
@@ -113,8 +118,6 @@ type BuildVariantTaskUnit struct {
 	// currently unsupported (TODO EVG-578)
 	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-
-	Variant string `yaml:"-" bson:"-"`
 
 	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
 
@@ -166,8 +169,14 @@ func (b BuildVariants) Get(name string) (BuildVariant, error) {
 }
 
 // Populate updates the base fields of the BuildVariantTaskUnit with
-// fields from the project task definition.
-func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
+// fields from the project task definition and build variant definition. When
+// there are conflicting settings defined at different levels, the priority of
+// settings are (from highest to lowest):
+// * Task settings within a build variant's list of tasks
+// * Task settings within a task group's list of tasks
+// * Project task's settings
+// * Build variant's settings
+func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	// We never update "Name" or "Commands"
 	if len(bvt.DependsOn) == 0 {
 		bvt.DependsOn = pt.DependsOn
@@ -199,6 +208,12 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
+	}
+
+	// Build variant level settings are lower priority than project task level
+	// settings.
+	if bvt.PatchOnly == nil {
+		bvt.PatchOnly = bv.PatchOnly
 	}
 }
 
@@ -306,7 +321,8 @@ type BuildVariant struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 
 	// If Activate is set to false, then we don't initially activate the build variant.
-	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	Activate  *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
@@ -1330,6 +1346,12 @@ func (bvt *BuildVariantTaskUnit) HasSpecificActivation() bool {
 	return bvt.CronBatchTime != "" || bvt.BatchTime != nil || bvt.Activate != nil || bvt.IsDisabled()
 }
 
+// FindTaskForVariant returns the build variant task unit for a matching task or
+// task within a task group. If searching for a task within the task group, the
+// build variant task unit returned will have its fields populated, respecting
+// precedence of settings (such as PatchOnly). Note that for tasks within a task
+// group, the returned result will have the name of the task group it's part of,
+// rather than the name of the task.
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit {
 	bv := p.FindBuildVariant(variant)
 	if bv == nil {
@@ -1348,7 +1370,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 
 	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
-			bvt.Variant = variant
 			if projectTask := p.FindProjectTask(task); projectTask != nil {
 				return &bvt
 			} else if _, exists := tgMap[task]; exists {
@@ -1358,9 +1379,10 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 		if tg, ok := tgMap[bvt.Name]; ok {
 			for _, t := range tg.Tasks {
 				if t == task {
-					bvt.Variant = variant
 					// task group tasks need to be repopulated from the task list
-					bvt.Populate(*p.FindProjectTask(task))
+					// Note that the build variant task unit retains the task
+					// group's name.
+					bvt.Populate(*p.FindProjectTask(task), *bv)
 					return &bvt
 				}
 			}
@@ -1503,11 +1525,10 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
-			t.Variant = b.Name
 			if t.IsGroup {
 				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
 			} else {
-				t.Populate(tasksByName[t.Name])
+				t.Populate(tasksByName[t.Name], b)
 				allBVTs = append(allBVTs, t)
 			}
 		}
@@ -1525,6 +1546,20 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	if tg == nil {
 		return nil
 	}
+	bv := p.FindBuildVariant(bvTaskGroup.Variant)
+	if bv == nil {
+		// TODO (EVG-18405): remove this and return early after confirming that
+		// this does not log. Continuing on error with an empty build variant is
+		// inconsequential for now, since it is only necessary for checking
+		// build variant level patch_only.
+		grip.Error(message.Fields{
+			"message":       "found a task group that has no associated build variant (this is not supposed to happen), using an empty build variant configuration as a temporary workaround",
+			"task_group":    bvTaskGroup.Name,
+			"build_variant": bvTaskGroup.Variant,
+			"ticket":        "EVG-18405",
+		})
+		bv = &BuildVariant{}
+	}
 
 	tasks := []BuildVariantTaskUnit{}
 	taskMap := map[string]ProjectTask{}
@@ -1539,8 +1574,8 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			// task is a member of a task group.
 			IsGroup:          true,
 			TaskGroup:        bvTaskGroup.TaskGroup,
-			Variant:          bvTaskGroup.Variant,
 			GroupName:        bvTaskGroup.Name,
+			Variant:          bvTaskGroup.Variant,
 			Patchable:        bvTaskGroup.Patchable,
 			PatchOnly:        bvTaskGroup.PatchOnly,
 			Disable:          bvTaskGroup.Disable,
@@ -1555,7 +1590,7 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			CommitQueueMerge: bvTaskGroup.CommitQueueMerge,
 		}
 		// Default to project task settings when unspecified
-		bvt.Populate(taskMap[t])
+		bvt.Populate(taskMap[t], *bv)
 		tasks = append(tasks, bvt)
 	}
 	return tasks

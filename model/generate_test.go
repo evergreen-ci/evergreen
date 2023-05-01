@@ -1332,9 +1332,9 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
-					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
-					{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
-					{Name: "generator"},
+					{Name: "generated", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
+					{Name: "dependedOn", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "generator", Variant: "bv0"},
 				}},
 			},
 			Tasks: []ProjectTask{
@@ -1362,8 +1362,8 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
-					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
-					{Name: "generator"},
+					{Name: "generated", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "generator", Variant: "bv0"},
 				}},
 			},
 			Tasks: []ProjectTask{
@@ -1393,9 +1393,9 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				{
 					Name: "bv0",
 					Tasks: []BuildVariantTaskUnit{
-						{Name: "generated"},
-						{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
-						{Name: "generator"},
+						{Name: "generated", Variant: "bv0"},
+						{Name: "dependedOn", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+						{Name: "generator", Variant: "bv0"},
 					},
 				},
 			},
@@ -1426,8 +1426,8 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				{
 					Name: "bv0",
 					Tasks: []BuildVariantTaskUnit{
-						{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
-						{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+						{Name: "generated", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
+						{Name: "dependedOn", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
 						{Name: "generator"},
 					},
 				},

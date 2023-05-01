@@ -241,10 +241,12 @@ func TestValidateDependencyGraph(t *testing.T) {
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "compile",
+								Name:    "compile",
+								Variant: "bv1",
 							},
 							{
-								Name: "testOne",
+								Name:    "testOne",
+								Variant: "bv1",
 								DependsOn: []model.TaskUnitDependency{
 									{Name: "compile"},
 									{Name: "testSpecial", Variant: "bv2"},
@@ -254,7 +256,7 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "testSpecial", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: "bv1"}}}},
+							{Name: "testSpecial", Variant: "bv2", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: "bv1"}}}},
 					},
 				},
 			}
@@ -270,7 +272,7 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{Name: "compile", Variant: "bv1"},
 							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile"},
 								{Name: "testSpecial", Variant: "bv2"},
@@ -279,14 +281,14 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "testSpecial", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: model.AllVariants}}},
+							{Name: "testSpecial", Variant: "bv2", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: model.AllVariants}}},
 						},
 					},
 					{
 						Name: "bv3",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv3"},
+							{Name: "testOne", Variant: "bv3", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile"},
 								{Name: "testSpecial", Variant: "bv2"},
 							}}},
@@ -294,8 +296,8 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv4",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv4"},
+							{Name: "testOne", Variant: "bv4", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile"},
 								{Name: "testSpecial", Variant: "bv2"},
 							}}},
@@ -3630,12 +3632,16 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B"},
 							},
 						},
-						{Name: "B"},
+						{
+							Name:    "B",
+							Variant: "ubuntu",
+						},
 					},
 				},
 			},
@@ -3648,8 +3654,15 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "A", DependsOn: []model.TaskUnitDependency{{Name: "B"}}},
-						{Name: "B"},
+						{
+							Name:      "A",
+							Variant:   "ubuntu",
+							DependsOn: []model.TaskUnitDependency{{Name: "B"}},
+						},
+						{
+							Name:    "B",
+							Variant: "ubuntu",
+						},
 					},
 				},
 			},
@@ -3662,14 +3675,34 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "A", DependsOn: []model.TaskUnitDependency{{Name: "B"}}},
-						{Name: "B", DependsOn: []model.TaskUnitDependency{{Name: "C", Variant: "rhel"}}},
+						{
+							Name:    "A",
+							Variant: "ubuntu",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name: "B",
+								},
+							},
+						},
+						{
+							Name:    "B",
+							Variant: "ubuntu",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name:    "C",
+									Variant: "rhel",
+								},
+							},
+						},
 					},
 				},
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{
+							Name:    "C",
+							Variant: "rhel",
+						},
 					},
 				},
 			},
@@ -3682,7 +3715,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "A"},
+						{
+							Name:    "A",
+							Variant: "ubuntu",
+						},
 					},
 				},
 			},
@@ -3695,8 +3731,21 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "A", DependsOn: []model.TaskUnitDependency{{Name: "B", Variant: "ubuntu"}}},
-						{Name: "B", Patchable: utility.FalsePtr()},
+						{
+							Name:    "A",
+							Variant: "ubuntu",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name:    "B",
+									Variant: "ubuntu",
+								},
+							},
+						},
+						{
+							Name:      "B",
+							Variant:   "ubuntu",
+							Patchable: utility.FalsePtr(),
+						},
 					},
 				},
 			},
@@ -3709,7 +3758,15 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "A", DependsOn: []model.TaskUnitDependency{{Name: "B"}}},
+						{
+							Name:    "A",
+							Variant: "ubuntu",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name: "B",
+								},
+							},
+						},
 						{
 							Name:      "B",
 							Variant:   "ubuntu",
@@ -3723,7 +3780,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{Name: "C", Variant: "rhel"},
 					},
 				},
 			},
@@ -3736,8 +3793,21 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "A", DependsOn: []model.TaskUnitDependency{{Name: "B", Variant: "ubuntu"}}},
-						{Name: "B", Patchable: utility.FalsePtr()},
+						{
+							Name:    "A",
+							Variant: "ubuntu",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name:    "B",
+									Variant: "ubuntu",
+								},
+							},
+						},
+						{
+							Name:      "B",
+							Variant:   "ubuntu",
+							Patchable: utility.FalsePtr(),
+						},
 					},
 				},
 			},
@@ -3750,12 +3820,24 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "A", DependsOn: []model.TaskUnitDependency{{Name: "B"}}},
+						{
+							Name:    "A",
+							Variant: "ubuntu",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name: "B",
+								},
+							},
+						},
 						{
 							Name:      "B",
+							Variant:   "ubuntu",
 							PatchOnly: utility.TruePtr(),
 							DependsOn: []model.TaskUnitDependency{
-								{Name: "C", Variant: "rhel"},
+								{
+									Name:    "C",
+									Variant: "rhel",
+								},
 							},
 						},
 					},
@@ -3763,7 +3845,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{
+							Name:    "C",
+							Variant: "rhel",
+						},
 					},
 				},
 			},
@@ -3777,7 +3862,8 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{
 									Name:          "B",
@@ -3786,7 +3872,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 								},
 							},
 						},
-						{Name: "B"},
+						{
+							Name:    "B",
+							Variant: "ubuntu",
+						},
 					},
 				},
 			},
@@ -3800,13 +3889,15 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
 							},
 						},
 						{
-							Name: "B",
+							Name:    "B",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "C", Variant: "rhel", PatchOptional: true},
 							},
@@ -3816,7 +3907,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{
+							Name:    "C",
+							Variant: "rhel",
+						},
 					},
 				},
 			},
@@ -3834,13 +3928,15 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Status: evergreen.TaskFailed},
 							},
 						},
 						{
-							Name: "B",
+							Name:    "B",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "C", Variant: "rhel"},
 							},
@@ -3850,7 +3946,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{
+							Name:    "C",
+							Variant: "rhel",
+						},
 					},
 				},
 			},
@@ -3868,7 +3967,8 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{
 									Name:    "B",
@@ -3877,7 +3977,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 								},
 							},
 						},
-						{Name: "B"},
+						{Name: "B", Variant: "ubuntu"},
 					},
 				},
 			},
@@ -3895,15 +3995,23 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
-								{Name: "B"},
+								{
+									Name: "B",
+								},
 							},
 						},
 						{
-							Name: "B",
+							Name:    "B",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
-								{Name: "C", Variant: "rhel", Status: evergreen.TaskFailed},
+								{
+									Name:    "C",
+									Variant: "rhel",
+									Status:  evergreen.TaskFailed,
+								},
 							},
 						},
 					},
@@ -3911,7 +4019,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{
+							Name:    "C",
+							Variant: "rhel",
+						},
 					},
 				},
 			},
@@ -3926,6 +4037,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Tasks: []model.BuildVariantTaskUnit{
 						{
 							Name:      "A",
+							Variant:   "ubuntu",
 							Patchable: utility.FalsePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
@@ -3933,6 +4045,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 						},
 						{
 							Name:      "B",
+							Variant:   "ubuntu",
 							Patchable: utility.FalsePtr(),
 						},
 					},
@@ -3949,6 +4062,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Tasks: []model.BuildVariantTaskUnit{
 						{
 							Name:      "A",
+							Variant:   "ubuntu",
 							Patchable: utility.FalsePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B"},
@@ -3956,6 +4070,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 						},
 						{
 							Name:      "B",
+							Variant:   "ubuntu",
 							Patchable: utility.FalsePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "C", Variant: "rhel", Status: evergreen.TaskFailed},
@@ -3966,7 +4081,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{
+							Name:    "C",
+							Variant: "rhel",
+						},
 					},
 				},
 			},
@@ -3981,6 +4099,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Tasks: []model.BuildVariantTaskUnit{
 						{
 							Name:      "A",
+							Variant:   "ubuntu",
 							PatchOnly: utility.TruePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
@@ -3988,6 +4107,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 						},
 						{
 							Name:      "B",
+							Variant:   "ubuntu",
 							PatchOnly: utility.TruePtr(),
 						},
 					},
@@ -4004,6 +4124,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Tasks: []model.BuildVariantTaskUnit{
 						{
 							Name:      "A",
+							Variant:   "ubuntu",
 							PatchOnly: utility.TruePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B"},
@@ -4011,6 +4132,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 						},
 						{
 							Name:      "B",
+							Variant:   "ubuntu",
 							PatchOnly: utility.TruePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "C", Variant: "rhel"},
@@ -4021,7 +4143,10 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 				{
 					Name: "rhel",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C"},
+						{
+							Name:    "C",
+							Variant: "rhel",
+						},
 					},
 				},
 			},
@@ -4036,6 +4161,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Tasks: []model.BuildVariantTaskUnit{
 						{
 							Name:      "A",
+							Variant:   "ubuntu",
 							PatchOnly: utility.TruePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
@@ -4043,6 +4169,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 						},
 						{
 							Name:       "B",
+							Variant:    "ubuntu",
 							GitTagOnly: utility.TruePtr(),
 						},
 					},
@@ -4059,6 +4186,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Tasks: []model.BuildVariantTaskUnit{
 						{
 							Name:      "A",
+							Variant:   "ubuntu",
 							Patchable: utility.FalsePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
@@ -4066,6 +4194,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 						},
 						{
 							Name:       "B",
+							Variant:    "ubuntu",
 							GitTagOnly: utility.TruePtr(),
 						},
 					},
@@ -4082,6 +4211,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Tasks: []model.BuildVariantTaskUnit{
 						{
 							Name:      "A",
+							Variant:   "ubuntu",
 							Patchable: utility.FalsePtr(),
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
@@ -4089,6 +4219,7 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 						},
 						{
 							Name:           "B",
+							Variant:        "ubuntu",
 							AllowForGitTag: utility.FalsePtr(),
 						},
 					},
@@ -4104,13 +4235,15 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
 							},
 						},
 						{
 							Name:           "B",
+							Variant:        "ubuntu",
 							AllowForGitTag: utility.TruePtr(),
 						},
 					},
@@ -4126,13 +4259,15 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 					Name: "ubuntu",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: "A",
+							Name:    "A",
+							Variant: "ubuntu",
 							DependsOn: []model.TaskUnitDependency{
 								{Name: "B", Variant: "ubuntu"},
 							},
 						},
 						{
 							Name:      "B",
+							Variant:   "ubuntu",
 							PatchOnly: utility.TruePtr(),
 						},
 					},

@@ -573,7 +573,7 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	return nil
 }
 
-func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string) (*apimodels.PullRequestInfo, error) {
+func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string, lastAttempt bool) (*apimodels.PullRequestInfo, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
@@ -581,9 +581,10 @@ func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData Task
 	info.setTaskPathSuffix("pull_request")
 
 	body := apimodels.CheckMergeRequest{
-		PRNum: prNum,
-		Owner: owner,
-		Repo:  repo,
+		PRNum:     prNum,
+		Owner:     owner,
+		Repo:      repo,
+		LastRetry: lastAttempt,
 	}
 	resp, err := c.retryRequest(ctx, info, &body)
 	if err != nil {

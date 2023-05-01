@@ -205,7 +205,7 @@ func TestPopulateBVT(t *testing.T) {
 			bvt := project.BuildVariants[0].Tasks[0]
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
-			bvt.Populate(spec)
+			bvt.Populate(spec, project.BuildVariants[0])
 
 			Convey("should inherit the unset fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
@@ -227,7 +227,7 @@ func TestPopulateBVT(t *testing.T) {
 			}
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
-			bvt.Populate(spec)
+			bvt.Populate(spec, project.BuildVariants[0])
 
 			Convey("should not inherit set fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
@@ -2194,15 +2194,15 @@ func TestDependencyGraph(t *testing.T) {
 			{
 				Name: "ubuntu",
 				Tasks: []BuildVariantTaskUnit{
-					{Name: "compile", DependsOn: []TaskUnitDependency{{Name: "setup"}}},
-					{Name: "setup"},
+					{Name: "compile", Variant: "ubuntu", DependsOn: []TaskUnitDependency{{Name: "setup"}}},
+					{Name: "setup", Variant: "ubuntu"},
 				},
 			},
 			{
 				Name: "rhel",
 				Tasks: []BuildVariantTaskUnit{
-					{Name: "compile", DependsOn: []TaskUnitDependency{{Name: "setup"}}},
-					{Name: "setup"},
+					{Name: "compile", Variant: "rhel", DependsOn: []TaskUnitDependency{{Name: "setup"}}},
+					{Name: "setup", Variant: "rhel"},
 				},
 			},
 		},
@@ -2218,11 +2218,12 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 			{Name: "in_group_0"},
 			{Name: "in_group_1"},
 		}
-		bvTasks := []BuildVariantTaskUnit{{Name: "task_group", IsGroup: true}}
+		const bvName = "bv"
+		bvTasks := []BuildVariantTaskUnit{{Name: "task_group", IsGroup: true, Variant: bvName}}
 		groups := []TaskGroup{{Name: bvTasks[0].Name, Tasks: []string{tasks[0].Name, tasks[1].Name}}}
 		p := Project{
 			Tasks:         tasks,
-			BuildVariants: []BuildVariant{{Name: "bv", Tasks: bvTasks}},
+			BuildVariants: []BuildVariant{{Name: bvName, Tasks: bvTasks}},
 			TaskGroups:    groups,
 		}
 
