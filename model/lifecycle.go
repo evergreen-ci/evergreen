@@ -731,7 +731,8 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		if task.Name != "" && !task.IsGroup {
 			// kim: NOTE: seems like this, which is always used to create task
 			// documents, will always skip disabled tasks until explicitly
-			// enabled.
+			// enabled. This is intentional because `disable: true` tasks should
+			// never run.
 			if task.IsDisabled() || task.SkipOnRequester(creationInfo.Build.Requester) {
 				continue
 			}

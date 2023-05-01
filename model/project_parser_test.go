@@ -312,7 +312,7 @@ func TestTranslateTasks(t *testing.T) {
 				},
 			},
 			{
-				Name:      "bv1",
+				Name:      "patch_only_bv",
 				PatchOnly: utility.FalsePtr(),
 				Tasks: parserBVTaskUnits{
 					{
@@ -323,6 +323,19 @@ func TestTranslateTasks(t *testing.T) {
 					},
 					{
 						Name: "a_task_with_no_special_configuration",
+					},
+				},
+			},
+			{
+				Name:    "disabled_bv",
+				Disable: utility.TruePtr(),
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "your_task",
+					},
+					{
+						Name:    "my_task",
+						Disable: utility.FalsePtr(),
 					},
 				},
 			},
@@ -342,7 +355,7 @@ func TestTranslateTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	require.Len(t, out.Tasks, 4)
-	require.Len(t, out.BuildVariants, 2)
+	require.Len(t, out.BuildVariants, 3)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -350,6 +363,7 @@ func TestTranslateTasks(t *testing.T) {
 		}
 	}
 
+	assert.Equal(t, "bv0", out.BuildVariants[0].Name)
 	require.Len(t, out.BuildVariants[0].Tasks, 3)
 	assert.Equal(t, "my_task", out.BuildVariants[0].Tasks[0].Name)
 	assert.Equal(t, 30, out.BuildVariants[0].Tasks[0].ExecTimeoutSecs)
@@ -376,6 +390,7 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.True(t, bvt.IsGroup)
 
+	assert.Equal(t, "patch_only_bv", out.BuildVariants[1].Name)
 	require.Len(t, out.BuildVariants[1].Tasks, 3)
 	assert.Equal(t, "your_task", out.BuildVariants[1].Tasks[0].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].Stepback))
@@ -385,6 +400,16 @@ func TestTranslateTasks(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[1].PatchOnly))
 	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[1].Tasks[2].Name)
 	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[2].PatchOnly))
+
+	assert.Equal(t, "disabled_bv", out.BuildVariants[2].Name)
+	require.Len(t, out.BuildVariants[2].Tasks, 2)
+	assert.Equal(t, "your_task", out.BuildVariants[2].Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[0].GitTagOnly))
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[0].Stepback))
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[0].Disable))
+	assert.Equal(t, "my_task", out.BuildVariants[2].Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[1].PatchOnly))
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[1].Disable))
 }
 
 func TestTranslateDependsOn(t *testing.T) {

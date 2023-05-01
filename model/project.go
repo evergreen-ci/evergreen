@@ -290,8 +290,6 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 }
 
 // IsDisabled returns whether or not this build variant task is disabled.
-// kim: TODO: check usages of this to see if there are conflicts or missing
-// cases compared to where the build variant disable field is referenced.
 func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
 	return utility.FromBoolPtr(bvt.Disable)
 }
@@ -1655,13 +1653,25 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // disable: true), then this should still return those tasks. Otherwise, it will
 // likely skip those tasks.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
+	// kim: TODO: figure out how patchDoc.BuildVariants/patchDoc.Tasks omits
+	// bvtu tasks with patchable: false. I don't see it anywhere in
+	// ResolvePatchVTs.
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
+	grip.Info(message.Fields{
+		"message":              "kim: set patch VTs",
+		"func":                 "BuildProjectTVPairs",
+		"requester":            patchDoc.GetRequester(),
+		"patch_build_variants": patchDoc.BuildVariants,
+		"patch_tasks":          patchDoc.Tasks,
+		"patch_variants_tasks": patchDoc.VariantsTasks,
+	})
 }
 
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of
 // all build variants that will run, a list of all tasks that will run, and a
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
+// kim: TODO: verify requester is always passed in
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
@@ -1685,7 +1695,8 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
 			// kim: NOTE: removing because it's already implicitly included in
-			// precedence rules for build variant task unit.
+			// precedence rules for build variant task unit. Verify that it gets
+			// disabled later on in the task lifecycle, not here.
 			// if utility.FromBoolPtr(bv.Disable) {
 			//     continue
 			// }
@@ -1712,9 +1723,22 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
 		for _, t := range p.Tasks {
-			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
-				continue
-			}
+			// kim: TODO: we should probably try to remove this and replace with
+			// SkipOnRequester, as long as the requester passed in is correct.
+			// kim: TODO: verify that the old logic did not respect patchable
+			// precedence for bvtus
+			// kim: TODO: test
+			// if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
+			//     grip.Info(message.Fields{
+			//         "message":      "kim: project task is skipped",
+			//         "func":         "ResolvePatchVTs",
+			//         "patchable":    utility.FromBoolTPtr(t.Patchable),
+			//         "git_tag_only": utility.FromBoolPtr(t.GitTagOnly),
+			//         "task_name":    t.Name,
+			//         "requester":    requester,
+			//     })
+			//     continue
+			// }
 			tasks = append(tasks, t.Name)
 		}
 	} else {
@@ -1738,7 +1762,11 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	var pairs TaskVariantPairs
 	for _, v := range bvs {
 		for _, t := range tasks {
-			if p.FindTaskForVariant(t, v) != nil {
+			if bvt := p.FindTaskForVariant(t, v); bvt != nil {
+				// kim: TODO: test that requester precedence is obeyed.
+				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) {
+					continue
+				}
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
 			} else if p.GetDisplayTask(v, t) != nil {
 				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})

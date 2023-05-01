@@ -573,7 +573,6 @@ func (s *projectSuite) SetupTest() {
 	for _, alias := range s.aliases {
 		s.NoError(alias.Upsert())
 	}
-
 	s.project = &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
@@ -639,11 +638,11 @@ func (s *projectSuite) SetupTest() {
 				},
 			},
 			{
-				Name:    "bv_3",
-				Disable: utility.TruePtr(),
+				Name: "bv_3",
 				Tasks: []BuildVariantTaskUnit{
 					{
-						Name: "disabled_task",
+						Name:    "disabled_task",
+						Disable: utility.TruePtr(),
 					},
 				},
 			},
@@ -795,6 +794,8 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 }
 
+// kim: TODO: fix this test. May have to check IsDisabled to get it to work
+// properly.
 func (s *projectSuite) TestBuildProjectTVPairs() {
 	// test all expansions
 	patchDoc := patch.Patch{
@@ -827,6 +828,8 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	s.Len(patchDoc.Tasks, 6)
 }
 
+// kim: TODO: fix this test. May have to check IsDisabled to get it to work
+// properly.
 func (s *projectSuite) TestResolvePatchVTs() {
 	// Specifying all.
 	patchDoc := patch.Patch{
@@ -1121,12 +1124,9 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	patchDoc := patch.Patch{}
 
 	s.project.BuildProjectTVPairs(&patchDoc, "disabled_stuff")
-	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
-	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
-	s.Require().Len(patchDoc.VariantsTasks, 1)
-	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
-	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
-	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
+	s.Empty(patchDoc.BuildVariants)
+	s.Empty(patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
 
 	patchDoc = patch.Patch{
 		BuildVariants: []string{"bv_3"},
@@ -1134,12 +1134,9 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	}
 
 	s.project.BuildProjectTVPairs(&patchDoc, "")
-	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
-	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
-	s.Require().Len(patchDoc.VariantsTasks, 1)
-	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
-	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
-	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
+	s.Empty(patchDoc.BuildVariants)
+	s.Empty(patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() {

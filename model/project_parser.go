@@ -1340,7 +1340,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		res.PatchOnly = bv.PatchOnly
 	}
 
-	// kim: TODO: test project translation
 	if res.Disable == nil {
 		res.Disable = bv.Disable
 	}
