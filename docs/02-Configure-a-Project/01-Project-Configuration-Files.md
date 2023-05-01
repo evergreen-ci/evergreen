@@ -1296,7 +1296,8 @@ The following constraints apply:
 -   Any task (including members of task groups), can depend on specific
     tasks within a task group using the existing dependency system.
 -   `patchable`, `patch_only`, `disable`, and `allow_for_git_tag` from the project
-    task will overwrite the task group parameters.
+    task will overwrite the task group parameters (Note: these settings currently do not work when defined on the task
+    group due to [EVG-19706](https://jira.mongodb.org/browse/EVG-19706)).
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the
