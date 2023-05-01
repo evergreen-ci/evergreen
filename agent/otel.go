@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
-	"github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -29,6 +28,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+type taskAttributeKey int
+
+const taskAttributeContextKey taskAttributeKey = iota
 
 const (
 	exportInterval = 15 * time.Second
@@ -76,7 +79,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(r),
 	)
-	tp.RegisterSpanProcessor(honeycomb.NewBaggageSpanProcessor())
+	tp.RegisterSpanProcessor(NewTaskSpanProcessor())
 	otel.SetTracerProvider(tp)
 	a.tracer = tp.Tracer(packageName)
 
@@ -271,4 +274,31 @@ func hostResource(ctx context.Context) (*resource.Resource, error) {
 		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
 		resource.WithDetectors(ec2.NewResourceDetector(), ecs.NewResourceDetector()),
 	)
+}
+
+type taskSpanProcessor struct{}
+
+func NewTaskSpanProcessor() sdktrace.SpanProcessor {
+	return &taskSpanProcessor{}
+}
+
+func (processor *taskSpanProcessor) OnStart(ctx context.Context, span sdktrace.ReadWriteSpan) {
+	span.SetAttributes(taskAttributesFromContext(ctx)...)
+}
+
+func (processor *taskSpanProcessor) OnEnd(s sdktrace.ReadOnlySpan)    {}
+func (processor *taskSpanProcessor) Shutdown(context.Context) error   { return nil }
+func (processor *taskSpanProcessor) ForceFlush(context.Context) error { return nil }
+
+func contextWithTaskAttributes(ctx context.Context, attributes []attribute.KeyValue) context.Context {
+	return context.WithValue(ctx, taskAttributeContextKey, attributes)
+}
+
+func taskAttributesFromContext(ctx context.Context) []attribute.KeyValue {
+	attributesIface := ctx.Value(taskAttributeContextKey)
+	attributes, ok := attributesIface.([]attribute.KeyValue)
+	if !ok {
+		return nil
+	}
+	return attributes
 }
