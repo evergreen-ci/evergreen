@@ -39,7 +39,8 @@ func (s *CommandSuite) SetupTest() {
 			StatusPort: 2286,
 			LogPrefix:  evergreen.LocalLoggingOverride,
 		},
-		comm: client.NewMock("url"),
+		comm:   client.NewMock("url"),
+		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 
@@ -47,8 +48,6 @@ func (s *CommandSuite) SetupTest() {
 	s.tmpDirName = s.T().TempDir()
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
-
-	tracer = otel.GetTracerProvider().Tracer("test_tracer")
 
 	s.tc = &taskContext{
 		task: client.TaskData{

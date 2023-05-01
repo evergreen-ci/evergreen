@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel"
 )
 
 type TimeoutSuite struct {
@@ -36,7 +37,8 @@ func (s *TimeoutSuite) SetupTest() {
 			StatusPort: 2286,
 			LogPrefix:  evergreen.LocalLoggingOverride,
 		},
-		comm: client.NewMock("url"),
+		comm:   client.NewMock("url"),
+		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 	var err error

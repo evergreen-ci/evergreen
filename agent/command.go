@@ -75,7 +75,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 
 	if commandInfo.Function != "" {
 		var commandSetSpan trace.Span
-		ctx, commandSetSpan = tracer.Start(ctx, fmt.Sprintf("function: '%s'", commandInfo.Function), trace.WithAttributes(
+		ctx, commandSetSpan = a.tracer.Start(ctx, fmt.Sprintf("function: '%s'", commandInfo.Function), trace.WithAttributes(
 			attribute.String(functionNameAttribute, commandInfo.Function),
 		))
 		defer commandSetSpan.End()
@@ -100,7 +100,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			tc.logger.Task().Infof("Running command %s (step %d.%d of %d).", fullCommandName, index, idx+1, total)
 		}
 
-		ctx, commandSpan := tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
+		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
 		))
 		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, fullCommandName, options); err != nil {
@@ -177,7 +177,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 
 // runTaskCommands runs all commands for the task currently assigned to the agent.
 func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
-	ctx, span := tracer.Start(ctx, "task-commands")
+	ctx, span := a.tracer.Start(ctx, "task-commands")
 	defer span.End()
 
 	conf := tc.taskConfig
