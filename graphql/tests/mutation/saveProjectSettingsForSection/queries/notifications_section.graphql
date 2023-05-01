@@ -1,0 +1,62 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectRef: {
+        id: "sandbox_project_id"
+        banner: { theme: WARNING, text: "banner text!!" }
+      }
+      subscriptions: [
+        {
+          id: "12345",
+          owner_type: "project",
+          regex_selectors: [],
+          resource_type: "VERSION",
+          selectors: [
+            {
+              type: "project",
+              data: "sandbox_project_id"
+            },
+            {
+              type: "requester",
+              data: "gitter_request"
+            }
+          ],
+          subscriber: {
+            type: "evergreen-webhook",
+            target: "https://fake-website.com",
+            webhookSubscriber: {
+              url: "https://fake-website.com",
+              secret: "secret",
+              headers: []
+            }
+          },
+          trigger: "family-outcome",
+          trigger_data: {
+            requester: "gitter_request"
+          }
+        } 
+      ]
+    }
+    section: NOTIFICATIONS
+  ) {
+    projectRef {
+      id
+      banner {
+        text
+        theme
+      }
+    }
+    subscriptions {
+      subscriber {
+        subscriber{
+          webhookSubscriber {
+            url
+            retries
+            minDelayMs
+            timeoutMs
+          }
+        }
+      }
+    }
+  }
+}

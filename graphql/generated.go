@@ -1307,9 +1307,12 @@ type ComplexityRoot struct {
 	}
 
 	WebhookSubscriber struct {
-		Headers func(childComplexity int) int
-		Secret  func(childComplexity int) int
-		URL     func(childComplexity int) int
+		Headers    func(childComplexity int) int
+		MinDelayMS func(childComplexity int) int
+		Retries    func(childComplexity int) int
+		Secret     func(childComplexity int) int
+		TimeoutMS  func(childComplexity int) int
+		URL        func(childComplexity int) int
 	}
 
 	WorkstationConfig struct {
@@ -7923,12 +7926,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.WebhookSubscriber.Headers(childComplexity), true
 
+	case "WebhookSubscriber.minDelayMs":
+		if e.complexity.WebhookSubscriber.MinDelayMS == nil {
+			break
+		}
+
+		return e.complexity.WebhookSubscriber.MinDelayMS(childComplexity), true
+
+	case "WebhookSubscriber.retries":
+		if e.complexity.WebhookSubscriber.Retries == nil {
+			break
+		}
+
+		return e.complexity.WebhookSubscriber.Retries(childComplexity), true
+
 	case "WebhookSubscriber.secret":
 		if e.complexity.WebhookSubscriber.Secret == nil {
 			break
 		}
 
 		return e.complexity.WebhookSubscriber.Secret(childComplexity), true
+
+	case "WebhookSubscriber.timeoutMs":
+		if e.complexity.WebhookSubscriber.TimeoutMS == nil {
+			break
+		}
+
+		return e.complexity.WebhookSubscriber.TimeoutMS(childComplexity), true
 
 	case "WebhookSubscriber.url":
 		if e.complexity.WebhookSubscriber.URL == nil {
@@ -42539,6 +42563,12 @@ func (ec *executionContext) fieldContext_Subscriber_webhookSubscriber(ctx contex
 				return ec.fieldContext_WebhookSubscriber_secret(ctx, field)
 			case "url":
 				return ec.fieldContext_WebhookSubscriber_url(ctx, field)
+			case "retries":
+				return ec.fieldContext_WebhookSubscriber_retries(ctx, field)
+			case "minDelayMs":
+				return ec.fieldContext_WebhookSubscriber_minDelayMs(ctx, field)
+			case "timeoutMs":
+				return ec.fieldContext_WebhookSubscriber_timeoutMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WebhookSubscriber", field.Name)
 		},
@@ -55860,6 +55890,138 @@ func (ec *executionContext) fieldContext_WebhookSubscriber_url(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _WebhookSubscriber_retries(ctx context.Context, field graphql.CollectedField, obj *model.APIWebhookSubscriber) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WebhookSubscriber_retries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Retries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WebhookSubscriber_retries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebhookSubscriber",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WebhookSubscriber_minDelayMs(ctx context.Context, field graphql.CollectedField, obj *model.APIWebhookSubscriber) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WebhookSubscriber_minDelayMs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MinDelayMS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WebhookSubscriber_minDelayMs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebhookSubscriber",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WebhookSubscriber_timeoutMs(ctx context.Context, field graphql.CollectedField, obj *model.APIWebhookSubscriber) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WebhookSubscriber_timeoutMs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeoutMS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WebhookSubscriber_timeoutMs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebhookSubscriber",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _WorkstationConfig_gitClone(ctx context.Context, field graphql.CollectedField, obj *model.APIWorkstationConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_WorkstationConfig_gitClone(ctx, field)
 	if err != nil {
@@ -61320,7 +61482,17 @@ func (ec *executionContext) unmarshalInputWebhookSubscriberInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"headers", "secret", "url"}
+	if _, present := asMap["retries"]; !present {
+		asMap["retries"] = 0
+	}
+	if _, present := asMap["minDelayMs"]; !present {
+		asMap["minDelayMs"] = 0
+	}
+	if _, present := asMap["timeoutMs"]; !present {
+		asMap["timeoutMs"] = 0
+	}
+
+	fieldsInOrder := [...]string{"headers", "secret", "url", "retries", "minDelayMs", "timeoutMs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -61348,6 +61520,30 @@ func (ec *executionContext) unmarshalInputWebhookSubscriberInput(ctx context.Con
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
 			it.URL, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "retries":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retries"))
+			it.Retries, err = ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "minDelayMs":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minDelayMs"))
+			it.MinDelayMS, err = ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "timeoutMs":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeoutMs"))
+			it.TimeoutMS, err = ec.unmarshalOInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -71261,6 +71457,27 @@ func (ec *executionContext) _WebhookSubscriber(ctx context.Context, sel ast.Sele
 		case "url":
 
 			out.Values[i] = ec._WebhookSubscriber_url(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "retries":
+
+			out.Values[i] = ec._WebhookSubscriber_retries(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "minDelayMs":
+
+			out.Values[i] = ec._WebhookSubscriber_minDelayMs(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "timeoutMs":
+
+			out.Values[i] = ec._WebhookSubscriber_timeoutMs(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
