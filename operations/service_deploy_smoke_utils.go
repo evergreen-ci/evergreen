@@ -232,7 +232,7 @@ func getAndCheckBuilds(username, key string, client *http.Client) ([]apimodels.A
 // contents.
 func checkTaskStatusAndLogs(client *http.Client, mode agent.Mode, tasks []string, username, key string) error {
 	grip.Infof("Checking task status and task logs for tasks: %s", strings.Join(tasks, ", "))
-	const taskCheckAttempts = 30
+	const taskCheckAttempts = 40
 OUTER:
 	for i := 0; i < taskCheckAttempts; i++ {
 		// Poll the app server until the task is finished and check its task
