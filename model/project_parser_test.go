@@ -2512,7 +2512,7 @@ ignore:
 	assert.Equal(t, len(p1.Functions), 2)
 	assert.Equal(t, len(p1.Tasks), 2)
 	assert.Equal(t, len(p1.Ignore), 3)
-	assert.Equal(t, p1.Stepback, boolPtr(true))
+	assert.Equal(t, p1.Stepback, utility.TruePtr())
 	assert.NotEqual(t, p1.Post, nil)
 }
 

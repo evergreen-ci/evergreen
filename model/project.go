@@ -1654,7 +1654,9 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of
 // all build variants that will run, a list of all tasks that will run, and a
 // mapping of the build variant to the tasks that will run on that build
-// variant. If includeDeps is set, it will also resolve task dependencies.
+// variant. If includeDeps is set, it will also resolve task dependencies. This
+// filters out tasks that cannot run due to being disabled or having an
+// unmatched requester.
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
@@ -1922,6 +1924,8 @@ func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
 }
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
+// Note that unlike BuildProjectTVPairs, this does not filter out tasks that
+// cannot run due to being disabled or having an unmatched requester.
 func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, []TVPair, error) {
 	pairs := []TVPair{}
 	displayTaskPairs := []TVPair{}

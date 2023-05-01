@@ -187,10 +187,10 @@ func TestPopulateBVT(t *testing.T) {
 				{
 					Name:            "task1",
 					ExecTimeoutSecs: 500,
-					Stepback:        boolPtr(false),
+					Stepback:        utility.FalsePtr(),
 					DependsOn:       []TaskUnitDependency{{Name: "other"}},
 					Priority:        1000,
-					Patchable:       boolPtr(false),
+					Patchable:       utility.FalsePtr(),
 				},
 			},
 			BuildVariants: []BuildVariant{
@@ -222,7 +222,7 @@ func TestPopulateBVT(t *testing.T) {
 			bvt := BuildVariantTaskUnit{
 				Name:            "task1",
 				ExecTimeoutSecs: 2,
-				Stepback:        boolPtr(true),
+				Stepback:        utility.TruePtr(),
 				DependsOn:       []TaskUnitDependency{{Name: "task2"}, {Name: "task3"}},
 			}
 			spec := project.GetSpecForTask("task1")
@@ -286,10 +286,6 @@ func TestIgnoresAllFiles(t *testing.T) {
 			So(p.IgnoresAllFiles(files), ShouldBeFalse)
 		})
 	})
-}
-
-func boolPtr(b bool) *bool {
-	return &b
 }
 
 func TestPopulateExpansions(t *testing.T) {
@@ -605,7 +601,7 @@ func (s *projectSuite) SetupTest() {
 					},
 					{
 						Name:      "another_disabled_task",
-						Patchable: boolPtr(false),
+						Patchable: utility.FalsePtr(),
 					},
 				},
 				DisplayTasks: []patch.DisplayTask{
@@ -633,7 +629,7 @@ func (s *projectSuite) SetupTest() {
 					},
 					{
 						Name:      "another_disabled_task",
-						Patchable: boolPtr(false),
+						Patchable: utility.TruePtr(),
 					},
 				},
 			},
@@ -692,7 +688,7 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name:      "another_disabled_task",
-				Patchable: boolPtr(false),
+				Patchable: utility.FalsePtr(),
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
@@ -717,7 +713,7 @@ func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
 	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]})
 	s.NoError(err)
-	s.Len(pairs, 11)
+	s.Len(pairs, 13)
 	pairStrs := make([]string, len(pairs))
 	for i, p := range pairs {
 		pairStrs[i] = p.String()
@@ -728,10 +724,12 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Contains(pairStrs, "bv_1/b_task_2")
 	s.Contains(pairStrs, "bv_1/9001_task")
 	s.Contains(pairStrs, "bv_1/very_task")
+	s.Contains(pairStrs, "bv_1/another_disabled_task")
 	s.Contains(pairStrs, "bv_2/a_task_1")
 	s.Contains(pairStrs, "bv_2/a_task_2")
 	s.Contains(pairStrs, "bv_2/b_task_1")
 	s.Contains(pairStrs, "bv_2/b_task_2")
+	s.Contains(pairStrs, "bv_2/another_disabled_task")
 	s.Contains(pairStrs, "bv_3/disabled_task")
 	s.Require().Len(displayTaskPairs, 1)
 	s.Equal("bv_1/memes", displayTaskPairs[0].String())
@@ -739,7 +737,7 @@ func (s *projectSuite) TestAliasResolution() {
 	// test that the .*_2 regex on variants selects just bv_2
 	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]})
 	s.NoError(err)
-	s.Len(pairs, 4)
+	s.Len(pairs, 5)
 	for _, pair := range pairs {
 		s.Equal("bv_2", pair.Variant)
 	}
@@ -835,8 +833,42 @@ func (s *projectSuite) TestResolvePatchVTs() {
 
 	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
-	s.Len(tasks, 6)
+	s.ElementsMatch([]string{"bv_1", "bv_2"}, bvs)
+	s.Len(tasks, 7)
+	s.ElementsMatch([]string{
+		"a_task_1",
+		"a_task_2",
+		"b_task_1",
+		"b_task_2",
+		"9001_task",
+		"very_task",
+		"another_disabled_task"}, tasks)
 	s.Len(variantTasks, 2)
+	for _, vt := range variantTasks {
+		switch vt.Variant {
+		case "bv_1":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"9001_task",
+				"very_task",
+			}, vt.Tasks)
+			s.Len(vt.DisplayTasks, 1)
+		case "bv_2":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"another_disabled_task",
+			}, vt.Tasks)
+			s.Empty(vt.DisplayTasks)
+		default:
+			s.Fail("unexpected variant '%s'", vt.Variant)
+		}
+	}
 
 	// Build variant and tasks override regex.
 	patchDoc = patch.Patch{
@@ -848,7 +880,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 
 	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
-	s.Len(tasks, 6)
+	s.Len(tasks, 7)
 	s.Len(variantTasks, 2)
 
 	// Regex build variants and tasks.
