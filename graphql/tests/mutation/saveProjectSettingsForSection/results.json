@@ -80,9 +80,9 @@
                   "subscriber": {
                     "webhookSubscriber": {
                       "url": "https://fake-website.com",
-                      "retries": 9,
-                      "minDelayMs": 100,
-                      "timeoutMs": 4000
+                      "retries": 0,
+                      "minDelayMs": 0,
+                      "timeoutMs": 0
                     }
                   }
                 }

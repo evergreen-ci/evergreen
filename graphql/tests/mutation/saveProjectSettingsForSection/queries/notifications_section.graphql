@@ -28,9 +28,6 @@ mutation {
               url: "https://fake-website.com",
               secret: "secret",
               headers: []
-              retries: 9,
-              minDelayMs: 100,
-              timeoutMs: 4000,
             }
           },
           trigger: "family-outcome",
