@@ -328,6 +328,9 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run updates a project by name.
 func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
+	if h.newProjectRef.IsHidden() {
+		return gimlet.NewJSONErrorResponse("can't patch a hidden project")
+	}
 	if err := h.newProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating owner and repo"))
 	}

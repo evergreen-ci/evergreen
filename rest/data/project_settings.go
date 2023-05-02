@@ -226,6 +226,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	if err != nil {
 		return nil, errors.Wrap(err, "getting the original merged project ref")
 	}
+	if mergedSection.IsHidden() {
+		return nil, errors.Wrap(err, "can't update a hidden project")
+	}
 
 	catcher := grip.NewBasicCatcher()
 	modified := false
