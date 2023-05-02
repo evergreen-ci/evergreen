@@ -212,8 +212,17 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 
 	// Build variant level settings are lower priority than project task level
 	// settings.
+	if bvt.Patchable == nil {
+		bvt.Patchable = bv.Patchable
+	}
 	if bvt.PatchOnly == nil {
 		bvt.PatchOnly = bv.PatchOnly
+	}
+	if bvt.AllowForGitTag == nil {
+		bvt.AllowForGitTag = bv.AllowForGitTag
+	}
+	if bvt.GitTagOnly == nil {
+		bvt.GitTagOnly = bv.GitTagOnly
 	}
 }
 
@@ -321,8 +330,11 @@ type BuildVariant struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 
 	// If Activate is set to false, then we don't initially activate the build variant.
-	Activate  *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Activate       *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	Patchable      *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly      *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly     *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
