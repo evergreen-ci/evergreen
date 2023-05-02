@@ -721,6 +721,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	}
 
 	if len(patchDoc.Patches) > 0 {
+		// hereee
 		if patchDoc.Patches[0], err = getModulePatch(patchDoc.Patches[0]); err != nil {
 			return errors.Wrap(err, "getting module patch from GridFS")
 		}

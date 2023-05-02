@@ -52,15 +52,8 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	r = setRestContext(r, &pctx)
 
 	if pctx.ProjectRef == nil && usr == nil {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
-		}
-
-		if flags.RestRoutePartialAuthDisabled {
-			gimlet.NewRequireAuthHandler().ServeHTTP(rw, r, next)
-			return
-		}
+		gimlet.NewRequireAuthHandler().ServeHTTP(rw, r, next)
+		return
 	}
 	next(rw, r)
 }

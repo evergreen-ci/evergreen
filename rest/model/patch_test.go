@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() { testutil.Setup() }
 
 func TestAPIPatch(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
