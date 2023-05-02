@@ -311,7 +311,8 @@ func getCollectionName(command bson.Raw) (string, error) {
 }
 
 // redactSensitiveCollections satisfies the apm.CommandTransformer interface.
-// Returns an empty string when the command is a CRUD command on a sensitive collection.
+// Returns an empty string when the command is a CRUD command on a sensitive collection
+// or if we can't determine the collection the command is on.
 func redactSensitiveCollections(command bson.Raw) string {
 	collectionName, err := getCollectionName(command)
 	if err != nil || utility.StringSliceContains(sensitiveCollections, collectionName) {
