@@ -324,7 +324,9 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortByPullRequest() {
 	s.True(ok)
 	s.Contains(AbortPatchesFromPullRequest(event).Error(), "pull request data is malformed")
 
-	now := time.Now().Round(time.Millisecond)
+	now := github.Timestamp{
+		Time: time.Now().Round(time.Millisecond),
+	}
 	event.PullRequest.ClosedAt = &now
 	s.NoError(AbortPatchesFromPullRequest(event))
 }
@@ -339,7 +341,9 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 	s.Empty(repo)
 	s.Contains(err.Error(), "pull request data is malformed")
 
-	now := time.Now().Round(time.Millisecond)
+	now := github.Timestamp{
+		Time: time.Now().Round(time.Millisecond),
+	}
 	event.PullRequest.ClosedAt = &now
 	event.Repo.FullName = github.String("somethingmalformed")
 	owner, repo, err = verifyPullRequestEventForAbort(event)

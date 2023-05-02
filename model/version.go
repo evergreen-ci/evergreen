@@ -741,7 +741,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 			// Otherwise, retrieve the module's commit from the time of the patch creation.
 			revisionTime := time.Unix(0, 0)
 			if !evergreen.IsPatchRequester(v.Requester) {
-				revisionTime = *commit.Commit.Committer.Date.GetTime()
+				revisionTime = commit.Commit.Committer.GetDate().Time
 			}
 			var branchCommits []*github.RepositoryCommit
 			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
