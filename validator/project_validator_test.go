@@ -156,7 +156,24 @@ func TestValidateTaskDependencies(t *testing.T) {
 					{Name: "tg", Tasks: []string{"3"}},
 				},
 				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "tg", IsGroup: true}}},
+					{
+						Name: "v1",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "1",
+								Variant: "v1",
+							},
+							{
+								Name:    "2",
+								Variant: "v1",
+							},
+							{
+								Name:    "tg",
+								Variant: "v1",
+								IsGroup: true,
+							},
+						},
+					},
 				},
 			}
 			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "non-existent task name 'nonexistent' in dependencies for task '3'")
@@ -190,14 +207,17 @@ func TestValidateDependencyGraph(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:      "compile",
+								Variant:   "bv",
 								DependsOn: []model.TaskUnitDependency{{Name: "testOne"}},
 							},
 							{
 								Name:      "testOne",
+								Variant:   "bv",
 								DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 							},
 							{
 								Name:      "testTwo",
+								Variant:   "bv",
 								DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 							},
 						},
@@ -218,10 +238,12 @@ func TestValidateDependencyGraph(t *testing.T) {
 							{Name: "compile"},
 							{
 								Name:      "testOne",
+								Variant:   "bv",
 								DependsOn: []model.TaskUnitDependency{{Name: "compile"}, {Name: "testTwo"}},
 							},
 							{
 								Name:      "testTwo",
+								Variant:   "bv",
 								DependsOn: []model.TaskUnitDependency{{Name: model.AllDependencies}},
 							},
 						},
@@ -3563,6 +3585,7 @@ func TestTVToTaskUnit(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:            "setup",
+								Variant:         "rhel",
 								Priority:        20,
 								ExecTimeoutSecs: 20,
 							},
@@ -3572,6 +3595,7 @@ func TestTVToTaskUnit(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:             "compile_group",
+								Variant:          "ubuntu",
 								CommitQueueMerge: true,
 							},
 						},
@@ -3579,7 +3603,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "suse",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "compile_group",
+								Name:    "compile_group",
+								Variant: "suse",
 							},
 						},
 					},
@@ -4615,32 +4640,59 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 						{
 							Name: "ubuntu",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "pull"},
+								{
+									Name:    "pull",
+									Variant: "ubuntu",
+								},
 							},
 						},
 						{
 							Name: "rhel",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
-								{Name: "pull_twice"},
+								{
+									Name:    "test",
+									Variant: "rhel",
+								},
+								{
+									Name:    "pull_twice",
+									Variant: "rhel",
+								},
 							},
 						}, {
 							Name: "archlinux",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "lint"},
+								{
+									Name:    "lint",
+									Variant: "archlinux",
+								},
 							},
 						}, {
 							Name: "debian",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "pull"},
-								{Name: "test"},
-								{Name: "lint"},
+								{
+									Name:    "pull",
+									Variant: "debian",
+								},
+								{
+									Name:    "test",
+									Variant: "debian",
+								},
+								{
+									Name:    "lint",
+									Variant: "debian",
+								},
 							},
 						}, {
 							Name: "fedora",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "pull"},
-								{Name: "test"},
+								{
+									Name:    "pull",
+									Variant: "fedora",
+								},
+								{
+									Name:    "test",
+									Variant: "fedora",
+								},
 							},
 						},
 					},
@@ -4738,13 +4790,19 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 						{
 							Name: "ubuntu",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "setup"},
+								{
+									Name:    "setup",
+									Variant: "ubuntu",
+								},
 							},
 						},
 						{
 							Name: "rhel",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
+								{
+									Name:    "test",
+									Variant: "rhel",
+								},
 							},
 						},
 					},
@@ -4786,17 +4844,26 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 						{
 							Name: "ubuntu",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
+								{
+									Name:    "test",
+									Variant: "ubuntu",
+								},
 							},
 						},
 						{Name: "rhel",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
+								{
+									Name:    "test",
+									Variant: "rhel",
+								},
 							},
 						}, {
 							Name: "archlinux",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
+								{
+									Name:    "test",
+									Variant: "archlinux",
+								},
 							},
 						},
 					},
@@ -4898,6 +4965,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "ubuntu",
 									IsGroup: true,
 								},
 							},
@@ -4906,6 +4974,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "rhel",
 									IsGroup: true,
 								},
 							},
@@ -4914,6 +4983,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "archlinux",
 									IsGroup: true,
 								},
 							},
@@ -4965,6 +5035,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "ubuntu",
 									IsGroup: true,
 								},
 							},
@@ -4973,6 +5044,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "rhel",
 									IsGroup: true,
 								},
 							},
@@ -4981,6 +5053,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "archlinux",
 									IsGroup: true,
 								},
 							},
@@ -5032,6 +5105,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "ubuntu",
 									IsGroup: true,
 								},
 							},
@@ -5040,6 +5114,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "rhel",
 									IsGroup: true,
 								},
 							},
@@ -5048,6 +5123,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "archlinux",
 									IsGroup: true,
 								},
 							},
@@ -5099,6 +5175,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "ubuntu",
 									IsGroup: true,
 								},
 							},
@@ -5107,6 +5184,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "rhel",
 									IsGroup: true,
 								},
 							},
@@ -5115,6 +5193,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "archlinux",
 									IsGroup: true,
 								},
 							},
@@ -5166,6 +5245,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "ubuntu",
 									IsGroup: true,
 								},
 							},
@@ -5174,6 +5254,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "rhel",
 									IsGroup: true,
 								},
 							},
@@ -5182,6 +5263,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							Tasks: []model.BuildVariantTaskUnit{
 								{
 									Name:    "test_group",
+									Variant: "archlinux",
 									IsGroup: true,
 								},
 							},
@@ -5231,7 +5313,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 		}
 	})
 
-	t.Run("MissingDefintiion", func(t *testing.T) {
+	t.Run("MissingDefinition", func(t *testing.T) {
 		for testName, project := range map[string]model.Project{
 			"ForTaskReferencedInBV": {
 				BuildVariants: []model.BuildVariant{
@@ -5240,6 +5322,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:    "test",
+								Variant: "ubuntu",
 								IsGroup: true,
 							},
 						},
@@ -5253,6 +5336,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:    "test_group",
+								Variant: "ubuntu",
 								IsGroup: true,
 							},
 						},
@@ -5272,6 +5356,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:    "test_group",
+								Variant: "ubuntu",
 								IsGroup: true,
 							},
 						},
