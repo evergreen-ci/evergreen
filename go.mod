@@ -32,7 +32,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20221207220239-4ab00e3ea9da
-	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
+	github.com/mongodb/anser v0.0.0-20230501213745-c62f11870fd4
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
 	github.com/mongodb/grip v0.0.0-20230411155312-e4c567a6a15f
 	github.com/pkg/errors v0.9.1
@@ -49,15 +49,14 @@ require (
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.15.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.15.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.40.0
-	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.40.0
-	go.opentelemetry.io/otel v1.14.0
+	go.opentelemetry.io/otel v1.15.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.14.0
 	go.opentelemetry.io/otel/metric v0.37.0
 	go.opentelemetry.io/otel/sdk v1.14.0
 	go.opentelemetry.io/otel/sdk/metric v0.37.0
-	go.opentelemetry.io/otel/trace v1.14.0
+	go.opentelemetry.io/otel/trace v1.15.0
 	golang.org/x/crypto v0.1.0
 	golang.org/x/oauth2 v0.4.0
 	golang.org/x/tools v0.6.0
@@ -102,7 +101,7 @@ require (
 	github.com/fuyufjh/splunk-hec-go v0.3.4-0.20210909061418-feecd03924b7 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.4 // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/goccy/go-json v0.9.4 // indirect
