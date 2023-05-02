@@ -89,7 +89,7 @@ func TestCommandFileLogging(t *testing.T) {
 					}},
 				},
 				BuildVariants: model.BuildVariants{
-					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1"}}},
+					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
 				},
 			},
 			Timeout: &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},

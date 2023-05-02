@@ -235,7 +235,10 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{
+								Name:    "compile",
+								Variant: "bv",
+							},
 							{
 								Name:      "testOne",
 								Variant:   "bv",
@@ -295,7 +298,7 @@ func TestValidateDependencyGraph(t *testing.T) {
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile", Variant: "bv1"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "testOne", Variant: "bv1", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile"},
 								{Name: "testSpecial", Variant: "bv2"},
 							}}},
@@ -339,10 +342,12 @@ func TestValidateDependencyGraph(t *testing.T) {
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "compile",
+								Name:    "compile",
+								Variant: "bv1",
 							},
 							{
-								Name: "testOne",
+								Name:    "testOne",
+								Variant: "bv1",
 								DependsOn: []model.TaskUnitDependency{
 									{Name: "compile", Variant: model.AllVariants},
 									{Name: "testTwo"},
@@ -353,17 +358,20 @@ func TestValidateDependencyGraph(t *testing.T) {
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "compile",
+								Name:    "compile",
+								Variant: "bv2",
 							},
 							{
-								Name: "testOne",
+								Name:    "testOne",
+								Variant: "bv2",
 								DependsOn: []model.TaskUnitDependency{
 									{Name: "compile", Variant: model.AllVariants},
 									{Name: "testTwo"},
 								},
 							},
 							{
-								Name: "testTwo",
+								Name:    "testTwo",
+								Variant: "bv2",
 								DependsOn: []model.TaskUnitDependency{
 									{Name: model.AllDependencies, Variant: model.AllVariants},
 								},
@@ -385,8 +393,8 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{{Name: "testOne"}}},
+							{Name: "compile", Variant: "bv"},
+							{Name: "testOne", Variant: "bv", DependsOn: []model.TaskUnitDependency{{Name: "testOne"}}},
 						},
 					},
 				},
@@ -401,9 +409,9 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{{Name: "compile"}}},
-							{Name: "testTwo", DependsOn: []model.TaskUnitDependency{{Name: "compile"}}}},
+							{Name: "compile", Variant: "bv"},
+							{Name: "testOne", Variant: "bv", DependsOn: []model.TaskUnitDependency{{Name: "compile"}}},
+							{Name: "testTwo", Variant: "bv", DependsOn: []model.TaskUnitDependency{{Name: "compile"}}}},
 					},
 				},
 			}
@@ -418,7 +426,8 @@ func TestValidateDependencyGraph(t *testing.T) {
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "testOne",
+								Name:    "testOne",
+								Variant: "bv1",
 								DependsOn: []model.TaskUnitDependency{
 									{Name: "compile", Variant: "bv2"},
 								},
@@ -428,9 +437,10 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{Name: "compile", Variant: "bv2"},
 							{
-								Name: "testSpecial",
+								Name:    "testSpecial",
+								Variant: "bv2",
 								DependsOn: []model.TaskUnitDependency{
 									{Name: "compile"},
 									{Name: "testOne", Variant: "bv1"}},
@@ -449,8 +459,8 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv1"},
+							{Name: "testOne", Variant: "bv1", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile", Variant: model.AllVariants},
 							}},
 						},
@@ -458,8 +468,8 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testTwo", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv2"},
+							{Name: "testTwo", Variant: "bv2", DependsOn: []model.TaskUnitDependency{
 								{Name: model.AllDependencies},
 							}},
 						},
@@ -476,8 +486,8 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv1"},
+							{Name: "testOne", Variant: "bv1", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile", Variant: model.AllVariants},
 							}},
 						},
@@ -485,11 +495,11 @@ func TestValidateDependencyGraph(t *testing.T) {
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+							{Name: "compile", Variant: "bv2"},
+							{Name: "testOne", Variant: "bv2", DependsOn: []model.TaskUnitDependency{
 								{Name: "compile", Variant: model.AllVariants},
 							}},
-							{Name: "testTwo", DependsOn: []model.TaskUnitDependency{
+							{Name: "testTwo", Variant: "bv2", DependsOn: []model.TaskUnitDependency{
 								{Name: model.AllDependencies, Variant: model.AllVariants}},
 							}},
 					},
@@ -514,7 +524,7 @@ func TestCheckTaskRuns(t *testing.T) {
 				{
 					Name: "bv",
 					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "task"},
+						{Name: "task", Variant: "bv"},
 					},
 				},
 			},
@@ -817,8 +827,8 @@ func TestValidateBVTaskNames(t *testing.T) {
 					{
 						Name: "linux",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "compile"},
+							{Name: "compile", Variant: "linux"},
+							{Name: "compile", Variant: "linux"},
 						},
 					},
 				},
@@ -834,10 +844,10 @@ func TestValidateBVTaskNames(t *testing.T) {
 					{
 						Name: "linux",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "compile"},
-							{Name: "test"},
-							{Name: "test"},
+							{Name: "compile", Variant: "linux"},
+							{Name: "compile", Variant: "linux"},
+							{Name: "test", Variant: "linux"},
+							{Name: "test", Variant: "linux"},
 						},
 					},
 				},
@@ -853,8 +863,8 @@ func TestValidateBVTaskNames(t *testing.T) {
 					{
 						Name: "linux",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-							{Name: "test"},
+							{Name: "compile", Variant: "linux"},
+							{Name: "test", Variant: "linux"},
 						},
 					},
 				},
@@ -884,8 +894,8 @@ func TestValidateBVBatchTimes(t *testing.T) {
 
 	// can have task and variant batchtime set
 	p.BuildVariants[0].Tasks = []model.BuildVariantTaskUnit{
-		{Name: "t1", BatchTime: &batchtime},
-		{Name: "t2"},
+		{Name: "t1", Variant: p.BuildVariants[0].Name, BatchTime: &batchtime},
+		{Name: "t2", Variant: p.BuildVariants[0].Name},
 	}
 	assert.Len(t, validateBVBatchTimes(p), 0)
 
@@ -911,7 +921,7 @@ func TestCheckBVsContainTasks(t *testing.T) {
 					{
 						Name: "linux",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{Name: "compile", Variant: "linux"},
 						},
 					},
 					{
@@ -929,13 +939,13 @@ func TestCheckBVsContainTasks(t *testing.T) {
 					{
 						Name: "linux",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{Name: "compile", Variant: "linux"},
 						},
 					},
 					{
 						Name: "windows",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{Name: "compile", Variant: "windows"},
 						},
 					},
 				},
@@ -1356,7 +1366,8 @@ func TestValidateAliasCoverage(t *testing.T) {
 						Tags: []string{"variantTag"},
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "taskWithTag",
+								Name:    "taskWithTag",
+								Variant: "bvWithTag",
 							},
 						},
 					},
@@ -1364,7 +1375,8 @@ func TestValidateAliasCoverage(t *testing.T) {
 						Name: "bvWithoutTag",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "taskWithoutTag",
+								Name:    "taskWithoutTag",
+								Variant: "bvWithoutTag",
 							},
 						},
 					},
@@ -1373,6 +1385,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:    "taskGroup",
+								Variant: "bvWithTaskGroup",
 								IsGroup: true,
 							},
 						},
@@ -1569,7 +1582,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					{
 						Name: "linux",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "test"},
+							{Name: "test", Variant: "linux"},
 						},
 					},
 				},
@@ -1589,7 +1602,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					{
 						Name: "linux",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
+							{Name: "compile", Variant: "linux"},
 						},
 					},
 				},
@@ -2370,7 +2383,7 @@ func TestValidateBVFields(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						RunOn: []string{"mongo"},
-						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "db", Variant: "mongo"}},
 					},
 				},
 			}
@@ -2401,7 +2414,7 @@ func TestValidateBVFields(t *testing.T) {
 					{
 						Name:  "import",
 						RunOn: []string{"export"},
-						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "db", Variant: "import"}},
 					},
 				},
 			}
@@ -2416,7 +2429,7 @@ func TestValidateBVFields(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "import",
-						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "db", Variant: "import"}},
 					},
 				},
 			}
@@ -2435,7 +2448,8 @@ func TestValidateBVFields(t *testing.T) {
 						Name: "import",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "silhouettes",
+								Name:    "silhouettes",
+								Variant: "import",
 							},
 						},
 					},
@@ -2462,7 +2476,8 @@ func TestValidateBVFields(t *testing.T) {
 						Name: "import",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "silhouettes",
+								Name:    "silhouettes",
+								Variant: "import",
 								RunOn: []string{
 									"echoes",
 								},
@@ -2485,6 +2500,7 @@ func TestValidateBVFields(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:    "group",
+								Variant: "import",
 								IsGroup: true,
 								RunOn: []string{
 									"echoes",
@@ -2519,6 +2535,7 @@ func TestValidateBVFields(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:    "group",
+								Variant: "import",
 								IsGroup: true,
 							},
 						},
@@ -2550,8 +2567,9 @@ func TestValidateBVFields(t *testing.T) {
 						RunOn: []string{""},
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:  "t1",
-								RunOn: []string{""}},
+								Name:    "t1",
+								Variant: "bv1",
+								RunOn:   []string{""}},
 						},
 					},
 				},
@@ -3186,7 +3204,8 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 					Name: "build_variant",
 					Tasks: []model.BuildVariantTaskUnit{
 						{
-							Name: t.Name(),
+							Name:    t.Name(),
+							Variant: "build_variant",
 						},
 					},
 				},
@@ -3485,6 +3504,7 @@ func TestTVToTaskUnit(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:            "setup",
+								Variant:         "rhel",
 								Priority:        20,
 								ExecTimeoutSecs: 20,
 							},
@@ -3494,6 +3514,7 @@ func TestTVToTaskUnit(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:             "compile",
+								Variant:          "ubuntu",
 								CommitQueueMerge: true,
 								ExecTimeoutSecs:  10,
 								DependsOn: []model.TaskUnitDependency{
@@ -3509,6 +3530,7 @@ func TestTVToTaskUnit(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name:            "compile",
+								Variant:         "suse",
 								ExecTimeoutSecs: 10,
 								DependsOn: []model.TaskUnitDependency{
 									{
@@ -4415,8 +4437,8 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "task1-and-task2", IsGroup: true},
-							{Name: "task1"},
+							{Name: "task1-and-task2", Variant: "ubuntu", IsGroup: true},
+							{Name: "task1", Variant: "ubuntu"},
 						},
 					},
 				},
@@ -4447,8 +4469,8 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "task2"},
-							{Name: "task1-and-task2", IsGroup: true},
+							{Name: "task2", Variant: "ubuntu"},
+							{Name: "task1-and-task2", Variant: "ubuntu", IsGroup: true},
 						},
 					},
 				},
@@ -4479,8 +4501,8 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "task3"},
-							{Name: "task1-and-task2", IsGroup: true},
+							{Name: "task3", Variant: "ubuntu"},
+							{Name: "task1-and-task2", Variant: "ubuntu", IsGroup: true},
 						},
 					},
 				},
@@ -4510,8 +4532,8 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "task3"},
-							{Name: "task1"},
+							{Name: "task3", Variant: "ubuntu"},
+							{Name: "task1", Variant: "ubuntu"},
 						},
 					},
 				},
@@ -4546,8 +4568,8 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "task1-and-task2", IsGroup: true},
-							{Name: "task1-and-task3", IsGroup: true},
+							{Name: "task1-and-task2", Variant: "ubuntu", IsGroup: true},
+							{Name: "task1-and-task3", Variant: "ubuntu", IsGroup: true},
 						},
 					},
 				},
@@ -4905,17 +4927,17 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 						{
 							Name: "ubuntu",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
+								{Name: "test", Variant: "ubuntu"},
 							},
 						},
 						{Name: "rhel",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
+								{Name: "test", Variant: "rhel"},
 							},
 						}, {
 							Name: "archlinux",
 							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test"},
+								{Name: "test", Variant: "archlinux"},
 							},
 						},
 					},
