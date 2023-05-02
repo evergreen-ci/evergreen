@@ -1646,7 +1646,9 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 }
 
 // BuildProjectTVPairs resolves the build variants and tasks into which build
-// variants will run and which tasks will run on each build variant.
+// variants will run and which tasks will run on each build variant. This
+// filters out tasks that cannot run due to being disabled or having an
+// unmatched requester (e.g. a patch-only task for a mainline commit).
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
 }
@@ -1656,7 +1658,7 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies. This
 // filters out tasks that cannot run due to being disabled or having an
-// unmatched requester.
+// unmatched requester (e.g. a patch-only task for a mainline commit).
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
@@ -1743,7 +1745,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {
-			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(vars)
+			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(vars, requester)
 			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
 		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
@@ -1924,9 +1926,9 @@ func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
 }
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
-// Note that unlike BuildProjectTVPairs, this does not filter out tasks that
-// cannot run due to being disabled or having an unmatched requester.
-func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, []TVPair, error) {
+// This filters out tasks that cannot run due to being disabled or having an
+// unmatched requester (e.g. a patch-only task for a mainline commit).
+func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias, requester string) ([]TVPair, []TVPair, error) {
 	pairs := []TVPair{}
 	displayTaskPairs := []TVPair{}
 	for _, v := range vars {
@@ -1943,29 +1945,31 @@ func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, [
 		}
 
 		for _, variant := range p.BuildVariants {
-			if isValidRegexOrTag(variant.Name, variant.Tags, v.VariantTags, variantRegex) {
-				for _, t := range p.Tasks {
-					if t.Patchable != nil && !(*t.Patchable) {
-						continue
-					}
-					if !isValidRegexOrTag(t.Name, t.Tags, v.TaskTags, taskRegex) {
-						continue
-					}
+			if !isValidRegexOrTag(variant.Name, variant.Tags, v.VariantTags, variantRegex) {
+				continue
+			}
 
-					if p.FindTaskForVariant(t.Name, variant.Name) != nil {
-						pairs = append(pairs, TVPair{variant.Name, t.Name})
-					}
-				}
-
-				if v.Task == "" {
+			for _, t := range p.Tasks {
+				if !isValidRegexOrTag(t.Name, t.Tags, v.TaskTags, taskRegex) {
 					continue
 				}
-				for _, displayTask := range variant.DisplayTasks {
-					if !taskRegex.MatchString(displayTask.Name) {
+
+				if bvtu := p.FindTaskForVariant(t.Name, variant.Name); bvtu != nil {
+					if bvtu.IsDisabled() || bvtu.SkipOnRequester(requester) {
 						continue
 					}
-					displayTaskPairs = append(displayTaskPairs, TVPair{variant.Name, displayTask.Name})
+					pairs = append(pairs, TVPair{variant.Name, t.Name})
 				}
+			}
+
+			if v.Task == "" {
+				continue
+			}
+			for _, displayTask := range variant.DisplayTasks {
+				if !taskRegex.MatchString(displayTask.Name) {
+					continue
+				}
+				displayTaskPairs = append(displayTaskPairs, TVPair{variant.Name, displayTask.Name})
 			}
 		}
 	}
@@ -1991,7 +1995,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 
 	var err error
 	pairs := TaskVariantPairs{}
-	pairs.ExecTasks, pairs.DisplayTasks, err = p.BuildProjectTVPairsWithAlias(projectAliases)
+	pairs.ExecTasks, pairs.DisplayTasks, err = p.BuildProjectTVPairsWithAlias(projectAliases, requester)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting pairs matching patch aliases")
 	}
