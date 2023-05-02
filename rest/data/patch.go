@@ -187,7 +187,7 @@ func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 		return err
 	}
 
-	if err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt.GetTime(), true, "", owner, repo, *event.Number); err != nil {
+	if err = model.AbortPatchesWithGithubPatchData(event.PullRequest.GetClosedAt().Time, true, "", owner, repo, *event.Number); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "aborting patches").Error(),
