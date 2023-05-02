@@ -1560,17 +1560,12 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 	bv := p.FindBuildVariant(bvTaskGroup.Variant)
 	if bv == nil {
-		// TODO (EVG-18405): remove this and return early after confirming that
-		// this does not log. Continuing on error with an empty build variant is
-		// inconsequential for now, since it is only necessary for checking
-		// build variant level patch_only.
 		grip.Error(message.Fields{
-			"message":       "found a task group that has no associated build variant (this is not supposed to happen), using an empty build variant configuration as a temporary workaround",
+			"message":       "programmatic error: found a task group that has no associated build variant (this is not supposed to ever happen and is probably a bug)",
 			"task_group":    bvTaskGroup.Name,
 			"build_variant": bvTaskGroup.Variant,
-			"ticket":        "EVG-18405",
 		})
-		bv = &BuildVariant{}
+		return nil
 	}
 
 	tasks := []BuildVariantTaskUnit{}
