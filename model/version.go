@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -741,7 +741,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 			// Otherwise, retrieve the module's commit from the time of the patch creation.
 			revisionTime := time.Unix(0, 0)
 			if !evergreen.IsPatchRequester(v.Requester) {
-				revisionTime = commit.Commit.Committer.GetDate()
+				revisionTime = *commit.Commit.Committer.Date.GetTime()
 			}
 			var branchCommits []*github.RepositoryCommit
 			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)

@@ -15,7 +15,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -187,7 +187,7 @@ func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 		return err
 	}
 
-	if err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "", owner, repo, *event.Number); err != nil {
+	if err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt.GetTime(), true, "", owner, repo, *event.Number); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "aborting patches").Error(),

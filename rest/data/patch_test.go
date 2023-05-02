@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/stretchr/testify/suite"
 )
 

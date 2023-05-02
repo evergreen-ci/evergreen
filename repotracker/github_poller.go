@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -45,7 +45,7 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 		AuthorEmail:     *repoCommit.Commit.Author.Email,
 		RevisionMessage: *repoCommit.Commit.Message,
 		Revision:        *repoCommit.SHA,
-		CreateTime:      *repoCommit.Commit.Committer.Date,
+		CreateTime:      *repoCommit.Commit.Committer.Date.GetTime(),
 	}
 
 	if repoCommit.Author != nil && repoCommit.Author.ID != nil {
