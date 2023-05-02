@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -395,7 +395,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 	client := github.NewClient(httpClient)
 
 	compare, resp, err := client.Repositories.CompareCommits(ctx,
-		repoOwner, repo, baseRevision, currentCommitHash)
+		repoOwner, repo, baseRevision, currentCommitHash, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 		if err != nil {
@@ -432,7 +432,7 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 		"repo":    repoOwner + "/" + repo,
 	})
 
-	commit, resp, err := client.Repositories.GetCommit(ctx, repoOwner, repo, githash)
+	commit, resp, err := client.Repositories.GetCommit(ctx, repoOwner, repo, githash, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 		if err != nil {
@@ -501,7 +501,7 @@ func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch str
 
 	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", repoOwner, repo, branch)
 
-	branchEvent, resp, err := client.Repositories.GetBranch(ctx, repoOwner, repo, branch)
+	branchEvent, resp, err := client.Repositories.GetBranch(ctx, repoOwner, repo, branch, false)
 	if resp != nil {
 		defer resp.Body.Close()
 		if err != nil {
@@ -909,7 +909,7 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 		return "", errors.New("hash is missing from pull request commit list")
 	}
 
-	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
+	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA, nil)
 	if err != nil {
 		return "", err
 	}
