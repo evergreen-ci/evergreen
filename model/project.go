@@ -1560,11 +1560,11 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 	bv := p.FindBuildVariant(bvTaskGroup.Variant)
 	if bv == nil {
-		grip.Error(message.Fields{
+		grip.Alert(message.WrapStack(0, message.Fields{
 			"message":       "programmatic error: found a task group that has no associated build variant (this is not supposed to ever happen and is probably a bug)",
 			"task_group":    bvTaskGroup.Name,
 			"build_variant": bvTaskGroup.Variant,
-		})
+		}))
 		return nil
 	}
 

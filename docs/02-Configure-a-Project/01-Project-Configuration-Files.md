@@ -251,7 +251,7 @@ Fields:
 -   `name`: an identification string for the variant
 -   `display_name`: how the variant is displayed in the Evergreen UI
 -   `run_on`: a list of acceptable distros to run tasks for that variant
-    on. The first distro in the list is the primary distro. The others
+    a. The first distro in the list is the primary distro. The others
     are secondary distros. Each distro has a primary queue, a queue of
     all tasks that have specified it as their primary distro; and a
     secondary queue, a queue of tasks that have specified it as a
@@ -286,8 +286,8 @@ Fields:
     variant task. This is an alternative to referencing a task group
     defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
--   `disable`: determines whether or not a build variant will run or not. Set to false by default
--   `patch_only`: if set, the tasks under the build variant can only run in patches.
+-   Build variants support [all options that limit when a task will run](#limiting-when-a-task-will-run). If set for the
+    build variant, it will apply to all tasks under the build variant.
 
 Additionally, an item in the `tasks` list can be of the form
 
@@ -538,9 +538,7 @@ task).
 
 To cause a task to only run in commit builds, set `patchable: false`.
 
-To cause a task to only run in patches, set `patch_only: true`. `patch_only: true` can also be set at the build variant
-level to apply this behavior to all tasks in the build variant. The build variant level setting can be overridden if
-it's been explicitly set in the task definition or in the task listed under the build variant.
+To cause a task to only run in patches, set `patch_only: true`.
 
 To cause a task to only run in versions NOT triggered from git tags, set
 `allow_for_git_tag: false`.
@@ -548,8 +546,7 @@ To cause a task to only run in versions NOT triggered from git tags, set
 To cause a task to only run in versions triggered from git tags, set
 `git_tag_only: true`.
 
-To cause a task to not run at all, set `disable: true`. Setting `disable: true` at the build variant level 
-will apply this behavior to all tasks in the build variant.
+To cause a task to not run at all, set `disable: true`.
 
 -   This behaves similarly to commenting out the task but will not
     trigger any validation errors.
