@@ -988,9 +988,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 		// this applies the patch using the patch files in the temp directory
 		patchCommandStrings := getPatchCommands(patchPart, conf, moduleDir, tempAbsPath)
-		//todo: fix
-		// applyCommand, err := c.getApplyCommand(tempAbsPath, conf, useVerbose)
-		applyCommand, err := c.getApplyCommand(tempAbsPath, conf, true)
+		applyCommand, err := c.getApplyCommand(tempAbsPath, conf, useVerbose)
 		if err != nil {
 			return errors.Wrap(err, "getting git apply command")
 		}
