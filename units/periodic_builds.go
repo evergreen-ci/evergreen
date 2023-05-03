@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -85,11 +84,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		return
 	}
 	defer func() {
-		baseTime := definition.NextRunTime
-		if utility.IsZeroTime(baseTime) {
-			baseTime = time.Now()
-		}
-		err = model.UpdateNextPeriodicBuild(j.ProjectID, definition.ID, baseTime.Add(time.Duration(definition.IntervalHours)*time.Hour))
+		err = model.UpdateNextPeriodicBuild(j.ProjectID, definition)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "unable to set next periodic build job time",
 			"project":    j.ProjectID,

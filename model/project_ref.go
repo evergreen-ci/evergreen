@@ -236,6 +236,7 @@ type PeriodicBuildDefinition struct {
 	ID            string    `bson:"id" json:"id"`
 	ConfigFile    string    `bson:"config_file" json:"config_file"`
 	IntervalHours int       `bson:"interval_hours" json:"interval_hours"`
+	Cron          string    `bson:"cron" json:"cron"`
 	Alias         string    `bson:"alias,omitempty" json:"alias,omitempty"`
 	Message       string    `bson:"message,omitempty" json:"message,omitempty"`
 	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time,omitempty"`
@@ -2145,18 +2146,25 @@ func handleBatchTimeOverflow(in int) int {
 	return in
 }
 
-// return the next valid batch time
-func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
-
-	if strings.HasPrefix(cronBatchTime, intervalPrefix) {
-		return time.Time{}, errors.Errorf("cannot use interval '%s' in cron batchtime '%s'", intervalPrefix, cronBatchTime)
-	}
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
-	sched, err := parser.Parse(cronBatchTime)
+// GetNextCronTime returns the next valid batch time
+func GetNextCronTime(curTime time.Time, cronBatchTime string) (time.Time, error) {
+	sched, err := getCronParserSchedule(cronBatchTime)
 	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "parsing cron batchtime '%s'", cronBatchTime)
+		return time.Time{}, err
 	}
 	return sched.Next(curTime), nil
+}
+
+func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
+	if strings.HasPrefix(cronStr, intervalPrefix) {
+		return nil, errors.Errorf("cannot use interval '%s' in cron '%s'", intervalPrefix, cronStr)
+	}
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
+	sched, err := parser.Parse(cronStr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing cron '%s'", cronStr)
+	}
+	return sched, err
 }
 
 func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
@@ -2166,7 +2174,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {
-		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
+		return GetNextCronTime(time.Now(), variant.CronBatchTime)
 	}
 	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(variant.Activate) && variant.BatchTime == nil {
@@ -2201,7 +2209,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 		return utility.ZeroTime, nil
 	}
 	if t.CronBatchTime != "" {
-		return GetActivationTimeWithCron(time.Now(), t.CronBatchTime)
+		return GetNextCronTime(time.Now(), t.CronBatchTime)
 	}
 	// If activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(t.Activate) && t.BatchTime == nil {
@@ -2585,7 +2593,21 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 
 // UpdateNextPeriodicBuild updates the periodic build run time for either the project
 // or repo ref depending on where it's defined.
-func UpdateNextPeriodicBuild(projectId, definition string, nextRun time.Time) error {
+func UpdateNextPeriodicBuild(projectId string, definition *PeriodicBuildDefinition) error {
+	var nextRunTime time.Time
+	var err error
+	baseTime := definition.NextRunTime
+	if utility.IsZeroTime(baseTime) {
+		baseTime = time.Now()
+	}
+	if definition.IntervalHours > 0 {
+		nextRunTime = baseTime.Add(time.Duration(definition.IntervalHours) * time.Hour)
+	} else {
+		nextRunTime, err = GetNextCronTime(baseTime, definition.Cron)
+		if err != nil {
+			return errors.Wrap(err, "getting next run time with cron")
+		}
+	}
 	// Get the branch project on its own so we can determine where to update the run time.
 	projectRef, err := FindBranchProjectRef(projectId)
 	if err != nil {
@@ -2610,7 +2632,7 @@ func UpdateNextPeriodicBuild(projectId, definition string, nextRun time.Time) er
 			return errors.Errorf("repo '%s' not found", projectRef.RepoRefId)
 		}
 		for _, d := range repoRef.PeriodicBuilds {
-			if d.ID == definition {
+			if d.ID == definition.ID {
 				collection = RepoRefCollection
 				buildsKey = RepoRefPeriodicBuildsKey
 				documentIdKey = RepoRefIdKey
@@ -2623,13 +2645,13 @@ func UpdateNextPeriodicBuild(projectId, definition string, nextRun time.Time) er
 		documentIdKey: idToUpdate,
 		buildsKey: bson.M{
 			"$elemMatch": bson.M{
-				"id": definition,
+				"id": definition.ID,
 			},
 		},
 	}
 	update := bson.M{
 		"$set": bson.M{
-			bsonutil.GetDottedKeyName(buildsKey, "$", "next_run_time"): nextRun,
+			bsonutil.GetDottedKeyName(buildsKey, "$", "next_run_time"): nextRunTime,
 		},
 	}
 
@@ -2886,13 +2908,17 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 func (d *PeriodicBuildDefinition) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(d.IntervalHours <= 0, "interval must be a positive integer")
+	catcher.NewWhen(d.IntervalHours <= 0 && d.Cron == "", "interval must be a positive integer or cron must be defined")
+	catcher.NewWhen(d.IntervalHours > 0 && d.Cron != "", "can't define both cron and interval")
 	catcher.NewWhen(d.ConfigFile == "", "a config file must be specified")
+	if d.Cron != "" {
+		_, err := getCronParserSchedule(d.Cron)
+		catcher.Wrap(err, "parsing cron")
+	}
 
 	if d.ID == "" {
 		d.ID = utility.RandomString()
 	}
-
 	return catcher.Resolve()
 }
 
