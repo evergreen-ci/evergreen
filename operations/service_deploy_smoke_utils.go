@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )

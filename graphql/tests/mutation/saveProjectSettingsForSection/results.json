@@ -63,7 +63,7 @@
       }
     },
     {
-      "query_file": "project_banner.graphql",
+      "query_file": "notifications_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
@@ -73,7 +73,21 @@
                 "text": "banner text!!",
                 "theme": "WARNING"
               }
-            }
+            },
+            "subscriptions": [
+              {
+                "subscriber": {
+                  "subscriber": {
+                    "webhookSubscriber": {
+                      "url": "https://fake-website.com",
+                      "retries": 0,
+                      "minDelayMs": 0,
+                      "timeoutMs": 0
+                    }
+                  }
+                }
+              }
+            ]
           }
         }
       }

@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"

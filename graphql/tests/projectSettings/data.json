@@ -209,7 +209,10 @@
               "key": "key",
               "value": "val"
             }
-          ]
+          ],
+          "retries": 2,
+          "min_delay_ms": 500,
+          "timeout_ms": 15000
         }
       },
       "owner": "sandbox_project_id",

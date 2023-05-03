@@ -35,6 +35,9 @@ type WebhookSubscriber {
   headers: [WebhookHeader]!
   secret: String!
   url: String!
+  retries: Int!
+  minDelayMs: Int!
+  timeoutMs: Int!
 }
 
 type WebhookHeader {
@@ -51,6 +54,9 @@ input WebhookSubscriberInput {
   headers: [WebhookHeaderInput]!
   secret: String!
   url: String!
+  retries: Int = 0
+  minDelayMs: Int = 0
+  timeoutMs: Int = 0
 }
 
 input WebhookHeaderInput {
