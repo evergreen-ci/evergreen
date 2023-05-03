@@ -11,6 +11,7 @@
 var patches = {{.Data.Patches}};
 var filename = {{.FileName}};
 var patchNumber = {{.PatchNumber}};
+var commitNumber = {{.CommitNumber}};
 
 var handlePatchNumber = function(i) {
   var outputBlock = $('<code></code>');
@@ -24,14 +25,16 @@ var handlePatchNumber = function(i) {
   for (var j = 0; j < lines.length; ++j) {
     var line = lines[j];
 
-    var isNewFile = (line.indexOf('diff --git') === 0);
+    var isNewFile = (line.indexOf('diff --git') === 0) || line === '---';
 
     if (isNewFile && found) {
       break;
     }
 
-    if (filename && isNewFile && line.indexOf(filename) != -1) {
+    if (filename && isNewFile && line.indexOf(filename) != -1 && commitNumber == 0) {
       found = true;
+    } else if (filename && isNewFile && line.indexOf(filename) != -1) {
+      commitNumber--;
     }
 
     if (line.substring(0, 3) == "+++") {

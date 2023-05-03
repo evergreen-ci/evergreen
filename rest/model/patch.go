@@ -314,8 +314,13 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
 		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
 		fileDiffs := []FileDiff{}
-		for _, file := range modPatch.PatchSet.Summary {
-			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
+		commitNumber := 0
+		prevCommitMsg := ""
+		for i, file := range modPatch.PatchSet.Summary {
+			if i > 0 && file.Description != prevCommitMsg {
+				commitNumber++
+			}
+			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d&commit_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber, commitNumber)
 			fileName := file.Name
 			fileDiff := FileDiff{
 				FileName:    &fileName,
@@ -325,6 +330,7 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 				Description: file.Description,
 			}
 			fileDiffs = append(fileDiffs, fileDiff)
+			prevCommitMsg = file.Description
 		}
 		apiModPatch := APIModulePatch{
 			BranchName:     &branchName,
