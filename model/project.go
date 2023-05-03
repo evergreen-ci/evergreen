@@ -1565,7 +1565,11 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			"task_group":    bvTaskGroup.Name,
 			"build_variant": bvTaskGroup.Variant,
 		}))
-		return nil
+		// Continue on error, even though this can result in bugs due to using
+		// an unpopulated build variant. Having a temporary bug is preferable to
+		// exiting early, since exiting can prevent task groups from working
+		// at all.
+		bv = &BuildVariant{}
 	}
 
 	tasks := []BuildVariantTaskUnit{}
