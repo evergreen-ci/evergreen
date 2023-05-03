@@ -1740,12 +1740,12 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		vars, err := findAliasesForPatch(p.Identifier, alias, patchDoc)
+		aliases, err := findAliasesForPatch(p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {
-			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(vars, requester)
+			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(aliases, requester)
 			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
 		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
@@ -1836,36 +1836,36 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 }
 
 func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
-	vars, err := findAliasInProjectOrRepoFromDb(projectId, alias)
+	aliases, err := findAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
-	if len(vars) > 0 {
-		return vars, nil
+	if len(aliases) > 0 {
+		return aliases, nil
 	}
 	pRef, err := FindMergedProjectRef(projectId, "", false)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project ref")
 	}
 	if pRef == nil || !pRef.IsVersionControlEnabled() {
-		return vars, nil
+		return aliases, nil
 	}
 	if len(patchDoc.PatchedProjectConfig) > 0 {
 		projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), projectId)
 		if err != nil {
 			return nil, errors.Wrap(err, "retrieving aliases from patched config")
 		}
-		vars, err = findAliasFromProjectConfig(projectConfig, alias)
+		aliases, err = findAliasFromProjectConfig(projectConfig, alias)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
 	} else if patchDoc.Version != "" {
-		vars, err = getMatchingAliasForVersion(patchDoc.Version, alias)
+		aliases, err = getMatchingAliasForVersion(patchDoc.Version, alias)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
 	}
-	return vars, nil
+	return aliases, nil
 }
 
 // extractDisplayTasks adds display tasks and all their execution tasks when
@@ -1928,29 +1928,29 @@ func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
 // This filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias, requester string) ([]TVPair, []TVPair, error) {
+func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester string) ([]TVPair, []TVPair, error) {
 	pairs := []TVPair{}
 	displayTaskPairs := []TVPair{}
-	for _, v := range vars {
+	for _, alias := range aliases {
 		var variantRegex *regexp.Regexp
-		variantRegex, err := v.getVariantRegex()
+		variantRegex, err := alias.getVariantRegex()
 		if err != nil {
 			return nil, nil, err
 		}
 
 		var taskRegex *regexp.Regexp
-		taskRegex, err = v.getTaskRegex()
+		taskRegex, err = alias.getTaskRegex()
 		if err != nil {
 			return nil, nil, err
 		}
 
 		for _, variant := range p.BuildVariants {
-			if !isValidRegexOrTag(variant.Name, variant.Tags, v.VariantTags, variantRegex) {
+			if !isValidRegexOrTag(variant.Name, variant.Tags, alias.VariantTags, variantRegex) {
 				continue
 			}
 
 			for _, t := range p.Tasks {
-				if !isValidRegexOrTag(t.Name, t.Tags, v.TaskTags, taskRegex) {
+				if !isValidRegexOrTag(t.Name, t.Tags, alias.TaskTags, taskRegex) {
 					continue
 				}
 
@@ -1962,7 +1962,7 @@ func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias, requester st
 				}
 			}
 
-			if v.Task == "" {
+			if taskRegex == nil {
 				continue
 			}
 			for _, displayTask := range variant.DisplayTasks {
