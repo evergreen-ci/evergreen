@@ -261,6 +261,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 		"jira_project": j.project,
 		"task":         j.data.Task.Id,
 		"project":      j.data.Project.Id,
+		"issue":        issue,
 	})
 
 	return &issue, nil

@@ -31,10 +31,10 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -293,10 +293,41 @@ func (e *envState) initSettings(path string) error {
 	return nil
 }
 
+// getCollectionName extracts the collection name from a command.
+// Returns an error if the command is deformed or is not a CRUD command.
+func getCollectionName(command bson.Raw) (string, error) {
+	element, err := command.IndexErr(0)
+	if err != nil {
+		return "", errors.Wrap(err, "command has no first element")
+	}
+	v, err := element.ValueErr()
+	if err != nil {
+		return "", errors.Wrap(err, "getting element value")
+	}
+	if v.Type != bsontype.String {
+		return "", errors.Errorf("element value was of unexpected type '%s'", v.Type)
+	}
+	return v.StringValue(), nil
+}
+
+// redactSensitiveCollections satisfies the apm.CommandTransformer interface.
+// Returns an empty string when the command is a CRUD command on a sensitive collection
+// or if we can't determine the collection the command is on.
+func redactSensitiveCollections(command bson.Raw) string {
+	collectionName, err := getCollectionName(command)
+	if err != nil || utility.StringSliceContains(sensitiveCollections, collectionName) {
+		return ""
+	}
+
+	b, _ := bson.MarshalExtJSON(command, false, false)
+	return string(b)
+}
+
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
-		SetConnectTimeout(5 * time.Second).SetMonitor(otelmongo.NewMonitor())
+		SetConnectTimeout(5 * time.Second).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if settings.HasAuth() {
 		ymlUser, ymlPwd, err := settings.GetAuth()

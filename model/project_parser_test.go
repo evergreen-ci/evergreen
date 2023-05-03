@@ -369,6 +369,19 @@ func TestTranslateTasks(t *testing.T) {
 					},
 				},
 			},
+			{
+				Name:    "disabled_bv",
+				Disable: utility.TruePtr(),
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "your_task",
+					},
+					{
+						Name:    "my_task",
+						Disable: utility.FalsePtr(),
+					},
+				},
+			},
 		},
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
@@ -386,7 +399,7 @@ func TestTranslateTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	require.Len(t, out.Tasks, 5)
-	require.Len(t, out.BuildVariants, 5)
+	require.Len(t, out.BuildVariants, 6)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -394,6 +407,7 @@ func TestTranslateTasks(t *testing.T) {
 		}
 	}
 
+	assert.Equal(t, "bv0", out.BuildVariants[0].Name)
 	require.Len(t, out.BuildVariants[0].Tasks, 3)
 	assert.Equal(t, "my_task", out.BuildVariants[0].Tasks[0].Name)
 	assert.Equal(t, 30, out.BuildVariants[0].Tasks[0].ExecTimeoutSecs)
@@ -453,6 +467,16 @@ func TestTranslateTasks(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[0].GitTagOnly))
 	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[4].Tasks[1].Name)
 	assert.False(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[1].GitTagOnly))
+
+	assert.Equal(t, "disabled_bv", out.BuildVariants[5].Name)
+	require.Len(t, out.BuildVariants[5].Tasks, 2)
+	assert.Equal(t, "your_task", out.BuildVariants[5].Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].GitTagOnly))
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Stepback))
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Disable))
+	assert.Equal(t, "my_task", out.BuildVariants[5].Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].PatchOnly))
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].Disable))
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -2555,7 +2579,7 @@ ignore:
 	assert.Equal(t, len(p1.Functions), 2)
 	assert.Equal(t, len(p1.Tasks), 2)
 	assert.Equal(t, len(p1.Ignore), 3)
-	assert.Equal(t, p1.Stepback, boolPtr(true))
+	assert.Equal(t, p1.Stepback, utility.TruePtr())
 	assert.NotEqual(t, p1.Post, nil)
 }
 
