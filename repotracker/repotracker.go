@@ -811,10 +811,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	// build all pairsToCreate before creating builds, to handle dependencies (if applicable)
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		if ctx.Err() != nil {
-			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
-		}
-		if buildvariant.Disable {
-			continue
+			return errors.Wrapf(ctx.Err(), "aborting version creation for version '%s'", v.Id)
 		}
 		if len(aliases) > 0 {
 			var aliasesMatchingVariant model.ProjectAliases

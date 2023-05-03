@@ -532,15 +532,13 @@ early_termination:
 
 ### Limiting When a Task Will Run
 
-The following can be added to a task definition OR to a task listed
-under a build variant (so that it will only effect that variant's
-task).
+To limit the conditions when a task will run, the following settings can be
+added to a task definition, to a build variant definition, or to a specific task
+listed under a build variant (so that it will only affect that variant's task).
 
 To cause a task to only run in commit builds, set `patchable: false`.
 
-To cause a task to only run in patches, set `patch_only: true`. `patch_only: true` can also be set at the build variant
-level to apply this behavior to all tasks in the build variant. The build variant level setting can be overridden if
-it's been explicitly set in the task definition or in the task listed under the build variant.
+To cause a task to only run in patches, set `patch_only: true`.
 
 To cause a task to only run in versions NOT triggered from git tags, set
 `allow_for_git_tag: false`.
@@ -548,15 +546,36 @@ To cause a task to only run in versions NOT triggered from git tags, set
 To cause a task to only run in versions triggered from git tags, set
 `git_tag_only: true`.
 
-To cause a task to not run at all, set `disable: true`. Setting `disable: true` at the build variant level 
-will apply this behavior to all tasks in the build variant.
+To cause a task to not run at all, set `disable: true`.
 
 -   This behaves similarly to commenting out the task but will not
     trigger any validation errors.
--   Disabling its dependencies will still allow the task to run
+-   If a task is disabled and is depended on by another task, the
+    dependent task will simply exclude the disabled task from its
+    dependencies.
 
 Can also set batchtime or cron on tasks or build variants, detailed
 [here](#build-variants).
+
+If there are conflicting settings defined at different levels, the order of
+priority (from highest to lowest) is:
+
+- Tasks listed under a build variant.
+- The task definition.
+- The build variant definition.
+
+For example, if we have this configuration:
+```yaml
+buildvariants:
+- name: some-build-variant
+  patchable: false
+  tasks:
+    - name: unpatchable-task
+    - name: patchable-task
+      patchable: true
+```
+In this case, `unpatchable-task` cannot run in patches, but `patchable-task`
+can.
 
 ### Expansions
 
@@ -664,8 +683,8 @@ Every task has some expansions available by default:
     queue task
 -   `${commit_message}` is the commit message if this is a commit queue
     task
--   `${requester}` is what triggered the task: patch, github_pr,
-    github_tag, commit, trigger, commit_queue, or ad_hoc
+-   `${requester}` is what triggered the task: patch, `github_pr`,
+    `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
 
 The following expansions are available if a task was triggered by an
 inter-project dependency:
@@ -1310,10 +1329,10 @@ tasks to the task's depends_on field. The following additional
 parameters are available:
 
 -   `status` - string (default: "success"). One of ["success",
-    "failed", or "*"]. "*" includes any finished status as well
+    "failed", or "`*`"]. "`*`" includes any finished status as well
     as when the task is blocked.
 -   `variant` - string (by default, uses existing variant). Can specify a 
-     variant for the dependency to exist in, or "*" will depend on the task
+     variant for the dependency to exist in, or "`*`" will depend on the task
      for all matching variants.
 -   `patch_optional` - boolean (default: false). If true the dependency
     will only exist when the depended on task is present in the version
