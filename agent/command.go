@@ -38,7 +38,6 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 	var cmds []command.Command
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
 
-	//here
 	for i, commandInfo := range commands {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")

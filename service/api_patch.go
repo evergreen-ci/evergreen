@@ -178,12 +178,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:        author,
-		Project:     pref.Id,
-		Path:        data.Path,
-		BaseGitHash: data.Githash,
-		Module:      r.FormValue("module"),
-		//here
+		User:             author,
+		Project:          pref.Id,
+		Path:             data.Path,
+		BaseGitHash:      data.Githash,
+		Module:           r.FormValue("module"),
 		PatchContent:     patchString,
 		Description:      data.Description,
 		Finalize:         data.Finalize,
