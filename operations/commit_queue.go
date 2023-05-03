@@ -636,8 +636,6 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 	if err = patchParams.validateSubmission(diffData); err != nil {
 		return err
 	}
-	//here we go. test here tomorrow and compare it with the regular patch command
-	// to see how commit messages work.
 	patch, err := patchParams.createPatch(ac, diffData)
 	if err != nil {
 		return err

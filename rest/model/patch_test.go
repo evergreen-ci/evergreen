@@ -1,24 +1,20 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 	"time"
-
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func init() { testutil.Setup() }
 
 func TestAPIPatch(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))

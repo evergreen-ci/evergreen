@@ -177,7 +177,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, statusCode, err)
 		return
 	}
-	//def started here
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:        author,
 		Project:     pref.Id,

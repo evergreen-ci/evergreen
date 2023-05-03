@@ -119,9 +119,8 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // execute the onFail handler. If onFail is nil, a simple "unauthorized" error will be sent.
-// If skipWithToggle is true, the request for an authenticated user will be skipped if the LegacyUIPublicAccessDisabled
-// flag is set to true. This is a temporary parameter that is in place while we determine if adding
-// auth to all routes will affect users.
+// If skipWithToggle is true, the request for an authenticated user will be skipped if our admin flags
+// dictate that we should enable public project access (i.e. if LegacyUIPublicAccessDisabled is false).
 func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if skipWithToggle {
