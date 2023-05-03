@@ -96,10 +96,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	if err := a.setupSystemMetricsCollector(ctx, tc); err != nil {
-		tc.logger.System().Error(errors.Wrap(err, "setting up system metrics collector"))
-	}
-
 	if ctx.Err() != nil {
 		tc.logger.Task().Info("Task canceled.")
 		return
@@ -144,35 +140,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 	complete <- evergreen.TaskSucceeded
-}
-
-func (a *Agent) setupSystemMetricsCollector(ctx context.Context, tc *taskContext) error {
-	conn, err := a.comm.GetCedarGRPCConn(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting Cedar gRPC client connection")
-	}
-
-	tc.Lock()
-	defer tc.Unlock()
-
-	tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		task:     tc.taskModel,
-		interval: defaultStatsInterval,
-		collectors: []metricCollector{
-			newUptimeCollector(),
-			newProcessCollector(),
-			newDiskUsageCollector(tc.taskConfig.WorkDir),
-		},
-		conn: conn,
-	})
-	if err != nil {
-		return errors.Wrap(err, "initializing system metrics collector")
-	}
-
-	if err = tc.systemMetricsCollector.Start(ctx); err != nil {
-		return errors.Wrap(err, "starting system metrics collection")
-	}
-	return nil
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
