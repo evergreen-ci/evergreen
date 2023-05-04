@@ -1,9 +1,11 @@
 package command
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -229,13 +231,25 @@ func TestXMLToModelConversion(t *testing.T) {
 		Convey("when converting the results to model struct", func() {
 			tests := []testresult.TestResult{}
 			logs := []*model.TestLog{}
+			numNan := 0
+			numInf := 0
 			for _, testCase := range res[0].TestCases {
 				test, log := testCase.toModelTestResultAndLog(conf, logger)
 				if log != nil {
 					logs = append(logs, log)
 				}
 				tests = append(tests, test)
+				if math.IsNaN(float64(testCase.Time)) {
+					So(test.Duration(), ShouldEqual, time.Duration(0))
+					numNan++
+				}
+				if math.IsInf(float64(testCase.Time), 0) {
+					So(test.Duration(), ShouldEqual, time.Duration(0))
+					numInf++
+				}
 			}
+			So(numNan, ShouldEqual, 1)
+			So(numInf, ShouldEqual, 1)
 			So(logger.Close(), ShouldBeNil)
 
 			Convey("the proper amount of each failure should be correct", func() {
