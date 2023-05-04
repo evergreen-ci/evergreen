@@ -1172,17 +1172,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	return expansions, nil
 }
 
-// GetSpecForTask returns a ProjectTask spec for the given name.
-// Returns an empty ProjectTask if none exists.
-func (p Project) GetSpecForTask(name string) ProjectTask {
-	for _, pt := range p.Tasks {
-		if pt.Name == name {
-			return pt
-		}
-	}
-	return ProjectTask{}
-}
-
 func (p *Project) GetVariantMappings() map[string]string {
 	mappings := make(map[string]string)
 	for _, buildVariant := range p.BuildVariants {
