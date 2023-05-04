@@ -203,9 +203,10 @@ func TestPopulateBVT(t *testing.T) {
 
 		Convey("updating a BuildVariantTaskUnit with unset fields", func() {
 			bvt := project.BuildVariants[0].Tasks[0]
-			spec := project.GetSpecForTask("task1")
-			So(spec.Name, ShouldEqual, "task1")
-			bvt.Populate(spec, project.BuildVariants[0])
+			projectTask := project.FindProjectTask("task1")
+			So(projectTask, ShouldNotBeNil)
+			So(projectTask.Name, ShouldEqual, "task1")
+			bvt.Populate(*projectTask, project.BuildVariants[0])
 
 			Convey("should inherit the unset fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
@@ -225,9 +226,10 @@ func TestPopulateBVT(t *testing.T) {
 				Stepback:        utility.TruePtr(),
 				DependsOn:       []TaskUnitDependency{{Name: "task2"}, {Name: "task3"}},
 			}
-			spec := project.GetSpecForTask("task1")
-			So(spec.Name, ShouldEqual, "task1")
-			bvt.Populate(spec, project.BuildVariants[0])
+			projectTask := project.FindProjectTask("task1")
+			So(projectTask, ShouldNotBeNil)
+			So(projectTask.Name, ShouldEqual, "task1")
+			bvt.Populate(*projectTask, project.BuildVariants[0])
 
 			Convey("should not inherit set fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
