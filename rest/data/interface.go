@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 )
 
 // Connector is an interface that contains all of the methods which

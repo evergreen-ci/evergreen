@@ -127,11 +127,11 @@ type patchRawHandler struct {
 }
 
 func makePatchRawHandler() gimlet.RouteHandler {
-	return &patchByIdHandler{}
+	return &patchRawHandler{}
 }
 
 func (p *patchRawHandler) Factory() gimlet.RouteHandler {
-	return &patchByIdHandler{}
+	return &patchRawHandler{}
 }
 
 func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {

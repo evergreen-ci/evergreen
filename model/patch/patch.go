@@ -17,7 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -378,7 +378,8 @@ func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
 }
 
 // ResolveVariantTasks returns a set of all build variants and a set of all
-// tasks that will run based on the given VariantTasks.
+// tasks that will run based on the given VariantTasks, filtering out any
+// duplicates.
 func ResolveVariantTasks(vts []VariantTasks) (bvs []string, tasks []string) {
 	taskSet := map[string]bool{}
 	bvSet := map[string]bool{}

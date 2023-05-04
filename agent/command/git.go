@@ -703,7 +703,8 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 	logger client.LoggerProducer,
 	conf *internal.TaskConfig,
 	td client.TaskData,
-	patchId string) error {
+	patchId string,
+	useVerbose bool) error {
 	logger.Task().Infof("Applying changes from previous commit queue patch '%s'.", patchId)
 
 	ctx, span := getTracer().Start(ctx, "apply_commit_queue_patches")
@@ -719,7 +720,7 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 	if err = c.getPatchContents(ctx, comm, logger, conf, newPatch); err != nil {
 		return errors.Wrap(err, "getting patch contents")
 	}
-	if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
+	if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches), useVerbose); err != nil {
 		logger.Task().Warning("Failed to apply previous commit queue patch; try rebasing onto HEAD.")
 		return errors.Wrapf(err, "applying patch '%s'", newPatch.Id.Hex())
 	}
@@ -781,7 +782,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	// Apply additional patches for commit queue batch execution.
 	if conf.Task.Requester == evergreen.MergeTestRequester && !conf.Task.CommitQueueMerge {
 		for _, patchId := range additionalPatches {
-			err := c.applyAdditionalPatch(ctx, comm, logger, conf, td, patchId)
+			err := c.applyAdditionalPatch(ctx, comm, logger, conf, td, patchId, opts.useVerbose)
 			if err != nil {
 				return err
 			}
@@ -799,7 +800,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		// in order for the main commit's manifest to include module changes commit queue
 		// commits need to be in the correct order, first modules and then the main patch
 		// reorder patches so the main patch gets applied last
-		if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
+		if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches), opts.useVerbose); err != nil {
 			err = errors.Wrap(err, "applying patch")
 			logger.Execution().Error(err.Error())
 			return err
@@ -868,7 +869,7 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 // getApplyCommand determines the patch type. If the patch is a mailbox-style
 // patch, it uses git-am (see https://git-scm.com/docs/git-am), otherwise
 // it uses git apply
-func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskConfig) (string, error) {
+func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskConfig, useVerbose bool) (string, error) {
 	useGitAm, err := isMailboxPatch(patchFile, conf)
 	if err != nil {
 		return "", err
@@ -885,8 +886,11 @@ func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskC
 		}
 		return fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr --keep < "%s"`, committerName, committerEmail, patchFile), nil
 	}
-
-	return fmt.Sprintf("git apply --binary --index < '%s'", patchFile), nil
+	apply := fmt.Sprintf("git apply --binary --index < '%s'", patchFile)
+	if useVerbose {
+		apply = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", apply)
+	}
+	return apply, nil
 }
 
 func isMailboxPatch(patchFile string, conf *internal.TaskConfig) (bool, error) {
@@ -920,7 +924,7 @@ func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, 
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
 func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerProducer,
-	conf *internal.TaskConfig, patches []patch.ModulePatch) error {
+	conf *internal.TaskConfig, patches []patch.ModulePatch, useVerbose bool) error {
 
 	ctx, span := getTracer().Start(ctx, "apply_patches")
 	defer span.End()
@@ -984,7 +988,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 		// this applies the patch using the patch files in the temp directory
 		patchCommandStrings := getPatchCommands(patchPart, conf, moduleDir, tempAbsPath)
-		applyCommand, err := c.getApplyCommand(tempAbsPath, conf)
+		applyCommand, err := c.getApplyCommand(tempAbsPath, conf, useVerbose)
 		if err != nil {
 			return errors.Wrap(err, "getting git apply command")
 		}

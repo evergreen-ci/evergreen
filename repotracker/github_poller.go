@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -41,11 +41,11 @@ func isLastRevision(revision string, repoCommit *github.RepositoryCommit) bool {
 // revision model.
 func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision {
 	r := model.Revision{
-		Author:          *repoCommit.Commit.Author.Name,
-		AuthorEmail:     *repoCommit.Commit.Author.Email,
-		RevisionMessage: *repoCommit.Commit.Message,
-		Revision:        *repoCommit.SHA,
-		CreateTime:      *repoCommit.Commit.Committer.Date,
+		Author:          repoCommit.Commit.Author.GetName(),
+		AuthorEmail:     repoCommit.Commit.Author.GetEmail(),
+		RevisionMessage: repoCommit.Commit.GetMessage(),
+		Revision:        repoCommit.GetSHA(),
+		CreateTime:      repoCommit.Commit.Committer.GetDate().Time,
 	}
 
 	if repoCommit.Author != nil && repoCommit.Author.ID != nil {

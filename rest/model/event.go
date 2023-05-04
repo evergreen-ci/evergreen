@@ -22,6 +22,7 @@ type TaskAPIEventLogEntry struct {
 type TaskEventData struct {
 	Execution int        `bson:"execution" json:"execution"`
 	HostId    *string    `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	PodId     *string    `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
 	UserId    *string    `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    *string    `bson:"s,omitempty" json:"status,omitempty"`
 	JiraIssue *string    `bson:"jira,omitempty" json:"jira,omitempty"`
@@ -92,6 +93,7 @@ func (el *TaskEventData) BuildFromService(v *event.TaskEventData) error {
 	}
 	el.Execution = v.Execution
 	el.HostId = utility.ToStringPtr(v.HostId)
+	el.PodId = utility.ToStringPtr(v.PodID)
 	el.UserId = utility.ToStringPtr(v.UserId)
 	el.JiraIssue = utility.ToStringPtr(v.JiraIssue)
 	el.JiraLink = utility.ToStringPtr(jiraLink)
