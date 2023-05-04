@@ -8,26 +8,26 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/event"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 )
 
 // Subscriber is the resolver for the subscriber field.
-func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
+func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
 	subscriberType := utility.FromStringPtr(obj.Type)
 
 	switch subscriberType {
 	case event.GithubPullRequestSubscriberType:
-		sub := restModel.APIGithubPRSubscriber{}
+		sub := model.APIGithubPRSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem converting %s subscriber: %s",
 				event.GithubPullRequestSubscriberType, err.Error()))
 		}
 		res.GithubPRSubscriber = &sub
 	case event.GithubCheckSubscriberType:
-		sub := restModel.APIGithubCheckSubscriber{}
+		sub := model.APIGithubCheckSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.GithubCheckSubscriberType, err.Error()))
@@ -35,7 +35,7 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restMod
 		res.GithubCheckSubscriber = &sub
 
 	case event.EvergreenWebhookSubscriberType:
-		sub := restModel.APIWebhookSubscriber{}
+		sub := model.APIWebhookSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.EvergreenWebhookSubscriberType, err.Error()))
@@ -43,7 +43,7 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restMod
 		res.WebhookSubscriber = &sub
 
 	case event.JIRAIssueSubscriberType:
-		sub := &restModel.APIJIRAIssueSubscriber{}
+		sub := &model.APIJIRAIssueSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.JIRAIssueSubscriberType, err.Error()))
@@ -64,9 +64,9 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restMod
 	return res, nil
 }
 
-// ProjectSubscriber returns ProjectSubscriberResolver implementation.
-func (r *Resolver) ProjectSubscriber() ProjectSubscriberResolver {
-	return &projectSubscriberResolver{r}
+// SubscriberWrapper returns SubscriberWrapperResolver implementation.
+func (r *Resolver) SubscriberWrapper() SubscriberWrapperResolver {
+	return &subscriberWrapperResolver{r}
 }
 
-type projectSubscriberResolver struct{ *Resolver }
+type subscriberWrapperResolver struct{ *Resolver }

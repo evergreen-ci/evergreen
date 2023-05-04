@@ -83,20 +83,8 @@ type ProjectSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
   projectRef: Project
-  subscriptions: [ProjectSubscription!]
+  subscriptions: [GenericSubscription!]
   vars: ProjectVars
-}
-
-# shared by Project and RepoRef
-type ProjectSubscription {
-  id: String!
-  ownerType: String!
-  regexSelectors: [Selector!]!
-  resourceType: String!
-  selectors: [Selector!]!
-  subscriber: ProjectSubscriber
-  trigger: String!
-  triggerData: StringMap
 }
 
 type Selector {
@@ -182,7 +170,7 @@ type ProjectEventSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
   projectRef: Project
-  subscriptions: [ProjectSubscription!]
+  subscriptions: [GenericSubscription!]
   vars: ProjectVars
 }
 

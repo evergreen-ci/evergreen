@@ -68,6 +68,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
+  GenericSubscription:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GithubProjectConflicts:
@@ -187,13 +189,11 @@ models:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-  ProjectSubscriber:
+  SubscriberWrapper:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
     fields:
       subscriber:
         resolver: true
-  ProjectSubscription:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
     fields:
@@ -355,6 +355,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
     fields:
       patches:
+        resolver: true
+      subscriptions:
         resolver: true
   UserSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings

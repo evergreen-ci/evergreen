@@ -681,7 +681,7 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	for _, sub := range subscriptions {
 		apiSubscription := restModel.APISubscription{}
 		if err = apiSubscription.BuildFromService(sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectSubscription %s from service: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APISubscription %s from service: %s",
 				sub.ID, err.Error()))
 		}
 		res = append(res, &apiSubscription)

@@ -1,0 +1,76 @@
+type GenericSubscription {
+  id: String!
+  ownerType: String!
+  regexSelectors: [Selector!]!
+  resourceType: String!
+  selectors: [Selector!]!
+  subscriber: SubscriberWrapper
+  trigger: String!
+  triggerData: StringMap
+}
+
+type SubscriberWrapper {
+  subscriber: Subscriber!
+  type: String!
+}
+
+type Subscriber {
+  emailSubscriber: String
+  githubCheckSubscriber: GithubCheckSubscriber
+  githubPRSubscriber: GithubPRSubscriber
+  jiraCommentSubscriber: String
+  jiraIssueSubscriber: JiraIssueSubscriber
+  slackSubscriber: String
+  webhookSubscriber: WebhookSubscriber
+}
+
+type GithubPRSubscriber {
+  owner: String!
+  prNumber: Int
+  ref: String!
+  repo: String!
+}
+
+type GithubCheckSubscriber {
+  owner: String!
+  ref: String!
+  repo: String!
+}
+
+type WebhookSubscriber {
+  headers: [WebhookHeader]!
+  secret: String!
+  url: String!
+  retries: Int!
+  minDelayMs: Int!
+  timeoutMs: Int!
+}
+
+type WebhookHeader {
+  key: String!
+  value: String!
+}
+
+type JiraIssueSubscriber {
+  issueType: String!
+  project: String!
+}
+
+input WebhookSubscriberInput {
+  headers: [WebhookHeaderInput]!
+  secret: String!
+  url: String!
+  retries: Int = 0
+  minDelayMs: Int = 0
+  timeoutMs: Int = 0
+}
+
+input WebhookHeaderInput {
+  key: String!
+  value: String!
+}
+
+input JiraIssueSubscriberInput {
+  issueType: String!
+  project: String!
+}

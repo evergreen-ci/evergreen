@@ -57,10 +57,10 @@ type ResolverRoot interface {
 	PodEventLogData() PodEventLogDataResolver
 	Project() ProjectResolver
 	ProjectSettings() ProjectSettingsResolver
-	ProjectSubscriber() ProjectSubscriberResolver
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
 	RepoSettings() RepoSettingsResolver
+	SubscriberWrapper() SubscriberWrapperResolver
 	Task() TaskResolver
 	TaskContainerCreationOpts() TaskContainerCreationOptsResolver
 	TaskLogs() TaskLogsResolver
@@ -240,6 +240,17 @@ type ComplexityRoot struct {
 		Description func(childComplexity int) int
 		DiffLink    func(childComplexity int) int
 		FileName    func(childComplexity int) int
+	}
+
+	GenericSubscription struct {
+		ID             func(childComplexity int) int
+		OwnerType      func(childComplexity int) int
+		RegexSelectors func(childComplexity int) int
+		ResourceType   func(childComplexity int) int
+		Selectors      func(childComplexity int) int
+		Subscriber     func(childComplexity int) int
+		Trigger        func(childComplexity int) int
+		TriggerData    func(childComplexity int) int
 	}
 
 	GithubCheckSubscriber struct {
@@ -750,22 +761,6 @@ type ComplexityRoot struct {
 		Vars                  func(childComplexity int) int
 	}
 
-	ProjectSubscriber struct {
-		Subscriber func(childComplexity int) int
-		Type       func(childComplexity int) int
-	}
-
-	ProjectSubscription struct {
-		ID             func(childComplexity int) int
-		OwnerType      func(childComplexity int) int
-		RegexSelectors func(childComplexity int) int
-		ResourceType   func(childComplexity int) int
-		Selectors      func(childComplexity int) int
-		Subscriber     func(childComplexity int) int
-		Trigger        func(childComplexity int) int
-		TriggerData    func(childComplexity int) int
-	}
-
 	ProjectVars struct {
 		AdminOnlyVars func(childComplexity int) int
 		PrivateVars   func(childComplexity int) int
@@ -938,6 +933,11 @@ type ComplexityRoot struct {
 		JiraIssueSubscriber   func(childComplexity int) int
 		SlackSubscriber       func(childComplexity int) int
 		WebhookSubscriber     func(childComplexity int) int
+	}
+
+	SubscriberWrapper struct {
+		Subscriber func(childComplexity int) int
+		Type       func(childComplexity int) int
 	}
 
 	Task struct {
@@ -1201,11 +1201,12 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		DisplayName  func(childComplexity int) int
-		EmailAddress func(childComplexity int) int
-		Patches      func(childComplexity int, patchesInput PatchesInput) int
-		Permissions  func(childComplexity int) int
-		UserID       func(childComplexity int) int
+		DisplayName   func(childComplexity int) int
+		EmailAddress  func(childComplexity int) int
+		Patches       func(childComplexity int, patchesInput PatchesInput) int
+		Permissions   func(childComplexity int) int
+		Subscriptions func(childComplexity int) int
+		UserID        func(childComplexity int) int
 	}
 
 	UserConfig struct {
@@ -1448,9 +1449,6 @@ type ProjectSettingsResolver interface {
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 }
-type ProjectSubscriberResolver interface {
-	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
-}
 type ProjectVarsResolver interface {
 	AdminOnlyVars(ctx context.Context, obj *model.APIProjectVars) ([]string, error)
 	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]string, error)
@@ -1503,6 +1501,9 @@ type RepoSettingsResolver interface {
 
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
+}
+type SubscriberWrapperResolver interface {
+	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
@@ -1585,6 +1586,7 @@ type TicketFieldsResolver interface {
 type UserResolver interface {
 	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
 	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
+	Subscriptions(ctx context.Context, obj *model.APIDBUser) ([]*model.APISubscription, error)
 }
 type VersionResolver interface {
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -2271,6 +2273,62 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FileDiff.FileName(childComplexity), true
+
+	case "GenericSubscription.id":
+		if e.complexity.GenericSubscription.ID == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.ID(childComplexity), true
+
+	case "GenericSubscription.ownerType":
+		if e.complexity.GenericSubscription.OwnerType == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.OwnerType(childComplexity), true
+
+	case "GenericSubscription.regexSelectors":
+		if e.complexity.GenericSubscription.RegexSelectors == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.RegexSelectors(childComplexity), true
+
+	case "GenericSubscription.resourceType":
+		if e.complexity.GenericSubscription.ResourceType == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.ResourceType(childComplexity), true
+
+	case "GenericSubscription.selectors":
+		if e.complexity.GenericSubscription.Selectors == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.Selectors(childComplexity), true
+
+	case "GenericSubscription.subscriber":
+		if e.complexity.GenericSubscription.Subscriber == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.Subscriber(childComplexity), true
+
+	case "GenericSubscription.trigger":
+		if e.complexity.GenericSubscription.Trigger == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.Trigger(childComplexity), true
+
+	case "GenericSubscription.triggerData":
+		if e.complexity.GenericSubscription.TriggerData == nil {
+			break
+		}
+
+		return e.complexity.GenericSubscription.TriggerData(childComplexity), true
 
 	case "GithubCheckSubscriber.owner":
 		if e.complexity.GithubCheckSubscriber.Owner == nil {
@@ -4954,76 +5012,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSettings.Vars(childComplexity), true
 
-	case "ProjectSubscriber.subscriber":
-		if e.complexity.ProjectSubscriber.Subscriber == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscriber.Subscriber(childComplexity), true
-
-	case "ProjectSubscriber.type":
-		if e.complexity.ProjectSubscriber.Type == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscriber.Type(childComplexity), true
-
-	case "ProjectSubscription.id":
-		if e.complexity.ProjectSubscription.ID == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.ID(childComplexity), true
-
-	case "ProjectSubscription.ownerType":
-		if e.complexity.ProjectSubscription.OwnerType == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.OwnerType(childComplexity), true
-
-	case "ProjectSubscription.regexSelectors":
-		if e.complexity.ProjectSubscription.RegexSelectors == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.RegexSelectors(childComplexity), true
-
-	case "ProjectSubscription.resourceType":
-		if e.complexity.ProjectSubscription.ResourceType == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.ResourceType(childComplexity), true
-
-	case "ProjectSubscription.selectors":
-		if e.complexity.ProjectSubscription.Selectors == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.Selectors(childComplexity), true
-
-	case "ProjectSubscription.subscriber":
-		if e.complexity.ProjectSubscription.Subscriber == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.Subscriber(childComplexity), true
-
-	case "ProjectSubscription.trigger":
-		if e.complexity.ProjectSubscription.Trigger == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.Trigger(childComplexity), true
-
-	case "ProjectSubscription.triggerData":
-		if e.complexity.ProjectSubscription.TriggerData == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.TriggerData(childComplexity), true
-
 	case "ProjectVars.adminOnlyVars":
 		if e.complexity.ProjectVars.AdminOnlyVars == nil {
 			break
@@ -6040,6 +6028,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Subscriber.WebhookSubscriber(childComplexity), true
+
+	case "SubscriberWrapper.subscriber":
+		if e.complexity.SubscriberWrapper.Subscriber == nil {
+			break
+		}
+
+		return e.complexity.SubscriberWrapper.Subscriber(childComplexity), true
+
+	case "SubscriberWrapper.type":
+		if e.complexity.SubscriberWrapper.Type == nil {
+			break
+		}
+
+		return e.complexity.SubscriberWrapper.Type(childComplexity), true
 
 	case "Task.abortInfo":
 		if e.complexity.Task.AbortInfo == nil {
@@ -7395,6 +7397,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.User.Permissions(childComplexity), true
 
+	case "User.subscriptions":
+		if e.complexity.User.Subscriptions == nil {
+			break
+		}
+
+		return e.complexity.User.Subscriptions(childComplexity), true
+
 	case "User.userId":
 		if e.complexity.User.UserID == nil {
 			break
@@ -8112,7 +8121,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -8145,6 +8154,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/repo_ref.graphql", Input: sourceData("schema/types/repo_ref.graphql"), BuiltIn: false},
 	{Name: "schema/types/repo_settings.graphql", Input: sourceData("schema/types/repo_settings.graphql"), BuiltIn: false},
 	{Name: "schema/types/spawn.graphql", Input: sourceData("schema/types/spawn.graphql"), BuiltIn: false},
+	{Name: "schema/types/subscriptions.graphql", Input: sourceData("schema/types/subscriptions.graphql"), BuiltIn: false},
 	{Name: "schema/types/task.graphql", Input: sourceData("schema/types/task.graphql"), BuiltIn: false},
 	{Name: "schema/types/task_logs.graphql", Input: sourceData("schema/types/task_logs.graphql"), BuiltIn: false},
 	{Name: "schema/types/task_queue_item.graphql", Input: sourceData("schema/types/task_queue_item.graphql"), BuiltIn: false},
@@ -14346,6 +14356,370 @@ func (ec *executionContext) fieldContext_FileDiff_fileName(ctx context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_id(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_ownerType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_ownerType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OwnerType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_ownerType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_regexSelectors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RegexSelectors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APISelector)
+	fc.Result = res
+	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_Selector_data(ctx, field)
+			case "type":
+				return ec.fieldContext_Selector_type(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Selector", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_resourceType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResourceType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_resourceType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_selectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_selectors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Selectors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APISelector)
+	fc.Result = res
+	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_selectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_Selector_data(ctx, field)
+			case "type":
+				return ec.fieldContext_Selector_type(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Selector", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_subscriber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Subscriber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APISubscriber)
+	fc.Result = res
+	return ec.marshalOSubscriberWrapper2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_subscriber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "subscriber":
+				return ec.fieldContext_SubscriberWrapper_subscriber(ctx, field)
+			case "type":
+				return ec.fieldContext_SubscriberWrapper_type(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SubscriberWrapper", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_trigger(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_trigger(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Trigger, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_trigger(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenericSubscription_triggerData(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenericSubscription_triggerData(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TriggerData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]string)
+	fc.Result = res
+	return ec.marshalOStringMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenericSubscription_triggerData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenericSubscription",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type StringMap does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33905,7 +34279,7 @@ func (ec *executionContext) _ProjectEventSettings_subscriptions(ctx context.Cont
 	}
 	res := resTmp.([]model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+	return ec.marshalOGenericSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ProjectEventSettings_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -33917,23 +34291,23 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_subscriptions(ctx 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
+				return ec.fieldContext_GenericSubscription_id(ctx, field)
 			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
+				return ec.fieldContext_GenericSubscription_ownerType(ctx, field)
 			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
+				return ec.fieldContext_GenericSubscription_regexSelectors(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
+				return ec.fieldContext_GenericSubscription_resourceType(ctx, field)
 			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
+				return ec.fieldContext_GenericSubscription_selectors(ctx, field)
 			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
+				return ec.fieldContext_GenericSubscription_subscriber(ctx, field)
 			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
+				return ec.fieldContext_GenericSubscription_trigger(ctx, field)
 			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
+				return ec.fieldContext_GenericSubscription_triggerData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GenericSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -34347,7 +34721,7 @@ func (ec *executionContext) _ProjectSettings_subscriptions(ctx context.Context, 
 	}
 	res := resTmp.([]*model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+	return ec.marshalOGenericSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ProjectSettings_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -34359,23 +34733,23 @@ func (ec *executionContext) fieldContext_ProjectSettings_subscriptions(ctx conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
+				return ec.fieldContext_GenericSubscription_id(ctx, field)
 			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
+				return ec.fieldContext_GenericSubscription_ownerType(ctx, field)
 			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
+				return ec.fieldContext_GenericSubscription_regexSelectors(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
+				return ec.fieldContext_GenericSubscription_resourceType(ctx, field)
 			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
+				return ec.fieldContext_GenericSubscription_selectors(ctx, field)
 			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
+				return ec.fieldContext_GenericSubscription_subscriber(ctx, field)
 			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
+				return ec.fieldContext_GenericSubscription_trigger(ctx, field)
 			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
+				return ec.fieldContext_GenericSubscription_triggerData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GenericSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -34425,474 +34799,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_vars(ctx context.Contex
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscriber_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscriber_subscriber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.ProjectSubscriber().Subscriber(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*Subscriber)
-	fc.Result = res
-	return ec.marshalNSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSubscriber(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscriber_subscriber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscriber",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "emailSubscriber":
-				return ec.fieldContext_Subscriber_emailSubscriber(ctx, field)
-			case "githubCheckSubscriber":
-				return ec.fieldContext_Subscriber_githubCheckSubscriber(ctx, field)
-			case "githubPRSubscriber":
-				return ec.fieldContext_Subscriber_githubPRSubscriber(ctx, field)
-			case "jiraCommentSubscriber":
-				return ec.fieldContext_Subscriber_jiraCommentSubscriber(ctx, field)
-			case "jiraIssueSubscriber":
-				return ec.fieldContext_Subscriber_jiraIssueSubscriber(ctx, field)
-			case "slackSubscriber":
-				return ec.fieldContext_Subscriber_slackSubscriber(ctx, field)
-			case "webhookSubscriber":
-				return ec.fieldContext_Subscriber_webhookSubscriber(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Subscriber", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscriber_type(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscriber_type(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Type, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscriber_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscriber",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_id(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_id(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_ownerType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.OwnerType, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_ownerType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RegexSelectors, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]model.APISelector)
-	fc.Result = res
-	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "data":
-				return ec.fieldContext_Selector_data(ctx, field)
-			case "type":
-				return ec.fieldContext_Selector_type(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Selector", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ResourceType, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_resourceType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_selectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_selectors(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Selectors, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]model.APISelector)
-	fc.Result = res
-	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_selectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "data":
-				return ec.fieldContext_Selector_data(ctx, field)
-			case "type":
-				return ec.fieldContext_Selector_type(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Selector", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Subscriber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(model.APISubscriber)
-	fc.Result = res
-	return ec.marshalOProjectSubscriber2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_subscriber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "subscriber":
-				return ec.fieldContext_ProjectSubscriber_subscriber(ctx, field)
-			case "type":
-				return ec.fieldContext_ProjectSubscriber_type(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscriber", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_trigger(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_trigger(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Trigger, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_trigger(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_triggerData(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TriggerData, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(map[string]string)
-	fc.Result = res
-	return ec.marshalOStringMap2map(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_triggerData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type StringMap does not have child fields")
 		},
 	}
 	return fc, nil
@@ -37508,6 +37414,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
 				return ec.fieldContext_User_permissions(ctx, field)
+			case "subscriptions":
+				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "userId":
 				return ec.fieldContext_User_userId(ctx, field)
 			}
@@ -40966,7 +40874,7 @@ func (ec *executionContext) _RepoSettings_subscriptions(ctx context.Context, fie
 	}
 	res := resTmp.([]*model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+	return ec.marshalOGenericSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RepoSettings_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -40978,23 +40886,23 @@ func (ec *executionContext) fieldContext_RepoSettings_subscriptions(ctx context.
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
+				return ec.fieldContext_GenericSubscription_id(ctx, field)
 			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
+				return ec.fieldContext_GenericSubscription_ownerType(ctx, field)
 			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
+				return ec.fieldContext_GenericSubscription_regexSelectors(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
+				return ec.fieldContext_GenericSubscription_resourceType(ctx, field)
 			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
+				return ec.fieldContext_GenericSubscription_selectors(ctx, field)
 			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
+				return ec.fieldContext_GenericSubscription_subscriber(ctx, field)
 			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
+				return ec.fieldContext_GenericSubscription_trigger(ctx, field)
 			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
+				return ec.fieldContext_GenericSubscription_triggerData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GenericSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -42571,6 +42479,110 @@ func (ec *executionContext) fieldContext_Subscriber_webhookSubscriber(ctx contex
 				return ec.fieldContext_WebhookSubscriber_timeoutMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WebhookSubscriber", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubscriberWrapper_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubscriberWrapper_subscriber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.SubscriberWrapper().Subscriber(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Subscriber)
+	fc.Result = res
+	return ec.marshalNSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSubscriber(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubscriberWrapper_subscriber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubscriberWrapper",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "emailSubscriber":
+				return ec.fieldContext_Subscriber_emailSubscriber(ctx, field)
+			case "githubCheckSubscriber":
+				return ec.fieldContext_Subscriber_githubCheckSubscriber(ctx, field)
+			case "githubPRSubscriber":
+				return ec.fieldContext_Subscriber_githubPRSubscriber(ctx, field)
+			case "jiraCommentSubscriber":
+				return ec.fieldContext_Subscriber_jiraCommentSubscriber(ctx, field)
+			case "jiraIssueSubscriber":
+				return ec.fieldContext_Subscriber_jiraIssueSubscriber(ctx, field)
+			case "slackSubscriber":
+				return ec.fieldContext_Subscriber_slackSubscriber(ctx, field)
+			case "webhookSubscriber":
+				return ec.fieldContext_Subscriber_webhookSubscriber(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Subscriber", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubscriberWrapper_type(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubscriberWrapper_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubscriberWrapper_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubscriberWrapper",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -51946,6 +51958,65 @@ func (ec *executionContext) fieldContext_User_permissions(ctx context.Context, f
 				return ec.fieldContext_Permissions_userId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Permissions", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_subscriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_subscriptions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.User().Subscriptions(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APISubscription)
+	fc.Result = res
+	return ec.marshalOGenericSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_GenericSubscription_id(ctx, field)
+			case "ownerType":
+				return ec.fieldContext_GenericSubscription_ownerType(ctx, field)
+			case "regexSelectors":
+				return ec.fieldContext_GenericSubscription_regexSelectors(ctx, field)
+			case "resourceType":
+				return ec.fieldContext_GenericSubscription_resourceType(ctx, field)
+			case "selectors":
+				return ec.fieldContext_GenericSubscription_selectors(ctx, field)
+			case "subscriber":
+				return ec.fieldContext_GenericSubscription_subscriber(ctx, field)
+			case "trigger":
+				return ec.fieldContext_GenericSubscription_trigger(ctx, field)
+			case "triggerData":
+				return ec.fieldContext_GenericSubscription_triggerData(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GenericSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -62655,6 +62726,77 @@ func (ec *executionContext) _FileDiff(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var genericSubscriptionImplementors = []string{"GenericSubscription"}
+
+func (ec *executionContext) _GenericSubscription(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscription) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, genericSubscriptionImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GenericSubscription")
+		case "id":
+
+			out.Values[i] = ec._GenericSubscription_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ownerType":
+
+			out.Values[i] = ec._GenericSubscription_ownerType(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "regexSelectors":
+
+			out.Values[i] = ec._GenericSubscription_regexSelectors(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "resourceType":
+
+			out.Values[i] = ec._GenericSubscription_resourceType(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "selectors":
+
+			out.Values[i] = ec._GenericSubscription_selectors(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "subscriber":
+
+			out.Values[i] = ec._GenericSubscription_subscriber(ctx, field, obj)
+
+		case "trigger":
+
+			out.Values[i] = ec._GenericSubscription_trigger(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "triggerData":
+
+			out.Values[i] = ec._GenericSubscription_triggerData(ctx, field, obj)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var githubCheckSubscriberImplementors = []string{"GithubCheckSubscriber"}
 
 func (ec *executionContext) _GithubCheckSubscriber(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubCheckSubscriber) graphql.Marshaler {
@@ -66364,125 +66506,6 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 	return out
 }
 
-var projectSubscriberImplementors = []string{"ProjectSubscriber"}
-
-func (ec *executionContext) _ProjectSubscriber(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscriber) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, projectSubscriberImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ProjectSubscriber")
-		case "subscriber":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ProjectSubscriber_subscriber(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
-		case "type":
-
-			out.Values[i] = ec._ProjectSubscriber_type(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var projectSubscriptionImplementors = []string{"ProjectSubscription"}
-
-func (ec *executionContext) _ProjectSubscription(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscription) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, projectSubscriptionImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ProjectSubscription")
-		case "id":
-
-			out.Values[i] = ec._ProjectSubscription_id(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "ownerType":
-
-			out.Values[i] = ec._ProjectSubscription_ownerType(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "regexSelectors":
-
-			out.Values[i] = ec._ProjectSubscription_regexSelectors(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "resourceType":
-
-			out.Values[i] = ec._ProjectSubscription_resourceType(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "selectors":
-
-			out.Values[i] = ec._ProjectSubscription_selectors(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "subscriber":
-
-			out.Values[i] = ec._ProjectSubscription_subscriber(ctx, field, obj)
-
-		case "trigger":
-
-			out.Values[i] = ec._ProjectSubscription_trigger(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "triggerData":
-
-			out.Values[i] = ec._ProjectSubscription_triggerData(ctx, field, obj)
-
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var projectVarsImplementors = []string{"ProjectVars"}
 
 func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionSet, obj *model.APIProjectVars) graphql.Marshaler {
@@ -68315,6 +68338,54 @@ func (ec *executionContext) _Subscriber(ctx context.Context, sel ast.SelectionSe
 
 			out.Values[i] = ec._Subscriber_webhookSubscriber(ctx, field, obj)
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var subscriberWrapperImplementors = []string{"SubscriberWrapper"}
+
+func (ec *executionContext) _SubscriberWrapper(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscriber) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subscriberWrapperImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SubscriberWrapper")
+		case "subscriber":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._SubscriberWrapper_subscriber(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "type":
+
+			out.Values[i] = ec._SubscriberWrapper_type(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -70553,6 +70624,23 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 				return innerFunc(ctx)
 
 			})
+		case "subscriptions":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_subscriptions(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "userId":
 
 			out.Values[i] = ec._User_userId(ctx, field, obj)
@@ -72259,6 +72347,20 @@ func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋ
 	return ret
 }
 
+func (ec *executionContext) marshalNGenericSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v model.APISubscription) graphql.Marshaler {
+	return ec._GenericSubscription(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGenericSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GenericSubscription(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNGithubProjectConflicts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, v model1.GithubProjectConflicts) graphql.Marshaler {
 	return ec._GithubProjectConflicts(ctx, sel, &v)
 }
@@ -73598,20 +73700,6 @@ func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋever
 
 func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsSection) graphql.Marshaler {
 	return v
-}
-
-func (ec *executionContext) marshalNProjectSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v model.APISubscription) graphql.Marshaler {
-	return ec._ProjectSubscription(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ProjectSubscription(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPubKey) graphql.Marshaler {
@@ -75707,6 +75795,100 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalOGenericSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APISubscription) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGenericSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOGenericSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGenericSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOGithubCheckSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubCheckSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubCheckSubscriber) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -76645,104 +76827,6 @@ func (ec *executionContext) unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋeve
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOProjectSubscriber2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, sel ast.SelectionSet, v model.APISubscriber) graphql.Marshaler {
-	return ec._ProjectSubscriber(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOProjectSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APISubscription) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNProjectSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalOProjectVars2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx context.Context, sel ast.SelectionSet, v model.APIProjectVars) graphql.Marshaler {
 	return ec._ProjectVars(ctx, sel, &v)
 }
@@ -77090,6 +77174,10 @@ func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.S
 	}
 	res := MarshalStringMap(v)
 	return res
+}
+
+func (ec *executionContext) marshalOSubscriberWrapper2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, sel ast.SelectionSet, v model.APISubscriber) graphql.Marshaler {
+	return ec._SubscriberWrapper(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOSubscriptionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, v interface{}) ([]model.APISubscription, error) {
