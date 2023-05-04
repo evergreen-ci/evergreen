@@ -32,7 +32,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20221207220239-4ab00e3ea9da
 	github.com/mongodb/anser v0.0.0-20230501213745-c62f11870fd4
-	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
 	github.com/mongodb/grip v0.0.0-20230503175150-8b2e395f3111
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.11.0
@@ -135,6 +134,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
 	github.com/mattn/go-xmpp v0.0.0-20211029151415-912ba614897a // indirect
 	github.com/mholt/archiver/v3 v3.5.1 // indirect
+	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 // indirect
 	github.com/montanaflynn/stats v0.0.0-20180911141734-db72e6cae808 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/okta/okta-jwt-verifier-golang v1.3.1 // indirect
