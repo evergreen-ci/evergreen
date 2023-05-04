@@ -2999,4 +2999,9 @@ func TestGetNextCronTime(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, nextTime, curTime)
 	assert.Equal(t, nextTime, curTime.Add(time.Hour))
+
+	// verify that a weekday cron can be parsed
+	weekdayCron := "0 0 * * 1-5"
+	nextTime, err = GetNextCronTime(curTime, weekdayCron)
+	assert.NoError(t, err)
 }
