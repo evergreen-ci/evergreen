@@ -2991,3 +2991,12 @@ func TestProjectCanDispatchTask(t *testing.T) {
 		assert.NotZero(t, reason)
 	})
 }
+
+func TestGetNextCronTime(t *testing.T) {
+	curTime := time.Date(2022, 12, 1, 0, 0, 0, 0, time.Local)
+	cron := "0 * * * *"
+	nextTime, err := GetNextCronTime(curTime, cron)
+	assert.NoError(t, err)
+	assert.NotEqual(t, nextTime, curTime)
+	assert.Equal(t, nextTime, curTime.Add(time.Hour))
+}
