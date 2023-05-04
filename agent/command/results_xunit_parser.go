@@ -4,12 +4,14 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
@@ -93,7 +95,7 @@ func parseXMLResults(reader io.Reader) ([]testSuite, error) {
 // toModelTestResultAndLog converts an XUnit test case into a test result and
 // test log. Logs are only generated if the test case did not succeed (this is
 // part of the XUnit XML file design).
-func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (testresult.TestResult, *model.TestLog) {
+func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger client.LoggerProducer) (testresult.TestResult, *model.TestLog) {
 
 	res := testresult.TestResult{}
 	var log *model.TestLog
@@ -105,6 +107,14 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (testresul
 	}
 	// Replace spaces, dashes, etc. with underscores.
 	res.TestName = util.CleanForPath(res.TestName)
+
+	if math.IsNaN(float64(tc.Time)) {
+		logger.Task().Errorf("Test '%s' time was NaN, its calculated duration will be incorrect", res.TestName)
+	}
+	if math.IsInf(float64(tc.Time), 0) || math.IsInf(float64(tc.Time), -1) {
+		logger.Task().Errorf("Test '%s' time was Inf, its calculated duration will be incorrect", res.TestName)
+		tc.Time = 0
+	}
 
 	res.TestStartTime = time.Now()
 	res.TestEndTime = res.TestStartTime.Add(time.Duration(float64(tc.Time) * float64(time.Second)))
