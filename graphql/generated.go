@@ -1041,6 +1041,7 @@ type ComplexityRoot struct {
 		HostId    func(childComplexity int) int
 		JiraIssue func(childComplexity int) int
 		JiraLink  func(childComplexity int) int
+		PodId     func(childComplexity int) int
 		Priority  func(childComplexity int) int
 		Status    func(childComplexity int) int
 		Timestamp func(childComplexity int) int
@@ -6661,6 +6662,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskEventLogData.JiraLink(childComplexity), true
+
+	case "TaskEventLogData.podId":
+		if e.complexity.TaskEventLogData.PodId == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogData.PodId(childComplexity), true
 
 	case "TaskEventLogData.priority":
 		if e.complexity.TaskEventLogData.Priority == nil {
@@ -47038,6 +47046,47 @@ func (ec *executionContext) fieldContext_TaskEventLogData_hostId(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskEventLogData_podId(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEventLogData_podId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PodId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEventLogData_podId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEventLogData",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskEventLogData_jiraIssue(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskEventLogData_jiraIssue(ctx, field)
 	if err != nil {
@@ -47369,6 +47418,8 @@ func (ec *executionContext) fieldContext_TaskEventLogEntry_data(ctx context.Cont
 			switch field.Name {
 			case "hostId":
 				return ec.fieldContext_TaskEventLogData_hostId(ctx, field)
+			case "podId":
+				return ec.fieldContext_TaskEventLogData_podId(ctx, field)
 			case "jiraIssue":
 				return ec.fieldContext_TaskEventLogData_jiraIssue(ctx, field)
 			case "jiraLink":
@@ -69373,6 +69424,10 @@ func (ec *executionContext) _TaskEventLogData(ctx context.Context, sel ast.Selec
 		case "hostId":
 
 			out.Values[i] = ec._TaskEventLogData_hostId(ctx, field, obj)
+
+		case "podId":
+
+			out.Values[i] = ec._TaskEventLogData_podId(ctx, field, obj)
 
 		case "jiraIssue":
 
