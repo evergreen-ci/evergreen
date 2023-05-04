@@ -509,6 +509,13 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			"project_identifier": p.Identifier,
 		}))
 	}
+
+	newProjectVars := ProjectVars{
+		Id: p.Id,
+	}
+	if err = newProjectVars.Insert(); err != nil {
+		return errors.Wrapf(err, "adding project variables for project '%s'", p.Id)
+	}
 	return p.addPermissions(creator)
 }
 
