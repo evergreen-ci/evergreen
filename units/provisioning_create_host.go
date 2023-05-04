@@ -251,7 +251,9 @@ func (j *createHostJob) selfThrottle() bool {
 	if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 		return false
 	} else if numProv >= j.env.Settings().HostInit.HostThrottle {
-		j.AddError(errors.Wrapf(j.host.Remove(), "removing intent host '%s'", j.host.Id))
+		reason := "host creation throttle"
+		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
+		event.LogHostCreationFailed(j.host.Id, reason)
 		return true
 	}
 
@@ -326,41 +328,10 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		}
 	}
 
-	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
-		return errors.Wrapf(err, "spawning host '%s'", j.host.Id)
-	}
-	// Don't mark containers as starting. SpawnHost already marks containers as
-	// running.
-	if j.host.ParentID == "" {
-		j.host.Status = evergreen.HostStarting
-	}
-
-	// Provisionally set j.host.StartTime to now. Cloud providers may override
-	// this value with the time the host was created.
-	j.host.StartTime = j.start
-
-	var hostReplaced bool
-	if j.HostID == j.host.Id {
-		// spawning the host did not change the ID, so we can replace the old host with the new one (ie. for docker containers)
-		if err = j.host.Replace(); err != nil {
-			return errors.Wrapf(err, "replacing host '%s'", j.host.Id)
-		}
-		hostReplaced = true
-	} else {
-		// For most cases, spawning a host will change the ID, so we remove/re-insert the document
-		hostReplaced, err = j.tryHostReplacement(ctx, cloudManager)
-		if err != nil {
-			return errors.Wrap(err, "attempting host replacement")
-		}
-
-		if j.host.HasContainers {
-			grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
-				"message": "unable to update parent ID of containers",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-		}
+	hostReplaced, err := j.spawnAndReplaceHost(ctx, cloudManager)
+	if err != nil {
+		event.LogHostCreationFailed(j.host.Id, err.Error())
+		return errors.Wrapf(err, "spawning and updating host '%s'", j.host.Id)
 	}
 
 	if hostReplaced {
@@ -425,6 +396,47 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		}))
 	}
 	return false, nil
+}
+
+// spawnAndUpdateHost attempts to spawn the host and update the host document.
+func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.Manager) (replaced bool, err error) {
+	if _, err = cloudMgr.SpawnHost(ctx, j.host); err != nil {
+		return false, errors.Wrapf(err, "spawning host '%s'", j.host.Id)
+	}
+	// Don't mark containers as starting. SpawnHost already marks containers as
+	// running.
+	if j.host.ParentID == "" {
+		j.host.Status = evergreen.HostStarting
+	}
+
+	// Provisionally set j.host.StartTime to now. Cloud providers may override
+	// this value with the time the host was created.
+	j.host.StartTime = j.start
+
+	if j.HostID == j.host.Id {
+		// Spawning the host did not change the ID, so we can replace the old
+		// host with the new one (e.g. for Docker containers).
+		if err = j.host.Replace(); err != nil {
+			return false, errors.Wrapf(err, "replacing host '%s'", j.host.Id)
+		}
+		return true, nil
+	}
+
+	// For most cases, spawning a host will change the ID, so we remove/re-insert the document
+	hostReplaced, err := j.tryHostReplacement(ctx, cloudMgr)
+	if err != nil {
+		return hostReplaced, errors.Wrap(err, "attempting host replacement")
+	}
+
+	if j.host.HasContainers {
+		grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
+			"message": "unable to update parent ID of containers",
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
+	}
+	return hostReplaced, nil
 }
 
 // tryHostReplacement attempts to atomically replace the intent host with the

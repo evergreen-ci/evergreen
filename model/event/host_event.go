@@ -101,7 +101,13 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 }
 
 func LogHostCreated(hostId string) {
-	LogHostEvent(hostId, EventHostCreated, HostEventData{})
+	LogHostEvent(hostId, EventHostCreated, HostEventData{Successful: true})
+}
+
+// LogHostCreationFailed logs an event indicating that the host errored while it
+// was being created.
+func LogHostCreationFailed(hostID, logs string) {
+	LogHostEvent(hostID, EventHostCreated, HostEventData{Successful: false, Logs: logs})
 }
 
 // LogHostStartSucceeded logs an event indicating that the host was successfully
