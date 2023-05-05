@@ -3,5 +3,12 @@
     displayName
     userId
     emailAddress
+    subscriptions {
+      id
+      resourceType
+      subscriber {
+        type
+      }
+    }
   }
 }
