@@ -249,7 +249,7 @@ func TestXMLToModelConversion(t *testing.T) {
 				}
 			}
 			So(numNan, ShouldEqual, 1)
-			So(numInf, ShouldEqual, 1)
+			So(numInf, ShouldEqual, 2)
 			So(logger.Close(), ShouldBeNil)
 
 			Convey("the proper amount of each failure should be correct", func() {
