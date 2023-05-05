@@ -26,6 +26,11 @@ func (r *repoSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *r
 	return hook != nil, nil
 }
 
+// ProjectSubscriptions is the resolver for the projectSubscriptions field.
+func (r *repoSettingsResolver) ProjectSubscriptions(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
+	return getAPISubscriptionsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+}
+
 // Subscriptions is the resolver for the subscriptions field.
 func (r *repoSettingsResolver) Subscriptions(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
 	return getAPISubscriptionsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
