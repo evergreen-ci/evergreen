@@ -25,9 +25,13 @@ const (
 	// HostBuildingFailed is a failure state indicating that an intent host was
 	// attempting to create a host but failed during creation. Hosts that fail
 	// to build will terminate shortly.
-	HostBuildingFailed  = "building-failed"
-	HostStarting        = "starting"
-	HostProvisioning    = "provisioning"
+	HostBuildingFailed = "building-failed"
+	HostStarting       = "starting"
+	HostProvisioning   = "provisioning"
+	// HostProvisionFailed is a failure state indicating that a host was
+	// successfully created (i.e. requested from the cloud provider) but failed
+	// while it was starting up. Hosts that fail to provisoin will terminate
+	// shortly.
 	HostProvisionFailed = "provision failed"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"

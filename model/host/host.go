@@ -1699,6 +1699,24 @@ func (h *Host) CacheHostData() error {
 }
 
 func (h *Host) Insert() error {
+	if err := db.Insert(Collection, h); err != nil {
+		return errors.Wrap(err, "inserting host")
+	}
+	h.logHostCreated()
+	return nil
+}
+
+// InsertWithContext is the same as Insert but accepts a context for the
+// operation.
+func (h *Host) InsertWithContext(ctx context.Context, env evergreen.Environment) error {
+	if _, err := env.DB().Collection(Collection).InsertOne(ctx, h); err != nil {
+		return errors.Wrap(err, "inserting host")
+	}
+	h.logHostCreated()
+	return nil
+}
+
+func (h *Host) logHostCreated() {
 	event.LogHostCreated(h.Id)
 	grip.Info(message.Fields{
 		"message":  "host created",
@@ -1706,9 +1724,14 @@ func (h *Host) Insert() error {
 		"host_tag": h.Tag,
 		"distro":   h.Distro.Id,
 	})
-	return db.Insert(Collection, h)
 }
 
+// Remove removes the host document from the DB.
+// While it's fine to use this in tests, this should generally not be called in
+// production code since deleting the host document makes it difficult to trace
+// what happened to it. Instead, it's preferable to set a host to a failure
+// state (e.g. building-failed, decommissioned) so that it can be cleaned up by
+// host termination.
 func (h *Host) Remove() error {
 	return db.Remove(
 		Collection,
@@ -1718,11 +1741,9 @@ func (h *Host) Remove() error {
 	)
 }
 
-// RemoveStrict deletes a host and errors if the host is not found
-func RemoveStrict(id string) error {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
-	result, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: id})
+// RemoveStrict deletes a host and errors if the host is not found.
+func RemoveStrict(ctx context.Context, env evergreen.Environment, id string) error {
+	result, err := env.DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: id})
 	if err != nil {
 		return err
 	}

@@ -388,7 +388,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		if err == EC2InsufficientCapacityError {
 			// try again in another AZ
 			if subnetErr := m.setNextSubnet(ctx, h); subnetErr == nil {
-				msg := "got EC2InsufficientCapacityError"
+				msg := "got EC2InsufficientCapacityError, will try next available subnet"
 				grip.Info(message.Fields{
 					"message":       msg,
 					"action":        "retrying",
@@ -414,27 +414,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 				"distro":  h.Distro.Id,
 			}))
 		}
-		grip.WarningWhen(err == EC2InsufficientCapacityError, message.WrapError(err, message.Fields{
-			"message":       "RunInstances API call encountered insufficient capacity",
-			"action":        "removing",
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		msg := "RunInstances API call returned an error"
-		grip.ErrorWhen(err != EC2InsufficientCapacityError, message.WrapError(err, message.Fields{
-			"message":       msg,
-			"action":        "removing",
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		grip.Error(message.WrapError(h.Remove(), message.Fields{
-			"message":       "error removing intent host",
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
+
 		if h.SpawnOptions.SpawnedByTask {
 			detailErr := task.AddHostCreateDetails(h.StartedBy, h.Id, h.SpawnOptions.TaskExecutionNumber, err)
 			grip.Error(message.WrapError(detailErr, message.Fields{
@@ -444,10 +424,12 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 				"distro":        h.Distro.Id,
 			}))
 		}
+
 		if err != nil {
-			return errors.Wrap(err, msg)
+			return errors.Wrap(err, "RunInstances API call returned an error")
 		}
-		msg = "reservation was nil"
+
+		msg := "reservation was nil"
 		grip.Error(message.Fields{
 			"message":       msg,
 			"host_id":       h.Id,

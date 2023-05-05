@@ -816,7 +816,7 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 	}
 
 	for _, id := range ids {
-		event.LogHostStartError(id, "stale building host took too long to start")
+		event.LogHostCreationFailed(id, "stale building host took too long to start")
 		grip.Info(message.Fields{
 			"message": "stale building host took too long to start",
 			"host_id": id,
@@ -1269,8 +1269,6 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 // new one. While the atomic swap is safer than doing it non-atomically, it is
 // not sufficient to guarantee application correctness, because other threads
 // may still be using the old host document.
-// TODO (EVG-15875): set a field containing the external identifier on the host
-// document rather than do this host document swap logic.
 func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove string, toInsert *Host) error {
 	if idToRemove == toInsert.Id {
 		return nil
@@ -1283,32 +1281,23 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 	defer sess.EndSession(ctx)
 
 	replaceHost := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := RemoveStrict(idToRemove); err != nil {
+		if err := RemoveStrict(sessCtx, env, idToRemove); err != nil {
 			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
 		}
 
-		if err := toInsert.Insert(); err != nil {
+		if err := toInsert.InsertWithContext(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
 		return nil, nil
 	}
 
 	txnStart := time.Now()
-	_, err = sess.WithTransaction(ctx, replaceHost)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":     "replacing old host with new host in a transaction",
-			"jira_ticket": "EVG-15022",
-			"old_host_id": idToRemove,
-			"new_host_id": toInsert.Id,
-			"distro_id":   toInsert.Distro.Id,
-			"duration":    time.Since(txnStart),
-		}))
+	if _, err = sess.WithTransaction(ctx, replaceHost); err != nil {
 		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
 	}
 
 	grip.Info(message.Fields{
-		"message":              "replaced host document",
+		"message":              "successfully replaced host document",
 		"host_id":              toInsert.Id,
 		"host_tag":             toInsert.Tag,
 		"distro":               toInsert.Distro.Id,
