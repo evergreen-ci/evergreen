@@ -671,8 +671,8 @@ func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restMode
 	return res, nil
 }
 
-func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*restModel.APISubscription, error) {
-	subscriptions, err := event.FindSubscriptionsByOwner(projectId, event.OwnerTypeProject)
+func getAPISubscriptionsForOwner(ctx context.Context, ownerId string, ownerType event.OwnerType) ([]*restModel.APISubscription, error) {
+	subscriptions, err := event.FindSubscriptionsByOwner(ownerId, ownerType)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding subscription for project: %s", err.Error()))
 	}
