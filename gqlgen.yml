@@ -196,11 +196,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   ProjectSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
-  SubscriberWrapper:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
-    fields:
-      subscriber:
-        resolver: true
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
     fields:
@@ -263,6 +258,11 @@ models:
     model: github.com/evergreen-ci/evergreen/graphql.StringMap
   SubscriberInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+  SubscriberWrapper:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+    fields:
+      subscriber:
+        resolver: true
   SubscriptionInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   Task:
