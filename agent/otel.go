@@ -108,6 +108,11 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 		return nil, errors.Wrap(err, "making resource")
 	}
 
+	r, err = resource.Merge(r, resource.NewSchemaless(tc.TaskAttributes()...))
+	if err != nil {
+		return nil, errors.Wrap(err, "merging host resource with task attributes")
+	}
+
 	meterProvider := sdk.NewMeterProvider(
 		sdk.WithResource(r),
 		sdk.WithReader(sdk.NewPeriodicReader(metricsExporter, sdk.WithInterval(exportInterval), sdk.WithTimeout(exportTimeout))),
@@ -115,21 +120,21 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 
 	return func(ctx context.Context) {
 		grip.Error(errors.Wrap(meterProvider.Shutdown(ctx), "doing meter provider"))
-	}, errors.Wrap(instrumentMeter(meterProvider.Meter(packageName), tc), "instrumenting meter")
+	}, errors.Wrap(instrumentMeter(meterProvider.Meter(packageName)), "instrumenting meter")
 }
 
-func instrumentMeter(meter metric.Meter, tc *internal.TaskConfig) error {
+func instrumentMeter(meter metric.Meter) error {
 	catcher := grip.NewBasicCatcher()
 
-	catcher.Wrap(addCPUMetrics(meter, tc), "adding CPU metrics")
-	catcher.Wrap(addMemoryMetrics(meter, tc), "adding memory metrics")
-	catcher.Wrap(addDiskMetrics(meter, tc), "adding disk metrics")
-	catcher.Wrap(addNetworkMetrics(meter, tc), "adding network metrics")
+	catcher.Wrap(addCPUMetrics(meter), "adding CPU metrics")
+	catcher.Wrap(addMemoryMetrics(meter), "adding memory metrics")
+	catcher.Wrap(addDiskMetrics(meter), "adding disk metrics")
+	catcher.Wrap(addNetworkMetrics(meter), "adding network metrics")
 
 	return catcher.Resolve()
 }
 
-func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
+func addCPUMetrics(meter metric.Meter) error {
 	cpuTime, err := meter.Float64ObservableCounter(cpuTimeInstrument, metric.WithUnit("s"))
 	if err != nil {
 		return errors.Wrap(err, "making cpu time counter")
@@ -148,11 +153,11 @@ func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 		if len(times) != 1 {
 			return errors.Wrap(err, "CPU times had an unexpected length")
 		}
-		observer.ObserveFloat64(cpuTime, times[0].Idle, metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("state", "idle"))...))
-		observer.ObserveFloat64(cpuTime, times[0].System, metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("state", "system"))...))
-		observer.ObserveFloat64(cpuTime, times[0].User, metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("state", "user"))...))
-		observer.ObserveFloat64(cpuTime, times[0].Steal, metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("state", "steal"))...))
-		observer.ObserveFloat64(cpuTime, times[0].Iowait, metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("state", "iowait"))...))
+		observer.ObserveFloat64(cpuTime, times[0].Idle, metric.WithAttributes(attribute.String("state", "idle")))
+		observer.ObserveFloat64(cpuTime, times[0].System, metric.WithAttributes(attribute.String("state", "system")))
+		observer.ObserveFloat64(cpuTime, times[0].User, metric.WithAttributes(attribute.String("state", "user")))
+		observer.ObserveFloat64(cpuTime, times[0].Steal, metric.WithAttributes(attribute.String("state", "steal")))
+		observer.ObserveFloat64(cpuTime, times[0].Iowait, metric.WithAttributes(attribute.String("state", "iowait")))
 
 		return nil
 	}, cpuTime)
@@ -168,14 +173,14 @@ func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 		if len(util) != 1 {
 			return errors.Wrap(err, "CPU util had an unexpected length")
 		}
-		observer.ObserveFloat64(cpuUtil, util[0], metric.WithAttributes(tc.TaskAttributes()...))
+		observer.ObserveFloat64(cpuUtil, util[0])
 
 		return nil
 	}, cpuUtil)
 	return errors.Wrap(err, "registering cpu time callback")
 }
 
-func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
+func addMemoryMetrics(meter metric.Meter) error {
 	memoryUsage, err := meter.Int64ObservableUpDownCounter(memoryUsageInstrument, metric.WithUnit("By"))
 	if err != nil {
 		return errors.Wrap(err, "making memory usage counter")
@@ -191,17 +196,17 @@ func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 		if err != nil {
 			return errors.Wrap(err, "getting memory stats")
 		}
-		observer.ObserveInt64(memoryUsage, int64(memStats.Available), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("state", "available"))...))
-		observer.ObserveInt64(memoryUsage, int64(memStats.Used), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("state", "used"))...))
+		observer.ObserveInt64(memoryUsage, int64(memStats.Available), metric.WithAttributes(attribute.String("state", "available")))
+		observer.ObserveInt64(memoryUsage, int64(memStats.Used), metric.WithAttributes(attribute.String("state", "used")))
 
-		observer.ObserveFloat64(memoryUtil, memStats.UsedPercent, metric.WithAttributes(tc.TaskAttributes()...))
+		observer.ObserveFloat64(memoryUtil, memStats.UsedPercent)
 
 		return nil
 	}, memoryUsage, memoryUtil)
 	return errors.Wrap(err, "registering memory callback")
 }
 
-func addDiskMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
+func addDiskMetrics(meter metric.Meter) error {
 	diskIO, err := meter.Int64ObservableCounter(diskIOInstrument, metric.WithUnit("By"))
 	if err != nil {
 		return errors.Wrap(err, "making disk io counter")
@@ -223,13 +228,13 @@ func addDiskMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 			return errors.Wrap(err, "getting disk stats")
 		}
 		for disk, counter := range ioCountersMap {
-			observer.ObserveInt64(diskIO, int64(counter.ReadBytes), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("device", disk), attribute.String("direction", "read"))...))
-			observer.ObserveInt64(diskIO, int64(counter.WriteBytes), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("device", disk), attribute.String("direction", "write"))...))
+			observer.ObserveInt64(diskIO, int64(counter.ReadBytes), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "read")))
+			observer.ObserveInt64(diskIO, int64(counter.WriteBytes), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "write")))
 
-			observer.ObserveInt64(diskOperations, int64(counter.ReadCount), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("device", disk), attribute.String("direction", "read"))...))
-			observer.ObserveInt64(diskOperations, int64(counter.WriteCount), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("device", disk), attribute.String("direction", "write"))...))
+			observer.ObserveInt64(diskOperations, int64(counter.ReadCount), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "read")))
+			observer.ObserveInt64(diskOperations, int64(counter.WriteCount), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "write")))
 
-			observer.ObserveFloat64(diskIOTime, float64(counter.IoTime), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("device", disk))...))
+			observer.ObserveFloat64(diskIOTime, float64(counter.IoTime), metric.WithAttributes(attribute.String("device", disk)))
 		}
 
 		return nil
@@ -237,7 +242,7 @@ func addDiskMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 	return errors.Wrap(err, "registering disk callback")
 }
 
-func addNetworkMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
+func addNetworkMetrics(meter metric.Meter) error {
 	networkIO, err := meter.Int64ObservableCounter(networkIOInstrument, metric.WithUnit("by"))
 	if err != nil {
 		return errors.Wrap(err, "making network io counter")
@@ -253,8 +258,8 @@ func addNetworkMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 		}
 
 		for _, counter := range counters {
-			observer.ObserveInt64(networkIO, int64(counter.BytesSent), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("direction", "transmit"))...))
-			observer.ObserveInt64(networkIO, int64(counter.BytesRecv), metric.WithAttributes(append(tc.TaskAttributes(), attribute.String("direction", "receive"))...))
+			observer.ObserveInt64(networkIO, int64(counter.BytesSent), metric.WithAttributes(attribute.String("direction", "transmit")))
+			observer.ObserveInt64(networkIO, int64(counter.BytesRecv), metric.WithAttributes(attribute.String("direction", "receive")))
 		}
 
 		return nil
