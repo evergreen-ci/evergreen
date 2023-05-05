@@ -20,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
 	sdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -239,7 +238,7 @@ func addDiskMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 }
 
 func addNetworkMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	networkIO, err := meter.Int64ObservableCounter(networkIOInstrument, instrument.WithUnit("by"))
+	networkIO, err := meter.Int64ObservableCounter(networkIOInstrument, metric.WithUnit("by"))
 	if err != nil {
 		return errors.Wrap(err, "making network io counter")
 	}
