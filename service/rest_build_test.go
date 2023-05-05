@@ -158,6 +158,7 @@ func TestGetBuildInfo(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -212,6 +213,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -256,6 +258,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)

@@ -17,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -116,6 +118,7 @@ func TestGetTaskInfo(t *testing.T) {
 		url := "/rest/v1/tasks/" + taskId
 
 		request, err := http.NewRequest("GET", url, nil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -240,6 +243,7 @@ func TestGetTaskInfo(t *testing.T) {
 		url := "/rest/v1/tasks/" + taskId
 
 		request, err := http.NewRequest("GET", url, nil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -297,6 +301,7 @@ func TestGetTaskStatus(t *testing.T) {
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
 		request, err := http.NewRequest("GET", url, nil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -357,6 +362,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -420,6 +426,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 
 	request, err := http.NewRequest("GET", url, nil)
 	require.NoError(err)
+	request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)

@@ -2250,8 +2250,7 @@ type APIServiceFlags struct {
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
-	RestRoutePartialAuthDisabled    bool `json:"rest_route_partial_auth_disabled"`
-	UIPartialAuthDisabled           bool `json:"ui_partial_auth_disabled"`
+	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2539,8 +2538,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
-		as.RestRoutePartialAuthDisabled = v.RestRoutePartialAuthDisabled
-		as.UIPartialAuthDisabled = v.UIPartialAuthDisabled
+		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2581,8 +2579,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
-		RestRoutePartialAuthDisabled:    as.RestRoutePartialAuthDisabled,
-		UIPartialAuthDisabled:           as.UIPartialAuthDisabled,
+		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
 	}, nil
 }
 

@@ -87,25 +87,6 @@ func MustHaveProject(r *http.Request) *model.Project {
 	return p
 }
 
-// requireUserToggleable wraps gimlet.NewRequireAuthHandler and checks that
-// a user is generally authenticated. It will only perform this function if
-// the RestRoutePartialAuthDisabled flag is set to true.
-func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
-			return
-		}
-
-		if flags.RestRoutePartialAuthDisabled {
-			gimlet.NewRequireAuthHandler().ServeHTTP(w, r, next)
-			return
-		}
-		next(w, r)
-	}
-}
-
 // requireProject finds the projectId in the request and adds the
 // project and project ref to the request context.
 func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
@@ -332,7 +313,6 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	requireProject := gimlet.WrapperMiddleware(as.requireProject)
 	requireUser := gimlet.NewRequireAuthHandler()
-	requireUserToggleable := gimlet.WrapperMiddleware(as.requireUserToggleable)
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	submitPatch := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 
@@ -342,8 +322,8 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{identifier}").Wrap(requireUserToggleable).Handler(as.fetchProjectRef).Get()
-	app.AddRoute("/validate").Wrap(requireUserToggleable).Handler(as.validateProjectConfig).Post()
+	app.AddRoute("/ref/{identifier}").Wrap(requireUser).Handler(as.fetchProjectRef).Get()
+	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
 	// This route is called by the app server's setup scripts which
