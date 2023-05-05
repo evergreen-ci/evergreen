@@ -68,6 +68,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
+  GeneralSubscription:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GithubProjectConflicts:
@@ -172,6 +174,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   ProjectEventSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
+    fields:
+      projectSubscriptions:
+        resolver: true
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   ProjectSettings:
@@ -183,15 +188,12 @@ models:
         resolver: true
       aliases:
         resolver: true
+      projectSubscriptions:
+        resolver: true
       subscriptions:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-  ProjectSubscriber:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
-    fields:
-      subscriber:
-        resolver: true
   ProjectSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   ProjectVars:
@@ -224,6 +226,8 @@ models:
         resolver: true
       aliases:
         resolver: true
+      projectSubscriptions:
+        resolver: true
       subscriptions:
         resolver: true
   RepoSettingsInput:
@@ -254,6 +258,11 @@ models:
     model: github.com/evergreen-ci/evergreen/graphql.StringMap
   SubscriberInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+  SubscriberWrapper:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+    fields:
+      subscriber:
+        resolver: true
   SubscriptionInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   Task:
@@ -355,6 +364,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
     fields:
       patches:
+        resolver: true
+      subscriptions:
         resolver: true
   UserSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings

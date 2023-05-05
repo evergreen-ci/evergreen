@@ -7,7 +7,16 @@
           "user": {
             "displayName": "testuser",
             "userId": "testuser",
-            "emailAddress": "testuser@mongodb.com"
+            "emailAddress": "testuser@mongodb.com",
+            "subscriptions": [
+              {
+                "id": "61326406a620e4737f57003e",
+                "resourceType": "VERSION",
+                "subscriber": {
+                  "type": "slack"
+                }
+              }
+            ]
           }
         }
       }

@@ -1,5 +1,8 @@
 {
     projectSettings(identifier: "sandbox") {
+        projectSubscriptions {
+          id
+        }
         subscriptions{
             id
             resourceType
