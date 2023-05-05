@@ -212,8 +212,17 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 
 	// Build variant level settings are lower priority than project task level
 	// settings.
+	if bvt.Patchable == nil {
+		bvt.Patchable = bv.Patchable
+	}
 	if bvt.PatchOnly == nil {
 		bvt.PatchOnly = bv.PatchOnly
+	}
+	if bvt.AllowForGitTag == nil {
+		bvt.AllowForGitTag = bv.AllowForGitTag
+	}
+	if bvt.GitTagOnly == nil {
+		bvt.GitTagOnly = bv.GitTagOnly
 	}
 	if bvt.Disable == nil {
 		bvt.Disable = bv.Disable
@@ -330,9 +339,20 @@ type BuildVariant struct {
 	// running and omitting them if they're dependencies. By default, the build
 	// variant is not disabled.
 	Disable *bool `yaml:"disable,omitempty" bson:"disable"`
-	// PatchOnly will only allow tasks in the build variant to run in patches.
-	// By default, the build variant runs for non-patches.
+	// Patchable will prevent tasks in this build variant from running in
+	// patches when set to false. By default, the build variant runs in patches.
+	Patchable *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	// PatchOnly will only allow tasks in the build variant to run in patches
+	// when set to true. By default, the build variant runs for non-patches.
 	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	// AllowForGitTag will prevent tasks in this build variant from running in
+	// git tag versions when set to false. By default, the build variant runs in
+	// git tag versions.
+	AllowForGitTag *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	// GitTagOnly will only allow tasks in the build variant to run in git tag
+	// versions when set to true. By default, the build variant runs in non-git
+	// tag versions.
+	GitTagOnly *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
@@ -1172,17 +1192,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	return expansions, nil
 }
 
-// GetSpecForTask returns a ProjectTask spec for the given name.
-// Returns an empty ProjectTask if none exists.
-func (p Project) GetSpecForTask(name string) ProjectTask {
-	for _, pt := range p.Tasks {
-		if pt.Name == name {
-			return pt
-		}
-	}
-	return ProjectTask{}
-}
-
 func (p *Project) GetVariantMappings() map[string]string {
 	mappings := make(map[string]string)
 	for _, buildVariant := range p.BuildVariants {
@@ -1558,16 +1567,15 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 	bv := p.FindBuildVariant(bvTaskGroup.Variant)
 	if bv == nil {
-		// TODO (EVG-18405): remove this and return early after confirming that
-		// this does not log. Continuing on error with an empty build variant is
-		// inconsequential for now, since it is only necessary for checking
-		// build variant level patch_only.
-		grip.Error(message.Fields{
-			"message":       "found a task group that has no associated build variant (this is not supposed to happen), using an empty build variant configuration as a temporary workaround",
+		grip.Alert(message.WrapStack(0, message.Fields{
+			"message":       "programmatic error: found a task group that has no associated build variant (this is not supposed to ever happen and is probably a bug)",
 			"task_group":    bvTaskGroup.Name,
 			"build_variant": bvTaskGroup.Variant,
-			"ticket":        "EVG-18405",
-		})
+		}))
+		// Continue on error, even though this can result in bugs due to using
+		// an unpopulated build variant. Having a temporary bug is preferable to
+		// exiting early, since exiting can prevent task groups from working
+		// at all.
 		bv = &BuildVariant{}
 	}
 

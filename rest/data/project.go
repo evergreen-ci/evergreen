@@ -154,17 +154,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		"project_identifier": projectRef.Identifier,
 	}))
 
-	newProjectVars := model.ProjectVars{
-		Id: projectRef.Id,
-	}
-
-	err = newProjectVars.Insert()
-	if err != nil {
-		return false, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "initializing project variables for project '%s'", projectRef.Identifier).Error(),
-		}
-	}
 	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":            "problem logging project added",

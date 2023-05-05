@@ -687,7 +687,9 @@ func isNonZeroBV(bv parserBV) bool {
 	// unclear if it's intentional or not.
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
 		bv.Disable != nil || len(bv.Tags) > 0 ||
-		bv.BatchTime != nil || bv.PatchOnly != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {
+		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||
+		bv.AllowForGitTag != nil || bv.GitTagOnly != nil ||
+		bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}
 	return false

@@ -18,7 +18,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/model/user"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -124,6 +126,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -198,6 +201,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -283,6 +287,7 @@ func TestGetVersionInfo(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -299,6 +304,7 @@ func TestGetVersionInfo(t *testing.T) {
 		url := "/rest/v1/versions/" + versionId
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -366,6 +372,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -383,6 +390,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
@@ -569,6 +577,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -611,6 +620,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 				request, err := http.NewRequest("GET", url, nil)
 				So(err, ShouldBeNil)
+				request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 				_response := httptest.NewRecorder()
 				// Need match variables to be set so can call mux.Vars(request)
@@ -628,6 +638,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -672,6 +683,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -699,6 +711,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
@@ -728,6 +741,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 			response := httptest.NewRecorder()
 			// Need match variables to be set so can call mux.Vars(request)
