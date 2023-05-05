@@ -101,7 +101,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 					{
 						Name: j.task.BuildVariant,
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: taskGroupName},
+							{Name: taskGroupName, Variant: j.task.BuildVariant},
 						},
 					},
 				},

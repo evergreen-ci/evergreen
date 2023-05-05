@@ -196,7 +196,7 @@ func TestPopulateBVT(t *testing.T) {
 			BuildVariants: []BuildVariant{
 				{
 					Name:  "test",
-					Tasks: []BuildVariantTaskUnit{{Name: "task1", Priority: 5}},
+					Tasks: []BuildVariantTaskUnit{{Name: "task1", Variant: "test", Priority: 5}},
 				},
 			},
 		}
@@ -222,6 +222,7 @@ func TestPopulateBVT(t *testing.T) {
 		Convey("updating a BuildVariantTaskUnit with set fields", func() {
 			bvt := BuildVariantTaskUnit{
 				Name:            "task1",
+				Variant:         "bv",
 				ExecTimeoutSecs: 2,
 				Stepback:        utility.TruePtr(),
 				DependsOn:       []TaskUnitDependency{{Name: "task2"}, {Name: "task3"}},
@@ -578,19 +579,24 @@ func (s *projectSuite) SetupTest() {
 				Name: "bv_1",
 				Tasks: []BuildVariantTaskUnit{
 					{
-						Name: "a_task_1",
+						Name:    "a_task_1",
+						Variant: "bv_1",
 					},
 					{
-						Name: "a_task_2",
+						Name:    "a_task_2",
+						Variant: "bv_1",
 					},
 					{
-						Name: "b_task_1",
+						Name:    "b_task_1",
+						Variant: "bv_1",
 					},
 					{
-						Name: "b_task_2",
+						Name:    "b_task_2",
+						Variant: "bv_1",
 					},
 					{
-						Name: "9001_task",
+						Name:    "9001_task",
+						Variant: "bv_1",
 						DependsOn: []TaskUnitDependency{
 							{
 								Name:    "a_task_2",
@@ -599,10 +605,12 @@ func (s *projectSuite) SetupTest() {
 						},
 					},
 					{
-						Name: "very_task",
+						Name:    "very_task",
+						Variant: "bv_1",
 					},
 					{
 						Name:      "another_disabled_task",
+						Variant:   "bv_1",
 						Patchable: utility.FalsePtr(),
 					},
 				},
@@ -618,19 +626,24 @@ func (s *projectSuite) SetupTest() {
 				Tags: []string{"even"},
 				Tasks: []BuildVariantTaskUnit{
 					{
-						Name: "a_task_1",
+						Name:    "a_task_1",
+						Variant: "bv_2",
 					},
 					{
-						Name: "a_task_2",
+						Name:    "a_task_2",
+						Variant: "bv_2",
 					},
 					{
-						Name: "b_task_1",
+						Name:    "b_task_1",
+						Variant: "bv_2",
 					},
 					{
-						Name: "b_task_2",
+						Name:    "b_task_2",
+						Variant: "bv_2",
 					},
 					{
 						Name:      "another_disabled_task",
+						Variant:   "bv_2",
 						Patchable: utility.TruePtr(),
 					},
 				},
@@ -640,6 +653,7 @@ func (s *projectSuite) SetupTest() {
 				Tasks: []BuildVariantTaskUnit{
 					{
 						Name:    "disabled_task",
+						Variant: "bv_3",
 						Disable: utility.TruePtr(),
 					},
 				},
@@ -1288,7 +1302,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 		BuildVariants: []BuildVariant{
 			{
 				Name:  "test",
-				Tasks: []BuildVariantTaskUnit{{Name: "group_1"}},
+				Tasks: []BuildVariantTaskUnit{{Name: "group_1", Variant: "test"}},
 			},
 		},
 		TaskGroups: []TaskGroup{
@@ -1985,14 +1999,14 @@ func TestGetAllVariantTasks(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []BuildVariantTaskUnit{
-							{Name: "t1"},
-							{Name: "t2"},
+							{Name: "t1", Variant: "bv1"},
+							{Name: "t2", Variant: "bv1"},
 						},
 					}, {
 						Name: "bv2",
 						Tasks: []BuildVariantTaskUnit{
-							{Name: "t2"},
-							{Name: "t3"},
+							{Name: "t2", Variant: "bv2"},
+							{Name: "t3", Variant: "bv2"},
 						},
 					},
 				},
@@ -2150,8 +2164,8 @@ func TestVariantTasksForSelectors(t *testing.T) {
 				Name:         "bv0",
 				DisplayTasks: []patch.DisplayTask{{Name: "dt0", ExecTasks: []string{"t0"}}},
 				Tasks: []BuildVariantTaskUnit{
-					{Name: "t0"},
-					{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}}},
+					{Name: "t0", Variant: "bv0"},
+					{Name: "t1", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}}},
 			},
 		},
 		Tasks: []ProjectTask{
