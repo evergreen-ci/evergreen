@@ -100,7 +100,6 @@ func TestProjectRoutes(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 			router.ServeHTTP(response, request)
 
 			So(response.Code, ShouldEqual, http.StatusUnauthorized)
@@ -125,8 +124,8 @@ func TestProjectRoutes(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 			Convey("for credentialed users", func() {
+				request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 				router.ServeHTTP(response, request)
 				out := struct {
@@ -139,12 +138,7 @@ func TestProjectRoutes(t *testing.T) {
 			})
 			Convey("but not public users", func() {
 				router.ServeHTTP(response, request)
-				out := struct {
-					Projects []string `json:"projects"`
-				}{}
-				So(response.Code, ShouldEqual, http.StatusOK)
-				So(json.Unmarshal(response.Body.Bytes(), &out), ShouldBeNil)
-				So(len(out.Projects), ShouldEqual, 0)
+				So(response.Code, ShouldEqual, http.StatusUnauthorized)
 			})
 		})
 	})
