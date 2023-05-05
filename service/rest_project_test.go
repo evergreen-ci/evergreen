@@ -11,7 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
@@ -42,6 +44,7 @@ func TestProjectRoutes(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 
 		response := httptest.NewRecorder()
 
@@ -66,6 +69,7 @@ func TestProjectRoutes(t *testing.T) {
 			So(err, ShouldBeNil)
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 			router.ServeHTTP(response, request)
 			out := struct {
 				Projects []string `json:"projects"`
@@ -96,6 +100,7 @@ func TestProjectRoutes(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 			router.ServeHTTP(response, request)
 
 			So(response.Code, ShouldEqual, http.StatusUnauthorized)
@@ -105,6 +110,7 @@ func TestProjectRoutes(t *testing.T) {
 			url := "/rest/v1/projects/" + privateId
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 			// add auth cookie--this can be anything if we are using a MockUserManager
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			router.ServeHTTP(response, request)
@@ -119,6 +125,7 @@ func TestProjectRoutes(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
+			request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 			Convey("for credentialed users", func() {
 				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 				router.ServeHTTP(response, request)
@@ -147,6 +154,7 @@ func TestProjectRoutes(t *testing.T) {
 
 		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 		response := httptest.NewRecorder()
 
 		Convey("response should contain a sensible error message", func() {
