@@ -62,7 +62,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		return errors.Wrap(err, "making host resource")
 	}
 
-	grpcConn, err := grpc.DialContext(ctx,
+	a.otelGrpcConn, err = grpc.DialContext(ctx,
 		a.opts.TraceCollectorEndpoint,
 		grpc.WithTransportCredentials(credentials.NewTLS(nil)),
 	)
@@ -70,7 +70,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		return errors.Wrapf(err, "opening gRPC connection to '%s'", a.opts.TraceCollectorEndpoint)
 	}
 
-	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(grpcConn))
+	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(a.otelGrpcConn))
 	traceExporter, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return errors.Wrap(err, "initializing otel exporter")
@@ -83,19 +83,13 @@ func (a *Agent) initOtel(ctx context.Context) error {
 	otel.SetTracerProvider(tp)
 	a.tracer = tp.Tracer(packageName)
 
-	a.metricsExporter, err = otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(grpcConn))
-	if err != nil {
-		return errors.Wrap(err, "making otel metrics exporter")
-	}
-
 	a.closers = append(a.closers, closerOp{
 		name: "tracer provider shutdown",
 		closerFn: func(ctx context.Context) error {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(tp.Shutdown(ctx), "trace provider shutdown")
 			catcher.Wrap(traceExporter.Shutdown(ctx), "trace exporter shutdown")
-			catcher.Wrap(a.metricsExporter.Shutdown(ctx), "metrics exporter shutdown")
-			catcher.Wrap(grpcConn.Close(), "closing gRPC connection")
+			catcher.Wrap(a.otelGrpcConn.Close(), "closing gRPC connection")
 
 			return catcher.Resolve()
 		},
@@ -105,8 +99,9 @@ func (a *Agent) initOtel(ctx context.Context) error {
 }
 
 func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func(context.Context), error) {
-	if a.metricsExporter == nil {
-		return nil, nil
+	metricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(a.otelGrpcConn))
+	if err != nil {
+		return nil, errors.Wrap(err, "making otel metrics exporter")
 	}
 
 	r, err := hostResource(ctx)
@@ -116,7 +111,7 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 
 	meterProvider := sdk.NewMeterProvider(
 		sdk.WithResource(r),
-		sdk.WithReader(sdk.NewPeriodicReader(a.metricsExporter, sdk.WithInterval(exportInterval), sdk.WithTimeout(exportTimeout))),
+		sdk.WithReader(sdk.NewPeriodicReader(metricsExporter, sdk.WithInterval(exportInterval), sdk.WithTimeout(exportTimeout))),
 	)
 
 	return func(ctx context.Context) {
@@ -136,12 +131,12 @@ func instrumentMeter(meter metric.Meter, tc *internal.TaskConfig) error {
 }
 
 func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	cpuTime, err := meter.Float64ObservableCounter(cpuTimeInstrument, instrument.WithUnit("s"))
+	cpuTime, err := meter.Float64ObservableCounter(cpuTimeInstrument, metric.WithUnit("s"))
 	if err != nil {
 		return errors.Wrap(err, "making cpu time counter")
 	}
 
-	cpuUtil, err := meter.Float64ObservableGauge(cpuUtilInstrument, instrument.WithUnit("1"), instrument.WithDescription("Busy CPU time since the last measurement, divided by the elapsed time"))
+	cpuUtil, err := meter.Float64ObservableGauge(cpuUtilInstrument, metric.WithUnit("1"), metric.WithDescription("Busy CPU time since the last measurement, divided by the elapsed time"))
 	if err != nil {
 		return errors.Wrap(err, "making cpu util gauge")
 	}
@@ -182,12 +177,12 @@ func addCPUMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 }
 
 func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	memoryUsage, err := meter.Int64ObservableUpDownCounter(memoryUsageInstrument, instrument.WithUnit("By"))
+	memoryUsage, err := meter.Int64ObservableUpDownCounter(memoryUsageInstrument, metric.WithUnit("By"))
 	if err != nil {
 		return errors.Wrap(err, "making memory usage counter")
 	}
 
-	memoryUtil, err := meter.Float64ObservableGauge(memoryUtilizationInstrument, instrument.WithUnit("1"))
+	memoryUtil, err := meter.Float64ObservableGauge(memoryUtilizationInstrument, metric.WithUnit("1"))
 	if err != nil {
 		return errors.Wrap(err, "making memory util gauge")
 	}
@@ -208,17 +203,17 @@ func addMemoryMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
 }
 
 func addDiskMetrics(meter metric.Meter, tc *internal.TaskConfig) error {
-	diskIO, err := meter.Int64ObservableCounter(diskIOInstrument, instrument.WithUnit("By"))
+	diskIO, err := meter.Int64ObservableCounter(diskIOInstrument, metric.WithUnit("By"))
 	if err != nil {
 		return errors.Wrap(err, "making disk io counter")
 	}
 
-	diskOperations, err := meter.Int64ObservableCounter(diskOperationsInstrument, instrument.WithUnit("{operation}"))
+	diskOperations, err := meter.Int64ObservableCounter(diskOperationsInstrument, metric.WithUnit("{operation}"))
 	if err != nil {
 		return errors.Wrap(err, "making disk operations counter")
 	}
 
-	diskIOTime, err := meter.Float64ObservableCounter(diskIOTimeInstrument, instrument.WithUnit("s"), instrument.WithDescription("Time disk spent activated"))
+	diskIOTime, err := meter.Float64ObservableCounter(diskIOTimeInstrument, metric.WithUnit("s"), metric.WithDescription("Time disk spent activated"))
 	if err != nil {
 		return errors.Wrap(err, "making disk io time counter")
 	}
