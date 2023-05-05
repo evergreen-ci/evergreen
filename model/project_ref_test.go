@@ -2438,8 +2438,6 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	now := time.Now().Truncate(time.Second)
-	year, month, day := now.Add(24 * time.Hour).Date()
-	tomorrowMidnight := time.Date(year, month, day, 4, 0, 0, 0, time.UTC)
 	later := now.Add(1 * time.Hour)
 	muchLater := now.Add(10 * time.Hour)
 	for name, test := range map[string]func(*testing.T){
@@ -2520,12 +2518,15 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
 		},
 		"updateProjectWithCron": func(t *testing.T) {
+			nextRunTime := time.Date(2022, 12, 12, 0, 0, 0, 0, time.UTC)
+			nextDay := nextRunTime.Add(24 * time.Hour)
+			laterRunTime := nextRunTime.Add(12 * time.Hour)
 			dailyCron := "0 0 * * *"
 			p := ProjectRef{
 				Id: "proj",
 				PeriodicBuilds: []PeriodicBuildDefinition{
-					{ID: "0", NextRunTime: now, Cron: dailyCron},
-					{ID: "1", NextRunTime: later},
+					{ID: "0", NextRunTime: nextRunTime, Cron: dailyCron},
+					{ID: "1", NextRunTime: laterRunTime, Cron: dailyCron},
 				},
 				RepoRefId: "repo",
 			}
@@ -2542,9 +2543,16 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			dbProject, err := FindBranchProjectRef(p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
-			assert.False(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
-			assert.Equal(tomorrowMidnight, dbProject.PeriodicBuilds[0].NextRunTime)
-			assert.True(later.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
+			assert.True(nextDay.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
+			assert.True(laterRunTime.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
+
+			// Even with a different runtime we get the same result, since we're using a cron.
+			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[1]))
+			dbProject, err = FindBranchProjectRef(p.Id)
+			assert.NoError(err)
+			require.NotNil(dbProject)
+			assert.True(nextDay.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
+
 		},
 	} {
 		assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
