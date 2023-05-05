@@ -110,6 +110,7 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger cli
 
 	if math.IsNaN(float64(tc.Time)) {
 		logger.Task().Errorf("Test '%s' time was NaN, its calculated duration will be incorrect", res.TestName)
+		tc.Time = 0
 	}
 	// Passing 0 as the sign will check for Inf as well as -Inf.
 	if math.IsInf(float64(tc.Time), 0) {
