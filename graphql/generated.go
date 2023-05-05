@@ -243,7 +243,7 @@ type ComplexityRoot struct {
 		FileName    func(childComplexity int) int
 	}
 
-	GenericSubscription struct {
+	GeneralSubscription struct {
 		ID             func(childComplexity int) int
 		OwnerType      func(childComplexity int) int
 		RegexSelectors func(childComplexity int) int
@@ -2294,61 +2294,61 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.FileDiff.FileName(childComplexity), true
 
-	case "GenericSubscription.id":
-		if e.complexity.GenericSubscription.ID == nil {
+	case "GeneralSubscription.id":
+		if e.complexity.GeneralSubscription.ID == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.ID(childComplexity), true
+		return e.complexity.GeneralSubscription.ID(childComplexity), true
 
-	case "GenericSubscription.ownerType":
-		if e.complexity.GenericSubscription.OwnerType == nil {
+	case "GeneralSubscription.ownerType":
+		if e.complexity.GeneralSubscription.OwnerType == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.OwnerType(childComplexity), true
+		return e.complexity.GeneralSubscription.OwnerType(childComplexity), true
 
-	case "GenericSubscription.regexSelectors":
-		if e.complexity.GenericSubscription.RegexSelectors == nil {
+	case "GeneralSubscription.regexSelectors":
+		if e.complexity.GeneralSubscription.RegexSelectors == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.RegexSelectors(childComplexity), true
+		return e.complexity.GeneralSubscription.RegexSelectors(childComplexity), true
 
-	case "GenericSubscription.resourceType":
-		if e.complexity.GenericSubscription.ResourceType == nil {
+	case "GeneralSubscription.resourceType":
+		if e.complexity.GeneralSubscription.ResourceType == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.ResourceType(childComplexity), true
+		return e.complexity.GeneralSubscription.ResourceType(childComplexity), true
 
-	case "GenericSubscription.selectors":
-		if e.complexity.GenericSubscription.Selectors == nil {
+	case "GeneralSubscription.selectors":
+		if e.complexity.GeneralSubscription.Selectors == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.Selectors(childComplexity), true
+		return e.complexity.GeneralSubscription.Selectors(childComplexity), true
 
-	case "GenericSubscription.subscriber":
-		if e.complexity.GenericSubscription.Subscriber == nil {
+	case "GeneralSubscription.subscriber":
+		if e.complexity.GeneralSubscription.Subscriber == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.Subscriber(childComplexity), true
+		return e.complexity.GeneralSubscription.Subscriber(childComplexity), true
 
-	case "GenericSubscription.trigger":
-		if e.complexity.GenericSubscription.Trigger == nil {
+	case "GeneralSubscription.trigger":
+		if e.complexity.GeneralSubscription.Trigger == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.Trigger(childComplexity), true
+		return e.complexity.GeneralSubscription.Trigger(childComplexity), true
 
-	case "GenericSubscription.triggerData":
-		if e.complexity.GenericSubscription.TriggerData == nil {
+	case "GeneralSubscription.triggerData":
+		if e.complexity.GeneralSubscription.TriggerData == nil {
 			break
 		}
 
-		return e.complexity.GenericSubscription.TriggerData(childComplexity), true
+		return e.complexity.GeneralSubscription.TriggerData(childComplexity), true
 
 	case "GithubCheckSubscriber.owner":
 		if e.complexity.GithubCheckSubscriber.Owner == nil {
@@ -14458,8 +14458,8 @@ func (ec *executionContext) fieldContext_FileDiff_fileName(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_id(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_id(ctx, field)
+func (ec *executionContext) _GeneralSubscription_id(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14489,9 +14489,9 @@ func (ec *executionContext) _GenericSubscription_id(ctx context.Context, field g
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -14502,8 +14502,8 @@ func (ec *executionContext) fieldContext_GenericSubscription_id(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_ownerType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_ownerType(ctx, field)
+func (ec *executionContext) _GeneralSubscription_ownerType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_ownerType(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14533,9 +14533,9 @@ func (ec *executionContext) _GenericSubscription_ownerType(ctx context.Context, 
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_ownerType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_ownerType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -14546,8 +14546,8 @@ func (ec *executionContext) fieldContext_GenericSubscription_ownerType(ctx conte
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_regexSelectors(ctx, field)
+func (ec *executionContext) _GeneralSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_regexSelectors(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14577,9 +14577,9 @@ func (ec *executionContext) _GenericSubscription_regexSelectors(ctx context.Cont
 	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -14596,8 +14596,8 @@ func (ec *executionContext) fieldContext_GenericSubscription_regexSelectors(ctx 
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_resourceType(ctx, field)
+func (ec *executionContext) _GeneralSubscription_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_resourceType(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14627,9 +14627,9 @@ func (ec *executionContext) _GenericSubscription_resourceType(ctx context.Contex
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_resourceType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_resourceType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -14640,8 +14640,8 @@ func (ec *executionContext) fieldContext_GenericSubscription_resourceType(ctx co
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_selectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_selectors(ctx, field)
+func (ec *executionContext) _GeneralSubscription_selectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_selectors(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14671,9 +14671,9 @@ func (ec *executionContext) _GenericSubscription_selectors(ctx context.Context, 
 	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_selectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_selectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -14690,8 +14690,8 @@ func (ec *executionContext) fieldContext_GenericSubscription_selectors(ctx conte
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_subscriber(ctx, field)
+func (ec *executionContext) _GeneralSubscription_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_subscriber(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14718,9 +14718,9 @@ func (ec *executionContext) _GenericSubscription_subscriber(ctx context.Context,
 	return ec.marshalOSubscriberWrapper2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_subscriber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_subscriber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -14737,8 +14737,8 @@ func (ec *executionContext) fieldContext_GenericSubscription_subscriber(ctx cont
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_trigger(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_trigger(ctx, field)
+func (ec *executionContext) _GeneralSubscription_trigger(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_trigger(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14768,9 +14768,9 @@ func (ec *executionContext) _GenericSubscription_trigger(ctx context.Context, fi
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_trigger(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_trigger(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -14781,8 +14781,8 @@ func (ec *executionContext) fieldContext_GenericSubscription_trigger(ctx context
 	return fc, nil
 }
 
-func (ec *executionContext) _GenericSubscription_triggerData(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenericSubscription_triggerData(ctx, field)
+func (ec *executionContext) _GeneralSubscription_triggerData(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralSubscription_triggerData(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14809,9 +14809,9 @@ func (ec *executionContext) _GenericSubscription_triggerData(ctx context.Context
 	return ec.marshalOStringMap2map(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenericSubscription_triggerData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneralSubscription_triggerData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenericSubscription",
+		Object:     "GeneralSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -52638,7 +52638,7 @@ func (ec *executionContext) _User_subscriptions(ctx context.Context, field graph
 	}
 	res := resTmp.([]*model.APISubscription)
 	fc.Result = res
-	return ec.marshalOGenericSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+	return ec.marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -52650,23 +52650,23 @@ func (ec *executionContext) fieldContext_User_subscriptions(ctx context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_GenericSubscription_id(ctx, field)
+				return ec.fieldContext_GeneralSubscription_id(ctx, field)
 			case "ownerType":
-				return ec.fieldContext_GenericSubscription_ownerType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_ownerType(ctx, field)
 			case "regexSelectors":
-				return ec.fieldContext_GenericSubscription_regexSelectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_regexSelectors(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_GenericSubscription_resourceType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_resourceType(ctx, field)
 			case "selectors":
-				return ec.fieldContext_GenericSubscription_selectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_selectors(ctx, field)
 			case "subscriber":
-				return ec.fieldContext_GenericSubscription_subscriber(ctx, field)
+				return ec.fieldContext_GeneralSubscription_subscriber(ctx, field)
 			case "trigger":
-				return ec.fieldContext_GenericSubscription_trigger(ctx, field)
+				return ec.fieldContext_GeneralSubscription_trigger(ctx, field)
 			case "triggerData":
-				return ec.fieldContext_GenericSubscription_triggerData(ctx, field)
+				return ec.fieldContext_GeneralSubscription_triggerData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GenericSubscription", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GeneralSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -63376,65 +63376,65 @@ func (ec *executionContext) _FileDiff(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var genericSubscriptionImplementors = []string{"GenericSubscription"}
+var generalSubscriptionImplementors = []string{"GeneralSubscription"}
 
-func (ec *executionContext) _GenericSubscription(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscription) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, genericSubscriptionImplementors)
+func (ec *executionContext) _GeneralSubscription(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscription) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generalSubscriptionImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("GenericSubscription")
+			out.Values[i] = graphql.MarshalString("GeneralSubscription")
 		case "id":
 
-			out.Values[i] = ec._GenericSubscription_id(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "ownerType":
 
-			out.Values[i] = ec._GenericSubscription_ownerType(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_ownerType(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "regexSelectors":
 
-			out.Values[i] = ec._GenericSubscription_regexSelectors(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_regexSelectors(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "resourceType":
 
-			out.Values[i] = ec._GenericSubscription_resourceType(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_resourceType(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "selectors":
 
-			out.Values[i] = ec._GenericSubscription_selectors(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_selectors(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "subscriber":
 
-			out.Values[i] = ec._GenericSubscription_subscriber(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_subscriber(ctx, field, obj)
 
 		case "trigger":
 
-			out.Values[i] = ec._GenericSubscription_trigger(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_trigger(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "triggerData":
 
-			out.Values[i] = ec._GenericSubscription_triggerData(ctx, field, obj)
+			out.Values[i] = ec._GeneralSubscription_triggerData(ctx, field, obj)
 
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -73119,14 +73119,14 @@ func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNGenericSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
+func (ec *executionContext) marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._GenericSubscription(ctx, sel, v)
+	return ec._GeneralSubscription(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGithubProjectConflicts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, v model1.GithubProjectConflicts) graphql.Marshaler {
@@ -76577,7 +76577,7 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
-func (ec *executionContext) marshalOGenericSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
+func (ec *executionContext) marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -76604,7 +76604,7 @@ func (ec *executionContext) marshalOGenericSubscription2ᚕᚖgithubᚗcomᚋeve
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGenericSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
+			ret[i] = ec.marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

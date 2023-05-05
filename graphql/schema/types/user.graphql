@@ -80,7 +80,7 @@ type User {
   emailAddress: String!
   patches(patchesInput: PatchesInput!): Patches! # user patches
   permissions: Permissions!
-  subscriptions: [GenericSubscription!]
+  subscriptions: [GeneralSubscription!]
   userId: String!
 }
 

@@ -1,4 +1,4 @@
-type GenericSubscription {
+type GeneralSubscription {
   id: String!
   ownerType: String!
   regexSelectors: [Selector!]!

@@ -68,7 +68,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
-  GenericSubscription:
+  GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
