@@ -1,16 +1,20 @@
 package command
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -222,17 +226,31 @@ func TestXMLToModelConversion(t *testing.T) {
 			ProjectRef: &model.ProjectRef{},
 			Task:       &task.Task{Id: "TEST", Execution: 5},
 		}
-
+		sender := send.MakeInternalLogger()
+		logger := client.NewSingleChannelLogHarness("", sender)
 		Convey("when converting the results to model struct", func() {
 			tests := []testresult.TestResult{}
 			logs := []*model.TestLog{}
+			numNan := 0
+			numInf := 0
 			for _, testCase := range res[0].TestCases {
-				test, log := testCase.toModelTestResultAndLog(conf)
+				test, log := testCase.toModelTestResultAndLog(conf, logger)
 				if log != nil {
 					logs = append(logs, log)
 				}
 				tests = append(tests, test)
+				if math.IsNaN(float64(testCase.Time)) {
+					So(test.Duration(), ShouldEqual, time.Duration(0))
+					numNan++
+				}
+				if math.IsInf(float64(testCase.Time), 0) {
+					So(test.Duration(), ShouldEqual, time.Duration(0))
+					numInf++
+				}
 			}
+			So(numNan, ShouldEqual, 1)
+			So(numInf, ShouldEqual, 2)
+			So(logger.Close(), ShouldBeNil)
 
 			Convey("the proper amount of each failure should be correct", func() {
 				skipCount := 0
