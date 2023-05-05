@@ -278,7 +278,7 @@ Fields:
     (Cannot be combined with batchtime). This also accepts descriptors
     such as `@daily` (reference
     [cron](https://godoc.org/github.com/robfig/cron) for more example),
-    but [does not accept intervals.]{.title-ref} (i.e.
+    but does not accept intervals. (i.e.
     `@every <duration>`). Only applies to tasks from mainline commits.
 -   `task_group`: a [task
     group](#task-groups)
@@ -1340,7 +1340,7 @@ parameters are available:
     not be automatically pulled in to the version.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
-    `generate.tasks` command), then generated tasks will not be included
+    [`generate.tasks`](02-Project-Commands.md#generate-tasks) command), then generated tasks will not be included
     as dependencies.
 
 So, for example:
