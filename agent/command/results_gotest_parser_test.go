@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -241,5 +242,13 @@ func TestParserFunctionality(t *testing.T) {
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldNotBeNil)
 		So(err.Error(), ShouldContainSubstring, "github.com/evergreen-ci/evergreen/model/host")
+	})
+
+	t.Run("LargeLogLine", func(t *testing.T) {
+		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "large_line.log"))
+		require.NoError(t, err)
+
+		parser := &goTestParser{}
+		assert.Error(t, parser.Parse(bytes.NewBuffer(logdata)))
 	})
 }

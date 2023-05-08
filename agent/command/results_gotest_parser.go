@@ -113,9 +113,6 @@ func (vp *goTestParser) Parse(testOutput io.Reader) error {
 	testScanner := bufio.NewScanner(testOutput)
 	vp.tests = map[string][]*goTestResult{}
 	for testScanner.Scan() {
-		if err := testScanner.Err(); err != nil {
-			return errors.Wrap(err, "reading test output")
-		}
 		// logs are appended at the start of the loop, allowing
 		// len(vp.logs) to represent the current line number [1...]
 		logLine := testScanner.Text()
@@ -123,6 +120,9 @@ func (vp *goTestParser) Parse(testOutput io.Reader) error {
 		if err := vp.handleLine(logLine); err != nil {
 			return errors.WithStack(err)
 		}
+	}
+	if err := testScanner.Err(); err != nil {
+		return errors.Wrap(err, "reading test output")
 	}
 	return nil
 }
