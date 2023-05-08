@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -25,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -37,6 +40,7 @@ const (
 	exportInterval = 15 * time.Second
 	exportTimeout  = exportInterval * 2
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
+	traceDir       = "build/"
 
 	cpuTimeInstrument = "system.cpu.time"
 	cpuUtilInstrument = "system.cpu.utilization"
@@ -70,8 +74,8 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		return errors.Wrapf(err, "opening gRPC connection to '%s'", a.opts.TraceCollectorEndpoint)
 	}
 
-	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(grpcConn))
-	traceExporter, err := otlptrace.New(ctx, client)
+	a.traceClient = otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(grpcConn))
+	traceExporter, err := otlptrace.New(ctx, a.traceClient)
 	if err != nil {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
@@ -274,6 +278,38 @@ func hostResource(ctx context.Context) (*resource.Resource, error) {
 		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
 		resource.WithDetectors(ec2.NewResourceDetector(), ecs.NewResourceDetector()),
 	)
+}
+
+func (a *Agent) sendTraces(ctx context.Context, workingDirectory string) error {
+	files, err := listTraceFiles(ctx)
+	if err != nil {
+		return errors.Wrap(err, "listing trace files")
+	}
+	if len(files) == 0 {
+		return nil
+	}
+
+	for _, fileName := range files {
+		if err := a.uploadTraces(ctx, a.traceClient, fileName); err != nil {
+			return errors.Wrap(err, "uploading traces to the collector")
+		}
+	}
+
+	return nil
+}
+
+func (a *Agent) uploadTraces(ctx context.Context, traceClient otlptrace.Client, fileName string) error {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return errors.Wrapf(err, "opening trace file '%s'", fileName)
+	}
+
+	var traces tracepb.TracesData
+	if err := json.NewDecoder(file).Decode(&traces); err != nil {
+		return errors.Wrap(err, "decoding trace json")
+	}
+
+	return traceClient.UploadTraces(ctx, traces.ResourceSpans)
 }
 
 type taskSpanProcessor struct{}

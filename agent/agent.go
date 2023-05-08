@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	sdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -46,6 +47,7 @@ type Agent struct {
 	ec2InstanceID   string
 	endTaskResp     *TriggerEndTaskResp
 	tracer          trace.Tracer
+	traceClient     otlptrace.Client
 	metricsExporter sdk.Exporter
 	closers         []closerOp
 }
