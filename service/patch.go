@@ -149,10 +149,11 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Data        patch.Patch
-		FileName    string
-		PatchNumber string
-	}{*fullPatch, r.FormValue("file_name"), r.FormValue("patch_number")},
+		Data         patch.Patch
+		FileName     string
+		PatchNumber  string
+		CommitNumber string
+	}{*fullPatch, r.FormValue("file_name"), r.FormValue("patch_number"), r.FormValue("commit_number")},
 		"base", "file_diff.html")
 }
 
