@@ -121,10 +121,7 @@ func (vp *goTestParser) Parse(testOutput io.Reader) error {
 			return errors.WithStack(err)
 		}
 	}
-	if err := testScanner.Err(); err != nil {
-		return errors.Wrap(err, "reading test output")
-	}
-	return nil
+	return errors.Wrap(testScanner.Err(), "reading test output")
 }
 
 // handleLine attempts to parse and store any test updates from the given line.
