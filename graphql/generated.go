@@ -515,7 +515,7 @@ type ComplexityRoot struct {
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetPatchPriority              func(childComplexity int, patchID string, priority int) int
-		SetPatchVisibility            func(childComplexity int, patchID string, hidden bool) int
+		SetPatchVisibility            func(childComplexity int, patchIds []string, hidden bool) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
 		SpawnVolume                   func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
@@ -1376,7 +1376,7 @@ type MutationResolver interface {
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
 	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
-	SetPatchVisibility(ctx context.Context, patchID string, hidden bool) (*model.APIPatch, error)
+	SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*model.APIPatch, error)
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
@@ -3774,7 +3774,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetPatchVisibility(childComplexity, args["patchId"].(string), args["hidden"].(bool)), true
+		return e.complexity.Mutation.SetPatchVisibility(childComplexity, args["patchIds"].([]string), args["hidden"].(bool)), true
 
 	case "Mutation.setTaskPriority":
 		if e.complexity.Mutation.SetTaskPriority == nil {
@@ -9317,15 +9317,15 @@ func (ec *executionContext) field_Mutation_setPatchPriority_args(ctx context.Con
 func (ec *executionContext) field_Mutation_setPatchVisibility_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["patchId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg0 []string
+	if tmp, ok := rawArgs["patchIds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchIds"))
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["patchId"] = arg0
+	args["patchIds"] = arg0
 	var arg1 bool
 	if tmp, ok := rawArgs["hidden"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hidden"))
@@ -22038,7 +22038,7 @@ func (ec *executionContext) _Mutation_setPatchVisibility(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPatchVisibility(rctx, fc.Args["patchId"].(string), fc.Args["hidden"].(bool))
+		return ec.resolvers.Mutation().SetPatchVisibility(rctx, fc.Args["patchIds"].([]string), fc.Args["hidden"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -22050,9 +22050,9 @@ func (ec *executionContext) _Mutation_setPatchVisibility(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIPatch)
+	res := resTmp.([]*model.APIPatch)
 	fc.Result = res
-	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+	return ec.marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
