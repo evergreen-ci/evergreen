@@ -141,6 +141,7 @@ type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	Limit              int
 	IncludeCommitQueue *bool
 	OnlyCommitQueue    *bool
+	IncludeHidden      bool
 }
 
 func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
@@ -158,10 +159,12 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 		match[AliasKey] = evergreen.CommitQueueAlias
 	}
 
+	if !opts.IncludeHidden {
+		match[HiddenKey] = bson.M{"$ne": true}
+	}
 	// This is only used on the user patches page when we want to filter out the commit queue
 	if opts.IncludeCommitQueue != nil && !utility.FromBoolPtr(opts.IncludeCommitQueue) {
 		match[AliasKey] = commitQueueFilter
-
 	}
 	if opts.PatchName != "" {
 		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
