@@ -81,6 +81,10 @@ func (a *Agent) initOtel(ctx context.Context) error {
 	)
 	tp.RegisterSpanProcessor(NewTaskSpanProcessor())
 	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		grip.Error(errors.Wrap(err, "encountered otel error"))
+	}))
+
 	a.tracer = tp.Tracer(packageName)
 
 	a.metricsExporter, err = otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(grpcConn))
