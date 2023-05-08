@@ -43,6 +43,7 @@ type Mutation {
 
   # patch
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
+  setPatchVisibility(patchId: String!, hidden: Boolean!): Patch!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]

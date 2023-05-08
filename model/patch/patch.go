@@ -143,6 +143,7 @@ type Patch struct {
 	Path               string           `bson:"path,omitempty"`
 	Project            string           `bson:"branch"`
 	Githash            string           `bson:"githash"`
+	Hidden             bool             `bson:"hidden"`
 	PatchNumber        int              `bson:"patch_number"`
 	Author             string           `bson:"author"`
 	Version            string           `bson:"version"`
@@ -669,6 +670,18 @@ func (p *Patch) SetActivation(activated bool) error {
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey: activated,
+			},
+		},
+	)
+}
+
+func (p *Patch) SetPatchVisibility(hidden bool) error {
+	p.Hidden = hidden
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				HiddenKey: hidden,
 			},
 		},
 	)

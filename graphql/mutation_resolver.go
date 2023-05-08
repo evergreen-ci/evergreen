@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -221,6 +222,27 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
 	}
 	return newPatch, nil
+}
+
+// SetPatchVisibility is the resolver for the setPatchVisibility field.
+func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchID string, hidden bool) (*restModel.APIPatch, error) {
+	patch, err := patch.FindOneId(patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
+	}
+	if patch == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Patch `%s` not found", patchID))
+	}
+	err = patch.SetPatchVisibility(hidden)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch `%s` visibility: %s", patchID, err.Error()))
+	}
+	apiPatch := restModel.APIPatch{}
+	err = apiPatch.BuildFromService(*patch, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch `%s` API model: %s", patchID, err.Error()))
+	}
+	return &apiPatch, nil
 }
 
 // SchedulePatch is the resolver for the schedulePatch field.

@@ -50,6 +50,7 @@ var (
 	githubPatchDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey           = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 	TriggersKey             = bsonutil.MustHaveTag(Patch{}, "Triggers")
+	HiddenKey               = bsonutil.MustHaveTag(Patch{}, "Hidden")
 
 	// BSON fields for sync at end struct
 	SyncAtEndOptionsBuildVariantsKey = bsonutil.MustHaveTag(SyncAtEndOptions{}, "BuildVariants")
