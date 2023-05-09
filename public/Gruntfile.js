@@ -7,7 +7,7 @@ module.exports = function (grunt) {
       options: {
         sourceMap: true,
         plugins: ["transform-react-jsx"],
-        presets: ["es2015", "react"],
+        presets: ["env", "react"],
       },
       dist: {
         files: [
