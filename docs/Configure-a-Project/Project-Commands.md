@@ -350,7 +350,7 @@ Parameters:
     `<module_name> : ${<module_name>_rev}`. For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
-    ["modules"](01-Project-Configuration-Files.md#modules)
+    ["modules"](Project-Configuration-Files.md#modules)
     section of the project config will not change the checked out hash.
 -   `token`: Use a token to clone instead of the ssh key on the host.
     Since this is a secret, it should be provided as a project
@@ -925,7 +925,7 @@ s3.push is restarted, it will replace the existing one.
 Users also have the option to inspect the task working directory after
 it has finished pushing (e.g. for debugging a failed task). This can be
 achieved by either pulling the task working directory from S3 onto a
-spawn host (from the UI) or their local machines (using [evergreen pull](../07-Using-the-Command-Line-Tool.md#pull)).
+spawn host (from the UI) or their local machines (using [evergreen pull](../Using-the-Command-Line-Tool.md#pull)).
 
 The working directory is put in a private S3 bucket shared between all
 projects. Any other logged in user can pull and view the directory
@@ -1160,4 +1160,4 @@ Parameters:
 Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
-Commands can also be configured to run if timeout occurs, as documented [here](01-Project-Configuration-Files.md#pre-post-and-timeout).
+Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#pre-post-and-timeout).
