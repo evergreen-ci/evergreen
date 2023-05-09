@@ -3010,6 +3010,6 @@ func TestGetNextCronTime(t *testing.T) {
 
 	// verify that a weekday cron can be parsed
 	weekdayCron := "0 0 * * 1-5"
-	nextTime, err = GetNextCronTime(curTime, weekdayCron)
+	_, err = GetNextCronTime(curTime, weekdayCron)
 	assert.NoError(t, err)
 }
