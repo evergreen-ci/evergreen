@@ -397,19 +397,20 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 				"pr":      info.PR,
 			}))
 		} else if p != nil && p.Version != "" {
-			grip.Debug(message.Fields{
-				"message": "calling refresh from commit queue",
-				"ticket":  "EVG-19827",
-				"owner":   info.Owner,
-				"repo":    info.Repo,
-				"pr":      info.PR,
-			})
 			refreshJob := units.NewGithubStatusRefreshJob(p)
 			refreshJob.Run(ctx)
 			pr, err = getPRAndCheckBase(ctx, sc, info)
 			if err != nil {
 				return nil, err
 			}
+			grip.Debug(message.Fields{
+				"message":            "calling refresh from commit queue",
+				"ticket":             "EVG-19827",
+				"owner":              info.Owner,
+				"repo":               info.Repo,
+				"pr":                 pr,
+				"new_mergeble_state": pr.GetMergeableState(),
+			})
 		}
 	}
 
