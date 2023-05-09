@@ -2164,7 +2164,7 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing cron '%s'", cronStr)
 	}
-	return sched, err
+	return sched, nil
 }
 
 func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
