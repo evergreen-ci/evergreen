@@ -1,4 +1,4 @@
-# Test Builds from the Command Line
+# Use the CLI
 
 How to set up and use the command-line tool
 ==
