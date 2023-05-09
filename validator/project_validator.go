@@ -1111,7 +1111,7 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 						Level:   Error,
 					})
 			}
-			if _, err := model.GetActivationTimeWithCron(time.Now(), t.CronBatchTime); err != nil {
+			if _, err := model.GetNextCronTime(time.Now(), t.CronBatchTime); err != nil {
 				errs = append(errs,
 					ValidationError{
 						Message: errors.Wrapf(err, "task cron batchtime '%s' has invalid syntax for task '%s' for build variant '%s'",
@@ -1132,7 +1132,7 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 					Level:   Error,
 				})
 		}
-		if _, err := model.GetActivationTimeWithCron(time.Now(), buildVariant.CronBatchTime); err != nil {
+		if _, err := model.GetNextCronTime(time.Now(), buildVariant.CronBatchTime); err != nil {
 			errs = append(errs,
 				ValidationError{
 					Message: errors.Wrapf(err, "cron batchtime '%s' has invalid syntax", buildVariant.CronBatchTime).Error(),

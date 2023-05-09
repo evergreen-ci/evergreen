@@ -278,19 +278,20 @@ whereas a new periodic build will be created each interval regardless of whether
 
 Options:
 
--   Interval: Evergreen will create a version and run the specified tasks every X hours, with
-    X being specified by this field. The first run will happen
-    immediately after the settings are saved
--   Config File: The .yml file that defines tasks to run. This can be
+- Interval: (Interval or cron required) Evergreen will create a version and run the specified tasks every X hours, with
+    X being specified by this field. Unless set to a future time, the first run will happen immediately after the settings are saved.
+- Cron: (Interval or cron required) Evergreen will create a version on the specified cron schedule.
+- Config File: The .yml file that defines tasks to run. This can be
     the same one that defines tasks for commits in the project, or a
     different one.
--   Patch Alias: Optional, you can specify an already-defined patch
+- Patch Alias: Optional, you can specify an already-defined patch
     alias here to limit the tasks or variants that are run.
--   Message: Optional, this will be saved as the description of the
+- Message: Optional, this will be saved as the description of the
     version that ends up being created when the tasks are run.
 
+
 Periodic builds can be viewed on the project waterfall page, and can be
-filtered on on Spruce. You can also find out about the results of
+filtered on Spruce. You can also find out about the results of
 periodic builds by adding a notification subscription on the project
 settings page. In the notification popup, select "when any version
 finishes" with Build Initiator = Periodic Build.
