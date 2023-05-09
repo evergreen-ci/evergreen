@@ -92,24 +92,23 @@ const (
 )
 
 type taskContext struct {
-	currentCommand         command.Command
-	expansions             util.Expansions
-	privateVars            map[string]bool
-	logger                 client.LoggerProducer
-	jasper                 jasper.Manager
-	logs                   *apimodels.TaskLogs
-	statsCollector         *StatsCollector
-	systemMetricsCollector *systemMetricsCollector
-	task                   client.TaskData
-	taskGroup              string
-	ranSetupGroup          bool
-	taskConfig             *internal.TaskConfig
-	taskDirectory          string
-	logDirectories         map[string]interface{}
-	timeout                timeoutInfo
-	project                *model.Project
-	taskModel              *task.Task
-	oomTracker             jasper.OOMTracker
+	currentCommand command.Command
+	expansions     util.Expansions
+	privateVars    map[string]bool
+	logger         client.LoggerProducer
+	jasper         jasper.Manager
+	logs           *apimodels.TaskLogs
+	statsCollector *StatsCollector
+	task           client.TaskData
+	taskGroup      string
+	ranSetupGroup  bool
+	taskConfig     *internal.TaskConfig
+	taskDirectory  string
+	logDirectories map[string]interface{}
+	timeout        timeoutInfo
+	project        *model.Project
+	taskModel      *task.Task
+	oomTracker     jasper.OOMTracker
 	sync.RWMutex
 }
 
@@ -559,8 +558,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
-	tskCtx, err = taskConfig.AddTaskBaggageToCtx(tskCtx)
-	grip.Error(errors.Wrap(err, "adding task baggage to context"))
+	tskCtx = contextWithTaskAttributes(tskCtx, taskConfig.TaskAttributes())
 
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
 	defer span.End()
@@ -686,13 +684,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	default:
 		tc.logger.Task().Errorf("Programmer error: invalid task status '%s'.", detail.Status)
 	}
-
-	tc.Lock()
-	if tc.systemMetricsCollector != nil {
-		err := tc.systemMetricsCollector.Close()
-		tc.logger.System().Error(errors.Wrap(err, "closing system metrics collector"))
-	}
-	tc.Unlock()
 
 	a.killProcs(ctx, tc, false)
 

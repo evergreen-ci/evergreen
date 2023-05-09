@@ -187,25 +187,26 @@ func TestPopulateBVT(t *testing.T) {
 				{
 					Name:            "task1",
 					ExecTimeoutSecs: 500,
-					Stepback:        boolPtr(false),
+					Stepback:        utility.FalsePtr(),
 					DependsOn:       []TaskUnitDependency{{Name: "other"}},
 					Priority:        1000,
-					Patchable:       boolPtr(false),
+					Patchable:       utility.FalsePtr(),
 				},
 			},
 			BuildVariants: []BuildVariant{
 				{
 					Name:  "test",
-					Tasks: []BuildVariantTaskUnit{{Name: "task1", Priority: 5}},
+					Tasks: []BuildVariantTaskUnit{{Name: "task1", Variant: "test", Priority: 5}},
 				},
 			},
 		}
 
 		Convey("updating a BuildVariantTaskUnit with unset fields", func() {
 			bvt := project.BuildVariants[0].Tasks[0]
-			spec := project.GetSpecForTask("task1")
-			So(spec.Name, ShouldEqual, "task1")
-			bvt.Populate(spec, project.BuildVariants[0])
+			projectTask := project.FindProjectTask("task1")
+			So(projectTask, ShouldNotBeNil)
+			So(projectTask.Name, ShouldEqual, "task1")
+			bvt.Populate(*projectTask, project.BuildVariants[0])
 
 			Convey("should inherit the unset fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
@@ -221,13 +222,15 @@ func TestPopulateBVT(t *testing.T) {
 		Convey("updating a BuildVariantTaskUnit with set fields", func() {
 			bvt := BuildVariantTaskUnit{
 				Name:            "task1",
+				Variant:         "bv",
 				ExecTimeoutSecs: 2,
-				Stepback:        boolPtr(true),
+				Stepback:        utility.TruePtr(),
 				DependsOn:       []TaskUnitDependency{{Name: "task2"}, {Name: "task3"}},
 			}
-			spec := project.GetSpecForTask("task1")
-			So(spec.Name, ShouldEqual, "task1")
-			bvt.Populate(spec, project.BuildVariants[0])
+			projectTask := project.FindProjectTask("task1")
+			So(projectTask, ShouldNotBeNil)
+			So(projectTask.Name, ShouldEqual, "task1")
+			bvt.Populate(*projectTask, project.BuildVariants[0])
 
 			Convey("should not inherit set fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
@@ -286,10 +289,6 @@ func TestIgnoresAllFiles(t *testing.T) {
 			So(p.IgnoresAllFiles(files), ShouldBeFalse)
 		})
 	})
-}
-
-func boolPtr(b bool) *bool {
-	return &b
 }
 
 func TestPopulateExpansions(t *testing.T) {
@@ -573,7 +572,6 @@ func (s *projectSuite) SetupTest() {
 	for _, alias := range s.aliases {
 		s.NoError(alias.Upsert())
 	}
-
 	s.project = &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
@@ -581,19 +579,24 @@ func (s *projectSuite) SetupTest() {
 				Name: "bv_1",
 				Tasks: []BuildVariantTaskUnit{
 					{
-						Name: "a_task_1",
+						Name:    "a_task_1",
+						Variant: "bv_1",
 					},
 					{
-						Name: "a_task_2",
+						Name:    "a_task_2",
+						Variant: "bv_1",
 					},
 					{
-						Name: "b_task_1",
+						Name:    "b_task_1",
+						Variant: "bv_1",
 					},
 					{
-						Name: "b_task_2",
+						Name:    "b_task_2",
+						Variant: "bv_1",
 					},
 					{
-						Name: "9001_task",
+						Name:    "9001_task",
+						Variant: "bv_1",
 						DependsOn: []TaskUnitDependency{
 							{
 								Name:    "a_task_2",
@@ -602,11 +605,13 @@ func (s *projectSuite) SetupTest() {
 						},
 					},
 					{
-						Name: "very_task",
+						Name:    "very_task",
+						Variant: "bv_1",
 					},
 					{
 						Name:      "another_disabled_task",
-						Patchable: boolPtr(false),
+						Variant:   "bv_1",
+						Patchable: utility.FalsePtr(),
 					},
 				},
 				DisplayTasks: []patch.DisplayTask{
@@ -621,29 +626,35 @@ func (s *projectSuite) SetupTest() {
 				Tags: []string{"even"},
 				Tasks: []BuildVariantTaskUnit{
 					{
-						Name: "a_task_1",
+						Name:    "a_task_1",
+						Variant: "bv_2",
 					},
 					{
-						Name: "a_task_2",
+						Name:    "a_task_2",
+						Variant: "bv_2",
 					},
 					{
-						Name: "b_task_1",
+						Name:    "b_task_1",
+						Variant: "bv_2",
 					},
 					{
-						Name: "b_task_2",
+						Name:    "b_task_2",
+						Variant: "bv_2",
 					},
 					{
 						Name:      "another_disabled_task",
-						Patchable: boolPtr(false),
+						Variant:   "bv_2",
+						Patchable: utility.TruePtr(),
 					},
 				},
 			},
 			{
-				Name:    "bv_3",
-				Disable: true,
+				Name: "bv_3",
 				Tasks: []BuildVariantTaskUnit{
 					{
-						Name: "disabled_task",
+						Name:    "disabled_task",
+						Variant: "bv_3",
+						Disable: utility.TruePtr(),
 					},
 				},
 			},
@@ -693,7 +704,7 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name:      "another_disabled_task",
-				Patchable: boolPtr(false),
+				Patchable: utility.FalsePtr(),
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
@@ -716,7 +727,7 @@ func (s *projectSuite) SetupTest() {
 
 func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
-	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]})
+	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
 	s.Len(pairs, 11)
 	pairStrs := make([]string, len(pairs))
@@ -733,21 +744,21 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Contains(pairStrs, "bv_2/a_task_2")
 	s.Contains(pairStrs, "bv_2/b_task_1")
 	s.Contains(pairStrs, "bv_2/b_task_2")
-	s.Contains(pairStrs, "bv_3/disabled_task")
+	s.Contains(pairStrs, "bv_2/another_disabled_task")
 	s.Require().Len(displayTaskPairs, 1)
 	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
 	// test that the .*_2 regex on variants selects just bv_2
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]})
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Len(pairs, 4)
+	s.Len(pairs, 5)
 	for _, pair := range pairs {
 		s.Equal("bv_2", pair.Variant)
 	}
 	s.Empty(displayTaskPairs)
 
 	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]})
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -756,7 +767,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the 'a' tag only selects 'a' tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]})
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -765,7 +776,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the .*_2 regex selects the union of both
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]})
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -774,20 +785,19 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test for display tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]})
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
 	s.Empty(pairs)
 	s.Require().Len(displayTaskPairs, 1)
 	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
 	// test for alias including a task belong to a disabled variant
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]})
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Require().Len(pairs, 1)
-	s.Equal("bv_3/disabled_task", pairs[0].String())
+	s.Empty(pairs)
 	s.Empty(displayTaskPairs)
 
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]})
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
 	s.Require().Len(pairs, 2)
 	s.Equal("bv_2/a_task_1", pairs[0].String())
@@ -802,17 +812,51 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 		Tasks:         []string{"all"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
-	s.Len(patchDoc.Tasks, 6)
+	s.ElementsMatch([]string{"bv_1", "bv_2"}, patchDoc.BuildVariants)
+	s.Len(patchDoc.Tasks, 7)
+	s.ElementsMatch([]string{
+		"a_task_1",
+		"a_task_2",
+		"b_task_1",
+		"b_task_2",
+		"9001_task",
+		"very_task",
+		"another_disabled_task"}, patchDoc.Tasks)
+	for _, vt := range patchDoc.VariantsTasks {
+		switch vt.Variant {
+		case "bv_1":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"9001_task",
+				"very_task",
+			}, vt.Tasks)
+			s.Len(vt.DisplayTasks, 1)
+		case "bv_2":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"another_disabled_task",
+			}, vt.Tasks)
+			s.Empty(vt.DisplayTasks)
+		default:
+			s.Fail("unexpected variant '%s'", vt.Variant)
+		}
+	}
 
 	// test all tasks expansion with named buildvariant expands unnamed buildvariant
 	patchDoc.BuildVariants = []string{"bv_1"}
 	patchDoc.Tasks = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
@@ -821,7 +865,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	patchDoc.BuildVariants = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
@@ -836,8 +880,42 @@ func (s *projectSuite) TestResolvePatchVTs() {
 
 	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
-	s.Len(tasks, 6)
+	s.ElementsMatch([]string{"bv_1", "bv_2"}, bvs)
+	s.Len(tasks, 7)
+	s.ElementsMatch([]string{
+		"a_task_1",
+		"a_task_2",
+		"b_task_1",
+		"b_task_2",
+		"9001_task",
+		"very_task",
+		"another_disabled_task"}, tasks)
 	s.Len(variantTasks, 2)
+	for _, vt := range variantTasks {
+		switch vt.Variant {
+		case "bv_1":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"9001_task",
+				"very_task",
+			}, vt.Tasks)
+			s.Len(vt.DisplayTasks, 1)
+		case "bv_2":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"another_disabled_task",
+			}, vt.Tasks)
+			s.Empty(vt.DisplayTasks)
+		default:
+			s.Fail("unexpected variant '%s'", vt.Variant)
+		}
+	}
 
 	// Build variant and tasks override regex.
 	patchDoc = patch.Patch{
@@ -849,7 +927,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 
 	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
-	s.Len(tasks, 6)
+	s.Len(tasks, 7)
 	s.Len(variantTasks, 2)
 
 	// Regex build variants and tasks.
@@ -1121,12 +1199,9 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	patchDoc := patch.Patch{}
 
 	s.project.BuildProjectTVPairs(&patchDoc, "disabled_stuff")
-	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
-	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
-	s.Require().Len(patchDoc.VariantsTasks, 1)
-	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
-	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
-	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
+	s.Empty(patchDoc.BuildVariants)
+	s.Empty(patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
 
 	patchDoc = patch.Patch{
 		BuildVariants: []string{"bv_3"},
@@ -1134,12 +1209,9 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	}
 
 	s.project.BuildProjectTVPairs(&patchDoc, "")
-	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
-	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
-	s.Require().Len(patchDoc.VariantsTasks, 1)
-	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
-	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
-	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
+	s.Empty(patchDoc.BuildVariants)
+	s.Empty(patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() {
@@ -1230,7 +1302,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 		BuildVariants: []BuildVariant{
 			{
 				Name:  "test",
-				Tasks: []BuildVariantTaskUnit{{Name: "group_1"}},
+				Tasks: []BuildVariantTaskUnit{{Name: "group_1", Variant: "test"}},
 			},
 		},
 		TaskGroups: []TaskGroup{
@@ -1927,14 +1999,14 @@ func TestGetAllVariantTasks(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []BuildVariantTaskUnit{
-							{Name: "t1"},
-							{Name: "t2"},
+							{Name: "t1", Variant: "bv1"},
+							{Name: "t2", Variant: "bv1"},
 						},
 					}, {
 						Name: "bv2",
 						Tasks: []BuildVariantTaskUnit{
-							{Name: "t2"},
-							{Name: "t3"},
+							{Name: "t2", Variant: "bv2"},
+							{Name: "t3", Variant: "bv2"},
 						},
 					},
 				},
@@ -2092,8 +2164,8 @@ func TestVariantTasksForSelectors(t *testing.T) {
 				Name:         "bv0",
 				DisplayTasks: []patch.DisplayTask{{Name: "dt0", ExecTasks: []string{"t0"}}},
 				Tasks: []BuildVariantTaskUnit{
-					{Name: "t0"},
-					{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}}},
+					{Name: "t0", Variant: "bv0"},
+					{Name: "t1", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}}},
 			},
 		},
 		Tasks: []ProjectTask{

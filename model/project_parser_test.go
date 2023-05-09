@@ -312,7 +312,7 @@ func TestTranslateTasks(t *testing.T) {
 				},
 			},
 			{
-				Name:      "bv1",
+				Name:      "patch_only_bv",
 				PatchOnly: utility.FalsePtr(),
 				Tasks: parserBVTaskUnits{
 					{
@@ -324,6 +324,62 @@ func TestTranslateTasks(t *testing.T) {
 					{
 						Name: "a_task_with_no_special_configuration",
 					},
+					{
+						Name:      "a_task_with_build_variant_task_configuration",
+						PatchOnly: utility.TruePtr(),
+					},
+				},
+			},
+			{
+				Name:      "unpatchable_bv",
+				Patchable: utility.FalsePtr(),
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+					},
+					{
+						Name:      "a_task_with_build_variant_task_configuration",
+						Patchable: utility.TruePtr(),
+					},
+				},
+			},
+			{
+				Name:           "allow_for_git_tag_bv",
+				AllowForGitTag: utility.FalsePtr(),
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+					},
+					{
+						Name:           "a_task_with_build_variant_task_configuration",
+						AllowForGitTag: utility.TruePtr(),
+					},
+				},
+			},
+			{
+				Name:       "git_tag_only_bv",
+				GitTagOnly: utility.TruePtr(),
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+					},
+					{
+						Name:       "a_task_with_build_variant_task_configuration",
+						GitTagOnly: utility.FalsePtr(),
+					},
+				},
+			},
+			{
+				Name:    "disabled_bv",
+				Disable: utility.TruePtr(),
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "your_task",
+					},
+					{
+						Name:    "my_task",
+						Disable: utility.FalsePtr(),
+					},
 				},
 			},
 		},
@@ -332,6 +388,7 @@ func TestTranslateTasks(t *testing.T) {
 			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "a_task_with_no_special_configuration"},
+			{Name: "a_task_with_build_variant_task_configuration"},
 		},
 		TaskGroups: []parserTaskGroup{{
 			Name:  "my_tg",
@@ -341,8 +398,8 @@ func TestTranslateTasks(t *testing.T) {
 	out, err := TranslateProject(parserProject)
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
-	require.Len(t, out.Tasks, 4)
-	require.Len(t, out.BuildVariants, 2)
+	require.Len(t, out.Tasks, 5)
+	require.Len(t, out.BuildVariants, 6)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -350,6 +407,7 @@ func TestTranslateTasks(t *testing.T) {
 		}
 	}
 
+	assert.Equal(t, "bv0", out.BuildVariants[0].Name)
 	require.Len(t, out.BuildVariants[0].Tasks, 3)
 	assert.Equal(t, "my_task", out.BuildVariants[0].Tasks[0].Name)
 	assert.Equal(t, 30, out.BuildVariants[0].Tasks[0].ExecTimeoutSecs)
@@ -376,7 +434,8 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.True(t, bvt.IsGroup)
 
-	require.Len(t, out.BuildVariants[1].Tasks, 3)
+	assert.Equal(t, "patch_only_bv", out.BuildVariants[1].Name)
+	require.Len(t, out.BuildVariants[1].Tasks, 4)
 	assert.Equal(t, "your_task", out.BuildVariants[1].Tasks[0].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].Stepback))
 	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].PatchOnly))
@@ -385,6 +444,39 @@ func TestTranslateTasks(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[1].PatchOnly))
 	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[1].Tasks[2].Name)
 	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[2].PatchOnly))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[1].Tasks[3].Name)
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[3].PatchOnly))
+
+	assert.Equal(t, "unpatchable_bv", out.BuildVariants[2].Name)
+	require.Len(t, out.BuildVariants[2].Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[2].Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[0].Patchable))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[2].Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[1].Patchable))
+
+	assert.Equal(t, "allow_for_git_tag_bv", out.BuildVariants[3].Name)
+	require.Len(t, out.BuildVariants[3].Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[3].Tasks[0].Name)
+	assert.False(t, utility.FromBoolTPtr(out.BuildVariants[3].Tasks[0].AllowForGitTag))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[3].Tasks[1].Name)
+	assert.True(t, utility.FromBoolTPtr(out.BuildVariants[3].Tasks[1].AllowForGitTag))
+
+	assert.Equal(t, "git_tag_only_bv", out.BuildVariants[4].Name)
+	require.Len(t, out.BuildVariants[4].Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[4].Tasks[0].Name)
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[0].GitTagOnly))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[4].Tasks[1].Name)
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[1].GitTagOnly))
+
+	assert.Equal(t, "disabled_bv", out.BuildVariants[5].Name)
+	require.Len(t, out.BuildVariants[5].Tasks, 2)
+	assert.Equal(t, "your_task", out.BuildVariants[5].Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].GitTagOnly))
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Stepback))
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Disable))
+	assert.Equal(t, "my_task", out.BuildVariants[5].Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].PatchOnly))
+	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].Disable))
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -2487,7 +2579,7 @@ ignore:
 	assert.Equal(t, len(p1.Functions), 2)
 	assert.Equal(t, len(p1.Tasks), 2)
 	assert.Equal(t, len(p1.Ignore), 3)
-	assert.Equal(t, p1.Stepback, boolPtr(true))
+	assert.Equal(t, p1.Stepback, utility.TruePtr())
 	assert.NotEqual(t, p1.Post, nil)
 }
 

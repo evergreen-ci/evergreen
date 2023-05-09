@@ -338,8 +338,8 @@ func TestGetProjectAliasResults(t *testing.T) {
 	p := model.Project{
 		Identifier: "helloworld",
 		BuildVariants: model.BuildVariants{
-			{Name: "bv1", Tasks: []model.BuildVariantTaskUnit{{Name: "task1"}}},
-			{Name: "bv2", Tasks: []model.BuildVariantTaskUnit{{Name: "task2"}, {Name: "task3"}}},
+			{Name: "bv1", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv1"}}},
+			{Name: "bv2", Tasks: []model.BuildVariantTaskUnit{{Name: "task2", Variant: "bv2"}, {Name: "task3", Variant: "bv2"}}},
 		},
 		Tasks: []model.ProjectTask{
 			{Name: "task1"},

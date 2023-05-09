@@ -1,16 +1,18 @@
 package model
 
 import (
+	"context"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -109,6 +111,48 @@ func TestAPIPatch(t *testing.T) {
 	assert.NotZero(a.GithubPatchData)
 	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
+}
+
+func TestAPIPatchBuildModuleChanges(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	originalEnv := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	defer func() {
+		evergreen.SetEnvironment(originalEnv)
+	}()
+	p := patch.Patch{
+		Patches: []patch.ModulePatch{
+			{
+				PatchSet: patch.PatchSet{
+					Summary: []thirdparty.Summary{
+						{
+							Description: "test",
+						},
+						{
+							Description: "test2",
+						},
+						{
+							Description: "test3",
+						},
+						{
+							Description: "test3",
+						},
+					},
+				},
+			},
+		},
+	}
+	a := APIPatch{Id: utility.ToStringPtr("patch_id")}
+	a.buildModuleChanges(p, "")
+	require.Len(t, a.ModuleCodeChanges, 1)
+	assert.Len(t, a.ModuleCodeChanges[0].FileDiffs, 4)
+	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[0].DiffLink), "commit_number=0"), -1)
+	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[1].DiffLink), "commit_number=1"), -1)
+	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[2].DiffLink), "commit_number=2"), -1)
+	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[3].DiffLink), "commit_number=3"), -1)
+
 }
 
 func TestGithubPatch(t *testing.T) {

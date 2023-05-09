@@ -778,8 +778,10 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
 		}
 
-		// set Tags based on the spec
-		newTask.Tags = creationInfo.Project.GetSpecForTask(t.Name).Tags
+		projectTask := creationInfo.Project.FindProjectTask(t.Name)
+		if projectTask != nil {
+			newTask.Tags = projectTask.Tags
+		}
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
 		newTask.GeneratedBy = creationInfo.GeneratedBy
 		if generatorIsGithubCheck {
@@ -1201,7 +1203,6 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		ParentPatchNumber:       creationInfo.Build.ParentPatchNumber,
 		Version:                 creationInfo.Version.Id,
 		Revision:                creationInfo.Version.Revision,
-		MustHaveResults:         utility.FromBoolPtr(creationInfo.Project.GetSpecForTask(buildVarTask.Name).MustHaveResults),
 		Project:                 creationInfo.Project.Identifier,
 		Priority:                buildVarTask.Priority,
 		GenerateTask:            creationInfo.Project.IsGenerateTask(buildVarTask.Name),
@@ -1211,6 +1212,11 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
 		IsGithubCheck:           isGithubCheck,
 		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
+	}
+
+	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
+	if projectTask != nil {
+		t.MustHaveResults = utility.FromBoolPtr(projectTask.MustHaveResults)
 	}
 
 	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, creationInfo.BuildVariant.RunOn, creationInfo.Project.Containers)

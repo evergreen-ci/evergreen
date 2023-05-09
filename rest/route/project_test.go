@@ -62,7 +62,8 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	project2.Identifier = "project2"
 	s.NoError(project2.Add(&user))
 
-	s.NoError(getTestVar().Insert())
+	_, err := getTestVar().Upsert()
+	s.NoError(err)
 	aliases := getTestAliases()
 	for _, alias := range aliases {
 		s.NoError(alias.Upsert())

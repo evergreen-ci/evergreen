@@ -319,7 +319,7 @@ type parserBV struct {
 	Expansions    util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
 	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
 	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Disable       bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	Disable       *bool              `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	Stepback      *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -328,8 +328,11 @@ type parserBV struct {
 	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	// If Activate is set to false, then we don't initially activate the build variant.
-	Activate  *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Activate       *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	Patchable      *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly      *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly     *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -386,14 +389,17 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.Expansions == nil &&
 		pbv.Tags == nil &&
 		pbv.Modules == nil &&
-		!pbv.Disable &&
+		pbv.Disable == nil &&
 		pbv.BatchTime == nil &&
 		pbv.CronBatchTime == "" &&
 		pbv.Stepback == nil &&
 		pbv.RunOn == nil &&
 		pbv.DependsOn == nil &&
 		pbv.Activate == nil &&
+		pbv.Patchable == nil &&
 		pbv.PatchOnly == nil &&
+		pbv.AllowForGitTag == nil &&
+		pbv.GitTagOnly == nil &&
 		pbv.MatrixId == "" &&
 		pbv.MatrixVal == nil &&
 		pbv.Matrix == nil &&
@@ -511,7 +517,7 @@ func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
 // overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
 func (bv *parserBV) hasSpecificActivation() bool {
 	return bv.BatchTime != nil || bv.CronBatchTime != "" ||
-		!utility.FromBoolTPtr(bv.Activate) || bv.Disable
+		!utility.FromBoolTPtr(bv.Activate) || utility.FromBoolPtr(bv.Disable)
 }
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into
@@ -1053,18 +1059,21 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
-			DisplayName:   pbv.DisplayName,
-			Name:          pbv.Name,
-			Expansions:    pbv.Expansions,
-			Modules:       pbv.Modules,
-			Disable:       pbv.Disable,
-			BatchTime:     pbv.BatchTime,
-			CronBatchTime: pbv.CronBatchTime,
-			Activate:      pbv.Activate,
-			PatchOnly:     pbv.PatchOnly,
-			Stepback:      pbv.Stepback,
-			RunOn:         pbv.RunOn,
-			Tags:          pbv.Tags,
+			DisplayName:    pbv.DisplayName,
+			Name:           pbv.Name,
+			Expansions:     pbv.Expansions,
+			Modules:        pbv.Modules,
+			Disable:        pbv.Disable,
+			BatchTime:      pbv.BatchTime,
+			CronBatchTime:  pbv.CronBatchTime,
+			Activate:       pbv.Activate,
+			Patchable:      pbv.Patchable,
+			PatchOnly:      pbv.PatchOnly,
+			AllowForGitTag: pbv.AllowForGitTag,
+			GitTagOnly:     pbv.GitTagOnly,
+			Stepback:       pbv.Stepback,
+			RunOn:          pbv.RunOn,
+			Tags:           pbv.Tags,
 		}
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 
@@ -1334,8 +1343,23 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		res.RunOn = pt.RunOn
 	}
 
+	// Build variant level settings are lower priority than project task level
+	// settings.
+	if res.Patchable == nil {
+		res.Patchable = bv.Patchable
+	}
 	if res.PatchOnly == nil {
 		res.PatchOnly = bv.PatchOnly
+	}
+	if res.AllowForGitTag == nil {
+		res.AllowForGitTag = bv.AllowForGitTag
+	}
+	if res.GitTagOnly == nil {
+		res.GitTagOnly = bv.GitTagOnly
+	}
+
+	if res.Disable == nil {
+		res.Disable = bv.Disable
 	}
 
 	return res

@@ -540,7 +540,7 @@ func (a *ProjectAlias) getTaskRegex() (*regexp.Regexp, error) {
 	}
 	taskRegex, err := regexp.Compile(a.Task)
 	if err != nil {
-		return nil, errors.Wrapf(err, "compiling task regex '%s'", a.Variant)
+		return nil, errors.Wrapf(err, "compiling task regex '%s'", a.Task)
 	}
 	return taskRegex, nil
 }

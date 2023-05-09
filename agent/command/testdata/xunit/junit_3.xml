@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="nosetests" tests="648" errors="0" failures="1" skip="188">
+<testsuite name="nosetests" tests="651" errors="0" failures="1" skip="188">
     <testcase classname="test.test_auth.TestAuthURIOptions" name="test_uri_options" time="0.002">
         <skipped type="unittest.case.SkipTest" message="Authentication is not enabled on server"><![CDATA[SkipTest: Authentication is not enabled on server
 ]]></skipped>
     </testcase>
+    <testcase classname="test.test_binary.TestBinary" name="test_nan" time="NaN"></testcase>
+    <testcase classname="test.test_binary.TestBinary" name="test_inf" time="Inf"></testcase>
+    <testcase classname="test.test_binary.TestBinary" name="test_negative_inf" time="-Inf"></testcase>
     <testcase classname="test.test_auth.TestDelegatedAuth" name="test_delegated_auth" time="0.002">
         <skipped type="unittest.case.SkipTest" message="Authentication is not enabled on server"><![CDATA[SkipTest: Authentication is not enabled on server
 ]]></skipped>

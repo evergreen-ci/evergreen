@@ -4750,10 +4750,16 @@ func TestFindHostsInRange(t *testing.T) {
 }
 
 func TestRemoveAndReplace(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	require.NoError(t, db.Clear(Collection))
 
 	// removing a nonexistent host errors
-	assert.Error(t, RemoveStrict("asdf"))
+	assert.Error(t, RemoveStrict(ctx, env, "asdf"))
 
 	// replacing an existing host works
 	h := Host{

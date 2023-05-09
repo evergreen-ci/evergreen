@@ -510,6 +510,13 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			"project_identifier": p.Identifier,
 		}))
 	}
+
+	newProjectVars := ProjectVars{
+		Id: p.Id,
+	}
+	if err = newProjectVars.Insert(); err != nil {
+		return errors.Wrapf(err, "adding project variables for project '%s'", p.Id)
+	}
 	return p.addPermissions(creator)
 }
 
@@ -2170,7 +2177,7 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
 	defaultRes := time.Now()
 	// if we don't want to activate the build, set batchtime to the zero time
-	if !utility.FromBoolTPtr(variant.Activate) || variant.Disable {
+	if !utility.FromBoolTPtr(variant.Activate) {
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {

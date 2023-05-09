@@ -417,8 +417,7 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
-			RestRoutePartialAuthDisabled:    true,
-			UIPartialAuthDisabled:           true,
+			LegacyUIPublicAccessDisabled:    true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

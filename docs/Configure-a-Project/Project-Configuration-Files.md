@@ -251,7 +251,7 @@ Fields:
 -   `name`: an identification string for the variant
 -   `display_name`: how the variant is displayed in the Evergreen UI
 -   `run_on`: a list of acceptable distros to run tasks for that variant
-    on. The first distro in the list is the primary distro. The others
+    a. The first distro in the list is the primary distro. The others
     are secondary distros. Each distro has a primary queue, a queue of
     all tasks that have specified it as their primary distro; and a
     secondary queue, a queue of tasks that have specified it as a
@@ -278,7 +278,7 @@ Fields:
     (Cannot be combined with batchtime). This also accepts descriptors
     such as `@daily` (reference
     [cron](https://godoc.org/github.com/robfig/cron) for more example),
-    but [does not accept intervals.]{.title-ref} (i.e.
+    but does not accept intervals. (i.e.
     `@every <duration>`). Only applies to tasks from mainline commits.
 -   `task_group`: a [task
     group](#task-groups)
@@ -286,8 +286,8 @@ Fields:
     variant task. This is an alternative to referencing a task group
     defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
--   `disable`: determines whether or not a build variant will run or not. Set to false by default
--   `patch_only`: if set, the tasks under the build variant can only run in patches.
+-   Build variants support [all options that limit when a task will run](#limiting-when-a-task-will-run). If set for the
+    build variant, it will apply to all tasks under the build variant.
 
 Additionally, an item in the `tasks` list can be of the form
 
@@ -305,7 +305,7 @@ from larger, more powerful machines.
 ### Version Controlled Project Settings
 Project configurations can version control some select project settings (e.g. aliases, plugins) directly within the yaml
 rather than on the project page UI, for better accessibility and maintainability. Read more
-[here](03-Project-and-Distro-Settings.md#version-control).
+[here](Project-and-Distro-Settings.md#version-control).
 
 ## Advanced Features
 
@@ -320,7 +320,7 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
-Note: included files do not support [version-controlled project settings configuration](03-Project-and-Distro-Settings.md#version-control)
+Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings.md#version-control)
 
 ``` yaml
 include: 
@@ -388,7 +388,7 @@ are being used.
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version. You can change
 the git revision for modules by setting a module manually with 
-[evergreen set-module](../07-Using-the-Command-Line-Tool.md#operating-on-existing-patches) or
+[evergreen set-module](../Using-the-Command-Line-Tool.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
@@ -470,7 +470,7 @@ or task to the maximum allowed length of execution time. This timeout
 defaults to 6 hours. `exec_timeout_secs` can only be set on the project
 or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](02-Project-Commands.md#timeoutupdate). 
+You can also set exec_timeout_secs using [timeout.update](Project-Commands.md#timeoutupdate). 
 
 You may also force a specific command to trigger a failure if it does
 not appear to generate any output on `stdout`/`stderr` for more than a
@@ -532,15 +532,13 @@ early_termination:
 
 ### Limiting When a Task Will Run
 
-The following can be added to a task definition OR to a task listed
-under a build variant (so that it will only effect that variant's
-task).
+To limit the conditions when a task will run, the following settings can be
+added to a task definition, to a build variant definition, or to a specific task
+listed under a build variant (so that it will only affect that variant's task).
 
 To cause a task to only run in commit builds, set `patchable: false`.
 
-To cause a task to only run in patches, set `patch_only: true`. `patch_only: true` can also be set at the build variant
-level to apply this behavior to all tasks in the build variant. The build variant level setting can be overridden if
-it's been explicitly set in the task definition or in the task listed under the build variant.
+To cause a task to only run in patches, set `patch_only: true`.
 
 To cause a task to only run in versions NOT triggered from git tags, set
 `allow_for_git_tag: false`.
@@ -548,15 +546,36 @@ To cause a task to only run in versions NOT triggered from git tags, set
 To cause a task to only run in versions triggered from git tags, set
 `git_tag_only: true`.
 
-To cause a task to not run at all, set `disable: true`. Setting `disable: true` at the build variant level 
-will apply this behavior to all tasks in the build variant.
+To cause a task to not run at all, set `disable: true`.
 
 -   This behaves similarly to commenting out the task but will not
     trigger any validation errors.
--   Disabling its dependencies will still allow the task to run
+-   If a task is disabled and is depended on by another task, the
+    dependent task will simply exclude the disabled task from its
+    dependencies.
 
 Can also set batchtime or cron on tasks or build variants, detailed
 [here](#build-variants).
+
+If there are conflicting settings defined at different levels, the order of
+priority (from highest to lowest) is:
+
+- Tasks listed under a build variant.
+- The task definition.
+- The build variant definition.
+
+For example, if we have this configuration:
+```yaml
+buildvariants:
+- name: some-build-variant
+  patchable: false
+  tasks:
+    - name: unpatchable-task
+    - name: patchable-task
+      patchable: true
+```
+In this case, `unpatchable-task` cannot run in patches, but `patchable-task`
+can.
 
 ### Expansions
 
@@ -664,8 +683,8 @@ Every task has some expansions available by default:
     queue task
 -   `${commit_message}` is the commit message if this is a commit queue
     task
--   `${requester}` is what triggered the task: patch, github_pr,
-    github_tag, commit, trigger, commit_queue, or ad_hoc
+-   `${requester}` is what triggered the task: patch, `github_pr`,
+    `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
 
 The following expansions are available if a task was triggered by an
 inter-project dependency:
@@ -855,7 +874,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](02-Project-Commands.md#generate-tasks)
+[generate.tasks](Project-Commands.md#generate-tasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
@@ -1310,10 +1329,10 @@ tasks to the task's depends_on field. The following additional
 parameters are available:
 
 -   `status` - string (default: "success"). One of ["success",
-    "failed", or "*"]. "*" includes any finished status as well
+    "failed", or "`*`"]. "`*`" includes any finished status as well
     as when the task is blocked.
 -   `variant` - string (by default, uses existing variant). Can specify a 
-     variant for the dependency to exist in, or "*" will depend on the task
+     variant for the dependency to exist in, or "`*`" will depend on the task
      for all matching variants.
 -   `patch_optional` - boolean (default: false). If true the dependency
     will only exist when the depended on task is present in the version
@@ -1321,7 +1340,7 @@ parameters are available:
     not be automatically pulled in to the version.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
-    `generate.tasks` command), then generated tasks will not be included
+    [`generate.tasks`](Project-Commands.md#generate-tasks) command), then generated tasks will not be included
     as dependencies.
 
 So, for example:

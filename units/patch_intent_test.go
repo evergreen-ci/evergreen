@@ -334,18 +334,18 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		{
 			Name: "bv1",
 			Tasks: []model.BuildVariantTaskUnit{
-				{Name: "t1"},
-				{Name: "tg", IsGroup: true},
-				{Name: "tg2", IsGroup: true},
-				{Name: "diffTask1"},
-				{Name: "diffTask2"},
+				{Name: "t1", Variant: "bv1"},
+				{Name: "tg", Variant: "bv1", IsGroup: true},
+				{Name: "tg2", Variant: "bv1", IsGroup: true},
+				{Name: "diffTask1", Variant: "bv1"},
+				{Name: "diffTask2", Variant: "bv1"},
 			},
 		},
 		{
 			Name:         "bv_only_dt",
 			DisplayTasks: []patch.DisplayTask{{Name: "dt1", ExecTasks: []string{"et1"}}},
 			Tasks: []model.BuildVariantTaskUnit{
-				{Name: "et1"},
+				{Name: "et1", Variant: "bv_only_dt"},
 			},
 		},
 		{
@@ -604,22 +604,26 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 				Name: "bv1",
 				Tasks: []model.BuildVariantTaskUnit{
 					{
-						Name: "t1",
+						Name:    "t1",
+						Variant: "bv1",
 						DependsOn: []model.TaskUnitDependency{
 							{Name: "t3", Status: evergreen.TaskSucceeded},
 						},
 					},
 					{
-						Name: "t2",
+						Name:    "t2",
+						Variant: "bv1",
 					},
 					{
-						Name: "t3",
+						Name:    "t3",
+						Variant: "bv1",
 						DependsOn: []model.TaskUnitDependency{
 							{Name: "t4", Status: evergreen.TaskFailed},
 						},
 					},
 					{
-						Name: "t4",
+						Name:    "t4",
+						Variant: "bv1",
 					}},
 			},
 		},
@@ -711,22 +715,26 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 				Name: "bv1",
 				Tasks: []model.BuildVariantTaskUnit{
 					{
-						Name: "t1",
+						Name:    "t1",
+						Variant: "bv1",
 						DependsOn: []model.TaskUnitDependency{
 							{Name: "t3", Status: evergreen.TaskFailed},
 						},
 					},
 					{
-						Name: "t2",
+						Name:    "t2",
+						Variant: "bv1",
 					},
 					{
-						Name: "t3",
+						Name:    "t3",
+						Variant: "bv1",
 						DependsOn: []model.TaskUnitDependency{
 							{Name: "t4", Status: evergreen.TaskFailed},
 						},
 					},
 					{
-						Name: "t4",
+						Name:    "t4",
+						Variant: "bv1",
 					}},
 			},
 		},
@@ -849,25 +857,30 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 				Name: "bv1",
 				Tasks: []model.BuildVariantTaskUnit{
 					{
-						Name: "t1",
+						Name:    "t1",
+						Variant: "bv1",
 						DependsOn: []model.TaskUnitDependency{
 							{Name: "t3", Status: evergreen.TaskFailed},
 						},
 					},
 					{
-						Name: "t2",
+						Name:    "t2",
+						Variant: "bv1",
 					},
 					{
-						Name: "t3",
+						Name:    "t3",
+						Variant: "bv1",
 						DependsOn: []model.TaskUnitDependency{
 							{Name: "t4", Status: evergreen.TaskFailed},
 						},
 					},
 					{
-						Name: "t4",
+						Name:    "t4",
+						Variant: "bv1",
 					},
 					{
-						Name: "prevPatchTask",
+						Name:    "prevPatchTask",
+						Variant: "bv1",
 					},
 				},
 			},

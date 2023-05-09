@@ -1718,10 +1718,12 @@ func TestGetTaskIdTable(t *testing.T) {
 				Name: "bv0",
 				Tasks: []BuildVariantTaskUnit{
 					{
-						Name: "t0",
+						Name:    "t0",
+						Variant: "bv0",
 					},
 					{
-						Name: "t1",
+						Name:    "t1",
+						Variant: "bv0",
 					},
 				},
 			},
@@ -2722,6 +2724,7 @@ func TestAddNewTasks(t *testing.T) {
 					{Name: "t0"},
 					{
 						Name:      "t1",
+						Variant:   "bv0",
 						DependsOn: []TaskUnitDependency{{Name: "t0"}},
 						RunOn:     []string{"d0"},
 					},

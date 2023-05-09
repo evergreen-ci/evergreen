@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -41,6 +42,11 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 // Permissions is the resolver for the permissions field.
 func (r *userResolver) Permissions(ctx context.Context, obj *restModel.APIDBUser) (*Permissions, error) {
 	return &Permissions{UserID: utility.FromStringPtr(obj.UserID)}, nil
+}
+
+// Subscriptions is the resolver for the subscriptions field.
+func (r *userResolver) Subscriptions(ctx context.Context, obj *restModel.APIDBUser) ([]*restModel.APISubscription, error) {
+	return getAPISubscriptionsForOwner(ctx, utility.FromStringPtr(obj.UserID), event.OwnerTypePerson)
 }
 
 // Target is the resolver for the target field.
