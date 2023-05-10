@@ -108,6 +108,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 			complete <- evergreen.TaskFailed
 			return
 		}
+		a.watchTraceDir(ctx, tc.taskDirectory)
 	}
 	tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)

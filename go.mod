@@ -20,6 +20,7 @@ require (
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20230413164224-05a3a6e11d78
 	github.com/evergreen-ci/utility v0.0.0-20230508194838-873894227dc9
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
@@ -55,6 +56,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.15.0
 	go.opentelemetry.io/otel/sdk/metric v0.38.0
 	go.opentelemetry.io/otel/trace v1.15.0
+	go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto v0.7.0
 	golang.org/x/oauth2 v0.7.0
 	golang.org/x/tools v0.6.0
@@ -97,7 +99,6 @@ require (
 	github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/fuyufjh/splunk-hec-go v0.3.4-0.20210909061418-feecd03924b7 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.4 // indirect
@@ -172,7 +173,6 @@ require (
 	go.opentelemetry.io/contrib v1.10.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.15.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.38.0 // indirect
-	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.9.0 // indirect

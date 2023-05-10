@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/fsnotify/fsnotify"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -39,7 +43,7 @@ const (
 	exportInterval = 15 * time.Second
 	exportTimeout  = exportInterval * 2
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
-	traceDir       = "build/"
+	traceDir       = "build/trace"
 
 	cpuTimeInstrument = "system.cpu.time"
 	cpuUtilInstrument = "system.cpu.utilization"
@@ -283,36 +287,78 @@ func hostResource(ctx context.Context) (*resource.Resource, error) {
 	)
 }
 
-func (a *Agent) sendTraces(ctx context.Context, workingDirectory string) error {
-	files, err := listTraceFiles(ctx)
-	if err != nil {
-		return errors.Wrap(err, "listing trace files")
-	}
-	if len(files) == 0 {
-		return nil
-	}
-
-	for _, fileName := range files {
-		if err := a.uploadTraces(ctx, a.traceClient, fileName); err != nil {
-			return errors.Wrap(err, "uploading traces to the collector")
-		}
-	}
-
-	return nil
+type traceUploader struct {
+	mu            sync.Mutex
+	traceClient   otlptrace.Client
+	filesToUpload []string
 }
 
-func (a *Agent) uploadTraces(ctx context.Context, traceClient otlptrace.Client, fileName string) error {
-	file, err := os.Open(fileName)
+func newTraceUploader(ctx context.Context, conn *grpc.ClientConn, dir string) (*traceUploader, error) {
+	traceDir := path.Join(dir, traceDir)
+
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return errors.Wrapf(err, "opening trace file '%s'", fileName)
+		return nil, errors.Wrap(err, "creating new directory watcher")
+	}
+	defer watcher.Close()
+
+	uploader := &traceUploader{
+		traceClient: otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(conn)),
 	}
 
-	var traces tracepb.TracesData
-	if err := json.NewDecoder(file).Decode(&traces); err != nil {
-		return errors.Wrap(err, "decoding trace json")
-	}
+	go func() {
+		defer recovery.LogStackTraceAndContinue("trace directory watcher")
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Has(fsnotify.Create) {
+					uploader.mu.Lock()
+					uploader.filesToUpload = append(uploader.filesToUpload, event.Name)
+					uploader.mu.Unlock()
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				grip.Error(errors.Wrapf(err, "watching directory '%s'", traceDir))
+			}
+		}
+	}()
 
-	return traceClient.UploadTraces(ctx, traces.ResourceSpans)
+	return uploader, errors.Wrapf(watcher.Add(traceDir), "adding directory '%s' to watcher", traceDir)
+}
+
+func (t *traceUploader) uploadTraces(ctx context.Context, fileName string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	catcher := grip.NewBasicCatcher()
+	for _, fileName := range t.filesToUpload {
+		file, err := os.Open(fileName)
+		if err != nil {
+			catcher.Wrapf(err, "opening trace file '%s'", fileName)
+			continue
+		}
+
+		var traces tracepb.TracesData
+		if err := json.NewDecoder(file).Decode(&traces); err != nil {
+			catcher.Wrap(err, "decoding trace json")
+			continue
+		}
+
+		if err = t.traceClient.UploadTraces(ctx, traces.ResourceSpans); err != nil {
+			catcher.Wrap(err, "uploading decoded traces")
+			continue
+		}
+	}
+	t.filesToUpload = t.filesToUpload[:0]
+
+	return catcher.Resolve()
 }
 
 type taskSpanProcessor struct{}
