@@ -20,7 +20,6 @@
     "karma-jasmine": "^1.1.1",
     "karma-jsdom-launcher": "^6.1.4",
     "karma-junit-reporter": "^1.2.0",
-    "load-grunt-tasks": "^3.5.2",
     "numeral": "^2.0.6",
     "react": "^16.2.0",
     "react-bootstrap": "^0.31.5",
