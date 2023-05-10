@@ -403,6 +403,14 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 			if err != nil {
 				return nil, err
 			}
+			grip.Debug(message.Fields{
+				"message":            "calling refresh from commit queue",
+				"ticket":             "EVG-19827",
+				"owner":              info.Owner,
+				"repo":               info.Repo,
+				"pr":                 pr,
+				"new_mergeble_state": pr.GetMergeableState(),
+			})
 		}
 	}
 

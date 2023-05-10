@@ -1,4 +1,4 @@
-# Test Builds from the Command Line
+# Use the CLI
 
 How to set up and use the command-line tool
 ==
@@ -320,7 +320,7 @@ Specify the optional `--dir` argument to choose the destination path where the d
 
 #### Pull
 
-The command `evergreen pull` can download the task directory contents of a synced task after an [s3.push](02-Configure-a-Project/02-Project-Commands.md#s3push) command has finished or after a [patched task that has requested task sync](#task-sync) has completed.
+The command `evergreen pull` can download the task directory contents of a synced task after an [s3.push](Configure-a-Project/Project-Commands.md#s3push) command has finished or after a [patched task that has requested task sync](#task-sync) has completed.
 
 Example that downloads the artifacts for the given task ID and cloning its source:
 ```
@@ -364,7 +364,7 @@ evergreen last-green -p mci -v ubuntu
 ```
 
 #### Commit Queue
-The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](03-Run-Tasks/01-Commit-Queue.md).
+The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](Run-Tasks/Commit-Queue.md).
 
 #### Buildlogger Fetch
 

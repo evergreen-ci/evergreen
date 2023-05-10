@@ -148,6 +148,7 @@ type APIPeriodicBuildDefinition struct {
 	ID            *string    `json:"id"`
 	ConfigFile    *string    `json:"config_file"`
 	IntervalHours *int       `json:"interval_hours"`
+	Cron          *string    `json:"cron"`
 	Alias         *string    `json:"alias,omitempty"`
 	Message       *string    `json:"message,omitempty"`
 	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
@@ -198,6 +199,7 @@ func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition 
 	buildDef.ID = utility.FromStringPtr(bd.ID)
 	buildDef.ConfigFile = utility.FromStringPtr(bd.ConfigFile)
 	buildDef.IntervalHours = utility.FromIntPtr(bd.IntervalHours)
+	buildDef.Cron = utility.FromStringPtr(bd.Cron)
 	buildDef.Alias = utility.FromStringPtr(bd.Alias)
 	buildDef.Message = utility.FromStringPtr(bd.Message)
 	buildDef.NextRunTime = utility.FromTimePtr(bd.NextRunTime)
@@ -208,6 +210,7 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 	bd.ID = utility.ToStringPtr(params.ID)
 	bd.ConfigFile = utility.ToStringPtr(params.ConfigFile)
 	bd.IntervalHours = utility.ToIntPtr(params.IntervalHours)
+	bd.Cron = utility.ToStringPtr(params.Cron)
 	bd.Alias = utility.ToStringPtr(params.Alias)
 	bd.Message = utility.ToStringPtr(params.Message)
 	bd.NextRunTime = utility.ToTimePtr(params.NextRunTime)

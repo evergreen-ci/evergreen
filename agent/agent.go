@@ -31,9 +31,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	sdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 // Agent manages the data necessary to run tasks in a runtime environment.
@@ -44,12 +43,11 @@ type Agent struct {
 	defaultLogger send.Sender
 	// ec2InstanceID is the instance ID from the instance metadata. This only
 	// applies to EC2 hosts.
-	ec2InstanceID   string
-	endTaskResp     *TriggerEndTaskResp
-	tracer          trace.Tracer
-	traceClient     otlptrace.Client
-	metricsExporter sdk.Exporter
-	closers         []closerOp
+	ec2InstanceID string
+	endTaskResp   *TriggerEndTaskResp
+	tracer        trace.Tracer
+	otelGrpcConn  *grpc.ClientConn
+	closers       []closerOp
 }
 
 // Options contains startup options for an Agent.

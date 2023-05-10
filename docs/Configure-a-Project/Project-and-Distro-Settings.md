@@ -63,7 +63,7 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-['Using Repo Level Settings'](04-Using-Repo-Level-Settings.md).
+['Using Repo Level Settings'](Using-Repo-Level-Settings.md).
 
 ### Access and Admin Settings
 
@@ -113,7 +113,7 @@ definition (i.e. without the ".") and tag negation is also supported
 comma-delimited.
 
 Aliases can also be defined locally as shown
-[here](../07-Using-the-Command-Line-Tool.md#local-aliases).
+[here](../Using-the-Command-Line-Tool.md#local-aliases).
 
 ### GitHub Pull Request Testing
 
@@ -265,7 +265,7 @@ section to kick off a child patch for each pull request opened in the
 repository as well as each subsequent push to each pull request.
 
 To pass information from the upstream patch to the downstream patch use
-[downstream_expansions.set](02-Project-Commands.md#downstream_expansionsset)
+[downstream_expansions.set](Project-Commands.md#downstream_expansionsset)
 
 ### Periodic Builds
 
@@ -278,19 +278,20 @@ whereas a new periodic build will be created each interval regardless of whether
 
 Options:
 
--   Interval: Evergreen will create a version and run the specified tasks every X hours, with
-    X being specified by this field. The first run will happen
-    immediately after the settings are saved
--   Config File: The .yml file that defines tasks to run. This can be
+- Interval: (Interval or cron required) Evergreen will create a version and run the specified tasks every X hours, with
+    X being specified by this field. Unless set to a future time, the first run will happen immediately after the settings are saved.
+- Cron: (Interval or cron required) Evergreen will create a version on the specified cron schedule.
+- Config File: The .yml file that defines tasks to run. This can be
     the same one that defines tasks for commits in the project, or a
     different one.
--   Patch Alias: Optional, you can specify an already-defined patch
+- Patch Alias: Optional, you can specify an already-defined patch
     alias here to limit the tasks or variants that are run.
--   Message: Optional, this will be saved as the description of the
+- Message: Optional, this will be saved as the description of the
     version that ends up being created when the tasks are run.
 
+
 Periodic builds can be viewed on the project waterfall page, and can be
-filtered on on Spruce. You can also find out about the results of
+filtered on Spruce. You can also find out about the results of
 periodic builds by adding a notification subscription on the project
 settings page. In the notification popup, select "when any version
 finishes" with Build Initiator = Periodic Build.
@@ -305,10 +306,10 @@ use performance tooling.
 Enabling this feature allows users to push and pull their task working
 directory to and from a remote store (S3). This can be done either using
 the
-[s3.push](02-Project-Commands.md#s3-push)
+[s3.push](Project-Commands.md#s3-push)
 or
-[s3.pull](02-Project-Commands.md#s3pull)
-project commands, or using it from [the CLI](../07-Using-the-Command-Line-Tool.md#task-sync).
+[s3.pull](Project-Commands.md#s3pull)
+project commands, or using it from [the CLI](../Using-the-Command-Line-Tool.md#task-sync).
 
 Options:
 
@@ -438,11 +439,11 @@ that all execute independently:
 
 Enabling version control for configurations on the project page will
 allow a number of the settings detailed above to also be specified in
-the project YAML alongside the settings that are specified in ['Project Configuration Files'](01-Project-Configuration-Files.md).
+the project YAML alongside the settings that are specified in ['Project Configuration Files'](Project-Configuration-Files.md).
 Evergreen will merge the settings in the project page, repo page, then the YAML, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
 defined in the YAML.
 
-Note: [included files](01-Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
+Note: [included files](Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
 be defined in the main YAML file for it to take effect.
 
 Below shows example configurations for these settings that can be

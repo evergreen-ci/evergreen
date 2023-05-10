@@ -809,7 +809,7 @@ mciModule.controller(
       if (!$scope.periodic_build) {
         return "";
       }
-      if ($scope.periodic_build.interval_hours <= 0) {
+      if ($scope.periodic_build.interval_hours < 0) {
         return "Interval must be a positive integer";
       }
       if ($scope.periodic_build.config_file === "") {
