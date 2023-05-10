@@ -217,11 +217,21 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	collectiveStatusArray, err := getCollectiveStatusArray(*obj)
+	if !obj.IsPatchRequester() {
+		if utility.FromBoolPtr(obj.Aborted) {
+			return evergreen.VersionAborted, nil
+		}
+		return utility.FromStringPtr(obj.Status), nil
+	}
+
+	collectiveStatusArray, err := getCollectivePatchStatusArrayWithAborted(*obj)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting collective status array: %s", err.Error()))
 	}
-	status := patch.GetCollectiveStatus(collectiveStatusArray)
+	status, err := evergreen.PatchStatusToVersionStatus(patch.GetCollectivePatchStatusFromStatuses(collectiveStatusArray))
+	if err != nil {
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting version status: %s", err.Error()))
+	}
 	return status, nil
 }
 

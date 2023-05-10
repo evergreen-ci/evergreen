@@ -791,21 +791,19 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	return filteredStatuses
 }
 
-func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
+// getCollectivePatchStatusArrayWithAborted returns the patch statuses associated with the version.
+func getCollectivePatchStatusArrayWithAborted(v restModel.APIVersion) ([]string, error) {
 	status, err := evergreen.VersionStatusToPatchStatus(*v.Status)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting a version status")
 	}
-	isAborted := utility.FromBoolPtr(v.Aborted)
-	allStatuses := []string{}
-	if isAborted {
-		allStatuses = append(allStatuses, evergreen.PatchAborted)
-
-	} else {
-		allStatuses = append(allStatuses, status)
+	allStatuses := []string{status}
+	if utility.FromBoolPtr(v.Aborted) {
+		allStatuses = []string{evergreen.VersionAborted}
 	}
+
 	if v.IsPatchRequester() {
-		p, err := data.FindPatchById(*v.Id)
+		p, err := data.FindPatchById(utility.FromStringPtr(v.Id))
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching patch '%s'", *v.Id)
 		}
@@ -819,9 +817,13 @@ func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
 					continue
 				}
 				if cpVersion.Aborted {
-					allStatuses = append(allStatuses, evergreen.PatchAborted)
+					allStatuses = append(allStatuses, evergreen.VersionAborted)
 				} else {
-					allStatuses = append(allStatuses, *cp.Status)
+					cpStatus, err := evergreen.VersionStatusToPatchStatus(utility.FromStringPtr(cp.Status))
+					if err != nil {
+						return nil, errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
+					}
+					allStatuses = append(allStatuses, cpStatus)
 				}
 			}
 		}

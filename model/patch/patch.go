@@ -765,8 +765,9 @@ func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }
 
-// CollectiveStatus returns the aggregate status of all tasks and child patches.
-func (p *Patch) CollectiveStatus() (string, error) {
+// CollectivePatchStatus returns the aggregate status of all tasks and child patches.
+// If this is meant for display on the UI, we should also consider the display status aborted.
+func (p *Patch) CollectivePatchStatus() (string, error) {
 	parentPatch := p
 	if p.IsChild() {
 		var err error
@@ -790,7 +791,7 @@ func (p *Patch) CollectiveStatus() (string, error) {
 		allStatuses = append(allStatuses, cp.Status)
 	}
 
-	return GetCollectiveStatus(allStatuses), nil
+	return GetCollectivePatchStatusFromStatuses(allStatuses), nil
 }
 
 func (p *Patch) IsParent() bool {
@@ -1178,21 +1179,9 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-// CollectiveStatus gets the collective status for a patch given by its ID.
-func CollectiveStatus(patchId string) (string, error) {
-	p, err := FindOneId(patchId)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting patch for version '%s'", patchId)
-	}
-	if p == nil {
-		return "", errors.Errorf("no patch found for version '%s'", patchId)
-	}
-	return p.CollectiveStatus()
-}
-
-// GetCollectiveStatus answers the question of what the patch status should be
-// when the patch status and the status of its children are different
-func GetCollectiveStatus(statuses []string) string {
+// GetCollectivePatchStatusFromStatuses answers the question of what the patch status should be
+// when the patch status and the status of its children are different, given a list of statuses.
+func GetCollectivePatchStatusFromStatuses(statuses []string) string {
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false
@@ -1208,7 +1197,7 @@ func GetCollectiveStatus(statuses []string) string {
 			hasFailure = true
 		case evergreen.PatchSucceeded:
 			hasSuccess = true
-		case evergreen.PatchAborted:
+		case evergreen.VersionAborted:
 			hasAborted = true
 		}
 	}
@@ -1228,7 +1217,7 @@ func GetCollectiveStatus(statuses []string) string {
 	} else if hasFailure {
 		return evergreen.PatchFailed
 	} else if hasAborted {
-		return evergreen.PatchAborted
+		return evergreen.VersionAborted
 	} else if hasSuccess {
 		return evergreen.PatchSucceeded
 	}

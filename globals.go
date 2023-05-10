@@ -140,8 +140,9 @@ const (
 	PatchStarted     = "started"
 	PatchSucceeded   = "succeeded"
 	PatchFailed      = "failed"
-	PatchAborted     = "aborted" // This is a display status only and not a real patch status
 	PatchAllOutcomes = "*"
+
+	VersionAborted = "aborted" // This is a display status only and not a real status
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"

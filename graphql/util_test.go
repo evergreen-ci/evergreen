@@ -75,9 +75,9 @@ func TestCollectiveStatusArray(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	statusArray, err := getCollectiveStatusArray(*version)
+	statusArray, err := getCollectivePatchStatusArrayWithAborted(*version)
 	require.NoError(t, err)
-	assert.Equal(t, evergreen.PatchAborted, statusArray[0])
+	assert.Equal(t, evergreen.VersionAborted, statusArray[0])
 }
 
 func TestCanRestartTask(t *testing.T) {
