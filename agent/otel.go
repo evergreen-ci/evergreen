@@ -5,14 +5,11 @@ import (
 	"encoding/json"
 	"os"
 	"path"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
-	"github.com/fsnotify/fsnotify"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -43,7 +40,7 @@ const (
 	exportInterval = 15 * time.Second
 	exportTimeout  = exportInterval * 2
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
-	traceDir       = "build/trace"
+	traceSuffix    = "build/trace"
 
 	cpuTimeInstrument = "system.cpu.time"
 	cpuUtilInstrument = "system.cpu.utilization"
@@ -287,58 +284,19 @@ func hostResource(ctx context.Context) (*resource.Resource, error) {
 	)
 }
 
-type traceUploader struct {
-	mu            sync.Mutex
-	traceClient   otlptrace.Client
-	filesToUpload []string
-}
-
-func newTraceUploader(ctx context.Context, conn *grpc.ClientConn, baseDir string) (*traceUploader, error) {
-	traceDir := path.Join(baseDir, traceDir)
-
-	watcher, err := fsnotify.NewWatcher()
+func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
+	files, err := getTraceFiles(taskDir)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating new directory watcher")
+		return errors.Wrapf(err, "getting trace files for '%s'", taskDir)
 	}
-	defer watcher.Close()
-
-	uploader := &traceUploader{
-		traceClient: otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(conn)),
+	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(a.otelGrpcConn))
+	if err := client.Start(ctx); err != nil {
+		return errors.Wrap(err, "starting trace client")
 	}
-
-	go func() {
-		defer recovery.LogStackTraceAndContinue("trace directory watcher")
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				if event.Has(fsnotify.Create) {
-					uploader.mu.Lock()
-					uploader.filesToUpload = append(uploader.filesToUpload, event.Name)
-					uploader.mu.Unlock()
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				grip.Error(errors.Wrapf(err, "watching directory '%s'", traceDir))
-			}
-		}
-	}()
-
-	return uploader, errors.Wrapf(watcher.Add(traceDir), "adding directory '%s' to watcher", traceDir)
-}
-
-func (t *traceUploader) uploadTraces(ctx context.Context) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	defer client.Stop(ctx)
 
 	catcher := grip.NewBasicCatcher()
-	for _, fileName := range t.filesToUpload {
+	for _, fileName := range files {
 		file, err := os.Open(fileName)
 		if err != nil {
 			catcher.Wrapf(err, "opening trace file '%s'", fileName)
@@ -351,14 +309,44 @@ func (t *traceUploader) uploadTraces(ctx context.Context) error {
 			continue
 		}
 
-		if err = t.traceClient.UploadTraces(ctx, traces.ResourceSpans); err != nil {
+		if err = client.UploadTraces(ctx, traces.ResourceSpans); err != nil {
 			catcher.Wrap(err, "uploading decoded traces")
 			continue
 		}
+
+		catcher.Wrapf(os.Remove(fileName), "removing trace file '%s'", fileName)
 	}
-	t.filesToUpload = t.filesToUpload[:0]
 
 	return catcher.Resolve()
+}
+
+func getTraceFiles(taskDir string) ([]string, error) {
+	traceDir := path.Join(taskDir, traceSuffix)
+	info, err := os.Stat(traceDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "getting info on '%s'", traceDir)
+	}
+	if !info.IsDir() {
+		return nil, nil
+	}
+
+	files, err := os.ReadDir(traceDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting files from '%s'", traceDir)
+	}
+
+	var fileNames []string
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		fileNames = append(fileNames, file.Name())
+	}
+
+	return fileNames, nil
 }
 
 type taskSpanProcessor struct{}

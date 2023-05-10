@@ -568,12 +568,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		defer shutdown(ctx)
 	}
 
-	uploader, err := newTraceUploader(tskCtx, a.otelGrpcConn, taskConfig.WorkDir)
-	grip.Error(errors.Wrap(err, "making trace uploader"))
-	if err == nil {
-		defer grip.Error(errors.Wrap(uploader.uploadTraces(tskCtx), "uploading traces"))
-	}
-
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	// Pass in idle timeout context to heartbeat to enforce the idle timeout.
