@@ -1341,6 +1341,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 		"execution":          t.Execution,
 		"status":             t.Status,
 		"host_id":            t.HostId,
+		"pod_id":             t.PodID,
 		"description":        description,
 		"execution_platform": t.ExecutionPlatform,
 	})
