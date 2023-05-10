@@ -14,7 +14,6 @@
     "grunt-contrib-cssmin": "^2.2.1",
     "grunt-contrib-less": "^1.4.1",
     "grunt-contrib-watch": "^1.0.0",
-    "grunt-react": "^0.12.3",
     "jasmine": "^2.8.0",
     "js-yaml": "^3.11.0",
     "jsdom": "^13.0.0",

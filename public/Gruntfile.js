@@ -57,10 +57,10 @@ module.exports = function (grunt) {
     },
   });
 
+  grunt.loadNpmTasks("grunt-babel");
   grunt.loadNpmTasks("grunt-contrib-less");
   grunt.loadNpmTasks("grunt-contrib-cssmin");
   grunt.loadNpmTasks("grunt-contrib-watch");
-  grunt.loadNpmTasks("grunt-react");
 
   grunt.registerTask("css", ["less", "cssmin"]);
   grunt.registerTask("default", ["css"]);
