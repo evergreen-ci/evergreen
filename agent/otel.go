@@ -293,8 +293,8 @@ type traceUploader struct {
 	filesToUpload []string
 }
 
-func newTraceUploader(ctx context.Context, conn *grpc.ClientConn, dir string) (*traceUploader, error) {
-	traceDir := path.Join(dir, traceDir)
+func newTraceUploader(ctx context.Context, conn *grpc.ClientConn, baseDir string) (*traceUploader, error) {
+	traceDir := path.Join(baseDir, traceDir)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -333,7 +333,7 @@ func newTraceUploader(ctx context.Context, conn *grpc.ClientConn, dir string) (*
 	return uploader, errors.Wrapf(watcher.Add(traceDir), "adding directory '%s' to watcher", traceDir)
 }
 
-func (t *traceUploader) uploadTraces(ctx context.Context, fileName string) error {
+func (t *traceUploader) uploadTraces(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

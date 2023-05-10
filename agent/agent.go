@@ -559,7 +559,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer tskCancel()
 
 	tskCtx = contextWithTaskAttributes(tskCtx, taskConfig.TaskAttributes())
-
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
 	defer span.End()
 
@@ -567,6 +566,12 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
 	if shutdown != nil {
 		defer shutdown(ctx)
+	}
+
+	uploader, err := newTraceUploader(tskCtx, a.otelGrpcConn, taskConfig.WorkDir)
+	grip.Error(errors.Wrap(err, "making trace uploader"))
+	if err == nil {
+		defer grip.Error(errors.Wrap(uploader.uploadTraces(tskCtx), "uploading traces"))
 	}
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
