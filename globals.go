@@ -415,6 +415,8 @@ func PatchStatusToVersionStatus(patchStatus string) (string, error) {
 		return VersionFailed, nil
 	case PatchSucceeded:
 		return VersionSucceeded, nil
+	case VersionAborted: // Shared display status
+		return VersionAborted, nil
 	default:
 		return "", errors.Errorf("unknown patch status: %s", patchStatus)
 	}

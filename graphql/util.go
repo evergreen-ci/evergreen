@@ -791,46 +791,6 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	return filteredStatuses
 }
 
-// getCollectivePatchStatusArrayWithAborted returns the patch statuses associated with the version.
-func getCollectivePatchStatusArrayWithAborted(v restModel.APIVersion) ([]string, error) {
-	status, err := evergreen.VersionStatusToPatchStatus(*v.Status)
-	if err != nil {
-		return nil, errors.Wrap(err, "converting a version status")
-	}
-	allStatuses := []string{status}
-	if utility.FromBoolPtr(v.Aborted) {
-		allStatuses = []string{evergreen.VersionAborted}
-	}
-
-	if v.IsPatchRequester() {
-		p, err := data.FindPatchById(utility.FromStringPtr(v.Id))
-		if err != nil {
-			return nil, errors.Wrapf(err, "fetching patch '%s'", *v.Id)
-		}
-		if len(p.ChildPatches) > 0 {
-			for _, cp := range p.ChildPatches {
-				cpVersion, err := model.VersionFindOneId(*cp.Version)
-				if err != nil {
-					return nil, errors.Wrapf(err, "fetching version for patch '%s'", *v.Id)
-				}
-				if cpVersion == nil {
-					continue
-				}
-				if cpVersion.Aborted {
-					allStatuses = append(allStatuses, evergreen.VersionAborted)
-				} else {
-					cpStatus, err := evergreen.VersionStatusToPatchStatus(utility.FromStringPtr(cp.Status))
-					if err != nil {
-						return nil, errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
-					}
-					allStatuses = append(allStatuses, cpStatus)
-				}
-			}
-		}
-	}
-	return allStatuses, nil
-}
-
 func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
 	events, err := event.Find(event.TaskEventsForId(taskId))
 	if err != nil {

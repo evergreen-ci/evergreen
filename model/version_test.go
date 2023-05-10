@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/task"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -588,4 +589,44 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGetDisplayStatus(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection, patch.Collection))
+	patchId := bson.NewObjectId()
+	childPatchId := bson.NewObjectId()
+	version := &Version{
+		Id:        patchId.Hex(),
+		Aborted:   true,
+		Status:    evergreen.VersionSucceeded,
+		Requester: evergreen.PatchVersionRequester,
+	}
+
+	assert.NoError(t, version.Insert())
+
+	p := &patch.Patch{
+		Id:     patchId,
+		Status: evergreen.PatchSucceeded,
+		Triggers: patch.TriggerInfo{
+			ChildPatches: []string{childPatchId.Hex()},
+		},
+	}
+	assert.NoError(t, p.Insert())
+
+	cv := Version{
+		Id:      childPatchId.Hex(),
+		Aborted: true,
+		Status:  evergreen.VersionFailed,
+	}
+	assert.NoError(t, cv.Insert())
+
+	cp := &patch.Patch{
+		Id:     childPatchId,
+		Status: evergreen.PatchFailed,
+	}
+	assert.NoError(t, cp.Insert())
+
+	status, err := version.GetDisplayStatus()
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.VersionAborted, status)
 }

@@ -4,18 +4,12 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -55,29 +49,6 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.ElementsMatch(t, []string{"123456"}, filteredSubIDs)
 	})
-}
-
-func TestCollectiveStatusArray(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(model.VersionCollection, patch.Collection))
-	patchId := bson.NewObjectId()
-	version := &restModel.APIVersion{
-		Id:        utility.ToStringPtr(patchId.Hex()),
-		Aborted:   utility.ToBoolPtr(true),
-		Status:    utility.ToStringPtr(evergreen.PatchFailed),
-		Requester: utility.ToStringPtr("patch_request"),
-	}
-
-	assert.NoError(t, db.Insert(model.VersionCollection, version))
-
-	p := &patch.Patch{
-		Id:     patchId,
-		Status: evergreen.PatchFailed,
-	}
-	require.NoError(t, p.Insert())
-
-	statusArray, err := getCollectivePatchStatusArrayWithAborted(*version)
-	require.NoError(t, err)
-	assert.Equal(t, evergreen.VersionAborted, statusArray[0])
 }
 
 func TestCanRestartTask(t *testing.T) {

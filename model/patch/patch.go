@@ -1198,6 +1198,7 @@ func GetCollectivePatchStatusFromStatuses(statuses []string) string {
 		case evergreen.PatchSucceeded:
 			hasSuccess = true
 		case evergreen.VersionAborted:
+			// Note that we only consider this if the passed in statuses considered display status handling.
 			hasAborted = true
 		}
 	}
@@ -1205,7 +1206,7 @@ func GetCollectivePatchStatusFromStatuses(statuses []string) string {
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
 		grip.Critical(message.Fields{
 			"message":  "An unknown patch status was found",
-			"cause":    "Programmer error: new statuses should be added to patch.getCollectiveStatus().",
+			"cause":    "Programmer error: new statuses should be added to GetCollectivePatchStatusFromStatuses().",
 			"statuses": statuses,
 		})
 	}
