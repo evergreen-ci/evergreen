@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path"
 	"time"
@@ -303,14 +304,20 @@ func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 			continue
 		}
 
-		var traces tracepb.TracesData
-		if err := json.NewDecoder(file).Decode(&traces); err != nil {
-			catcher.Wrap(err, "decoding trace json")
-			continue
+		var resourceSpans []*tracepb.ResourceSpans
+		for {
+			var traces tracepb.TracesData
+			if err := json.NewDecoder(file).Decode(&traces); err == io.EOF {
+				break
+			} else if err != nil {
+				catcher.Wrapf(err, "decoding trace json for '%s'", fileName)
+				continue
+			}
+			resourceSpans = append(resourceSpans, traces.ResourceSpans...)
 		}
 
-		if err = client.UploadTraces(ctx, traces.ResourceSpans); err != nil {
-			catcher.Wrap(err, "uploading decoded traces")
+		if err = client.UploadTraces(ctx, resourceSpans); err != nil {
+			catcher.Wrapf(err, "uploading decoded traces for '%s'", fileName)
 			continue
 		}
 
