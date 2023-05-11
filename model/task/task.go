@@ -1336,7 +1336,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 	}
 	grip.Info(message.Fields{
 		"message":            "marking task system failed",
-		"usage":              "container task health dashboard",
+		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
 		"execution":          t.Execution,
 		"status":             t.Status,
