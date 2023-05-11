@@ -343,7 +343,7 @@ func getTraceFiles(taskDir string) ([]string, error) {
 		if file.IsDir() {
 			continue
 		}
-		fileNames = append(fileNames, file.Name())
+		fileNames = append(fileNames, path.Join(traceDir, file.Name()))
 	}
 
 	return fileNames, nil

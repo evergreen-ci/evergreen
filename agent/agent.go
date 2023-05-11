@@ -568,6 +568,8 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		defer shutdown(ctx)
 	}
 
+	defer func() { grip.Error(errors.Wrap(a.uploadTraces(tskCtx, taskConfig.WorkDir), "uploading traces")) }()
+
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	// Pass in idle timeout context to heartbeat to enforce the idle timeout.

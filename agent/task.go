@@ -112,8 +112,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
-	grip.Alert(errors.Wrap(a.uploadTraces(ctx, tc.taskConfig.WorkDir), "uploading traces"))
-
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
 	if err = a.comm.StartTask(ctx, tc.task); err != nil {
