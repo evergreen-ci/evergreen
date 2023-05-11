@@ -14,15 +14,10 @@
     "grunt-contrib-less": "^1.4.1",
     "grunt-contrib-watch": "^1.0.0",
     "jasmine": "^2.8.0",
-    "js-yaml": "^3.11.0",
     "jsdom": "^13.0.0",
     "karma": "^2.0.0",
     "karma-jasmine": "^1.1.1",
     "karma-jsdom-launcher": "^6.1.4",
-    "karma-junit-reporter": "^1.2.0",
-    "numeral": "^2.0.6",
-    "react": "^16.2.0",
-    "react-bootstrap": "^0.31.5",
-    "react-dom": "^16.2.0"
+    "karma-junit-reporter": "^1.2.0"
   }
 }
