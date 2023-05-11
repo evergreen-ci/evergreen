@@ -56,7 +56,6 @@ source-patch-1*
 evergreen 
 !cmd/evergreen
 
-package-lock.json
 
 # ag and ripgrep ignore file
 .ignore
