@@ -44,6 +44,7 @@ const (
 	exportTimeout  = exportInterval * 2
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
 	traceSuffix    = "build/trace"
+	maxLineSize    = 1024 * 1024
 
 	cpuTimeInstrument = "system.cpu.time"
 	cpuUtilInstrument = "system.cpu.utilization"
@@ -333,7 +334,7 @@ func unmarshalTraces(fileName string) ([]*tracepb.ResourceSpans, error) {
 
 	var resourceSpans []*tracepb.ResourceSpans
 	scanner := bufio.NewScanner(file)
-	scanner.Buffer([]byte{}, 1024*1024)
+	scanner.Buffer([]byte{}, maxLineSize)
 	for scanner.Scan() {
 		var traces tracepb.TracesData
 		catcher.Wrap(protojson.Unmarshal(scanner.Bytes(), &traces), "unmarshalling trace")
