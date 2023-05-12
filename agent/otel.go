@@ -1,9 +1,10 @@
 package agent
 
 import (
+	"bufio"
 	"context"
-	"encoding/json"
-	"io"
+	"encoding/base64"
+	"encoding/hex"
 	"os"
 	"path"
 	"time"
@@ -31,6 +32,7 @@ import (
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type taskAttributeKey int
@@ -285,6 +287,12 @@ func hostResource(ctx context.Context) (*resource.Resource, error) {
 	)
 }
 
+// uploadTraces finds all the trace files in taskDir, uploads their contents
+// to the OTel collector, and deletes the files. The files must be written with
+// [OTel JSON protobuf encoding], such as the output of the collector's [file exporter].
+//
+// [OTel JSON protobuf encoding] https://opentelemetry.io/docs/specs/otel/protocol/otlp/#json-protobuf-encoding
+// [file exporter] https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter
 func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 	files, err := getTraceFiles(taskDir)
 	if err != nil {
@@ -298,26 +306,14 @@ func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, fileName := range files {
-		file, err := os.Open(fileName)
+		resourceSpans, err := unmarshalTraces(fileName)
 		if err != nil {
-			catcher.Wrapf(err, "opening trace file '%s'", fileName)
+			catcher.Wrapf(err, "unmarshalling trace file '%s'", fileName)
 			continue
 		}
 
-		var resourceSpans []*tracepb.ResourceSpans
-		for {
-			var traces tracepb.TracesData
-			if err := json.NewDecoder(file).Decode(&traces); err == io.EOF {
-				break
-			} else if err != nil {
-				catcher.Wrapf(err, "decoding trace json for '%s'", fileName)
-				continue
-			}
-			resourceSpans = append(resourceSpans, traces.ResourceSpans...)
-		}
-
 		if err = client.UploadTraces(ctx, resourceSpans); err != nil {
-			catcher.Wrapf(err, "uploading decoded traces for '%s'", fileName)
+			catcher.Wrapf(err, "uploading traces for '%s'", fileName)
 			continue
 		}
 
@@ -327,6 +323,101 @@ func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 	return catcher.Resolve()
 }
 
+func unmarshalTraces(fileName string) ([]*tracepb.ResourceSpans, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening trace file '%s'", fileName)
+	}
+
+	catcher := grip.NewBasicCatcher()
+
+	var resourceSpans []*tracepb.ResourceSpans
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer([]byte{}, 1024*1024)
+	for scanner.Scan() {
+		var traces tracepb.TracesData
+		catcher.Wrap(protojson.Unmarshal(scanner.Bytes(), &traces), "unmarshalling trace")
+		resourceSpans = append(resourceSpans, traces.ResourceSpans...)
+	}
+	if err := scanner.Err(); err != nil {
+		catcher.Wrapf(err, "scanning file '%s'", fileName)
+	}
+
+	if err = fixBinaryIDs(resourceSpans); err != nil {
+		return nil, errors.Wrapf(err, "fixing binary IDs for '%s'", fileName)
+	}
+
+	return resourceSpans, catcher.Resolve()
+}
+
+// fixBinaryIDs fixes every trace and span id in resourceSpans. These IDs are encoded
+// as hex strings in the source file because that's how the [OTel JSON protobuf encoding] is defined
+// but [protojson] assumes they're encoded with base64 encoding since that's the [standard JSON encoding].
+// We need to iterate through the spans and fix them.
+//
+// [OTel JSON protobuf encoding]: https://opentelemetry.io/docs/specs/otel/protocol/otlp/#json-protobuf-encoding
+// [standard JSON encoding]: https://protobuf.dev/programming-guides/proto3/#json
+func fixBinaryIDs(resourceSpans []*tracepb.ResourceSpans) error {
+	catcher := grip.NewBasicCatcher()
+	for _, rs := range resourceSpans {
+		for _, ss := range rs.ScopeSpans {
+			for _, span := range ss.Spans {
+				catcher.Wrap(fixSpan(span), "fixing span")
+				for _, spanLink := range span.Links {
+					catcher.Add(fixSpanLink(spanLink))
+				}
+			}
+		}
+	}
+
+	return catcher.Resolve()
+}
+
+func fixSpan(span *tracepb.Span) error {
+	traceIDHex, err := fixBinaryID(span.TraceId)
+	if err != nil {
+		return errors.Wrap(err, "fixing trace id")
+	}
+	spanIDHex, err := fixBinaryID(span.SpanId)
+	if err != nil {
+		return errors.Wrap(err, "fixing span id")
+	}
+	parentSpanIDHex, err := fixBinaryID(span.ParentSpanId)
+	if err != nil {
+		return errors.Wrap(err, "fixing parent span id")
+	}
+
+	span.TraceId = traceIDHex
+	span.SpanId = spanIDHex
+	span.ParentSpanId = parentSpanIDHex
+	return nil
+}
+
+func fixSpanLink(spanLink *tracepb.Span_Link) error {
+	traceIDHex, err := fixBinaryID(spanLink.TraceId)
+	if err != nil {
+		return errors.Wrap(err, "fixing trace id")
+	}
+	spanIDHex, err := fixBinaryID(spanLink.SpanId)
+	if err != nil {
+		return errors.Wrap(err, "fixing span id")
+	}
+
+	spanLink.TraceId = traceIDHex
+	spanLink.SpanId = spanIDHex
+	return nil
+}
+
+// fixBinaryID recovers the original hex string id and decodes it back
+// into []byte. The unmarshaller decoded the string as a base64 encoded
+// string so we encode it back to the string and decode it again to []byte.
+func fixBinaryID(id []byte) ([]byte, error) {
+	idHex := base64.StdEncoding.EncodeToString(id)
+	return hex.DecodeString(idHex)
+}
+
+// getTraceFiles returns the full path of all the files in the [traceSuffix] directory
+// under the task's working directory.
 func getTraceFiles(taskDir string) ([]string, error) {
 	traceDir := path.Join(taskDir, traceSuffix)
 	info, err := os.Stat(traceDir)
