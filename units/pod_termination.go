@@ -129,7 +129,7 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 	grip.Info(message.Fields{
 		"message":            "successfully terminated pod",
 		"pod":                j.PodID,
-		"usage":              "container task health dashboard",
+		"included_on":        evergreen.ContainerHealthDashboard,
 		"termination_reason": j.Reason,
 		"job":                j.ID(),
 	})

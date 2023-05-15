@@ -321,11 +321,6 @@ directory, and checks out the revision associated with the task. Also
 applies patches to the source after cloning it, if the task was created
 by a patch submission.
 
-**Note**: You likely want to call manifest.load prior to
-git.get_project. If you don't, you will always use the branch specified
-in the module section even if the module is pinned at a different commit
-for your version.
-
 ``` yaml
 - command: git.get_project
   params:
@@ -748,14 +743,6 @@ Parameters:
     missing/empty will run for all
 -   `working_directory`: local path to the working directory
 
-## manifest.load
-
-`manifest.load` updates the project's expansions with the manifest, if
-it exists.
-
-``` yaml
-- command: manifest.load
-```
 
 ## perf.send
 

@@ -82,8 +82,8 @@ func (j *podStatsCollector) logStats() error {
 	}
 
 	msg := message.Fields{
-		"message": "pod stats",
-		"usage":   "container task health dashboard",
+		"message":     "pod stats",
+		"included_on": evergreen.ContainerHealthDashboard,
 	}
 	// Ensure that the statuses of interest are always set, even if the query
 	// returns no statistics for that status.

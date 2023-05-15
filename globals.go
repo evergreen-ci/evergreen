@@ -295,6 +295,10 @@ const (
 	// Valid types of performing git clone
 	CloneMethodLegacySSH = "legacy-ssh"
 	CloneMethodOAuth     = "oauth"
+
+	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
+	// charts relating to the health of container tasks.
+	ContainerHealthDashboard = "container task health dashboard"
 )
 
 var TaskStatuses = []string{
@@ -606,7 +610,6 @@ const (
 	S3PullCommandName             = "s3.pull"
 	ShellExecCommandName          = "shell.exec"
 	AttachResultsCommandName      = "attach.results"
-	ManifestLoadCommandName       = "manifest.load"
 	AttachArtifactsCommandName    = "attach.artifacts"
 	AttachXUnitResultsCommandName = "attach.xunit_results"
 )
