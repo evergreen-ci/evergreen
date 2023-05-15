@@ -398,8 +398,8 @@ github.com/evergreen-ci/poplar v0.0.0-20220119144730-b220d71c0330/go.mod h1:O5wG
 github.com/evergreen-ci/poplar v0.0.0-20220405164038-0cfe3198c320/go.mod h1:H4E1ha844o4VDsuJQQyB+HKHmz8gaXCRnukfWDPV/Zw=
 github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def h1:A37I3mgA6TTPbddu4UuEbpc0HMGxYSRwtu42s/9dpAY=
 github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def/go.mod h1:rj0uvK3GWKZmynb6AeZ66eZvorKSQDxvV1mh5lZVkHc=
-github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd h1:ZTiko2itvbnMVPYBuOlh2aSLjk9JgZ5UFSzjnFG/5ts=
-github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd/go.mod h1:UTWsClgKujHCHUovGzTTRW5i5HPWo5Ie/PTeODAkcjo=
+github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715 h1:JEr1ZoqNceEOpFoto63Mp/3m5OaHsJZsAVVOsmvwFCA=
+github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715/go.mod h1:GT+di9PB4Fog3QKJGaNSE69iOATmPorDEZnVRfgR2pY=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826 h1:oViYb1lmJN1k9SExkF87VTess4JVR7Uvwr8AAKzJ864=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826/go.mod h1:SnQ9F63VSR6kHbC4aFE+f7+iL3yANhjaN9TT9T4skao=
 github.com/evergreen-ci/timber v0.0.0-20230413164224-05a3a6e11d78 h1:Q1HuesKSJFqxNVZoIzQRRc/yha8cYVt2W7ke62hvt9I=
@@ -408,8 +408,9 @@ github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuE
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
 github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118/go.mod h1:J23DaXv/35hpeeDLK1ay9KX/7zMF0HdVMAitqXQW9j0=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
-github.com/evergreen-ci/utility v0.0.0-20230216205613-b8156d58f1e5 h1:wtPk7ZyGpGZ8bBrdaBgZ8sf7CYlkIrNMa2/erdilPUY=
 github.com/evergreen-ci/utility v0.0.0-20230216205613-b8156d58f1e5/go.mod h1:JOJFPxtV7r9EEPqdcgkhgMvUMFGNTkUuYp0u2d8zcQI=
+github.com/evergreen-ci/utility v0.0.0-20230508194838-873894227dc9 h1:FEYS+Jjz+CSKTWnZgsvmHY7LlNMVfIxnp8rI7zYE5Es=
+github.com/evergreen-ci/utility v0.0.0-20230508194838-873894227dc9/go.mod h1:JOJFPxtV7r9EEPqdcgkhgMvUMFGNTkUuYp0u2d8zcQI=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
