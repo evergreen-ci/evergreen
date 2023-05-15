@@ -331,7 +331,7 @@ func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
 
 	grip.Info(message.Fields{
 		"message":                   "pod initiated first contact with application server",
-		"usage":                     "container task health dashboard",
+		"included_on":               evergreen.ContainerHealthDashboard,
 		"pod":                       p.ID,
 		"secs_since_pod_allocation": time.Since(p.TimeInfo.Initializing).Seconds(),
 		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
