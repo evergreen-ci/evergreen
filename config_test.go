@@ -327,6 +327,7 @@ func (s *AdminSuite) TestAuthConfig() {
 			ClientSecret: "ghsecret",
 			Users:        []string{"ghuser"},
 			Organization: "ghorg",
+			AppId:        1234,
 		},
 		Multi: &MultiAuthConfig{
 			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},
