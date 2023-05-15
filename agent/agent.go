@@ -568,7 +568,9 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		defer shutdown(ctx)
 	}
 
-	defer func() { grip.Error(errors.Wrap(a.uploadTraces(tskCtx, taskConfig.WorkDir), "uploading traces")) }()
+	defer func() {
+		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, taskConfig.WorkDir), "uploading traces"))
+	}()
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
