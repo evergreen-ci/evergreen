@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -64,11 +65,11 @@ func (q *ContainerTaskQueue) populate() error {
 	}
 
 	grip.Info(message.Fields{
-		"message":    "generated container task queue",
-		"usage":      "container task health dashboard",
-		"candidates": len(candidates),
-		"queue":      len(readyForAllocation),
-		"duration":   time.Since(startAt),
+		"message":     "generated container task queue",
+		"included_on": evergreen.ContainerHealthDashboard,
+		"candidates":  len(candidates),
+		"queue":       len(readyForAllocation),
+		"duration":    time.Since(startAt),
 	})
 
 	q.queue = readyForAllocation
