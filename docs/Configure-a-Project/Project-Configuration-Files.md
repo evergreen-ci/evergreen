@@ -685,6 +685,14 @@ Every task has some expansions available by default:
     task
 -   `${requester}` is what triggered the task: patch, `github_pr`,
     `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
+-   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
+    OTel collector. Tasks can send traces to this endpoint.
+-   `${otel_trace_id}` is the OTel trace ID this task is running under.
+    Include the trace ID in your task's spans so they'll be hooked
+    in under the task's trace.
+-   `${otel_parent_id}` is the OTel span ID of the current command.
+    Include this ID in your test's root spans so it'll be hooked
+    in under the command's trace.
 
 The following expansions are available if a task was triggered by an
 inter-project dependency:
