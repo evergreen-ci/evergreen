@@ -303,7 +303,7 @@ func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 	if err := client.Start(ctx); err != nil {
 		return errors.Wrap(err, "starting trace client")
 	}
-	defer client.Stop(ctx)
+	defer func() { grip.Error(errors.Wrap(client.Stop(ctx), "stopping trace gRPC client")) }()
 
 	catcher := grip.NewBasicCatcher()
 	for _, fileName := range files {
