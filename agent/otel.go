@@ -43,7 +43,7 @@ const (
 	exportInterval = 15 * time.Second
 	exportTimeout  = exportInterval * 2
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
-	traceSuffix    = "build/trace"
+	traceSuffix    = "build/OTelTraces"
 	maxLineSize    = 1024 * 1024
 
 	cpuTimeInstrument = "system.cpu.time"
