@@ -44,15 +44,6 @@ func insertTestDocuments() error {
 		},
 		Host{
 			Id:     "four",
-			Status: evergreen.HostRunning,
-			Distro: distro.Distro{
-				Id:       "redhat",
-				Provider: evergreen.ProviderNameEc2Spot,
-			},
-			StartedBy: evergreen.User,
-		},
-		Host{
-			Id:     "five",
 			Status: evergreen.HostUninitialized,
 			Distro: distro.Distro{
 				Id:       "foo",
@@ -61,7 +52,7 @@ func insertTestDocuments() error {
 			StartedBy: evergreen.User,
 		},
 		Host{
-			Id:     "six",
+			Id:     "five",
 			Status: evergreen.HostRunning,
 			Distro: distro.Distro{
 				Id:       "bar",
@@ -70,7 +61,7 @@ func insertTestDocuments() error {
 			StartedBy: evergreen.User,
 		},
 		Host{
-			Id:     "seven",
+			Id:     "six",
 			Status: evergreen.HostRunning,
 			Distro: distro.Distro{
 				Id:       "debian",
@@ -94,10 +85,9 @@ func TestHostStatsByProvider(t *testing.T) {
 	result := ProviderStats{}
 
 	assert.NoError(db.Aggregate(Collection, statsByProviderPipeline(), &result))
-	assert.Len(result, 3, "%+v", result)
+	assert.Len(result, 2, "%+v", result)
 
 	rmap := result.Map()
-	assert.Equal(1, rmap[evergreen.ProviderNameEc2Spot])
 	assert.Equal(3, rmap[evergreen.ProviderNameEc2Fleet])
 
 	alt, err := GetProviderCounts()

@@ -463,7 +463,6 @@ EC2 Parameters:
 -   `security_group_ids` - List of security groups. Must set if `ami` is
     set. May set if `distro` is set, which will override the value from
     the distro configuration.
--   `spot` - Spawn a spot instance if `true.` Defaults to `false`.
 -   `subnet_id` - Subnet ID for the VPC. Must be set if `ami` is set.
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
@@ -512,7 +511,6 @@ permissions:
 -   `ec2:DescribeInstances`
 -   `ec2:RunInstances`
 -   `ec2:TerminateInstances`
--   `pricing:GetProducts`
 
 ### Checking SSH Availability for Spawn Hosts
 

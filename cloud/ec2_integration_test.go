@@ -28,7 +28,7 @@ func fetchTestDistro() distro.Distro {
 		Id:       "test_distro",
 		Arch:     "linux_amd64",
 		WorkDir:  "/data/mci",
-		Provider: evergreen.ProviderNameEc2Spot,
+		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("ami", "ami-97785bed"),
 			birch.EC.String("instance_type", "t2.micro"),
@@ -70,8 +70,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	require.NoError(db.Clear(host.Collection))
 
 	opts := &EC2ManagerOptions{
-		client:   &awsClientImpl{},
-		provider: onDemandProvider,
+		client: &awsClientImpl{},
 	}
 
 	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
@@ -79,7 +78,6 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	require.NoError(m.client.Create(m.credentials, evergreen.DefaultEC2Region))
 
 	d := fetchTestDistro()
-	d.Provider = evergreen.ProviderNameEc2OnDemand
 	h := host.NewIntent(host.CreateOptions{
 		Distro:   d,
 		UserName: evergreen.User,
@@ -102,63 +100,9 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NotContains([]int64{running, stopping, stopped}, *instance.State.Code)
 }
 
-func TestSpawnEC2InstanceSpot(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	env := testutil.NewEnvironment(ctx, t)
-	testConfig := env.Settings()
-
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
-	require.NoError(db.Clear(host.Collection))
-	opts := &EC2ManagerOptions{
-		client:   &awsClientImpl{},
-		provider: spotProvider,
-	}
-
-	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
-	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.client.Create(m.credentials, evergreen.DefaultEC2Region))
-	d := fetchTestDistro()
-	d.Provider = evergreen.ProviderNameEc2Spot
-	h := host.NewIntent(host.CreateOptions{
-		Distro:   d,
-		UserName: evergreen.User,
-		UserHost: false,
-	})
-	h, err := m.SpawnHost(ctx, h)
-	assert.NoError(err)
-	assert.NoError(h.Insert())
-	foundHosts, err := host.Find(host.IsUninitialized)
-	assert.NoError(err)
-	assert.Len(foundHosts, 1)
-	assert.NoError(m.TerminateInstance(ctx, h, evergreen.User, ""))
-	foundHosts, err = host.Find(host.IsTerminated)
-	assert.NoError(err)
-	assert.Len(foundHosts, 1)
-}
-
-func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForSpotInstanceRequests() {
-	opts := &EC2ManagerOptions{
-		client:   &awsClientImpl{},
-		provider: spotProvider,
-	}
-	m := &ec2Manager{env: s.env, EC2ManagerOptions: opts}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	info, err := m.client.GetInstanceInfo(ctx, "sir-123456")
-	s.Nil(info)
-	s.Errorf(err, "ID 'sir-123456' appears to be a spot instance request ID, not a host ID")
-}
-
 func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForIntentHosts() {
 	opts := &EC2ManagerOptions{
-		client:   &awsClientImpl{},
-		provider: onDemandProvider,
+		client: &awsClientImpl{},
 	}
 	m := &ec2Manager{env: s.env, EC2ManagerOptions: opts}
 	ctx, cancel := context.WithCancel(context.Background())

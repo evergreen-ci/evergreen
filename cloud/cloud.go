@@ -123,7 +123,7 @@ type ManagerOpts struct {
 // provider.
 func GetSettings(provider string) (ProviderSettings, error) {
 	switch provider {
-	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Fleet:
+	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Fleet:
 		return &EC2ProviderSettings{}, nil
 	case evergreen.ProviderNameStatic:
 		return &StaticSettings{}, nil
@@ -152,18 +152,6 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 			env: env,
 			EC2ManagerOptions: &EC2ManagerOptions{
 				client:         &awsClientImpl{},
-				provider:       onDemandProvider,
-				region:         mgrOpts.Region,
-				providerKey:    mgrOpts.ProviderKey,
-				providerSecret: mgrOpts.ProviderSecret,
-			},
-		}
-	case evergreen.ProviderNameEc2Spot:
-		provider = &ec2Manager{
-			env: env,
-			EC2ManagerOptions: &EC2ManagerOptions{
-				client:         &awsClientImpl{},
-				provider:       spotProvider,
 				region:         mgrOpts.Region,
 				providerKey:    mgrOpts.ProviderKey,
 				providerSecret: mgrOpts.ProviderSecret,

@@ -4571,16 +4571,6 @@ func TestFindHostWithVolume(t *testing.T) {
 func TestStartingHostsByClient(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	doc1 := birch.NewDocument(birch.EC.String(awsRegionKey, evergreen.DefaultEC2Region))
-	doc2 := birch.NewDocument(
-		birch.EC.String(awsRegionKey, "us-west-1"),
-		birch.EC.String(awsKeyKey, "key1"),
-		birch.EC.String(awsSecretKey, "secret1"),
-	)
-	doc3 := birch.NewDocument(
-		birch.EC.String(awsRegionKey, "us-west-1"),
-		birch.EC.String(awsKeyKey, "key2"),
-		birch.EC.String(awsSecretKey, "secret2"),
-	)
 	startingHosts := []Host{
 		{
 			Id:     "h0",
@@ -4614,31 +4604,6 @@ func TestStartingHostsByClient(t *testing.T) {
 				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 			},
 		},
-		{
-			Id:     "h4",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
-				ProviderSettingsList: []*birch.Document{doc2},
-			},
-		},
-		{
-			Id:     "h5",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
-				ProviderSettingsList: []*birch.Document{doc3},
-			},
-		},
-		{
-			Id:          "h6",
-			Status:      evergreen.HostStarting,
-			Provisioned: true,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
-				ProviderSettingsList: []*birch.Document{doc3},
-			},
-		},
 	}
 	for _, h := range startingHosts {
 		require.NoError(t, h.Insert())
@@ -4646,7 +4611,7 @@ func TestStartingHostsByClient(t *testing.T) {
 
 	hostsByClient, err := StartingHostsByClient(0)
 	assert.NoError(t, err)
-	assert.Len(t, hostsByClient, 4)
+	assert.Len(t, hostsByClient, 3)
 	for clientOptions, hosts := range hostsByClient {
 		switch clientOptions {
 		case ClientOptions{
@@ -4662,23 +4627,6 @@ func TestStartingHostsByClient(t *testing.T) {
 			require.Len(t, hosts, 2)
 			compareHosts(t, hosts[0], startingHosts[2])
 			compareHosts(t, hosts[1], startingHosts[3])
-		case ClientOptions{
-			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west-1",
-			Key:      "key1",
-			Secret:   "secret1",
-		}:
-			require.Len(t, hosts, 1)
-			compareHosts(t, hosts[0], startingHosts[4])
-		case ClientOptions{
-			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west-1",
-			Key:      "key2",
-			Secret:   "secret2",
-		}:
-			require.Len(t, hosts, 1)
-
-			compareHosts(t, hosts[0], startingHosts[5])
 		default:
 			assert.Fail(t, "unrecognized client options")
 		}

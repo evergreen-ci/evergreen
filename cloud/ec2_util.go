@@ -69,11 +69,6 @@ var (
 )
 
 var (
-	// bson fields for the EC2SpotSettings struct
-	BidPriceKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "BidPrice")
-)
-
-var (
 	// bson fields for the MountPoint struct
 	VirtualNameKey = bsonutil.MustHaveTag(MountPoint{}, "VirtualName")
 	DeviceNameKey  = bsonutil.MustHaveTag(MountPoint{}, "DeviceName")
@@ -158,10 +153,6 @@ func makeTags(intentHost *host.Host) []host.Tag {
 
 	if intentHost.UserHost {
 		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
-	}
-
-	if isHostSpot(intentHost) {
-		systemTags = append(systemTags, host.Tag{Key: "spot", Value: "true", CanBeModified: false})
 	}
 
 	// Add Evergreen-generated tags to host object
