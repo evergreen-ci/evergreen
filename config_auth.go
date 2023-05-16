@@ -198,7 +198,7 @@ func (c *AuthConfig) ValidateAndDefault() error {
 	}
 
 	if c.Github != nil && c.Github.AppId == 0 && c.Github.Users == nil && c.Github.Organization == "" {
-		catcher.Add(errors.New("must specify either a set of users or an organization or an app id for GitHub authentication"))
+		catcher.New("must specify either a set of users or an organization or an app id for GitHub authentication")
 	}
 
 	if c.Multi != nil {
