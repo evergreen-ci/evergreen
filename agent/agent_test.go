@@ -931,8 +931,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -970,8 +971,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1011,8 +1013,9 @@ timeout:
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
