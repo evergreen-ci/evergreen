@@ -34451,7 +34451,7 @@ func (ec *executionContext) _ProjectEventSettings_subscriptions(ctx context.Cont
 	}
 	res := resTmp.([]model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+	return ec.marshalOGeneralSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ProjectEventSettings_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -34463,23 +34463,23 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_subscriptions(ctx 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
+				return ec.fieldContext_GeneralSubscription_id(ctx, field)
 			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_ownerType(ctx, field)
 			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_regexSelectors(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_resourceType(ctx, field)
 			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_selectors(ctx, field)
 			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
+				return ec.fieldContext_GeneralSubscription_subscriber(ctx, field)
 			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
+				return ec.fieldContext_GeneralSubscription_trigger(ctx, field)
 			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
+				return ec.fieldContext_GeneralSubscription_triggerData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GeneralSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -34952,7 +34952,7 @@ func (ec *executionContext) _ProjectSettings_subscriptions(ctx context.Context, 
 	}
 	res := resTmp.([]*model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+	return ec.marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ProjectSettings_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -34964,23 +34964,23 @@ func (ec *executionContext) fieldContext_ProjectSettings_subscriptions(ctx conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
+				return ec.fieldContext_GeneralSubscription_id(ctx, field)
 			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_ownerType(ctx, field)
 			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_regexSelectors(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_resourceType(ctx, field)
 			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_selectors(ctx, field)
 			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
+				return ec.fieldContext_GeneralSubscription_subscriber(ctx, field)
 			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
+				return ec.fieldContext_GeneralSubscription_trigger(ctx, field)
 			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
+				return ec.fieldContext_GeneralSubscription_triggerData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GeneralSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -41532,7 +41532,7 @@ func (ec *executionContext) _RepoSettings_subscriptions(ctx context.Context, fie
 	}
 	res := resTmp.([]*model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
+	return ec.marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RepoSettings_subscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -41544,23 +41544,23 @@ func (ec *executionContext) fieldContext_RepoSettings_subscriptions(ctx context.
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
+				return ec.fieldContext_GeneralSubscription_id(ctx, field)
 			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_ownerType(ctx, field)
 			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_regexSelectors(ctx, field)
 			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
+				return ec.fieldContext_GeneralSubscription_resourceType(ctx, field)
 			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
+				return ec.fieldContext_GeneralSubscription_selectors(ctx, field)
 			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
+				return ec.fieldContext_GeneralSubscription_subscriber(ctx, field)
 			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
+				return ec.fieldContext_GeneralSubscription_trigger(ctx, field)
 			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
+				return ec.fieldContext_GeneralSubscription_triggerData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GeneralSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -73174,6 +73174,10 @@ func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋ
 	return ret
 }
 
+func (ec *executionContext) marshalNGeneralSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v model.APISubscription) graphql.Marshaler {
+	return ec._GeneralSubscription(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -74523,10 +74527,6 @@ func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋever
 
 func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsSection) graphql.Marshaler {
 	return v
-}
-
-func (ec *executionContext) marshalNProjectSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v model.APISubscription) graphql.Marshaler {
-	return ec._ProjectSubscription(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
@@ -76632,6 +76632,53 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalOGeneralSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APISubscription) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGeneralSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -77615,53 +77662,6 @@ func (ec *executionContext) unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋeve
 	}
 	res, err := ec.unmarshalInputProjectSettingsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOProjectSubscription2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APISubscription) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNProjectSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {

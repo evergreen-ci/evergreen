@@ -48,6 +48,12 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		require.NotZero(t, restartedTask)
 		assert.Equal(t, evergreen.TaskUndispatched, restartedTask.Status)
 	}
+	checkPodRunningTaskCleared := func(t *testing.T, podID string) {
+		foundPod, err := pod.FindOneByID(podID)
+		require.NoError(t, err)
+		require.NotZero(t, foundPod)
+		assert.Zero(t, foundPod.TaskRuntimeInfo)
+	}
 
 	const hostID = "host_id"
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version){
@@ -153,7 +159,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		"RestartsStaleContainerTaskAndChecksForUnhealthyPod": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			p := pod.Pod{
 				ID:     "pod_id",
-				Status: pod.StatusRunning,
+				Status: pod.StatusDecommissioned,
 				TaskRuntimeInfo: pod.TaskRuntimeInfo{
 					RunningTaskID:        j.task.Id,
 					RunningTaskExecution: j.task.Execution,
@@ -181,6 +187,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			assert.True(t, foundHealthCheckJob, "should have enqueued a pod health check job")
 
 			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
+			checkPodRunningTaskCleared(t, p.ID)
 		},
 		"RestartsParentDisplayTaskForStaleHostExecutionTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			const displayTaskID = "display_task"

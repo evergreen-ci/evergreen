@@ -78,6 +78,7 @@ type GithubAuthConfig struct {
 	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
 	Users        []string `bson:"users" json:"users" yaml:"users"`
 	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
+	AppId        int      `bson:"app_id" json:"app_id" yaml:"app_id"`
 }
 
 // MultiAuthConfig contains settings for using multiple authentication
@@ -196,10 +197,8 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		}
 	}
 
-	if c.Github != nil {
-		if c.Github.Users == nil && c.Github.Organization == "" {
-			catcher.Add(errors.New("must specify either a set of users or an organization for GitHub authentication"))
-		}
+	if c.Github != nil && c.Github.AppId == 0 && c.Github.Users == nil && c.Github.Organization == "" {
+		catcher.New("must specify either a set of users or an organization or an app id for GitHub authentication")
 	}
 
 	if c.Multi != nil {

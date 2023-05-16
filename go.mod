@@ -17,7 +17,7 @@ require (
 	github.com/evergreen-ci/juniper v0.0.0-20230119161755-1aced8006202
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
-	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
+	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20230413164224-05a3a6e11d78
 	github.com/evergreen-ci/utility v0.0.0-20230508194838-873894227dc9
 	github.com/google/go-github/v52 v52.0.0
