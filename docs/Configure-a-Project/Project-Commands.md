@@ -421,8 +421,7 @@ Agent Parameters:
 
 -   `num_hosts` - Number of hosts to start, 1 \<= `num_hosts` \<= 10.
     Defaults to 1 (must be 1 if provider is Docker).
--   `provider` - Cloud provider. Must set `ec2` or `docker`. We intend
-    to support other providers as future work.
+-   `provider` - Cloud provider. Must set `ec2` or `docker`.
 -   `retries` - How many times Evergreen should try to create this host
     in EC2 before giving up. Evergreen will wait 1 minute between
     retries.

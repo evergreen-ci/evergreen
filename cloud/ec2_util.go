@@ -26,14 +26,13 @@ import (
 )
 
 const (
-	EC2ErrorNotFound         = "InvalidInstanceID.NotFound"
-	EC2DuplicateKeyPair      = "InvalidKeyPair.Duplicate"
-	EC2InsufficientCapacity  = "InsufficientInstanceCapacity"
-	EC2UnfulfillableCapacity = "UnfulfillableCapacity"
-	EC2InvalidParam          = "InvalidParameterValue"
-	EC2VolumeNotFound        = "InvalidVolume.NotFound"
-	EC2VolumeResizeRate      = "VolumeModificationRateExceeded"
-	ec2TemplateNameExists    = "InvalidLaunchTemplateName.AlreadyExistsException"
+	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
+	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
+	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
+	EC2InvalidParam         = "InvalidParameterValue"
+	EC2VolumeNotFound       = "InvalidVolume.NotFound"
+	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
+	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 )
 
 var (

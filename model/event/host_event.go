@@ -146,12 +146,6 @@ func LogHostModifyError(hostID, logs string) {
 	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
 }
 
-// LogHostFallback logs an event indicating that the host is being created using
-// a backup cloud provider.
-func LogHostFallback(hostId string) {
-	LogHostEvent(hostId, EventHostFallback, HostEventData{})
-}
-
 func LogHostAgentDeployed(hostId string) {
 	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{
 		AgentRevision: evergreen.AgentVersion,
