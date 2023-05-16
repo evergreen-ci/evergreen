@@ -43,7 +43,6 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	require.NoError(h.Insert())
 
 	mockInstance := cloud.MockInstance{
-		IsUp:           true,
 		IsSSHReachable: true,
 		Status:         cloud.StatusTerminated,
 	}

@@ -122,14 +122,6 @@ func (staticMgr *staticManager) Configure(ctx context.Context, settings *evergre
 	return nil
 }
 
-func (staticMgr *staticManager) IsUp(context.Context, *host.Host) (bool, error) {
-	return true, nil
-}
-
-func (staticMgr *staticManager) OnUp(context.Context, *host.Host) error {
-	return nil
-}
-
 func (staticMgr *staticManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with static provider")
 }

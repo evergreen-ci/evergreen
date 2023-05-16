@@ -180,21 +180,6 @@ func (m *openStackManager) StartInstance(ctx context.Context, host *host.Host, u
 	return errors.New("StartInstance is not supported for OpenStack provider")
 }
 
-// IsUp checks whether the provisioned host is running.
-func (m *openStackManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(ctx, host)
-	if err != nil {
-		return false, err
-	}
-
-	return status == StatusRunning, nil
-}
-
-// OnUp does nothing since tags are attached in SpawnInstance.
-func (m *openStackManager) OnUp(ctx context.Context, host *host.Host) error {
-	return nil
-}
-
 // GetDNSName returns the private IP address of the host.
 func (m *openStackManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	server, err := m.client.GetInstance(host.Id)
