@@ -145,7 +145,6 @@ func TestSetCloudHostStatus(t *testing.T) {
 		"RunningStatusPreparesLegacyHostForProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			provider := cloud.GetMockProvider()
 			mockInstance := cloud.MockInstance{
-				IsUp:    true,
 				Status:  cloud.StatusRunning,
 				DNSName: "dns_name",
 			}
@@ -155,7 +154,6 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NoError(t, h.Insert())
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
-			assert.True(t, provider.Get(h.Id).OnUpRan)
 
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
@@ -167,7 +165,6 @@ func TestSetCloudHostStatus(t *testing.T) {
 		"RunningStatusMarksUserDataProvisionedHostAsProvisioned": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			provider := cloud.GetMockProvider()
 			mockInstance := cloud.MockInstance{
-				IsUp:    true,
 				Status:  cloud.StatusRunning,
 				DNSName: "dns_name",
 			}
@@ -177,7 +174,6 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NoError(t, h.Insert())
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
-			assert.True(t, provider.Get(h.Id).OnUpRan)
 
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)

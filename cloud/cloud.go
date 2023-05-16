@@ -50,15 +50,6 @@ type Manager interface {
 	// StartInstance starts a stopped instance.
 	StartInstance(context.Context, *host.Host, string) error
 
-	// IsUp returns true if the underlying provider has not destroyed the
-	// host (in other words, if the host "should" be reachable. This does not
-	// necessarily mean that the host actually *is* reachable via SSH
-	IsUp(context.Context, *host.Host) (bool, error)
-
-	// Called by the hostinit process when the host is actually up. Used
-	// to set additional provider-specific metadata
-	OnUp(context.Context, *host.Host) error
-
 	// GetDNSName returns the DNS name of a host.
 	GetDNSName(context.Context, *host.Host) (string, error)
 

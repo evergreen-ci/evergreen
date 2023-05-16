@@ -26,7 +26,6 @@ func TestSpawnhostStopJob(t *testing.T) {
 		}
 		assert.NoError(t, h.Insert())
 		mock.Set(h.Id, cloud.MockInstance{
-			IsUp:   true,
 			Status: cloud.StatusStopped,
 		})
 
@@ -47,7 +46,6 @@ func TestSpawnhostStopJob(t *testing.T) {
 		}
 		assert.NoError(t, h.Insert())
 		mock.Set(h.Id, cloud.MockInstance{
-			IsUp:   true,
 			Status: cloud.StatusRunning,
 		})
 

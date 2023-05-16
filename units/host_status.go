@@ -213,9 +213,6 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 
 		return catcher.Resolve()
 	case cloud.StatusRunning:
-		if err := j.initialSetup(ctx, m, &h); err != nil {
-			return errors.Wrap(err, "performing initial setup")
-		}
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrapf(j.setNextState(ctx, &h), "transitioning host state")
 		if h.UserHost && h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
@@ -265,39 +262,6 @@ func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) erro
 
 		return nil
 	}
-}
-
-func (j *cloudHostReadyJob) initialSetup(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
-	if err := cloudMgr.OnUp(ctx, h); err != nil {
-		return errors.Wrapf(err, "performing cloud manager to initialize up host  '%s'", h.Id)
-	}
-	return j.setDNSName(ctx, cloudMgr, h)
-}
-
-func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
-	if h.Host != "" {
-		return nil
-	}
-
-	hostDNS, err := cloudMgr.GetDNSName(ctx, h)
-	if err != nil {
-		return errors.Wrapf(err, "checking DNS name for host '%s'", h.Id)
-	}
-
-	if hostDNS == "" {
-		// DNS name not required if IP address set
-		if h.IP != "" {
-			return nil
-		}
-		return errors.Errorf("host '%s' is running but not returning a DNS name or IP address", h.Id)
-	}
-
-	// update the host's DNS name
-	if err = h.SetDNSName(hostDNS); err != nil {
-		return errors.Wrapf(err, "setting DNS name for host '%s'", h.Id)
-	}
-
-	return nil
 }
 
 // logHostStatusMessage logs the appropriate message once the status of a host's

@@ -1357,43 +1357,6 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 	return instanceId, nil
 }
 
-// IsUp returns whether a host is up.
-func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(ctx, h)
-	if err != nil {
-		return false, errors.Wrap(err, "checking if instance is up")
-	}
-	if status == StatusRunning {
-		return true, nil
-	}
-	return false, nil
-}
-
-// OnUp is called when the host is up.
-func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
-	if isHostOnDemand(h) {
-		// On-demand hosts and its volumes are already tagged in the request for
-		// the instance.
-		return nil
-	}
-
-	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "creating client")
-	}
-	defer m.client.Close()
-
-	resources, err := m.getResources(ctx, h)
-	if err != nil {
-		return errors.Wrap(err, "getting resources")
-	}
-
-	if err = m.client.SetTags(ctx, resources, h); err != nil {
-		return errors.Wrap(err, "setting tags")
-	}
-
-	return nil
-}
-
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")

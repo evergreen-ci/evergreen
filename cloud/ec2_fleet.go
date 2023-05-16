@@ -342,22 +342,6 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 	return errors.New("can't start instances for EC2 fleet provider")
 }
 
-func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(ctx, h)
-	if err != nil {
-		return false, errors.Wrap(err, "checking if instance is up")
-	}
-	if status == StatusRunning {
-		return true, nil
-	}
-	return false, nil
-}
-
-// OnUp is a noop for Fleet
-func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
-	return nil
-}
-
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")

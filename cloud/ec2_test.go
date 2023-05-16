@@ -962,56 +962,6 @@ func (s *EC2Suite) TestStartInstance() {
 	s.Equal("12.34.56.78", found.IPv4)
 }
 
-func (s *EC2Suite) TestIsUp() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	up, err := s.onDemandManager.IsUp(ctx, s.h)
-	s.True(up)
-	s.NoError(err)
-
-	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	up, err = s.onDemandManager.IsUp(ctx, s.h)
-	s.True(up)
-	s.NoError(err)
-}
-
-func (s *EC2Suite) TestOnUpNoopsForOnDemandInstance() {
-	s.Require().NoError(s.h.Insert())
-	s.Require().NoError(s.spotManager.OnUp(s.ctx, s.h))
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.Require().True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.Require().True(ok)
-	s.Nil(mock.DescribeVolumesInput)
-	s.Zero(mock.CreateTagsInput)
-}
-
-func (s *EC2Suite) TestOnUpTagsForSpotInstance() {
-	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	s.h.ExternalIdentifier = "instance_id"
-	s.NoError(s.h.Insert())
-
-	s.Require().NoError(s.spotManager.OnUp(s.ctx, s.h))
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
-	s.Nil(mock.DescribeVolumesInput)
-
-	s.Len(mock.CreateTagsInput.Resources, 2)
-	s.Equal(s.h.ExternalIdentifier, *mock.CreateTagsInput.Resources[0])
-	s.Equal("volume_id", *mock.CreateTagsInput.Resources[1])
-
-	foundHost, err := host.FindOneId(s.h.Id)
-	s.NoError(err)
-	s.NotNil(foundHost)
-	s.Require().Len(foundHost.Volumes, 1)
-	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
-	s.Equal("device_name", foundHost.Volumes[0].DeviceName)
-}
-
 func (s *EC2Suite) TestGetDNSName() {
 	s.h.Host = "public_dns_name"
 	dns, err := s.onDemandManager.GetDNSName(s.ctx, s.h)
