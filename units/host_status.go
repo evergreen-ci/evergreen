@@ -239,10 +239,8 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) error {
 	switch h.Distro.BootstrapSettings.Method {
 	case distro.BootstrapMethodUserData:
-		// From the app server's perspective, it is done provisioning a user
-		// data host once the instance is running. The user data script will
-		// handle the rest of host provisioning.
-		return errors.Wrap(h.SetProvisionedNotRunning(), "marking host as provisioned but not yet running")
+		// The user data script will handle the rest of host provisioning.
+		return nil
 	case distro.BootstrapMethodNone:
 		// A host created by a task goes through no further provisioning, so we
 		// can just set it as running.

@@ -1191,11 +1191,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 		return nil
 	}
 
-	if !h.Provisioned {
-		return nil
-	}
-
-	if err := h.UpdateStartingToRunning(); err != nil {
+	if err := h.MarkAsProvisioned(); err != nil {
 		return errors.Wrap(err, "marking host as done provisioning itself and now running")
 	}
 

@@ -57,6 +57,9 @@ func (e *Environment) Configure(ctx context.Context) error {
 	e.EnvContext = ctx
 
 	e.EvergreenSettings = testutil.TestConfig()
+	if err := evergreen.UpdateConfig(e.EvergreenSettings); err != nil {
+		return errors.WithStack(err)
+	}
 
 	e.Remote = queue.NewLocalLimitedSize(2, 1048)
 	if err := e.Remote.Start(ctx); err != nil {

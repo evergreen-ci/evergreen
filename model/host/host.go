@@ -1073,38 +1073,6 @@ func (h *Host) SetProvisionedNotRunning() error {
 	return nil
 }
 
-// UpdateStartingToRunning changes the host status from provisioning to
-// running, as well as logging that the host has finished provisioning.
-func (h *Host) UpdateStartingToRunning() error {
-	if h.Status != evergreen.HostStarting {
-		return nil
-	}
-
-	if err := UpdateOne(
-		bson.M{
-			IdKey:          h.Id,
-			StatusKey:      evergreen.HostStarting,
-			ProvisionedKey: true,
-		},
-		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
-	); err != nil {
-		return errors.Wrap(err, "changing host status from starting to running")
-	}
-
-	h.Status = evergreen.HostRunning
-
-	event.LogHostProvisioned(h.Id)
-	grip.Info(message.Fields{
-		"message":   "host marked provisioned",
-		"host_id":   h.Id,
-		"host_tag":  h.Tag,
-		"distro":    h.Distro.Id,
-		"operation": "UpdateStartingToRunning",
-	})
-
-	return nil
-}
-
 // SetNeedsToRestartJasper sets this host as needing to have its Jasper service
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent

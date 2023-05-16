@@ -114,7 +114,6 @@ func TestCloudStatusJob(t *testing.T) {
 		}
 		if h.Id == "host-6" {
 			assert.Equal(evergreen.HostStarting, h.Status)
-			assert.True(h.Provisioned)
 		}
 	}
 }
@@ -164,7 +163,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			assert.False(t, dbHost.Provisioned)
 			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
 		},
-		"RunningStatusMarksUserDataProvisionedHostAsProvisioned": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
+		"RunningStatusNoopsUserDataHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			provider := cloud.GetMockProvider()
 			mockInstance := cloud.MockInstance{
 				IsUp:    true,
@@ -184,7 +183,6 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, mockInstance.DNSName, dbHost.Host)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
-			assert.True(t, dbHost.Provisioned)
 		},
 		"NonExistentStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			require.NoError(t, h.Insert())
