@@ -4571,6 +4571,11 @@ func TestFindHostWithVolume(t *testing.T) {
 func TestStartingHostsByClient(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	doc1 := birch.NewDocument(birch.EC.String(awsRegionKey, evergreen.DefaultEC2Region))
+	doc2 := birch.NewDocument(
+		birch.EC.String(awsRegionKey, "us-west-1"),
+		birch.EC.String(awsKeyKey, "key1"),
+		birch.EC.String(awsSecretKey, "secret1"),
+	)
 	startingHosts := []Host{
 		{
 			Id:     "h0",
@@ -4585,7 +4590,7 @@ func TestStartingHostsByClient(t *testing.T) {
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
 				Provider:             evergreen.ProviderNameEc2OnDemand,
-				ProviderSettingsList: []*birch.Document{doc1},
+				ProviderSettingsList: []*birch.Document{doc2},
 			},
 		},
 		{
@@ -4618,9 +4623,16 @@ func TestStartingHostsByClient(t *testing.T) {
 			Provider: evergreen.ProviderNameEc2OnDemand,
 			Region:   evergreen.DefaultEC2Region,
 		}:
-			require.Len(t, hosts, 2)
+			require.Len(t, hosts, 1)
 			compareHosts(t, hosts[0], startingHosts[0])
-			compareHosts(t, hosts[1], startingHosts[1])
+		case ClientOptions{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   "us-west-1",
+			Key:      "key1",
+			Secret:   "secret1",
+		}:
+			require.Len(t, hosts, 1)
+			compareHosts(t, hosts[0], startingHosts[1])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameDocker,
 		}:
