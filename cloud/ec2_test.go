@@ -852,8 +852,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:    aws.String("public_dns_name_2"),
-						PrivateIpAddress: aws.String("2.2.2.2"),
+						PublicDnsName:    aws.String("public_dns_name_3"),
+						PrivateIpAddress: aws.String("3.3.3.3"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -908,8 +908,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:    aws.String("public_dns_name_3"),
-						PrivateIpAddress: aws.String("3.3.3.3"),
+						PublicDnsName:    aws.String("public_dns_name_2"),
+						PrivateIpAddress: aws.String("2.2.2.2"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -937,16 +937,16 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.Equal(map[string]CloudStatus{
 		"i-1": StatusRunning,
 		"i-2": StatusRunning,
-		"i-3": StatusTerminated,
+		"i-3": StatusRunning,
 		"i-4": StatusTerminated,
 	}, statuses)
 
-	s.Equal("public_dns_name_1", hosts[1].Host)
-	s.Equal("1.1.1.1", hosts[1].IPv4)
-	s.Equal("public_dns_name_2", hosts[2].Host)
-	s.Equal("2.2.2.2", hosts[2].IPv4)
-	s.Equal("public_dns_name_3", hosts[3].Host)
-	s.Equal("3.3.3.3", hosts[3].IPv4)
+	s.Equal("public_dns_name_1", hosts[0].Host)
+	s.Equal("1.1.1.1", hosts[0].IPv4)
+	s.Equal("public_dns_name_2", hosts[1].Host)
+	s.Equal("2.2.2.2", hosts[1].IPv4)
+	s.Equal("public_dns_name_3", hosts[2].Host)
+	s.Equal("3.3.3.3", hosts[2].IPv4)
 }
 
 func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
