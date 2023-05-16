@@ -30,7 +30,6 @@ const (
 	EventHostStarted                     = "HOST_STARTED"
 	EventHostStopped                     = "HOST_STOPPED"
 	EventHostModified                    = "HOST_MODIFIED"
-	EventHostFallback                    = "HOST_FALLBACK"
 	EventHostAgentDeployed               = "HOST_AGENT_DEPLOYED"
 	EventHostAgentDeployFailed           = "HOST_AGENT_DEPLOY_FAILED"
 	EventHostAgentMonitorDeployed        = "HOST_AGENT_MONITOR_DEPLOYED"
