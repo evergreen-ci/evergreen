@@ -240,8 +240,22 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		grip.Info(gh.getCommentLogWithMessage(event, "commit queue triggered"))
 
 		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
-		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
-		return errors.Wrap(err, "enqueueing in commit queue")
+		if err != nil {
+			owner := event.Repo.Owner.GetLogin()
+			repo := event.Repo.GetName()
+			prNum := event.Issue.GetNumber()
+			grip.Error(message.WrapError(gh.displayCommitQueueEnqueueError(ctx, owner, repo, prNum, err), message.Fields{
+				"message":       "could not write error comment back to GitHub PR that triggered the commit queue",
+				"owner":         owner,
+				"repo":          repo,
+				"pr_num":        prNum,
+				"enqueue_error": err,
+			}))
+			grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
+			return errors.Wrap(err, "enqueueing in commit queue")
+		}
+
+		return nil
 	}
 
 	if triggerPatch, callerType := triggersPatch(commentBody); triggerPatch {
@@ -283,6 +297,14 @@ func (gh *githubHookApi) getCommentLogWithMessage(event *github.IssueCommentEven
 		"user":      *event.Sender.Login,
 		"message":   msg,
 	}
+}
+
+func (gh *githubHookApi) displayCommitQueueEnqueueError(ctx context.Context, owner, repo string, prNum int, err error) error {
+	if err == nil {
+		return nil
+	}
+	comment := fmt.Sprintf("Evergreen could not enqueue your PR in the commit queue. The error:\n%s", err)
+	return gh.sc.AddCommentToPR(ctx, owner, repo, prNum, comment)
 }
 
 func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string, prNum int) error {
