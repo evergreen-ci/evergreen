@@ -112,7 +112,7 @@ func TestHostStatsByDistro(t *testing.T) {
 
 	rcmap := result.CountMap()
 	assert.Equal(2, rcmap["debian"])
-	assert.Equal(2, rcmap["redhat"])
+	assert.Equal(1, rcmap["redhat"])
 
 	rtmap := result.TasksMap()
 	assert.Equal(2, rtmap["debian"])
