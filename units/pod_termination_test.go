@@ -107,6 +107,44 @@ func TestPodTerminationJob(t *testing.T) {
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
+		"SucceedsWhenPodTaskAlreadyDeallocated": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
+			tsk := task.Task{
+				Id:                 "task_id",
+				Execution:          1,
+				PodID:              j.PodID,
+				ExecutionPlatform:  task.ExecutionPlatformContainer,
+				Status:             evergreen.TaskFailed,
+				Activated:          false,
+				ActivatedTime:      time.Now(),
+				DispatchTime:       time.Now(),
+				StartTime:          time.Now(),
+				LastHeartbeat:      time.Now(),
+				ContainerAllocated: false,
+			}
+			require.NoError(t, tsk.Insert())
+			j.pod.TaskRuntimeInfo.RunningTaskID = tsk.Id
+			j.pod.TaskRuntimeInfo.RunningTaskExecution = tsk.Execution
+			require.NoError(t, j.pod.Insert())
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			checkCloudPodDeleteRequests(t, j.ecsClient)
+
+			dbPod, err := pod.FindOneByID(j.PodID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
+			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
+			assert.Empty(t, dbPod.TaskRuntimeInfo)
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+			assert.False(t, dbTask.ContainerAllocated)
+			assert.Equal(t, 1, dbTask.Execution)
+		},
 		"TerminatesWithoutDeletingResourcesForIntentPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusInitializing
 			j.pod.Resources = pod.ResourceInfo{}
