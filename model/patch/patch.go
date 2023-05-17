@@ -143,6 +143,7 @@ type Patch struct {
 	Path               string           `bson:"path,omitempty"`
 	Project            string           `bson:"branch"`
 	Githash            string           `bson:"githash"`
+	Hidden             bool             `bson:"hidden"`
 	PatchNumber        int              `bson:"patch_number"`
 	Author             string           `bson:"author"`
 	Version            string           `bson:"version"`
@@ -669,6 +670,23 @@ func (p *Patch) SetActivation(activated bool) error {
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey: activated,
+			},
+		},
+	)
+}
+
+// SetPatchVisibility set the patch visibility to the desired state.
+// This is used to hide patches that the user does not need to see.
+func (p *Patch) SetPatchVisibility(hidden bool) error {
+	if p.Hidden == hidden {
+		return nil
+	}
+	p.Hidden = hidden
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				HiddenKey: hidden,
 			},
 		},
 	)

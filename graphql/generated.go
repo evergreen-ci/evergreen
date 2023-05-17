@@ -515,6 +515,7 @@ type ComplexityRoot struct {
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetPatchPriority              func(childComplexity int, patchID string, priority int) int
+		SetPatchVisibility            func(childComplexity int, patchIds []string, hidden bool) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
 		SpawnVolume                   func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
@@ -566,6 +567,7 @@ type ComplexityRoot struct {
 		Description             func(childComplexity int) int
 		Duration                func(childComplexity int) int
 		Githash                 func(childComplexity int) int
+		Hidden                  func(childComplexity int) int
 		Id                      func(childComplexity int) int
 		ModuleCodeChanges       func(childComplexity int) int
 		Parameters              func(childComplexity int) int
@@ -1374,6 +1376,7 @@ type MutationResolver interface {
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
 	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
+	SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*model.APIPatch, error)
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
@@ -3760,6 +3763,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SetPatchPriority(childComplexity, args["patchId"].(string), args["priority"].(int)), true
 
+	case "Mutation.setPatchVisibility":
+		if e.complexity.Mutation.SetPatchVisibility == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPatchVisibility_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPatchVisibility(childComplexity, args["patchIds"].([]string), args["hidden"].(bool)), true
+
 	case "Mutation.setTaskPriority":
 		if e.complexity.Mutation.SetTaskPriority == nil {
 			break
@@ -4061,6 +4076,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Githash(childComplexity), true
+
+	case "Patch.hidden":
+		if e.complexity.Patch.Hidden == nil {
+			break
+		}
+
+		return e.complexity.Patch.Hidden(childComplexity), true
 
 	case "Patch.id":
 		if e.complexity.Patch.Id == nil {
@@ -9286,6 +9308,30 @@ func (ec *executionContext) field_Mutation_setPatchPriority_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setPatchVisibility_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["patchIds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchIds"))
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchIds"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["hidden"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hidden"))
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["hidden"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setTaskPriority_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -12693,6 +12739,8 @@ func (ec *executionContext) fieldContext_CommitQueueItem_patch(ctx context.Conte
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -21835,6 +21883,8 @@ func (ec *executionContext) fieldContext_Mutation_enqueuePatch(ctx context.Conte
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -21879,6 +21929,127 @@ func (ec *executionContext) fieldContext_Mutation_enqueuePatch(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_enqueuePatch_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setPatchVisibility(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPatchVisibility(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPatchVisibility(rctx, fc.Args["patchIds"].([]string), fc.Args["hidden"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIPatch)
+	fc.Result = res
+	return ec.marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Patch_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_Patch_activated(ctx, field)
+			case "alias":
+				return ec.fieldContext_Patch_alias(ctx, field)
+			case "author":
+				return ec.fieldContext_Patch_author(ctx, field)
+			case "authorDisplayName":
+				return ec.fieldContext_Patch_authorDisplayName(ctx, field)
+			case "baseTaskStatuses":
+				return ec.fieldContext_Patch_baseTaskStatuses(ctx, field)
+			case "builds":
+				return ec.fieldContext_Patch_builds(ctx, field)
+			case "canEnqueueToCommitQueue":
+				return ec.fieldContext_Patch_canEnqueueToCommitQueue(ctx, field)
+			case "childPatchAliases":
+				return ec.fieldContext_Patch_childPatchAliases(ctx, field)
+			case "childPatches":
+				return ec.fieldContext_Patch_childPatches(ctx, field)
+			case "commitQueuePosition":
+				return ec.fieldContext_Patch_commitQueuePosition(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "description":
+				return ec.fieldContext_Patch_description(ctx, field)
+			case "duration":
+				return ec.fieldContext_Patch_duration(ctx, field)
+			case "githash":
+				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "moduleCodeChanges":
+				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Patch_parameters(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Patch_patchNumber(ctx, field)
+			case "patchTriggerAliases":
+				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
+			case "project":
+				return ec.fieldContext_Patch_project(ctx, field)
+			case "projectID":
+				return ec.fieldContext_Patch_projectID(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
+			case "status":
+				return ec.fieldContext_Patch_status(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_Patch_taskCount(ctx, field)
+			case "tasks":
+				return ec.fieldContext_Patch_tasks(ctx, field)
+			case "taskStatuses":
+				return ec.fieldContext_Patch_taskStatuses(ctx, field)
+			case "time":
+				return ec.fieldContext_Patch_time(ctx, field)
+			case "variants":
+				return ec.fieldContext_Patch_variants(ctx, field)
+			case "variantsTasks":
+				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "versionFull":
+				return ec.fieldContext_Patch_versionFull(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPatchVisibility_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -21954,6 +22125,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -27081,6 +27254,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(ctx context.Context,
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -27334,6 +27509,50 @@ func (ec *executionContext) fieldContext_Patch_githash(ctx context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_hidden(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Patch_hidden(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Hidden, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Patch_hidden(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -28977,6 +29196,8 @@ func (ec *executionContext) fieldContext_Patches_patches(ctx context.Context, fi
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -36432,6 +36653,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -45733,6 +45956,8 @@ func (ec *executionContext) fieldContext_Task_patch(ctx context.Context, field g
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -54220,6 +54445,8 @@ func (ec *executionContext) fieldContext_Version_patch(ctx context.Context, fiel
 				return ec.fieldContext_Patch_duration(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -64936,6 +65163,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "setPatchVisibility":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPatchVisibility(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "schedulePatch":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -65600,6 +65836,13 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 		case "githash":
 
 			out.Values[i] = ec._Patch_githash(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "hidden":
+
+			out.Values[i] = ec._Patch_hidden(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)

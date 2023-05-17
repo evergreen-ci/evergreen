@@ -1,0 +1,17 @@
+{
+    "tests": [
+        {
+            "query_file": "set_patch_visibility.graphql",
+            "result": {
+                "data": {
+                    "setPatchVisibility": [
+                        {
+                            "id": "5e4ff3abe3c3317e352062e4",
+                            "hidden": true
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
