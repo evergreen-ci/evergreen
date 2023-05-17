@@ -791,7 +791,7 @@ func (p *Patch) CollectivePatchStatus() (string, error) {
 		allStatuses = append(allStatuses, cp.Status)
 	}
 
-	return GetCollectivePatchStatusFromStatuses(allStatuses), nil
+	return GetCollectiveStatusFromPatchStatuses(allStatuses), nil
 }
 
 func (p *Patch) IsParent() bool {
@@ -1179,9 +1179,9 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-// GetCollectivePatchStatusFromStatuses answers the question of what the patch status should be
+// GetCollectiveStatusFromPatchStatuses answers the question of what the patch status should be
 // when the patch status and the status of its children are different, given a list of statuses.
-func GetCollectivePatchStatusFromStatuses(statuses []string) string {
+func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false
@@ -1197,7 +1197,7 @@ func GetCollectivePatchStatusFromStatuses(statuses []string) string {
 			hasFailure = true
 		case evergreen.PatchSucceeded:
 			hasSuccess = true
-		case evergreen.VersionAborted:
+		case evergreen.PatchAborted:
 			// Note that we only consider this if the passed in statuses considered display status handling.
 			hasAborted = true
 		}
@@ -1206,7 +1206,7 @@ func GetCollectivePatchStatusFromStatuses(statuses []string) string {
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
 		grip.Critical(message.Fields{
 			"message":  "An unknown patch status was found",
-			"cause":    "Programmer error: new statuses should be added to GetCollectivePatchStatusFromStatuses().",
+			"cause":    "Programmer error: new statuses should be added to GetCollectiveStatusFromPatchStatuses().",
 			"statuses": statuses,
 		})
 	}
@@ -1218,7 +1218,7 @@ func GetCollectivePatchStatusFromStatuses(statuses []string) string {
 	} else if hasFailure {
 		return evergreen.PatchFailed
 	} else if hasAborted {
-		return evergreen.VersionAborted
+		return evergreen.PatchAborted
 	} else if hasSuccess {
 		return evergreen.PatchSucceeded
 	}

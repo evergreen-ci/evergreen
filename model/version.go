@@ -170,7 +170,7 @@ func (v *Version) GetDisplayStatus() (string, error) {
 			allStatuses = append(allStatuses, cpStatus)
 		}
 	}
-	return evergreen.PatchStatusToVersionStatus(patch.GetCollectivePatchStatusFromStatuses(allStatuses))
+	return evergreen.PatchStatusToVersionStatus(patch.GetCollectiveStatusFromPatchStatuses(allStatuses))
 }
 
 // SetActivated sets version activated field to specified boolean.
