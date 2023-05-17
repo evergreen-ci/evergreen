@@ -58,8 +58,9 @@ func TestGetTraceFiles(t *testing.T) {
 	t.Run("PopulatedTraceDirectory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		require.NoError(t, os.MkdirAll(path.Join(tmpDir, traceSuffix), os.ModePerm))
-		_, err := os.Create(path.Join(tmpDir, traceSuffix, "trace0.json"))
+		f, err := os.Create(path.Join(tmpDir, traceSuffix, "trace0.json"))
 		require.NoError(t, err)
+		require.NoError(t, f.Close())
 
 		files, err := getTraceFiles(tmpDir)
 		assert.NoError(t, err)
@@ -70,10 +71,13 @@ func TestGetTraceFiles(t *testing.T) {
 	t.Run("TraceDirContainsDirectory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		require.NoError(t, os.MkdirAll(path.Join(tmpDir, traceSuffix, "nested_directory"), os.ModePerm))
-		_, err := os.Create(path.Join(tmpDir, traceSuffix, "trace0.json"))
+		f, err := os.Create(path.Join(tmpDir, traceSuffix, "trace0.json"))
 		require.NoError(t, err)
-		_, err = os.Create(path.Join(tmpDir, traceSuffix, "nested_directory", "trace1.json"))
+		require.NoError(t, f.Close())
+
+		f, err = os.Create(path.Join(tmpDir, traceSuffix, "nested_directory", "trace1.json"))
 		require.NoError(t, err)
+		require.NoError(t, f.Close())
 
 		files, err := getTraceFiles(tmpDir)
 		assert.NoError(t, err)
