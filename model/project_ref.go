@@ -114,6 +114,9 @@ type ProjectRef struct {
 	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions,omitempty" yaml:"container_size_definitions,omitempty"`
 	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
+	// Filters settings
+	ParsleyFilters []ParsleyFilter `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
+
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
@@ -125,10 +128,17 @@ type ProjectRef struct {
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
 }
 
+type ParsleyFilter struct {
+	Expression    string `bson:"expression" json:"expression"`
+	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
+	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`
+}
+
 type ProjectBanner struct {
 	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
 	Text  string                `bson:"text" json:"text"`
 }
+
 type ExternalLink struct {
 	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
 	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
