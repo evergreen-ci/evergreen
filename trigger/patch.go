@@ -196,7 +196,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	collectiveStatus := t.data.Status
 	if t.patch.IsParent() {
 		var err error
-		collectiveStatus, err = t.patch.CollectivePatchStatus()
+		collectiveStatus, err = t.patch.CollectiveStatus()
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting collective patch status for patch '%s'", t.patch.Id)
 		}

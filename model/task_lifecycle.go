@@ -1482,7 +1482,7 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 		return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
 	}
 	if isDone {
-		collectiveStatus, err := p.CollectivePatchStatus()
+		collectiveStatus, err := p.CollectiveStatus()
 		if err != nil {
 			return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 		}
@@ -1552,7 +1552,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
 		}
 		if isDone {
-			collectiveStatus, err := p.CollectivePatchStatus()
+			collectiveStatus, err := p.CollectiveStatus()
 			if err != nil {
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}

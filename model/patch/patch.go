@@ -765,9 +765,10 @@ func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }
 
-// CollectivePatchStatus returns the aggregate status of all tasks and child patches.
+// CollectiveStatus returns the aggregate status of all tasks and child patches.
 // If this is meant for display on the UI, we should also consider the display status aborted.
-func (p *Patch) CollectivePatchStatus() (string, error) {
+// NOTE that the result of this should not be compared against version statuses, as those can be different.
+func (p *Patch) CollectiveStatus() (string, error) {
 	parentPatch := p
 	if p.IsChild() {
 		var err error

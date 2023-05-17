@@ -120,7 +120,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		}
 
 		// Look at collective status because we don't know whether the last patch to finish in the version was a child or a parent.
-		patchStatus, err := p.CollectivePatchStatus()
+		patchStatus, err := p.CollectiveStatus()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
 		}
