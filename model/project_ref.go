@@ -123,7 +123,17 @@ type ProjectRef struct {
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
+
+	// Filter/view settings
+	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
 }
+
+type ProjectHealthView string
+
+const (
+	ProjectHealthViewFailed ProjectHealthView = "failed"
+	ProjectHealthViewAll    ProjectHealthView = "all"
+)
 
 type ProjectBanner struct {
 	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
@@ -317,6 +327,7 @@ var (
 	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 	projectRefBannerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
+	projectRefProjectHealthViewKey        = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")

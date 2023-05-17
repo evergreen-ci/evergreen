@@ -18,6 +18,7 @@
       prTestingEnabled
       stepbackDisabled
       batchTime
+      projectHealthView
 
       gitTagAuthorizedUsers
       gitTagAuthorizedTeams
