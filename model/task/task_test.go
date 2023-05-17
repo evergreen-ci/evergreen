@@ -2764,11 +2764,12 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, et1.Insert())
 	et2 := Task{
-		Id:        "et2",
-		Status:    evergreen.TaskSucceeded,
-		Execution: 2,
-		Aborted:   true,
-		Version:   "v",
+		Id:                    "et2",
+		Status:                evergreen.TaskSucceeded,
+		Execution:             2,
+		LatestParentExecution: 2,
+		Aborted:               true,
+		Version:               "v",
 	}
 	assert.NoError(t, et2.Insert())
 	t1 := Task{
