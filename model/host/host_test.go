@@ -2529,31 +2529,31 @@ func TestIsIdleParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	billingTimeRecent := time.Now().Add(-5 * time.Minute)
-	billingTimeOld := time.Now().Add(-1 * time.Hour)
+	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
+	provisionTimeOld := time.Now().Add(-1 * time.Hour)
 
 	host1 := &Host{
-		Id:               "host1",
-		Status:           evergreen.HostRunning,
-		BillingStartTime: billingTimeOld,
+		Id:            "host1",
+		Status:        evergreen.HostRunning,
+		ProvisionTime: provisionTimeOld,
 	}
 	host2 := &Host{
-		Id:               "host2",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeRecent,
+		Id:            "host2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeRecent,
 	}
 	host3 := &Host{
-		Id:               "host3",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeOld,
+		Id:            "host3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
 	}
 	host4 := &Host{
-		Id:               "host4",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeOld,
+		Id:            "host4",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
 	}
 	host5 := &Host{
 		Id:       "host5",
