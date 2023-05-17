@@ -784,6 +784,8 @@ func (p *Patch) IsChild() bool {
 }
 
 // CollectiveStatus returns the aggregate status of all tasks and child patches.
+// If this is meant for display on the UI, we should also consider the display status aborted.
+// NOTE that the result of this should not be compared against version statuses, as those can be different.
 func (p *Patch) CollectiveStatus() (string, error) {
 	parentPatch := p
 	if p.IsChild() {
@@ -808,7 +810,7 @@ func (p *Patch) CollectiveStatus() (string, error) {
 		allStatuses = append(allStatuses, cp.Status)
 	}
 
-	return GetCollectiveStatus(allStatuses), nil
+	return GetCollectiveStatusFromPatchStatuses(allStatuses), nil
 }
 
 func (p *Patch) IsParent() bool {
@@ -1196,21 +1198,9 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-// CollectiveStatus gets the collective status for a patch given by its ID.
-func CollectiveStatus(patchId string) (string, error) {
-	p, err := FindOneId(patchId)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting patch for version '%s'", patchId)
-	}
-	if p == nil {
-		return "", errors.Errorf("no patch found for version '%s'", patchId)
-	}
-	return p.CollectiveStatus()
-}
-
-// GetCollectiveStatus answers the question of what the patch status should be
-// when the patch status and the status of its children are different
-func GetCollectiveStatus(statuses []string) string {
+// GetCollectiveStatusFromPatchStatuses answers the question of what the patch status should be
+// when the patch status and the status of its children are different, given a list of statuses.
+func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false
@@ -1227,6 +1217,7 @@ func GetCollectiveStatus(statuses []string) string {
 		case evergreen.PatchSucceeded:
 			hasSuccess = true
 		case evergreen.PatchAborted:
+			// Note that we only consider this if the passed in statuses considered display status handling.
 			hasAborted = true
 		}
 	}
@@ -1234,7 +1225,7 @@ func GetCollectiveStatus(statuses []string) string {
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
 		grip.Critical(message.Fields{
 			"message":  "An unknown patch status was found",
-			"cause":    "Programmer error: new statuses should be added to patch.getCollectiveStatus().",
+			"cause":    "Programmer error: new statuses should be added to GetCollectiveStatusFromPatchStatuses().",
 			"statuses": statuses,
 		})
 	}

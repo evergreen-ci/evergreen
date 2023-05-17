@@ -108,21 +108,34 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
 
-	status := t.data.Status
+	versionStatus := t.data.Status
 	if evergreen.IsPatchRequester(t.version.Requester) {
 		var err error
+		p, err := patch.FindOneId(t.version.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting patch for version '%s'", t.version.Id)
+		}
+		if p == nil {
+			return nil, errors.Errorf("no patch found for version '%s'", t.version.Id)
+		}
+
 		// Look at collective status because we don't know whether the last patch to finish in the version was a child or a parent.
-		status, err = patch.CollectiveStatus(t.version.Id)
+		patchStatus, err := p.CollectiveStatus()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
 		}
-		grip.NoticeWhen(status != t.data.Status, message.Fields{
-			"message":                 "patch's current collective status does not match the version event data's status",
-			"patch_collective_status": status,
-			"version_event_status":    t.data.Status,
-			"patch_and_version_id":    t.version.Id,
-			"version_status":          t.version.Status,
-			"subscription":            sub.ID,
+		versionStatus, err = evergreen.PatchStatusToVersionStatus(patchStatus)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting version status for collective status '%s'", patchStatus)
+		}
+		grip.NoticeWhen(versionStatus != t.data.Status, message.Fields{
+			"message":                   "patch's current collective status does not match the version event data's status",
+			"patch_collective_status":   patchStatus,
+			"version_collective_status": versionStatus,
+			"version_event_status":      t.data.Status,
+			"patch_and_version_id":      t.version.Id,
+			"version_status":            t.version.Status,
+			"subscription":              sub.ID,
 		})
 	}
 
@@ -139,7 +152,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 			hasPatch:  evergreen.IsPatchRequester(t.version.Requester),
 			isChild:   false,
 		}),
-		PastTenseStatus:   status,
+		PastTenseStatus:   versionStatus,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
 		githubContext:     "evergreen",
@@ -174,14 +187,6 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
 	}
-	grip.DebugWhen(slackColor == evergreenFailColor && data.PastTenseStatus == "succeeded", message.Fields{
-		"ticket":              "EVG-19227",
-		"message":             "encountered failing slack color with successful status",
-		"past_tense_override": pastTenseOverride,
-		"version":             t.version.Id,
-		"subscription_id":     sub.ID,
-		"event_id":            t.event.ID,
-	})
 
 	return &data, nil
 }
