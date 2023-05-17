@@ -1,0 +1,15 @@
+{
+  task(taskId: "wuzzup", execution: 0) {
+    tests(opts: {testName: "apple"}) {
+      testResults {
+        logs {
+          url
+          urlRaw
+          urlLobster
+          urlParsley
+        }
+        id
+      } 
+    }
+  }
+}
