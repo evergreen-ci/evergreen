@@ -326,11 +326,6 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 }
 
 func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
-	provider := evergreen.ProviderNameEc2OnDemand
-	if createHost.Spot {
-		provider = evergreen.ProviderNameEc2Spot
-	}
-
 	if createHost.Region == "" {
 		createHost.Region = evergreen.DefaultEC2Region
 	}
@@ -365,7 +360,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	d.BootstrapSettings.Method = distro.BootstrapMethodNone
 
 	// set provider
-	d.Provider = provider
+	d.Provider = evergreen.ProviderNameEc2OnDemand
 
 	if publicKey != "" {
 		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, d.GetAuthorizedKeysFile())

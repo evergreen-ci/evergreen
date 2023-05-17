@@ -409,13 +409,6 @@ Evergreen - Distros
                 <div class="icon fa fa-warning distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">Instance
                   type is required</div>
               </div>
-              <div ng-show="activeDistro.provider.startsWith('ec2-spot')">
-                <label class="distro-label">Bid Price:</label>
-                <input ng-readonly="readOnly" ng-required="isDefaultRegion() && activeDistro.provider.startsWith('ec2-spot')" name="bidPrice"
-                  type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
-                <div class="icon fa fa-warning distro-error" ng-show="form.bidPrice.$dirty && form.bidPrice.$error.required || form.bidPrice.$invalid">Numeric
-                  bid price is required</div>
-              </div>
               <div>
                 <label class="distro-label">Key Name:</label>
                 <input type="text" ng-readonly="readOnly" name="keyName"
@@ -423,10 +416,6 @@ Evergreen - Distros
                   ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">EC2
                   key name is required</div>
-              </div>
-              <div ng-show="activeDistro.provider === 'ec2-spot'">
-                <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
-                  name="fallback" ng-model="activeDistro.settings.fallback">Fallback to EC2 On-Demand in the case of insufficient capacity </label> <br>
               </div>
               <div ng-show="activeDistro.provider === 'ec2-fleet'">
                 <br>

@@ -559,7 +559,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer tskCancel()
 
 	tskCtx = contextWithTaskAttributes(tskCtx, taskConfig.TaskAttributes())
-
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
 	defer span.End()
 
@@ -568,6 +567,10 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	if shutdown != nil {
 		defer shutdown(ctx)
 	}
+
+	defer func() {
+		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, taskConfig.WorkDir), "uploading traces"))
+	}()
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 

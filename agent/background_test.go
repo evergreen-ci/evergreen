@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -177,8 +178,9 @@ early_termination:
 		Task: &task.Task{
 			Id: "task_id",
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 
 	alwaysTrue := func() bool {

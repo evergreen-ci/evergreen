@@ -147,44 +147,6 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
 
-	// spawn a spot evergreen distro
-	c = apimodels.CreateHost{
-		Distro:              "archlinux-test",
-		CloudProvider:       "ec2",
-		NumHosts:            "1",
-		Scope:               "task",
-		SetupTimeoutSecs:    600,
-		TeardownTimeoutSecs: 21600,
-		Spot:                true,
-		KeyName:             "mock_key",
-	}
-	handler.createHost = c
-	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
-	assert.NoError(err)
-	assert.NotNil(h)
-	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
-	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
-
-	ec2Settings = &cloud.EC2ProviderSettings{}
-	ec2Settings2 = &cloud.EC2ProviderSettings{}
-	require.Len(h.Distro.ProviderSettingsList, 1)
-	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
-	assert.Equal("ami-123456", ec2Settings.AMI)
-	assert.Equal("mock_key", ec2Settings.KeyName)
-	assert.Equal(true, ec2Settings.IsVpc)
-
-	h, err = host.FindOneByIdOrTag(h.Id)
-	assert.NoError(err)
-	require.NotNil(h)
-	ec2Settings2 = &cloud.EC2ProviderSettings{}
-	require.Len(h.Distro.ProviderSettingsList, 1)
-	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
-	assert.Equal("ami-123456", ec2Settings2.AMI)
-	assert.Equal("mock_key", ec2Settings2.KeyName)
-	assert.Equal(true, ec2Settings2.IsVpc)
-
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
@@ -193,7 +155,6 @@ func TestMakeIntentHost(t *testing.T) {
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
-		Spot:                true,
 		AWSKeyID:            "my_aws_key",
 		AWSSecret:           "my_secret_key",
 		Subnet:              "subnet-123456",
@@ -203,8 +164,6 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -233,7 +192,6 @@ func TestMakeIntentHost(t *testing.T) {
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
-		Spot:                true,
 		AWSKeyID:            "my_aws_key",
 		AWSSecret:           "my_secret_key",
 		InstanceType:        "t1.micro",
@@ -245,8 +203,6 @@ func TestMakeIntentHost(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(h)
 	assert.Equal("", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
