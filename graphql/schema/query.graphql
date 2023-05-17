@@ -70,17 +70,6 @@ type Query {
   # task
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
-  taskTests(
-    taskId: String!
-    execution: Int
-    sortCategory: TestSortCategory = TEST_NAME
-    sortDirection: SortDirection = ASC
-    page: Int = 0
-    limit: Int = 0
-    testName: String = ""
-    statuses: [String!]! = []
-    groupId: String = ""
-  ): TaskTestResult!
   taskTestSample(
     tasks: [String!]!
     filters: [TestFilter!]!

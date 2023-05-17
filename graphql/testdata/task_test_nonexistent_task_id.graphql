@@ -1,0 +1,15 @@
+{
+  task(taskId: "THIS-TASK-DOES-NOT-EXIST-!!!!", execution: 0) {
+    tests(opts: null) {
+      testResults {
+        logs {
+          url
+          urlRaw
+          urlLobster
+          urlParsley
+        }
+        id
+      } 
+    }
+  }
+}
