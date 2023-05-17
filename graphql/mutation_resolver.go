@@ -230,19 +230,19 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 	for _, patchID := range patchIds {
 		patch, err := patch.FindOneId(patchID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchID, err.Error()))
 		}
 		if patch == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Patch `%s` not found", patchID))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Patch '%s' not found", patchID))
 		}
 		err = patch.SetPatchVisibility(hidden)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch `%s` visibility: %s", patchID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", patchID, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(*patch, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch `%s` API model: %s", patchID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch '%s' API model: %s", patchID, err.Error()))
 		}
 		updatedPatches = append(updatedPatches, &apiPatch)
 	}
@@ -254,15 +254,15 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := model.VersionFindOneId(patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchID, err.Error()))
 	}
 	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
 	if err != nil {
-		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
+		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch '%s': %s", patchID, err.Error()))
 	}
 	scheduledPatch, err := data.FindPatchById(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch `%s`: %s", patchID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch '%s': %s", patchID, err))
 	}
 	return scheduledPatch, nil
 }
