@@ -1,0 +1,9 @@
+{
+  task(taskId: "wuzzup", execution: 0) {
+    tests(opts: null) {
+      testResults {
+        testFile
+      }
+    }
+  }
+}

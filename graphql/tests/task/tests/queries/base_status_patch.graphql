@@ -1,0 +1,12 @@
+{
+  task(taskId: "patch_task", execution: 0) {
+    id
+    execution
+    tests(opts: {limit: 1}) {
+      testResults {
+        status
+        baseStatus
+      }
+    }
+  }
+}
