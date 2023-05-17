@@ -2427,25 +2427,13 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 			}
 		}
 		if len(execTaskIds) > 0 {
-			// TODO (EVG-17508): Replace call with non-backwards compatible call
-			// Backwards compatibility call + LPE setting for all tasks
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
 				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
 				bson.A{ // Pipeline
-					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
-						LatestParentExecutionKey: bson.M{
-							"$cond": bson.A{
-								bson.M{"$not": bson.A{ // !exists(LPE)
-									"$" + LatestParentExecutionKey,
-								}},
-								bson.M{"$add": bson.A{ // execution + 1
-									"$" + ExecutionKey, 1,
-								}},
-								bson.M{"$add": bson.A{ // LPE + 1
-									"$" + LatestParentExecutionKey, 1,
-								}},
-							},
-						},
+					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
+						LatestParentExecutionKey: bson.M{"$add": bson.A{
+							"$" + LatestParentExecutionKey, 1,
+						}},
 					}},
 				})
 
