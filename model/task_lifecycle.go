@@ -1178,6 +1178,8 @@ type buildStatus struct {
 
 // getBuildStatus returns a string denoting the status of the build and
 // a boolean denoting if all tasks in the build are blocked.
+// kim: TODO: should probably encode the state where there's a mix of
+// unscheduled and finished tasks as started.
 func getBuildStatus(buildTasks []task.Task) buildStatus {
 	// Check if no tasks have started and if all tasks are blocked.
 	noStartedTasks := true
@@ -1214,7 +1216,15 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 		if t.Status == evergreen.TaskStarted {
 			return buildStatus{status: evergreen.BuildStarted}
 		}
-		if t.Activated && !t.Blocked() && !t.IsFinished() {
+		// if t.Activated && !t.Blocked() && !t.IsFinished() {
+		// kim: TODO: may have to see how this interacts with disable. Disable
+		// would have activate == false until explicitly enabled
+		if !t.Blocked() && !t.IsFinished() {
+			// A build is not finished until all of its tasks are either blocked
+			// or finished running, regardless of whether it's activated. This
+			// is because it's ambiguous if the build really succeeded/failed
+			// when some of its tasks are inactive. The one exception is
+			// disabled tasks, which can't run until the user enables it.
 			return buildStatus{status: evergreen.BuildStarted}
 		}
 	}
@@ -1228,6 +1238,12 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 	return buildStatus{status: evergreen.BuildSucceeded}
 }
 
+// kim: NOTE: will probably have to change this to ensure that even if the build
+// is finished, it gets a pending state if it has at least one unfinished but
+// scheduled task.
+// updateBuildGithubStatus updates the GitHub check status for a build. If the
+// build has no GitHub checks, then it is a no-op. Note that this is for GitHub
+// checks, which are *not* the same as GitHub PR statuses.
 func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	githubStatusTasks := make([]task.Task, 0, len(buildTasks))
 	for _, t := range buildTasks {
@@ -1284,6 +1300,7 @@ func checkUpdateBuildPRStatusPending(b *build.Build) error {
 
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all of the build's tasks become blocked.
+// kim: TODO: likely need to put fix somewhere in here.
 func updateBuildStatus(b *build.Build) (bool, error) {
 	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey)
 	if err != nil {
@@ -1291,6 +1308,7 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 	}
 
 	buildStatus := getBuildStatus(buildTasks)
+	// pp.Println("build status:", b.Id, buildStatus)
 	// If all the tasks are unscheduled, set active to false
 	if buildStatus.allTasksUnscheduled {
 		if err = b.SetActivated(false); err != nil {
@@ -1357,6 +1375,7 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 	return true, nil
 }
 
+// kim: NOTE: may have to change this logic to deal with highly ambiguous state.
 func getVersionStatus(builds []build.Build) string {
 	// Check if no builds have started in the version.
 	noStartedBuilds := true
@@ -1372,6 +1391,8 @@ func getVersionStatus(builds []build.Build) string {
 
 	// Check if builds are started but not finished.
 	for _, b := range builds {
+		// kim: TODO: may have to remove build activated state here. Not sure
+		// what this even does??? What the point...
 		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
 			return evergreen.VersionStarted
 		}
@@ -1387,6 +1408,12 @@ func getVersionStatus(builds []build.Build) string {
 	return evergreen.VersionSucceeded
 }
 
+// kim: TODO: possibly refuse to send status update (or update it to pending)
+// when the build status is finished but ambiguous (i.e. not all scheduled tasks
+// finished).
+// updateVersionGithubStatus updates the GitHub check status for a version. If
+// the version has no GitHub checks, then it is a no-op. Note that this is for
+// GitHub check statuses, which are *not* the same as GitHub PR statuses.
 func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	githubStatusBuilds := make([]build.Build, 0, len(builds))
 	for _, b := range builds {
@@ -1408,7 +1435,9 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	return nil
 }
 
-// Update the status of the version based on its constituent builds
+// updateVersionStatus updates the status of the version based on the status of
+// its constituent builds. It assumes that the build statuses have already
+// been updated prior to this.
 func updateVersionStatus(v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
 		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))
@@ -1457,6 +1486,7 @@ func updateVersionStatus(v *Version) (string, error) {
 }
 
 // UpdatePatchStatus updates the status of a patch.
+// kim: NOTE: seems like the patch inherits its status from the version status.
 func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
@@ -1499,6 +1529,7 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 // UpdateBuildAndVersionStatusForTask updates the status of the task's build based on all the tasks in the build
 // and the task's version based on all the builds in the version.
 // Also update build and version Github statuses based on the subset of tasks and builds included in github checks
+// kim: TODO: likely need to put fix somewhere in here.
 func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	taskBuild, err := build.FindOneId(t.BuildId)
 	if err != nil {
@@ -1511,6 +1542,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrapf(err, "updating build '%s' status", taskBuild.Id)
 	}
+	// pp.Println("build status changed?", buildStatusChanged)
 	// If the build status has not changed, then the version and patch statuses must have also not changed.
 	if !buildStatusChanged {
 		return nil
@@ -1575,6 +1607,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
 // builds associated with the given input list of build IDs.
+// kim: TODO: likely need to put fix somewhere in here.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil

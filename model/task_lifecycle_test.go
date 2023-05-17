@@ -34,10 +34,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var (
-	oneMs = time.Millisecond
-)
-
 // checkDisabled checks that the given task is disabled and logs the expected
 // events.
 func checkDisabled(t *testing.T, dbTask *task.Task) {
@@ -522,7 +518,7 @@ func TestSetActiveState(t *testing.T) {
 			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldBeTrue)
-			So(testTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
+			So(testTask.ScheduledTime, ShouldHappenWithin, time.Millisecond, testTime)
 			cq, err := commitqueue.FindOneId("p")
 			assert.NoError(t, err)
 			assert.Len(t, cq.Queue, 1)
@@ -542,10 +538,10 @@ func TestSetActiveState(t *testing.T) {
 				assert.Len(t, cq.Queue, 0)
 				build, err := build.FindOneId(testTask.BuildId)
 				So(err, ShouldBeNil)
-				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				So(build.Status, ShouldEqual, evergreen.BuildStarted)
 				version, err := VersionFindOneId(testTask.Version)
 				So(err, ShouldBeNil)
-				So(version.Status, ShouldEqual, evergreen.VersionFailed)
+				So(version.Status, ShouldEqual, evergreen.VersionStarted)
 			})
 		})
 		Convey("when deactivating an active task as evergreen", func() {
@@ -565,10 +561,10 @@ func TestSetActiveState(t *testing.T) {
 				assert.Len(t, cq.Queue, 0)
 				build, err := build.FindOneId(testTask.BuildId)
 				So(err, ShouldBeNil)
-				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				So(build.Status, ShouldEqual, evergreen.BuildStarted)
 				version, err := VersionFindOneId(testTask.Version)
 				So(err, ShouldBeNil)
-				So(version.Status, ShouldEqual, evergreen.VersionFailed)
+				So(version.Status, ShouldEqual, evergreen.VersionStarted)
 			})
 			Convey("if the task is activated by stepback user, the task should not deactivate", func() {
 				So(SetActiveState(evergreen.StepbackTaskActivator, true, *testTask), ShouldBeNil)
@@ -627,10 +623,10 @@ func TestSetActiveState(t *testing.T) {
 				assert.Len(t, cq.Queue, 0)
 				build, err := build.FindOneId(testTask.BuildId)
 				So(err, ShouldBeNil)
-				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				So(build.Status, ShouldEqual, evergreen.BuildStarted)
 				version, err := VersionFindOneId(testTask.Version)
 				So(err, ShouldBeNil)
-				So(version.Status, ShouldEqual, evergreen.VersionFailed)
+				So(version.Status, ShouldEqual, evergreen.BuildStarted)
 			})
 			Convey("if the task is activated by stepback user, the task should deactivate", func() {
 				So(SetActiveState(evergreen.StepbackTaskActivator, true, *testTask), ShouldBeNil)
@@ -649,10 +645,10 @@ func TestSetActiveState(t *testing.T) {
 				assert.Len(t, cq.Queue, 0)
 				build, err := build.FindOneId(testTask.BuildId)
 				So(err, ShouldBeNil)
-				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				So(build.Status, ShouldEqual, evergreen.BuildStarted)
 				version, err := VersionFindOneId(testTask.Version)
 				So(err, ShouldBeNil)
-				So(version.Status, ShouldEqual, evergreen.VersionFailed)
+				So(version.Status, ShouldEqual, evergreen.VersionStarted)
 			})
 			Convey("if the task is not activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(userName, true, *testTask), ShouldBeNil)
@@ -670,10 +666,10 @@ func TestSetActiveState(t *testing.T) {
 				assert.Len(t, cq.Queue, 0)
 				build, err := build.FindOneId(testTask.BuildId)
 				So(err, ShouldBeNil)
-				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				So(build.Status, ShouldEqual, evergreen.BuildStarted)
 				version, err := VersionFindOneId(testTask.Version)
 				So(err, ShouldBeNil)
-				So(version.Status, ShouldEqual, evergreen.VersionFailed)
+				So(version.Status, ShouldEqual, evergreen.VersionStarted)
 			})
 		})
 	})
@@ -1213,14 +1209,23 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			expectedVersionStatus: evergreen.VersionSucceeded,
 			expectedPatchStatus:   evergreen.PatchSucceeded,
 		},
-		"some unactivated tasks": {
+		"mix of finished and deactivated tasks is started": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskSucceeded, Activated: true},
 				{Status: evergreen.TaskUndispatched, Activated: false},
 			},
-			expectedBuildStatus:   evergreen.BuildSucceeded,
-			expectedVersionStatus: evergreen.VersionSucceeded,
-			expectedPatchStatus:   evergreen.PatchSucceeded,
+			expectedBuildStatus:   evergreen.BuildStarted,
+			expectedVersionStatus: evergreen.VersionStarted,
+			expectedPatchStatus:   evergreen.PatchStarted,
+		},
+		"mix of finished and disabled tasks is started": {
+			tasks: []task.Task{
+				{Status: evergreen.TaskSucceeded, Activated: true},
+				{Status: evergreen.TaskUndispatched, Priority: evergreen.DisabledTaskPriority, Activated: false},
+			},
+			expectedBuildStatus:   evergreen.BuildStarted,
+			expectedVersionStatus: evergreen.VersionStarted,
+			expectedPatchStatus:   evergreen.PatchStarted,
 		},
 		"all blocked tasks": {
 			tasks: []task.Task{
@@ -1441,7 +1446,6 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, events, 1)
 	assert.Equal(t, events[0].EventType, event.VersionGithubCheckFinished)
-
 }
 
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
@@ -1554,13 +1558,22 @@ func TestGetBuildStatus(t *testing.T) {
 	assert.Equal(t, evergreen.BuildStarted, buildStatus.status)
 	assert.Equal(t, false, buildStatus.allTasksBlocked)
 
-	// Unactivated tasks shouldn't prevent the build from completing.
+	// Unactivated tasks should prevent a build from completing.
 	buildTasks = []task.Task{
 		{Status: evergreen.TaskUndispatched, Activated: false},
 		{Status: evergreen.TaskFailed},
 	}
 	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildFailed, buildStatus.status)
+	assert.Equal(t, evergreen.BuildStarted, buildStatus.status)
+	assert.Equal(t, false, buildStatus.allTasksBlocked)
+
+	// Disabled priority tasks should prevent a build from completing.
+	buildTasks = []task.Task{
+		{Status: evergreen.TaskUndispatched, Activated: false, Priority: evergreen.DisabledTaskPriority},
+		{Status: evergreen.TaskFailed},
+	}
+	buildStatus = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildStarted, buildStatus.status)
 	assert.Equal(t, false, buildStatus.allTasksBlocked)
 
 	// Blocked tasks shouldn't prevent the build from completing.
@@ -5283,7 +5296,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(events, 0)
 
-	// a blocked execution task + unblocked unfinshed tasks should still be "started"
+	// a blocked execution task + unblocked unfinished tasks should still be "started"
 	assert.NoError(UpdateDisplayTaskForTask(&task7))
 	dbTask, err = task.FindOne(db.Query(task.ById(blockedDt.Id)))
 	assert.NoError(err)
