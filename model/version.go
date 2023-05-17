@@ -129,50 +129,6 @@ func (v *Version) ActivateAndSetBuildVariants() error {
 	)
 }
 
-// GetDisplayStatus considers both child patch statuses and
-// aborted status, and returns an overall status.
-func (v *Version) GetDisplayStatus() (string, error) {
-	status, err := evergreen.VersionStatusToPatchStatus(v.Status)
-	if err != nil {
-		return "", errors.Wrap(err, "converting a version status")
-	}
-	if v.Aborted {
-		status = evergreen.VersionAborted
-	}
-	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
-		return status, nil
-	}
-
-	p, err := patch.FindOneId(v.Id)
-	if err != nil {
-		return "", errors.Wrapf(err, "fetching patch '%s'", v.Id)
-	}
-	if p == nil {
-		return "", errors.Errorf("patch '%s' doesn't exist", v.Id)
-	}
-
-	allStatuses := []string{status}
-	for _, cp := range p.Triggers.ChildPatches {
-		cpVersion, err := VersionFindOneId(cp)
-		if err != nil {
-			return "", errors.Wrapf(err, "fetching version for patch '%s'", v.Id)
-		}
-		if cpVersion == nil {
-			continue
-		}
-		if cpVersion.Aborted {
-			allStatuses = append(allStatuses, evergreen.VersionAborted)
-		} else {
-			cpStatus, err := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
-			if err != nil {
-				return "", errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
-			}
-			allStatuses = append(allStatuses, cpStatus)
-		}
-	}
-	return evergreen.PatchStatusToVersionStatus(patch.GetCollectiveStatusFromPatchStatuses(allStatuses))
-}
-
 // SetActivated sets version activated field to specified boolean.
 func (v *Version) SetActivated(activated bool) error {
 	if utility.FromBoolPtr(v.Activated) == activated {

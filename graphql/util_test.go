@@ -4,12 +4,17 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -145,4 +150,44 @@ func TestCanScheduleTask(t *testing.T) {
 	}
 	canSchedule = canScheduleTask(unscheduledTask)
 	assert.Equal(t, canSchedule, true)
+}
+
+func TestGetDisplayStatus(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.VersionCollection, patch.Collection))
+	patchId := bson.NewObjectId()
+	childPatchId := bson.NewObjectId()
+	version := &model.Version{
+		Id:        patchId.Hex(),
+		Aborted:   true,
+		Status:    evergreen.VersionSucceeded,
+		Requester: evergreen.PatchVersionRequester,
+	}
+
+	assert.NoError(t, version.Insert())
+
+	p := &patch.Patch{
+		Id:     patchId,
+		Status: evergreen.PatchSucceeded,
+		Triggers: patch.TriggerInfo{
+			ChildPatches: []string{childPatchId.Hex()},
+		},
+	}
+	assert.NoError(t, p.Insert())
+
+	cv := model.Version{
+		Id:      childPatchId.Hex(),
+		Aborted: true,
+		Status:  evergreen.VersionFailed,
+	}
+	assert.NoError(t, cv.Insert())
+
+	cp := &patch.Patch{
+		Id:     childPatchId,
+		Status: evergreen.PatchFailed,
+	}
+	assert.NoError(t, cp.Insert())
+
+	status, err := getDisplayStatus(version)
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.VersionAborted, status)
 }

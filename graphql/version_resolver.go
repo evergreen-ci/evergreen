@@ -225,7 +225,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	if v == nil {
 		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Version '%s' not found", versionId))
 	}
-	return v.GetDisplayStatus()
+	return getDisplayStatus(v)
 }
 
 // TaskCount is the resolver for the taskCount field.
