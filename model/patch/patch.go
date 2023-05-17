@@ -675,7 +675,12 @@ func (p *Patch) SetActivation(activated bool) error {
 	)
 }
 
+// SetPatchVisibility set the patch visibility to the desired state.
+// This is used to hide patches that the user does not need to see.
 func (p *Patch) SetPatchVisibility(hidden bool) error {
+	if p.Hidden == hidden {
+		return nil
+	}
 	p.Hidden = hidden
 	return UpdateOne(
 		bson.M{IdKey: p.Id},

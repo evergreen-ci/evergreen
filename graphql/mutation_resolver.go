@@ -227,22 +227,21 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
 func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
 	updatedPatches := []*restModel.APIPatch{}
-	for _, patchID := range patchIds {
-		patch, err := patch.FindOneId(patchID)
+	patches, err := patch.Find(patch.ByStringIds(patchIds))
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchIds, err.Error()))
+	}
+
+	for _, p := range patches {
+		err = p.SetPatchVisibility(hidden)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchID, err.Error()))
-		}
-		if patch == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Patch '%s' not found", patchID))
-		}
-		err = patch.SetPatchVisibility(hidden)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", patchID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", p.Id, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(*patch, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(*p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch '%s' API model: %s", patchID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch '%s' API model: %s", p.Id, err.Error()))
 		}
 		updatedPatches = append(updatedPatches, &apiPatch)
 	}
