@@ -181,17 +181,12 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 					{
 						StatusKey:    evergreen.HostStarting,
 						bootstrapKey: distro.BootstrapMethodUserData,
-						"$or": []bson.M{
-							// Idle time starts from when a host is first able
-							// to run a task. For user data hosts this is the time
-							// when they first made contact with the app instead
-							// of when they're marked running.
-							{AgentStartTimeKey: bson.M{"$gt": utility.ZeroTime}},
-							// User data hosts have a grace period between creation
-							// and provisioning during which they are not considered
-							// for idle termination to give agents time to start.
-							{CreateTimeKey: bson.M{"$lte": time.Now().Add(-provisioningCutoff)}},
-						},
+
+						// Idle time starts from when a host is first able
+						// to run a task. For user data hosts this is the time
+						// when they first made contact with the app instead
+						// of when they're marked running.
+						AgentStartTimeKey: bson.M{"$gt": utility.ZeroTime},
 					},
 				},
 			},
