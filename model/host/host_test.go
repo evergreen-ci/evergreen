@@ -2052,6 +2052,23 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now(),
 	}
+	// User data host that is not running a task and has not passed the
+	// grace period is idle if its AgentStartTime is set.
+	host11 := &Host{
+		Id: "host11",
+		Distro: distro.Distro{
+			Id: d3,
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodUserData,
+			},
+		},
+		LastCommunicationTime: time.Now().Add(-time.Hour),
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		Status:                evergreen.HostStarting,
+		CreationTime:          time.Now(),
+		AgentStartTime:        time.Now(),
+	}
 
 	require.NoError(host1.Insert())
 	require.NoError(host2.Insert())
@@ -2063,6 +2080,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	require.NoError(host8.Insert())
 	require.NoError(host9.Insert())
 	require.NoError(host10.Insert())
+	require.NoError(host11.Insert())
 
 	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroID()
 	assert.NoError(err)
@@ -2081,8 +2099,9 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 			assert.Equal("host5", distroHosts.IdleHosts[0].Id)
 			assert.Equal("host3", distroHosts.IdleHosts[1].Id)
 		case d3:
-			require.Len(distroHosts.IdleHosts, 1)
+			require.Len(distroHosts.IdleHosts, 2)
 			assert.Equal("host8", distroHosts.IdleHosts[0].Id)
+			assert.Equal("host11", distroHosts.IdleHosts[1].Id)
 		}
 	}
 }

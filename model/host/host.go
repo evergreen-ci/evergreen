@@ -386,21 +386,39 @@ func (h *Host) GetTaskGroupString() string {
 	return fmt.Sprintf("%s_%s_%s_%s", h.RunningTaskGroup, h.RunningTaskBuildVariant, h.RunningTaskProject, h.RunningTaskVersion)
 }
 
-// IdleTime returns how long has this host been idle
+// IdleTime returns how long has this host has been sitting idle.
 func (h *Host) IdleTime() time.Duration {
 	// If the host is currently running a task, it is not idle.
 	if h.RunningTask != "" {
 		return 0
 	}
 
-	// If the host is not running a task then the idle time is the time
-	// elapsed since the last task finished.
-	return h.SinceLastTaskCompletion()
+	// If the host has run a task it's been idle since that task finished running.
+	if h.LastTask != "" {
+		return time.Since(h.LastTaskCompletedTime)
+	}
+
+	// If the host never ran a task it's been idle since the time it was first ready
+	// to run tasks.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+		// User data hosts are ready to run tasks once they've asked for a task.
+		if h.AgentStartTime.After(utility.ZeroTime) {
+			return time.Since(h.AgentStartTime)
+		}
+	} else {
+		// Other provisioning methods don't run tasks until they've been provisioned.
+		if h.Status == evergreen.HostRunning {
+			return time.Since(h.ProvisionTime)
+		}
+	}
+
+	// The host isn't ready to run tasks yet so it's not idle.
+	return 0
 }
 
-// SinceLastTaskCompletion returns the duration since the last task to run on the host
+// WastedComputeTime returns the duration since the last task to run on the host
 // completed or, if no task has run, the host's uptime.
-func (h *Host) SinceLastTaskCompletion() time.Duration {
+func (h *Host) WastedComputeTime() time.Duration {
 	// If the host has run a task, return the time the last task finished running.
 	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
@@ -424,7 +442,7 @@ func (h *Host) TaskStartMessage() message.Fields {
 		"provisioning":         h.Distro.BootstrapSettings.Method,
 		"host_id":              h.Id,
 		"status":               h.Status,
-		"since_last_task_secs": h.SinceLastTaskCompletion().Seconds(),
+		"since_last_task_secs": h.WastedComputeTime().Seconds(),
 		"spawn_host":           h.StartedBy != evergreen.User && !h.SpawnOptions.SpawnedByTask,
 		"task_spawn_host":      h.SpawnOptions.SpawnedByTask,
 		"has_containers":       h.HasContainers,
