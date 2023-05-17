@@ -1216,10 +1216,10 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 		}
 		if !t.Blocked() && !t.IsFinished() {
 			// A build is not finished until all of its tasks are either blocked
-			// or finished running, regardless of whether it's activated. This
-			// is because it's ambiguous if the build really succeeded/failed
-			// when some of its tasks are inactive. The one exception is
-			// disabled tasks, which can't run until the user enables it.
+			// or finished running, regardless of whether it's activated (due to
+			// reasons such as activate: false configuration or setting disabled
+			// priority). This is because it's ambiguous if the build really
+			// succeeded/failed when some of its tasks are inactive.
 			return buildStatus{status: evergreen.BuildStarted}
 		}
 	}
