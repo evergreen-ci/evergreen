@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -223,20 +224,44 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	return newPatch, nil
 }
 
+// SetPatchVisibility is the resolver for the setPatchVisibility field.
+func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
+	updatedPatches := []*restModel.APIPatch{}
+	patches, err := patch.Find(patch.ByStringIds(patchIds))
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patches '%s': %s", patchIds, err.Error()))
+	}
+
+	for _, p := range patches {
+		err = p.SetPatchVisibility(hidden)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", p.Id, err.Error()))
+		}
+		apiPatch := restModel.APIPatch{}
+		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch '%s' API model: %s", p.Id, err.Error()))
+		}
+		updatedPatches = append(updatedPatches, &apiPatch)
+	}
+	return updatedPatches, nil
+}
+
 // SchedulePatch is the resolver for the schedulePatch field.
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := model.VersionFindOneId(patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchID, err.Error()))
 	}
 	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
 	if err != nil {
-		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
+		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch '%s': %s", patchID, err.Error()))
 	}
 	scheduledPatch, err := data.FindPatchById(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch `%s`: %s", patchID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch '%s': %s", patchID, err))
 	}
 	return scheduledPatch, nil
 }

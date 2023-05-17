@@ -152,7 +152,6 @@ type CreateHost struct {
 	IPv6            bool        `mapstructure:"ipv6" json:"ipv6" yaml:"ipv6"`
 	Region          string      `mapstructure:"region" json:"region" yaml:"region" plugin:"expand"`
 	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
-	Spot            bool        `mapstructure:"spot" json:"spot" yaml:"spot"`
 	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
 	UserdataFile    string      `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
 	UserdataCommand string      `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`

@@ -1,7 +1,0 @@
-{
-  taskTests(taskId: "wuzzup", execution: 0) {
-    testResults {
-      testFile
-    }
-  }
-}

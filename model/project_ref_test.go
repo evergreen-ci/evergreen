@@ -407,45 +407,45 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 	prevTime := time.Date(2020, time.June, 9, 0, 0, 0, 0, time.UTC) // Tuesday
 	for name, test := range map[string]func(t *testing.T){
 		"Empty": func(t *testing.T) {
-			_, err := GetActivationTimeWithCron(prevTime, "")
+			_, err := GetNextCronTime(prevTime, "")
 			assert.Error(t, err)
 		},
 		"InvalidBatchSyntax": func(t *testing.T) {
 			batchStr := "* * *"
-			_, err := GetActivationTimeWithCron(prevTime, batchStr)
+			_, err := GetNextCronTime(prevTime, batchStr)
 			assert.Error(t, err)
 		},
 		"EveryHourEveryDay": func(t *testing.T) {
 			batchStr := "0 * * * *"
-			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			res, err := GetNextCronTime(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour), res)
 		},
 		"SpecifyDOW": func(t *testing.T) {
 			batchStr := "0 0 ? * MON,WED,FRI"
-			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			res, err := GetNextCronTime(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour*24), res) // i.e. Wednesday
 
-			newRes, err := GetActivationTimeWithCron(res, batchStr) // i.e. Friday
+			newRes, err := GetNextCronTime(res, batchStr) // i.e. Friday
 			assert.NoError(t, err)
 			assert.Equal(t, res.Add(time.Hour*48), newRes)
 		},
 		"1and15thOfTheMonth": func(t *testing.T) {
 			batchStr := "0 0 1,15 *"
-			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			res, err := GetNextCronTime(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour*24*6), res)
 		},
 		"Descriptor": func(t *testing.T) {
 			batchStr := "@daily"
-			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			res, err := GetNextCronTime(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour*24), res)
 		},
 		"Interval": func(t *testing.T) {
 			batchStr := "@every 2h"
-			_, err := GetActivationTimeWithCron(prevTime, batchStr)
+			_, err := GetNextCronTime(prevTime, batchStr)
 			assert.Error(t, err)
 		},
 	} {
@@ -2445,21 +2445,21 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			p := ProjectRef{
 				Id: "proj",
 				PeriodicBuilds: []PeriodicBuildDefinition{
-					{ID: "1", NextRunTime: now},
-					{ID: "2", NextRunTime: later},
+					{ID: "0", NextRunTime: now},
+					{ID: "1", NextRunTime: later, IntervalHours: 9},
 				},
 				RepoRefId: "repo",
 			}
 			repoRef := RepoRef{ProjectRef{
 				Id: "repo",
 				PeriodicBuilds: []PeriodicBuildDefinition{
-					{ID: "2", NextRunTime: later},
+					{ID: "1", NextRunTime: later},
 				},
 			}}
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
 
-			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
+			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[1]))
 			dbProject, err := FindBranchProjectRef(p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
@@ -2481,12 +2481,12 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			repoRef := RepoRef{ProjectRef{
 				Id: "repo",
 				PeriodicBuilds: []PeriodicBuildDefinition{
-					{ID: "2", NextRunTime: later},
+					{ID: "0", NextRunTime: later, IntervalHours: 9},
 				},
 			}}
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
-			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
+			assert.NoError(UpdateNextPeriodicBuild("proj", &repoRef.PeriodicBuilds[0]))
 
 			// Repo is updated because the branch project doesn't have any periodic build override defined.
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
@@ -2503,19 +2503,56 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			repoRef := RepoRef{ProjectRef{
 				Id: "repo",
 				PeriodicBuilds: []PeriodicBuildDefinition{
-					{ID: "2", NextRunTime: later},
+					{ID: "0", NextRunTime: later, IntervalHours: 9},
 				},
 			}}
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
 			// Should error because definition isn't relevant for this project, since
 			// we ignore repo definitions when the project has any override defined.
-			assert.Error(UpdateNextPeriodicBuild("proj", "2", muchLater))
+			assert.Error(UpdateNextPeriodicBuild("proj", &repoRef.PeriodicBuilds[0]))
 
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
 			assert.NoError(err)
 			assert.NotNil(dbRepo)
 			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
+		},
+		"updateProjectWithCron": func(t *testing.T) {
+			nextRunTime := time.Date(2022, 12, 12, 0, 0, 0, 0, time.UTC)
+			nextDay := nextRunTime.Add(24 * time.Hour)
+			laterRunTime := nextRunTime.Add(12 * time.Hour)
+			dailyCron := "0 0 * * *"
+			p := ProjectRef{
+				Id: "proj",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "0", NextRunTime: nextRunTime, Cron: dailyCron},
+					{ID: "1", NextRunTime: laterRunTime, Cron: dailyCron},
+				},
+				RepoRefId: "repo",
+			}
+			repoRef := RepoRef{ProjectRef{
+				Id: "repo",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "1", NextRunTime: later},
+				},
+			}}
+			assert.NoError(p.Insert())
+			assert.NoError(repoRef.Upsert())
+
+			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[0]))
+			dbProject, err := FindBranchProjectRef(p.Id)
+			assert.NoError(err)
+			require.NotNil(dbProject)
+			assert.True(nextDay.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
+			assert.True(laterRunTime.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
+
+			// Even with a different runtime we get the same result, since we're using a cron.
+			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[1]))
+			dbProject, err = FindBranchProjectRef(p.Id)
+			assert.NoError(err)
+			require.NotNil(dbProject)
+			assert.True(nextDay.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
+
 		},
 	} {
 		assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
@@ -2961,4 +2998,18 @@ func TestProjectCanDispatchTask(t *testing.T) {
 		assert.False(t, canDispatch)
 		assert.NotZero(t, reason)
 	})
+}
+
+func TestGetNextCronTime(t *testing.T) {
+	curTime := time.Date(2022, 12, 1, 0, 0, 0, 0, time.Local)
+	cron := "0 * * * *"
+	nextTime, err := GetNextCronTime(curTime, cron)
+	assert.NoError(t, err)
+	assert.NotEqual(t, nextTime, curTime)
+	assert.Equal(t, nextTime, curTime.Add(time.Hour))
+
+	// verify that a weekday cron can be parsed
+	weekdayCron := "0 0 * * 1-5"
+	_, err = GetNextCronTime(curTime, weekdayCron)
+	assert.NoError(t, err)
 }

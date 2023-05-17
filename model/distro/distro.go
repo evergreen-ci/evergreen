@@ -493,7 +493,7 @@ func (d *Distro) GetImageID() (string, error) {
 	key := ""
 
 	switch d.Provider {
-	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Fleet:
+	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Fleet:
 		key = "ami"
 	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
 		key = "image_url"

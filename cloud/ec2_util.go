@@ -26,14 +26,13 @@ import (
 )
 
 const (
-	EC2ErrorNotFound         = "InvalidInstanceID.NotFound"
-	EC2DuplicateKeyPair      = "InvalidKeyPair.Duplicate"
-	EC2InsufficientCapacity  = "InsufficientInstanceCapacity"
-	EC2UnfulfillableCapacity = "UnfulfillableCapacity"
-	EC2InvalidParam          = "InvalidParameterValue"
-	EC2VolumeNotFound        = "InvalidVolume.NotFound"
-	EC2VolumeResizeRate      = "VolumeModificationRateExceeded"
-	ec2TemplateNameExists    = "InvalidLaunchTemplateName.AlreadyExistsException"
+	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
+	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
+	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
+	EC2InvalidParam         = "InvalidParameterValue"
+	EC2VolumeNotFound       = "InvalidVolume.NotFound"
+	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
+	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 )
 
 var (
@@ -66,11 +65,6 @@ var (
 	SecurityGroupsKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroupIDs")
 	KeyNameKey        = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
 	MountPointsKey    = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
-)
-
-var (
-	// bson fields for the EC2SpotSettings struct
-	BidPriceKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "BidPrice")
 )
 
 var (
@@ -158,10 +152,6 @@ func makeTags(intentHost *host.Host) []host.Tag {
 
 	if intentHost.UserHost {
 		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
-	}
-
-	if isHostSpot(intentHost) {
-		systemTags = append(systemTags, host.Tag{Key: "spot", Value: "true", CanBeModified: false})
 	}
 
 	// Add Evergreen-generated tags to host object

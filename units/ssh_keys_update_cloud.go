@@ -82,7 +82,7 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 
 	for _, pair := range settings.SSHKeyPairs {
 		switch j.Provider {
-		case evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot:
+		case evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2OnDemand:
 			// Ignore if region already contains the public key.
 			if utility.StringSliceContains(pair.EC2Regions, j.Region) {
 				continue
@@ -110,7 +110,7 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 		}
 
 		switch j.Provider {
-		case evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot:
+		case evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2OnDemand:
 			if err := pair.AddEC2Region(j.Region); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":  "could not update EC2 regions for SSH key",

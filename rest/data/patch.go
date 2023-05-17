@@ -213,17 +213,6 @@ func GetPatchRawPatches(patchID string) (map[string]string, error) {
 		}
 	}
 
-	if patchDoc.IsParent() {
-		collectiveStatus, err := patchDoc.CollectiveStatus()
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrapf(err, "getting collective patch status for patch '%s'", patchDoc.Id).Error(),
-			}
-		}
-		patchDoc.Status = collectiveStatus
-	}
-
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

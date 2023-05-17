@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -35,8 +34,6 @@ type EC2Suite struct {
 	onDemandManager           Manager
 	onDemandWithRegionOpts    *EC2ManagerOptions
 	onDemandWithRegionManager Manager
-	spotOpts                  *EC2ManagerOptions
-	spotManager               Manager
 	impl                      *ec2Manager
 	mock                      *awsClientMock
 	h                         *host.Host
@@ -61,8 +58,7 @@ func TestEC2Suite(t *testing.T) {
 func (s *EC2Suite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection))
 	s.onDemandOpts = &EC2ManagerOptions{
-		client:   &awsClientMock{},
-		provider: onDemandProvider,
+		client: &awsClientMock{},
 	}
 	s.onDemandManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts}
 	_ = s.onDemandManager.Configure(s.ctx, &evergreen.Settings{
@@ -74,20 +70,11 @@ func (s *EC2Suite) SetupTest() {
 		},
 	})
 	s.onDemandWithRegionOpts = &EC2ManagerOptions{
-		client:   &awsClientMock{},
-		provider: onDemandProvider,
-		region:   "test-region",
+		client: &awsClientMock{},
+		region: "test-region",
 	}
 	s.onDemandWithRegionManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandWithRegionOpts}
 	_ = s.onDemandManager.Configure(s.ctx, &evergreen.Settings{
-		Expansions: map[string]string{"test": "expand"},
-	})
-	s.spotOpts = &EC2ManagerOptions{
-		client:   &awsClientMock{},
-		provider: spotProvider,
-	}
-	s.spotManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.spotOpts}
-	_ = s.spotManager.Configure(s.ctx, &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
 	var ok bool
@@ -158,11 +145,6 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	p.SecurityGroupIDs = nil
 	s.Error(p.Validate())
 	p.SecurityGroupIDs = []string{"sg-123456"}
-
-	s.NoError(p.Validate())
-	p.BidPrice = -1
-	s.Error(p.Validate())
-	p.BidPrice = 1
 	s.NoError(p.Validate())
 
 	p.IsVpc = true
@@ -421,238 +403,6 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
 
-func (s *EC2Suite) TestSpawnHostClassicSpot() {
-	h := &host.Host{}
-	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("key_name", "keyName"),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-	)}
-	s.Require().NoError(h.Insert())
-
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	_, err := s.spotManager.SpawnHost(ctx, h)
-	s.NoError(err)
-
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
-
-	s.Require().NotNil(mock.RequestSpotInstancesInput)
-	requestInput := *mock.RequestSpotInstancesInput
-	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
-	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
-	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
-	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
-	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
-	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
-	s.Nil(requestInput.LaunchSpecification.SubnetId)
-	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
-}
-
-func (s *EC2Suite) TestSpawnHostClassicSpotInsufficientCapacityFallback() {
-	h := &host.Host{}
-	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("key_name", "keyName"),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-		birch.EC.Boolean("fallback", true),
-	)}
-	s.Require().NoError(h.Insert())
-
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
-
-	// Ensure that the mock for requesting a spot instance returns an InsufficientCapacity error.
-	mock.requestSpotInstancesError = awserr.New(EC2InsufficientCapacity, "Test error for Insufficient Capacity", nil)
-
-	returnedHost, err := s.spotManager.SpawnHost(ctx, h)
-	s.NoError(err)
-	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Provider, "Provider should have been changed to OnDemand on fallback")
-	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Distro.Provider, "Provider should have been changed to OnDemand on fallback")
-
-	// Check that we have made a request for a spot instance
-	s.Require().NotNil(mock.RequestSpotInstancesInput)
-	requestInput := *mock.RequestSpotInstancesInput
-	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
-	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
-	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
-	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
-	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
-	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
-	s.Nil(requestInput.LaunchSpecification.SubnetId)
-	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
-
-	// Check that we have made a fallback request for an on demand instance
-	s.Require().NotNil(mock.RunInstancesInput, "On Demand Instance Fallback was not called")
-	runInput := *mock.RunInstancesInput
-	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", *runInput.InstanceType)
-	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
-	s.Equal("keyName", *runInput.KeyName)
-	s.Require().Len(runInput.BlockDeviceMappings, 1)
-	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *runInput.SecurityGroups[0])
-	s.Nil(runInput.SecurityGroupIds)
-	s.Nil(runInput.SubnetId)
-	s.Equal(base64OfSomeUserData, *runInput.UserData)
-}
-
-func (s *EC2Suite) TestSpawnHostClassicSpotUnfulfillableCapacityFallback() {
-	h := &host.Host{}
-	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("key_name", "keyName"),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-		birch.EC.Boolean("fallback", true),
-	)}
-	s.Require().NoError(h.Insert())
-
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
-
-	// Ensure that the mock for requesting a spot instance returns an InsufficientCapacity error.
-	mock.requestSpotInstancesError = awserr.New(EC2UnfulfillableCapacity, "Test error for Unfulfillable Capacity", nil)
-
-	returnedHost, err := s.spotManager.SpawnHost(ctx, h)
-	s.NoError(err)
-	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Provider, "Provider should have been changed to OnDemand on fallback")
-	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Distro.Provider, "Provider should have been changed to OnDemand on fallback")
-
-	// Check that we have made a request for a spot instance
-	s.Require().NotNil(mock.RequestSpotInstancesInput)
-	requestInput := *mock.RequestSpotInstancesInput
-	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
-	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
-	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
-	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
-	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
-	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
-	s.Nil(requestInput.LaunchSpecification.SubnetId)
-	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
-
-	// Check that we have made a fallback request for an on demand instance
-	s.Require().NotNil(mock.RunInstancesInput, "On Demand Instance Fallback was not called")
-	runInput := *mock.RunInstancesInput
-	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", *runInput.InstanceType)
-	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
-	s.Equal("keyName", *runInput.KeyName)
-	s.Require().Len(runInput.BlockDeviceMappings, 1)
-	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *runInput.SecurityGroups[0])
-	s.Nil(runInput.SecurityGroupIds)
-	s.Nil(runInput.SubnetId)
-	s.Equal(base64OfSomeUserData, *runInput.UserData)
-}
-
-func (s *EC2Suite) TestSpawnHostVPCSpot() {
-	h := &host.Host{}
-	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("key_name", "keyName"),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.Boolean("is_vpc", true),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-	)}
-	s.Require().NoError(h.Insert())
-
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-	_, err := s.spotManager.SpawnHost(ctx, h)
-	s.NoError(err)
-
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.Require().True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.Require().True(ok)
-
-	s.Require().NotNil(mock.RequestSpotInstancesInput)
-	requestInput := *mock.RequestSpotInstancesInput
-	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
-	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
-	s.Equal("my_profile", *requestInput.LaunchSpecification.IamInstanceProfile.Arn)
-	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
-	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
-	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
-	s.Nil(requestInput.LaunchSpecification.SecurityGroups)
-	s.Nil(requestInput.LaunchSpecification.SubnetId)
-	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
-}
-
 func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
@@ -841,14 +591,6 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	s.Equal("public_dns_name", s.h.Host)
 	s.Require().Len(s.h.Volumes, 1)
 	s.Equal("volume_id", s.h.Volumes[0].VolumeID)
-
-	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	s.h.Id = "instance_id"
-	status, err = s.onDemandManager.GetInstanceStatus(ctx, s.h)
-	s.NoError(err)
-	s.Equal(StatusRunning, status)
-
-	s.Equal("instance_id", s.h.ExternalIdentifier)
 }
 
 func (s *EC2Suite) TestTerminateInstance() {
@@ -962,56 +704,6 @@ func (s *EC2Suite) TestStartInstance() {
 	s.Equal("12.34.56.78", found.IPv4)
 }
 
-func (s *EC2Suite) TestIsUp() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	up, err := s.onDemandManager.IsUp(ctx, s.h)
-	s.True(up)
-	s.NoError(err)
-
-	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	up, err = s.onDemandManager.IsUp(ctx, s.h)
-	s.True(up)
-	s.NoError(err)
-}
-
-func (s *EC2Suite) TestOnUpNoopsForOnDemandInstance() {
-	s.Require().NoError(s.h.Insert())
-	s.Require().NoError(s.spotManager.OnUp(s.ctx, s.h))
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.Require().True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.Require().True(ok)
-	s.Nil(mock.DescribeVolumesInput)
-	s.Zero(mock.CreateTagsInput)
-}
-
-func (s *EC2Suite) TestOnUpTagsForSpotInstance() {
-	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	s.h.ExternalIdentifier = "instance_id"
-	s.NoError(s.h.Insert())
-
-	s.Require().NoError(s.spotManager.OnUp(s.ctx, s.h))
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
-	s.Nil(mock.DescribeVolumesInput)
-
-	s.Len(mock.CreateTagsInput.Resources, 2)
-	s.Equal(s.h.ExternalIdentifier, *mock.CreateTagsInput.Resources[0])
-	s.Equal("volume_id", *mock.CreateTagsInput.Resources[1])
-
-	foundHost, err := host.FindOneId(s.h.Id)
-	s.NoError(err)
-	s.NotNil(foundHost)
-	s.Require().Len(foundHost.Volumes, 1)
-	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
-	s.Equal("device_name", foundHost.Volumes[0].DeviceName)
-}
-
 func (s *EC2Suite) TestGetDNSName() {
 	s.h.Host = "public_dns_name"
 	dns, err := s.onDemandManager.GetDNSName(s.ctx, s.h)
@@ -1054,48 +746,12 @@ func (s *EC2Suite) TestGetInstanceName() {
 	s.True(strings.HasPrefix(id, "evg-foo-"))
 }
 
-func (s *EC2Suite) TestGetProvider() {
-	s.h.Distro.Arch = "Linux/Unix"
-	ec2Settings := &EC2ProviderSettings{
-		InstanceType: "instance",
-		IsVpc:        true,
-		SubnetId:     "subnet-123456",
-		VpcName:      "vpc_name",
-	}
-
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	manager, ok := s.spotManager.(*ec2Manager)
-	s.True(ok)
-	provider, err := manager.getProvider(ctx, s.h, ec2Settings)
-	s.NoError(err)
-	s.Equal(spotProvider, provider)
-
-	s.h.UserHost = true
-	provider, err = manager.getProvider(ctx, s.h, ec2Settings)
-	s.NoError(err)
-	s.Equal(onDemandProvider, provider)
-}
-
-func (s *EC2Suite) TestPersistInstanceId() {
-	s.h.Id = "instance_id"
-	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	s.Require().NoError(s.h.Insert())
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	instanceID, err := manager.client.GetSpotInstanceId(s.ctx, s.h)
-	s.Equal("instance_id", instanceID)
-	s.NoError(err)
-	s.Equal("instance_id", s.h.ExternalIdentifier)
-}
-
 func (s *EC2Suite) TestGetInstanceStatuses() {
 	hosts := []host.Host{
 		{
-			Id: "sir-1",
+			Id: "i-1",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
@@ -1107,28 +763,14 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			},
 		},
 		{
-			Id: "sir-3",
+			Id: "i-3",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-4",
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
-				ProviderSettingsList: s.distro.ProviderSettingsList,
-			},
-		},
-		{
-			Id: "i-5",
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
-				ProviderSettingsList: s.distro.ProviderSettingsList,
-			},
-		},
-		{
-			Id: "i-6",
 			Distro: distro.Distro{
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
@@ -1141,22 +783,12 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 
-	// spot IDs returned doesn't match spot IDs submitted
-	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
-		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
-			{
-				InstanceId:            aws.String("nonexistent"),
-				State:                 aws.String(SpotStatusActive),
-				SpotInstanceRequestId: aws.String("1"),
-			},
-		},
-	}
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: aws.String("i-6"),
+						InstanceId: aws.String("i-4"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameShuttingDown),
 						},
@@ -1166,7 +798,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: aws.String("i-4"),
+						InstanceId: aws.String("i-2"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
@@ -1189,7 +821,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: aws.String("i-5"),
+						InstanceId: aws.String("i-3"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameTerminated),
 						},
@@ -1205,28 +837,12 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	statuses, err := batchManager.GetInstanceStatuses(ctx, hosts)
 	s.NoError(err, "does not error if some of the instances do not exist")
 	s.Equal(map[string]CloudStatus{
-		"i-2":   StatusNonExistent,
-		"i-4":   StatusRunning,
-		"i-5":   StatusTerminated,
-		"i-6":   StatusTerminated,
-		"sir-1": StatusNonExistent,
-		"sir-3": StatusNonExistent,
+		"i-1": StatusNonExistent,
+		"i-2": StatusRunning,
+		"i-3": StatusTerminated,
+		"i-4": StatusTerminated,
 	}, statuses)
 
-	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
-		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
-			// This host returns with no id
-			{
-				InstanceId:            aws.String("i-3"),
-				State:                 aws.String(SpotStatusActive),
-				SpotInstanceRequestId: aws.String("sir-3"),
-			},
-			{
-				SpotInstanceRequestId: aws.String("sir-1"),
-				State:                 aws.String(ec2.SpotInstanceStateFailed),
-			},
-		},
-	}
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			{
@@ -1236,8 +852,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:    aws.String("public_dns_name_2"),
-						PrivateIpAddress: aws.String("2.2.2.2"),
+						PublicDnsName:    aws.String("public_dns_name_3"),
+						PrivateIpAddress: aws.String("3.3.3.3"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1255,7 +871,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: aws.String("i-2"),
+						InstanceId: aws.String("i-1"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
@@ -1278,7 +894,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: aws.String("i-6"),
+						InstanceId: aws.String("i-4"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameShuttingDown),
 						},
@@ -1288,12 +904,12 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: aws.String("i-4"),
+						InstanceId: aws.String("i-2"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:    aws.String("public_dns_name_3"),
-						PrivateIpAddress: aws.String("3.3.3.3"),
+						PublicDnsName:    aws.String("public_dns_name_2"),
+						PrivateIpAddress: aws.String("2.2.2.2"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1308,45 +924,29 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 					},
 				},
 			},
-			{
-				Instances: []*ec2.Instance{
-					{
-						InstanceId: aws.String("i-5"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameTerminated),
-						},
-					},
-				},
-			},
 		},
 	}
 	statuses, err = batchManager.GetInstanceStatuses(ctx, hosts)
 	s.NoError(err)
-	s.Len(mock.DescribeSpotInstanceRequestsInput.SpotInstanceRequestIds, 2)
-	s.Len(mock.DescribeInstancesInput.InstanceIds, 5)
-	s.Equal("i-2", *mock.DescribeInstancesInput.InstanceIds[0])
-	s.Equal("i-4", *mock.DescribeInstancesInput.InstanceIds[1])
-	s.Equal("i-5", *mock.DescribeInstancesInput.InstanceIds[2])
-	s.Equal("i-6", *mock.DescribeInstancesInput.InstanceIds[3])
-	s.Equal("i-3", *mock.DescribeInstancesInput.InstanceIds[4])
-	s.Len(statuses, 6)
+	s.Len(mock.DescribeInstancesInput.InstanceIds, 4)
+	s.Equal("i-1", *mock.DescribeInstancesInput.InstanceIds[0])
+	s.Equal("i-2", *mock.DescribeInstancesInput.InstanceIds[1])
+	s.Equal("i-3", *mock.DescribeInstancesInput.InstanceIds[2])
+	s.Equal("i-4", *mock.DescribeInstancesInput.InstanceIds[3])
+	s.Len(statuses, 4)
 	s.Equal(map[string]CloudStatus{
-		"i-2":   StatusRunning,
-		"i-4":   StatusRunning,
-		"i-5":   StatusTerminated,
-		"i-6":   StatusTerminated,
-		"sir-1": StatusFailed,
-		"sir-3": StatusRunning,
+		"i-1": StatusRunning,
+		"i-2": StatusRunning,
+		"i-3": StatusRunning,
+		"i-4": StatusTerminated,
 	}, statuses)
 
-	s.Equal("public_dns_name_1", hosts[1].Host)
-	s.Equal("1.1.1.1", hosts[1].IPv4)
-	s.Equal("public_dns_name_2", hosts[2].Host)
-	s.Equal("2.2.2.2", hosts[2].IPv4)
-	s.Equal("public_dns_name_3", hosts[3].Host)
-	s.Equal("3.3.3.3", hosts[3].IPv4)
-
-	s.Equal("i-3", hosts[2].ExternalIdentifier)
+	s.Equal("public_dns_name_1", hosts[0].Host)
+	s.Equal("1.1.1.1", hosts[0].IPv4)
+	s.Equal("public_dns_name_2", hosts[1].Host)
+	s.Equal("2.2.2.2", hosts[1].IPv4)
+	s.Equal("public_dns_name_3", hosts[2].Host)
+	s.Equal("3.3.3.3", hosts[2].IPv4)
 }
 
 func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
@@ -1506,7 +1106,6 @@ func (s *EC2Suite) TestFromDistroSettings() {
 			birch.EC.String("key_name", "key"),
 			birch.EC.String("aws_access_key_id", "key_id"),
 			birch.EC.String("subnet_id", "subnet-123456"),
-			birch.EC.Double("bid_price", 0.001),
 			birch.EC.String("region", evergreen.DefaultEC2Region),
 			birch.EC.String("iam_instance_profile_arn", "a_new_arn"),
 			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
@@ -1520,7 +1119,6 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal("instance", ec2Settings.InstanceType)
 	s.Require().Len(ec2Settings.SecurityGroupIDs, 1)
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
-	s.Equal(float64(0.001), ec2Settings.BidPrice)
 	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
 	s.Equal("a_new_arn", ec2Settings.IAMInstanceProfileARN)
 
@@ -1531,7 +1129,6 @@ func (s *EC2Suite) TestFromDistroSettings() {
 		InstanceType:          "other_instance",
 		SecurityGroupIDs:      []string{"ghijkl"},
 		IAMInstanceProfileARN: "a_beautiful_profile",
-		BidPrice:              float64(0.002),
 		AWSKeyID:              "other_key_id",
 		KeyName:               "other_key",
 	}
