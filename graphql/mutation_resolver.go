@@ -239,7 +239,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", p.Id, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(*p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch '%s' API model: %s", p.Id, err.Error()))
 		}
