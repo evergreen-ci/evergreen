@@ -155,6 +155,9 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	return nil
 }
 
+// will skip creating PR patch if [skip ci] is part of the commit description or message.
+const skipCILabel = "[skip ci]"
+
 func validatePushEvent(event *github.PushEvent) (string, error) {
 	if event == nil || event.Ref == nil || event.Repo == nil ||
 		event.Repo.Name == nil || event.Repo.Owner == nil ||
@@ -168,6 +171,29 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	if !strings.HasPrefix(*event.Ref, branchRefPrefix) {
 		// Not an error, but we're uninterested in tag pushes
 		return "", nil
+	}
+	grip.Debug(message.Fields{
+		"ticket": "EVG-16366",
+		"event":  event,
+	})
+
+	for i, commit := range event.Commits {
+		if commit == nil {
+			grip.Debug(message.Fields{
+				"ticket":  "EVG-16366",
+				"message": "commit is nil",
+				"index":   i,
+			})
+			continue
+		}
+		if strings.Contains(commit.GetMessage(), skipCILabel) {
+			grip.Info(message.Fields{
+				"ticket":  "EVG-16366",
+				"message": "skipping commit because of skip CI label",
+				"index":   i,
+			})
+			return "", nil
+		}
 	}
 
 	refs := strings.Split(*event.Ref, "/")
