@@ -21,6 +21,6 @@ type RepoSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   projectSubscriptions: [ProjectSubscription!] @deprecated(reason: "Use subscriptions instead")
-  subscriptions: [ProjectSubscription!]
+  subscriptions: [GeneralSubscription!]
   vars: ProjectVars
 }

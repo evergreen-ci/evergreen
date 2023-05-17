@@ -42,7 +42,6 @@ func TestHostTerminationJob(t *testing.T) {
 		"TerminatesRunningHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			require.NoError(t, h.Insert())
 			mcp.Set(h.Id, cloud.MockInstance{
-				IsUp:   true,
 				Status: cloud.StatusRunning,
 			})
 
@@ -68,7 +67,6 @@ func TestHostTerminationJob(t *testing.T) {
 		"SkipsCloudHostTermination": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			require.NoError(t, h.Insert())
 			mcp.Set(h.Id, cloud.MockInstance{
-				IsUp:   true,
 				Status: cloud.StatusRunning,
 			})
 
@@ -125,7 +123,6 @@ func TestHostTerminationJob(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 			mcp.Set(h.Id, cloud.MockInstance{
-				IsUp:   true,
 				Status: cloud.StatusRunning,
 			})
 

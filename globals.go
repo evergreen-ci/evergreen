@@ -298,6 +298,10 @@ const (
 	// Valid types of performing git clone
 	CloneMethodLegacySSH = "legacy-ssh"
 	CloneMethodOAuth     = "oauth"
+
+	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
+	// charts relating to the health of container tasks.
+	ContainerHealthDashboard = "container task health dashboard"
 )
 
 var TaskStatuses = []string{
@@ -481,7 +485,6 @@ const (
 // Constants related to cloud providers and provider-specific settings.
 const (
 	ProviderNameEc2OnDemand = "ec2-ondemand"
-	ProviderNameEc2Spot     = "ec2-spot"
 	ProviderNameEc2Fleet    = "ec2-fleet"
 	ProviderNameDocker      = "docker"
 	ProviderNameDockerMock  = "docker-mock"
@@ -503,7 +506,6 @@ const (
 // IsEc2Provider returns true if the provider is ec2.
 func IsEc2Provider(provider string) bool {
 	return provider == ProviderNameEc2OnDemand ||
-		provider == ProviderNameEc2Spot ||
 		provider == ProviderNameEc2Fleet
 }
 
@@ -519,7 +521,6 @@ var (
 	// relation to spawn hosts.
 	ProviderSpawnable = []string{
 		ProviderNameEc2OnDemand,
-		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 		ProviderNameGce,
 		ProviderNameOpenstack,
@@ -533,7 +534,6 @@ var (
 	// spawn hosts.
 	ProviderUserSpawnable = []string{
 		ProviderNameEc2OnDemand,
-		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 		ProviderNameGce,
 		ProviderNameOpenstack,
@@ -547,14 +547,12 @@ var (
 	// ProviderSpotEc2Type includes all cloud provider types that manage EC2
 	// spot instances.
 	ProviderSpotEc2Type = []string{
-		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 	}
 
 	// ProviderEc2Type includes all cloud provider types that manage EC2
 	// instances.
 	ProviderEc2Type = []string{
-		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 		ProviderNameEc2OnDemand,
 	}

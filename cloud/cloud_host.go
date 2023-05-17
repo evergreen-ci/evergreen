@@ -36,10 +36,6 @@ func GetCloudHost(ctx context.Context, host *host.Host, env evergreen.Environmen
 	return &CloudHost{host, keyPath, mgr}, nil
 }
 
-func (cloudHost *CloudHost) IsUp(ctx context.Context) (bool, error) {
-	return cloudHost.CloudMgr.IsUp(ctx, cloudHost.Host)
-}
-
 func (cloudHost *CloudHost) ModifyHost(ctx context.Context, opts host.HostModifyOptions) error {
 	return cloudHost.CloudMgr.ModifyHost(ctx, cloudHost.Host, opts)
 }

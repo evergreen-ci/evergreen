@@ -679,7 +679,7 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	return nil
 }
 
-// ClearRunningTask clears the current task dispatched to the pod.
+// ClearRunningTask clears the current task dispatched to the pod, if one is set.
 func (p *Pod) ClearRunningTask() error {
 	if p.TaskRuntimeInfo.RunningTaskID == "" {
 		return nil

@@ -159,51 +159,6 @@ func (s *GCESuite) TestConfigureAPICall() {
 	s.Error(s.manager.Configure(ctx, settings))
 }
 
-func (s *GCESuite) TestIsUpFailAPICall() {
-	mock, ok := s.client.(*gceClientMock)
-	s.True(ok)
-
-	host := &host.Host{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	mock.failGet = true
-	_, err := s.manager.GetInstanceStatus(ctx, host)
-	s.Error(err)
-
-	active, err := s.manager.IsUp(ctx, host)
-	s.Error(err)
-	s.False(active)
-}
-
-func (s *GCESuite) TestIsUpStatuses() {
-	mock, ok := s.client.(*gceClientMock)
-	s.True(ok)
-	s.True(mock.isActive)
-
-	host := &host.Host{}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	status, err := s.manager.GetInstanceStatus(ctx, host)
-	s.NoError(err)
-	s.Equal(StatusRunning, status)
-
-	active, err := s.manager.IsUp(ctx, host)
-	s.NoError(err)
-	s.True(active)
-
-	mock.isActive = false
-	status, err = s.manager.GetInstanceStatus(ctx, host)
-	s.NoError(err)
-	s.NotEqual(StatusRunning, status)
-
-	active, err = s.manager.IsUp(ctx, host)
-	s.NoError(err)
-	s.False(active)
-}
-
 func (s *GCESuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -315,7 +315,7 @@ type TaskQueueDistro struct {
 	TaskCount int    `json:"taskCount"`
 }
 
-// TaskTestResult is the return value for the taskTests query.
+// TaskTestResult is the return value for the task.Tests resolver.
 // It contains the test results for a task. For example, if there is a task to run all unit tests, then the test results
 // could be the result of each individual unit test.
 type TaskTestResult struct {

@@ -30,7 +30,6 @@ const (
 	EventHostStarted                     = "HOST_STARTED"
 	EventHostStopped                     = "HOST_STOPPED"
 	EventHostModified                    = "HOST_MODIFIED"
-	EventHostFallback                    = "HOST_FALLBACK"
 	EventHostAgentDeployed               = "HOST_AGENT_DEPLOYED"
 	EventHostAgentDeployFailed           = "HOST_AGENT_DEPLOY_FAILED"
 	EventHostAgentMonitorDeployed        = "HOST_AGENT_MONITOR_DEPLOYED"
@@ -144,12 +143,6 @@ func LogHostModifySucceeded(hostID string) {
 // modified.
 func LogHostModifyError(hostID, logs string) {
 	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
-}
-
-// LogHostFallback logs an event indicating that the host is being created using
-// a backup cloud provider.
-func LogHostFallback(hostId string) {
-	LogHostEvent(hostId, EventHostFallback, HostEventData{})
 }
 
 func LogHostAgentDeployed(hostId string) {

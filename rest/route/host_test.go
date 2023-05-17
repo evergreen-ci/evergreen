@@ -454,7 +454,6 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 
 	mock := cloud.GetMockProvider()
 	mock.Set(h.hostID, cloud.MockInstance{
-		IsUp:   true,
 		Status: cloud.StatusRunning,
 	})
 

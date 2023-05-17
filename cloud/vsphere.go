@@ -172,22 +172,6 @@ func (m *vsphereManager) StartInstance(ctx context.Context, host *host.Host, use
 	return errors.New("StartInstance is not supported for vsphere provider")
 }
 
-// IsUp checks whether the provisioned host is running.
-func (m *vsphereManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(ctx, host)
-	if err != nil {
-		return false, errors.Wrapf(err,
-			"manager failed to get instance status for host %s", host.Id)
-	}
-
-	return status == StatusRunning, nil
-}
-
-// OnUp does nothing since tags are attached in SpawnInstance.
-func (m *vsphereManager) OnUp(ctx context.Context, host *host.Host) error {
-	return nil //TODO
-}
-
 func (m *vsphereManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with vSphere provider")
 }

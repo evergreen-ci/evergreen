@@ -212,21 +212,6 @@ func (m *gceManager) StartInstance(ctx context.Context, host *host.Host, user st
 	return errors.New("StartInstance is not supported for GCE provider")
 }
 
-// IsUp checks whether the provisioned host is running.
-func (m *gceManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(ctx, host)
-	if err != nil {
-		return false, err
-	}
-
-	return status == StatusRunning, nil
-}
-
-// OnUp does nothing since tags are attached in SpawnInstance.
-func (m *gceManager) OnUp(context.Context, *host.Host) error {
-	return nil
-}
-
 func (m *gceManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with GCE provider")
 }

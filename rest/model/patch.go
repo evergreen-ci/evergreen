@@ -26,6 +26,7 @@ type APIPatch struct {
 	Branch                  *string              `json:"branch"`
 	Githash                 *string              `json:"git_hash"`
 	PatchNumber             int                  `json:"patch_number"`
+	Hidden                  bool                 `json:"hidden"`
 	Author                  *string              `json:"author"`
 	Version                 *string              `json:"version"`
 	Status                  *string              `json:"status"`
@@ -180,6 +181,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.Author = utility.ToStringPtr(p.Author)
 	apiPatch.Version = utility.ToStringPtr(p.Version)
 	apiPatch.Status = utility.ToStringPtr(p.Status)
+	apiPatch.Hidden = p.Hidden
 	apiPatch.CreateTime = ToTimePtr(p.CreateTime)
 	apiPatch.StartTime = ToTimePtr(p.StartTime)
 	apiPatch.FinishTime = ToTimePtr(p.FinishTime)
@@ -349,6 +351,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	res.Project = utility.FromStringPtr(apiPatch.ProjectId)
 	res.Githash = utility.FromStringPtr(apiPatch.Githash)
 	res.PatchNumber = apiPatch.PatchNumber
+	res.Hidden = apiPatch.Hidden
 	res.Author = utility.FromStringPtr(apiPatch.Author)
 	res.Version = utility.FromStringPtr(apiPatch.Version)
 	res.Status = utility.FromStringPtr(apiPatch.Status)

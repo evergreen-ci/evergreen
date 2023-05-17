@@ -454,15 +454,6 @@ func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
-func (h *Host) ShouldFallbackToOnDemand() bool {
-	// this case shouldn't happen unless the host is somehow misconfigured
-	if len(h.Distro.ProviderSettingsList) != 1 {
-		return false
-	}
-	fallback, _ := h.Distro.ProviderSettingsList[0].Lookup("fallback").BooleanOK()
-	return fallback
-}
-
 func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
 }

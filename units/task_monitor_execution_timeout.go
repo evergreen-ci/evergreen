@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -145,6 +146,16 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
 	if j.task.IsContainerTask() {
 		if j.task.PodID != "" {
+			foundPod, err := pod.FindOneByID(j.task.PodID)
+			if err != nil {
+				return errors.Wrapf(err, "finding pod '%s' for task '%s'", j.task.PodID, j.task.Id)
+			}
+			if foundPod == nil {
+				return errors.Errorf("pod '%s' not found for task '%s'", j.task.PodID, j.task.Id)
+			}
+			if err = foundPod.ClearRunningTask(); err != nil {
+				return errors.Wrapf(err, "clearing running task from pod '%s'", foundPod.ID)
+			}
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewPodHealthCheckJob(j.task.PodID, utility.RoundPartOfHour(0))); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "could not enqueue job to check pod health after stale task timeout",
