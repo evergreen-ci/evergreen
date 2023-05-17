@@ -329,6 +329,7 @@ func unmarshalTraces(fileName string) ([]*tracepb.ResourceSpans, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening trace file '%s'", fileName)
 	}
+	defer func() { grip.Error(errors.Wrapf(file.Close(), "closing trace file '%s'", fileName)) }()
 
 	catcher := grip.NewBasicCatcher()
 
