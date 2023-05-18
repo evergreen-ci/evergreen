@@ -883,7 +883,7 @@ type APIGithubAuthConfig struct {
 	ClientSecret *string   `json:"client_secret"`
 	Users        []*string `json:"users"`
 	Organization *string   `json:"organization"`
-	AppId        int       `json:"app_id"`
+	AppId        int64     `json:"app_id"`
 }
 
 func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
