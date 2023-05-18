@@ -581,16 +581,19 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 		return "", errors.New("Github app settings are not set")
 	}
 	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
 	itr, err := ghinstallation.NewAppsTransport(httpClient.Transport, authFields.AppId, authFields.privateKey)
 	if err != nil {
 		return "", errors.Wrap(err, "creating transport with JWT")
 	}
 	httpClient.Transport = itr
-	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
-	if err != nil || installationId == nil {
+	if err != nil {
 		return "", errors.Wrapf(err, "finding installation token for '%s/%s'", owner, repo)
+	}
+	if installationId == nil {
+		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
 	}
 	token, _, err := client.Apps.CreateInstallationToken(ctx, installationId.GetID(), opts)
 	if err != nil || token == nil {
