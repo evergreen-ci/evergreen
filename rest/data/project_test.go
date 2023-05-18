@@ -507,3 +507,73 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.Equal(t, []string{"Access"}, payload.Components)
 	assert.Equal(t, "user@email.com", payload.Reporter)
 }
+
+func TestDeleteBranch(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	require.NoError(t, db.ClearCollections(model.RepoRefCollection, model.ProjectRefCollection, model.ProjectVarsCollection, model.ProjectAliasCollection))
+
+	repo := model.RepoRef{
+		ProjectRef: model.ProjectRef{
+			Id:    "repo_ref",
+			Owner: "mongodb",
+			Repo:  "test_repo",
+		},
+	}
+	assert.NoError(t, repo.Upsert())
+
+	project := &model.ProjectRef{
+		Identifier:  projectId,
+		Id:          projectId,
+		Enabled:     true,
+		Hidden:      utility.ToBoolPtr(false),
+		Owner:       "mongodb",
+		Repo:        "test_repo",
+		Branch:      "branch",
+		RepoRefId:   "repo_ref",
+		DisplayName: "test_project",
+	}
+	require.NoError(t, project.Upsert())
+
+	alias := model.ProjectAlias{
+		Alias:     "select_bv1",
+		ProjectID: projectId,
+		Variant:   "^bv1$",
+		Task:      ".*",
+	}
+	require.NoError(t, alias.Upsert())
+
+	vars := &model.ProjectVars{
+		Id:          projectId,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	require.NoError(t, vars.Insert())
+
+	err := DeleteBranch(ctx, project)
+	assert.NoError(t, err)
+
+	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)
+	assert.NoError(t, err)
+	skeletonProj := model.ProjectRef{
+		Id:        project.Id,
+		Owner:     repo.Owner,
+		Repo:      repo.Repo,
+		Branch:    project.Branch,
+		RepoRefId: repo.Id,
+		Enabled:   false,
+		Hidden:    utility.TruePtr(),
+	}
+	assert.Equal(t, skeletonProj, *hiddenProj)
+
+	projAliases, err := model.FindAliasesForProjectFromDb(project.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(projAliases))
+
+	skeletonProjVars := model.ProjectVars{
+		Id: project.Id,
+	}
+	projVars, err := model.FindOneProjectVars(project.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, skeletonProjVars, *projVars)
+}

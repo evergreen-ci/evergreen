@@ -389,3 +389,54 @@ func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model
 	}
 	return model.GetProjectFromFile(ctx, opts)
 }
+
+func DeleteBranch(ctx context.Context, pRef *model.ProjectRef) error {
+	if pRef.IsHidden() {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("project '%s' is already hidden", pRef.Id).Error(),
+		}
+	}
+
+	if !pRef.UseRepoSettings() {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("project '%s' must be attached to a repo to be eligible for deletion", pRef.Id).Error(),
+		}
+	}
+
+	skeletonProj := model.ProjectRef{
+		Id:        pRef.Id,
+		Owner:     pRef.Owner,
+		Repo:      pRef.Repo,
+		Branch:    pRef.Branch,
+		RepoRefId: pRef.RepoRefId,
+		Enabled:   false,
+		Hidden:    utility.TruePtr(),
+	}
+	if err := skeletonProj.Update(); err != nil {
+		return errors.Wrapf(err, "updating project '%s'", pRef.Id)
+	}
+	if err := model.UpdateAdminRoles(pRef, nil, pRef.Admins); err != nil {
+		return errors.Wrapf(err, "removing project admin roles")
+	}
+
+	projectAliases, err := model.FindAliasesForProjectFromDb(pRef.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding aliases for project '%s'", pRef.Id)
+	}
+	for _, alias := range projectAliases {
+		if err := model.RemoveProjectAlias(alias.ID.Hex()); err != nil {
+			return errors.Wrapf(err, "removing project alias '%s' for project '%s'", alias.ID.Hex(), pRef.Id)
+		}
+	}
+
+	skeletonProjVars := model.ProjectVars{
+		Id: pRef.Id,
+	}
+	if _, err := skeletonProjVars.Upsert(); err != nil {
+		return errors.Wrapf(err, "updating vars for project '%s'", pRef.Id)
+	}
+
+	return nil
+}

@@ -483,6 +483,15 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	return projectRef, nil
 }
 
+// DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
+func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, err.Error())
+	}
+	return true, nil
+}
+
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error) {
 	usr := mustHaveUser(ctx)
@@ -490,6 +499,19 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID s
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
 	return &projectID, nil
+}
+
+// DeleteProject is the resolver for the deleteProject field.
+func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
+	pRef, err := model.FindBranchProjectRef(projectID)
+	if err != nil || pRef == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project '%s'", projectID))
+	}
+	err = data.DeleteBranch(ctx, pRef)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", projectID, err.Error()))
+	}
+	return true, nil
 }
 
 // DetachProjectFromRepo is the resolver for the detachProjectFromRepo field.
@@ -573,15 +595,6 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return changes, nil
-}
-
-// DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
-func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
-	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, err.Error())
-	}
-	return true, nil
 }
 
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.

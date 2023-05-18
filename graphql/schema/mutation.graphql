@@ -53,16 +53,17 @@ type Mutation {
   addFavoriteProject(identifier: String!): Project!
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
   attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
-  createProject(project: CreateProjectInput! @canCreateProject, requestS3Creds: Boolean): Project! 
-  copyProject(project: CopyProjectInput! @canCreateProject, requestS3Creds: Boolean): Project! 
+  createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
+  copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
+  deactivateStepbackTask(projectId: String!, buildVariantName: String!, taskName: String! @requireProjectAccess(access: EDIT)): Boolean!
   defaultSectionToRepo(projectId: String! @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
+  deleteProject(projectId: String! @requireProjectAdmin): Boolean!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
   promoteVarsToRepo(projectId: String! @requireProjectAccess(access: EDIT), varNames: [String!]!): Boolean!
   removeFavoriteProject(identifier: String!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
-  deactivateStepbackTask(projectId: String!, buildVariantName: String!, taskName: String! @requireProjectAccess(access: EDIT)): Boolean!
 
   # spawn
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!

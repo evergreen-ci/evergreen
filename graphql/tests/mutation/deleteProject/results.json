@@ -1,0 +1,42 @@
+{
+  "tests": [
+    {
+      "query_file": "already_hidden.graphql",
+      "result": { 
+        "data": null,
+        "errors": [
+          {
+            "message": "deleting project 'already_hidden': 400 (Bad Request): project 'already_hidden' is already hidden",
+            "path": [
+              "deleteProject"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "not_attached_to_repo.graphql",
+      "result": { 
+        "data": null,
+        "errors": [
+          {
+            "message": "deleting project 'evergreen_id': 400 (Bad Request): project 'evergreen_id' must be attached to a repo to be eligible for deletion",
+            "path": [
+              "deleteProject"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "success.graphql",
+      "result": { "data": { "deleteProject": true } }
+    }
+  ]
+}
