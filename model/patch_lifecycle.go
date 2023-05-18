@@ -473,8 +473,6 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
 // Creates a manifest based on the Version
-// kim: TODO: double-check that GitHub PR patches are always finalized using
-// this code path, with just the alias tasks selected.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	settings, err := evergreen.GetConfig()
 	if githubOauthToken == "" {
