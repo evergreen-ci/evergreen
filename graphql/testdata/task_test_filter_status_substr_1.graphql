@@ -1,0 +1,14 @@
+{
+  task(taskId: "wuzzup", execution: 0) {
+    tests(opts: {
+      sort: [{sortBy: TEST_NAME, direction: ASC}],
+      page: 0,
+      limit: 0,
+      testName: "do"
+    }) {
+      testResults {
+        status
+      } 
+    }
+  }
+}

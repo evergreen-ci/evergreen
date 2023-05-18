@@ -421,8 +421,7 @@ Agent Parameters:
 
 -   `num_hosts` - Number of hosts to start, 1 \<= `num_hosts` \<= 10.
     Defaults to 1 (must be 1 if provider is Docker).
--   `provider` - Cloud provider. Must set `ec2` or `docker`. We intend
-    to support other providers as future work.
+-   `provider` - Cloud provider. Must set `ec2` or `docker`.
 -   `retries` - How many times Evergreen should try to create this host
     in EC2 before giving up. Evergreen will wait 1 minute between
     retries.
@@ -463,7 +462,6 @@ EC2 Parameters:
 -   `security_group_ids` - List of security groups. Must set if `ami` is
     set. May set if `distro` is set, which will override the value from
     the distro configuration.
--   `spot` - Spawn a spot instance if `true.` Defaults to `false`.
 -   `subnet_id` - Subnet ID for the VPC. Must be set if `ami` is set.
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
@@ -512,7 +510,6 @@ permissions:
 -   `ec2:DescribeInstances`
 -   `ec2:RunInstances`
 -   `ec2:TerminateInstances`
--   `pricing:GetProducts`
 
 ### Checking SSH Availability for Spawn Hosts
 
