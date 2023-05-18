@@ -2039,7 +2039,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		AgentStartTime:        time.Now(),
 	}
 	// User data host that is not running task but has not had its
-	//  AgentStartTime set is not idle.
+	// AgentStartTime set is not idle.
 	host10 := &Host{
 		Id: "host10",
 		Distro: distro.Distro{

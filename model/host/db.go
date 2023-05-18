@@ -181,7 +181,6 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 					{
 						StatusKey:    evergreen.HostStarting,
 						bootstrapKey: distro.BootstrapMethodUserData,
-
 						// Idle time starts from when a host is first able
 						// to run a task. For user data hosts this is the time
 						// when they first made contact with the app instead

@@ -386,7 +386,10 @@ func (h *Host) GetTaskGroupString() string {
 	return fmt.Sprintf("%s_%s_%s_%s", h.RunningTaskGroup, h.RunningTaskBuildVariant, h.RunningTaskProject, h.RunningTaskVersion)
 }
 
-// IdleTime returns how long has this host has been sitting idle.
+// IdleTime returns how long has this host has been sitting idle. In this context
+// idle time means the duration the host has not been running a task even though it
+// could have been. The time before the host was ready to run a task does not count
+// as idle time.
 func (h *Host) IdleTime() time.Duration {
 	// If the host is currently running a task, it is not idle.
 	if h.RunningTask != "" {
@@ -417,7 +420,8 @@ func (h *Host) IdleTime() time.Duration {
 }
 
 // WastedComputeTime returns the duration since the last task to run on the host
-// completed or, if no task has run, the host's uptime.
+// completed or, if no task has run, the host's uptime. The time the host is alive
+// before it's able to run a task also counts as wasted compute.
 func (h *Host) WastedComputeTime() time.Duration {
 	// If the host has run a task, return the time the last task finished running.
 	if h.LastTask != "" {
