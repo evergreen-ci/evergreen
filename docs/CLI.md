@@ -1,4 +1,4 @@
-# Use the CLI
+# CLI
 
 How to set up and use the command-line tool
 ==

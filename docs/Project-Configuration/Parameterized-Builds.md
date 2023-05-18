@@ -1,4 +1,4 @@
-# Define Parameterized Builds
+# Parameterized Builds
 
 Users are now able to pass parameters during patch creation and configuration, which are then made available as expansions (i.e. a parameter `foo` with value `bar` will replace instances of `${foo}` with `bar` in the project configuration).
 

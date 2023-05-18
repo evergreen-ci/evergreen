@@ -1,4 +1,4 @@
-# REST API v2
+# REST v2 API
 
 ## General Functionality
 

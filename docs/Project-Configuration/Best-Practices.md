@@ -1,4 +1,4 @@
-# Learn Best Practices
+# Best Practices
 
 ## Task Directory
 

@@ -1,4 +1,4 @@
-# Set Up a Project Configuration File
+# Project Configuration Files
 Project configurations are how you tell Evergreen what to do. They
 contain a set of tasks and variants to run those tasks on, and are
 stored within the repository they test. Project files are written in a

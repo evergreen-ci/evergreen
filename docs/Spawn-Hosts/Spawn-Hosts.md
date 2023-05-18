@@ -1,4 +1,4 @@
-# Spawn a Host
+# Spawn Hosts
 
 If a test fails on a platform other than the one you develop on locally, you'll likely want to get access to a machine of that type in order to investigate the source of the failure. You can accomplish this using the spawn hosts feature of evergreen.
 

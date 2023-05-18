@@ -1,4 +1,4 @@
-# Define Project and Distro Settings
+# Project and Distro Settings
 
 The Project and Distro settings pages can be found at the right side
 dropdown on the navigation menu. All users can access the distro

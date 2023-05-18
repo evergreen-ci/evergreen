@@ -1,4 +1,4 @@
-# Select Project Commands
+# Project Commands
 
 Project Commands are the fundamental units of functionality in an Evergreen task.
 
