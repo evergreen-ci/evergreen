@@ -370,7 +370,7 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 		return nil, pr, errors.Wrapf(err, "getting project for '%s:%s' tracking branch '%s'", info.Owner, info.Repo, baseBranch)
 	}
 	if projectRef == nil {
-		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s' branch '%s'", info.Owner, info.Repo, baseBranch)
+		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
 	}
 
 	patchDoc, err := tryEnqueueItemForPR(ctx, sc, projectRef, info.PR, cqInfo)
