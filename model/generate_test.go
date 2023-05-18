@@ -786,13 +786,14 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(env.Configure(ctx))
 
 	genTask := &task.Task{
-		Id:          "task_that_called_generate_task",
-		Project:     "proj",
-		Version:     "version_that_called_generate_task",
-		Priority:    10,
-		BuildId:     "sample_build",
-		Activated:   true,
-		DisplayName: "task_that_called_generate_task",
+		Id:                  "task_that_called_generate_task",
+		Project:             "proj",
+		Version:             "version_that_called_generate_task",
+		Priority:            10,
+		BuildId:             "sample_build",
+		Activated:           true,
+		DisplayName:         "task_that_called_generate_task",
+		IsEssentialToFinish: true,
 	}
 	s.NoError(genTask.Insert())
 	prevBatchTimeVersion := Version{
@@ -900,9 +901,13 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	for _, task := range tasks {
 		if task.DisplayOnly {
 			s.EqualValues(0, task.Priority)
+			s.False(task.IsEssentialToFinish)
 		} else {
 			s.EqualValues(10, task.Priority,
 				fmt.Sprintf("task '%s' for '%s' failed", task.DisplayName, task.BuildVariant))
+			if task.GeneratedBy == genTask.Id {
+				s.True(task.IsEssentialToFinish, "task '%s' should be essential to finish because parent generator task is", task.Id)
+			}
 		}
 	}
 }

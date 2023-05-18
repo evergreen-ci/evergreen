@@ -248,6 +248,13 @@ type Task struct {
 
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
+
+	// IsEssentialToFinish indicates that this task must finish in order for
+	// the build and version to be considered complete. For example, tasks
+	// selected by the GitHub PR alias must succeed for the GitHub PR requester
+	// before its build or version can be considered complete, but tasks
+	// manually scheduled by the user afterwards are not required.
+	IsEssentialToFinish bool `bson:"is_essential_to_finish" json:"is_essential_to_finish"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.

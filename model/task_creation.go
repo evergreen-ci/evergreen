@@ -32,4 +32,8 @@ type TaskCreationInfo struct {
 	TaskCreateTime      time.Time               // Create time of tasks in the build
 	GithubChecksAliases ProjectAliases          // Project aliases to use to filter tasks to count towards the github checks, if any
 	SyncAtEndOpts       patch.SyncAtEndOptions  // Describes how tasks should sync upon the end of a task
+	// AllTasksAreEssentialToComplete indicates whether or not all tasks that are being
+	// created are required to finish in order for the build/version to be
+	// finished.
+	AllTasksAreEssentialToComplete bool
 }

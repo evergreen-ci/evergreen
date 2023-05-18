@@ -473,6 +473,8 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
 // Creates a manifest based on the Version
+// kim: TODO: double-check that GitHub PR patches are always finalized using
+// this code path, with just the alias tasks selected.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	settings, err := evergreen.GetConfig()
 	if githubOauthToken == "" {
@@ -629,6 +631,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
+
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
 			ProjectRef:       creationInfo.ProjectRef,
@@ -641,6 +644,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
 			SyncAtEndOpts:    p.SyncAtEndOpts,
+			// When a GitHub PR patch is finalized with the PR alias, all of the
+			// tasks selected by the alias must finish in order for the
+			// build/version to be finished.
+			AllTasksAreEssentialToComplete: evergreen.IsGitHubPatchRequester(requester),
 		}
 		var build *build.Build
 		var tasks task.Tasks

@@ -1373,13 +1373,19 @@ func TestCreateBuildFromVersion(t *testing.T) {
 						},
 					},
 				},
-				TaskCreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				TaskCreateTime:                 time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				AllTasksAreEssentialToComplete: true,
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 
 			So(len(tasks), ShouldEqual, 6)
+			for _, t := range tasks {
+				if !t.DisplayOnly {
+					So(t.IsEssentialToFinish, ShouldBeTrue)
+				}
+			}
 			So(tasks[2].Id, ShouldNotEqual, "")
 			So(tasks[2].Secret, ShouldNotEqual, "")
 			So(tasks[2].DisplayName, ShouldEqual, "taskA")

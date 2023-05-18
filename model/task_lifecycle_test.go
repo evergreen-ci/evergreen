@@ -1222,6 +1222,15 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			expectedVersionStatus: evergreen.VersionSucceeded,
 			expectedPatchStatus:   evergreen.PatchSucceeded,
 		},
+		"some unactivated but essential tasks": {
+			tasks: []task.Task{
+				{Status: evergreen.TaskSucceeded, Activated: true},
+				{Status: evergreen.TaskUndispatched, Activated: false, IsEssentialToFinish: true},
+			},
+			expectedBuildStatus:   evergreen.BuildStarted,
+			expectedVersionStatus: evergreen.VersionStarted,
+			expectedPatchStatus:   evergreen.PatchStarted,
+		},
 		"all blocked tasks": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskUndispatched,
@@ -1268,15 +1277,15 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			var err error
 			b, err = build.FindOneId(b.Id)
 			require.NoError(t, err)
-			assert.Equal(t, b.Status, test.expectedBuildStatus)
+			assert.Equal(t, test.expectedBuildStatus, b.Status)
 
 			v, err = VersionFindOneId(v.Id)
 			require.NoError(t, err)
-			assert.Equal(t, v.Status, test.expectedVersionStatus)
+			assert.Equal(t, test.expectedVersionStatus, v.Status)
 
 			p, err = patch.FindOneId(p.Id.Hex())
 			require.NoError(t, err)
-			assert.Equal(t, p.Status, test.expectedPatchStatus)
+			assert.Equal(t, test.expectedPatchStatus, p.Status)
 		})
 	}
 

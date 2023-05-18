@@ -1164,7 +1164,8 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 	return nil
 }
 
-// updateMakespans
+// updateMakespans updates the predicted and actual makespans for the tasks in
+// the build.
 func updateMakespans(b *build.Build, buildTasks []task.Task) error {
 	depPath := FindPredictedMakespan(buildTasks)
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
@@ -1176,8 +1177,8 @@ type buildStatus struct {
 	allTasksUnscheduled bool
 }
 
-// getBuildStatus returns a string denoting the status of the build and
-// a boolean denoting if all tasks in the build are blocked.
+// getBuildStatus returns a string denoting the status of the build based on the
+// state of its constituent tasks.
 func getBuildStatus(buildTasks []task.Task) buildStatus {
 	// Check if no tasks have started and if all tasks are blocked.
 	noStartedTasks := true
@@ -1217,6 +1218,9 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 		if t.Activated && !t.Blocked() && !t.IsFinished() {
 			return buildStatus{status: evergreen.BuildStarted}
 		}
+		if t.IsEssentialToFinish && !t.IsFinished() {
+			return buildStatus{status: evergreen.BuildStarted}
+		}
 	}
 
 	// Check if all tasks are finished but have failures.
@@ -1228,6 +1232,9 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 	return buildStatus{status: evergreen.BuildSucceeded}
 }
 
+// updateBuildGithubStatus updates the GitHub check status for a build. If the
+// build has no GitHub checks, then it is a no-op. Note that this is for GitHub
+// checks, which are *not* the same as GitHub PR statuses.
 func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	githubStatusTasks := make([]task.Task, 0, len(buildTasks))
 	for _, t := range buildTasks {
@@ -1285,7 +1292,7 @@ func checkUpdateBuildPRStatusPending(b *build.Build) error {
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all of the build's tasks become blocked.
 func updateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey)
+	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToFinishKey)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1387,6 +1394,9 @@ func getVersionStatus(builds []build.Build) string {
 	return evergreen.VersionSucceeded
 }
 
+// updateVersionStatus updates the status of the version based on the status of
+// its constituent builds. It assumes that the build statuses have already
+// been updated prior to this.
 func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	githubStatusBuilds := make([]build.Build, 0, len(builds))
 	for _, b := range builds {
@@ -1408,7 +1418,9 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	return nil
 }
 
-// Update the status of the version based on its constituent builds
+// updateVersionStatus updates the status of the version based on the status of
+// its constituent builds. It assumes that the build statuses have already
+// been updated prior to this.
 func updateVersionStatus(v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
 		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))

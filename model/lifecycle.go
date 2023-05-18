@@ -1212,6 +1212,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
 		IsGithubCheck:           isGithubCheck,
 		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
+		IsEssentialToFinish:     creationInfo.AllTasksAreEssentialToComplete,
 	}
 
 	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
@@ -1568,18 +1569,19 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !creationInfo.ActivationInfo.variantHasSpecificActivation(pair.Variant)
 		buildCreationArgs := TaskCreationInfo{
-			Project:          creationInfo.Project,
-			ProjectRef:       creationInfo.ProjectRef,
-			Version:          creationInfo.Version,
-			TaskIDs:          taskIdTables,
-			BuildVariantName: pair.Variant,
-			ActivateBuild:    activateVariant,
-			TaskNames:        taskNames,
-			DisplayNames:     displayNames,
-			ActivationInfo:   creationInfo.ActivationInfo,
-			GeneratedBy:      creationInfo.GeneratedBy,
-			TaskCreateTime:   createTime,
-			SyncAtEndOpts:    creationInfo.SyncAtEndOpts,
+			Project:                        creationInfo.Project,
+			ProjectRef:                     creationInfo.ProjectRef,
+			Version:                        creationInfo.Version,
+			TaskIDs:                        taskIdTables,
+			BuildVariantName:               pair.Variant,
+			ActivateBuild:                  activateVariant,
+			TaskNames:                      taskNames,
+			DisplayNames:                   displayNames,
+			ActivationInfo:                 creationInfo.ActivationInfo,
+			GeneratedBy:                    creationInfo.GeneratedBy,
+			TaskCreateTime:                 createTime,
+			SyncAtEndOpts:                  creationInfo.SyncAtEndOpts,
+			AllTasksAreEssentialToComplete: creationInfo.AllTasksAreEssentialToComplete,
 		}
 
 		grip.Info(message.Fields{
