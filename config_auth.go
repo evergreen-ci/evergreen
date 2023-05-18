@@ -78,7 +78,7 @@ type GithubAuthConfig struct {
 	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
 	Users        []string `bson:"users" json:"users" yaml:"users"`
 	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
-	AppId        int      `bson:"app_id" json:"app_id" yaml:"app_id"`
+	AppId        int64    `bson:"app_id" json:"app_id" yaml:"app_id"`
 }
 
 // MultiAuthConfig contains settings for using multiple authentication
