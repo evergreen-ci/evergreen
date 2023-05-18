@@ -1340,7 +1340,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
 			"message":             "reached max parallel pod request limit, not allocating any more",
-			"usage":               "container task health dashboard",
+			"included_on":         evergreen.ContainerHealthDashboard,
 			"context":             "pod allocation",
 			"num_remaining_tasks": ctq.Len(),
 		})

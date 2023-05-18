@@ -103,52 +103,6 @@ func (s *OpenStackSuite) TestConfigureAPICall() {
 	s.Error(s.manager.Configure(ctx, settings))
 }
 
-func (s *OpenStackSuite) TestIsUpFailAPICall() {
-	mock, ok := s.client.(*openStackClientMock)
-	s.True(ok)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host := &host.Host{}
-
-	mock.failGet = true
-	_, err := s.manager.GetInstanceStatus(ctx, host)
-	s.Error(err)
-
-	active, err := s.manager.IsUp(ctx, host)
-	s.Error(err)
-	s.False(active)
-}
-
-func (s *OpenStackSuite) TestIsUpStatuses() {
-	mock, ok := s.client.(*openStackClientMock)
-	s.True(ok)
-	s.True(mock.isServerActive)
-
-	host := &host.Host{}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	status, err := s.manager.GetInstanceStatus(ctx, host)
-	s.NoError(err)
-	s.Equal(StatusRunning, status)
-
-	active, err := s.manager.IsUp(ctx, host)
-	s.NoError(err)
-	s.True(active)
-
-	mock.isServerActive = false
-	status, err = s.manager.GetInstanceStatus(ctx, host)
-	s.NoError(err)
-	s.NotEqual(StatusRunning, status)
-
-	active, err = s.manager.IsUp(ctx, host)
-	s.NoError(err)
-	s.False(active)
-}
-
 func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

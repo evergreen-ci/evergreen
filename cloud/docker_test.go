@@ -78,37 +78,6 @@ func (s *DockerSuite) TestConfigureAPICall() {
 	s.Error(s.manager.Configure(ctx, settings))
 }
 
-func (s *DockerSuite) TestIsUpFailAPICall() {
-	mock, ok := s.client.(*dockerClientMock)
-	s.True(ok)
-
-	host := &host.Host{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	mock.failGet = true
-	_, err := s.manager.GetInstanceStatus(ctx, host)
-	s.Error(err)
-
-	active, err := s.manager.IsUp(ctx, host)
-	s.Error(err)
-	s.False(active)
-}
-
-func (s *DockerSuite) TestIsUpStatuses() {
-	host := &host.Host{ParentID: "parent"}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	status, err := s.manager.GetInstanceStatus(ctx, host)
-	s.NoError(err)
-	s.Equal(StatusRunning, status)
-
-	active, err := s.manager.IsUp(ctx, host)
-	s.NoError(err)
-	s.True(active)
-}
-
 func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

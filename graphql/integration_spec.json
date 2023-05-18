@@ -1895,237 +1895,324 @@
   },
   "tests": [
     {
-      "query_file": "taskTestStatusAsc.graphql",
+      "query_file": "task_test_default_params.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "status": "a"
-              },
-              {
-                "status": "b"
-              },
-              {
-                "status": "c"
-              },
-              {
-                "status": "dog"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "testFile": "b"
+                },
+                {
+                  "testFile": "apple"
+                },
+                {
+                  "testFile": "d"
+                },
+                {
+                  "testFile": "c"
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestStatusDesc.graphql",
+      "query_file": "task_test_duration_asc.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "status": "dog"
-              },
-              {
-                "status": "c"
-              },
-              {
-                "status": "b"
-              },
-              {
-                "status": "a"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "duration": 10
+                },
+                {
+                  "duration": 20
+                },
+                {
+                  "duration": 30
+                },
+                {
+                  "duration": 40
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestNameAsc.graphql",
+      "query_file": "task_test_duration_desc.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "testFile": "apple"
-              },
-              {
-                "testFile": "b"
-              },
-              {
-                "testFile": "c"
-              },
-              {
-                "testFile": "d"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "duration": 40
+                },
+                {
+                  "duration": 30
+                },
+                {
+                  "duration": 20
+                },
+                {
+                  "duration": 10
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestNameDesc.graphql",
+      "query_file": "task_test_filter_no_results.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "testFile": "d"
-              },
-              {
-                "testFile": "c"
-              },
-              {
-                "testFile": "b"
-              },
-              {
-                "testFile": "apple"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": []
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestDurationDesc.graphql",
+      "query_file": "task_test_filter_status_substr_1.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "duration": 40
-              },
-              {
-                "duration": 30
-              },
-              {
-                "duration": 20
-              },
-              {
-                "duration": 10
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": []
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestDurationAsc.graphql",
+      "query_file": "task_test_filter_status_substr_2.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "duration": 10
-              },
-              {
-                "duration": 20
-              },
-              {
-                "duration": 30
-              },
-              {
-                "duration": 40
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": []
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestFilterStatus.graphql",
+      "query_file": "task_test_filter_status.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "status": "dog"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "status": "dog"
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestFilterTestFile.graphql",
+      "query_file": "task_test_filter_test_file.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "testFile": "apple"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "testFile": "apple"
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestFilterNoResults.graphql",
+      "query_file": "task_test_logs_empty_str.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": []
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "logs": {
+                    "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
+                    "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
+                    "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple/#shareLine=126",
+                    "urlParsley": "https://localhost:4173/test/exec1/0/apple?shareLine=126"
+                  },
+                  "id": "apple"
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestFilterStatusSubstr1.graphql",
+      "query_file": "task_test_logs_overwrite_legacy_resmoke_url.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": []
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "logs": {
+                    "url": "",
+                    "urlRaw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
+                    "urlLobster": "https://localhost:8443/lobster/build/59ef7a2097b1d3148d0004f1/test/123",
+                    "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?shareLine=126"
+                  },
+                  "id": "b"
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestFilterStatusSubstr2.graphql",
+      "query_file": "task_test_name_asc.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": []
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "testFile": "apple"
+                },
+                {
+                  "testFile": "b"
+                },
+                {
+                  "testFile": "c"
+                },
+                {
+                  "testFile": "d"
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestPageLimit.graphql",
+      "query_file": "task_test_name_desc.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "testFile": "c"
-              },
-              {
-                "testFile": "d"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "testFile": "d"
+                },
+                {
+                  "testFile": "c"
+                },
+                {
+                  "testFile": "b"
+                },
+                {
+                  "testFile": "apple"
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "taskTestDefaultParams.graphql",
+      "query_file": "task_test_nonexistent_task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "task not found",
+            "path": ["task"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": {
+          "task": null
+        }
+      }
+    },
+    {
+      "query_file": "task_test_page_limit.graphql",
       "result": {
         "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "testFile": "apple"
-              },
-              {
-                "testFile": "b"
-              },
-              {
-                "testFile": "c"
-              },
-              {
-                "testFile": "d"
-              }
-            ]
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "testFile": "c"
+                },
+                {
+                  "testFile": "d"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_test_status_asc.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "status": "a"
+                },
+                {
+                  "status": "b"
+                },
+                {
+                  "status": "c"
+                },
+                {
+                  "status": "dog"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_test_status_desc.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "tests": {
+              "testResults": [
+                {
+                  "status": "dog"
+                },
+                {
+                  "status": "c"
+                },
+                {
+                  "status": "b"
+                },
+                {
+                  "status": "a"
+                }
+              ]
+            }
           }
         }
       }
@@ -2331,63 +2418,6 @@
             "displayName": "testuser"
           }
         }
-      }
-    },
-    {
-      "query_file": "task_test-logs-empty-str.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "logs": {
-                  "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
-                  "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
-                  "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple/#shareLine=126",
-                  "urlParsley": "https://localhost:4173/test/exec1/0/apple?shareLine=126"
-                },
-                "id": "apple"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "task_test-logs-overwrite-legacy-resmoke-url.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "logs": {
-                  "url": "",
-                  "urlRaw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
-                  "urlLobster": "https://localhost:8443/lobster/build/59ef7a2097b1d3148d0004f1/test/123",
-                  "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?shareLine=126"
-                },
-                "id": "b"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "task_test-nonexistent-task_id.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "finding task with id 'THIS-TASK-DOES-NOT-EXIST-!!!!' and execution 0",
-            "path": [
-              "taskTests"
-            ],
-            "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
-            }
-          }
-        ],
-        "data": null
       }
     },
     {

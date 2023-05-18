@@ -240,13 +240,6 @@ func TestGetImageID(t *testing.T) {
 			expectedOutput: "imageID",
 		},
 		{
-			name:           "Ec2Spot",
-			provider:       evergreen.ProviderNameEc2Spot,
-			key:            "ami",
-			value:          "imageID",
-			expectedOutput: "imageID",
-		},
-		{
 			name:           "Ec2Fleet",
 			provider:       evergreen.ProviderNameEc2Fleet,
 			key:            "ami",

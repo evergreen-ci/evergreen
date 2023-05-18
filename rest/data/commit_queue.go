@@ -260,6 +260,15 @@ type UserRepoInfo struct {
 	Repo     string
 }
 
+// NewUserRepoInfo creates UserRepoInfo from PR information.
+func NewUserRepoInfo(info commitqueue.EnqueuePRInfo) UserRepoInfo {
+	return UserRepoInfo{
+		Username: info.Username,
+		Owner:    info.Owner,
+		Repo:     info.Repo,
+	}
+}
+
 func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	// In the org
 	token, err := settings.GetGithubOauthToken()
@@ -298,51 +307,24 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 
 // EnqueuePRToCommitQueue enqueues an item to the commit queue to test and merge a PR.
 func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc Connector, info commitqueue.EnqueuePRInfo) (*restModel.APIPatch, error) {
-	settings := env.Settings()
-	userRepo := UserRepoInfo{
-		Username: info.Username,
-		Owner:    info.Owner,
-		Repo:     info.Repo,
-	}
-	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, settings, userRepo)
+	patchDoc, pr, err := getAndEnqueueCommitQueueItemForPR(ctx, env, sc, info)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting user info from GitHub API")
-	}
-	if !authorized {
-		return nil, errors.Errorf("user '%s' is not authorized to merge", userRepo.Username)
-	}
-
-	pr, err := getPRAndCheckMergeable(ctx, env, sc, info)
-	if err != nil {
+		catcher := grip.NewBasicCatcher()
+		if pr != nil && errors.Cause(err) != errNoCommitQueueForBranch {
+			// Send back information for any error except one where the error is
+			// that the commit queue is not enabled. This is because some
+			// projects have their own workflow that use the `evergreen merge`
+			// PR comment to trigger their own custom commit queue logic, and
+			// want this handler to no-op.
+			catcher.Wrap(sendGitHubCommitQueueError(ctx, env, sc, pr, NewUserRepoInfo(info), err), "propagating GitHub errors back to PR")
+		}
 		return nil, err
-	}
-
-	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)
-	baseBranch := *pr.Base.Ref
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
-	}
-
-	patchDoc, errMsg, err := tryEnqueueItemForPR(ctx, sc, projectRef, info.PR, cqInfo)
-	if err != nil {
-		sendErr := thirdparty.SendCommitQueueGithubStatus(env, pr, message.GithubStateFailure, errMsg, "")
-		grip.Error(message.WrapError(sendErr, message.Fields{
-			"message": "error sending patch creation failure to github",
-			"owner":   userRepo.Owner,
-			"repo":    userRepo.Repo,
-			"pr":      info.PR,
-		}))
-		return nil, errors.Wrap(err, "enqueueing item to commit queue for PR")
 	}
 
 	if pr == nil || pr.Head == nil || pr.Head.SHA == nil {
 		return nil, errors.New("PR contains no head branch SHA")
 	}
-	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, info.PR, patchDoc.Id.Hex())
+	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(info.Owner, info.Repo, *pr.Head.SHA, info.PR, patchDoc.Id.Hex())
 	q := env.LocalQueue()
 	if err = q.Put(ctx, pushJob); err != nil {
 		return nil, errors.Wrapf(err, "queueing notification for commit queue push for item '%d'", info.PR)
@@ -352,6 +334,50 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 		return nil, errors.Wrap(err, "converting patch to API model")
 	}
 	return apiPatch, nil
+}
+
+// errNoCommitQueueForBranch indicates that there is no commit queue for the
+// particular repo and branch.
+var errNoCommitQueueForBranch = errors.New("no project with commit queue enabled for tracking branch")
+
+// getAndEnqueueCommitQueueItemForPR gets information about a PR, validates that it's allowed to
+// submit to the commit queue, and enqueues it. If it succeeds, it will return
+// the created patch and the PR info. It may still return the PR info even if
+// it fails to create the patch.
+func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Environment, sc Connector, info commitqueue.EnqueuePRInfo) (*patch.Patch, *github.PullRequest, error) {
+	pr, err := getPRAndCheckBase(ctx, sc, info)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))
+	if err != nil {
+		return nil, pr, errors.Wrap(err, "getting user info from GitHub API")
+	}
+	if !authorized {
+		return nil, pr, errors.Errorf("user '%s' is not authorized to merge", info.Username)
+	}
+
+	pr, err = checkPRIsMergeable(ctx, env, sc, pr, info)
+	if err != nil {
+		return nil, pr, err
+	}
+
+	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)
+	baseBranch := *pr.Base.Ref
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(info.Owner, info.Repo, baseBranch)
+	if err != nil {
+		return nil, pr, errors.Wrapf(err, "getting project for '%s:%s' tracking branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+	if projectRef == nil {
+		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+
+	patchDoc, err := tryEnqueueItemForPR(ctx, sc, projectRef, info.PR, cqInfo)
+	if err != nil {
+		return nil, pr, errors.Wrap(err, "enqueueing item to commit queue for PR")
+	}
+	return patchDoc, pr, nil
 }
 
 // getPRAndCheckBase gets the Github PR and verifies that base and base ref is set
@@ -366,13 +392,10 @@ func getPRAndCheckBase(ctx context.Context, sc Connector, info commitqueue.Enque
 	return pr, nil
 }
 
-// getPRAndCheckMergeable gets the Github PR, verifies base, and verifies that the PR is mergeable.
-// Attempts to refresh the status if the PR is marked as blocked but the patch is successful.
-func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc Connector, info commitqueue.EnqueuePRInfo) (*github.PullRequest, error) {
-	pr, err := getPRAndCheckBase(ctx, sc, info)
-	if err != nil {
-		return nil, err
-	}
+// checkPRIsMergeable verifies that the PR is mergeable. It may refresh the PR
+// state if it's out of date; otherwise, if it's up-to-date, it will return the
+// PR info as-is.
+func checkPRIsMergeable(ctx context.Context, env evergreen.Environment, sc Connector, pr *github.PullRequest, info commitqueue.EnqueuePRInfo) (*github.PullRequest, error) {
 	mergeableState := pr.GetMergeableState()
 
 	grip.Debug(message.Fields{
@@ -397,12 +420,19 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 				"pr":      info.PR,
 			}))
 		} else if p != nil && p.Version != "" {
+			// Merging might be blocked due to branch protection requiring
+			// the PR patch to succeed. However, Evergreen does not guarantee
+			// that the GitHub status is up-to-date with the actual status in
+			// Evergreen. Refreshing the GitHub status here re-syncs the GitHub
+			// status in case a stale Evergreen patch status might be blocking
+			// the merge.
 			refreshJob := units.NewGithubStatusRefreshJob(p)
 			refreshJob.Run(ctx)
-			pr, err = getPRAndCheckBase(ctx, sc, info)
+			refreshedPR, err := getPRAndCheckBase(ctx, sc, info)
 			if err != nil {
-				return nil, err
+				return pr, err
 			}
+			pr = refreshedPR
 			grip.Debug(message.Fields{
 				"message":            "calling refresh from commit queue",
 				"ticket":             "EVG-19827",
@@ -424,26 +454,21 @@ func getPRAndCheckMergeable(ctx context.Context, env evergreen.Environment, sc C
 			"pr_title": pr.GetTitle(),
 			"pr_num":   pr.GetNumber(),
 		})
-		sendErr := thirdparty.SendCommitQueueGithubStatus(env, pr, message.GithubStateFailure, errMsg, "")
 
-		grip.Error(message.WrapError(sendErr, message.Fields{
-			"message": "error sending patch creation failure to github",
-			"owner":   info.Owner,
-			"repo":    info.Repo,
-			"pr":      pr.GetNumber(),
-		}))
-		return nil, errors.New(errMsg)
+		return pr, errors.New(errMsg)
 	}
 
 	return pr, nil
 }
 
-// tryEnqueueItemForPR attempts to enqueue an item for a PR after checking it is in a valid state to enqueue. It returns the enqueued patch,
-// and in the failure case it will return an error and a short error message to be sent to GitHub.
-func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.ProjectRef, prNum int, cqInfo restModel.GithubCommentCqData) (*patch.Patch, string, error) {
+// tryEnqueueItemForPR attempts to enqueue an item for a PR after checking it is
+// in a valid state to enqueue. It returns the enqueued patch, and in the
+// failure case it will return an error and a short error message to be sent to
+// GitHub.
+func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.ProjectRef, prNum int, cqInfo restModel.GithubCommentCqData) (*patch.Patch, error) {
 	patchDoc, err := sc.AddPatchForPR(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
-		return nil, "failed to create patch", errors.Wrap(err, "adding patch for PR")
+		return nil, errors.Wrap(err, "creating patch for PR")
 	}
 
 	item := restModel.APICommitQueueItem{
@@ -454,9 +479,25 @@ func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.Pr
 		PatchId:         utility.ToStringPtr(patchDoc.Id.Hex()),
 	}
 	if _, err = EnqueueItem(projectRef.Id, item, false); err != nil {
-		return nil, "failed to enqueue commit item", errors.Wrap(err, "enqueueing commit queue item")
+		return nil, errors.Wrap(err, "enqueueing commit queue item")
 	}
-	return patchDoc, "", nil
+	return patchDoc, nil
+}
+
+// sendGitHubCommitQueueError updates the GitHub status and posts a comment
+// after an error has occurred related to the commit queue.
+func sendGitHubCommitQueueError(ctx context.Context, env evergreen.Environment, sc Connector, pr *github.PullRequest, userRepo UserRepoInfo, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(thirdparty.SendCommitQueueGithubStatus(env, pr, message.GithubStateFailure, err.Error(), ""), "sending GitHub status update")
+
+	comment := fmt.Sprintf("Evergreen could not enqueue your PR in the commit queue. The error:\n%s", err)
+	catcher.Wrap(sc.AddCommentToPR(ctx, userRepo.Owner, userRepo.Repo, pr.GetNumber(), comment), "writing error comment back to PR")
+
+	return catcher.Resolve()
 }
 
 // CreatePatchForMerge creates a merge patch from an existing patch and enqueues

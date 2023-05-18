@@ -129,7 +129,7 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 	grip.Info(message.Fields{
 		"message":            "successfully terminated pod",
 		"pod":                j.PodID,
-		"usage":              "container task health dashboard",
+		"included_on":        evergreen.ContainerHealthDashboard,
 		"termination_reason": j.Reason,
 		"job":                j.ID(),
 	})
@@ -232,9 +232,16 @@ func (j *podTerminationJob) fixStrandedRunningTask(ctx context.Context) error {
 		})
 		return nil
 	}
-
-	if err := t.MarkAsContainerDeallocated(ctx, j.env); err != nil {
-		return errors.Wrapf(err, "marking stranded container task '%s' execution %d running on pod '%s' as deallocated", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution, j.pod.ID)
+	grip.WarningWhen(!t.ContainerAllocated, message.Fields{
+		"message":   "stranded container task was already marked as deallocated, refusing to fix it",
+		"task":      t.Id,
+		"execution": t.Execution,
+		"status":    t.Status,
+	})
+	if t.ContainerAllocated {
+		if err := t.MarkAsContainerDeallocated(ctx, j.env); err != nil {
+			return errors.Wrapf(err, "marking stranded container task '%s' execution %d running on pod '%s' as deallocated", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution, j.pod.ID)
+		}
 	}
 
 	if err := model.ClearAndResetStrandedContainerTask(j.env.Settings(), j.pod); err != nil {
