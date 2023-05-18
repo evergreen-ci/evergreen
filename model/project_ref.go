@@ -114,9 +114,6 @@ type ProjectRef struct {
 	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions,omitempty" yaml:"container_size_definitions,omitempty"`
 	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
-	// Filters settings
-	ParsleyFilters []ParsleyFilter `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
-
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
@@ -126,6 +123,9 @@ type ProjectRef struct {
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
+
+	// Filter/view settings
+	ParsleyFilters []ParsleyFilter `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 }
 
 type ParsleyFilter struct {

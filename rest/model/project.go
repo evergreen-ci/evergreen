@@ -546,9 +546,9 @@ type APIProjectRef struct {
 	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
 	DeleteContainerSecrets []string           `json:"delete_container_secrets,omitempty"`
-	ParsleyFilters         []APIParsleyFilter `json:"parsley_filters"`
 	ExternalLinks          []APIExternalLink  `json:"external_links"`
 	Banner                 APIProjectBanner   `json:"banner"`
+	ParsleyFilters         []APIParsleyFilter `json:"parsley_filters"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -761,7 +761,7 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 		p.ExternalLinks = externalLinks
 	}
 
-	// copy Parsley filters
+	// Copy Parsley filters
 	if projectRef.ParsleyFilters != nil {
 		parsleyFilters := []APIParsleyFilter{}
 		for _, f := range projectRef.ParsleyFilters {
