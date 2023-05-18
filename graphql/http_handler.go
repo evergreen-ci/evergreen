@@ -58,14 +58,16 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
-
-		if !(strings.HasPrefix(queryPath, "mainlineCommits.versions[") && strings.HasSuffix(err.Error(), ": context canceled")) {
-			grip.Error(message.WrapError(err, message.Fields{
-				"path":    "/graphql/query",
-				"query":   queryPath,
-				"args":    args,
-				"request": gimlet.GetRequestID(ctx),
-			}))
+		errorMessage := message.WrapError(err, message.Fields{
+			"path":    "/graphql/query",
+			"query":   queryPath,
+			"args":    args,
+			"request": gimlet.GetRequestID(ctx),
+		})
+		if strings.HasSuffix(err.Error(), ": context canceled") {
+			grip.Warning(errorMessage)
+		} else {
+			grip.Error(errorMessage)
 		}
 		return graphql.DefaultErrorPresenter(ctx, err)
 	})
