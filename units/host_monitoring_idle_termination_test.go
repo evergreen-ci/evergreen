@@ -121,7 +121,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		assert.Empty(t, hosts)
 	})
 
-	t.Run("HostsNotRunningTasksShouldBeFlaggedIfTheyHaveBeenIdleAtLeastFifteenMinutesAndWillIncurPaymentInLessThanTenMinutes", func(t *testing.T) {
+	t.Run("HostsNotRunningTasksShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
@@ -162,79 +162,6 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 1, num)
 		assert.Equal(t, hosts[0], "h1")
-	})
-
-	t.Run("HostsNotCurrentlyRunningTaskWithLastCommunicationTimeGreaterThanTenMinsShouldBeMarkedAsIdle", func(t *testing.T) {
-		testFlaggingIdleHostsSetupTest(t)
-		defer testFlaggingIdleHostsTeardownTest(t)
-
-		distro1 := distro.Distro{
-			Id:       "distro1",
-			Provider: evergreen.ProviderNameMock,
-			HostAllocatorSettings: distro.HostAllocatorSettings{
-				AcceptableHostIdleTime: 4 * time.Minute,
-			},
-		}
-		require.NoError(t, distro1.Insert())
-
-		host1 := host.Host{
-			Id:                    "h1",
-			Distro:                distro1,
-			Provider:              evergreen.ProviderNameMock,
-			LastTask:              "t1",
-			LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
-			LastCommunicationTime: time.Now(),
-			Status:                evergreen.HostRunning,
-			StartedBy:             evergreen.User,
-			Provisioned:           true,
-		}
-		host2 := host.Host{
-			Id:                    "h2",
-			Distro:                distro1,
-			Provider:              evergreen.ProviderNameMock,
-			LastTask:              "t2",
-			LastTaskCompletedTime: time.Now().Add(-time.Minute * 2),
-			LastCommunicationTime: time.Now(),
-			Status:                evergreen.HostRunning,
-			StartedBy:             evergreen.User,
-			Provisioned:           true,
-		}
-		require.NoError(t, host1.Insert())
-		require.NoError(t, host2.Insert())
-
-		num, hosts := numIdleHostsFound(ctx, env, t)
-		assert.Equal(t, 1, num)
-		assert.Equal(t, hosts[0], "h1")
-	})
-
-	t.Run("HostsThatHaveBeenProvisionedShouldHaveTheTimerReset", func(t *testing.T) {
-		testFlaggingIdleHostsSetupTest(t)
-		defer testFlaggingIdleHostsTeardownTest(t)
-
-		distro1 := distro.Distro{
-			Id:       "distro1",
-			Provider: evergreen.ProviderNameMock,
-			HostAllocatorSettings: distro.HostAllocatorSettings{
-				AcceptableHostIdleTime: 4 * time.Minute,
-			},
-		}
-		require.NoError(t, distro1.Insert())
-
-		h5 := host.Host{
-			Id:                    "h5",
-			Distro:                distro1,
-			Provider:              evergreen.ProviderNameMock,
-			LastCommunicationTime: time.Now(),
-			Status:                evergreen.HostRunning,
-			StartedBy:             evergreen.User,
-			StartTime:             time.Now().Add(-10 * time.Minute), // started before the cutoff
-			BillingStartTime:      time.Now().Add(-2 * time.Minute),  // billing started after the cutoff
-		}
-		require.NoError(t, h5.Insert())
-
-		num, hosts := numIdleHostsFound(ctx, env, t)
-		assert.Equal(t, 0, num)
-		assert.Empty(t, hosts)
 	})
 
 	t.Run("LegacyHostsThatNeedNewAgentsShouldNotBeMarkedIdle", func(t *testing.T) {

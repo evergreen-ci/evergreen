@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/suite"
@@ -274,8 +275,9 @@ pre:
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -307,8 +309,9 @@ pre:
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -336,8 +339,9 @@ post:
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -364,8 +368,9 @@ post:
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -399,8 +404,9 @@ post:
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -699,8 +705,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -743,7 +750,8 @@ task_groups:
 			Id:         "abcdef",
 			Identifier: "project_identifier",
 		},
-		Timeout: &internal.Timeout{},
+		Timeout:    &internal.Timeout{},
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -777,8 +785,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -812,8 +821,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -846,8 +856,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -882,8 +893,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -919,8 +931,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -958,8 +971,9 @@ task_groups:
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -999,8 +1013,9 @@ timeout:
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
+		Project:    p,
+		WorkDir:    s.tc.taskDirectory,
+		Expansions: util.NewExpansions(nil),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

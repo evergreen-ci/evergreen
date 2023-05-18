@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -55,29 +54,6 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.ElementsMatch(t, []string{"123456"}, filteredSubIDs)
 	})
-}
-
-func TestCollectiveStatusArray(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(model.VersionCollection, patch.Collection))
-	patchId := bson.NewObjectId()
-	version := &restModel.APIVersion{
-		Id:        utility.ToStringPtr(patchId.Hex()),
-		Aborted:   utility.ToBoolPtr(true),
-		Status:    utility.ToStringPtr(evergreen.PatchFailed),
-		Requester: utility.ToStringPtr("patch_request"),
-	}
-
-	assert.NoError(t, db.Insert(model.VersionCollection, version))
-
-	p := &patch.Patch{
-		Id:     patchId,
-		Status: evergreen.PatchFailed,
-	}
-	require.NoError(t, p.Insert())
-
-	statusArray, err := getCollectiveStatusArray(*version)
-	require.NoError(t, err)
-	assert.Equal(t, evergreen.PatchAborted, statusArray[0])
 }
 
 func TestCanRestartTask(t *testing.T) {
@@ -174,4 +150,44 @@ func TestCanScheduleTask(t *testing.T) {
 	}
 	canSchedule = canScheduleTask(unscheduledTask)
 	assert.Equal(t, canSchedule, true)
+}
+
+func TestGetDisplayStatus(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.VersionCollection, patch.Collection))
+	patchId := bson.NewObjectId()
+	childPatchId := bson.NewObjectId()
+	version := &model.Version{
+		Id:        patchId.Hex(),
+		Aborted:   true,
+		Status:    evergreen.VersionSucceeded,
+		Requester: evergreen.PatchVersionRequester,
+	}
+
+	assert.NoError(t, version.Insert())
+
+	p := &patch.Patch{
+		Id:     patchId,
+		Status: evergreen.PatchSucceeded,
+		Triggers: patch.TriggerInfo{
+			ChildPatches: []string{childPatchId.Hex()},
+		},
+	}
+	assert.NoError(t, p.Insert())
+
+	cv := model.Version{
+		Id:      childPatchId.Hex(),
+		Aborted: true,
+		Status:  evergreen.VersionFailed,
+	}
+	assert.NoError(t, cv.Insert())
+
+	cp := &patch.Patch{
+		Id:     childPatchId,
+		Status: evergreen.PatchFailed,
+	}
+	assert.NoError(t, cp.Insert())
+
+	status, err := getDisplayStatus(version)
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.VersionAborted, status)
 }
