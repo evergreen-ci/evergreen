@@ -154,6 +154,26 @@ type APIPeriodicBuildDefinition struct {
 	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
 }
 
+type APIParsleyFilter struct {
+	Expression    *string `json:"expression"`
+	CaseSensitive *bool   `json:"case_sensitive"`
+	ExactMatch    *bool   `json:"exact_match"`
+}
+
+func (t *APIParsleyFilter) ToService() model.ParsleyFilter {
+	return model.ParsleyFilter{
+		Expression:    utility.FromStringPtr(t.Expression),
+		CaseSensitive: utility.FromBoolPtr(t.CaseSensitive),
+		ExactMatch:    utility.FromBoolPtr(t.ExactMatch),
+	}
+}
+
+func (t *APIParsleyFilter) BuildFromService(h model.ParsleyFilter) {
+	t.Expression = utility.ToStringPtr(h.Expression)
+	t.CaseSensitive = utility.ToBoolPtr(h.CaseSensitive)
+	t.ExactMatch = utility.ToBoolPtr(h.ExactMatch)
+}
+
 type APIExternalLink struct {
 	URLTemplate *string `json:"url_template"`
 	DisplayName *string `json:"display_name"`
@@ -525,9 +545,10 @@ type APIProjectRef struct {
 	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
 	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
-	DeleteContainerSecrets []string          `json:"delete_container_secrets,omitempty"`
-	ExternalLinks          []APIExternalLink `json:"external_links"`
-	Banner                 APIProjectBanner  `json:"banner"`
+	DeleteContainerSecrets []string           `json:"delete_container_secrets,omitempty"`
+	ExternalLinks          []APIExternalLink  `json:"external_links"`
+	Banner                 APIProjectBanner   `json:"banner"`
+	ParsleyFilters         []APIParsleyFilter `json:"parsley_filters"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -599,6 +620,16 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		}
 		projectRef.ExternalLinks = links
 	}
+
+	// Copy Parsley filters
+	if p.ParsleyFilters != nil {
+		parsleyFilters := []model.ParsleyFilter{}
+		for _, f := range p.ParsleyFilters {
+			parsleyFilters = append(parsleyFilters, f.ToService())
+		}
+		projectRef.ParsleyFilters = parsleyFilters
+	}
+
 	if p.PatchTriggerAliases != nil {
 		patchTriggers := []patch.PatchTriggerDefinition{}
 		for _, a := range p.PatchTriggerAliases {
@@ -729,6 +760,18 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 		}
 		p.ExternalLinks = externalLinks
 	}
+
+	// Copy Parsley filters
+	if projectRef.ParsleyFilters != nil {
+		parsleyFilters := []APIParsleyFilter{}
+		for _, f := range projectRef.ParsleyFilters {
+			parsleyFilter := APIParsleyFilter{}
+			parsleyFilter.BuildFromService(f)
+			parsleyFilters = append(parsleyFilters, parsleyFilter)
+		}
+		p.ParsleyFilters = parsleyFilters
+	}
+
 	return nil
 }
 
