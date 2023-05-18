@@ -125,7 +125,8 @@ type ProjectRef struct {
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
 
 	// Filter/view settings
-	ParsleyFilters []ParsleyFilter `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
+	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
+	ParsleyFilters    []ParsleyFilter   `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 }
 
 type ParsleyFilter struct {
@@ -133,6 +134,13 @@ type ParsleyFilter struct {
 	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
 	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`
 }
+
+type ProjectHealthView string
+
+const (
+	ProjectHealthViewFailed ProjectHealthView = "failed"
+	ProjectHealthViewAll    ProjectHealthView = "all"
+)
 
 type ProjectBanner struct {
 	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
