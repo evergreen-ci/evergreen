@@ -126,6 +126,13 @@ type ProjectRef struct {
 
 	// Filter/view settings
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
+	ParsleyFilters    []ParsleyFilter   `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
+}
+
+type ParsleyFilter struct {
+	Expression    string `bson:"expression" json:"expression"`
+	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
+	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`
 }
 
 type ProjectHealthView string
@@ -139,6 +146,7 @@ type ProjectBanner struct {
 	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
 	Text  string                `bson:"text" json:"text"`
 }
+
 type ExternalLink struct {
 	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
 	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`

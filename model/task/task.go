@@ -124,7 +124,9 @@ type Task struct {
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
 	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
-	OverrideDependencies    bool             `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
+	// wait for its dependencies to finish before running.
+	OverrideDependencies bool `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// SecondaryDistros refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
@@ -461,7 +463,7 @@ func (t *Task) IsContainerDispatchable() bool {
 	return t.isContainerScheduled()
 }
 
-// isContainerTaskScheduled returns whether or not the task is in a state
+// isContainerTaskScheduled returns whether the task is in a state
 // where it should eventually dispatch to run on a container.
 func (t *Task) isContainerScheduled() bool {
 	if !t.IsContainerTask() {
@@ -476,13 +478,14 @@ func (t *Task) isContainerScheduled() bool {
 	if t.Priority <= evergreen.DisabledTaskPriority {
 		return false
 	}
-
-	for _, dep := range t.DependsOn {
-		if dep.Unattainable {
-			return false
-		}
-		if !dep.Finished {
-			return false
+	if !t.OverrideDependencies {
+		for _, dep := range t.DependsOn {
+			if dep.Unattainable {
+				return false
+			}
+			if !dep.Finished {
+				return false
+			}
 		}
 	}
 

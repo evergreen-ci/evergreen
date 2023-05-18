@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
@@ -92,8 +93,9 @@ func TestCommandFileLogging(t *testing.T) {
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
 				},
 			},
-			Timeout: &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-			WorkDir: tmpDirName,
+			Timeout:    &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			WorkDir:    tmpDirName,
+			Expansions: util.NewExpansions(nil),
 		},
 		taskModel: task,
 	}

@@ -2002,9 +2002,9 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		Provider:              evergreen.ProviderNameMock,
 		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now().Add(-60 * time.Minute),
+		AgentStartTime:        time.Now(),
 	}
-	// User data host that is not running task and has passed the grace period
-	// to start running tasks is idle.
+	// User data host that is not running a task is idle if its AgentStartTime is set.
 	host8 := &Host{
 		Id: "host8",
 		Distro: distro.Distro{
@@ -2017,7 +2017,8 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		StartedBy:             evergreen.User,
 		Provider:              evergreen.ProviderNameMock,
 		Status:                evergreen.HostStarting,
-		CreationTime:          time.Now().Add(-70 * time.Minute),
+		CreationTime:          time.Now(),
+		AgentStartTime:        time.Now(),
 	}
 	// User data host that is running task but has not communicated recently is
 	// not idle.
@@ -2035,9 +2036,10 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		Provider:              evergreen.ProviderNameMock,
 		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now().Add(-100 * time.Minute),
+		AgentStartTime:        time.Now(),
 	}
-	// User data host that is not running task but has not passed the grace
-	// period to start running tasks is not idle.
+	// User data host that is not running task but has not had its
+	// AgentStartTime set is not idle.
 	host10 := &Host{
 		Id: "host10",
 		Distro: distro.Distro{
@@ -2527,31 +2529,31 @@ func TestIsIdleParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	billingTimeRecent := time.Now().Add(-5 * time.Minute)
-	billingTimeOld := time.Now().Add(-1 * time.Hour)
+	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
+	provisionTimeOld := time.Now().Add(-1 * time.Hour)
 
 	host1 := &Host{
-		Id:               "host1",
-		Status:           evergreen.HostRunning,
-		BillingStartTime: billingTimeOld,
+		Id:            "host1",
+		Status:        evergreen.HostRunning,
+		ProvisionTime: provisionTimeOld,
 	}
 	host2 := &Host{
-		Id:               "host2",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeRecent,
+		Id:            "host2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeRecent,
 	}
 	host3 := &Host{
-		Id:               "host3",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeOld,
+		Id:            "host3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
 	}
 	host4 := &Host{
-		Id:               "host4",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeOld,
+		Id:            "host4",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
 	}
 	host5 := &Host{
 		Id:       "host5",
