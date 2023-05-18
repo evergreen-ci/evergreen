@@ -83,21 +83,8 @@ type ProjectSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
   projectRef: Project
-  projectSubscriptions: [ProjectSubscription!] @deprecated(reason: "Use subscriptions instead")
   subscriptions: [GeneralSubscription!]
   vars: ProjectVars
-}
-
-# shared by Project and RepoRef
-type ProjectSubscription {
-  id: String!
-  ownerType: String!
-  regexSelectors: [Selector!]!
-  resourceType: String!
-  selectors: [Selector!]!
-  subscriber: SubscriberWrapper
-  trigger: String!
-  triggerData: StringMap
 }
 
 type Selector {
@@ -183,7 +170,6 @@ type ProjectEventSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
   projectRef: Project
-  projectSubscriptions: [ProjectSubscription!] @deprecated(reason: "Use subscriptions instead")
   subscriptions: [GeneralSubscription!]
   vars: ProjectVars
 }
