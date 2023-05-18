@@ -43,7 +43,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
 
-			// Appends ProjectHealthView fieldwhen building from service
+			// Appends ProjectHealthView field when building from service
 			assert.Equal(t, apiProjectRef.ProjectHealthView, model.ProjectHealthViewFailed)
 
 			apiChanges := &restModel.APIProjectSettings{
