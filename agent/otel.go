@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -46,17 +47,17 @@ const (
 	traceSuffix    = "build/OTelTraces"
 	maxLineSize    = 1024 * 1024
 
-	cpuTimeInstrument = "system.cpu.time"
-	cpuUtilInstrument = "system.cpu.utilization"
+	cpuTimeInstrumentPrefix = "system.cpu.time"
+	cpuUtilInstrument       = "system.cpu.utilization"
 
-	memoryUsageInstrument       = "system.memory.usage"
+	memoryUsageInstrumentPrefix = "system.memory.usage"
 	memoryUtilizationInstrument = "system.memory.utilization"
 
-	diskIOInstrument         = "system.disk.io"
-	diskOperationsInstrument = "system.disk.operations"
-	diskIOTimeInstrument     = "system.disk.io_time"
+	diskIOInstrumentPrefix         = "system.disk.io"
+	diskOperationsInstrumentPrefix = "system.disk.operations"
+	diskIOTimeInstrumentPrefix     = "system.disk.io_time"
 
-	networkIOInstrument = "system.network.io"
+	networkIOInstrumentPrefix = "system.network.io"
 )
 
 func (a *Agent) initOtel(ctx context.Context) error {
@@ -133,24 +134,40 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 
 	return func(ctx context.Context) {
 		grip.Error(errors.Wrap(meterProvider.Shutdown(ctx), "doing meter provider"))
-	}, errors.Wrap(instrumentMeter(meterProvider.Meter(packageName)), "instrumenting meter")
+	}, errors.Wrap(instrumentMeter(ctx, meterProvider.Meter(packageName)), "instrumenting meter")
 }
 
-func instrumentMeter(meter metric.Meter) error {
+func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Wrap(addCPUMetrics(meter), "adding CPU metrics")
 	catcher.Wrap(addMemoryMetrics(meter), "adding memory metrics")
-	catcher.Wrap(addDiskMetrics(meter), "adding disk metrics")
+	catcher.Wrap(addDiskMetrics(ctx, meter), "adding disk metrics")
 	catcher.Wrap(addNetworkMetrics(meter), "adding network metrics")
 
 	return catcher.Resolve()
 }
 
 func addCPUMetrics(meter metric.Meter) error {
-	cpuTime, err := meter.Float64ObservableCounter(cpuTimeInstrument, metric.WithUnit("s"))
+	cpuTimeIdle, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.idle", cpuTimeInstrumentPrefix), metric.WithUnit("s"))
 	if err != nil {
-		return errors.Wrap(err, "making cpu time counter")
+		return errors.Wrap(err, "making cpu time idle counter")
+	}
+	cpuTimeSystem, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.system", cpuTimeInstrumentPrefix), metric.WithUnit("s"))
+	if err != nil {
+		return errors.Wrap(err, "making cpu time system counter")
+	}
+	cpuTimeUser, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.user", cpuTimeInstrumentPrefix), metric.WithUnit("s"))
+	if err != nil {
+		return errors.Wrap(err, "making cpu time user counter")
+	}
+	cpuTimeSteal, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.steal", cpuTimeInstrumentPrefix), metric.WithUnit("s"))
+	if err != nil {
+		return errors.Wrap(err, "making cpu time steal counter")
+	}
+	cpuTimeIOWait, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.iowait", cpuTimeInstrumentPrefix), metric.WithUnit("s"))
+	if err != nil {
+		return errors.Wrap(err, "making cpu time iowait counter")
 	}
 
 	cpuUtil, err := meter.Float64ObservableGauge(cpuUtilInstrument, metric.WithUnit("1"), metric.WithDescription("Busy CPU time since the last measurement, divided by the elapsed time"))
@@ -166,14 +183,14 @@ func addCPUMetrics(meter metric.Meter) error {
 		if len(times) != 1 {
 			return errors.Wrap(err, "CPU times had an unexpected length")
 		}
-		observer.ObserveFloat64(cpuTime, times[0].Idle, metric.WithAttributes(attribute.String("state", "idle")))
-		observer.ObserveFloat64(cpuTime, times[0].System, metric.WithAttributes(attribute.String("state", "system")))
-		observer.ObserveFloat64(cpuTime, times[0].User, metric.WithAttributes(attribute.String("state", "user")))
-		observer.ObserveFloat64(cpuTime, times[0].Steal, metric.WithAttributes(attribute.String("state", "steal")))
-		observer.ObserveFloat64(cpuTime, times[0].Iowait, metric.WithAttributes(attribute.String("state", "iowait")))
+		observer.ObserveFloat64(cpuTimeIdle, times[0].Idle)
+		observer.ObserveFloat64(cpuTimeSystem, times[0].System)
+		observer.ObserveFloat64(cpuTimeUser, times[0].User)
+		observer.ObserveFloat64(cpuTimeSteal, times[0].Steal)
+		observer.ObserveFloat64(cpuTimeIOWait, times[0].Iowait)
 
 		return nil
-	}, cpuTime)
+	}, cpuTimeIdle, cpuTimeSystem, cpuTimeUser, cpuTimeSteal, cpuTimeIOWait)
 	if err != nil {
 		return errors.Wrap(err, "registering cpu time callback")
 	}
@@ -194,9 +211,14 @@ func addCPUMetrics(meter metric.Meter) error {
 }
 
 func addMemoryMetrics(meter metric.Meter) error {
-	memoryUsage, err := meter.Int64ObservableUpDownCounter(memoryUsageInstrument, metric.WithUnit("By"))
+	memoryUsageAvailable, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.available", memoryUsageInstrumentPrefix), metric.WithUnit("By"))
 	if err != nil {
-		return errors.Wrap(err, "making memory usage counter")
+		return errors.Wrap(err, "making memory usage available counter")
+	}
+
+	memoryUsageUsed, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.used", memoryUsageInstrumentPrefix), metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrap(err, "making memory usage used counter")
 	}
 
 	memoryUtil, err := meter.Float64ObservableGauge(memoryUtilizationInstrument, metric.WithUnit("1"))
@@ -209,74 +231,115 @@ func addMemoryMetrics(meter metric.Meter) error {
 		if err != nil {
 			return errors.Wrap(err, "getting memory stats")
 		}
-		observer.ObserveInt64(memoryUsage, int64(memStats.Available), metric.WithAttributes(attribute.String("state", "available")))
-		observer.ObserveInt64(memoryUsage, int64(memStats.Used), metric.WithAttributes(attribute.String("state", "used")))
-
+		observer.ObserveInt64(memoryUsageAvailable, int64(memStats.Available))
+		observer.ObserveInt64(memoryUsageUsed, int64(memStats.Used))
 		observer.ObserveFloat64(memoryUtil, memStats.UsedPercent)
 
 		return nil
-	}, memoryUsage, memoryUtil)
+	}, memoryUsageAvailable, memoryUsageUsed, memoryUtil)
 	return errors.Wrap(err, "registering memory callback")
 }
 
-func addDiskMetrics(meter metric.Meter) error {
-	diskIO, err := meter.Int64ObservableCounter(diskIOInstrument, metric.WithUnit("By"))
+func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
+	ioCountersMap, err := disk.IOCountersWithContext(ctx)
 	if err != nil {
-		return errors.Wrap(err, "making disk io counter")
+		return errors.Wrap(err, "getting disk stats")
 	}
 
-	diskOperations, err := meter.Int64ObservableCounter(diskOperationsInstrument, metric.WithUnit("{operation}"))
-	if err != nil {
-		return errors.Wrap(err, "making disk operations counter")
+	type diskInstruments struct {
+		diskIORead          metric.Int64ObservableCounter
+		diskIOWrite         metric.Int64ObservableCounter
+		diskOperationsRead  metric.Int64ObservableCounter
+		diskOperationsWrite metric.Int64ObservableCounter
+		diskIOTime          metric.Float64ObservableCounter
 	}
-
-	diskIOTime, err := meter.Float64ObservableCounter(diskIOTimeInstrument, metric.WithUnit("s"), metric.WithDescription("Time disk spent activated"))
-	if err != nil {
-		return errors.Wrap(err, "making disk io time counter")
-	}
-
-	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
-		ioCountersMap, err := disk.IOCountersWithContext(ctx)
+	diskInstrumentMap := map[string]diskInstruments{}
+	for diskName := range ioCountersMap {
+		diskIORead, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.read", diskIOInstrumentPrefix, diskName), metric.WithUnit("By"))
 		if err != nil {
-			return errors.Wrap(err, "getting disk stats")
+			return errors.Wrapf(err, "making disk io read counter for disk '%s'", diskName)
 		}
-		for disk, counter := range ioCountersMap {
-			observer.ObserveInt64(diskIO, int64(counter.ReadBytes), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "read")))
-			observer.ObserveInt64(diskIO, int64(counter.WriteBytes), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "write")))
-
-			observer.ObserveInt64(diskOperations, int64(counter.ReadCount), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "read")))
-			observer.ObserveInt64(diskOperations, int64(counter.WriteCount), metric.WithAttributes(attribute.String("device", disk), attribute.String("direction", "write")))
-
-			observer.ObserveFloat64(diskIOTime, float64(counter.IoTime), metric.WithAttributes(attribute.String("device", disk)))
+		diskIOWrite, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.write", diskIOInstrumentPrefix, diskName), metric.WithUnit("By"))
+		if err != nil {
+			return errors.Wrapf(err, "making disk io write counter for disk '%s'", diskName)
 		}
 
-		return nil
-	}, diskIO, diskOperations, diskIOTime)
-	return errors.Wrap(err, "registering disk callback")
+		diskOperationsRead, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.read", diskOperationsInstrumentPrefix, diskName), metric.WithUnit("{operation}"))
+		if err != nil {
+			return errors.Wrapf(err, "making disk operations read counter for disk '%s'", diskName)
+		}
+		diskOperationsWrite, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.write", diskOperationsInstrumentPrefix, diskName), metric.WithUnit("{operation}"))
+		if err != nil {
+			return errors.Wrapf(err, "making disk operations write counter for disk '%s'", diskName)
+		}
+
+		diskIOTime, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.%s", diskIOTimeInstrumentPrefix, diskName), metric.WithUnit("s"), metric.WithDescription("Time disk spent activated"))
+		if err != nil {
+			return errors.Wrapf(err, "making disk io time counter for disk '%s'", diskName)
+		}
+
+		diskInstrumentMap[diskName] = diskInstruments{
+			diskIORead:          diskIORead,
+			diskIOWrite:         diskIOWrite,
+			diskOperationsRead:  diskOperationsRead,
+			diskOperationsWrite: diskOperationsWrite,
+			diskIOTime:          diskIOTime,
+		}
+	}
+
+	for diskName, instruments := range diskInstrumentMap {
+		_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
+			ioCountersMap, err := disk.IOCountersWithContext(ctx, diskName)
+			if err != nil {
+				return errors.Wrap(err, "getting disk stats")
+			}
+			counter, ok := ioCountersMap[diskName]
+			if !ok {
+				// If the disk is no longer present there are no readings for it.
+				return nil
+			}
+			observer.ObserveInt64(instruments.diskIORead, int64(counter.ReadBytes))
+			observer.ObserveInt64(instruments.diskIOWrite, int64(counter.WriteBytes))
+
+			observer.ObserveInt64(instruments.diskOperationsRead, int64(counter.ReadCount))
+			observer.ObserveInt64(instruments.diskOperationsWrite, int64(counter.WriteCount))
+
+			observer.ObserveFloat64(instruments.diskIOTime, float64(counter.IoTime))
+
+			return nil
+		}, instruments.diskIORead, instruments.diskIOWrite, instruments.diskOperationsRead, instruments.diskOperationsWrite, instruments.diskIOTime)
+		if err != nil {
+			return errors.Wrapf(err, "registering callbacks for disk '%s'", diskName)
+		}
+	}
+
+	return nil
 }
 
 func addNetworkMetrics(meter metric.Meter) error {
-	networkIO, err := meter.Int64ObservableCounter(networkIOInstrument, metric.WithUnit("by"))
+	networkIOTransmit, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metric.WithUnit("by"))
 	if err != nil {
-		return errors.Wrap(err, "making network io counter")
+		return errors.Wrap(err, "making network io transmit counter")
 	}
 
+	networkIOReceive, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.receive", networkIOInstrumentPrefix), metric.WithUnit("by"))
+	if err != nil {
+		return errors.Wrap(err, "making network io receive counter")
+	}
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		counters, err := net.IOCountersWithContext(ctx, false)
 		if err != nil {
 			return errors.Wrap(err, "getting network stats")
 		}
 		if len(counters) != 1 {
-			return errors.Wrap(err, "Network counters had an unexpected length")
+			return errors.Wrap(err, "network counters had an unexpected length")
 		}
 
-		for _, counter := range counters {
-			observer.ObserveInt64(networkIO, int64(counter.BytesSent), metric.WithAttributes(attribute.String("direction", "transmit")))
-			observer.ObserveInt64(networkIO, int64(counter.BytesRecv), metric.WithAttributes(attribute.String("direction", "receive")))
-		}
+		observer.ObserveInt64(networkIOTransmit, int64(counters[0].BytesSent))
+		observer.ObserveInt64(networkIOReceive, int64(counters[0].BytesRecv))
 
 		return nil
-	}, networkIO)
+	}, networkIOTransmit, networkIOReceive)
 	return errors.Wrap(err, "registering network io callback")
 }
 
