@@ -327,7 +327,6 @@ var (
 	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 	projectRefBannerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
-	projectRefProjectHealthViewKey        = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
