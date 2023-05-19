@@ -1,4 +1,4 @@
-# Add Your PR or Patch to the Commit Queue
+# Commit Queue
 
 Evergreen's commit queue merges changes after the code has passed a set of tests.
 
