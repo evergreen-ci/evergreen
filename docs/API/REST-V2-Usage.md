@@ -1,4 +1,4 @@
-# REST API v2
+# REST v2 API
 
 ## General Functionality
 
@@ -402,7 +402,7 @@ Send a Newly Created Ticket For a Task
 
     PUT /tasks/<task_id>/created_ticket 
 
-If a [file ticket webhook](../Apply-and-Analyze-Evergreen-Data/Webhooks.md#task-annotations-file-ticket-webhook)
+If a [file ticket webhook](../Project-Configuration/Webhooks.md#task-annotations-file-ticket-webhook)
 is configured for a project, this endpoint should be used to let
 evergreen know when a ticket was filed for a task so that it can be
 stored and displayed to the user. The request body should include the
@@ -858,8 +858,8 @@ buildvariant.
 
 | Name      | Type   | Description                                                                                                                                                      |
 |-----------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| cron      | string | The cron defined for the variant, if provided, as defined [here](../Configure-a-Project/Project-Configuration-Files.md#build-variants)      |
-| batchtime | int    | The batchtime defined for the variant, if provided, as defined [here](../Configure-a-Project/Project-Configuration-Files.md#build-variants) |
+| cron      | string | The cron defined for the variant, if provided, as defined [here](../Project-Configuration/Project-Configuration-Files.md#build-variants)      |
+| batchtime | int    | The batchtime defined for the variant, if provided, as defined [here](../Project-Configuration/Project-Configuration-Files.md#build-variants) |
 
 
 #### Endpoints
