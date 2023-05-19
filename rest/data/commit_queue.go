@@ -350,14 +350,6 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 		return nil, nil, err
 	}
 
-	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))
-	if err != nil {
-		return nil, pr, errors.Wrap(err, "getting user info from GitHub API")
-	}
-	if !authorized {
-		return nil, pr, errors.Errorf("user '%s' is not authorized to merge", info.Username)
-	}
-
 	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)
 	baseBranch := *pr.Base.Ref
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(info.Owner, info.Repo, baseBranch)
@@ -366,6 +358,14 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 	}
 	if projectRef == nil {
 		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+
+	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))
+	if err != nil {
+		return nil, pr, errors.Wrap(err, "getting user info from GitHub API")
+	}
+	if !authorized {
+		return nil, pr, errors.Errorf("user '%s' is not authorized to merge", info.Username)
 	}
 
 	pr, err = checkPRIsMergeable(ctx, env, sc, pr, info)
