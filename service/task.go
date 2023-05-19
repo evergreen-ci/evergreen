@@ -537,11 +537,6 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	usr := gimlet.GetUser(ctx)
-	if usr == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
 	// check buildlogger logs first
 	opts := apimodels.GetBuildloggerLogsOptions{
@@ -593,13 +588,8 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		logType = AllLogsType
 	}
 
-	// restrict access if the user is not logged in
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
-	if usr == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
 	var logReader io.ReadCloser
 
