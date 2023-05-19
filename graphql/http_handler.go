@@ -58,16 +58,13 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
-		errorMessage := message.WrapError(err, message.Fields{
-			"path":    "/graphql/query",
-			"query":   queryPath,
-			"args":    args,
-			"request": gimlet.GetRequestID(ctx),
-		})
-		if strings.HasSuffix(err.Error(), ": context canceled") {
-			grip.Warning(errorMessage)
-		} else {
-			grip.Error(errorMessage)
+		if !strings.HasSuffix(err.Error(), ": context canceled") {
+			grip.Error(message.WrapError(err, message.Fields{
+				"path":    "/graphql/query",
+				"query":   queryPath,
+				"args":    args,
+				"request": gimlet.GetRequestID(ctx),
+			}))
 		}
 		return graphql.DefaultErrorPresenter(ctx, err)
 	})
