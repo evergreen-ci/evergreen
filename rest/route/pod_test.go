@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -81,7 +82,14 @@ func TestPostPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			p := makePostPod(testutil.NewEnvironment(ctx, t))
+			env := evergreen.GetEnvironment()
+			env.Settings().Providers.AWS.Pod.ECS = evergreen.ECSConfig{
+				AllowedImages: []string{
+					"image",
+				},
+			}
+
+			p := makePostPod(env)
 			require.NotZero(t, p)
 
 			tCase(ctx, t, p.(*podPostHandler))

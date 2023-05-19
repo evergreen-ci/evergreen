@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -145,6 +146,16 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
 	if j.task.IsContainerTask() {
 		if j.task.PodID != "" {
+			foundPod, err := pod.FindOneByID(j.task.PodID)
+			if err != nil {
+				return errors.Wrapf(err, "finding pod '%s' for task '%s'", j.task.PodID, j.task.Id)
+			}
+			if foundPod == nil {
+				return errors.Errorf("pod '%s' not found for task '%s'", j.task.PodID, j.task.Id)
+			}
+			if err = foundPod.ClearRunningTask(); err != nil {
+				return errors.Wrapf(err, "clearing running task from pod '%s'", foundPod.ID)
+			}
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewPodHealthCheckJob(j.task.PodID, utility.RoundPartOfHour(0))); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "could not enqueue job to check pod health after stale task timeout",
@@ -256,29 +267,23 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	queue := j.env.RemoteQueue()
 
-	taskIDs := map[string]struct{}{}
-
-	tasks, err := task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey)
+	tasks, err := task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
+	var taskIDs []string
 	for _, t := range tasks {
-		taskIDs[t.Id] = struct{}{}
+		taskIDs = append(taskIDs, t.Id)
 	}
-	j.logTasks(tasks, "heartbeat past cutoff")
+	grip.InfoWhen(len(taskIDs) > 0, message.Fields{
+		"message":   "found stale tasks",
+		"tasks":     taskIDs,
+		"operation": j.Type().Name,
+		"job_id":    j.ID(),
+	})
 
-	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch), task.IdKey)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
-		return
-	}
-	for _, t := range tasks {
-		taskIDs[t.Id] = struct{}{}
-	}
-	j.logTasks(tasks, "no heartbeat since dispatch")
-
-	for id := range taskIDs {
+	for _, id := range taskIDs {
 		ts := utility.RoundPartOfHour(15)
 		j.AddError(amboy.EnqueueUniqueJob(ctx, queue, NewTaskExecutionMonitorJob(id, ts.Format(TSFormat))))
 	}
@@ -286,22 +291,5 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		"operation": "task-execution-timeout-populate",
 		"num_tasks": len(tasks),
 		"errors":    j.HasErrors(),
-	})
-}
-
-func (j *taskExecutionTimeoutPopulationJob) logTasks(tasks []task.Task, reason string) {
-	if len(tasks) == 0 {
-		return
-	}
-	var taskIDs []string
-	for _, t := range tasks {
-		taskIDs = append(taskIDs, t.Id)
-	}
-	grip.Info(message.Fields{
-		"message":   "found stale tasks",
-		"reason":    reason,
-		"tasks":     taskIDs,
-		"operation": j.Type().Name,
-		"job_id":    j.ID(),
 	})
 }

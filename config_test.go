@@ -84,6 +84,21 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(settings.Credentials["github"], tokens[0])
 
+	authFields := settings.getGithubAppAuth()
+	assert.Nil(authFields)
+
+	settings.AuthConfig.Github = &GithubAuthConfig{
+		AppId: 1234,
+	}
+	authFields = settings.getGithubAppAuth()
+	assert.Nil(authFields)
+
+	settings.Expansions[githubAppPrivateKey] = "key"
+	authFields = settings.getGithubAppAuth()
+	assert.NotNil(authFields)
+	assert.Equal(int64(1234), authFields.AppId)
+	assert.Equal([]byte("key"), authFields.privateKey)
+
 	assert.NotPanics(func() {
 		settings := &Settings{}
 		assert.Nil(settings.Credentials)
@@ -327,6 +342,7 @@ func (s *AdminSuite) TestAuthConfig() {
 			ClientSecret: "ghsecret",
 			Users:        []string{"ghuser"},
 			Organization: "ghorg",
+			AppId:        1234,
 		},
 		Multi: &MultiAuthConfig{
 			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},

@@ -157,7 +157,7 @@ func TestPodCreationJob(t *testing.T) {
 				},
 			}
 
-			p, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
+			p, err := pod.NewTaskIntentPod(evergreen.ECSConfig{AllowedImages: []string{"image"}}, pod.TaskIntentPodOptions{
 				MemoryMB:            256,
 				CPU:                 512,
 				OS:                  pod.OSLinux,

@@ -51,7 +51,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			inactiveEC2One := &Host{
 				Id:       "inactiveEC2One",
 				Status:   evergreen.HostRunning,
-				Provider: "ec2-spot",
+				Provider: "ec2-ondemand",
 			}
 			So(inactiveEC2One.Insert(), ShouldBeNil)
 

@@ -195,21 +195,6 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 	return nil
 }
 
-// IsUp checks the container's state by querying the Docker API and
-// returns true if the host should be available to connect with SSH.
-func (m *dockerManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
-	cloudStatus, err := m.GetInstanceStatus(ctx, h)
-	if err != nil {
-		return false, err
-	}
-	return cloudStatus == StatusRunning, nil
-}
-
-// OnUp does nothing.
-func (m *dockerManager) OnUp(context.Context, *host.Host) error {
-	return nil
-}
-
 // Cleanup is a noop for the docker provider.
 func (m *dockerManager) Cleanup(context.Context) error {
 	return nil

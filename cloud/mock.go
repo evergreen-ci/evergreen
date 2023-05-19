@@ -27,13 +27,11 @@ func init() {
 // fields that can be set to change the response the cloud manager returns
 // when this mock instance is queried for.
 type MockInstance struct {
-	IsUp               bool
 	IsSSHReachable     bool
 	Status             CloudStatus
 	SSHOptions         []string
 	TimeTilNextPayment time.Duration
 	DNSName            string
-	OnUpRan            bool
 	Tags               []host.Tag
 	Type               string
 	BlockDevices       []string
@@ -154,7 +152,6 @@ func (m *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, 
 	l.Lock()
 	defer l.Unlock()
 	m.Instances[h.Id] = MockInstance{
-		IsUp:               false,
 		IsSSHReachable:     false,
 		Status:             StatusInitializing,
 		SSHOptions:         []string{},
@@ -306,31 +303,6 @@ func (m *mockManager) StartInstance(ctx context.Context, host *host.Host, user s
 
 func (m *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
-	return nil
-}
-
-func (m *mockManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
-	l := m.mutex
-	l.RLock()
-	instance, ok := m.Instances[host.Id]
-	l.RUnlock()
-	if !ok {
-		return false, errors.Errorf("unable to fetch host '%s'", host.Id)
-	}
-	return instance.IsUp, nil
-}
-
-func (m *mockManager) OnUp(ctx context.Context, host *host.Host) error {
-	l := m.mutex
-	l.Lock()
-	defer l.Unlock()
-	instance, ok := m.Instances[host.Id]
-	if !ok {
-		return errors.Errorf("unable to fetch host '%s'", host.Id)
-	}
-	instance.OnUpRan = true
-	m.Instances[host.Id] = instance
-
 	return nil
 }
 

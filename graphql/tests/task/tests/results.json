@@ -1,0 +1,467 @@
+{
+  "tests": [
+    {
+      "query_file": "base_status_commit.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "commit_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "status": "skip",
+                  "baseStatus": "fail"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "base_status_patch.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "patch_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "status": "pass",
+                  "baseStatus": "fail"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "base_status_periodic_build.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "periodic_build_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "status": "pass",
+                  "baseStatus": "skip"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "base_status_trigger.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "trigger_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "status": "skip",
+                  "baseStatus": "skip"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "counts.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+            "execution": 0,
+            "tests": {
+              "totalTestCount": 20,
+              "filteredTestCount": 2,
+              "testResults": [
+                {
+                  "status": "skip"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "im_a_display_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "execution_task_group_id.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                  "execution": 0,
+                  "groupID": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "filter_statuses.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "id": "TestStuckHostAuditing",
+                  "status": "fail"
+                },
+                {
+                  "id": "TestHostTaskAuditing",
+                  "status": "fail"
+                },
+                {
+                  "id": "TestProjectEventSuite/TestModifyProjectNonEvent",
+                  "status": "skip"
+                },
+                {
+                  "id": "TestGenerateSuite",
+                  "status": "skip"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "group_id.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                  "execution": 0,
+                  "groupID": "llama"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "line_num.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "commit_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "logs": {
+                    "lineNum": 219
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_by_duration_desc.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "testFile": "TestFinalizePatch",
+                  "duration": 1.049
+                },
+                {
+                  "testFile": "TestGenerateSuite",
+                  "duration": 0.15
+                },
+                {
+                  "testFile": "TestHostTaskAuditing",
+                  "duration": 0.069
+                },
+                {
+                  "testFile": "TestRetryCommitQueueItems",
+                  "duration": 0.069
+                },
+                {
+                  "testFile": "TestUpdateVersionAndParserProject",
+                  "duration": 0.04
+                },
+                {
+                  "testFile": "TestGenerateSuite/TestSaveNewTasksWithDependencies",
+                  "duration": 0.02
+                },
+                {
+                  "testFile": "TestGenerateSuite/TestSaveNewTasksWithCrossVariantDependencies",
+                  "duration": 0.02
+                },
+                {
+                  "testFile": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
+                  "duration": 0.02
+                },
+                {
+                  "testFile": "TestStuckHostAuditing",
+                  "duration": 0.009
+                },
+                {
+                  "testFile": "TestDepsMatrixIntegration",
+                  "duration": 0.009
+                },
+                {
+                  "testFile": "TestSetVersionActivation",
+                  "duration": 0.009
+                },
+                {
+                  "testFile": "TestProjectEventSuite/TestModifyProjectNonEvent",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestGenerateSuite/TestValidateNoRedefine",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestSortTasks",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestMergeAxisValue",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestCreateIntermediateProjectRequirements",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestTaskGroupWithDisplayTask",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestTryUpsert/ConfigNumberMatches",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestGetActivationTimeWithCron/Interval",
+                  "duration": 0
+                },
+                {
+                  "testFile": "TestCreateTaskGroup",
+                  "duration": 0
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sort_by_test_name.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "testFile": "TestCreateIntermediateProjectRequirements"
+                },
+                {
+                  "testFile": "TestCreateTaskGroup"
+                },
+                {
+                  "testFile": "TestDepsMatrixIntegration"
+                },
+                {
+                  "testFile": "TestFinalizePatch"
+                },
+                {
+                  "testFile": "TestGenerateSuite"
+                },
+                {
+                  "testFile": "TestGenerateSuite/TestSaveNewTasksWithCrossVariantDependencies"
+                },
+                {
+                  "testFile": "TestGenerateSuite/TestSaveNewTasksWithDependencies"
+                },
+                {
+                  "testFile": "TestGenerateSuite/TestValidateNoRedefine"
+                },
+                {
+                  "testFile": "TestGetActivationTimeWithCron/Interval"
+                },
+                {
+                  "testFile": "TestHostTaskAuditing"
+                },
+                {
+                  "testFile": "TestMergeAxisValue"
+                },
+                {
+                  "testFile": "TestProjectAliasSuite/TestInsertTagsAndNoVariant"
+                },
+                {
+                  "testFile": "TestProjectEventSuite/TestModifyProjectNonEvent"
+                },
+                {
+                  "testFile": "TestRetryCommitQueueItems"
+                },
+                {
+                  "testFile": "TestSetVersionActivation"
+                },
+                {
+                  "testFile": "TestSortTasks"
+                },
+                {
+                  "testFile": "TestStuckHostAuditing"
+                },
+                {
+                  "testFile": "TestTaskGroupWithDisplayTask"
+                },
+                {
+                  "testFile": "TestTryUpsert/ConfigNumberMatches"
+                },
+                {
+                  "testFile": "TestUpdateVersionAndParserProject"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "older_executions.graphql",
+      "result": {
+        "data": {
+          "current_exec": {
+            "execution": 1,
+            "id": "multi_exec_task",
+            "tests": {
+              "testResults": [
+                {
+                  "id": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
+                  "status": "pass"
+                }
+              ]
+            }
+          },
+          "past_exec": {
+            "execution": 0,
+            "id": "multi_exec_task",
+            "tests": {
+              "testResults": [
+                {
+                  "id": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
+                  "status": "skip"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
