@@ -267,29 +267,23 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	queue := j.env.RemoteQueue()
 
-	taskIDs := map[string]struct{}{}
-
-	tasks, err := task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey)
+	tasks, err := task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
+	var taskIDs []string
 	for _, t := range tasks {
-		taskIDs[t.Id] = struct{}{}
+		taskIDs = append(taskIDs, t.Id)
 	}
-	j.logTasks(tasks, "heartbeat past cutoff")
+	grip.InfoWhen(len(taskIDs) > 0, message.Fields{
+		"message":   "found stale tasks",
+		"tasks":     taskIDs,
+		"operation": j.Type().Name,
+		"job_id":    j.ID(),
+	})
 
-	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch), task.IdKey)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
-		return
-	}
-	for _, t := range tasks {
-		taskIDs[t.Id] = struct{}{}
-	}
-	j.logTasks(tasks, "no heartbeat since dispatch")
-
-	for id := range taskIDs {
+	for _, id := range taskIDs {
 		ts := utility.RoundPartOfHour(15)
 		j.AddError(amboy.EnqueueUniqueJob(ctx, queue, NewTaskExecutionMonitorJob(id, ts.Format(TSFormat))))
 	}
@@ -297,22 +291,5 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		"operation": "task-execution-timeout-populate",
 		"num_tasks": len(tasks),
 		"errors":    j.HasErrors(),
-	})
-}
-
-func (j *taskExecutionTimeoutPopulationJob) logTasks(tasks []task.Task, reason string) {
-	if len(tasks) == 0 {
-		return
-	}
-	var taskIDs []string
-	for _, t := range tasks {
-		taskIDs = append(taskIDs, t.Id)
-	}
-	grip.Info(message.Fields{
-		"message":   "found stale tasks",
-		"reason":    reason,
-		"tasks":     taskIDs,
-		"operation": j.Type().Name,
-		"job_id":    j.ID(),
 	})
 }

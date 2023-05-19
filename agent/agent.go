@@ -549,19 +549,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
 	}
 
-	if !tc.ranSetupGroup {
-		tc.taskDirectory, err = a.createTaskDirectory(tc)
-		if err != nil {
-			err = errors.Wrap(err, "creating task directory")
-			grip.Error(err)
-			grip.Infof("Task complete: '%s'.", tc.task.ID)
-			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory"))
-			return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
-		}
-	}
-	tc.taskConfig.WorkDir = tc.taskDirectory
-	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
-
 	grip.Info(message.Fields{
 		"message":     "running task",
 		"task_id":     tc.task.ID,
@@ -571,19 +558,16 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
-	tskCtx = contextWithTaskAttributes(tskCtx, tc.taskConfig.TaskAttributes())
-	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
+	tskCtx = contextWithTaskAttributes(tskCtx, taskConfig.TaskAttributes())
+
+	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", taskConfig.Task.DisplayName))
 	defer span.End()
 
-	shutdown, err := a.startMetrics(tskCtx, tc.taskConfig)
+	shutdown, err := a.startMetrics(tskCtx, taskConfig)
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
 	if shutdown != nil {
 		defer shutdown(ctx)
 	}
-
-	defer func() {
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
-	}()
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 

@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -35,7 +37,7 @@ var (
 	ClientVersion = "2023-05-02"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-05-17"
+	AgentVersion = "2023-05-19"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -547,6 +549,57 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
+}
+
+type githubAppAuth struct {
+	AppId      int64
+	privateKey []byte
+}
+
+// getGithubAppAuth returns app id and app private key if it exists.
+func (s *Settings) getGithubAppAuth() *githubAppAuth {
+	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
+		return nil
+	}
+
+	key := s.Expansions[githubAppPrivateKey]
+	if key == "" {
+		return nil
+	}
+
+	return &githubAppAuth{
+		AppId:      s.AuthConfig.Github.AppId,
+		privateKey: []byte(key),
+	}
+}
+
+// CreateInstallationToken uses the owner/repo information to request an github app installation id
+// and uses that id to create an installation token.
+func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	authFields := s.getGithubAppAuth()
+	if authFields == nil {
+		return "", errors.New("Github app settings are not set")
+	}
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	itr, err := ghinstallation.NewAppsTransport(httpClient.Transport, authFields.AppId, authFields.privateKey)
+	if err != nil {
+		return "", errors.Wrap(err, "creating transport with JWT")
+	}
+	httpClient.Transport = itr
+	client := github.NewClient(httpClient)
+	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding installation token for '%s/%s'", owner, repo)
+	}
+	if installationId == nil {
+		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
+	}
+	token, _, err := client.Apps.CreateInstallationToken(ctx, installationId.GetID(), opts)
+	if err != nil || token == nil {
+		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationId.GetID())
+	}
+	return token.GetToken(), nil
 }
 
 func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, levelInfo send.LevelInfo, fallback send.Sender) (send.Sender, error) {
