@@ -1,7 +1,7 @@
 # Task Traces
 
 Evergreen creates a trace for each task execution.
-![task_trace.png](./images/task_trace.png)
+![task_trace.png](../images/task_trace.png)
 
 A task's execution is decomposed to the level of commands. If a command 
 encounters an error the error is recorded as a [span link](https://opentelemetry.io/docs/concepts/signals/traces/#span-links) on the span.
