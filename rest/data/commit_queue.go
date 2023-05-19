@@ -350,6 +350,16 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 		return nil, nil, err
 	}
 
+	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)
+	baseBranch := *pr.Base.Ref
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(info.Owner, info.Repo, baseBranch)
+	if err != nil {
+		return nil, pr, errors.Wrapf(err, "getting project for '%s:%s' tracking branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+	if projectRef == nil {
+		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+
 	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))
 	if err != nil {
 		return nil, pr, errors.Wrap(err, "getting user info from GitHub API")
@@ -361,16 +371,6 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 	pr, err = checkPRIsMergeable(ctx, env, sc, pr, info)
 	if err != nil {
 		return nil, pr, err
-	}
-
-	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)
-	baseBranch := *pr.Base.Ref
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(info.Owner, info.Repo, baseBranch)
-	if err != nil {
-		return nil, pr, errors.Wrapf(err, "getting project for '%s:%s' tracking branch '%s'", info.Owner, info.Repo, baseBranch)
-	}
-	if projectRef == nil {
-		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
 	}
 
 	patchDoc, err := tryEnqueueItemForPR(ctx, sc, projectRef, info.PR, cqInfo)
