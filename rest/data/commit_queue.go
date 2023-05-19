@@ -358,11 +358,6 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 		return nil, pr, errors.Errorf("user '%s' is not authorized to merge", info.Username)
 	}
 
-	pr, err = checkPRIsMergeable(ctx, env, sc, pr, info)
-	if err != nil {
-		return nil, pr, err
-	}
-
 	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)
 	baseBranch := *pr.Base.Ref
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(info.Owner, info.Repo, baseBranch)
@@ -371,6 +366,11 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 	}
 	if projectRef == nil {
 		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+
+	pr, err = checkPRIsMergeable(ctx, env, sc, pr, info)
+	if err != nil {
+		return nil, pr, err
 	}
 
 	patchDoc, err := tryEnqueueItemForPR(ctx, sc, projectRef, info.PR, cqInfo)
