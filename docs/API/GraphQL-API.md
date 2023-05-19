@@ -1,4 +1,4 @@
-# Evergreen GraphQL API
+# GraphQL API
 
 Welcome to the beta version of the Evergreen GraphQL API! This API provides read
 and write access to various pieces of data found in Evergreen. You can use the

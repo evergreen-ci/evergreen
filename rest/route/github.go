@@ -240,8 +240,12 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		grip.Info(gh.getCommentLogWithMessage(event, "commit queue triggered"))
 
 		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
-		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
-		return errors.Wrap(err, "enqueueing in commit queue")
+		if err != nil {
+			grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
+			return errors.Wrap(err, "enqueueing in commit queue")
+		}
+
+		return nil
 	}
 
 	if triggerPatch, callerType := triggersPatch(commentBody); triggerPatch {

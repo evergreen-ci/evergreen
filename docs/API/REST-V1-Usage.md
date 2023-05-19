@@ -1,4 +1,4 @@
-# Legacy API v1
+# Legacy API
 ----------
 
 *Note*: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage).

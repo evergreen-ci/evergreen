@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,11 @@ func TestAPICreatePod(t *testing.T) {
 			WorkingDir:          utility.ToStringPtr("working_dir"),
 		}
 
+		evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS = evergreen.ECSConfig{
+			AllowedImages: []string{
+				"image",
+			},
+		}
 		p, err := apiPod.ToService()
 		require.NoError(t, err)
 

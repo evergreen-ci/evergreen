@@ -177,6 +177,8 @@ models:
     fields:
       projectSubscriptions:
         resolver: true
+  ProjectHealthView:
+    model: github.com/evergreen-ci/evergreen/model.ProjectHealthView
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   ProjectSettings:
