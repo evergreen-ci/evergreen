@@ -245,6 +245,7 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 		diskIOTime          metric.Float64ObservableCounter
 	}
 	diskInstrumentMap := map[string]diskInstruments{}
+	var allInstruments []metric.Observable
 	for diskName := range ioCountersMap {
 		diskIORead, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.read", diskIOInstrumentPrefix, diskName), metric.WithUnit("By"))
 		if err != nil {
@@ -276,14 +277,15 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			diskOperationsWrite: diskOperationsWrite,
 			diskIOTime:          diskIOTime,
 		}
+		allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime)
 	}
 
-	for diskName, instruments := range diskInstrumentMap {
-		_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
-			ioCountersMap, err := disk.IOCountersWithContext(ctx, diskName)
-			if err != nil {
-				return errors.Wrap(err, "getting disk stats")
-			}
+	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
+		ioCountersMap, err := disk.IOCountersWithContext(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting disk stats")
+		}
+		for diskName, instruments := range diskInstrumentMap {
 			counter, ok := ioCountersMap[diskName]
 			if !ok {
 				// If the disk is no longer present there are no readings for it.
@@ -296,12 +298,11 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			observer.ObserveInt64(instruments.diskOperationsWrite, int64(counter.WriteCount))
 
 			observer.ObserveFloat64(instruments.diskIOTime, float64(counter.IoTime))
-
-			return nil
-		}, instruments.diskIORead, instruments.diskIOWrite, instruments.diskOperationsRead, instruments.diskOperationsWrite, instruments.diskIOTime)
-		if err != nil {
-			return errors.Wrapf(err, "registering callbacks for disk '%s'", diskName)
 		}
+		return nil
+	}, allInstruments...)
+	if err != nil {
+		return errors.Wrapf(err, "registering callbacks for disk metrics")
 	}
 
 	return nil
