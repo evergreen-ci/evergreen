@@ -103,6 +103,10 @@ func (a *Agent) initOtel(ctx context.Context) error {
 }
 
 func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func(context.Context), error) {
+	if a.otelGrpcConn == nil {
+		return nil, nil
+	}
+
 	metricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(a.otelGrpcConn))
 	if err != nil {
 		return nil, errors.Wrap(err, "making otel metrics exporter")
