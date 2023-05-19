@@ -388,7 +388,7 @@ are being used.
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version. You can change
 the git revision for modules by setting a module manually with 
-[evergreen set-module](../Using-the-Command-Line-Tool.md#operating-on-existing-patches) or
+[evergreen set-module](../CLI.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 

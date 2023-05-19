@@ -63,7 +63,7 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-['Using Repo Level Settings'](Using-Repo-Level-Settings.md).
+['Using Repo Level Settings'](Repo-Level-Settings.md).
 
 ### Access and Admin Settings
 
@@ -113,7 +113,7 @@ definition (i.e. without the ".") and tag negation is also supported
 comma-delimited.
 
 Aliases can also be defined locally as shown
-[here](../Using-the-Command-Line-Tool.md#local-aliases).
+[here](../CLI.md#local-aliases).
 
 ### GitHub Pull Request Testing
 
@@ -309,7 +309,7 @@ the
 [s3.push](Project-Commands.md#s3-push)
 or
 [s3.pull](Project-Commands.md#s3pull)
-project commands, or using it from [the CLI](../Using-the-Command-Line-Tool.md#task-sync).
+project commands, or using it from [the CLI](../CLI.md#task-sync).
 
 Options:
 

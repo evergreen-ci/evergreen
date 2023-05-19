@@ -858,8 +858,8 @@ buildvariant.
 
 | Name      | Type   | Description                                                                                                                                                      |
 |-----------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| cron      | string | The cron defined for the variant, if provided, as defined [here](../Configure-a-Project/Project-Configuration-Files.md#build-variants)      |
-| batchtime | int    | The batchtime defined for the variant, if provided, as defined [here](../Configure-a-Project/Project-Configuration-Files.md#build-variants) |
+| cron      | string | The cron defined for the variant, if provided, as defined [here](../Project-Configuration/Project-Configuration-Files.md#build-variants)      |
+| batchtime | int    | The batchtime defined for the variant, if provided, as defined [here](../Project-Configuration/Project-Configuration-Files.md#build-variants) |
 
 
 #### Endpoints
