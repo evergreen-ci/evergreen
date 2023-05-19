@@ -2618,6 +2618,25 @@ func TestShouldAllocateContainer(t *testing.T) {
 			tsk.Activated = false
 			assert.False(t, tsk.ShouldAllocateContainer())
 		},
+		"ReturnsFalseForTaskWithIncompleteDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:   "dependency0",
+					Finished: false,
+				},
+			}
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsTrueForTaskWithOverrideDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:   "dependency0",
+					Finished: false,
+				},
+			}
+			tsk.OverrideDependencies = true
+			assert.True(t, tsk.ShouldAllocateContainer())
+		},
 		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
 			tsk.DisplayOnly = true
 			tsk.ExecutionPlatform = ""
@@ -2764,11 +2783,12 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, et1.Insert())
 	et2 := Task{
-		Id:        "et2",
-		Status:    evergreen.TaskSucceeded,
-		Execution: 2,
-		Aborted:   true,
-		Version:   "v",
+		Id:                    "et2",
+		Status:                evergreen.TaskSucceeded,
+		Execution:             2,
+		LatestParentExecution: 2,
+		Aborted:               true,
+		Version:               "v",
 	}
 	assert.NoError(t, et2.Insert())
 	t1 := Task{

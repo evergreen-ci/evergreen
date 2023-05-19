@@ -159,7 +159,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 	if utility.StringSliceContains(pd.PodIDs, intentPod.ID) {
 		grip.Info(message.Fields{
 			"message":                    "successfully allocated pod for container task",
-			"usage":                      "container task health dashboard",
+			"included_on":                evergreen.ContainerHealthDashboard,
 			"task":                       j.task.Id,
 			"pod":                        intentPod.ID,
 			"secs_since_task_activation": time.Since(j.task.ActivatedTime).Seconds(),
@@ -167,7 +167,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 	} else {
 		grip.Info(message.Fields{
 			"message":                    "container task already has a pod allocated to run it",
-			"usage":                      "container task health dashboard",
+			"included_on":                evergreen.ContainerHealthDashboard,
 			"task":                       j.task.Id,
 			"secs_since_task_activation": time.Since(j.task.ActivatedTime).Seconds(),
 		})

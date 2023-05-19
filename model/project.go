@@ -37,16 +37,16 @@ const (
 )
 
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`
+	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`         // deprecated
+	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`        // deprecated
+	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`          // deprecated
+	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"` // deprecated
+	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`      // deprecated
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
 	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`
 	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`

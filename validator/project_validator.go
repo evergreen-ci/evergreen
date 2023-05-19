@@ -27,7 +27,7 @@ type projectValidator func(*model.Project) ValidationErrors
 
 type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
 
-type projectSettingsValidator func(*model.Project, *model.ProjectRef, bool) ValidationErrors
+type projectSettingsValidator func(*evergreen.Settings, *model.Project, *model.ProjectRef, bool) ValidationErrors
 
 // bool indicates if we should still run the validator if the project is complex
 type longValidator func(*model.Project, bool) ValidationErrors
@@ -290,16 +290,16 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 
 // CheckProjectSettings checks the project configuration against the project
 // settings.
-func CheckProjectSettings(p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
+func CheckProjectSettings(settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
 	for _, validateSettings := range projectSettingsValidators {
-		errs = append(errs, validateSettings(p, ref, isConfigDefined)...)
+		errs = append(errs, validateSettings(settings, p, ref, isConfigDefined)...)
 	}
 	return errs
 }
 
 // checks if the project configuration has errors
-func CheckProjectConfigurationIsValid(project *model.Project, pref *model.ProjectRef) error {
+func CheckProjectConfigurationIsValid(settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
 	projectErrors := CheckProjectErrors(project, false)
 	if len(projectErrors) != 0 {
@@ -308,7 +308,7 @@ func CheckProjectConfigurationIsValid(project *model.Project, pref *model.Projec
 		}
 	}
 
-	if settingsErrs := CheckProjectSettings(project, pref, false); len(settingsErrs) != 0 {
+	if settingsErrs := CheckProjectSettings(settings, project, pref, false); len(settingsErrs) != 0 {
 		if errs := settingsErrs.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors related to project settings: %s", ValidationErrorsToString(errs))
 		}
@@ -343,9 +343,9 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateContainers(project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+func validateContainers(settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
-	err := model.ValidateContainers(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS, ref, project.Containers)
+	err := model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
@@ -1763,7 +1763,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
-func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+func validateTaskSyncSettings(_ *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
@@ -1786,7 +1786,7 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef, _ bool) V
 }
 
 // validateVersionControl checks if a project with defined project config fields has version control enabled on the project ref.
-func validateVersionControl(_ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
+func validateVersionControl(_ *evergreen.Settings, _ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
 	if ref.IsVersionControlEnabled() && !isConfigDefined {
 		errs = append(errs, ValidationError{

@@ -1,0 +1,23 @@
+
+{
+  current_exec: task(taskId: "multi_exec_task", execution: 1) {
+    execution
+    id
+    tests(opts: {}) {
+      testResults {
+        id
+        status
+      }
+    }
+  }
+  past_exec: task(taskId: "multi_exec_task", execution: 0) {
+    execution
+    id
+    tests(opts: {}) {
+      testResults {
+        id
+        status
+      }
+    }
+  }
+}

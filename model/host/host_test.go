@@ -2002,9 +2002,9 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		Provider:              evergreen.ProviderNameMock,
 		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now().Add(-60 * time.Minute),
+		AgentStartTime:        time.Now(),
 	}
-	// User data host that is not running task and has passed the grace period
-	// to start running tasks is idle.
+	// User data host that is not running a task is idle if its AgentStartTime is set.
 	host8 := &Host{
 		Id: "host8",
 		Distro: distro.Distro{
@@ -2017,7 +2017,8 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		StartedBy:             evergreen.User,
 		Provider:              evergreen.ProviderNameMock,
 		Status:                evergreen.HostStarting,
-		CreationTime:          time.Now().Add(-70 * time.Minute),
+		CreationTime:          time.Now(),
+		AgentStartTime:        time.Now(),
 	}
 	// User data host that is running task but has not communicated recently is
 	// not idle.
@@ -2035,9 +2036,10 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		Provider:              evergreen.ProviderNameMock,
 		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now().Add(-100 * time.Minute),
+		AgentStartTime:        time.Now(),
 	}
-	// User data host that is not running task but has not passed the grace
-	// period to start running tasks is not idle.
+	// User data host that is not running task but has not had its
+	// AgentStartTime set is not idle.
 	host10 := &Host{
 		Id: "host10",
 		Distro: distro.Distro{
@@ -2527,31 +2529,31 @@ func TestIsIdleParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	billingTimeRecent := time.Now().Add(-5 * time.Minute)
-	billingTimeOld := time.Now().Add(-1 * time.Hour)
+	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
+	provisionTimeOld := time.Now().Add(-1 * time.Hour)
 
 	host1 := &Host{
-		Id:               "host1",
-		Status:           evergreen.HostRunning,
-		BillingStartTime: billingTimeOld,
+		Id:            "host1",
+		Status:        evergreen.HostRunning,
+		ProvisionTime: provisionTimeOld,
 	}
 	host2 := &Host{
-		Id:               "host2",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeRecent,
+		Id:            "host2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeRecent,
 	}
 	host3 := &Host{
-		Id:               "host3",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeOld,
+		Id:            "host3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
 	}
 	host4 := &Host{
-		Id:               "host4",
-		Status:           evergreen.HostRunning,
-		HasContainers:    true,
-		BillingStartTime: billingTimeOld,
+		Id:            "host4",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
 	}
 	host5 := &Host{
 		Id:       "host5",
@@ -4576,11 +4578,6 @@ func TestStartingHostsByClient(t *testing.T) {
 		birch.EC.String(awsKeyKey, "key1"),
 		birch.EC.String(awsSecretKey, "secret1"),
 	)
-	doc3 := birch.NewDocument(
-		birch.EC.String(awsRegionKey, "us-west-1"),
-		birch.EC.String(awsKeyKey, "key2"),
-		birch.EC.String(awsSecretKey, "secret2"),
-	)
 	startingHosts := []Host{
 		{
 			Id:     "h0",
@@ -4595,7 +4592,7 @@ func TestStartingHostsByClient(t *testing.T) {
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
 				Provider:             evergreen.ProviderNameEc2OnDemand,
-				ProviderSettingsList: []*birch.Document{doc1},
+				ProviderSettingsList: []*birch.Document{doc2},
 			},
 		},
 		{
@@ -4614,31 +4611,6 @@ func TestStartingHostsByClient(t *testing.T) {
 				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 			},
 		},
-		{
-			Id:     "h4",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
-				ProviderSettingsList: []*birch.Document{doc2},
-			},
-		},
-		{
-			Id:     "h5",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
-				ProviderSettingsList: []*birch.Document{doc3},
-			},
-		},
-		{
-			Id:          "h6",
-			Status:      evergreen.HostStarting,
-			Provisioned: true,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2Spot,
-				ProviderSettingsList: []*birch.Document{doc3},
-			},
-		},
 	}
 	for _, h := range startingHosts {
 		require.NoError(t, h.Insert())
@@ -4646,39 +4618,29 @@ func TestStartingHostsByClient(t *testing.T) {
 
 	hostsByClient, err := StartingHostsByClient(0)
 	assert.NoError(t, err)
-	assert.Len(t, hostsByClient, 4)
+	assert.Len(t, hostsByClient, 3)
 	for clientOptions, hosts := range hostsByClient {
 		switch clientOptions {
 		case ClientOptions{
 			Provider: evergreen.ProviderNameEc2OnDemand,
 			Region:   evergreen.DefaultEC2Region,
 		}:
-			require.Len(t, hosts, 2)
+			require.Len(t, hosts, 1)
 			compareHosts(t, hosts[0], startingHosts[0])
-			compareHosts(t, hosts[1], startingHosts[1])
+		case ClientOptions{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   "us-west-1",
+			Key:      "key1",
+			Secret:   "secret1",
+		}:
+			require.Len(t, hosts, 1)
+			compareHosts(t, hosts[0], startingHosts[1])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameDocker,
 		}:
 			require.Len(t, hosts, 2)
 			compareHosts(t, hosts[0], startingHosts[2])
 			compareHosts(t, hosts[1], startingHosts[3])
-		case ClientOptions{
-			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west-1",
-			Key:      "key1",
-			Secret:   "secret1",
-		}:
-			require.Len(t, hosts, 1)
-			compareHosts(t, hosts[0], startingHosts[4])
-		case ClientOptions{
-			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west-1",
-			Key:      "key2",
-			Secret:   "secret2",
-		}:
-			require.Len(t, hosts, 1)
-
-			compareHosts(t, hosts[0], startingHosts[5])
 		default:
 			assert.Fail(t, "unrecognized client options")
 		}

@@ -40,10 +40,11 @@ const (
 )
 
 var (
-	cloneOwnerAttribute  = fmt.Sprintf("%s.clone_owner", gitGetProjectAttribute)
-	cloneRepoAttribute   = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
-	cloneBranchAttribute = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
-	cloneModuleAttribute = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
+	cloneOwnerAttribute   = fmt.Sprintf("%s.clone_owner", gitGetProjectAttribute)
+	cloneRepoAttribute    = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
+	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
+	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
+	cloneRetriesAttribute = fmt.Sprintf("%s.clone_retries", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -502,14 +503,19 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		})
 	if err != nil {
 		logger.Task().Error(message.WrapError(err, message.Fields{
-			"operation":    "git.get_project",
-			"message":      "cloning failed",
-			"num_attempts": GitFetchProjectRetries,
-			"owner":        conf.ProjectRef.Owner,
-			"repo":         conf.ProjectRef.Repo,
-			"branch":       conf.ProjectRef.Branch,
+			"operation":            "git.get_project",
+			"message":              "cloning failed",
+			"num_attempts":         attemptNum,
+			"num_attempts_allowed": GitFetchProjectRetries,
+			"owner":                conf.ProjectRef.Owner,
+			"repo":                 conf.ProjectRef.Repo,
+			"branch":               conf.ProjectRef.Branch,
 		}))
 	}
+
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.Int(cloneRetriesAttribute, attemptNum))
+
 	return err
 }
 

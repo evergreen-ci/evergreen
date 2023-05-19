@@ -49,9 +49,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     'id': 'ec2-ondemand',
     'display': 'EC2 On-Demand'
   }, {
-    'id': 'ec2-spot',
-    'display': 'EC2 Spot'
-  }, {
     'id': 'ec2-fleet',
     'display': 'EC2 Fleet'
   }, {

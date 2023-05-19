@@ -1158,6 +1158,10 @@ Admin Settings
 										<textarea ng-model="Settings.auth.github.users" ng-list="&#10;" ng-trim="false"
 											rows="3" md-select-on-focus></textarea>
 									</md-input-container>
+									<md-input-container class="control" style="width:45%">
+										<label>Github App Id</label>
+										<input type="number" ng-model="Settings.auth.github.app_id">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 							<md-card flex=50 id="multi" style="max-width:49%">
@@ -1887,16 +1891,20 @@ Admin Settings
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
-									<br />
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types"
 											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Allowed Container Images</label>
+										<textarea ng-model="Settings.providers.aws.pod.ecs.allowed_images" ng-list="&#10;" ng-trim="false" rows="3"
+											md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Max CPU Units Per Pod</label>

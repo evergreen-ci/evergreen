@@ -644,7 +644,7 @@ func MarkEnd(settings *evergreen.Settings, t *task.Task, caller string, finishTi
 
 	grip.Info(message.Fields{
 		"message":            "marking task finished",
-		"usage":              "container task health dashboard",
+		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
 		"execution":          t.Execution,
 		"status":             status,

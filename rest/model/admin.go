@@ -883,6 +883,7 @@ type APIGithubAuthConfig struct {
 	ClientSecret *string   `json:"client_secret"`
 	Users        []*string `json:"users"`
 	Organization *string   `json:"organization"`
+	AppId        int64     `json:"app_id"`
 }
 
 func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
@@ -894,6 +895,7 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 		a.ClientId = utility.ToStringPtr(v.ClientId)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Organization = utility.ToStringPtr(v.Organization)
+		a.AppId = v.AppId
 		for _, u := range v.Users {
 			a.Users = append(a.Users, utility.ToStringPtr(u))
 		}
@@ -911,6 +913,7 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		ClientId:     utility.FromStringPtr(a.ClientId),
 		ClientSecret: utility.FromStringPtr(a.ClientSecret),
 		Organization: utility.FromStringPtr(a.Organization),
+		AppId:        a.AppId,
 	}
 	for _, u := range a.Users {
 		config.Users = append(config.Users, utility.FromStringPtr(u))
@@ -1840,6 +1843,7 @@ type APIECSConfig struct {
 	AWSVPC               *APIAWSVPCConfig         `json:"awsvpc"`
 	Clusters             []APIECSClusterConfig    `json:"clusters"`
 	CapacityProviders    []APIECSCapacityProvider `json:"capacity_providers"`
+	AllowedImages        []string                 `json:"allowed_images"`
 }
 
 func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
@@ -1864,6 +1868,7 @@ func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
 		apiProvider.BuildFromService(cp)
 		a.CapacityProviders = append(a.CapacityProviders, apiProvider)
 	}
+	a.AllowedImages = conf.AllowedImages
 }
 
 func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
@@ -1900,6 +1905,7 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 		AWSVPC:               a.AWSVPC.ToService(),
 		Clusters:             clusters,
 		CapacityProviders:    providers,
+		AllowedImages:        a.AllowedImages,
 	}, nil
 }
 

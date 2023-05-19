@@ -944,3 +944,24 @@ func TestSetChildPatches(t *testing.T) {
 	assert.Equal(dbPatch.Triggers.ChildPatches[1], "id_1")
 	assert.Equal(dbPatch.Triggers.ChildPatches[2], "id_2")
 }
+
+func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
+	successful := []string{evergreen.PatchSucceeded}
+	assert.Equal(t, evergreen.PatchSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
+
+	failed := []string{evergreen.PatchSucceeded, evergreen.PatchFailed}
+	assert.Equal(t, evergreen.PatchFailed, GetCollectiveStatusFromPatchStatuses(failed))
+
+	started := []string{evergreen.PatchStarted, evergreen.PatchSucceeded, evergreen.PatchFailed}
+	assert.Equal(t, evergreen.PatchStarted, GetCollectiveStatusFromPatchStatuses(started))
+
+	started = []string{evergreen.PatchCreated, evergreen.PatchSucceeded, evergreen.PatchFailed}
+	assert.Equal(t, evergreen.PatchStarted, GetCollectiveStatusFromPatchStatuses(started))
+
+	aborted := []string{evergreen.PatchSucceeded, evergreen.PatchAborted}
+	assert.Equal(t, evergreen.PatchAborted, GetCollectiveStatusFromPatchStatuses(aborted))
+
+	created := []string{evergreen.PatchCreated}
+	assert.Equal(t, evergreen.PatchCreated, GetCollectiveStatusFromPatchStatuses(created))
+
+}

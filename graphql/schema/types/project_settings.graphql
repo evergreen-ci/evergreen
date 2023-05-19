@@ -84,7 +84,7 @@ type ProjectSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   projectSubscriptions: [ProjectSubscription!] @deprecated(reason: "Use subscriptions instead")
-  subscriptions: [ProjectSubscription!]
+  subscriptions: [GeneralSubscription!]
   vars: ProjectVars
 }
 
@@ -184,7 +184,7 @@ type ProjectEventSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   projectSubscriptions: [ProjectSubscription!] @deprecated(reason: "Use subscriptions instead")
-  subscriptions: [ProjectSubscription!]
+  subscriptions: [GeneralSubscription!]
   vars: ProjectVars
 }
 

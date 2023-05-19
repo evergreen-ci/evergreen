@@ -3,6 +3,7 @@ package data
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
@@ -17,6 +18,13 @@ func TestCreatePod(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(pod.Collection))
 	}()
 	require.NoError(t, db.ClearCollections(pod.Collection))
+
+	env := evergreen.GetEnvironment()
+	env.Settings().Providers.AWS.Pod.ECS = evergreen.ECSConfig{
+		AllowedImages: []string{
+			"image",
+		},
+	}
 
 	p := model.APICreatePod{
 		Name:                utility.ToStringPtr("name"),
