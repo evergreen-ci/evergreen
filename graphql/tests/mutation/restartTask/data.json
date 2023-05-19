@@ -16,6 +16,7 @@
       "version": "version1",
       "status": "success",
       "display_only": true,
+      "execution": 0,
       "execution_tasks": [
         "execution_task_1",
         "execution_task_2"
@@ -24,12 +25,14 @@
     {
       "_id": "execution_task_1",
       "execution": 0,
-      "status": "failed"
+      "status": "failed",
+      "latest_parent_execution": 0
     },
     {
       "_id": "execution_task_2",
       "execution": 0,
-      "status": "success"
+      "status": "success",
+      "latest_parent_execution": 0
     }
   ],
   "builds": [
