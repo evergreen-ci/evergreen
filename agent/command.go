@@ -21,10 +21,6 @@ import (
 
 const (
 	commandsAttribute = "evergreen.command"
-
-	otelTraceIDExpansion           = "otel_trace_id"
-	otelParentIDExpansion          = "otel_parent_id"
-	otelCollectorEndpointExpansion = "otel_collector_endpoint"
 )
 
 var (
@@ -107,10 +103,6 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
 		))
-		tc.taskConfig.Expansions.Put(otelTraceIDExpansion, commandSpan.SpanContext().TraceID().String())
-		tc.taskConfig.Expansions.Put(otelParentIDExpansion, commandSpan.SpanContext().SpanID().String())
-		tc.taskConfig.Expansions.Put(otelCollectorEndpointExpansion, a.opts.TraceCollectorEndpoint)
-
 		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, fullCommandName, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
