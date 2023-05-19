@@ -2618,6 +2618,25 @@ func TestShouldAllocateContainer(t *testing.T) {
 			tsk.Activated = false
 			assert.False(t, tsk.ShouldAllocateContainer())
 		},
+		"ReturnsFalseForTaskWithIncompleteDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:   "dependency0",
+					Finished: false,
+				},
+			}
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsTrueForTaskWithOverrideDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:   "dependency0",
+					Finished: false,
+				},
+			}
+			tsk.OverrideDependencies = true
+			assert.True(t, tsk.ShouldAllocateContainer())
+		},
 		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
 			tsk.DisplayOnly = true
 			tsk.ExecutionPlatform = ""

@@ -186,6 +186,8 @@ type ECSConfig struct {
 	// that will be used. This is not a value that can or should be configured
 	// for production, but is useful to explicitly set for testing purposes.
 	ClientType AWSClientType `bson:"client_type" json:"client_type" yaml:"client_type"`
+	// AllowedImages specifies images that are allowed to be used.
+	AllowedImages []string `bson:"allowed_images" json:"allowed_images" yaml:"allowed_images"`
 }
 
 // AWSVPCConfig represents configuration when using AWSVPC networking in ECS.
@@ -203,6 +205,7 @@ func (c *ECSConfig) Validate() error {
 	for i, cp := range c.CapacityProviders {
 		catcher.Wrapf(cp.Validate(), "invalid capacity provider at index %d", i)
 	}
+
 	return catcher.Resolve()
 }
 

@@ -467,6 +467,7 @@ func TestExportECSPodExecutionOptions(t *testing.T) {
 					WindowsVersion: evergreen.ECSWindowsServer2022,
 				},
 			},
+			AllowedImages: []string{"it_is_allowed"},
 		}
 	}
 	getContainerOpts := func() pod.TaskContainerCreationOptions {

@@ -47,20 +47,22 @@ require (
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.15.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.15.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.40.0
-	go.opentelemetry.io/otel v1.15.0
+	go.opentelemetry.io/otel v1.15.1
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.38.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.15.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.15.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.15.0
 	go.opentelemetry.io/otel/metric v0.38.0
-	go.opentelemetry.io/otel/sdk v1.15.0
+	go.opentelemetry.io/otel/sdk v1.15.1
 	go.opentelemetry.io/otel/sdk/metric v0.38.0
-	go.opentelemetry.io/otel/trace v1.15.0
+	go.opentelemetry.io/otel/trace v1.15.1
+	go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto v0.7.0
 	golang.org/x/oauth2 v0.7.0
 	golang.org/x/tools v0.6.0
 	gonum.org/v1/gonum v0.12.0
 	google.golang.org/api v0.103.0
 	google.golang.org/grpc v1.54.0
+	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -86,6 +88,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/dghubble/oauth1 v0.7.2 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
@@ -97,7 +100,7 @@ require (
 	github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/fuyufjh/splunk-hec-go v0.3.4-0.20210909061418-feecd03924b7 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.4 // indirect
@@ -112,6 +115,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
+	github.com/google/go-github/v29 v29.0.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
@@ -170,9 +174,8 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib v1.10.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.15.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.15.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.38.0 // indirect
-	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
@@ -180,7 +183,6 @@ require (
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 )
 
@@ -190,6 +192,7 @@ require (
 )
 
 require (
+	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826

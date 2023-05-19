@@ -101,17 +101,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	if !tc.ranSetupGroup {
-		tc.taskDirectory, err = a.createTaskDirectory(tc)
-		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory"))
-			complete <- evergreen.TaskFailed
-			return
-		}
-	}
-	tc.taskConfig.WorkDir = tc.taskDirectory
-	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
-
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
 	if err = a.comm.StartTask(ctx, tc.task); err != nil {

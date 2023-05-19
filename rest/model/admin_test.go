@@ -185,6 +185,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.Pod.Role, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.Role))
 	assert.EqualValues(testSettings.Providers.AWS.Pod.Region, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.Region))
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.MaxCPU, utility.FromIntPtr(apiSettings.Providers.AWS.Pod.ECS.MaxCPU))
+	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.AllowedImages, apiSettings.Providers.AWS.Pod.ECS.AllowedImages)
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.MaxMemoryMB, utility.FromIntPtr(apiSettings.Providers.AWS.Pod.ECS.MaxMemoryMB))
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.TaskRole))

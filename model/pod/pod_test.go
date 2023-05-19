@@ -240,7 +240,9 @@ func TestNewTaskIntentPod(t *testing.T) {
 	t.Run("SucceedsWithValidOptions", func(t *testing.T) {
 		opts := makeValidOpts()
 
-		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
+		p, err := NewTaskIntentPod(evergreen.ECSConfig{
+			AllowedImages: []string{"image"},
+		}, opts)
 		require.NoError(t, err)
 		assert.Equal(t, opts.ID, p.ID)
 		assert.Equal(t, opts.CPU, p.TaskContainerCreationOpts.CPU)
@@ -261,7 +263,9 @@ func TestNewTaskIntentPod(t *testing.T) {
 		opts := makeValidOpts()
 		opts.ID = ""
 
-		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
+		p, err := NewTaskIntentPod(evergreen.ECSConfig{
+			AllowedImages: []string{"image"},
+		}, opts)
 		require.NoError(t, err)
 		assert.NotZero(t, p.ID)
 		assert.Equal(t, p.ID, p.TaskContainerCreationOpts.EnvVars[PodIDEnvVar])
@@ -297,6 +301,14 @@ func TestNewTaskIntentPod(t *testing.T) {
 			MaxMemoryMB: 2048,
 		}
 		opts.CPU = ecsConf.MaxCPU + 1
+		p, err := NewTaskIntentPod(ecsConf, opts)
+		assert.Error(t, err)
+		assert.Zero(t, p)
+	})
+	t.Run("FailsWithNotAllowedImage", func(t *testing.T) {
+		opts := makeValidOpts()
+		ecsConf := evergreen.ECSConfig{}
+		opts.Image = "notAllowedImage"
 		p, err := NewTaskIntentPod(ecsConf, opts)
 		assert.Error(t, err)
 		assert.Zero(t, p)

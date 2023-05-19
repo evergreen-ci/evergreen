@@ -165,7 +165,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return j.handleError(pp, v, errors.Errorf("project '%s' not found", t.Project))
 	}
 	start = time.Now()
-	if err = validator.CheckProjectConfigurationIsValid(p, pref); err != nil {
+	if err = validator.CheckProjectConfigurationIsValid(j.env.Settings(), p, pref); err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
 	grip.Debug(message.Fields{
