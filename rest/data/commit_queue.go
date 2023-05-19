@@ -368,7 +368,7 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 		return nil, pr, errors.Errorf("user '%s' is not authorized to merge", info.Username)
 	}
 
-	pr, err = checkPRIsMergeable(ctx, env, sc, pr, info)
+	pr, err = checkPRIsMergeable(ctx, sc, pr, info)
 	if err != nil {
 		return nil, pr, err
 	}
@@ -395,7 +395,7 @@ func getPRAndCheckBase(ctx context.Context, sc Connector, info commitqueue.Enque
 // checkPRIsMergeable verifies that the PR is mergeable. It may refresh the PR
 // state if it's out of date; otherwise, if it's up-to-date, it will return the
 // PR info as-is.
-func checkPRIsMergeable(ctx context.Context, env evergreen.Environment, sc Connector, pr *github.PullRequest, info commitqueue.EnqueuePRInfo) (*github.PullRequest, error) {
+func checkPRIsMergeable(ctx context.Context, sc Connector, pr *github.PullRequest, info commitqueue.EnqueuePRInfo) (*github.PullRequest, error) {
 	mergeableState := pr.GetMergeableState()
 
 	grip.Debug(message.Fields{
