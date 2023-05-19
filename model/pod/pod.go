@@ -80,6 +80,7 @@ func (o *TaskIntentPodOptions) Validate(ecsConf evergreen.ECSConfig) error {
 	if o.OS == OSWindows {
 		catcher.Wrap(o.WindowsVersion.Validate(), "must specify a valid Windows version")
 	}
+	catcher.ErrorfWhen(!utility.StringSliceContains(ecsConf.AllowedImages, o.Image), "image '%s' not allowed", o.Image)
 	catcher.NewWhen(o.Image == "", "missing image")
 	catcher.NewWhen(o.WorkingDir == "", "missing working directory")
 	catcher.NewWhen(o.PodSecretExternalID == "", "missing pod secret external ID")

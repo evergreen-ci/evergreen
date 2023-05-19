@@ -55,7 +55,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 
 	errs := validator.CheckProjectErrors(proj, false)
 	isConfigDefined := len(patchDoc.PatchedProjectConfig) > 0
-	errs = append(errs, validator.CheckProjectSettings(proj, &projectRef, isConfigDefined)...)
+	errs = append(errs, validator.CheckProjectSettings(settings, proj, &projectRef, isConfigDefined)...)
 	errs = append(errs, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range errs.AtLevel(validator.Error) {

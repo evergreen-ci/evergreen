@@ -183,6 +183,9 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 				SecretPrefix: "secret-prefix",
 			}
 			ecsConf := env.EvergreenSettings.Providers.AWS.Pod.ECS
+			ecsConf.AllowedImages = []string{
+				"ubuntu",
+			}
 
 			p, err := pod.NewTaskIntentPod(ecsConf, pod.TaskIntentPodOptions{
 				CPU:                 128,
