@@ -21,6 +21,19 @@
               "stepbackDisabled": false,
               "batchTime": 2,
               "projectHealthView": "failed",
+              "parsleyFilters": [
+                {
+                  "expression": "filter1",
+                  "caseSensitive": false,
+                  "exactMatch": false
+                },
+                {
+                  "expression": "filter2",
+                  "caseSensitive": true,
+                  "exactMatch": true
+                }
+              ],
+
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
               "triggers": [

@@ -552,6 +552,12 @@ type ComplexityRoot struct {
 		Value func(childComplexity int) int
 	}
 
+	ParsleyFilter struct {
+		CaseSensitive func(childComplexity int) int
+		ExactMatch    func(childComplexity int) int
+		Expression    func(childComplexity int) int
+	}
+
 	Patch struct {
 		Activated               func(childComplexity int) int
 		Alias                   func(childComplexity int) int
@@ -693,6 +699,7 @@ type ComplexityRoot struct {
 		NotifyOnBuildFailure     func(childComplexity int) int
 		Owner                    func(childComplexity int) int
 		PRTestingEnabled         func(childComplexity int) int
+		ParsleyFilters           func(childComplexity int) int
 		PatchTriggerAliases      func(childComplexity int) int
 		Patches                  func(childComplexity int, patchesInput PatchesInput) int
 		PatchingDisabled         func(childComplexity int) int
@@ -3980,6 +3987,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Parameter.Value(childComplexity), true
 
+	case "ParsleyFilter.caseSensitive":
+		if e.complexity.ParsleyFilter.CaseSensitive == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.CaseSensitive(childComplexity), true
+
+	case "ParsleyFilter.exactMatch":
+		if e.complexity.ParsleyFilter.ExactMatch == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.ExactMatch(childComplexity), true
+
+	case "ParsleyFilter.expression":
+		if e.complexity.ParsleyFilter.Expression == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.Expression(childComplexity), true
+
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
 			break
@@ -4712,6 +4740,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.PRTestingEnabled(childComplexity), true
+
+	case "Project.parsleyFilters":
+		if e.complexity.Project.ParsleyFilters == nil {
+			break
+		}
+
+		return e.complexity.Project.ParsleyFilters(childComplexity), true
 
 	case "Project.patchTriggerAliases":
 		if e.complexity.Project.PatchTriggerAliases == nil {
@@ -8146,6 +8181,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputMoveProjectInput,
 		ec.unmarshalInputNotificationsInput,
 		ec.unmarshalInputParameterInput,
+		ec.unmarshalInputParsleyFilterInput,
 		ec.unmarshalInputPatchConfigure,
 		ec.unmarshalInputPatchTriggerAliasInput,
 		ec.unmarshalInputPatchesInput,
@@ -15745,6 +15781,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -15765,6 +15803,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -15787,6 +15827,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -15829,10 +15871,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22582,6 +22620,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -22602,6 +22642,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -22624,6 +22666,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -22666,10 +22710,6 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22731,6 +22771,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -22751,6 +22793,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -22773,6 +22817,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -22815,10 +22861,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22880,6 +22922,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -22900,6 +22944,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -22922,6 +22968,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -22964,10 +23012,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23029,6 +23073,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23049,6 +23095,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23071,6 +23119,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23113,10 +23163,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23178,6 +23224,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23198,6 +23246,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23220,6 +23270,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23262,10 +23314,6 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23379,6 +23427,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23399,6 +23449,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23421,6 +23473,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23463,10 +23517,6 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23638,6 +23688,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23658,6 +23710,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23680,6 +23734,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23722,10 +23778,6 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -26804,6 +26856,138 @@ func (ec *executionContext) fieldContext_Parameter_value(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_expression(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Expression, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleyFilter_caseSensitive(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CaseSensitive, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_caseSensitive(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleyFilter_exactMatch(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExactMatch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_exactMatch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Patch_id(ctx, field)
 	if err != nil {
@@ -27963,6 +28147,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -27983,6 +28169,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -28005,6 +28193,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -28047,10 +28237,6 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -31009,6 +31195,53 @@ func (ec *executionContext) fieldContext_Project_admins(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_banner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Banner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIProjectBanner)
+	fc.Result = res
+	return ec.marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_banner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "text":
+				return ec.fieldContext_ProjectBanner_text(ctx, field)
+			case "theme":
+				return ec.fieldContext_ProjectBanner_theme(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectBanner", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_batchTime(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_batchTime(ctx, field)
 	if err != nil {
@@ -31601,6 +31834,53 @@ func (ec *executionContext) fieldContext_Project_enabled(ctx context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_externalLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_externalLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExternalLinks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIExternalLink)
+	fc.Result = res
+	return ec.marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "displayName":
+				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "urlTemplate":
+				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLink", field.Name)
 		},
 	}
 	return fc, nil
@@ -32201,6 +32481,55 @@ func (ec *executionContext) fieldContext_Project_owner(ctx context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_parsleyFilters(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_parsleyFilters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ParsleyFilters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIParsleyFilter)
+	fc.Result = res
+	return ec.marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_parsleyFilters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
+			case "caseSensitive":
+				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "exactMatch":
+				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
 		},
 	}
 	return fc, nil
@@ -33457,100 +33786,6 @@ func (ec *executionContext) fieldContext_Project_workstationConfig(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_externalLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_externalLinks(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ExternalLinks, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]model.APIExternalLink)
-	fc.Result = res
-	return ec.marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "displayName":
-				return ec.fieldContext_ExternalLink_displayName(ctx, field)
-			case "urlTemplate":
-				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ExternalLink", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Project_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_banner(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Banner, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(model.APIProjectBanner)
-	fc.Result = res
-	return ec.marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_banner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "text":
-				return ec.fieldContext_ProjectBanner_text(ctx, field)
-			case "theme":
-				return ec.fieldContext_ProjectBanner_theme(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectBanner", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ProjectAlias_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectAlias_id(ctx, field)
 	if err != nil {
@@ -34464,6 +34699,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -34484,6 +34721,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -34506,6 +34745,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -34548,10 +34789,6 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -34967,6 +35204,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -34987,6 +35226,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -35009,6 +35250,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -35051,10 +35294,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -36885,6 +37124,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -36905,6 +37146,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -36927,6 +37170,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -36969,10 +37214,6 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -46250,6 +46491,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -46270,6 +46513,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -46292,6 +46537,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -46334,10 +46581,6 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -54805,6 +55048,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -54825,6 +55070,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -54847,6 +55094,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -54889,10 +55138,6 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -59835,6 +60080,50 @@ func (ec *executionContext) unmarshalInputParameterInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context, obj interface{}) (model.APIParsleyFilter, error) {
+	var it model.APIParsleyFilter
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"expression", "caseSensitive", "exactMatch"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "expression":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expression"))
+			it.Expression, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "caseSensitive":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("caseSensitive"))
+			it.CaseSensitive, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "exactMatch":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exactMatch"))
+			it.ExactMatch, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPatchConfigure(ctx context.Context, obj interface{}) (PatchConfigure, error) {
 	var it PatchConfigure
 	asMap := map[string]interface{}{}
@@ -60223,7 +60512,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions", "externalLinks", "banner"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60266,6 +60555,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "banner":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
+			it.Banner, err = ec.unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "batchTime":
 			var err error
 
@@ -60295,6 +60592,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("commitQueue"))
 			it.CommitQueue, err = ec.unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "containerSizeDefinitions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerSizeDefinitions"))
+			it.ContainerSizeDefinitions, err = ec.unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60335,6 +60640,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			it.Enabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "externalLinks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
+			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60407,6 +60720,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("owner"))
 			it.Owner, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "parsleyFilters":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parsleyFilters"))
+			it.ParsleyFilters, err = ec.unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60551,30 +60872,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workstationConfig"))
 			it.WorkstationConfig, err = ec.unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "containerSizeDefinitions":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerSizeDefinitions"))
-			it.ContainerSizeDefinitions, err = ec.unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "externalLinks":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
-			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "banner":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
-			it.Banner, err = ec.unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -65758,6 +66055,48 @@ func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var parsleyFilterImplementors = []string{"ParsleyFilter"}
+
+func (ec *executionContext) _ParsleyFilter(ctx context.Context, sel ast.SelectionSet, obj *model.APIParsleyFilter) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, parsleyFilterImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ParsleyFilter")
+		case "expression":
+
+			out.Values[i] = ec._ParsleyFilter_expression(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "caseSensitive":
+
+			out.Values[i] = ec._ParsleyFilter_caseSensitive(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "exactMatch":
+
+			out.Values[i] = ec._ParsleyFilter_exactMatch(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var patchImplementors = []string{"Patch"}
 
 func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, obj *model.APIPatch) graphql.Marshaler {
@@ -66737,6 +67076,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 
 			out.Values[i] = ec._Project_admins(ctx, field, obj)
 
+		case "banner":
+
+			out.Values[i] = ec._Project_banner(ctx, field, obj)
+
 		case "batchTime":
 
 			out.Values[i] = ec._Project_batchTime(ctx, field, obj)
@@ -66791,6 +67134,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 		case "enabled":
 
 			out.Values[i] = ec._Project_enabled(ctx, field, obj)
+
+		case "externalLinks":
+
+			out.Values[i] = ec._Project_externalLinks(ctx, field, obj)
 
 		case "githubChecksEnabled":
 
@@ -66858,6 +67205,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "parsleyFilters":
+
+			out.Values[i] = ec._Project_parsleyFilters(ctx, field, obj)
+
 		case "patches":
 			field := field
 
@@ -66982,14 +67333,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "externalLinks":
-
-			out.Values[i] = ec._Project_externalLinks(ctx, field, obj)
-
-		case "banner":
-
-			out.Values[i] = ec._Project_banner(ctx, field, obj)
-
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -74179,6 +74522,15 @@ func (ec *executionContext) marshalNParameter2ᚕgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
+func (ec *executionContext) marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, sel ast.SelectionSet, v model.APIParsleyFilter) graphql.Marshaler {
+	return ec._ParsleyFilter(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, v interface{}) (model.APIParsleyFilter, error) {
+	res, err := ec.unmarshalInputParsleyFilterInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
 	return ec._Patch(ctx, sel, &v)
 }
@@ -77454,6 +77806,73 @@ func (ec *executionContext) unmarshalOParameterInput2ᚖgithubᚗcomᚋevergreen
 	}
 	res, err := ec.unmarshalInputParameterInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIParsleyFilter) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, v interface{}) ([]model.APIParsleyFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]model.APIParsleyFilter, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNParsleyFilterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPatch) graphql.Marshaler {
