@@ -30,6 +30,12 @@ Sometimes Evergreen has trouble creating a PR patch, due to internal server erro
 
 Note that this is specific to Github PR checks; it won't retry a commit queue patch. For that, re-type `evergreen merge` (detailed below).
 
+#### Skip CI Testing
+
+Sometimes you may want to avoid having Evergreen create patches (perhaps because the work is in progress, or testing isn't relevant yet). 
+Simply including `[skip-ci]` or `[skip ci]` in your PR title or description will prevent us from creating a patch until it's removed.  
+
+
 #### Create a patch for manual testing
 
 ```
