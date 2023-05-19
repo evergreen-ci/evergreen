@@ -440,6 +440,9 @@ modules:
 			assert.Contains(t, err.Error(), "no builds or tasks for commit queue version")
 		},
 		"GitHubPRPatchCreatesAllEssentialTasks": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 			require.NoError(t, p.Insert())
 
 			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester, token)
