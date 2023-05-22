@@ -364,7 +364,8 @@ Options:
 ## Metadata Links
 
 Customize additional links to specify for your project under the Plugins section
-of the project page, by specifying a link and title. 
+of the project page, by specifying a link and title (if this link includes `{version_id}` 
+we will sub in the version ID when rendering the link). 
 Right now this is restricted to patches, but work is planned in
 EVG-16363 to extend this to other requesters.
 
