@@ -1,0 +1,5 @@
+mutation {
+  deleteProject(
+    projectId: "already_hidden"
+  )
+}
