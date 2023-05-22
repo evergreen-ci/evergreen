@@ -758,14 +758,7 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := dbModel.FindBranchProjectRef(h.projectName)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
-	}
-	if project == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", h.projectName))
-	}
-	err = data.DeleteBranch(ctx, project)
+	err := data.HideBranch(h.projectName)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

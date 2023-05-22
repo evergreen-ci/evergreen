@@ -15,6 +15,12 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+const (
+	CreateProjectMutation = "CreateProject"
+	CopyProjectMutation   = "CopyProject"
+	DeleteProjectMutation = "DeleteProject"
+)
+
 type Resolver struct {
 	sc data.Connector
 }
@@ -45,7 +51,7 @@ func New(apiURL string) Config {
 		}
 		operationContext := graphql.GetOperationContext(ctx).OperationName
 
-		if operationContext == "CreateProject" {
+		if operationContext == CreateProjectMutation {
 			canCreate, err := user.HasProjectCreatePermission()
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking user permissions: %s", err.Error()))
@@ -55,7 +61,7 @@ func New(apiURL string) Config {
 			}
 		}
 
-		if operationContext == "CopyProject" {
+		if operationContext == CopyProjectMutation {
 			projectIdToCopy, ok := args["project"].(map[string]interface{})["projectIdToCopy"].(string)
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
@@ -71,7 +77,7 @@ func New(apiURL string) Config {
 			}
 		}
 
-		if operationContext == "DeleteProject" {
+		if operationContext == DeleteProjectMutation {
 			projectId, ok := args["projectId"].(string)
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectId for delete project operation")

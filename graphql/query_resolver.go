@@ -488,14 +488,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
 	}
 
-	visibleProjects := []model.ProjectRef{}
-	for _, p := range projects {
-		if !p.IsHidden() {
-			visibleProjects = append(visibleProjects, p)
-		}
-	}
-
-	groupedProjects, err := groupProjects(visibleProjects, true)
+	groupedProjects, err := groupProjects(projects, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}

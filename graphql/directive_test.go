@@ -126,7 +126,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 
 	// CreateProject - permission denied
 	operationContext := &graphql.OperationContext{
-		OperationName: "CreateProject",
+		OperationName: CreateProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{
@@ -149,7 +149,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 
 	// CopyProject - permission denied
 	operationContext = &graphql.OperationContext{
-		OperationName: "CopyProject",
+		OperationName: CopyProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{
@@ -175,7 +175,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 
 	// DeleteProject - permission denied
 	operationContext = &graphql.OperationContext{
-		OperationName: "DeleteProject",
+		OperationName: DeleteProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{"projectId": "anything"}

@@ -508,9 +508,7 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.Equal(t, "user@email.com", payload.Reporter)
 }
 
-func TestDeleteBranch(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestHideBranch(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.RepoRefCollection, model.ProjectRefCollection, model.ProjectVarsCollection, model.ProjectAliasCollection))
 
 	repo := model.RepoRef{
@@ -550,7 +548,7 @@ func TestDeleteBranch(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert())
 
-	err := DeleteBranch(ctx, project)
+	err := HideBranch(projectId)
 	assert.NoError(t, err)
 
 	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)

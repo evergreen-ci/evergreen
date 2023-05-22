@@ -748,6 +748,10 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
 
 	for _, p := range projects {
+		if p.IsHidden() {
+			continue
+		}
+
 		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
 		if onlyDefaultedToRepo && !p.UseRepoSettings() {
 			groupName = ""

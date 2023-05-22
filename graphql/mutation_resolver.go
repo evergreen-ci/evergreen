@@ -532,8 +532,11 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) 
 	if err != nil || pRef == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project '%s'", projectID))
 	}
-	err = data.DeleteBranch(ctx, pRef)
-	if err != nil {
+	if err = data.HideBranch(projectID); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", projectID, err.Error()))
 	}
 	return true, nil

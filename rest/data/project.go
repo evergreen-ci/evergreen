@@ -390,7 +390,20 @@ func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model
 	return model.GetProjectFromFile(ctx, opts)
 }
 
-func DeleteBranch(ctx context.Context, pRef *model.ProjectRef) error {
+// HideBranch is used to "delete" a project via the rest route or the UI. It overwrites the project with a skeleton project.
+// It also clears project admin roles, project aliases, and project vars.
+func HideBranch(projectID string) error {
+	pRef, err := model.FindBranchProjectRef(projectID)
+	if err != nil {
+		return errors.Wrapf(err, "finding project with ID '%s'", projectID)
+	}
+	if pRef == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("project '%s' not found", projectID).Error(),
+		}
+	}
+
 	if pRef.IsHidden() {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
