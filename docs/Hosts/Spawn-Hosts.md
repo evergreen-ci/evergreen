@@ -26,8 +26,15 @@ Fetching artifacts can also be performed manually; see [fetch](../CLI.md#fetch) 
 
 Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching. 
 
-
 If your project has a project setup script defined at the admin level, you can also check "Use project-specific setup script defined at ..." before creating the spawn host. You can check if there are errors fetching artifacts or running this script on the host page: ``https://spruce.mongodb.com/host/<host_id>``.
 
-
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI.md#basic-host-usage) in the Evergreen command line tool documentation.
+
+## Spawn Host Expiration
+
+By default, spawn hosts expire after one week. This expiration can be configured when spawning the host or can be set
+later by pressing the "edit" button for the host. You can extend an expirable host's lifetime up to 30 days past host
+creation.
+
+If you'd like to get a notification before a host expires, you can [set up a
+notification](../Project-Configuration/Notifications.md#spawn-host-expiration) for it.
