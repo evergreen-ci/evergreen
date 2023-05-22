@@ -364,10 +364,13 @@ Options:
 ## Metadata Links
 
 Customize additional links to specify for your project under the Plugins section
-of the project page, by specifying a link and title (if this link includes `{version_id}` 
-we will sub in the version ID when rendering the link). 
+of the project page, by specifying a link and title. 
+
 Right now this is restricted to patches, but work is planned in
 EVG-16363 to extend this to other requesters.
+
+Special Fields:
+* `{version_id}` -- if this is included in the metadata link, we will sub in the ID when rendering the link
 
 This may also be added to individual tasks using `metadata_links` 
 for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations). 
