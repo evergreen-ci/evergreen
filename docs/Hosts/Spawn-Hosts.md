@@ -32,9 +32,9 @@ EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or
 
 ## Spawn Host Expiration
 
-By default, spawn hosts expire after one week. This expiration can be configured when spawning the host or can be set
-later by pressing the "edit" button for the host. You can extend an expirable host's lifetime up to 30 days past host
-creation.
+By default, spawn hosts expire after one week. This expiration can be set (or the host can be made unexpirable) when
+spawning the host or can be set later by pressing the "edit" button for the host. You can extend an expirable host's
+lifetime up to 30 days past host creation.
 
 If you'd like to get a notification before a host expires, you can [set up a
 notification](../Project-Configuration/Notifications.md#spawn-host-expiration) for it.
