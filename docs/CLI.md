@@ -279,7 +279,7 @@ evergreen --delete-tag KEY
 ```
 Note these tags cannot overwrite Evergreen tags. 
 
-Hosts can be set to never expire using the `--no-expire` tag (although each user has a limit for these kinds of hosts). Hosts can be set to expire again using the `--expire` tag, which will set the host to expire in 24 hours (this can be extended using `--extend <hours>`. 
+Hosts can be set to never expire using the `--no-expire` tag (although each user has a limit for these kinds of hosts). Hosts can be set to expire again using the `--expire` tag, which will set the host to expire in 24 hours. This expiration can be extended using `--extend <hours>`, and you can extend its lifetime up to a max of 30 days past host creation.
 
 
 ### Stop/Start Host to Change Instance Type
