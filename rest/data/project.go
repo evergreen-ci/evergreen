@@ -395,7 +395,7 @@ func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model
 func HideBranch(projectID string) error {
 	pRef, err := model.FindBranchProjectRef(projectID)
 	if err != nil {
-		return errors.Wrapf(err, "finding project with ID '%s'", projectID)
+		return errors.Wrapf(err, "finding project '%s'", projectID)
 	}
 	if pRef == nil {
 		return gimlet.ErrorResponse{

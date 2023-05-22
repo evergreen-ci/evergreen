@@ -9,8 +9,6 @@
   "project_ref": [
     {
       "_id" : "already_hidden",
-      "identifier" : "already_hidden",
-      "display_name" : "hidden_project",
       "enabled" : false,
       "hidden": true
     },

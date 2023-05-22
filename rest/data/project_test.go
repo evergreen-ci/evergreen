@@ -523,32 +523,32 @@ func TestHideBranch(t *testing.T) {
 	project := &model.ProjectRef{
 		Identifier:  projectId,
 		Id:          projectId,
+		DisplayName: "test_project",
+		Owner:       repo.Owner,
+		Repo:        repo.Repo,
+		RepoRefId:   repo.Id,
+		Branch:      "branch",
 		Enabled:     true,
 		Hidden:      utility.ToBoolPtr(false),
-		Owner:       "mongodb",
-		Repo:        "test_repo",
-		Branch:      "branch",
-		RepoRefId:   "repo_ref",
-		DisplayName: "test_project",
 	}
 	require.NoError(t, project.Upsert())
 
 	alias := model.ProjectAlias{
+		ProjectID: project.Id,
 		Alias:     "select_bv1",
-		ProjectID: projectId,
 		Variant:   "^bv1$",
 		Task:      ".*",
 	}
 	require.NoError(t, alias.Upsert())
 
 	vars := &model.ProjectVars{
-		Id:          projectId,
+		Id:          project.Id,
 		Vars:        map[string]string{"a": "1", "b": "3"},
 		PrivateVars: map[string]bool{"b": true},
 	}
 	require.NoError(t, vars.Insert())
 
-	err := HideBranch(projectId)
+	err := HideBranch(project.Id)
 	assert.NoError(t, err)
 
 	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)
