@@ -194,6 +194,7 @@ and what expansions it uses.
 ``` yaml
 buildvariants:
 - name: osx-108
+  cron: 0 * * * *
   display_name: OSX
   run_on:
   - localtestdistro
@@ -202,6 +203,7 @@ buildvariants:
   tasks:
   - name: compile
   - name: passing_test
+    cron: @daily // overrides build variant cron
   - name: failing_test
   - name: timeout_test
 - name: ubuntu
@@ -226,7 +228,6 @@ buildvariants:
     activate: false
     tags: ["special"]
   - name: timeout_test
-    cron: @daily
     patchable: false
   - name: git_tag_release
     git_tag_only: true
@@ -274,8 +275,8 @@ Fields:
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
-    Month \| DayOfWeekOptional) when (in UTC) a variant should be activated
-    (Cannot be combined with batchtime). This also accepts descriptors
+    Month \| DayOfWeekOptional) when (in UTC) a task or variant should be activated
+    (cannot be combined with batchtime). This also accepts descriptors
     such as `@daily` (reference
     [cron](https://godoc.org/github.com/robfig/cron) for more example),
     but does not accept intervals. (i.e.
