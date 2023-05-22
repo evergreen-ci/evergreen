@@ -1,4 +1,4 @@
-# File Tickets with Webhooks
+# Webhooks
 
 ## Overview
 The file ticket button in the Task Annotations tab can be configured to call a custom webhook when clicked. 

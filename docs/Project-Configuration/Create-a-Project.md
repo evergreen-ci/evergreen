@@ -1,4 +1,4 @@
-# Create Evergreen Projects
+# Create a Project
 
 This guide is meant to help users create their own projects on Evergreen. 
 

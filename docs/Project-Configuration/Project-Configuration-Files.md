@@ -1,4 +1,4 @@
-# Set Up a Project Configuration File
+# Project Configuration Files
 Project configurations are how you tell Evergreen what to do. They
 contain a set of tasks and variants to run those tasks on, and are
 stored within the repository they test. Project files are written in a
@@ -388,7 +388,7 @@ are being used.
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version. You can change
 the git revision for modules by setting a module manually with 
-[evergreen set-module](../Using-the-Command-Line-Tool.md#operating-on-existing-patches) or
+[evergreen set-module](../CLI.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
@@ -690,11 +690,11 @@ Every task has some expansions available by default:
 -   `${otel_trace_id}` is the OTel trace ID this task is running under.
     Include the trace ID in your task's spans so they'll be hooked
     in under the task's trace.
-    See [Hooking tests into command spans](../Capture_Traces.md#hooking-tests-into-command-spans) for more information.
+    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
 -   `${otel_parent_id}` is the OTel span ID of the current command.
     Include this ID in your test's root spans so it'll be hooked
     in under the command's trace.
-    See [Hooking tests into command spans](../Capture_Traces.md#hooking-tests-into-command-spans) for more information.
+    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
 
 The following expansions are available if a task was triggered by an
 inter-project dependency:

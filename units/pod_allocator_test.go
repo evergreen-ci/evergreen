@@ -50,6 +50,7 @@ func TestPodAllocatorJob(t *testing.T) {
 	require.NoError(t, env.EvergreenSettings.ServiceFlags.Set())
 	env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 10
 	require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
+	require.NoError(t, env.EvergreenSettings.Providers.Set())
 
 	// Pod allocation uses a multi-document transaction, which requires the
 	// collections to exist first before any documents can be inserted.
@@ -301,6 +302,10 @@ func TestPodAllocatorJob(t *testing.T) {
 			allocatorJob.smClient = smClient
 			allocatorJob.vault = mv
 
+			env.EvergreenSettings.Providers.AWS.Pod.ECS.AllowedImages = []string{
+				"rhel",
+			}
+			require.NoError(t, env.EvergreenSettings.Providers.Set())
 			tCase(tctx, t, allocatorJob, mv, tsk, pRef)
 		})
 	}
@@ -447,7 +452,9 @@ func getTaskThatNeedsContainerAllocation() task.Task {
 }
 
 func getInitializingPod(t *testing.T) pod.Pod {
-	initializing, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
+	initializing, err := pod.NewTaskIntentPod(evergreen.ECSConfig{
+		AllowedImages: []string{"rhel"},
+	}, pod.TaskIntentPodOptions{
 		Image:               "rhel",
 		CPU:                 256,
 		MemoryMB:            1024,
