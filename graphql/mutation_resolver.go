@@ -528,11 +528,7 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID s
 
 // DeleteProject is the resolver for the deleteProject field.
 func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
-	pRef, err := model.FindBranchProjectRef(projectID)
-	if err != nil || pRef == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project '%s'", projectID))
-	}
-	if err = data.HideBranch(projectID); err != nil {
+	if err := data.HideBranch(projectID); err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
