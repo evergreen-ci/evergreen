@@ -748,6 +748,8 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
 
 	for _, p := range projects {
+		// Do not include hidden projects in the final list of grouped projects, as they are considered
+		// "deleted" projects.
 		if p.IsHidden() {
 			continue
 		}

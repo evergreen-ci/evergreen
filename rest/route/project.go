@@ -758,8 +758,7 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	err := data.HideBranch(h.projectName)
-	if err != nil {
+	if err := data.HideBranch(h.projectName); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(struct{}{})
