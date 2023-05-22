@@ -147,15 +147,6 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 	return aliases, nil
 }
 
-// Project is the resolver for the project field.
-func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*PatchProject, error) {
-	patchProject, err := getPatchProjectVariantsAndTasksForUI(ctx, obj)
-	if err != nil {
-		return nil, err
-	}
-	return patchProject, nil
-}
-
 // ProjectIdentifier is the resolver for the projectIdentifier field.
 func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	obj.GetIdentifier()

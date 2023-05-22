@@ -231,55 +231,6 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 	})
 }
 
-// getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
-func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	p, err := apiPatch.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "building patch")
-	}
-	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
-	}
-
-	// convert variants to UI data structure
-	variants := []*ProjectBuildVariant{}
-	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
-		projBuildVariant := ProjectBuildVariant{
-			Name:        buildVariant.Name,
-			DisplayName: buildVariant.DisplayName,
-		}
-		projTasks := []string{}
-		executionTasks := map[string]bool{}
-		for _, displayTask := range buildVariant.DisplayTasks {
-			projTasks = append(projTasks, displayTask.Name)
-			for _, execTask := range displayTask.ExecTasks {
-				executionTasks[execTask] = true
-			}
-		}
-		for _, taskUnit := range buildVariant.Tasks {
-			// Only add task if it is not an execution task.
-			if !executionTasks[taskUnit.Name] {
-				projTasks = append(projTasks, taskUnit.Name)
-			}
-		}
-		// Sort tasks alphanumerically by display name.
-		sort.SliceStable(projTasks, func(i, j int) bool {
-			return projTasks[i] < projTasks[j]
-		})
-		projBuildVariant.Tasks = projTasks
-		variants = append(variants, &projBuildVariant)
-	}
-	sort.SliceStable(variants, func(i, j int) bool {
-		return variants[i].DisplayName < variants[j].DisplayName
-	})
-
-	patchProject := PatchProject{
-		Variants: variants,
-	}
-	return &patchProject, nil
-}
-
 // buildFromGqlInput takes a PatchConfigure gql type and returns a PatchUpdate type
 func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 	p := model.PatchUpdate{}

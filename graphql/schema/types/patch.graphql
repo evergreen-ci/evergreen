@@ -72,7 +72,6 @@ type Patch {
   parameters: [Parameter!]!
   patchNumber: Int!
   patchTriggerAliases: [PatchTriggerAlias!]!
-  project: PatchProject
   projectID: String!
   projectIdentifier: String!
   projectMetadata: Project
