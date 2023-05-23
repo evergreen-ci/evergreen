@@ -242,6 +242,7 @@ functions:
       params:
         env:
           MONGODB_URL: ${mongodb_url}
+          MONGOSH_DOWNLOAD: {mongosh_download}
           DECOMPRESS: ${decompress}
         working_dir: evergreen
         command: make get-mongodb
@@ -614,6 +615,7 @@ buildvariants:
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
+      mongosh_download: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz -o mongosh.tgz && tar -xzvf mongosh.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
       sign_macos: true
     tasks:
@@ -638,6 +640,7 @@ buildvariants:
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
+      mongosh_download: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz -o mongosh.tgz && tar -xzvf mongosh.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -654,6 +657,7 @@ buildvariants:
       IS_DOCKER: true
       GOROOT: /usr/local/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.6.tgz
+      mongosh_download: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz -o mongosh.tgz && tar -xzvf mongosh.tgz
       decompress: tar zxvf
     tasks:
       - name: "dist-unsigned"
@@ -683,6 +687,7 @@ buildvariants:
       GOROOT: c:/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.6.zip
+      mongosh_download: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-win32-x64.zip -o mongosh.zip && ${DECOMPRESS} mongosh.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
@@ -701,6 +706,7 @@ buildvariants:
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.6.tgz
+      mongosh_download: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-arm64.tgz -o mongosh.tgz && tar -xzvf mongosh.tgz
     tasks:
       - name: ".agent .test"
 
@@ -712,6 +718,7 @@ buildvariants:
     expansions:
       GOROOT: /opt/golang/go1.20
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.6.tgz
+      mongosh_download: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-darwin-arm64.zip -o mongosh.zip && unzip mongosh.zip
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
