@@ -15,6 +15,7 @@ mutation {
             exactMatch: false
           }
         ]
+        projectHealthView: PROJECT_HEALTH_VIEW_FAILED
       }
     }
     section: VIEWS_AND_FILTERS
@@ -26,6 +27,7 @@ mutation {
         caseSensitive
         exactMatch
       }
+      projectHealthView
     }
   }
 }

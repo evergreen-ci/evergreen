@@ -2873,11 +2873,12 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
 	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
 
-	// Test parsley filters update
+	// Test parsley filters and view update
 	update = &ProjectRef{
 		ParsleyFilters: []ParsleyFilter{
 			{Expression: "filter", CaseSensitive: false, ExactMatch: true},
 		},
+		ProjectHealthView: ProjectHealthViewAll,
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
 	assert.NoError(err)
@@ -2893,6 +2894,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(t, projectRef)
 	assert.Len(projectRef.ParsleyFilters, 1)
+	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
 }
