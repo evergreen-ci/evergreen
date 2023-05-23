@@ -656,9 +656,11 @@ parsed as a rest.APIError
 
 Extend the expiration time of a host with a given ID. Users may only
 extend expirations for hosts which were created by them, unless the user
-is a super-user
+is a super-user.
 
 The expiration date of a host may not be more than 1 week in the future.
+Furthermore, the lifetime of an expirable host can be extended at most 30 days
+past host creation.
 
 A response code of 200 OK indicates that the host's expiration was
 successfully extended.
