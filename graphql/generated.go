@@ -534,12 +534,18 @@ type ComplexityRoot struct {
 	}
 
 	Notifications struct {
-		BuildBreak          func(childComplexity int) int
-		CommitQueue         func(childComplexity int) int
-		PatchFinish         func(childComplexity int) int
-		PatchFirstFailure   func(childComplexity int) int
-		SpawnHostExpiration func(childComplexity int) int
-		SpawnHostOutcome    func(childComplexity int) int
+		BuildBreak            func(childComplexity int) int
+		BuildBreakID          func(childComplexity int) int
+		CommitQueue           func(childComplexity int) int
+		CommitQueueID         func(childComplexity int) int
+		PatchFinish           func(childComplexity int) int
+		PatchFinishID         func(childComplexity int) int
+		PatchFirstFailure     func(childComplexity int) int
+		PatchFirstFailureID   func(childComplexity int) int
+		SpawnHostExpiration   func(childComplexity int) int
+		SpawnHostExpirationID func(childComplexity int) int
+		SpawnHostOutcome      func(childComplexity int) int
+		SpawnHostOutcomeID    func(childComplexity int) int
 	}
 
 	OomTrackerInfo struct {
@@ -3911,12 +3917,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.BuildBreak(childComplexity), true
 
+	case "Notifications.buildBreakId":
+		if e.complexity.Notifications.BuildBreakID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.BuildBreakID(childComplexity), true
+
 	case "Notifications.commitQueue":
 		if e.complexity.Notifications.CommitQueue == nil {
 			break
 		}
 
 		return e.complexity.Notifications.CommitQueue(childComplexity), true
+
+	case "Notifications.commitQueueId":
+		if e.complexity.Notifications.CommitQueueID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.CommitQueueID(childComplexity), true
 
 	case "Notifications.patchFinish":
 		if e.complexity.Notifications.PatchFinish == nil {
@@ -3925,12 +3945,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.PatchFinish(childComplexity), true
 
+	case "Notifications.patchFinishId":
+		if e.complexity.Notifications.PatchFinishID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.PatchFinishID(childComplexity), true
+
 	case "Notifications.patchFirstFailure":
 		if e.complexity.Notifications.PatchFirstFailure == nil {
 			break
 		}
 
 		return e.complexity.Notifications.PatchFirstFailure(childComplexity), true
+
+	case "Notifications.patchFirstFailureId":
+		if e.complexity.Notifications.PatchFirstFailureID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.PatchFirstFailureID(childComplexity), true
 
 	case "Notifications.spawnHostExpiration":
 		if e.complexity.Notifications.SpawnHostExpiration == nil {
@@ -3939,12 +3973,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.SpawnHostExpiration(childComplexity), true
 
+	case "Notifications.spawnHostExpirationId":
+		if e.complexity.Notifications.SpawnHostExpirationID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.SpawnHostExpirationID(childComplexity), true
+
 	case "Notifications.spawnHostOutcome":
 		if e.complexity.Notifications.SpawnHostOutcome == nil {
 			break
 		}
 
 		return e.complexity.Notifications.SpawnHostOutcome(childComplexity), true
+
+	case "Notifications.spawnHostOutcomeId":
+		if e.complexity.Notifications.SpawnHostOutcomeID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.SpawnHostOutcomeID(childComplexity), true
 
 	case "OomTrackerInfo.detected":
 		if e.complexity.OomTrackerInfo.Detected == nil {
@@ -26422,6 +26470,47 @@ func (ec *executionContext) fieldContext_Notifications_buildBreak(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Notifications_buildBreakId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_buildBreakId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildBreakID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_buildBreakId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Notifications_commitQueue(ctx, field)
 	if err != nil {
@@ -26451,6 +26540,47 @@ func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_Notifications_commitQueue(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Notifications_commitQueueId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_commitQueueId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CommitQueueID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_commitQueueId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
@@ -26504,6 +26634,47 @@ func (ec *executionContext) fieldContext_Notifications_patchFinish(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Notifications_patchFinishId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_patchFinishId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchFinishID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_patchFinishId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Notifications_patchFirstFailure(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Notifications_patchFirstFailure(ctx, field)
 	if err != nil {
@@ -26533,6 +26704,47 @@ func (ec *executionContext) _Notifications_patchFirstFailure(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_Notifications_patchFirstFailure(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Notifications_patchFirstFailureId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_patchFirstFailureId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchFirstFailureID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_patchFirstFailureId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
@@ -26586,6 +26798,47 @@ func (ec *executionContext) fieldContext_Notifications_spawnHostExpiration(ctx c
 	return fc, nil
 }
 
+func (ec *executionContext) _Notifications_spawnHostExpirationId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_spawnHostExpirationId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostExpirationID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_spawnHostExpirationId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Notifications_spawnHostOutcome(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Notifications_spawnHostOutcome(ctx, field)
 	if err != nil {
@@ -26615,6 +26868,47 @@ func (ec *executionContext) _Notifications_spawnHostOutcome(ctx context.Context,
 }
 
 func (ec *executionContext) fieldContext_Notifications_spawnHostOutcome(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Notifications_spawnHostOutcomeId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_spawnHostOutcomeId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostOutcomeID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_spawnHostOutcomeId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
@@ -52614,16 +52908,28 @@ func (ec *executionContext) fieldContext_UserSettings_notifications(ctx context.
 			switch field.Name {
 			case "buildBreak":
 				return ec.fieldContext_Notifications_buildBreak(ctx, field)
+			case "buildBreakId":
+				return ec.fieldContext_Notifications_buildBreakId(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Notifications_commitQueue(ctx, field)
+			case "commitQueueId":
+				return ec.fieldContext_Notifications_commitQueueId(ctx, field)
 			case "patchFinish":
 				return ec.fieldContext_Notifications_patchFinish(ctx, field)
+			case "patchFinishId":
+				return ec.fieldContext_Notifications_patchFinishId(ctx, field)
 			case "patchFirstFailure":
 				return ec.fieldContext_Notifications_patchFirstFailure(ctx, field)
+			case "patchFirstFailureId":
+				return ec.fieldContext_Notifications_patchFirstFailureId(ctx, field)
 			case "spawnHostExpiration":
 				return ec.fieldContext_Notifications_spawnHostExpiration(ctx, field)
+			case "spawnHostExpirationId":
+				return ec.fieldContext_Notifications_spawnHostExpirationId(ctx, field)
 			case "spawnHostOutcome":
 				return ec.fieldContext_Notifications_spawnHostOutcome(ctx, field)
+			case "spawnHostOutcomeId":
+				return ec.fieldContext_Notifications_spawnHostOutcomeId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Notifications", field.Name)
 		},
@@ -65116,25 +65422,49 @@ func (ec *executionContext) _Notifications(ctx context.Context, sel ast.Selectio
 
 			out.Values[i] = ec._Notifications_buildBreak(ctx, field, obj)
 
+		case "buildBreakId":
+
+			out.Values[i] = ec._Notifications_buildBreakId(ctx, field, obj)
+
 		case "commitQueue":
 
 			out.Values[i] = ec._Notifications_commitQueue(ctx, field, obj)
+
+		case "commitQueueId":
+
+			out.Values[i] = ec._Notifications_commitQueueId(ctx, field, obj)
 
 		case "patchFinish":
 
 			out.Values[i] = ec._Notifications_patchFinish(ctx, field, obj)
 
+		case "patchFinishId":
+
+			out.Values[i] = ec._Notifications_patchFinishId(ctx, field, obj)
+
 		case "patchFirstFailure":
 
 			out.Values[i] = ec._Notifications_patchFirstFailure(ctx, field, obj)
+
+		case "patchFirstFailureId":
+
+			out.Values[i] = ec._Notifications_patchFirstFailureId(ctx, field, obj)
 
 		case "spawnHostExpiration":
 
 			out.Values[i] = ec._Notifications_spawnHostExpiration(ctx, field, obj)
 
+		case "spawnHostExpirationId":
+
+			out.Values[i] = ec._Notifications_spawnHostExpirationId(ctx, field, obj)
+
 		case "spawnHostOutcome":
 
 			out.Values[i] = ec._Notifications_spawnHostOutcome(ctx, field, obj)
+
+		case "spawnHostOutcomeId":
+
+			out.Values[i] = ec._Notifications_spawnHostOutcomeId(ctx, field, obj)
 
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
