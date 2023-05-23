@@ -13,8 +13,8 @@ RUN apt install -y libcurl4
 RUN curl -sL https://deb.nodesource.com/setup_14.x -o nodesource_setup.sh
 RUN bash nodesource_setup.sh
 RUN apt-get install -y nodejs
-RUN wget https://go.dev/dl/go1.19.linux-amd64.tar.gz
-RUN tar -xvf go1.19.linux-amd64.tar.gz
+RUN wget https://go.dev/dl/go1.20.linux-amd64.tar.gz
+RUN tar -xvf go1.20.linux-amd64.tar.gz
 RUN mv go /usr/local
 RUN export GOROOT=/usr/local/go
 RUN export PATH=$PATH:/usr/local/go/bin
