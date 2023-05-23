@@ -147,6 +147,36 @@ func TestTaskBuildFromService(t *testing.T) {
 					Requester: evergreen.RepotrackerVersionRequester,
 				},
 			},
+			{
+				at: APITask{
+					Id: utility.ToStringPtr("old_task_id"),
+					Logs: LogLinks{
+						AllLogLink:    utility.ToStringPtr("url/task_log_raw/old_task_id/0?type=ALL"),
+						TaskLogLink:   utility.ToStringPtr("url/task_log_raw/old_task_id/0?type=T"),
+						SystemLogLink: utility.ToStringPtr("url/task_log_raw/old_task_id/0?type=S"),
+						AgentLogLink:  utility.ToStringPtr("url/task_log_raw/old_task_id/0?type=E"),
+						EventLogLink:  utility.ToStringPtr("url/event_log/task/old_task_id"),
+					},
+					ParsleyLogs: LogLinks{
+						AllLogLink:    utility.ToStringPtr("parsley/evergreen/old_task_id/0/all"),
+						TaskLogLink:   utility.ToStringPtr("parsley/evergreen/old_task_id/0/task"),
+						SystemLogLink: utility.ToStringPtr("parsley/evergreen/old_task_id/0/system"),
+						AgentLogLink:  utility.ToStringPtr("parsley/evergreen/old_task_id/0/agent"),
+					},
+					CreateTime:             &time.Time{},
+					DispatchTime:           &time.Time{},
+					ScheduledTime:          &time.Time{},
+					ContainerAllocatedTime: &time.Time{},
+					StartTime:              &time.Time{},
+					FinishTime:             &time.Time{},
+					IngestTime:             &time.Time{},
+				},
+				st: task.Task{
+					Id:        "task_id",
+					OldTaskId: "old_task_id",
+					Requester: evergreen.RepotrackerVersionRequester,
+				},
+			},
 		}
 		Convey("running BuildFromService(), should populate mainline and blocked dependencies", func() {
 			for _, tc := range modelPairs {
