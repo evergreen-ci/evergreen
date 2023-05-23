@@ -1179,10 +1179,15 @@ func TestDeactivatePreviousTask(t *testing.T) {
 
 func TestUpdateBuildStatusForTask(t *testing.T) {
 	type testCase struct {
-		tasks                 []task.Task
+		tasks []task.Task
+
 		expectedBuildStatus   string
 		expectedVersionStatus string
 		expectedPatchStatus   string
+
+		expectedBuildActivation   bool
+		expectedVersionActivation bool
+		expectedPatchActivation   bool
 	}
 
 	for name, test := range map[string]testCase{
@@ -1191,47 +1196,84 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 				{Status: evergreen.TaskUndispatched, Activated: true},
 				{Status: evergreen.TaskUndispatched, Activated: true},
 			},
-			expectedBuildStatus:   evergreen.BuildCreated,
-			expectedVersionStatus: evergreen.VersionCreated,
-			expectedPatchStatus:   evergreen.PatchCreated,
+			expectedBuildStatus:       evergreen.BuildCreated,
+			expectedVersionStatus:     evergreen.VersionCreated,
+			expectedPatchStatus:       evergreen.PatchCreated,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
+		},
+		"created / deactivated": {
+			tasks: []task.Task{
+				{Status: evergreen.TaskUndispatched, Activated: false},
+				{Status: evergreen.TaskUndispatched, Activated: false},
+			},
+			expectedBuildStatus:       evergreen.BuildCreated,
+			expectedVersionStatus:     evergreen.VersionCreated,
+			expectedPatchStatus:       evergreen.PatchCreated,
+			expectedBuildActivation:   false,
+			expectedVersionActivation: false,
+			expectedPatchActivation:   true, // patch activation is a bit different, since it indicates if the patch has been finalized.
 		},
 		"started": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskUndispatched, Activated: true},
 				{Status: evergreen.TaskStarted, Activated: true},
 			},
-			expectedBuildStatus:   evergreen.BuildStarted,
-			expectedVersionStatus: evergreen.VersionStarted,
-			expectedPatchStatus:   evergreen.PatchStarted,
+			expectedBuildStatus:       evergreen.BuildStarted,
+			expectedVersionStatus:     evergreen.VersionStarted,
+			expectedPatchStatus:       evergreen.PatchStarted,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 		"succeeded": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskSucceeded, Activated: true},
 				{Status: evergreen.TaskSucceeded, Activated: true},
 			},
-			expectedBuildStatus:   evergreen.BuildSucceeded,
-			expectedVersionStatus: evergreen.VersionSucceeded,
-			expectedPatchStatus:   evergreen.PatchSucceeded,
+			expectedBuildStatus:       evergreen.BuildSucceeded,
+			expectedVersionStatus:     evergreen.VersionSucceeded,
+			expectedPatchStatus:       evergreen.PatchSucceeded,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 		"some unactivated tasks": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskSucceeded, Activated: true},
 				{Status: evergreen.TaskUndispatched, Activated: false},
 			},
-			expectedBuildStatus:   evergreen.BuildSucceeded,
-			expectedVersionStatus: evergreen.VersionSucceeded,
-			expectedPatchStatus:   evergreen.PatchSucceeded,
+			expectedBuildStatus:       evergreen.BuildSucceeded,
+			expectedVersionStatus:     evergreen.VersionSucceeded,
+			expectedPatchStatus:       evergreen.PatchSucceeded,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 		"all blocked tasks": {
 			tasks: []task.Task{
-				{Status: evergreen.TaskUndispatched,
-					DependsOn: []task.Dependency{{Unattainable: true}}},
-				{Status: evergreen.TaskUndispatched,
-					DependsOn: []task.Dependency{{Unattainable: true}}},
+				{
+					Status:    evergreen.TaskUndispatched,
+					Activated: true,
+					DependsOn: []task.Dependency{
+						{TaskId: "testDepends1", Status: "*", Unattainable: true},
+					},
+				},
+				{
+					Status:    evergreen.TaskUndispatched,
+					Activated: true,
+					DependsOn: []task.Dependency{
+						{TaskId: "testDepends1", Status: "*", Unattainable: true},
+					},
+				},
 			},
-			expectedBuildStatus:   evergreen.BuildCreated,
-			expectedVersionStatus: evergreen.VersionCreated,
-			expectedPatchStatus:   evergreen.PatchCreated,
+			expectedBuildStatus:       evergreen.BuildCreated,
+			expectedVersionStatus:     evergreen.VersionCreated,
+			expectedPatchStatus:       evergreen.PatchCreated,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1247,10 +1289,12 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 				Id:        b.Version,
 				Status:    evergreen.VersionCreated,
 				Requester: evergreen.PatchVersionRequester,
+				Activated: utility.TruePtr(),
 			}
 			p := &patch.Patch{
-				Id:     patch.NewId(v.Id),
-				Status: evergreen.PatchCreated,
+				Id:        patch.NewId(v.Id),
+				Status:    evergreen.PatchCreated,
+				Activated: true,
 			}
 			require.NoError(t, b.Insert())
 			require.NoError(t, v.Insert())
@@ -1262,21 +1306,28 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 				tempTask.Version = v.Id
 				require.NoError(t, tempTask.Insert())
 			}
+			// Verify tasks are inserted and found correctly
+			tasks, err := task.FindWithFields(task.ByBuildId(b.Id))
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 2)
 
 			assert.NoError(t, UpdateBuildAndVersionStatusForTask(&task.Task{Version: v.Id, BuildId: b.Id}))
 
-			var err error
+			//var err error
 			b, err = build.FindOneId(b.Id)
 			require.NoError(t, err)
-			assert.Equal(t, b.Status, test.expectedBuildStatus)
+			assert.Equal(t, test.expectedBuildStatus, b.Status)
+			assert.Equal(t, test.expectedBuildActivation, b.Activated)
 
 			v, err = VersionFindOneId(v.Id)
 			require.NoError(t, err)
-			assert.Equal(t, v.Status, test.expectedVersionStatus)
+			assert.Equal(t, test.expectedVersionStatus, v.Status)
+			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(v.Activated))
 
 			p, err = patch.FindOneId(p.Id.Hex())
 			require.NoError(t, err)
-			assert.Equal(t, p.Status, test.expectedPatchStatus)
+			assert.Equal(t, test.expectedPatchStatus, p.Status)
+			assert.Equal(t, test.expectedPatchActivation, p.Activated)
 		})
 	}
 
@@ -1618,21 +1669,36 @@ func TestGetVersionStatus(t *testing.T) {
 		{Status: evergreen.BuildCreated},
 		{Status: evergreen.BuildCreated},
 	}
-	assert.Equal(t, evergreen.VersionCreated, getVersionStatus(versionBuilds))
+	activated, status := getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionCreated, status)
+	assert.False(t, activated) // false because no task is activated
+
+	// Any activated build implies that the version is activated
+	versionBuilds = []build.Build{
+		{Status: evergreen.BuildCreated, Activated: true},
+		{Status: evergreen.BuildCreated},
+	}
+	activated, status = getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionCreated, status)
+	assert.True(t, activated)
 
 	// any started builds will start the version
 	versionBuilds = []build.Build{
-		{Status: evergreen.BuildCreated, Activated: true},
-		{Status: evergreen.BuildStarted},
+		{Status: evergreen.BuildCreated},
+		{Status: evergreen.BuildStarted, Activated: true},
 	}
-	assert.Equal(t, evergreen.VersionStarted, getVersionStatus(versionBuilds))
+	activated, status = getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionStarted, status)
+	assert.True(t, activated)
 
 	// unactivated builds don't prevent the version from completing
 	versionBuilds = []build.Build{
 		{Status: evergreen.BuildCreated, Activated: false},
-		{Status: evergreen.BuildFailed},
+		{Status: evergreen.BuildFailed, Activated: true},
 	}
-	assert.Equal(t, evergreen.VersionFailed, getVersionStatus(versionBuilds))
+	activated, status = getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionFailed, status)
+	assert.True(t, activated)
 }
 
 func TestUpdateVersionGithubStatus(t *testing.T) {
