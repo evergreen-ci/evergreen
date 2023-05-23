@@ -270,30 +270,6 @@
       }
     },
     {
-      "query_file": "project-variants-and-tasks.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "projectIdentifier": "evergreenIdentifier",
-            "project": {
-              "variants": [
-                {
-                  "name": "ubuntu1604",
-                  "displayName": "Ubuntu 16.04",
-                  "tasks": [
-                    "batchtime_task",
-                    "display_task",
-                    "display_task2",
-                    "patch_only_task"
-                  ]
-                }
-              ]
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "task-count.graphql",
       "result": {
         "data": {
