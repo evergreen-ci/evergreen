@@ -61,6 +61,12 @@ input ExternalLinkInput {
   urlTemplate: String!
 }
 
+input ParsleyFilterInput {
+  expression: String!
+  caseSensitive: Boolean!
+  exactMatch: Boolean!
+}
+
 enum BannerTheme {
   ANNOUNCEMENT
   INFORMATION
@@ -177,6 +183,7 @@ Project models single repository on GitHub.
 type Project {
   id: String!
   admins: [String] @requireProjectFieldAccess
+  banner: ProjectBanner
   batchTime: Int! @requireProjectFieldAccess
   branch: String!
   buildBaronSettings: BuildBaronSettings! @requireProjectFieldAccess
@@ -187,6 +194,7 @@ type Project {
   dispatchingDisabled: Boolean @requireProjectFieldAccess
   displayName: String!
   enabled: Boolean
+  externalLinks: [ExternalLink!]
   githubChecksEnabled: Boolean @requireProjectFieldAccess
   githubTriggerAliases: [String!] @requireProjectFieldAccess
   gitTagAuthorizedTeams: [String!] @requireProjectFieldAccess
@@ -198,6 +206,7 @@ type Project {
   manualPrTestingEnabled: Boolean @requireProjectFieldAccess
   notifyOnBuildFailure: Boolean @requireProjectFieldAccess
   owner: String!
+  parsleyFilters: [ParsleyFilter!]
   patches(patchesInput: PatchesInput!): Patches! # project patches
   patchingDisabled: Boolean @requireProjectFieldAccess
   patchTriggerAliases: [PatchTriggerAlias!] @requireProjectFieldAccess
@@ -219,8 +228,6 @@ type Project {
   triggers: [TriggerAlias!] @requireProjectFieldAccess
   versionControlEnabled: Boolean @requireProjectFieldAccess
   workstationConfig: WorkstationConfig! @requireProjectFieldAccess
-  externalLinks: [ExternalLink!]
-  banner: ProjectBanner
 }
 
 type CommitQueueParams {
@@ -247,4 +254,10 @@ type ExternalLink {
 type ProjectBanner {
   text: String!
   theme: BannerTheme!
+}
+
+type ParsleyFilter {
+  expression: String!
+  caseSensitive: Boolean!
+  exactMatch: Boolean!
 }

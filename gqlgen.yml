@@ -132,6 +132,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
+  ParsleyFilter:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
+  ParsleyFilterInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
     fields:

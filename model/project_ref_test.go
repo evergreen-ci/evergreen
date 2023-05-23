@@ -2873,6 +2873,15 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
 	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
 
+	// Test parsley filters update
+	update = &ProjectRef{
+		ParsleyFilters: []ParsleyFilter{
+			{Expression: "filter", CaseSensitive: false, ExactMatch: true},
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	assert.NoError(err)
+
 	// Test private field does not get updated
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
@@ -2883,9 +2892,9 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	projectRef, err = FindBranchProjectRef("iden_")
 	assert.NoError(err)
 	assert.NotNil(t, projectRef)
+	assert.Len(projectRef.ParsleyFilters, 1)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
-
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {

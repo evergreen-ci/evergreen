@@ -1,0 +1,31 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectRef: {
+        id: "sandbox_project_id"
+        parsleyFilters: [
+          {
+            expression: "filter_one",
+            caseSensitive: true,
+            exactMatch: false
+          },
+          {
+            expression: "filter_two",
+            caseSensitive: false,
+            exactMatch: false
+          }
+        ]
+      }
+    }
+    section: VIEWS_AND_FILTERS
+  ) {
+    projectRef {
+      id
+      parsleyFilters {
+        expression
+        caseSensitive
+        exactMatch
+      }
+    }
+  }
+}
