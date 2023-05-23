@@ -166,6 +166,11 @@ type GithubProjectConflicts {
   prTestingIdentifiers: [String!]
 }
 
+enum ProjectHealthView {
+  PROJECT_HEALTH_VIEW_ALL
+  PROJECT_HEALTH_VIEW_FAILED
+}
+
 """
 Project models single repository on GitHub.
 """
@@ -199,6 +204,7 @@ type Project {
   perfEnabled: Boolean @requireProjectFieldAccess
   periodicBuilds: [PeriodicBuild!] @requireProjectFieldAccess
   private: Boolean
+  projectHealthView: ProjectHealthView!
   prTestingEnabled: Boolean @requireProjectFieldAccess
   remotePath: String! @requireProjectFieldAccess
   repo: String!

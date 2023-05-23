@@ -545,10 +545,11 @@ type APIProjectRef struct {
 	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
 	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
-	DeleteContainerSecrets []string           `json:"delete_container_secrets,omitempty"`
-	ExternalLinks          []APIExternalLink  `json:"external_links"`
-	Banner                 APIProjectBanner   `json:"banner"`
-	ParsleyFilters         []APIParsleyFilter `json:"parsley_filters"`
+	DeleteContainerSecrets []string                `json:"delete_container_secrets,omitempty"`
+	ExternalLinks          []APIExternalLink       `json:"external_links"`
+	Banner                 APIProjectBanner        `json:"banner"`
+	ParsleyFilters         []APIParsleyFilter      `json:"parsley_filters"`
+	ProjectHealthView      model.ProjectHealthView `json:"project_health_view"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -592,6 +593,11 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		GitTagAuthorizedTeams:  utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
 		GithubTriggerAliases:   utility.FromStringPtrSlice(p.GithubTriggerAliases),
 		Banner:                 p.Banner.ToService(),
+		ProjectHealthView:      p.ProjectHealthView,
+	}
+
+	if projectRef.ProjectHealthView == "" {
+		projectRef.ProjectHealthView = model.ProjectHealthViewFailed
 	}
 
 	// Copy triggers
@@ -693,6 +699,11 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
 	p.GithubTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubTriggerAliases)
+
+	if projectRef.ProjectHealthView == "" {
+		projectRef.ProjectHealthView = model.ProjectHealthViewFailed
+	}
+	p.ProjectHealthView = projectRef.ProjectHealthView
 
 	cq := APICommitQueueParams{}
 	cq.BuildFromService(projectRef.CommitQueue)
