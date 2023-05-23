@@ -37,7 +37,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
@@ -896,17 +895,6 @@ func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
 	}
 	return nil
 }
-
-// kim: TODO: have to fix/remove this as well since it's the same as upsert.
-// func (projectRef *ProjectRef) Update() error {
-//     return db.Update(
-//         ProjectRefCollection,
-//         bson.M{
-//             ProjectRefIdKey: projectRef.Id,
-//         },
-//         projectRef,
-//     )
-// }
 
 func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
@@ -1898,65 +1886,13 @@ func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
 
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
-// kim: TODO: do a little local test to verify if this sets things to null, that
-// that's otherwise okay.
 func (p *ProjectRef) Upsert() error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	_, err := env.DB().Collection(ProjectRefCollection).UpdateByID(ctx, p.Id, bson.M{
-		"$set": bson.M{
-			ProjectRefOwnerKey:                    p.Owner,
-			ProjectRefRepoKey:                     p.Repo,
-			ProjectRefBranchKey:                   p.Branch,
-			ProjectRefEnabledKey:                  p.Enabled,
-			ProjectRefRestrictedKey:               p.Restricted,
-			ProjectRefBatchTimeKey:                p.BatchTime,
-			ProjectRefIdentifierKey:               p.Identifier,
-			ProjectRefRepoRefIdKey:                p.RepoRefId,
-			ProjectRefDisplayNameKey:              p.DisplayName,
-			ProjectRefDeactivatePreviousKey:       p.DeactivatePrevious,
-			ProjectRefRemotePathKey:               p.RemotePath,
-			ProjectRefHiddenKey:                   p.Hidden,
-			ProjectRefRepotrackerErrorKey:         p.RepotrackerError,
-			ProjectRefDisabledStatsCacheKey:       p.DisabledStatsCache,
-			ProjectRefAdminsKey:                   p.Admins,
-			ProjectRefGitTagAuthorizedUsersKey:    p.GitTagAuthorizedUsers,
-			ProjectRefGitTagAuthorizedTeamsKey:    p.GitTagAuthorizedTeams,
-			ProjectRefTracksPushEventsKey:         p.TracksPushEvents,
-			projectRefPRTestingEnabledKey:         p.PRTestingEnabled,
-			projectRefManualPRTestingEnabledKey:   p.ManualPRTestingEnabled,
-			projectRefGithubChecksEnabledKey:      p.GithubChecksEnabled,
-			projectRefGitTagVersionsEnabledKey:    p.GitTagVersionsEnabled,
-			projectRefRepotrackerDisabledKey:      p.RepotrackerDisabled,
-			projectRefCommitQueueKey:              p.CommitQueue,
-			projectRefTaskSyncKey:                 p.TaskSync,
-			projectRefPatchingDisabledKey:         p.PatchingDisabled,
-			projectRefDispatchingDisabledKey:      p.DispatchingDisabled,
-			projectRefStepbackDisabledKey:         p.StepbackDisabled,
-			projectRefVersionControlEnabledKey:    p.VersionControlEnabled,
-			projectRefNotifyOnFailureKey:          p.NotifyOnBuildFailure,
-			projectRefSpawnHostScriptPathKey:      p.SpawnHostScriptPath,
-			projectRefTriggersKey:                 p.Triggers,
-			projectRefPatchTriggerAliasesKey:      p.PatchTriggerAliases,
-			projectRefGithubTriggerAliasesKey:     p.GithubTriggerAliases,
-			projectRefPeriodicBuildsKey:           p.PeriodicBuilds,
-			projectRefWorkstationConfigKey:        p.WorkstationConfig,
-			projectRefTaskAnnotationSettingsKey:   p.TaskAnnotationSettings,
-			projectRefBuildBaronSettingsKey:       p.BuildBaronSettings,
-			projectRefPerfEnabledKey:              p.PerfEnabled,
-			projectRefContainerSecretsKey:         p.ContainerSecrets,
-			projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions,
-			projectRefExternalLinksKey:            p.ExternalLinks,
-			projectRefBannerKey:                   p.Banner,
-			projectRefParsleyFiltersKey:           p.ParsleyFilters,
-		},
-		"$setOnInsert": bson.M{
-			ProjectRefIdKey: p.Id,
-			// Users cannot configure the project privacy setting.
-			ProjectRefPrivateKey: true,
-		},
-	}, options.Update().SetUpsert(true))
+	if p.Private == nil {
+		// Projects are private by default unless they've been specially made
+		// public.
+		p.Private = utility.TruePtr()
+	}
+	_, err := db.Upsert(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
 }
 
