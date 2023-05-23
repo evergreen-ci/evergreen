@@ -565,7 +565,7 @@ const (
 	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
 	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
 	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
-	ProjectSettingsSectionUI                   ProjectSettingsSection = "UI"
+	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
@@ -580,12 +580,12 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPeriodicBuilds,
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionContainers,
-	ProjectSettingsSectionUI,
+	ProjectSettingsSectionViewsAndFilters,
 }
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionUI:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters:
 		return true
 	}
 	return false

@@ -17,7 +17,7 @@ mutation {
         ]
       }
     }
-    section: UI
+    section: VIEWS_AND_FILTERS
   ) {
     projectRef {
       id

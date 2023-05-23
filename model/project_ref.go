@@ -462,18 +462,18 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection        = "GENERAL"
-	ProjectPageAccessSection         = "ACCESS"
-	ProjectPageVariablesSection      = "VARIABLES"
-	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectPageNotificationsSection  = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection   = "WORKSTATION"
-	ProjectPageTriggersSection       = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
-	ProjectPagePluginSection         = "PLUGINS"
-	ProjectPageContainerSection      = "CONTAINERS"
-	ProjectPageUISection             = "UI"
+	ProjectPageGeneralSection         = "GENERAL"
+	ProjectPageAccessSection          = "ACCESS"
+	ProjectPageVariablesSection       = "VARIABLES"
+	ProjectPageGithubAndCQSection     = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection   = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection    = "WORKSTATION"
+	ProjectPageTriggersSection        = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
+	ProjectPagePluginSection          = "PLUGINS"
+	ProjectPageContainerSection       = "CONTAINERS"
+	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
 )
 
 const (
@@ -2059,7 +2059,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
 			})
-	case ProjectPageUISection:
+	case ProjectPageViewsAndFiltersSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{

@@ -15,7 +15,7 @@ enum ProjectSettingsSection {
   PERIODIC_BUILDS
   PLUGINS
   CONTAINERS
-  UI
+  VIEWS_AND_FILTERS
 }
 
 ###### INPUTS ######

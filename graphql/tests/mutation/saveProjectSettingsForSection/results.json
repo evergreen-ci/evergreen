@@ -93,7 +93,7 @@
       }
     },
     {
-      "query_file": "ui_section.graphql",
+      "query_file": "views_and_filters_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
