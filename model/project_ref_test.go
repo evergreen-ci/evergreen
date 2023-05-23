@@ -2879,7 +2879,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 			{Expression: "filter", CaseSensitive: false, ExactMatch: true},
 		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageUISection, false)
 	assert.NoError(err)
 
 	// Test private field does not get updated
