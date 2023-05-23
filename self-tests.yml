@@ -242,7 +242,7 @@ functions:
       params:
         env:
           MONGODB_URL: ${mongodb_url}
-          MONGOSH_DOWNLOAD: {mongosh_download}
+          MONGOSH_DOWNLOAD: ${mongosh_download}
           DECOMPRESS: ${decompress}
         working_dir: evergreen
         command: make get-mongodb
