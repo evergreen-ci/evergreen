@@ -37,6 +37,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
@@ -1895,13 +1896,65 @@ func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 }
 
 // Upsert updates the project ref in the db if an entry already exists,
-// overwriting the existing ref. If no project ref exists, one is created
+// overwriting the existing ref. If no project ref exists, a new one is created.
 func (projectRef *ProjectRef) Upsert() error {
-	_, err := db.Upsert(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdKey: projectRef.Id,
-		}, projectRef)
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	_, err := env.DB().Collection(ProjectRefCollection).UpdateByID(ctx, projectRef.Id, bson.M{
+		"$set": bson.M{
+			// kim: TODO: figure out how to deal with omitempty fields so they
+			// follow the model
+			ProjectRefOwnerKey:                    projectRef.Owner,
+			ProjectRefRepoKey:                     projectRef.Repo,
+			ProjectRefBranchKey:                   projectRef.Branch,
+			ProjectRefEnabledKey:                  projectRef.Enabled,
+			ProjectRefRestrictedKey:               projectRef.Restricted,
+			ProjectRefBatchTimeKey:                projectRef.BatchTime,
+			ProjectRefIdentifierKey:               projectRef.Identifier,
+			ProjectRefRepoRefIdKey:                projectRef.RepoRefId,
+			ProjectRefDisplayNameKey:              projectRef.DisplayName,
+			ProjectRefDeactivatePreviousKey:       projectRef.DeactivatePrevious,
+			ProjectRefRemotePathKey:               projectRef.RemotePath,
+			ProjectRefHiddenKey:                   projectRef.Hidden,
+			ProjectRefRepotrackerError:            projectRef.RepotrackerError,
+			ProjectRefDisabledStatsCacheKey:       projectRef.DisabledStatsCache,
+			ProjectRefAdminsKey:                   projectRef.Admins,
+			ProjectRefGitTagAuthorizedUsersKey:    projectRef.GitTagAuthorizedUsers,
+			ProjectRefGitTagAuthorizedTeamsKey:    projectRef.GitTagAuthorizedTeams,
+			ProjectRefTracksPushEventsKey:         projectRef.TracksPushEvents,
+			projectRefPRTestingEnabledKey:         projectRef.PRTestingEnabled,
+			projectRefManualPRTestingEnabledKey:   projectRef.ManualPRTestingEnabled,
+			projectRefGithubChecksEnabledKey:      projectRef.GithubChecksEnabled,
+			projectRefGitTagVersionsEnabledKey:    projectRef.GitTagVersionsEnabled,
+			projectRefRepotrackerDisabledKey:      projectRef.RepotrackerDisabled,
+			projectRefCommitQueueKey:              projectRef.CommitQueue,
+			projectRefTaskSyncKey:                 projectRef.TaskSync,
+			projectRefPatchingDisabledKey:         projectRef.PatchingDisabled,
+			projectRefDispatchingDisabledKey:      projectRef.DispatchingDisabled,
+			projectRefStepbackDisabledKey:         projectRef.StepbackDisabled,
+			projectRefVersionControlEnabledKey:    projectRef.VersionControlEnabled,
+			projectRefNotifyOnFailureKey:          projectRef.NotifyOnBuildFailure,
+			projectRefSpawnHostScriptPathKey:      projectRef.SpawnHostScriptPath,
+			projectRefTriggersKey:                 projectRef.Triggers,
+			projectRefPatchTriggerAliasesKey:      projectRef.PatchTriggerAliases,
+			projectRefGithubTriggerAliasesKey:     projectRef.GithubTriggerAliases,
+			projectRefPeriodicBuildsKey:           projectRef.PeriodicBuilds,
+			projectRefWorkstationConfigKey:        projectRef.WorkstationConfig,
+			projectRefTaskAnnotationSettingsKey:   projectRef.TaskAnnotationSettings,
+			projectRefBuildBaronSettingsKey:       projectRef.BuildBaronSettings,
+			projectRefPerfEnabledKey:              projectRef.PerfEnabled,
+			projectRefContainerSecretsKey:         projectRef.ContainerSecrets,
+			projectRefContainerSizeDefinitionsKey: projectRef.ContainerSizeDefinitions,
+			projectRefExternalLinksKey:            projectRef.ExternalLinks,
+			projectRefBannerKey:                   projectRef.Banner,
+			projectRefParsleyFiltersKey:           projectRef.ParsleyFilters,
+		},
+		"$setOnInsert": bson.M{
+			ProjectRefIdKey:      projectRef.Id,
+			ProjectRefPrivateKey: true,
+		},
+	}, options.Update().SetUpsert(true))
 	return err
 }
 
