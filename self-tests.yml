@@ -611,7 +611,7 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      GOROOT: /opt/golang/go1.19
+      GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
@@ -635,7 +635,7 @@ buildvariants:
       - ubuntu2004-small
       - ubuntu2004-large
     expansions:
-      GOROOT: /opt/golang/go1.19
+      GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
       race_detector: true
@@ -670,7 +670,7 @@ buildvariants:
       - ubuntu2004-small
       - ubuntu2004-large
     expansions:
-      GOROOT: /opt/golang/go1.19
+      GOROOT: /opt/golang/go1.20
     tasks:
       - name: generate-lint
 
@@ -680,7 +680,7 @@ buildvariants:
       - windows-vsCurrent-small
       - windows-vsCurrent-large
     expansions:
-      GOROOT: c:/golang/go1.19
+      GOROOT: c:/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.14.zip
       extension: ".exe"
@@ -689,18 +689,18 @@ buildvariants:
       - name: ".agent .test"
       - name: ".cli .test"
 
-  - name: ubuntu1804-arm64
-    display_name: Ubuntu 18.04 ARM
+  - name: ubuntu2004-arm64
+    display_name: Ubuntu 20.04 ARM
     batchtime: 2880
     run_on:
-      - ubuntu1804-arm64-large
+      - ubuntu2004-arm64-large
     expansions:
       xc_build: yes
       goarch: arm64
       goos: linux
-      GOROOT: /opt/golang/go1.19
+      GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.14.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-5.0.14.tgz
     tasks:
       - name: ".agent .test"
 
@@ -710,7 +710,7 @@ buildvariants:
     run_on:
       - macos-1014
     expansions:
-      GOROOT: /opt/golang/go1.19
+      GOROOT: /opt/golang/go1.20
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.14.tgz
     tasks:
       - name: ".agent .test"
