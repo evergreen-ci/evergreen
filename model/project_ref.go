@@ -305,7 +305,7 @@ var (
 	ProjectRefDeactivatePreviousKey       = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey               = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefHiddenKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
-	ProjectRefRepotrackerError            = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefRepotrackerErrorKey         = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefDisabledStatsCacheKey       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
@@ -655,7 +655,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 
 	mergedProject.RepoRefId = ""
-	if err = mergedProject.Upsert(); err != nil {
+	if err := mergedProject.Upsert(); err != nil {
 		return errors.Wrap(err, "detaching project from repo")
 	}
 
@@ -897,15 +897,16 @@ func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
 	return nil
 }
 
-func (projectRef *ProjectRef) Update() error {
-	return db.Update(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdKey: projectRef.Id,
-		},
-		projectRef,
-	)
-}
+// kim: TODO: have to fix/remove this as well since it's the same as upsert.
+// func (projectRef *ProjectRef) Update() error {
+//     return db.Update(
+//         ProjectRefCollection,
+//         bson.M{
+//             ProjectRefIdKey: projectRef.Id,
+//         },
+//         projectRef,
+//     )
+// }
 
 func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
@@ -1884,8 +1885,8 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
-	conflicts, err := projectRef.GetGithubProjectConflicts()
+func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
+	conflicts, err := p.GetGithubProjectConflicts()
 	if err != nil {
 		return false, errors.Wrap(err, "finding GitHub conflicts")
 	}
@@ -1897,65 +1898,92 @@ func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
-func (projectRef *ProjectRef) Upsert() error {
+// kim: TODO: do a little local test to verify if this sets things to null, that
+// that's otherwise okay.
+func (p *ProjectRef) Upsert() error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
-	_, err := env.DB().Collection(ProjectRefCollection).UpdateByID(ctx, projectRef.Id, bson.M{
+	_, err := env.DB().Collection(ProjectRefCollection).UpdateByID(ctx, p.Id, bson.M{
 		"$set": bson.M{
-			// kim: TODO: figure out how to deal with omitempty fields so they
-			// follow the model
-			ProjectRefOwnerKey:                    projectRef.Owner,
-			ProjectRefRepoKey:                     projectRef.Repo,
-			ProjectRefBranchKey:                   projectRef.Branch,
-			ProjectRefEnabledKey:                  projectRef.Enabled,
-			ProjectRefRestrictedKey:               projectRef.Restricted,
-			ProjectRefBatchTimeKey:                projectRef.BatchTime,
-			ProjectRefIdentifierKey:               projectRef.Identifier,
-			ProjectRefRepoRefIdKey:                projectRef.RepoRefId,
-			ProjectRefDisplayNameKey:              projectRef.DisplayName,
-			ProjectRefDeactivatePreviousKey:       projectRef.DeactivatePrevious,
-			ProjectRefRemotePathKey:               projectRef.RemotePath,
-			ProjectRefHiddenKey:                   projectRef.Hidden,
-			ProjectRefRepotrackerError:            projectRef.RepotrackerError,
-			ProjectRefDisabledStatsCacheKey:       projectRef.DisabledStatsCache,
-			ProjectRefAdminsKey:                   projectRef.Admins,
-			ProjectRefGitTagAuthorizedUsersKey:    projectRef.GitTagAuthorizedUsers,
-			ProjectRefGitTagAuthorizedTeamsKey:    projectRef.GitTagAuthorizedTeams,
-			ProjectRefTracksPushEventsKey:         projectRef.TracksPushEvents,
-			projectRefPRTestingEnabledKey:         projectRef.PRTestingEnabled,
-			projectRefManualPRTestingEnabledKey:   projectRef.ManualPRTestingEnabled,
-			projectRefGithubChecksEnabledKey:      projectRef.GithubChecksEnabled,
-			projectRefGitTagVersionsEnabledKey:    projectRef.GitTagVersionsEnabled,
-			projectRefRepotrackerDisabledKey:      projectRef.RepotrackerDisabled,
-			projectRefCommitQueueKey:              projectRef.CommitQueue,
-			projectRefTaskSyncKey:                 projectRef.TaskSync,
-			projectRefPatchingDisabledKey:         projectRef.PatchingDisabled,
-			projectRefDispatchingDisabledKey:      projectRef.DispatchingDisabled,
-			projectRefStepbackDisabledKey:         projectRef.StepbackDisabled,
-			projectRefVersionControlEnabledKey:    projectRef.VersionControlEnabled,
-			projectRefNotifyOnFailureKey:          projectRef.NotifyOnBuildFailure,
-			projectRefSpawnHostScriptPathKey:      projectRef.SpawnHostScriptPath,
-			projectRefTriggersKey:                 projectRef.Triggers,
-			projectRefPatchTriggerAliasesKey:      projectRef.PatchTriggerAliases,
-			projectRefGithubTriggerAliasesKey:     projectRef.GithubTriggerAliases,
-			projectRefPeriodicBuildsKey:           projectRef.PeriodicBuilds,
-			projectRefWorkstationConfigKey:        projectRef.WorkstationConfig,
-			projectRefTaskAnnotationSettingsKey:   projectRef.TaskAnnotationSettings,
-			projectRefBuildBaronSettingsKey:       projectRef.BuildBaronSettings,
-			projectRefPerfEnabledKey:              projectRef.PerfEnabled,
-			projectRefContainerSecretsKey:         projectRef.ContainerSecrets,
-			projectRefContainerSizeDefinitionsKey: projectRef.ContainerSizeDefinitions,
-			projectRefExternalLinksKey:            projectRef.ExternalLinks,
-			projectRefBannerKey:                   projectRef.Banner,
-			projectRefParsleyFiltersKey:           projectRef.ParsleyFilters,
+			ProjectRefOwnerKey:                    p.Owner,
+			ProjectRefRepoKey:                     p.Repo,
+			ProjectRefBranchKey:                   p.Branch,
+			ProjectRefEnabledKey:                  p.Enabled,
+			ProjectRefRestrictedKey:               p.Restricted,
+			ProjectRefBatchTimeKey:                p.BatchTime,
+			ProjectRefIdentifierKey:               p.Identifier,
+			ProjectRefRepoRefIdKey:                p.RepoRefId,
+			ProjectRefDisplayNameKey:              p.DisplayName,
+			ProjectRefDeactivatePreviousKey:       p.DeactivatePrevious,
+			ProjectRefRemotePathKey:               p.RemotePath,
+			ProjectRefHiddenKey:                   p.Hidden,
+			ProjectRefRepotrackerErrorKey:         p.RepotrackerError,
+			ProjectRefDisabledStatsCacheKey:       p.DisabledStatsCache,
+			ProjectRefAdminsKey:                   p.Admins,
+			ProjectRefGitTagAuthorizedUsersKey:    p.GitTagAuthorizedUsers,
+			ProjectRefGitTagAuthorizedTeamsKey:    p.GitTagAuthorizedTeams,
+			ProjectRefTracksPushEventsKey:         p.TracksPushEvents,
+			projectRefPRTestingEnabledKey:         p.PRTestingEnabled,
+			projectRefManualPRTestingEnabledKey:   p.ManualPRTestingEnabled,
+			projectRefGithubChecksEnabledKey:      p.GithubChecksEnabled,
+			projectRefGitTagVersionsEnabledKey:    p.GitTagVersionsEnabled,
+			projectRefRepotrackerDisabledKey:      p.RepotrackerDisabled,
+			projectRefCommitQueueKey:              p.CommitQueue,
+			projectRefTaskSyncKey:                 p.TaskSync,
+			projectRefPatchingDisabledKey:         p.PatchingDisabled,
+			projectRefDispatchingDisabledKey:      p.DispatchingDisabled,
+			projectRefStepbackDisabledKey:         p.StepbackDisabled,
+			projectRefVersionControlEnabledKey:    p.VersionControlEnabled,
+			projectRefNotifyOnFailureKey:          p.NotifyOnBuildFailure,
+			projectRefSpawnHostScriptPathKey:      p.SpawnHostScriptPath,
+			projectRefTriggersKey:                 p.Triggers,
+			projectRefPatchTriggerAliasesKey:      p.PatchTriggerAliases,
+			projectRefGithubTriggerAliasesKey:     p.GithubTriggerAliases,
+			projectRefPeriodicBuildsKey:           p.PeriodicBuilds,
+			projectRefWorkstationConfigKey:        p.WorkstationConfig,
+			projectRefTaskAnnotationSettingsKey:   p.TaskAnnotationSettings,
+			projectRefBuildBaronSettingsKey:       p.BuildBaronSettings,
+			projectRefPerfEnabledKey:              p.PerfEnabled,
+			projectRefContainerSecretsKey:         p.ContainerSecrets,
+			projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions,
+			projectRefExternalLinksKey:            p.ExternalLinks,
+			projectRefBannerKey:                   p.Banner,
+			projectRefParsleyFiltersKey:           p.ParsleyFilters,
 		},
 		"$setOnInsert": bson.M{
-			ProjectRefIdKey:      projectRef.Id,
+			ProjectRefIdKey: p.Id,
+			// Users cannot configure the project privacy setting.
 			ProjectRefPrivateKey: true,
 		},
 	}, options.Update().SetUpsert(true))
 	return err
+}
+
+// SetRepotrackerError updates the repotracker error for the project ref.
+func (p *ProjectRef) SetRepotrackerError(d *RepositoryErrorDetails) error {
+	if err := db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": bson.M{
+			ProjectRefRepotrackerErrorKey: d,
+		},
+	}); err != nil {
+		return err
+	}
+	p.RepotrackerError = d
+	return nil
+}
+
+// SetContainerSecrets updates the container secrets for the project ref.
+func (p *ProjectRef) SetContainerSecrets(secrets []ContainerSecret) error {
+	if err := db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": bson.M{
+			projectRefContainerSecretsKey: secrets,
+		},
+	}); err != nil {
+		return err
+	}
+	p.ContainerSecrets = secrets
+	return nil
 }
 
 // SaveProjectPageForSection updates the project or repo ref variables for the section (if no project is given, we unset to default to repo).

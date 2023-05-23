@@ -1091,6 +1091,7 @@ func TestDeleteProject(t *testing.T) {
 			RepoRefId: repo.Id,
 			Enabled:   false,
 			Hidden:    utility.TruePtr(),
+			Private:   utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -1161,7 +1162,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId is populated
 
 	pRef.RepoRefId = ""
-	assert.NoError(t, pRef.Update())
+	assert.NoError(t, pRef.Upsert())
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)
@@ -1235,7 +1236,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId isn't populated
 
 	pRef.RepoRefId = repoRef.Id
-	assert.NoError(t, pRef.Update())
+	assert.NoError(t, pRef.Upsert())
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)

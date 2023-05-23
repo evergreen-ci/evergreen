@@ -831,15 +831,20 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the projectRef too
-	projectRef.RepotrackerError.Exists = false
-	projectRef.RepotrackerError.InvalidRevision = ""
-	projectRef.RepotrackerError.MergeBaseRevision = ""
-	err = projectRef.Upsert()
-	if err != nil {
+	if err := projectRef.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	// // update the projectRef too
+	// projectRef.RepotrackerError.Exists = false
+	// projectRef.RepotrackerError.InvalidRevision = ""
+	// projectRef.RepotrackerError.MergeBaseRevision = ""
+	// // kim: TODO: possibly change this to just $set the one field.
+	// err = projectRef.Upsert()
+	// if err != nil {
+	//     uis.LoggedError(w, r, http.StatusInternalServerError, err)
+	//     return
+	// }
 
 	// run the repotracker for the project
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
