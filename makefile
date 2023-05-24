@@ -418,7 +418,7 @@ configure-mongod:mongodb/.get-mongodb mongodb/.get-mongosh
 	@echo "mongod is up"
 	./mongosh/mongosh --eval 'rs.initiate()'
 ifdef AUTH_ENABLED
-	./mongosh/mongosh --host `./mongosh/mongosh --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
+	./mongosh/mongosh cmd/mongo-auth/create_auth_user.js
 endif
 	@echo "configured mongod"
 # end mongodb targets
