@@ -250,7 +250,7 @@ functions:
       params:
         env:
           MONGOSH_URL: ${mongosh_url}
-          MONGOSH_DECOMPRESS: ${mongosh_decompress|decompress}
+          MONGOSH_DECOMPRESS: ${mongosh_decompress|*decompress}
         working_dir: evergreen
         command: make get-mongosh
     - command: subprocess.exec
