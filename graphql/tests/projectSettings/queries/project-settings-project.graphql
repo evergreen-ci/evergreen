@@ -18,6 +18,12 @@
       prTestingEnabled
       stepbackDisabled
       batchTime
+      projectHealthView
+      parsleyFilters {
+        expression
+        caseSensitive
+        exactMatch
+      }
 
       gitTagAuthorizedUsers
       gitTagAuthorizedTeams

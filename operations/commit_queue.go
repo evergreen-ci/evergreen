@@ -343,8 +343,9 @@ func enqueuePatch() cli.Command {
 
 func backport() cli.Command {
 	return cli.Command{
-		Name:  "backport",
-		Usage: "Create a backport patch for low-risk commits. Changes are automatically enqueued when the patch succeeds.",
+		Name: "backport",
+		Usage: "Backport low-risk commits -- note the patch created from this will create a regular patch to validate " +
+			"the backport, and if the patch succeeds then the changes are automatically added to the commit queue.",
 		Flags: mergeFlagSlices(
 			addPatchFinalizeFlag(),
 			addPatchBrowseFlag(

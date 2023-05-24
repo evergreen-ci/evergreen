@@ -184,7 +184,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/pods/{pod_id}/provisioning_script").Version(2).Get().Wrap(requirePod).RouteHandler(makePodProvisioningScript(settings))
 	app.AddRoute("/projects").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchProjectsRoute(opts.URL))
 	app.AddRoute("/projects/test_alias").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetProjectAliasResultsHandler())
-	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(requireUser, requireProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject())
+	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject())
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(requireUser, addProject, viewProjectSettings).RouteHandler(makeGetProjectByID())
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makePatchProjectByID(settings))
 	app.AddRoute("/projects/{project_id}/attach_to_repo").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeAttachProjectToRepoHandler())

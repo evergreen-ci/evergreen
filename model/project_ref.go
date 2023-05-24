@@ -123,12 +123,30 @@ type ProjectRef struct {
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
+
+	// Filter/view settings
+	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
+	ParsleyFilters    []ParsleyFilter   `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 }
+
+type ParsleyFilter struct {
+	Expression    string `bson:"expression" json:"expression"`
+	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
+	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`
+}
+
+type ProjectHealthView string
+
+const (
+	ProjectHealthViewFailed ProjectHealthView = "failed"
+	ProjectHealthViewAll    ProjectHealthView = "all"
+)
 
 type ProjectBanner struct {
 	Theme evergreen.BannerTheme `bson:"theme" json:"theme"`
 	Text  string                `bson:"text" json:"text"`
 }
+
 type ExternalLink struct {
 	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
 	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
@@ -317,6 +335,8 @@ var (
 	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 	projectRefBannerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
+	projectRefParsleyFiltersKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")
+	projectRefProjectHealthViewKey        = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -443,17 +463,18 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection        = "GENERAL"
-	ProjectPageAccessSection         = "ACCESS"
-	ProjectPageVariablesSection      = "VARIABLES"
-	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectPageNotificationsSection  = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection   = "WORKSTATION"
-	ProjectPageTriggersSection       = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
-	ProjectPagePluginSection         = "PLUGINS"
-	ProjectPageContainerSection      = "CONTAINERS"
+	ProjectPageGeneralSection         = "GENERAL"
+	ProjectPageAccessSection          = "ACCESS"
+	ProjectPageVariablesSection       = "VARIABLES"
+	ProjectPageGithubAndCQSection     = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection   = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection    = "WORKSTATION"
+	ProjectPageTriggersSection        = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
+	ProjectPagePluginSection          = "PLUGINS"
+	ProjectPageContainerSection       = "CONTAINERS"
+	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
 )
 
 const (
@@ -2009,7 +2030,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2039,6 +2059,15 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
+			})
+	case ProjectPageViewsAndFiltersSection:
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefParsleyFiltersKey:    p.ParsleyFilters,
+					projectRefProjectHealthViewKey: p.ProjectHealthView,
+				},
 			})
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref
@@ -2816,6 +2845,8 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
 		catcher.NewWhen(container.Name == "", "name must be defined")
+		catcher.ErrorfWhen(!utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
+
 	}
 	return catcher.Resolve()
 }

@@ -802,7 +802,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 
-			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			found, err := Find(ByStaleRunningTask(30 * time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, tsk.Id, found[0].Id)
@@ -815,7 +815,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 
-			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			found, err := Find(ByStaleRunningTask(30 * time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, tsk.Id, found[0].Id)
@@ -842,7 +842,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 				require.NoError(t, tsk.Insert())
 			}
 
-			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			found, err := Find(ByStaleRunningTask(30 * time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 2)
 			for _, tsk := range found {
@@ -857,7 +857,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 
-			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			found, err := Find(ByStaleRunningTask(30 * time.Minute))
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -869,7 +869,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 
-			found, err := Find(ByStaleRunningTask(0, HeartbeatPastCutoff))
+			found, err := Find(ByStaleRunningTask(0))
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},

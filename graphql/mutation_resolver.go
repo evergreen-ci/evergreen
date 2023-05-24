@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -223,20 +224,44 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	return newPatch, nil
 }
 
+// SetPatchVisibility is the resolver for the setPatchVisibility field.
+func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
+	updatedPatches := []*restModel.APIPatch{}
+	patches, err := patch.Find(patch.ByStringIds(patchIds))
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patches '%s': %s", patchIds, err.Error()))
+	}
+
+	for _, p := range patches {
+		err = p.SetPatchVisibility(hidden)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", p.Id, err.Error()))
+		}
+		apiPatch := restModel.APIPatch{}
+		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch '%s' API model: %s", p.Id, err.Error()))
+		}
+		updatedPatches = append(updatedPatches, &apiPatch)
+	}
+	return updatedPatches, nil
+}
+
 // SchedulePatch is the resolver for the schedulePatch field.
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := model.VersionFindOneId(patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchID, err.Error()))
 	}
 	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
 	if err != nil {
-		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
+		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch '%s': %s", patchID, err.Error()))
 	}
 	scheduledPatch, err := data.FindPatchById(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch `%s`: %s", patchID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch '%s': %s", patchID, err))
 	}
 	return scheduledPatch, nil
 }
@@ -483,6 +508,15 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	return projectRef, nil
 }
 
+// DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
+func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, err.Error())
+	}
+	return true, nil
+}
+
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error) {
 	usr := mustHaveUser(ctx)
@@ -490,6 +524,18 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID s
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
 	return &projectID, nil
+}
+
+// DeleteProject is the resolver for the deleteProject field.
+func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
+	if err := data.HideBranch(projectID); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", projectID, err.Error()))
+	}
+	return true, nil
 }
 
 // DetachProjectFromRepo is the resolver for the detachProjectFromRepo field.
@@ -573,15 +619,6 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return changes, nil
-}
-
-// DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
-func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
-	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, err.Error())
-	}
-	return true, nil
 }
 
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.

@@ -76,7 +76,7 @@ func setupPermissions(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCanCreateProject(t *testing.T) {
+func TestRequireProjectAdmin(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
@@ -112,15 +112,11 @@ func TestCanCreateProject(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	res, err := config.Directives.CanCreateProject(ctx, obj, next)
-	require.Error(t, err, "user testuser does not have permission to access this resolver")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
-
+	// superuser should always be successful, no matter the resolver
 	err = usr.AddRole("superuser")
 	require.NoError(t, err)
 
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
@@ -128,40 +124,72 @@ func TestCanCreateProject(t *testing.T) {
 	err = usr.RemoveRole("superuser")
 	require.NoError(t, err)
 
-	err = usr.AddRole("admin_project")
-	require.NoError(t, err)
-
+	// CreateProject - permission denied
+	operationContext := &graphql.OperationContext{
+		OperationName: CreateProjectMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{
 		"project": map[string]interface{}{
 			"identifier": "anything",
 		},
 	}
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access the CreateProject resolver")
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
+
+	// CreateProject - successful
+	err = usr.AddRole("admin_project")
+	require.NoError(t, err)
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
-	// Should error if you are not an admin of project to copy
+	// CopyProject - permission denied
+	operationContext = &graphql.OperationContext{
+		OperationName: CopyProjectMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{
 		"project": map[string]interface{}{
 			"projectIdToCopy": "anything",
 		},
 	}
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
-	require.EqualError(t, err, "input: user testuser does not have permission to access this resolver")
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access the CopyProject resolver")
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
+	// CopyProject - successful
 	obj = map[string]interface{}{
 		"project": map[string]interface{}{
 			"projectIdToCopy": "project_id",
 		},
 	}
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
+	// DeleteProject - permission denied
+	operationContext = &graphql.OperationContext{
+		OperationName: DeleteProjectMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
+	obj = map[string]interface{}{"projectId": "anything"}
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access the DeleteProject resolver")
+	require.Nil(t, res)
+	require.Equal(t, 3, callCount)
+
+	// DeleteProject - successful
+	obj = map[string]interface{}{"projectId": "project_id"}
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 4, callCount)
 }
 
 func setupUser(t *testing.T) (*user.DBUser, error) {

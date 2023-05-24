@@ -249,7 +249,7 @@ buildvariants:
 containers:
   - name: container
     working_dir: /
-    image: "not_a_real_image"
+    image: "fake_smoke_test_image"
     resources:
       cpu: 1024
       memory_mb: 1024

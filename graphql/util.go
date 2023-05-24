@@ -157,6 +157,51 @@ func getVersionBaseTasks(versionID string) ([]task.Task, error) {
 	return baseTasks, nil
 }
 
+// GetDisplayStatus considers both child patch statuses and
+// aborted status, and returns an overall patch status
+// (this is because success is different for version/patches,
+// and for display we rely on the patch status. Will address this in EVG-19914).
+func getDisplayStatus(v *model.Version) (string, error) {
+	patchStatus, err := evergreen.VersionStatusToPatchStatus(v.Status)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting version status for patch '%s'", v.Id)
+	}
+	if v.Aborted {
+		patchStatus = evergreen.PatchAborted
+	}
+	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
+		return patchStatus, nil
+	}
+
+	p, err := patch.FindOneId(v.Id)
+	if err != nil {
+		return "", errors.Wrapf(err, "fetching patch '%s'", v.Id)
+	}
+	if p == nil {
+		return "", errors.Errorf("patch '%s' doesn't exist", v.Id)
+	}
+	allStatuses := []string{patchStatus}
+	for _, cp := range p.Triggers.ChildPatches {
+		cpVersion, err := model.VersionFindOneId(cp)
+		if err != nil {
+			return "", errors.Wrapf(err, "fetching version for patch '%s'", v.Id)
+		}
+		if cpVersion == nil {
+			continue
+		}
+		if cpVersion.Aborted {
+			allStatuses = append(allStatuses, evergreen.VersionAborted)
+		} else {
+			cpStatus, err := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
+			if err != nil {
+				return "", errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
+			}
+			allStatuses = append(allStatuses, cpStatus)
+		}
+	}
+	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
+}
+
 func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) bool {
 	if u == nil || existingPatch == nil {
 		return false
@@ -703,6 +748,12 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
 
 	for _, p := range projects {
+		// Do not include hidden projects in the final list of grouped projects, as they are considered
+		// "deleted" projects.
+		if p.IsHidden() {
+			continue
+		}
+
 		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
 		if onlyDefaultedToRepo && !p.UseRepoSettings() {
 			groupName = ""
@@ -789,44 +840,6 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	}
 	filteredStatuses = utility.StringSliceIntersection(evergreen.TaskStatuses, statuses)
 	return filteredStatuses
-}
-
-func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
-	status, err := evergreen.VersionStatusToPatchStatus(*v.Status)
-	if err != nil {
-		return nil, errors.Wrap(err, "converting a version status")
-	}
-	isAborted := utility.FromBoolPtr(v.Aborted)
-	allStatuses := []string{}
-	if isAborted {
-		allStatuses = append(allStatuses, evergreen.PatchAborted)
-
-	} else {
-		allStatuses = append(allStatuses, status)
-	}
-	if v.IsPatchRequester() {
-		p, err := data.FindPatchById(*v.Id)
-		if err != nil {
-			return nil, errors.Wrapf(err, "fetching patch '%s'", *v.Id)
-		}
-		if len(p.ChildPatches) > 0 {
-			for _, cp := range p.ChildPatches {
-				cpVersion, err := model.VersionFindOneId(*cp.Version)
-				if err != nil {
-					return nil, errors.Wrapf(err, "fetching version for patch '%s'", *v.Id)
-				}
-				if cpVersion == nil {
-					continue
-				}
-				if cpVersion.Aborted {
-					allStatuses = append(allStatuses, evergreen.PatchAborted)
-				} else {
-					allStatuses = append(allStatuses, *cp.Status)
-				}
-			}
-		}
-	}
-	return allStatuses, nil
 }
 
 func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {

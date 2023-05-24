@@ -157,7 +157,7 @@ func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion
 func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersion) (*Manifest, error) {
 	m, err := manifest.FindFromVersion(*obj.Id, *obj.Project, *obj.Revision, *obj.Requester)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching manifest for version %s : %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching manifest for version '%s': %s", *obj.Id, err.Error()))
 	}
 	if m == nil {
 		return nil, nil
@@ -186,7 +186,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) 
 	}
 	apiPatch, err := data.FindPatchById(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id '%s': %s", *obj.Id, err.Error()))
 	}
 	return apiPatch, nil
 }
@@ -196,7 +196,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 	if !obj.IsPatchRequester() {
 		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding previous version for `%s`: %s", *obj.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding previous version for '%s': %s", *obj.Id, err.Error()))
 		}
 		if previousVersion == nil {
 			return nil, nil
@@ -217,12 +217,15 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	collectiveStatusArray, err := getCollectiveStatusArray(*obj)
+	versionId := utility.FromStringPtr(obj.Id)
+	v, err := model.VersionFindOneId(versionId)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting collective status array: %s", err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("Error finding version '%s': %s", versionId, err.Error()))
 	}
-	status := patch.GetCollectiveStatus(collectiveStatusArray)
-	return status, nil
+	if v == nil {
+		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Version '%s' not found", versionId))
+	}
+	return getDisplayStatus(v)
 }
 
 // TaskCount is the resolver for the taskCount field.
