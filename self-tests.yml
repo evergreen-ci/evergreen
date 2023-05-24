@@ -721,10 +721,10 @@ buildvariants:
     display_name: OSX
     batchtime: 2880
     run_on:
-      - macos-1014
+      - macos-1100-arm64
     expansions:
       GOROOT: /opt/golang/go1.20
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.6.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-6.0.6.tgz
       mongosh_download: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-darwin-arm64.zip -o mongosh.zip && unzip mongosh.zip
     tasks:
       - name: ".agent .test"
