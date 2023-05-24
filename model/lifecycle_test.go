@@ -1373,8 +1373,8 @@ func TestCreateBuildFromVersion(t *testing.T) {
 						},
 					},
 				},
-				TaskCreateTime:                 time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				AllTasksAreEssentialToComplete: true,
+				TaskCreateTime:                       time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				ActivatedTasksAreEssentialToComplete: true,
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
