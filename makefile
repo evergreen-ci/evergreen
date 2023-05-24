@@ -414,11 +414,11 @@ ifdef AUTH_ENABLED
 endif
 	./mongodb/mongod $(if $(AUTH_ENABLED),--auth --keyFile ./mongodb/keyfile.txt,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
 configure-mongod:mongodb/.get-mongodb mongodb/.get-mongosh
-	./mongosh/mongosh --nodb ./scripts/wait_for_mongo.js
+	./mongosh/mongosh --nodb ./cmd/init-mongo/wait_for_mongo.js
 	@echo "mongod is up"
 	./mongosh/mongosh --eval 'rs.initiate()'
 ifdef AUTH_ENABLED
-	./mongosh/mongosh cmd/mongo-auth/create_auth_user.js
+	./mongosh/mongosh ./cmd/init-mongo/create_auth_user.js
 endif
 	@echo "configured mongod"
 # end mongodb targets
