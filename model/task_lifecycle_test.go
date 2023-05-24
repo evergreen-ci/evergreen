@@ -1203,7 +1203,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			expectedVersionActivation: true,
 			expectedPatchActivation:   true,
 		},
-		"created / deactivated": {
+		"deactivated": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskUndispatched, Activated: false},
 				{Status: evergreen.TaskUndispatched, Activated: false},

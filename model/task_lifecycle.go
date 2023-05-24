@@ -1354,12 +1354,10 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		return true, errors.Wrap(err, "updating build GitHub status")
 	}
 
-	fmt.Printf("build activation at the endis active: %v", b.Activated)
-
 	return true, nil
 }
 
-// getversionStatus returns if the version is activated, as well as its status.
+// getVersionActivationAndStatus returns if the version is activated, as well as its status.
 // Need to differentiate activated to distinguish between a version that's created
 // but will run vs a version that's created but nothing is scheduled.
 func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
