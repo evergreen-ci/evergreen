@@ -3224,23 +3224,21 @@ func ValidateParsleyFilters(parsleyFilters []ParsleyFilter) error {
 	for _, filter := range parsleyFilters {
 		if filtersSet[filter.Expression] {
 			catcher.Errorf("duplicate filter expression '%s'", filter.Expression)
-			continue
 		}
 		filtersSet[filter.Expression] = true
-		catcher.Add(filter.Validate())
+		catcher.Add(filter.validate())
 	}
 
 	return catcher.Resolve()
 }
 
-// Validate checks that the expression field of a Parsley filter is properly defined.
-func (p ParsleyFilter) Validate() error {
+func (p ParsleyFilter) validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(p.Expression == "", "filter expression must be non-empty")
 
 	_, regexErr := regexp.Compile(p.Expression)
 	if regexErr != nil {
-		catcher.Errorf("filter expression '%s' is not a valid regular expression", p.Expression)
+		catcher.Wrapf(regexErr, "filter expression '%s' is invalid regexp", p.Expression)
 	}
 
 	return catcher.Resolve()

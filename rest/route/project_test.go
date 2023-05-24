@@ -325,7 +325,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(resp.Status(), http.StatusBadRequest)
 	errResp = (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(errResp.Message, "filter expression '*' is not a valid regular expression")
+	s.Contains(errResp.Message, "filter expression '*' is invalid regexp")
 
 	// fail - duplicate filter expressions
 	jsonBody = []byte(`{"parsley_filters": [

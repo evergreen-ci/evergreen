@@ -587,7 +587,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
 			require.Error(t, err)
 			assert.Nil(t, settings)
-			assert.Contains(t, err.Error(), "invalid Parsley filter: filter expression '*' is not a valid regular expression")
+			assert.Contains(t, err.Error(), "invalid Parsley filter: filter expression '*' is invalid regexp")
 
 			// fail - duplicate filter expressions
 			apiProjectRef = restModel.APIProjectRef{
