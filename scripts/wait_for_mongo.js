@@ -17,12 +17,12 @@ while (true) {
 	const diff = (new Date()).getTime() - start.getTime();
 
 	if (connection) {
-		console.log("waitForMongo.js: Successfully connected to local MongoDB instance:")
+		console.log("wait_for_mongo.js: Successfully connected to local MongoDB instance")
 		break;
 	}
 
 	if (diff > timeout) {
-		console.error("waitForMongo.js: Could not connect to local MongoDB instance:")
+		console.error("wait_for_mongo.js: Could not connect to local MongoDB instance:")
 		console.error(lastError);
 		exit(1)
 	}
