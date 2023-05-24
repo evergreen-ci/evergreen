@@ -3224,7 +3224,7 @@ func ValidateParsleyFilters(parsleyFilters []ParsleyFilter) error {
 	for _, filter := range parsleyFilters {
 		if filtersSet[filter.Expression] {
 			catcher.Errorf("duplicate filter expression '%s'", filter.Expression)
-			break
+			continue
 		}
 		filtersSet[filter.Expression] = true
 		catcher.Add(filter.Validate())

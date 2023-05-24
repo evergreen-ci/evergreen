@@ -310,7 +310,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(resp.Status(), http.StatusBadRequest)
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("filter expression must be non-empty", errResp.Message)
+	s.Equal(errResp.Message, "filter expression must be non-empty")
 
 	// fail - invalid regular expression
 	jsonBody = []byte(`{"parsley_filters": [{"expression": "*", "case_sensitive": true, "exact_match": false}]}`)
@@ -325,10 +325,15 @@ func (s *ProjectPatchByIDSuite) TestRunWithParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(resp.Status(), http.StatusBadRequest)
 	errResp = (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("filter expression '*' is not a valid regular expression", errResp.Message)
+	s.Equal(errResp.Message, "filter expression '*' is not a valid regular expression")
 
 	// fail - duplicate filter expressions
-	jsonBody = []byte(`{"parsley_filters": [{"expression": "dupe", "case_sensitive": true, "exact_match": false}, {"expression": "dupe", "case_sensitive": true, "exact_match": false}]}`)
+	jsonBody = []byte(`{"parsley_filters": [
+		{"expression": "dupe", "case_sensitive": true, "exact_match": false}, 
+		{"expression": "dupe", "case_sensitive": true, "exact_match": false},
+		{"expression": "also_a_dupe", "case_sensitive": true, "exact_match": false},
+		{"expression": "also_a_dupe", "case_sensitive": true, "exact_match": false}
+	]}`)
 	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err = s.rm.Parse(ctx, req)
@@ -340,7 +345,8 @@ func (s *ProjectPatchByIDSuite) TestRunWithParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(resp.Status(), http.StatusBadRequest)
 	errResp = (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("duplicate filter expression 'dupe'", errResp.Message)
+	s.Contains(errResp.Message, "duplicate filter expression 'dupe'")
+	s.Contains(errResp.Message, "duplicate filter expression 'also_a_dupe'")
 
 	// success
 	jsonBody = []byte(`{"parsley_filters": [{"expression": "filter1", "case_sensitive": true, "exact_match": false}, {"expression": "filter2", "case_sensitive": true, "exact_match": false}]}`)
