@@ -258,6 +258,9 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
 	eventData := constructProjectChangeEvent(username, before, after)
+	if eventData == nil {
+		return nil
+	}
 	return LogProjectEvent(event.EventTypeProjectModified, projectId, *eventData)
 }
 
