@@ -110,7 +110,8 @@
                   "caseSensitive": false,
                   "exactMatch": false
                 }
-              ]
+              ],
+              "projectHealthView": "PROJECT_HEALTH_VIEW_FAILED"
             }
           }
         }

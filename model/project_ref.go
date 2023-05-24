@@ -336,6 +336,7 @@ var (
 	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 	projectRefBannerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
 	projectRefParsleyFiltersKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")
+	projectRefProjectHealthViewKey        = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -2064,7 +2065,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefParsleyFiltersKey: p.ParsleyFilters,
+					projectRefParsleyFiltersKey:    p.ParsleyFilters,
+					projectRefProjectHealthViewKey: p.ProjectHealthView,
 				},
 			})
 	case ProjectPageVariablesSection:
