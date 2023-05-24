@@ -88,6 +88,7 @@ var (
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
+	ParentPatchIDKey               = bsonutil.MustHaveTag(Task{}, "ParentPatchID")
 	TaskGroupKey                   = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	TaskGroupMaxHostsKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
 	TaskGroupOrderKey              = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
@@ -387,6 +388,7 @@ func ByBuildId(buildId string) bson.M {
 	}
 }
 
+// ByBuildIdAndGithubChecks creates a query to return github check tasks with a certain build ID.
 func ByBuildIdAndGithubChecks(buildId string) bson.M {
 	return bson.M{
 		BuildIdKey:       buildId,
@@ -415,10 +417,20 @@ func ByActivation(active bool) bson.M {
 	}
 }
 
-// ByVersion creates a query to return tasks with a certain build id
+// ByVersion creates a query to return tasks with a certain version id
 func ByVersion(version string) bson.M {
 	return bson.M{
 		VersionKey: version,
+	}
+}
+
+// ByVersionWithChildTasks creates a query to return tasks or child tasks associated with the given version.
+func ByVersionWithChildTasks(version string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			ByVersion(version),
+			{ParentPatchIDKey: version},
+		},
 	}
 }
 
@@ -1528,20 +1540,18 @@ func FindStuckDispatching() ([]Task, error) {
 }
 
 func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
-	q := db.Query(bson.M{VersionKey: versionId}).WithFields(IdKey)
+	q := db.Query(ByVersion(versionId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
-	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
+	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
 // FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
 func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
-	q := db.Query(bson.M{
-		VersionKey: versionId,
-	}).WithFields(IdKey, DependsOnKey)
+	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
 	if adb.ResultsNotFound(err) {

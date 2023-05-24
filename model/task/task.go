@@ -2199,10 +2199,9 @@ func AbortBuildTasks(buildId string, reason AbortInfo) error {
 // AbortVersionTasks sets the abort flag on all tasks associated with the version which are in an
 // abortable state
 func AbortVersionTasks(versionId string, reason AbortInfo) error {
-	q := bson.M{
-		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
-	}
+	q := ByVersionWithChildTasks(versionId)
+	q[StatusKey] = bson.M{"$in": evergreen.TaskAbortableStatuses}
+
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted

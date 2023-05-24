@@ -275,7 +275,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	}
 	var makespan time.Duration
 	if utility.IsZeroTime(t.patch.FinishTime) {
-		patchTasks, err := task.Find(task.ByVersion(t.patch.Id.Hex()))
+		patchTasks, err := task.Find(task.ByVersionWithChildTasks(t.patch.Id.Hex()))
 		if err == nil {
 			_, makespan = task.GetTimeSpent(patchTasks)
 		}

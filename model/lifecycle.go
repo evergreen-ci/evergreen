@@ -55,10 +55,9 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	q := bson.M{
-		task.VersionKey: versionId,
-		task.StatusKey:  evergreen.TaskUndispatched,
-	}
+	q := task.ByVersionWithChildTasks(versionId)
+	q[task.StatusKey] = evergreen.TaskUndispatched
+
 	var tasksToModify []task.Task
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller.
