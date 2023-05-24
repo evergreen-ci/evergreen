@@ -249,6 +249,13 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
+        env:
+          MONGOSH_DOWNLOAD: ${mongosh_download}
+        working_dir: evergreen
+        command: make get-mongosh
+    - command: subprocess.exec
+      type: setup
+      params:
         background: true
         working_dir: evergreen
         command: make start-mongod

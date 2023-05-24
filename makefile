@@ -401,7 +401,7 @@ mongodb/.get-mongodb:
 mongodb/.get-mongosh:
 	rm -rf mongosh
 	mkdir -p mongosh
-	cd mongosh && ${MONGOSH_DOWNLOAD} && chmod +x ./mongosh-*/bin/*
+	cd mongosh && $(MONGOSH_DOWNLOAD) && chmod +x ./mongosh-*/bin/*
 	cd mongosh && mv ./mongosh-*/bin/* .
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
