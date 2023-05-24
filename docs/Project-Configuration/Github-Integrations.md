@@ -33,7 +33,8 @@ Note that this is specific to Github PR checks; it won't retry a commit queue pa
 #### Skip CI Testing
 
 Sometimes you may want to avoid having Evergreen create patches (perhaps because the work is in progress, or testing isn't relevant yet). 
-Simply including `[skip-ci]` or `[skip ci]` in your PR title or description will prevent us from creating a patch until it's removed.  
+Simply including `[skip-ci]` or `[skip ci]` in your PR title or description will prevent us from creating a patch until the label is removed
+and a new `evergreen retry` comment or commit is pushed.
 
 
 #### Create a patch for manual testing

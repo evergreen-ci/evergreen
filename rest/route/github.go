@@ -419,7 +419,8 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy 
 	}
 	// If there are no errors with the PR, verify that we aren't skipping CI before adding the intent (and send a message).
 	for _, label := range skipCILabels {
-		if strings.Contains(pr.GetTitle(), label) || strings.Contains(pr.GetBody(), label) {
+		if strings.Contains(strings.ToLower(pr.GetTitle()), label) ||
+			strings.Contains(strings.ToLower(pr.GetBody()), label) {
 			grip.Info(message.Fields{
 				"message": "skipping CI on PR",
 				"owner":   pr.Base.User.GetLogin(),
