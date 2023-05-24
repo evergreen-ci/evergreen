@@ -34,7 +34,7 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-05-02"
+	ClientVersion = "2023-05-23"
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2023-05-19a"
