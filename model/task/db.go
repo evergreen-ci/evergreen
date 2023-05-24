@@ -434,6 +434,20 @@ func ByVersionWithChildTasks(version string) bson.M {
 	}
 }
 
+// ByVersions produces a query that returns tasks for the given version.
+func ByVersions(versionIDs []string) bson.M {
+	return bson.M{VersionKey: bson.M{"$in": versionIDs}}
+}
+
+func ByVersionsWithChildTasks(versionIDs []string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			ByVersions(versionIDs),
+			{ParentPatchIDKey: bson.M{"$in": versionIDs}},
+		},
+	}
+}
+
 // DisplayTasksByVersion produces a query that returns all display tasks for the given version.
 func DisplayTasksByVersion(version string, includeNeverActivatedTasks bool) bson.M {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
@@ -481,12 +495,7 @@ func FailedTasksByIds(taskIds []string) bson.M {
 	}
 }
 
-// ByVersion produces a query that returns tasks for the given version.
-func ByVersions(versions []string) bson.M {
-	return bson.M{VersionKey: bson.M{"$in": versions}}
-}
-
-// NonExecutionTasksByVersion will filter out newer execution tasks that store if they have a display task.
+// NonExecutionTasksByVersions will filter out newer execution tasks that store if they have a display task.
 // Old execution tasks without display task ID populated will still be returned.
 func NonExecutionTasksByVersions(versions []string) bson.M {
 	return bson.M{
@@ -1614,21 +1623,6 @@ func FindOld(filter bson.M) ([]Task, error) {
 	return tasks, err
 }
 
-func FindOldWithFields(filter bson.M, fields ...string) ([]Task, error) {
-	tasks := []Task{}
-	_, exists := filter[DisplayOnlyKey]
-	if !exists {
-		filter[DisplayOnlyKey] = bson.M{"$ne": true}
-	}
-	query := db.Query(filter).WithFields(fields...)
-	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
-	return tasks, err
-}
-
 // FindOldWithDisplayTasks returns all display and execution tasks from the old
 // collection that satisfy the given query.
 func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
@@ -1648,17 +1642,6 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	task, err := FindOneOldId(MakeOldID(id, execution))
 	if task == nil || err != nil {
 		return FindOneId(id)
-	}
-
-	return task, err
-}
-
-// FindOneIdNewOrOld returns a single task with the given ID and execution,
-// first looking in the tasks collection, then the old tasks collection.
-func FindOneIdNewOrOld(id string) (*Task, error) {
-	task, err := FindOneId(id)
-	if task == nil || err != nil {
-		return FindOneOldId(id)
 	}
 
 	return task, err

@@ -284,10 +284,10 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 	return nil
 }
 
-// SetVersionsPriority updates the priority field of all tasks associated with the given version ids.
+// SetVersionsPriority updates the priority field of all tasks and child tasks associated with the given version ids.
 func SetVersionsPriority(versionIds []string, priority int64, caller string) error {
-	_, err := task.UpdateAll(
-		bson.M{task.VersionKey: bson.M{"$in": versionIds}},
+	query := task.ByVersionsWithChildTasks(versionIds)
+	_, err := task.UpdateAll(query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
@@ -297,7 +297,7 @@ func SetVersionsPriority(versionIds []string, priority int64, caller string) err
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: bson.M{"$in": versionIds}}))
+		tasks, err = task.FindAll(db.Query(query))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks for versions")
 		}
