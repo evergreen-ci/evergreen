@@ -22,7 +22,6 @@ import (
 	"go.opentelemetry.io/contrib/detectors/aws/ec2"
 	"go.opentelemetry.io/contrib/detectors/aws/ecs"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -36,10 +35,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/encoding/protojson"
 )
-
-type taskAttributeKey int
-
-const taskAttributeContextKey taskAttributeKey = iota
 
 const (
 	exportInterval = 15 * time.Second
@@ -516,31 +511,4 @@ func getTraceFiles(taskDir string) ([]string, error) {
 	}
 
 	return fileNames, nil
-}
-
-type taskSpanProcessor struct{}
-
-func NewTaskSpanProcessor() sdktrace.SpanProcessor {
-	return &taskSpanProcessor{}
-}
-
-func (processor *taskSpanProcessor) OnStart(ctx context.Context, span sdktrace.ReadWriteSpan) {
-	span.SetAttributes(taskAttributesFromContext(ctx)...)
-}
-
-func (processor *taskSpanProcessor) OnEnd(s sdktrace.ReadOnlySpan)    {}
-func (processor *taskSpanProcessor) Shutdown(context.Context) error   { return nil }
-func (processor *taskSpanProcessor) ForceFlush(context.Context) error { return nil }
-
-func contextWithTaskAttributes(ctx context.Context, attributes []attribute.KeyValue) context.Context {
-	return context.WithValue(ctx, taskAttributeContextKey, attributes)
-}
-
-func taskAttributesFromContext(ctx context.Context) []attribute.KeyValue {
-	attributesIface := ctx.Value(taskAttributeContextKey)
-	attributes, ok := attributesIface.([]attribute.KeyValue)
-	if !ok {
-		return nil
-	}
-	return attributes
 }
