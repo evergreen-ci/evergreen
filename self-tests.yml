@@ -632,7 +632,6 @@ buildvariants:
         activate: false
       - name: ".smoke"
       - name: ".test"
-      - name: "js-test"
       - name: ".linter"
       - name: "docker-cleanup"
       - name: test-db-auth
@@ -730,6 +729,16 @@ buildvariants:
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
+
+  - name: ubuntu2004
+    display_name: Ubuntu 20.04
+    batchtime: 2880
+    run_on:
+      - ubuntu2004-small
+    expansions:
+      GOROOT: /opt/golang/go1.20
+    tasks:
+      - name: "js-test"
 
 # TODO: EVG-19745 Use a security-vetted image once one is available
 containers:
