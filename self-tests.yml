@@ -713,7 +713,7 @@ buildvariants:
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.6.tgz
-      mongosh_url: curl https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-arm64.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-arm64.tgz
     tasks:
       - name: ".agent .test"
 
