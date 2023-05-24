@@ -1059,6 +1059,17 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	return myPublicKeys, nil
 }
 
+// DeleteSubscriptions is the resolver for the deleteSubscriptions field.
+func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error) {
+	usr := mustHaveUser(ctx)
+	username := usr.Username()
+	err := data.DeleteSubscriptions(username, subscriptionIds)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions %s", err.Error()))
+	}
+	return len(subscriptionIds), nil
+}
+
 // RemovePublicKey is the resolver for the removePublicKey field.
 func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
