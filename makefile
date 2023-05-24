@@ -396,7 +396,7 @@ scramble:
 mongodb/.get-mongodb:
 	rm -rf mongodb
 	mkdir -p mongodb
-	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
+	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(MONGODB_DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
 	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
 mongodb/.get-mongosh:
 	rm -rf mongosh

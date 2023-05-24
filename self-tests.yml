@@ -242,8 +242,7 @@ functions:
       params:
         env:
           MONGODB_URL: ${mongodb_url}
-          DECOMPRESS: ${decompress}
-          MONGOSH_DECOMPRESS: ${mongosh_decompress|decompress}
+          MONGODB_DECOMPRESS: ${decompress}
         working_dir: evergreen
         command: make get-mongodb
     - command: subprocess.exec
@@ -251,6 +250,7 @@ functions:
       params:
         env:
           MONGOSH_URL: ${mongosh_url}
+          MONGOSH_DECOMPRESS: ${mongosh_decompress|decompress}
         working_dir: evergreen
         command: make get-mongosh
     - command: subprocess.exec
