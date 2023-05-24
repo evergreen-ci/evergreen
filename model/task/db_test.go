@@ -228,6 +228,7 @@ func TestFailedTasksByVersion(t *testing.T) {
 }
 
 func TestFindTasksByVersionWithChildTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
 	mainVersion := "main_version"
 	mainVersionTaskIds := []string{"t1", "t3"}
 	tasks := []Task{
@@ -262,6 +263,7 @@ func TestFindTasksByVersionWithChildTasks(t *testing.T) {
 	}
 }
 func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{
 			Id:            "t1",
