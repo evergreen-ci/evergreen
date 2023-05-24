@@ -711,7 +711,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
 
-	catcher.Add(GetAndLogProjectModified(p.Id, u.Id, false, before))
+	catcher.Add(GetAndLogProjectModifiedWithRepoAttachment(p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
 	return catcher.Resolve()
 }
 
@@ -746,7 +746,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "attaching repo to scope")
 	}
 
-	return GetAndLogProjectModified(p.Id, u.Id, false, before)
+	return GetAndLogProjectModifiedWithRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
@@ -787,7 +787,7 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
 
-	return GetAndLogProjectModified(p.Id, u.Id, false, before)
+	return GetAndLogProjectModifiedWithRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // addGithubConflictsToUpdate turns off any settings that may introduce conflicts by
@@ -1086,6 +1086,13 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if err = repoRef.Add(u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
+	err = LogProjectAdded(repoRef.Id, u.DisplayName())
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":            "problem logging repo added",
+		"project_id":         repoRef.Id,
+		"project_identifier": repoRef.Identifier,
+		"user":               u.DisplayName(),
+	}))
 
 	enabledProjectIds := []string{}
 	for _, p := range allEnabledProjects {

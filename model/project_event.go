@@ -218,6 +218,15 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
+func GetAndLogProjectModifiedWithRepoAttachment(id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(id, isRepo)
+	if err != nil {
+		return errors.Wrap(err, "getting after project settings event")
+	}
+
+	return errors.Wrap(LogProjectRepoAttachment(id, userId, attachmentType, before, after), "logging project modified")
+}
+
 // resolveDefaults checks if certain project event fields are nil, and if so, sets the field's corresponding flag.
 // ProjectChangeEvents must be cast to a generic interface to utilize event logging, which casts all nil objects of array types to empty arrays.
 // Set flags if these values should indeed be nil so that we can correct these values when the event log is read from the database.
@@ -248,6 +257,16 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 }
 
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
+	eventData := constructProjectChangeEvent(username, before, after)
+	return LogProjectEvent(event.EventTypeProjectModified, projectId, *eventData)
+}
+
+func LogProjectRepoAttachment(projectId, username, attachmentType string, before, after *ProjectSettings) error {
+	eventData := constructProjectChangeEvent(username, before, after)
+	return LogProjectEvent(attachmentType, projectId, *eventData)
+}
+
+func constructProjectChangeEvent(username string, before, after *ProjectSettings) *ProjectChangeEvent {
 	if before == nil || after == nil {
 		return nil
 	}
@@ -261,5 +280,5 @@ func LogProjectModified(projectId, username string, before, after *ProjectSettin
 		Before: *before.resolveDefaults(),
 		After:  *after.resolveDefaults(),
 	}
-	return LogProjectEvent(event.EventTypeProjectModified, projectId, eventData)
+	return &eventData
 }
