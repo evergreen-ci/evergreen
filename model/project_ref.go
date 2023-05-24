@@ -335,6 +335,8 @@ var (
 	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 	projectRefBannerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
+	projectRefParsleyFiltersKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")
+	projectRefProjectHealthViewKey        = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -461,17 +463,18 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection        = "GENERAL"
-	ProjectPageAccessSection         = "ACCESS"
-	ProjectPageVariablesSection      = "VARIABLES"
-	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectPageNotificationsSection  = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection   = "WORKSTATION"
-	ProjectPageTriggersSection       = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
-	ProjectPagePluginSection         = "PLUGINS"
-	ProjectPageContainerSection      = "CONTAINERS"
+	ProjectPageGeneralSection         = "GENERAL"
+	ProjectPageAccessSection          = "ACCESS"
+	ProjectPageVariablesSection       = "VARIABLES"
+	ProjectPageGithubAndCQSection     = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection   = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection    = "WORKSTATION"
+	ProjectPageTriggersSection        = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
+	ProjectPagePluginSection          = "PLUGINS"
+	ProjectPageContainerSection       = "CONTAINERS"
+	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
 )
 
 const (
@@ -2027,7 +2030,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2057,6 +2059,15 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
+			})
+	case ProjectPageViewsAndFiltersSection:
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefParsleyFiltersKey:    p.ParsleyFilters,
+					projectRefProjectHealthViewKey: p.ProjectHealthView,
+				},
 			})
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref

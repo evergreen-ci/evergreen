@@ -219,8 +219,8 @@ Ambiguous behavior is outlined here:
 
 Users can specify that commits to another project (the "upstream"
 project) will trigger builds in their project (the "downstream"
-project). Configure triggers in the downstream project from the project
-configuration page. Click "NEW TRIGGER".
+project). Configure triggers in the downstream project from the Project Triggers
+section of the project configuration page. Click "Add Project Trigger".
 
 Options:
 
@@ -240,8 +240,9 @@ Options:
 
 Users can create aliases that can be used in patch builds (in the
 "upstream" project) to kick off a child patch (in the "downstream"
-project). Create aliases in the upstream project in the Patch Trigger
-Aliases section of the project configuration page. Click "NEW ALIAS".
+project). Create aliases in the upstream project in the Patch
+Aliases section of the project configuration page. Click "Add Patch Trigger
+Alias".
 
 Options:
 
@@ -359,6 +360,22 @@ Options:
     specifying an endpoint an optional secret.
 -   JIRA custom fields: Custom field and display test allowing for the
     creation of a specific field when displaying jira links.
+
+
+## Metadata Links
+
+Customize additional links to specify for your project under the Plugins section
+of the project page, by specifying a link and title. 
+
+Right now this is restricted to patches, but work is planned in
+EVG-16363 to extend this to other requesters.
+
+Special Fields:
+* `{version_id}` -- if this is included in the metadata link, we will sub in the ID when rendering the link
+
+This may also be added to individual tasks using `metadata_links` 
+for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations). 
+
 
 ## Distro Settings
 

@@ -81,6 +81,18 @@
           "memory_mb": 2048
         }
       ],
+      "parsley_filters": [
+        {
+          "expression": "filter1",
+          "case_sensitive": false,
+          "exact_match": false
+        },
+        {
+          "expression": "filter2",
+          "case_sensitive": true,
+          "exact_match": true
+        }
+      ],
       "git_tag_authorized_users": ["ablack12"],
       "workstation_config": {
         "setup_commands": null,
