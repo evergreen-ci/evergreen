@@ -235,7 +235,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !putParams.Active && putParams.Abort {
-			if err = task.AbortBuild(projCtx.Build.Id, task.AbortInfo{User: user.Id}); err != nil {
+			if err = task.AbortBuildTasks(projCtx.Build.Id, task.AbortInfo{User: user.Id}); err != nil {
 				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
 				return
 			}

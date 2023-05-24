@@ -1491,6 +1491,7 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 	return task, nil
 }
 
+// findAllTaskIDs returns a list of task IDs associated with the given query.
 func findAllTaskIDs(q db.Q) ([]string, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)

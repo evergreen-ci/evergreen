@@ -3030,7 +3030,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.False(t, utility.IsZeroTime(dtFromDB.ActivatedTime))
 }
 
-func TestAbortVersion(t *testing.T) {
+func TestAbortVersionTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	finishedExecTask := &Task{
 		Id:      "et1",
@@ -3055,7 +3055,7 @@ func TestAbortVersion(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
 
-	assert.NoError(t, AbortVersion("v1", AbortInfo{TaskID: "et2"}))
+	assert.NoError(t, AbortVersionTasks("v1", AbortInfo{TaskID: "et2"}))
 
 	var err error
 	dt, err = FindOneId("dt")
