@@ -101,6 +101,7 @@ func (p *ProjectChangeEvents) ApplyDefaults() {
 
 }
 
+// RedactPrivateVars redacts private variables from the project modification event.
 func (p *ProjectChangeEvents) RedactPrivateVars() {
 	for _, event := range *p {
 		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
@@ -158,7 +159,7 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	return nil
 }
 
-// Project Events queries
+// MostRecentProjectEvents returns the n most recent project events for the given project ID.
 func MostRecentProjectEvents(id string, n int) (ProjectChangeEvents, error) {
 	filter := event.ResourceTypeKeyIs(event.EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
@@ -170,6 +171,8 @@ func MostRecentProjectEvents(id string, n int) (ProjectChangeEvents, error) {
 	return events, err
 }
 
+// ProjectEventsBefore returns the n most recent project events for the given project ID
+// that occurred before the given time.
 func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvents, error) {
 	filter := event.ResourceTypeKeyIs(event.EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
@@ -184,6 +187,7 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 	return events, err
 }
 
+// LogProjectEvent logs a project event.
 func LogProjectEvent(eventType string, projectId string, eventData ProjectChangeEvent) error {
 	projectEvent := event.EventLogEntry{
 		Timestamp:    time.Now(),
@@ -206,10 +210,12 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 	return nil
 }
 
+// LogProjectAdded logs a project added event.
 func LogProjectAdded(projectId, username string) error {
 	return LogProjectEvent(event.EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
+// GetAndLogProjectModified retrieves the project settings before and after some change, and logs an event for the modification.
 func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSettings) error {
 	after, err := GetProjectSettingsById(id, isRepo)
 	if err != nil {
@@ -218,6 +224,8 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
+// GetAndLogProjectModifiedWithRepoAttachment retrieves the project settings before and after the change, and logs the modification.
+// as an event, alongside a repo attachment event.
 func GetAndLogProjectModifiedWithRepoAttachment(id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
 	after, err := GetProjectSettingsById(id, isRepo)
 	if err != nil {
@@ -256,6 +264,7 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 	return projectSettingsEvent
 }
 
+// LogProjectModified logs an event for a modification of a project's settings.
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
 	eventData := constructProjectChangeEvent(username, before, after)
 	if eventData == nil {
@@ -264,6 +273,8 @@ func LogProjectModified(projectId, username string, before, after *ProjectSettin
 	return LogProjectEvent(event.EventTypeProjectModified, projectId, *eventData)
 }
 
+// LogProjectRepoAttachment logs an event for either the attachment of a project to a repo,
+// or a detachment of a project from a repo.
 func LogProjectRepoAttachment(projectId, username, attachmentType string, before, after *ProjectSettings) error {
 	eventData := constructProjectChangeEvent(username, before, after)
 	return LogProjectEvent(attachmentType, projectId, *eventData)
