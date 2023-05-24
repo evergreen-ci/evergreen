@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -88,7 +89,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(r),
 	)
-	tp.RegisterSpanProcessor(NewTaskSpanProcessor())
+	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
 		grip.Error(errors.Wrap(err, "encountered otel error"))
