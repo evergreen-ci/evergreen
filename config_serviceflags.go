@@ -35,6 +35,7 @@ type ServiceFlags struct {
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `bson:"container_configurations_disabled" json:"container_configurations_disabled"`
 	LegacyUIPublicAccessDisabled    bool `bson:"legacy_ui_public_access_disabled" json:"legacy_ui_public_access_disabled"`
+	LegacyUIProjectPageDisabled     bool `bson:"legacy_ui_project_page_disabled" json:"legacy_ui_project_page_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -106,6 +107,7 @@ func (c *ServiceFlags) Set() error {
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			containerConfigurationsDisabledKey: c.ContainerConfigurationsDisabled,
 			legacyUIPublicAccessDisabledKey:    c.LegacyUIPublicAccessDisabled,
+			legacyUIProjectPageDisabledKey:     c.LegacyUIProjectPageDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 		},
 	}, options.Update().SetUpsert(true))
