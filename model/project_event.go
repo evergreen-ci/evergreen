@@ -224,7 +224,7 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
-// GetAndLogProjectModifiedWithRepoAttachment retrieves the project settings before and after the change, and logs the modification.
+// GetAndLogProjectModifiedWithRepoAttachment retrieves the project settings before and after the change, and logs the modification
 // as an event, alongside a repo attachment event.
 func GetAndLogProjectModifiedWithRepoAttachment(id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
 	after, err := GetProjectSettingsById(id, isRepo)
