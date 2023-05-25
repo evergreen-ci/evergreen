@@ -451,7 +451,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid triggers"))
 	}
 
-	// validate Parsley filters before updating project
+	// Validate Parsley filters before updating project.
 	err = dbModel.ValidateParsleyFilters(h.newProjectRef.ParsleyFilters)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))

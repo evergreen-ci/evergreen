@@ -636,6 +636,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			projectFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
+			assert.NotNil(t, projectFromDB)
 			assert.Len(t, projectFromDB.ParsleyFilters, 2)
 		},
 	} {

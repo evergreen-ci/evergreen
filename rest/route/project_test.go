@@ -292,7 +292,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Nil(p.Restricted)
 }
 
-func (s *ProjectPatchByIDSuite) TestRunWithParsleyFilters() {
+func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
@@ -363,6 +363,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithParsleyFilters() {
 
 	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
+	s.NotNil(p)
 	s.Len(p.ParsleyFilters, 2)
 }
 
