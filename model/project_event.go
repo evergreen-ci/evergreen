@@ -224,16 +224,14 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
-// GetAndLogProjectModifiedWithRepoAttachment retrieves the project settings before and after the change, and logs the modification
-// as an event, alongside a repo attachment/detachment event.
-func GetAndLogProjectModifiedWithRepoAttachment(id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
+// GetAndLogProjectRepoAttachment retrieves the project settings before and after the change, and logs the modification
+// as a repo attachment/detachment event.
+func GetAndLogProjectRepoAttachment(id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
 	after, err := GetProjectSettingsById(id, isRepo)
 	if err != nil {
 		return errors.Wrap(err, "getting after project settings event")
 	}
-	if err = LogProjectModified(id, userId, before, after); err != nil {
-		return errors.Wrap(err, "logging project modified")
-	}
+
 	return errors.Wrap(LogProjectRepoAttachment(id, userId, attachmentType, before, after), "logging project repo attachment")
 }
 

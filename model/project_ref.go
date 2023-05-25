@@ -711,7 +711,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
 
-	catcher.Add(GetAndLogProjectModifiedWithRepoAttachment(p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
+	catcher.Add(GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
 	return catcher.Resolve()
 }
 
@@ -746,7 +746,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "attaching repo to scope")
 	}
 
-	return GetAndLogProjectModifiedWithRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
+	return GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
@@ -787,7 +787,7 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
 
-	return GetAndLogProjectModifiedWithRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
+	return GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // addGithubConflictsToUpdate turns off any settings that may introduce conflicts by
