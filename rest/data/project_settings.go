@@ -413,8 +413,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
 		}
 	case model.ProjectPageViewsAndFiltersSection:
-		err = model.ValidateParsleyFilters(mergedSection.ParsleyFilters)
-		if err != nil {
+		if err = model.ValidateParsleyFilters(mergedSection.ParsleyFilters); err != nil {
 			return nil, errors.Wrap(err, "invalid Parsley filters")
 		}
 	}

@@ -3236,8 +3236,7 @@ func (p ParsleyFilter) validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(p.Expression == "", "filter expression must be non-empty")
 
-	_, regexErr := regexp.Compile(p.Expression)
-	if regexErr != nil {
+	if _, regexErr := regexp.Compile(p.Expression); regexErr != nil {
 		catcher.Wrapf(regexErr, "filter expression '%s' is invalid regexp", p.Expression)
 	}
 
