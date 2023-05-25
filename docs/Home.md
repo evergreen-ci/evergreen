@@ -1,3 +1,5 @@
+[go/evergreen-docs](http://go/evergreen-docs)
+
 # What is Evergreen?
 
 ## Evergreen
