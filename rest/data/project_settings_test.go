@@ -550,6 +550,95 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Empty(t, settings.ProjectRef.WorkstationConfig.SetupCommands)
 			assert.True(t, utility.FromBoolPtr(settings.ProjectRef.WorkstationConfig.GitClone))
 		},
+		model.ProjectPageViewsAndFiltersSection: func(t *testing.T, ref model.ProjectRef) {
+			assert.Nil(t, ref.ParsleyFilters)
+
+			// fail - empty expression
+			apiProjectRef := restModel.APIProjectRef{
+				ParsleyFilters: []restModel.APIParsleyFilter{
+					{
+						Expression:    utility.ToStringPtr(""),
+						CaseSensitive: utility.FalsePtr(),
+						ExactMatch:    utility.FalsePtr(),
+					},
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "invalid Parsley filters: filter expression must be non-empty")
+
+			// fail - invalid regular expression
+			apiProjectRef = restModel.APIProjectRef{
+				ParsleyFilters: []restModel.APIParsleyFilter{
+					{
+						Expression:    utility.ToStringPtr("*"),
+						CaseSensitive: utility.FalsePtr(),
+						ExactMatch:    utility.FalsePtr(),
+					},
+				},
+			}
+			apiChanges = &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "invalid Parsley filters: filter expression '*' is invalid regexp")
+
+			// fail - duplicate filter expressions
+			apiProjectRef = restModel.APIProjectRef{
+				ParsleyFilters: []restModel.APIParsleyFilter{
+					{
+						Expression:    utility.ToStringPtr("dupe"),
+						CaseSensitive: utility.FalsePtr(),
+						ExactMatch:    utility.FalsePtr(),
+					},
+					{
+						Expression:    utility.ToStringPtr("dupe"),
+						CaseSensitive: utility.FalsePtr(),
+						ExactMatch:    utility.FalsePtr(),
+					},
+				},
+			}
+			apiChanges = &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "invalid Parsley filters: duplicate filter expression 'dupe'")
+
+			// success
+			apiProjectRef = restModel.APIProjectRef{
+				ParsleyFilters: []restModel.APIParsleyFilter{
+					{
+						Expression:    utility.ToStringPtr("filter1"),
+						CaseSensitive: utility.FalsePtr(),
+						ExactMatch:    utility.FalsePtr(),
+					},
+					{
+						Expression:    utility.ToStringPtr("filter2"),
+						CaseSensitive: utility.FalsePtr(),
+						ExactMatch:    utility.FalsePtr(),
+					},
+				},
+			}
+			apiChanges = &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			projectFromDB, err := model.FindBranchProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, projectFromDB)
+			assert.Len(t, projectFromDB.ParsleyFilters, 2)
+		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,

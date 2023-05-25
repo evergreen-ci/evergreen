@@ -673,12 +673,13 @@ buildvariants:
       - name: "js-test"
       - name: ".linter"
       - name: test-db-auth
+      - name: "dist-staging"
 
   - name: lint
     display_name: Lint
     run_on:
-      - ubuntu2004-small
-      - ubuntu2004-large
+      - ubuntu2204-small
+      - ubuntu2204-large
     expansions:
       GOROOT: /opt/golang/go1.20
     tasks:
