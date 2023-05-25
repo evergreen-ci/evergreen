@@ -352,7 +352,9 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 	)
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	attempt := 0
+	mergeableCheckErr := false
 	err := utility.Retry(ctx, func() (bool, error) {
+		mergeableCheckErr = false
 		attempt++
 		lastAttempt := attempt == getPRAttempts
 		info, err := comm.GetPullRequestInfo(ctx, td, conf.GithubPatchData.PRNumber, opts.owner, opts.repo, lastAttempt)
@@ -360,6 +362,9 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
 		if info.Mergeable == nil {
+			// TODO EVG-19723: if using the merge commit SHA here doesn't cause issues, we should remove retrying here.
+			mergeSHA = info.MergeCommitSHA
+			mergeableCheckErr = true
 			return true, errors.New("mergeable check is not ready")
 		}
 		if *info.Mergeable {
@@ -375,7 +380,12 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 		MinDelay:    getPRRetryMinDelay,
 		MaxDelay:    getPRRetryMaxDelay,
 	})
-
+	
+	// TODO EVG-19723: this is to return the merge SHA even if we hit the mergeable check error.
+	// Remove this if we don't run into issues.
+	if mergeableCheckErr && mergeSHA != "" {
+		return mergeSHA, nil
+	}
 	return mergeSHA, err
 }
 
