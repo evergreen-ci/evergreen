@@ -48,7 +48,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if flags.LegacyUIProjectPageDisabled {
 		newUIProjectsLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
-		http.Redirect(w, r, newUIProjectsLink, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
 	}
 
 	allProjects, err := uis.filterViewableProjects(dbUser)
