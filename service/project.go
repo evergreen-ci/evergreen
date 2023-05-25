@@ -42,6 +42,18 @@ func (uis *UIServer) filterViewableProjects(u *user.DBUser) ([]model.ProjectRef,
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+	}
+	if flags.LegacyUIProjectPageDisabled && dbUser != nil && dbUser.Settings.UseSpruceOptions.SpruceV1 {
+		newUILink := ""
+		if len(uis.Settings.Ui.UIv2Url) > 0 {
+			newUILink = fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
+		}
+		http.Redirect(w, r, newUILink, http.StatusTemporaryRedirect)
+	}
+
 	allProjects, err := uis.filterViewableProjects(dbUser)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
