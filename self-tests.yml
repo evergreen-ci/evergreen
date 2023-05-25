@@ -673,6 +673,7 @@ buildvariants:
       - name: "js-test"
       - name: ".linter"
       - name: test-db-auth
+      - name: "dist-staging"
 
   - name: lint
     display_name: Lint
