@@ -7,7 +7,6 @@ mutation {
                 repo: "world",
                 enabled: true,
                 remotePath: "my_path_is_new"
-                branch: "main"
             }
         },
         section: GENERAL

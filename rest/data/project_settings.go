@@ -275,7 +275,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 
 		if mergedSection.Enabled {
-			if mergedSection.Branch == "" {
+			if mergedSection.Branch == "" && !isRepo {
 				return nil, errors.New("branch not set on enabled repo")
 			}
 
