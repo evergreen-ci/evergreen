@@ -242,9 +242,17 @@ functions:
       params:
         env:
           MONGODB_URL: ${mongodb_url}
-          DECOMPRESS: ${decompress}
+          MONGODB_DECOMPRESS: ${decompress}
         working_dir: evergreen
         command: make get-mongodb
+    - command: subprocess.exec
+      type: setup
+      params:
+        env:
+          MONGOSH_URL: ${mongosh_url}
+          MONGOSH_DECOMPRESS: ${mongosh_decompress|*decompress}
+        working_dir: evergreen
+        command: make get-mongosh
     - command: subprocess.exec
       type: setup
       params:
@@ -589,7 +597,7 @@ tasks:
           target: "test-evergreen"
           AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
-          MONGO_CREDS_FILE: cmd/mongo-auth/test_auth.yml
+          MONGO_CREDS_FILE: testdata/test_auth.yml
 
 task_groups:
   - name: dist-and-upload-clis
@@ -602,18 +610,19 @@ task_groups:
 #            Buildvariants            #
 #######################################
 buildvariants:
-  - name: ubuntu2004
-    display_name: Ubuntu 20.04
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
     run_on:
-      - ubuntu2004-small
-      - ubuntu2004-large
+      - ubuntu2204-small
+      - ubuntu2204-large
     expansions:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
       sign_macos: true
     tasks:
@@ -623,7 +632,6 @@ buildvariants:
         activate: false
       - name: ".smoke"
       - name: ".test"
-      - name: "js-test"
       - name: ".linter"
       - name: "docker-cleanup"
       - name: test-db-auth
@@ -632,12 +640,13 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     run_on:
-      - ubuntu2004-small
-      - ubuntu2004-large
+      - ubuntu2204-small
+      - ubuntu2204-large
     expansions:
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -653,7 +662,8 @@ buildvariants:
       goarch: amd64
       IS_DOCKER: true
       GOROOT: /usr/local/go
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.14.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.6.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
       decompress: tar zxvf
     tasks:
       - name: "dist-unsigned"
@@ -682,25 +692,27 @@ buildvariants:
     expansions:
       GOROOT: c:/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.14.zip
+      mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.6.zip
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-win32-x64.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
 
-  - name: ubuntu2004-arm64
-    display_name: Ubuntu 20.04 ARM
+  - name: ubuntu2204-arm64
+    display_name: Ubuntu 22.04 ARM
     batchtime: 2880
     run_on:
-      - ubuntu2004-arm64-large
+      - ubuntu2204-arm64-large
     expansions:
       xc_build: yes
       goarch: arm64
       goos: linux
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-5.0.14.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.6.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-arm64.tgz
     tasks:
       - name: ".agent .test"
 
@@ -708,13 +720,25 @@ buildvariants:
     display_name: OSX
     batchtime: 2880
     run_on:
-      - macos-1014
+      - macos-1100-arm64
     expansions:
       GOROOT: /opt/golang/go1.20
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.14.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-6.0.6.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-darwin-arm64.zip
+      mongosh_decompress: unzip
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
+
+  - name: ubuntu2004
+    display_name: Ubuntu 20.04
+    batchtime: 2880
+    run_on:
+      - ubuntu2004-small
+    expansions:
+      GOROOT: /opt/golang/go1.20
+    tasks:
+      - name: "js-test"
 
 # TODO: EVG-19745 Use a security-vetted image once one is available
 containers:
