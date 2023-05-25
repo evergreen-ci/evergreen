@@ -46,12 +46,9 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
 	}
-	if flags.LegacyUIProjectPageDisabled && dbUser != nil && dbUser.Settings.UseSpruceOptions.SpruceV1 {
-		newUILink := ""
-		if len(uis.Settings.Ui.UIv2Url) > 0 {
-			newUILink = fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
-		}
-		http.Redirect(w, r, newUILink, http.StatusTemporaryRedirect)
+	if flags.LegacyUIProjectPageDisabled {
+		newUIProjectsLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
+		http.Redirect(w, r, newUIProjectsLink, http.StatusTemporaryRedirect)
 	}
 
 	allProjects, err := uis.filterViewableProjects(dbUser)
