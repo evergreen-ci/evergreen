@@ -182,7 +182,9 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 	if err != nil {
 		return errors.Wrapf(err, "copying existing container secrets")
 	}
-	pRef.SetContainerSecrets(secrets)
+	if err := pRef.SetContainerSecrets(secrets); err != nil {
+		return errors.Wrap(err, "setting container secrets")
+	}
 
 	// Under the hood, this is updating the container secrets in the DB project
 	// ref, but this function's copy of the in-memory project ref won't reflect
