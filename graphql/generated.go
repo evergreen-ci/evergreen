@@ -60168,7 +60168,7 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cron"))
-			it.Cron, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Cron, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
