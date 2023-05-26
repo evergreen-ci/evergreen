@@ -1949,6 +1949,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
+			setUpdate[ProjectRefBranchKey] = p.Branch
 			setUpdate[ProjectRefEnabledKey] = p.Enabled
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
