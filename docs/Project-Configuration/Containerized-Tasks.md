@@ -52,7 +52,8 @@ Fields:
 
 -   `name`: a user-defined name for the container that represents the task or the environment of the container
 -   `working_dir`: the working directory for your tasks within the container. In the example, it's set to the root directory
--   `image`: the Docker image to use for the container. You can use custom images tailored to your project needs
+-   `image`: the Docker image to use for the container. As part of the initial offering, the images specificable in this field will be 
+restricted to a predefined list of approved base images that our platform will specify.
 -   `resources`: the resources allocated to the container: cpu and memory_mb set the CPU units and the memory (in MB), respectively, that the container is allocated
 -   `size`: an alternative to the resources section, a preset size for the container configured within the UI
 -   `system`: specification for the CPU architecture and the operating system to be used by your container
