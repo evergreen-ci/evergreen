@@ -434,7 +434,7 @@ func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error 
 		return errors.Wrap(err, "finding builds for tasks")
 	}
 	for _, b := range builds {
-		if err = checkUpdateBuildPRStatusPending(&b); err != nil {
+		if err = checkUpdateBuildPRStatusPending(&b, patchStatusChangeDescription, prTaskResetCaller); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", b.Id)
 		}
 	}
@@ -1153,7 +1153,6 @@ func getTaskCreateTime(creationInfo TaskCreationInfo) (time.Time, error) {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildVariantTaskUnit) (*task.Task, error) {
-
 	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
 	isStepback := creationInfo.ActivationInfo.isStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
 

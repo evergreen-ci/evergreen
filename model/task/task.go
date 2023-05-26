@@ -177,7 +177,13 @@ type Task struct {
 	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
 	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
 
-	// Status represents the various stages the task could be in
+	// Status represents the various stages the task could be in. Note that this
+	// task status is distinct from the way a task status is displayed in the
+	// UI. For example, a task that has failed will have a status of
+	// evergreen.TaskFailed regardless of the specific cause of failure.
+	// However, in the UI, the displayed status supports more granular failure
+	// type such as system failed and setup failed by checking this status and
+	// the task status details.
 	Status    string                  `bson:"status" json:"status"`
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`

@@ -65,9 +65,13 @@ const (
 	// The task statuses below indicate that a task has finished.
 	TaskSucceeded = "success"
 
-	// These statuses indicate the types of failures that are stored in
-	// Task.Status field, build TaskCache and TaskEndDetails.
-	TaskFailed       = "failed"
+	// These statuses indicate the types of failures. Of these, TaskFailed is
+	// the only one that's allowed in the Task.Status field - the other ones are
+	// computed for the UI based on the Task.Status and its Task.Details.
+	TaskFailed = "failed"
+	// All task failure reasons other than TaskFailed are only for UI display
+	// purposes. These are not stored in the task status (although they used to
+	// be for very old tasks).
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
@@ -303,6 +307,10 @@ const (
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
 	ContainerHealthDashboard = "container task health dashboard"
+
+	// PRTasksRunningDescription is the description for a GitHub PR status
+	// indicating that there are still running tasks.
+	PRTasksRunningDescription = "tasks are running"
 )
 
 var TaskStatuses = []string{
