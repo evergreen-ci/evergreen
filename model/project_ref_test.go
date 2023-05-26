@@ -3024,3 +3024,73 @@ func TestGetNextCronTime(t *testing.T) {
 	_, err = GetNextCronTime(curTime, weekdayCron)
 	assert.NoError(t, err)
 }
+
+func TestSetRepotrackerError(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	}()
+	pRef := ProjectRef{
+		Id:         "id",
+		Identifier: "identifier",
+		RepotrackerError: &RepositoryErrorDetails{
+			InvalidRevision:   "abc123",
+			MergeBaseRevision: "def456",
+		},
+	}
+	require.NoError(t, pRef.Insert())
+	t.Run("OverwritesError", func(t *testing.T) {
+		repotrackerErr := &RepositoryErrorDetails{
+			Exists:            true,
+			InvalidRevision:   "invalid_revision",
+			MergeBaseRevision: "merge_base_revision",
+		}
+		require.NoError(t, pRef.SetRepotrackerError(repotrackerErr))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		require.NotZero(t, dbProjRef.RepotrackerError)
+		assert.Equal(t, *repotrackerErr, *dbProjRef.RepotrackerError)
+	})
+	t.Run("ClearsError", func(t *testing.T) {
+		require.NoError(t, pRef.SetRepotrackerError(&RepositoryErrorDetails{}))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		assert.Empty(t, dbProjRef.RepotrackerError)
+	})
+}
+
+func TestSetContainerSecrets(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	}()
+	pRef := ProjectRef{
+		Id:               "id",
+		Identifier:       "identifier",
+		ContainerSecrets: []ContainerSecret{{Name: "secret"}},
+	}
+	require.NoError(t, pRef.Insert())
+	t.Run("OverwritesContainerSecrets", func(t *testing.T) {
+		secrets := []ContainerSecret{{
+			Name:         "new_secret",
+			Type:         ContainerSecretPodSecret,
+			ExternalName: "external_name",
+			ExternalID:   "external_id",
+		}}
+		require.NoError(t, pRef.SetContainerSecrets(secrets))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		require.NotZero(t, dbProjRef.ContainerSecrets)
+		assert.Equal(t, secrets, dbProjRef.ContainerSecrets)
+	})
+	t.Run("ClearsContainerSecrets", func(t *testing.T) {
+		require.NoError(t, pRef.SetContainerSecrets(nil))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		assert.Empty(t, dbProjRef.RepotrackerError)
+	})
+}
