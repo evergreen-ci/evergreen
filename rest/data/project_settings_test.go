@@ -472,7 +472,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "branch not set on enabled repo")
+			assert.Contains(t, err.Error(), "branch not set on enabled project")
 			assert.Nil(t, settings)
 		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.ProjectRef) {
