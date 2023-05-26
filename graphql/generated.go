@@ -633,6 +633,7 @@ type ComplexityRoot struct {
 	PeriodicBuild struct {
 		Alias         func(childComplexity int) int
 		ConfigFile    func(childComplexity int) int
+		Cron          func(childComplexity int) int
 		ID            func(childComplexity int) int
 		IntervalHours func(childComplexity int) int
 		Message       func(childComplexity int) int
@@ -4399,6 +4400,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PeriodicBuild.ConfigFile(childComplexity), true
+
+	case "PeriodicBuild.cron":
+		if e.complexity.PeriodicBuild.Cron == nil {
+			break
+		}
+
+		return e.complexity.PeriodicBuild.Cron(childComplexity), true
 
 	case "PeriodicBuild.id":
 		if e.complexity.PeriodicBuild.ID == nil {
@@ -29915,6 +29923,50 @@ func (ec *executionContext) fieldContext_PeriodicBuild_intervalHours(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _PeriodicBuild_cron(ctx context.Context, field graphql.CollectedField, obj *model.APIPeriodicBuildDefinition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeriodicBuild_cron(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cron, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeriodicBuild_cron(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeriodicBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PeriodicBuild_message(ctx context.Context, field graphql.CollectedField, obj *model.APIPeriodicBuildDefinition) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PeriodicBuild_message(ctx, field)
 	if err != nil {
@@ -33149,6 +33201,8 @@ func (ec *executionContext) fieldContext_Project_periodicBuilds(ctx context.Cont
 				return ec.fieldContext_PeriodicBuild_configFile(ctx, field)
 			case "intervalHours":
 				return ec.fieldContext_PeriodicBuild_intervalHours(ctx, field)
+			case "cron":
+				return ec.fieldContext_PeriodicBuild_cron(ctx, field)
 			case "message":
 				return ec.fieldContext_PeriodicBuild_message(ctx, field)
 			case "nextRunTime":
@@ -40470,6 +40524,8 @@ func (ec *executionContext) fieldContext_RepoRef_periodicBuilds(ctx context.Cont
 				return ec.fieldContext_PeriodicBuild_configFile(ctx, field)
 			case "intervalHours":
 				return ec.fieldContext_PeriodicBuild_intervalHours(ctx, field)
+			case "cron":
+				return ec.fieldContext_PeriodicBuild_cron(ctx, field)
 			case "message":
 				return ec.fieldContext_PeriodicBuild_message(ctx, field)
 			case "nextRunTime":
@@ -60077,7 +60133,7 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "alias", "configFile", "intervalHours", "message", "nextRunTime"}
+	fieldsInOrder := [...]string{"id", "alias", "configFile", "cron", "intervalHours", "message", "nextRunTime"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60105,6 +60161,14 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configFile"))
 			it.ConfigFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "cron":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cron"))
+			it.Cron, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -66499,6 +66563,13 @@ func (ec *executionContext) _PeriodicBuild(ctx context.Context, sel ast.Selectio
 		case "intervalHours":
 
 			out.Values[i] = ec._PeriodicBuild_intervalHours(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "cron":
+
+			out.Values[i] = ec._PeriodicBuild_cron(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

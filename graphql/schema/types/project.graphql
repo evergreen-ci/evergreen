@@ -51,6 +51,7 @@ input PeriodicBuildInput {
   id: String!
   alias: String!
   configFile: String!
+  cron: String!
   intervalHours: Int!
   message: String!
   nextRunTime: Time!

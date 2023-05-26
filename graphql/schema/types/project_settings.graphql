@@ -120,6 +120,7 @@ type PeriodicBuild {
   alias: String!
   configFile: String!
   intervalHours: Int!
+  cron: String!
   message: String!
   nextRunTime: Time!
 }
