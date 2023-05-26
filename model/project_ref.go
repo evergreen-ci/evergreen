@@ -344,8 +344,9 @@ var (
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
 )
 
+// IsPrivate returns if this project requires the user to be authed to view it.
 func (p *ProjectRef) IsPrivate() bool {
-	return utility.FromBoolPtr(p.Private)
+	return utility.FromBoolTPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {
