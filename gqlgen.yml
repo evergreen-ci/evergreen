@@ -132,6 +132,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
+  ParsleyFilter:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
+  ParsleyFilterInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
     fields:
@@ -174,9 +178,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   ProjectEventSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
-    fields:
-      projectSubscriptions:
-        resolver: true
   ProjectHealthView:
     model: github.com/evergreen-ci/evergreen/model.ProjectHealthView
   ProjectInput:
@@ -190,14 +191,10 @@ models:
         resolver: true
       aliases:
         resolver: true
-      projectSubscriptions:
-        resolver: true
       subscriptions:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-  ProjectSubscription:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
     fields:
@@ -227,8 +224,6 @@ models:
       vars:
         resolver: true
       aliases:
-        resolver: true
-      projectSubscriptions:
         resolver: true
       subscriptions:
         resolver: true

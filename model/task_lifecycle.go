@@ -1304,7 +1304,7 @@ func checkUpdateBuildPRStatusPending(b *build.Build, description, caller string)
 }
 
 // updateBuildStatus updates the status of the build based on its tasks' statuses
-// Returns true if the build's status has changed or if all of the build's tasks become blocked.
+// Returns true if the build's status has changed or if all the build's tasks become blocked / unscheduled.
 func updateBuildStatus(b *build.Build) (bool, error) {
 	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToFinishKey)
 	if err != nil {
@@ -1398,34 +1398,41 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 	return true, nil
 }
 
-func getVersionStatus(builds []build.Build) string {
+// getVersionActivationAndStatus returns if the version is activated, as well as its status.
+// Need to differentiate activated to distinguish between a version that's created
+// but will run vs a version that's created but nothing is scheduled.
+func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 	// Check if no builds have started in the version.
 	noStartedBuilds := true
+	versionActivated := false
 	for _, b := range builds {
+		if b.Activated {
+			versionActivated = true
+		}
 		if b.Status != evergreen.BuildCreated {
 			noStartedBuilds = false
 			break
 		}
 	}
 	if noStartedBuilds {
-		return evergreen.VersionCreated
+		return versionActivated, evergreen.VersionCreated
 	}
 
 	// Check if builds are started but not finished.
 	for _, b := range builds {
 		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
-			return evergreen.VersionStarted
+			return true, evergreen.VersionStarted
 		}
 	}
 
 	// Check if all builds are finished but have failures.
 	for _, b := range builds {
 		if b.Status == evergreen.BuildFailed || b.Aborted {
-			return evergreen.VersionFailed
+			return true, evergreen.VersionFailed
 		}
 	}
 
-	return evergreen.VersionSucceeded
+	return true, evergreen.VersionSucceeded
 }
 
 // updateVersionStatus updates the status of the version based on the status of
@@ -1443,7 +1450,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 		return nil
 	}
 
-	githubBuildStatus := getVersionStatus(githubStatusBuilds)
+	_, githubBuildStatus := getVersionActivationAndStatus(githubStatusBuilds)
 
 	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
 		event.LogVersionGithubCheckFinishedEvent(v.Id, githubBuildStatus)
@@ -1467,7 +1474,13 @@ func updateVersionStatus(v *Version) (string, error) {
 		return "", errors.Wrap(err, "updating version GitHub status")
 	}
 
-	versionStatus := getVersionStatus(builds)
+	versionActivated, versionStatus := getVersionActivationAndStatus(builds)
+	// If all the builds are unscheduled and nothing has run, set active to false
+	if versionStatus == evergreen.VersionCreated && !versionActivated {
+		if err = v.SetActivated(false); err != nil {
+			return "", errors.Wrapf(err, "setting version '%s' as inactive", v.Id)
+		}
+	}
 
 	if versionStatus == v.Status {
 		return versionStatus, nil
@@ -1557,7 +1570,8 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrapf(err, "updating build '%s' status", taskBuild.Id)
 	}
-	// If the build status has not changed, then the version and patch statuses must have also not changed.
+	// If the build status and activation have not changed,
+	// then the version and patch statuses and activation must have also not changed.
 	if !buildStatusChanged {
 		return nil
 	}

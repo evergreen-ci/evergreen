@@ -508,6 +508,15 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	return projectRef, nil
 }
 
+// DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
+func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, err.Error())
+	}
+	return true, nil
+}
+
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error) {
 	usr := mustHaveUser(ctx)
@@ -515,6 +524,18 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID s
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
 	return &projectID, nil
+}
+
+// DeleteProject is the resolver for the deleteProject field.
+func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
+	if err := data.HideBranch(projectID); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", projectID, err.Error()))
+	}
+	return true, nil
 }
 
 // DetachProjectFromRepo is the resolver for the detachProjectFromRepo field.
@@ -598,15 +619,6 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return changes, nil
-}
-
-// DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
-func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
-	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, err.Error())
-	}
-	return true, nil
 }
 
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.
@@ -1032,7 +1044,7 @@ func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error
 	subIDs := removeGeneralSubscriptions(usr, subs)
 	err = data.DeleteSubscriptions(username, subIDs)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions %s", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions '%s'", err.Error()))
 	}
 	return len(subIDs), nil
 }
@@ -1045,6 +1057,17 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
+}
+
+// DeleteSubscriptions is the resolver for the deleteSubscriptions field.
+func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error) {
+	usr := mustHaveUser(ctx)
+	username := usr.Username()
+
+	if err := data.DeleteSubscriptions(username, subscriptionIds); err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions '%s'", err.Error()))
+	}
+	return len(subscriptionIds), nil
 }
 
 // RemovePublicKey is the resolver for the removePublicKey field.

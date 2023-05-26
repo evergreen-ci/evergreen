@@ -1,7 +1,7 @@
 """
-canCreateProject is used to restrict certain actions to admins.
+requireProjectAdmin is used to restrict certain actions to admins.
 """
-directive @canCreateProject on ARGUMENT_DEFINITION 
+directive @requireProjectAdmin on ARGUMENT_DEFINITION 
 
 """
 requireProjectAccess is used to restrict view and edit access for project settings.

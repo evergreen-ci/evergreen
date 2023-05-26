@@ -15,6 +15,7 @@ enum ProjectSettingsSection {
   PERIODIC_BUILDS
   PLUGINS
   CONTAINERS
+  VIEWS_AND_FILTERS
 }
 
 ###### INPUTS ######
@@ -34,15 +35,18 @@ input ProjectSettingsInput {
 input ProjectInput {
   id: String! @requireProjectAccess(access: EDIT)
   admins: [String!]
+  banner: ProjectBannerInput
   batchTime: Int
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
   deactivatePrevious: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
   enabled: Boolean
+  externalLinks: [ExternalLinkInput!]
   githubChecksEnabled: Boolean
   githubTriggerAliases: [String]
   gitTagAuthorizedTeams: [String!]
@@ -52,11 +56,13 @@ input ProjectInput {
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
   owner: String
+  parsleyFilters: [ParsleyFilterInput!]
   patchingDisabled: Boolean
   patchTriggerAliases: [PatchTriggerAliasInput!]
   perfEnabled: Boolean
   periodicBuilds: [PeriodicBuildInput!]
   private: Boolean
+  projectHealthView: ProjectHealthView
   prTestingEnabled: Boolean
   remotePath: String
   repo: String
@@ -70,9 +76,6 @@ input ProjectInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
-  containerSizeDefinitions: [ContainerResourcesInput!]
-  externalLinks: [ExternalLinkInput!]
-  banner: ProjectBannerInput
 }
 
 ###### TYPES ######
@@ -83,21 +86,8 @@ type ProjectSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
   projectRef: Project
-  projectSubscriptions: [ProjectSubscription!] @deprecated(reason: "Use subscriptions instead")
   subscriptions: [GeneralSubscription!]
   vars: ProjectVars
-}
-
-# shared by Project and RepoRef
-type ProjectSubscription {
-  id: String!
-  ownerType: String!
-  regexSelectors: [Selector!]!
-  resourceType: String!
-  selectors: [Selector!]!
-  subscriber: SubscriberWrapper
-  trigger: String!
-  triggerData: StringMap
 }
 
 type Selector {
@@ -130,6 +120,7 @@ type PeriodicBuild {
   alias: String!
   configFile: String!
   intervalHours: Int!
+  cron: String!
   message: String!
   nextRunTime: Time!
 }
@@ -183,7 +174,6 @@ type ProjectEventSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
   projectRef: Project
-  projectSubscriptions: [ProjectSubscription!] @deprecated(reason: "Use subscriptions instead")
   subscriptions: [GeneralSubscription!]
   vars: ProjectVars
 }

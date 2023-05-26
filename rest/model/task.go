@@ -321,22 +321,26 @@ func (at *APITask) BuildFromService(t *task.Task, args *APITaskArgs) error {
 	if args == nil {
 		return nil
 	}
+	baseTaskID := t.Id
+	if t.OldTaskId != "" {
+		baseTaskID = t.OldTaskId
+	}
 	if args.LogURL != "" {
 		ll := LogLinks{
-			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "ALL")),
-			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "T")),
-			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "E")),
-			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, t.Id, t.Execution, "S")),
-			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, t.Id)),
+			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "ALL")),
+			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "T")),
+			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "E")),
+			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "S")),
+			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, baseTaskID)),
 		}
 		at.Logs = ll
 	}
 	if args.ParsleyLogURL != "" {
 		ll := LogLinks{
-			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "all")),
-			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "task")),
-			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "agent")),
-			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, t.Id, t.Execution, "system")),
+			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, baseTaskID, t.Execution, "all")),
+			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, baseTaskID, t.Execution, "task")),
+			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, baseTaskID, t.Execution, "agent")),
+			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(ParsleyTaskLogLinkFormat, args.ParsleyLogURL, baseTaskID, t.Execution, "system")),
 		}
 		at.ParsleyLogs = ll
 	}

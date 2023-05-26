@@ -56,7 +56,6 @@ type ResolverRoot interface {
 	Pod() PodResolver
 	PodEventLogData() PodEventLogDataResolver
 	Project() ProjectResolver
-	ProjectEventSettings() ProjectEventSettingsResolver
 	ProjectSettings() ProjectSettingsResolver
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
@@ -74,8 +73,8 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	CanCreateProject          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
+	RequireProjectAdmin       func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectFieldAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
@@ -487,6 +486,8 @@ type ComplexityRoot struct {
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
 		DefaultSectionToRepo          func(childComplexity int, projectID string, section ProjectSettingsSection) int
+		DeleteProject                 func(childComplexity int, projectID string) int
+		DeleteSubscriptions           func(childComplexity int, subscriptionIds []string) int
 		DetachProjectFromRepo         func(childComplexity int, projectID string) int
 		DetachVolumeFromHost          func(childComplexity int, volumeID string) int
 		EditAnnotationNote            func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
@@ -534,12 +535,18 @@ type ComplexityRoot struct {
 	}
 
 	Notifications struct {
-		BuildBreak          func(childComplexity int) int
-		CommitQueue         func(childComplexity int) int
-		PatchFinish         func(childComplexity int) int
-		PatchFirstFailure   func(childComplexity int) int
-		SpawnHostExpiration func(childComplexity int) int
-		SpawnHostOutcome    func(childComplexity int) int
+		BuildBreak            func(childComplexity int) int
+		BuildBreakID          func(childComplexity int) int
+		CommitQueue           func(childComplexity int) int
+		CommitQueueID         func(childComplexity int) int
+		PatchFinish           func(childComplexity int) int
+		PatchFinishID         func(childComplexity int) int
+		PatchFirstFailure     func(childComplexity int) int
+		PatchFirstFailureID   func(childComplexity int) int
+		SpawnHostExpiration   func(childComplexity int) int
+		SpawnHostExpirationID func(childComplexity int) int
+		SpawnHostOutcome      func(childComplexity int) int
+		SpawnHostOutcomeID    func(childComplexity int) int
 	}
 
 	OomTrackerInfo struct {
@@ -550,6 +557,12 @@ type ComplexityRoot struct {
 	Parameter struct {
 		Key   func(childComplexity int) int
 		Value func(childComplexity int) int
+	}
+
+	ParsleyFilter struct {
+		CaseSensitive func(childComplexity int) int
+		ExactMatch    func(childComplexity int) int
+		Expression    func(childComplexity int) int
 	}
 
 	Patch struct {
@@ -621,6 +634,7 @@ type ComplexityRoot struct {
 	PeriodicBuild struct {
 		Alias         func(childComplexity int) int
 		ConfigFile    func(childComplexity int) int
+		Cron          func(childComplexity int) int
 		ID            func(childComplexity int) int
 		IntervalHours func(childComplexity int) int
 		Message       func(childComplexity int) int
@@ -693,6 +707,7 @@ type ComplexityRoot struct {
 		NotifyOnBuildFailure     func(childComplexity int) int
 		Owner                    func(childComplexity int) int
 		PRTestingEnabled         func(childComplexity int) int
+		ParsleyFilters           func(childComplexity int) int
 		PatchTriggerAliases      func(childComplexity int) int
 		Patches                  func(childComplexity int, patchesInput PatchesInput) int
 		PatchingDisabled         func(childComplexity int) int
@@ -748,7 +763,6 @@ type ComplexityRoot struct {
 		Aliases               func(childComplexity int) int
 		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
-		ProjectSubscriptions  func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
 	}
@@ -762,20 +776,8 @@ type ComplexityRoot struct {
 		Aliases               func(childComplexity int) int
 		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
-		ProjectSubscriptions  func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
-	}
-
-	ProjectSubscription struct {
-		ID             func(childComplexity int) int
-		OwnerType      func(childComplexity int) int
-		RegexSelectors func(childComplexity int) int
-		ResourceType   func(childComplexity int) int
-		Selectors      func(childComplexity int) int
-		Subscriber     func(childComplexity int) int
-		Trigger        func(childComplexity int) int
-		TriggerData    func(childComplexity int) int
 	}
 
 	ProjectVars struct {
@@ -840,7 +842,6 @@ type ComplexityRoot struct {
 	RepoRef struct {
 		Admins                   func(childComplexity int) int
 		BatchTime                func(childComplexity int) int
-		Branch                   func(childComplexity int) int
 		BuildBaronSettings       func(childComplexity int) int
 		CommitQueue              func(childComplexity int) int
 		ContainerSizeDefinitions func(childComplexity int) int
@@ -883,7 +884,6 @@ type ComplexityRoot struct {
 		Aliases               func(childComplexity int) int
 		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
-		ProjectSubscriptions  func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
 	}
@@ -1388,14 +1388,15 @@ type MutationResolver interface {
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef, requestS3Creds *bool) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*model.APIProjectRef, error)
+	DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error)
 	DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error)
+	DeleteProject(ctx context.Context, projectID string) (bool, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
 	PromoteVarsToRepo(ctx context.Context, projectID string, varNames []string) (bool, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
-	DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error)
 	AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
@@ -1413,6 +1414,7 @@ type MutationResolver interface {
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
+	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
@@ -1461,14 +1463,10 @@ type ProjectResolver interface {
 
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
 }
-type ProjectEventSettingsResolver interface {
-	ProjectSubscriptions(ctx context.Context, obj *model.APIProjectEventSettings) ([]*model.APISubscription, error)
-}
 type ProjectSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
 
-	ProjectSubscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 }
@@ -1521,7 +1519,6 @@ type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
 
-	ProjectSubscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 }
@@ -3428,6 +3425,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DefaultSectionToRepo(childComplexity, args["projectId"].(string), args["section"].(ProjectSettingsSection)), true
 
+	case "Mutation.deleteProject":
+		if e.complexity.Mutation.DeleteProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteProject_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteProject(childComplexity, args["projectId"].(string)), true
+
+	case "Mutation.deleteSubscriptions":
+		if e.complexity.Mutation.DeleteSubscriptions == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteSubscriptions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteSubscriptions(childComplexity, args["subscriptionIds"].([]string)), true
+
 	case "Mutation.detachProjectFromRepo":
 		if e.complexity.Mutation.DetachProjectFromRepo == nil {
 			break
@@ -3917,12 +3938,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.BuildBreak(childComplexity), true
 
+	case "Notifications.buildBreakId":
+		if e.complexity.Notifications.BuildBreakID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.BuildBreakID(childComplexity), true
+
 	case "Notifications.commitQueue":
 		if e.complexity.Notifications.CommitQueue == nil {
 			break
 		}
 
 		return e.complexity.Notifications.CommitQueue(childComplexity), true
+
+	case "Notifications.commitQueueId":
+		if e.complexity.Notifications.CommitQueueID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.CommitQueueID(childComplexity), true
 
 	case "Notifications.patchFinish":
 		if e.complexity.Notifications.PatchFinish == nil {
@@ -3931,12 +3966,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.PatchFinish(childComplexity), true
 
+	case "Notifications.patchFinishId":
+		if e.complexity.Notifications.PatchFinishID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.PatchFinishID(childComplexity), true
+
 	case "Notifications.patchFirstFailure":
 		if e.complexity.Notifications.PatchFirstFailure == nil {
 			break
 		}
 
 		return e.complexity.Notifications.PatchFirstFailure(childComplexity), true
+
+	case "Notifications.patchFirstFailureId":
+		if e.complexity.Notifications.PatchFirstFailureID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.PatchFirstFailureID(childComplexity), true
 
 	case "Notifications.spawnHostExpiration":
 		if e.complexity.Notifications.SpawnHostExpiration == nil {
@@ -3945,12 +3994,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.SpawnHostExpiration(childComplexity), true
 
+	case "Notifications.spawnHostExpirationId":
+		if e.complexity.Notifications.SpawnHostExpirationID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.SpawnHostExpirationID(childComplexity), true
+
 	case "Notifications.spawnHostOutcome":
 		if e.complexity.Notifications.SpawnHostOutcome == nil {
 			break
 		}
 
 		return e.complexity.Notifications.SpawnHostOutcome(childComplexity), true
+
+	case "Notifications.spawnHostOutcomeId":
+		if e.complexity.Notifications.SpawnHostOutcomeID == nil {
+			break
+		}
+
+		return e.complexity.Notifications.SpawnHostOutcomeID(childComplexity), true
 
 	case "OomTrackerInfo.detected":
 		if e.complexity.OomTrackerInfo.Detected == nil {
@@ -3979,6 +4042,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Parameter.Value(childComplexity), true
+
+	case "ParsleyFilter.caseSensitive":
+		if e.complexity.ParsleyFilter.CaseSensitive == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.CaseSensitive(childComplexity), true
+
+	case "ParsleyFilter.exactMatch":
+		if e.complexity.ParsleyFilter.ExactMatch == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.ExactMatch(childComplexity), true
+
+	case "ParsleyFilter.expression":
+		if e.complexity.ParsleyFilter.Expression == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.Expression(childComplexity), true
 
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
@@ -4329,6 +4413,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PeriodicBuild.ConfigFile(childComplexity), true
+
+	case "PeriodicBuild.cron":
+		if e.complexity.PeriodicBuild.Cron == nil {
+			break
+		}
+
+		return e.complexity.PeriodicBuild.Cron(childComplexity), true
 
 	case "PeriodicBuild.id":
 		if e.complexity.PeriodicBuild.ID == nil {
@@ -4713,6 +4804,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.PRTestingEnabled(childComplexity), true
 
+	case "Project.parsleyFilters":
+		if e.complexity.Project.ParsleyFilters == nil {
+			break
+		}
+
+		return e.complexity.Project.ParsleyFilters(childComplexity), true
+
 	case "Project.patchTriggerAliases":
 		if e.complexity.Project.PatchTriggerAliases == nil {
 			break
@@ -4998,13 +5096,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectEventSettings.ProjectRef(childComplexity), true
 
-	case "ProjectEventSettings.projectSubscriptions":
-		if e.complexity.ProjectEventSettings.ProjectSubscriptions == nil {
-			break
-		}
-
-		return e.complexity.ProjectEventSettings.ProjectSubscriptions(childComplexity), true
-
 	case "ProjectEventSettings.subscriptions":
 		if e.complexity.ProjectEventSettings.Subscriptions == nil {
 			break
@@ -5054,13 +5145,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSettings.ProjectRef(childComplexity), true
 
-	case "ProjectSettings.projectSubscriptions":
-		if e.complexity.ProjectSettings.ProjectSubscriptions == nil {
-			break
-		}
-
-		return e.complexity.ProjectSettings.ProjectSubscriptions(childComplexity), true
-
 	case "ProjectSettings.subscriptions":
 		if e.complexity.ProjectSettings.Subscriptions == nil {
 			break
@@ -5074,62 +5158,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectSettings.Vars(childComplexity), true
-
-	case "ProjectSubscription.id":
-		if e.complexity.ProjectSubscription.ID == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.ID(childComplexity), true
-
-	case "ProjectSubscription.ownerType":
-		if e.complexity.ProjectSubscription.OwnerType == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.OwnerType(childComplexity), true
-
-	case "ProjectSubscription.regexSelectors":
-		if e.complexity.ProjectSubscription.RegexSelectors == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.RegexSelectors(childComplexity), true
-
-	case "ProjectSubscription.resourceType":
-		if e.complexity.ProjectSubscription.ResourceType == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.ResourceType(childComplexity), true
-
-	case "ProjectSubscription.selectors":
-		if e.complexity.ProjectSubscription.Selectors == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.Selectors(childComplexity), true
-
-	case "ProjectSubscription.subscriber":
-		if e.complexity.ProjectSubscription.Subscriber == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.Subscriber(childComplexity), true
-
-	case "ProjectSubscription.trigger":
-		if e.complexity.ProjectSubscription.Trigger == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.Trigger(childComplexity), true
-
-	case "ProjectSubscription.triggerData":
-		if e.complexity.ProjectSubscription.TriggerData == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.TriggerData(childComplexity), true
 
 	case "ProjectVars.adminOnlyVars":
 		if e.complexity.ProjectVars.AdminOnlyVars == nil {
@@ -5604,13 +5632,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.BatchTime(childComplexity), true
 
-	case "RepoRef.branch":
-		if e.complexity.RepoRef.Branch == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.Branch(childComplexity), true
-
 	case "RepoRef.buildBaronSettings":
 		if e.complexity.RepoRef.BuildBaronSettings == nil {
 			break
@@ -5883,13 +5904,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoSettings.ProjectRef(childComplexity), true
-
-	case "RepoSettings.projectSubscriptions":
-		if e.complexity.RepoSettings.ProjectSubscriptions == nil {
-			break
-		}
-
-		return e.complexity.RepoSettings.ProjectSubscriptions(childComplexity), true
 
 	case "RepoSettings.subscriptions":
 		if e.complexity.RepoSettings.Subscriptions == nil {
@@ -8146,6 +8160,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputMoveProjectInput,
 		ec.unmarshalInputNotificationsInput,
 		ec.unmarshalInputParameterInput,
+		ec.unmarshalInputParsleyFilterInput,
 		ec.unmarshalInputPatchConfigure,
 		ec.unmarshalInputPatchTriggerAliasInput,
 		ec.unmarshalInputPatchesInput,
@@ -8473,10 +8488,10 @@ func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context,
 			return ec.unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx, tmp)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.CanCreateProject == nil {
-				return nil, errors.New("directive canCreateProject is not implemented")
+			if ec.directives.RequireProjectAdmin == nil {
+				return nil, errors.New("directive requireProjectAdmin is not implemented")
 			}
-			return ec.directives.CanCreateProject(ctx, rawArgs, directive0)
+			return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
 		}
 
 		tmp, err = directive1(ctx)
@@ -8512,10 +8527,10 @@ func (ec *executionContext) field_Mutation_createProject_args(ctx context.Contex
 			return ec.unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.CanCreateProject == nil {
-				return nil, errors.New("directive canCreateProject is not implemented")
+			if ec.directives.RequireProjectAdmin == nil {
+				return nil, errors.New("directive requireProjectAdmin is not implemented")
 			}
-			return ec.directives.CanCreateProject(ctx, rawArgs, directive0)
+			return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
 		}
 
 		tmp, err = directive1(ctx)
@@ -8644,6 +8659,49 @@ func (ec *executionContext) field_Mutation_defaultSectionToRepo_args(ctx context
 		}
 	}
 	args["section"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.RequireProjectAdmin == nil {
+				return nil, errors.New("directive requireProjectAdmin is not implemented")
+			}
+			return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
+		}
+
+		tmp, err = directive1(ctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+		}
+	}
+	args["projectId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteSubscriptions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["subscriptionIds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subscriptionIds"))
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subscriptionIds"] = arg0
 	return args, nil
 }
 
@@ -15745,6 +15803,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -15765,6 +15825,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -15787,6 +15849,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -15829,10 +15893,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -15882,8 +15942,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_admins(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_RepoRef_batchTime(ctx, field)
-			case "branch":
-				return ec.fieldContext_RepoRef_branch(ctx, field)
 			case "buildBaronSettings":
 				return ec.fieldContext_RepoRef_buildBaronSettings(ctx, field)
 			case "commitQueue":
@@ -22582,6 +22640,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -22602,6 +22662,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -22624,6 +22686,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -22666,10 +22730,6 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22731,6 +22791,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -22751,6 +22813,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -22773,6 +22837,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -22815,10 +22881,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -22880,6 +22942,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -22900,6 +22964,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -22922,6 +22988,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -22964,10 +23032,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23029,6 +23093,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23049,6 +23115,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23071,6 +23139,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23113,10 +23183,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23178,6 +23244,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23198,6 +23266,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23220,6 +23290,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23262,10 +23334,6 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23278,6 +23346,61 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_copyProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deactivateStepbackTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deactivateStepbackTask(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeactivateStepbackTask(rctx, fc.Args["projectId"].(string), fc.Args["buildVariantName"].(string), fc.Args["taskName"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deactivateStepbackTask(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deactivateStepbackTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -23336,6 +23459,61 @@ func (ec *executionContext) fieldContext_Mutation_defaultSectionToRepo(ctx conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_deleteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteProject(rctx, fc.Args["projectId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_detachProjectFromRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_detachProjectFromRepo(ctx, field)
 	if err != nil {
@@ -23379,6 +23557,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23399,6 +23579,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23421,6 +23603,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23463,10 +23647,6 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23638,6 +23818,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -23658,6 +23840,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -23680,6 +23864,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -23722,10 +23908,6 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -23789,8 +23971,6 @@ func (ec *executionContext) fieldContext_Mutation_saveProjectSettingsForSection(
 				return ec.fieldContext_ProjectSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
 				return ec.fieldContext_ProjectSettings_projectRef(ctx, field)
-			case "projectSubscriptions":
-				return ec.fieldContext_ProjectSettings_projectSubscriptions(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_ProjectSettings_subscriptions(ctx, field)
 			case "vars":
@@ -23858,8 +24038,6 @@ func (ec *executionContext) fieldContext_Mutation_saveRepoSettingsForSection(ctx
 				return ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
 				return ec.fieldContext_RepoSettings_projectRef(ctx, field)
-			case "projectSubscriptions":
-				return ec.fieldContext_RepoSettings_projectSubscriptions(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_RepoSettings_subscriptions(ctx, field)
 			case "vars":
@@ -23876,61 +24054,6 @@ func (ec *executionContext) fieldContext_Mutation_saveRepoSettingsForSection(ctx
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_saveRepoSettingsForSection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_deactivateStepbackTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_deactivateStepbackTask(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeactivateStepbackTask(rctx, fc.Args["projectId"].(string), fc.Args["buildVariantName"].(string), fc.Args["taskName"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_deactivateStepbackTask(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deactivateStepbackTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -25881,6 +26004,61 @@ func (ec *executionContext) fieldContext_Mutation_createPublicKey(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_deleteSubscriptions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteSubscriptions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteSubscriptions(rctx, fc.Args["subscriptionIds"].([]string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteSubscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteSubscriptions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_removePublicKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_removePublicKey(ctx, field)
 	if err != nil {
@@ -26426,6 +26604,47 @@ func (ec *executionContext) fieldContext_Notifications_buildBreak(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Notifications_buildBreakId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_buildBreakId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildBreakID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_buildBreakId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Notifications_commitQueue(ctx, field)
 	if err != nil {
@@ -26455,6 +26674,47 @@ func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_Notifications_commitQueue(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Notifications_commitQueueId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_commitQueueId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CommitQueueID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_commitQueueId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
@@ -26508,6 +26768,47 @@ func (ec *executionContext) fieldContext_Notifications_patchFinish(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Notifications_patchFinishId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_patchFinishId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchFinishID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_patchFinishId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Notifications_patchFirstFailure(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Notifications_patchFirstFailure(ctx, field)
 	if err != nil {
@@ -26537,6 +26838,47 @@ func (ec *executionContext) _Notifications_patchFirstFailure(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_Notifications_patchFirstFailure(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Notifications_patchFirstFailureId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_patchFirstFailureId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchFirstFailureID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_patchFirstFailureId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
@@ -26590,6 +26932,47 @@ func (ec *executionContext) fieldContext_Notifications_spawnHostExpiration(ctx c
 	return fc, nil
 }
 
+func (ec *executionContext) _Notifications_spawnHostExpirationId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_spawnHostExpirationId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostExpirationID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_spawnHostExpirationId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Notifications_spawnHostOutcome(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Notifications_spawnHostOutcome(ctx, field)
 	if err != nil {
@@ -26619,6 +27002,47 @@ func (ec *executionContext) _Notifications_spawnHostOutcome(ctx context.Context,
 }
 
 func (ec *executionContext) fieldContext_Notifications_spawnHostOutcome(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Notifications_spawnHostOutcomeId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Notifications_spawnHostOutcomeId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostOutcomeID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Notifications_spawnHostOutcomeId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
@@ -26799,6 +27223,138 @@ func (ec *executionContext) fieldContext_Parameter_value(ctx context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_expression(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Expression, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleyFilter_caseSensitive(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CaseSensitive, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_caseSensitive(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleyFilter_exactMatch(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExactMatch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_exactMatch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -27963,6 +28519,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -27983,6 +28541,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -28005,6 +28565,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -28047,10 +28609,6 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -29434,6 +29992,50 @@ func (ec *executionContext) fieldContext_PeriodicBuild_intervalHours(ctx context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeriodicBuild_cron(ctx context.Context, field graphql.CollectedField, obj *model.APIPeriodicBuildDefinition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeriodicBuild_cron(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cron, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeriodicBuild_cron(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeriodicBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -31009,6 +31611,53 @@ func (ec *executionContext) fieldContext_Project_admins(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_banner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Banner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIProjectBanner)
+	fc.Result = res
+	return ec.marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_banner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "text":
+				return ec.fieldContext_ProjectBanner_text(ctx, field)
+			case "theme":
+				return ec.fieldContext_ProjectBanner_theme(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectBanner", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_batchTime(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_batchTime(ctx, field)
 	if err != nil {
@@ -31601,6 +32250,53 @@ func (ec *executionContext) fieldContext_Project_enabled(ctx context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_externalLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_externalLinks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExternalLinks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIExternalLink)
+	fc.Result = res
+	return ec.marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "displayName":
+				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "urlTemplate":
+				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLink", field.Name)
 		},
 	}
 	return fc, nil
@@ -32206,6 +32902,55 @@ func (ec *executionContext) fieldContext_Project_owner(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_parsleyFilters(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_parsleyFilters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ParsleyFilters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIParsleyFilter)
+	fc.Result = res
+	return ec.marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_parsleyFilters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
+			case "caseSensitive":
+				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "exactMatch":
+				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_patches(ctx, field)
 	if err != nil {
@@ -32530,6 +33275,8 @@ func (ec *executionContext) fieldContext_Project_periodicBuilds(ctx context.Cont
 				return ec.fieldContext_PeriodicBuild_configFile(ctx, field)
 			case "intervalHours":
 				return ec.fieldContext_PeriodicBuild_intervalHours(ctx, field)
+			case "cron":
+				return ec.fieldContext_PeriodicBuild_cron(ctx, field)
 			case "message":
 				return ec.fieldContext_PeriodicBuild_message(ctx, field)
 			case "nextRunTime":
@@ -33457,100 +34204,6 @@ func (ec *executionContext) fieldContext_Project_workstationConfig(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_externalLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_externalLinks(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ExternalLinks, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]model.APIExternalLink)
-	fc.Result = res
-	return ec.marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "displayName":
-				return ec.fieldContext_ExternalLink_displayName(ctx, field)
-			case "urlTemplate":
-				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ExternalLink", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Project_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_banner(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Banner, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(model.APIProjectBanner)
-	fc.Result = res
-	return ec.marshalOProjectBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_banner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "text":
-				return ec.fieldContext_ProjectBanner_text(ctx, field)
-			case "theme":
-				return ec.fieldContext_ProjectBanner_theme(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectBanner", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ProjectAlias_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectAlias_id(ctx, field)
 	if err != nil {
@@ -34165,8 +34818,6 @@ func (ec *executionContext) fieldContext_ProjectEventLogEntry_after(ctx context.
 				return ec.fieldContext_ProjectEventSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
 				return ec.fieldContext_ProjectEventSettings_projectRef(ctx, field)
-			case "projectSubscriptions":
-				return ec.fieldContext_ProjectEventSettings_projectSubscriptions(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_ProjectEventSettings_subscriptions(ctx, field)
 			case "vars":
@@ -34220,8 +34871,6 @@ func (ec *executionContext) fieldContext_ProjectEventLogEntry_before(ctx context
 				return ec.fieldContext_ProjectEventSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
 				return ec.fieldContext_ProjectEventSettings_projectRef(ctx, field)
-			case "projectSubscriptions":
-				return ec.fieldContext_ProjectEventSettings_projectSubscriptions(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_ProjectEventSettings_subscriptions(ctx, field)
 			case "vars":
@@ -34464,6 +35113,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -34484,6 +35135,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -34506,6 +35159,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -34548,71 +35203,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectEventSettings_projectSubscriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectEventSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectEventSettings_projectSubscriptions(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.ProjectEventSettings().ProjectSubscriptions(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APISubscription)
-	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectEventSettings_projectSubscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectEventSettings",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
-			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
-			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
-			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
-			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
-			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
-			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
-			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -34967,6 +35559,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -34987,6 +35581,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -35009,6 +35605,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -35051,71 +35649,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSettings_projectSubscriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSettings_projectSubscriptions(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.ProjectSettings().ProjectSubscriptions(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APISubscription)
-	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSettings_projectSubscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSettings",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
-			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
-			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
-			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
-			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
-			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
-			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
-			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -35224,370 +35759,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_vars(ctx context.Contex
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_id(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_id(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_ownerType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.OwnerType, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_ownerType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RegexSelectors, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]model.APISelector)
-	fc.Result = res
-	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "data":
-				return ec.fieldContext_Selector_data(ctx, field)
-			case "type":
-				return ec.fieldContext_Selector_type(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Selector", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ResourceType, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_resourceType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_selectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_selectors(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Selectors, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]model.APISelector)
-	fc.Result = res
-	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_selectors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "data":
-				return ec.fieldContext_Selector_data(ctx, field)
-			case "type":
-				return ec.fieldContext_Selector_type(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Selector", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Subscriber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(model.APISubscriber)
-	fc.Result = res
-	return ec.marshalOSubscriberWrapper2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_subscriber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "subscriber":
-				return ec.fieldContext_SubscriberWrapper_subscriber(ctx, field)
-			case "type":
-				return ec.fieldContext_SubscriberWrapper_type(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SubscriberWrapper", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_trigger(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_trigger(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Trigger, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_trigger(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectSubscription_triggerData(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TriggerData, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(map[string]string)
-	fc.Result = res
-	return ec.marshalOStringMap2map(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ProjectSubscription_triggerData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectSubscription",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type StringMap does not have child fields")
 		},
 	}
 	return fc, nil
@@ -36885,6 +37056,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -36905,6 +37078,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -36927,6 +37102,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -36969,10 +37146,6 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -37149,8 +37322,6 @@ func (ec *executionContext) fieldContext_Query_projectSettings(ctx context.Conte
 				return ec.fieldContext_ProjectSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
 				return ec.fieldContext_ProjectSettings_projectRef(ctx, field)
-			case "projectSubscriptions":
-				return ec.fieldContext_ProjectSettings_projectSubscriptions(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_ProjectSettings_subscriptions(ctx, field)
 			case "vars":
@@ -37279,8 +37450,6 @@ func (ec *executionContext) fieldContext_Query_repoSettings(ctx context.Context,
 				return ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
 				return ec.fieldContext_RepoSettings_projectRef(ctx, field)
-			case "projectSubscriptions":
-				return ec.fieldContext_RepoSettings_projectSubscriptions(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_RepoSettings_subscriptions(ctx, field)
 			case "vars":
@@ -39132,50 +39301,6 @@ func (ec *executionContext) fieldContext_RepoRef_batchTime(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_branch(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoRef_branch(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Branch, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoRef_branch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_buildBaronSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_buildBaronSettings(ctx, field)
 	if err != nil {
@@ -40429,6 +40554,8 @@ func (ec *executionContext) fieldContext_RepoRef_periodicBuilds(ctx context.Cont
 				return ec.fieldContext_PeriodicBuild_configFile(ctx, field)
 			case "intervalHours":
 				return ec.fieldContext_PeriodicBuild_intervalHours(ctx, field)
+			case "cron":
+				return ec.fieldContext_PeriodicBuild_cron(ctx, field)
 			case "message":
 				return ec.fieldContext_PeriodicBuild_message(ctx, field)
 			case "nextRunTime":
@@ -41504,8 +41631,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_admins(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_RepoRef_batchTime(ctx, field)
-			case "branch":
-				return ec.fieldContext_RepoRef_branch(ctx, field)
 			case "buildBaronSettings":
 				return ec.fieldContext_RepoRef_buildBaronSettings(ctx, field)
 			case "commitQueue":
@@ -41578,65 +41703,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_externalLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoRef", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RepoSettings_projectSubscriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoSettings_projectSubscriptions(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.RepoSettings().ProjectSubscriptions(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APISubscription)
-	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoSettings_projectSubscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoSettings",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_ProjectSubscription_id(ctx, field)
-			case "ownerType":
-				return ec.fieldContext_ProjectSubscription_ownerType(ctx, field)
-			case "regexSelectors":
-				return ec.fieldContext_ProjectSubscription_regexSelectors(ctx, field)
-			case "resourceType":
-				return ec.fieldContext_ProjectSubscription_resourceType(ctx, field)
-			case "selectors":
-				return ec.fieldContext_ProjectSubscription_selectors(ctx, field)
-			case "subscriber":
-				return ec.fieldContext_ProjectSubscription_subscriber(ctx, field)
-			case "trigger":
-				return ec.fieldContext_ProjectSubscription_trigger(ctx, field)
-			case "triggerData":
-				return ec.fieldContext_ProjectSubscription_triggerData(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ProjectSubscription", field.Name)
 		},
 	}
 	return fc, nil
@@ -46250,6 +46316,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -46270,6 +46338,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -46292,6 +46362,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -46334,10 +46406,6 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -53167,16 +53235,28 @@ func (ec *executionContext) fieldContext_UserSettings_notifications(ctx context.
 			switch field.Name {
 			case "buildBreak":
 				return ec.fieldContext_Notifications_buildBreak(ctx, field)
+			case "buildBreakId":
+				return ec.fieldContext_Notifications_buildBreakId(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Notifications_commitQueue(ctx, field)
+			case "commitQueueId":
+				return ec.fieldContext_Notifications_commitQueueId(ctx, field)
 			case "patchFinish":
 				return ec.fieldContext_Notifications_patchFinish(ctx, field)
+			case "patchFinishId":
+				return ec.fieldContext_Notifications_patchFinishId(ctx, field)
 			case "patchFirstFailure":
 				return ec.fieldContext_Notifications_patchFirstFailure(ctx, field)
+			case "patchFirstFailureId":
+				return ec.fieldContext_Notifications_patchFirstFailureId(ctx, field)
 			case "spawnHostExpiration":
 				return ec.fieldContext_Notifications_spawnHostExpiration(ctx, field)
+			case "spawnHostExpirationId":
+				return ec.fieldContext_Notifications_spawnHostExpirationId(ctx, field)
 			case "spawnHostOutcome":
 				return ec.fieldContext_Notifications_spawnHostOutcome(ctx, field)
+			case "spawnHostOutcomeId":
+				return ec.fieldContext_Notifications_spawnHostOutcomeId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Notifications", field.Name)
 		},
@@ -54805,6 +54885,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_id(ctx, field)
 			case "admins":
 				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_Project_batchTime(ctx, field)
 			case "branch":
@@ -54825,6 +54907,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -54847,6 +54931,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
 			case "patches":
 				return ec.fieldContext_Project_patches(ctx, field)
 			case "patchingDisabled":
@@ -54889,10 +54975,6 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -59835,6 +59917,50 @@ func (ec *executionContext) unmarshalInputParameterInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context, obj interface{}) (model.APIParsleyFilter, error) {
+	var it model.APIParsleyFilter
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"expression", "caseSensitive", "exactMatch"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "expression":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expression"))
+			it.Expression, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "caseSensitive":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("caseSensitive"))
+			it.CaseSensitive, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "exactMatch":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exactMatch"))
+			it.ExactMatch, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPatchConfigure(ctx context.Context, obj interface{}) (PatchConfigure, error) {
 	var it PatchConfigure
 	asMap := map[string]interface{}{}
@@ -60035,7 +60161,7 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "alias", "configFile", "intervalHours", "message", "nextRunTime"}
+	fieldsInOrder := [...]string{"id", "alias", "configFile", "cron", "intervalHours", "message", "nextRunTime"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60063,6 +60189,14 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configFile"))
 			it.ConfigFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "cron":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cron"))
+			it.Cron, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60223,7 +60357,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions", "externalLinks", "banner"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60266,6 +60400,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "banner":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
+			it.Banner, err = ec.unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "batchTime":
 			var err error
 
@@ -60295,6 +60437,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("commitQueue"))
 			it.CommitQueue, err = ec.unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "containerSizeDefinitions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerSizeDefinitions"))
+			it.ContainerSizeDefinitions, err = ec.unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60335,6 +60485,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			it.Enabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "externalLinks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
+			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60410,6 +60568,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "parsleyFilters":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parsleyFilters"))
+			it.ParsleyFilters, err = ec.unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "patchingDisabled":
 			var err error
 
@@ -60447,6 +60613,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("private"))
 			it.Private, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "projectHealthView":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectHealthView"))
+			it.ProjectHealthView, err = ec.unmarshalOProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60551,30 +60725,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workstationConfig"))
 			it.WorkstationConfig, err = ec.unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "containerSizeDefinitions":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerSizeDefinitions"))
-			it.ContainerSizeDefinitions, err = ec.unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "externalLinks":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalLinks"))
-			it.ExternalLinks, err = ec.unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "banner":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
-			it.Banner, err = ec.unmarshalOProjectBannerInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectBanner(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60731,7 +60881,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60779,14 +60929,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("batchTime"))
 			it.BatchTime, err = ec.unmarshalOInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "branch":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("branch"))
-			it.Branch, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -65330,12 +65472,30 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "deactivateStepbackTask":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deactivateStepbackTask(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "defaultSectionToRepo":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_defaultSectionToRepo(ctx, field)
 			})
 
+		case "deleteProject":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteProject(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "detachProjectFromRepo":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -65385,15 +65545,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveRepoSettingsForSection(ctx, field)
-			})
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "deactivateStepbackTask":
-
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deactivateStepbackTask(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -65552,6 +65703,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "deleteSubscriptions":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteSubscriptions(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "removePublicKey":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -65660,25 +65820,49 @@ func (ec *executionContext) _Notifications(ctx context.Context, sel ast.Selectio
 
 			out.Values[i] = ec._Notifications_buildBreak(ctx, field, obj)
 
+		case "buildBreakId":
+
+			out.Values[i] = ec._Notifications_buildBreakId(ctx, field, obj)
+
 		case "commitQueue":
 
 			out.Values[i] = ec._Notifications_commitQueue(ctx, field, obj)
+
+		case "commitQueueId":
+
+			out.Values[i] = ec._Notifications_commitQueueId(ctx, field, obj)
 
 		case "patchFinish":
 
 			out.Values[i] = ec._Notifications_patchFinish(ctx, field, obj)
 
+		case "patchFinishId":
+
+			out.Values[i] = ec._Notifications_patchFinishId(ctx, field, obj)
+
 		case "patchFirstFailure":
 
 			out.Values[i] = ec._Notifications_patchFirstFailure(ctx, field, obj)
+
+		case "patchFirstFailureId":
+
+			out.Values[i] = ec._Notifications_patchFirstFailureId(ctx, field, obj)
 
 		case "spawnHostExpiration":
 
 			out.Values[i] = ec._Notifications_spawnHostExpiration(ctx, field, obj)
 
+		case "spawnHostExpirationId":
+
+			out.Values[i] = ec._Notifications_spawnHostExpirationId(ctx, field, obj)
+
 		case "spawnHostOutcome":
 
 			out.Values[i] = ec._Notifications_spawnHostOutcome(ctx, field, obj)
+
+		case "spawnHostOutcomeId":
+
+			out.Values[i] = ec._Notifications_spawnHostOutcomeId(ctx, field, obj)
 
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -65743,6 +65927,48 @@ func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet
 		case "value":
 
 			out.Values[i] = ec._Parameter_value(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var parsleyFilterImplementors = []string{"ParsleyFilter"}
+
+func (ec *executionContext) _ParsleyFilter(ctx context.Context, sel ast.SelectionSet, obj *model.APIParsleyFilter) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, parsleyFilterImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ParsleyFilter")
+		case "expression":
+
+			out.Values[i] = ec._ParsleyFilter_expression(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "caseSensitive":
+
+			out.Values[i] = ec._ParsleyFilter_caseSensitive(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "exactMatch":
+
+			out.Values[i] = ec._ParsleyFilter_exactMatch(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -66370,6 +66596,13 @@ func (ec *executionContext) _PeriodicBuild(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "cron":
+
+			out.Values[i] = ec._PeriodicBuild_cron(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "message":
 
 			out.Values[i] = ec._PeriodicBuild_message(ctx, field, obj)
@@ -66737,6 +66970,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 
 			out.Values[i] = ec._Project_admins(ctx, field, obj)
 
+		case "banner":
+
+			out.Values[i] = ec._Project_banner(ctx, field, obj)
+
 		case "batchTime":
 
 			out.Values[i] = ec._Project_batchTime(ctx, field, obj)
@@ -66791,6 +67028,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 		case "enabled":
 
 			out.Values[i] = ec._Project_enabled(ctx, field, obj)
+
+		case "externalLinks":
+
+			out.Values[i] = ec._Project_externalLinks(ctx, field, obj)
 
 		case "githubChecksEnabled":
 
@@ -66858,6 +67099,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "parsleyFilters":
+
+			out.Values[i] = ec._Project_parsleyFilters(ctx, field, obj)
+
 		case "patches":
 			field := field
 
@@ -66982,14 +67227,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "externalLinks":
-
-			out.Values[i] = ec._Project_externalLinks(ctx, field, obj)
-
-		case "banner":
-
-			out.Values[i] = ec._Project_banner(ctx, field, obj)
-
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -67217,29 +67454,12 @@ func (ec *executionContext) _ProjectEventSettings(ctx context.Context, sel ast.S
 			out.Values[i] = ec._ProjectEventSettings_githubWebhooksEnabled(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "projectRef":
 
 			out.Values[i] = ec._ProjectEventSettings_projectRef(ctx, field, obj)
 
-		case "projectSubscriptions":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ProjectEventSettings_projectSubscriptions(ctx, field, obj)
-				return res
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
 		case "subscriptions":
 
 			out.Values[i] = ec._ProjectEventSettings_subscriptions(ctx, field, obj)
@@ -67345,23 +67565,6 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 
 			out.Values[i] = ec._ProjectSettings_projectRef(ctx, field, obj)
 
-		case "projectSubscriptions":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ProjectSettings_projectSubscriptions(ctx, field, obj)
-				return res
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
 		case "subscriptions":
 			field := field
 
@@ -67396,77 +67599,6 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 				return innerFunc(ctx)
 
 			})
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var projectSubscriptionImplementors = []string{"ProjectSubscription"}
-
-func (ec *executionContext) _ProjectSubscription(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscription) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, projectSubscriptionImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ProjectSubscription")
-		case "id":
-
-			out.Values[i] = ec._ProjectSubscription_id(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "ownerType":
-
-			out.Values[i] = ec._ProjectSubscription_ownerType(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "regexSelectors":
-
-			out.Values[i] = ec._ProjectSubscription_regexSelectors(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "resourceType":
-
-			out.Values[i] = ec._ProjectSubscription_resourceType(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "selectors":
-
-			out.Values[i] = ec._ProjectSubscription_selectors(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "subscriber":
-
-			out.Values[i] = ec._ProjectSubscription_subscriber(ctx, field, obj)
-
-		case "trigger":
-
-			out.Values[i] = ec._ProjectSubscription_trigger(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "triggerData":
-
-			out.Values[i] = ec._ProjectSubscription_triggerData(ctx, field, obj)
-
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -68557,13 +68689,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "branch":
-
-			out.Values[i] = ec._RepoRef_branch(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "buildBaronSettings":
 
 			out.Values[i] = ec._RepoRef_buildBaronSettings(ctx, field, obj)
@@ -68850,23 +68975,6 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 
 			out.Values[i] = ec._RepoSettings_projectRef(ctx, field, obj)
 
-		case "projectSubscriptions":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._RepoSettings_projectSubscriptions(ctx, field, obj)
-				return res
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
 		case "subscriptions":
 			field := field
 
@@ -74179,6 +74287,15 @@ func (ec *executionContext) marshalNParameter2ᚕgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
+func (ec *executionContext) marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, sel ast.SelectionSet, v model.APIParsleyFilter) graphql.Marshaler {
+	return ec._ParsleyFilter(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, v interface{}) (model.APIParsleyFilter, error) {
+	res, err := ec.unmarshalInputParsleyFilterInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
 	return ec._Patch(ctx, sel, &v)
 }
@@ -74686,16 +74803,6 @@ func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋever
 
 func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsSection) graphql.Marshaler {
 	return v
-}
-
-func (ec *executionContext) marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ProjectSubscription(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPubKey) graphql.Marshaler {
@@ -77456,6 +77563,73 @@ func (ec *executionContext) unmarshalOParameterInput2ᚖgithubᚗcomᚋevergreen
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIParsleyFilter) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, v interface{}) ([]model.APIParsleyFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]model.APIParsleyFilter, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNParsleyFilterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalOPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPatch) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -77810,6 +77984,17 @@ func (ec *executionContext) marshalOProjectEventSettings2githubᚗcomᚋevergree
 	return ec._ProjectEventSettings(ctx, sel, &v)
 }
 
+func (ec *executionContext) unmarshalOProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx context.Context, v interface{}) (model1.ProjectHealthView, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := model1.ProjectHealthView(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx context.Context, sel ast.SelectionSet, v model1.ProjectHealthView) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	return res
+}
+
 func (ec *executionContext) unmarshalOProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
 	res, err := ec.unmarshalInputProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -77821,53 +78006,6 @@ func (ec *executionContext) unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋeve
 	}
 	res, err := ec.unmarshalInputProjectSettingsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalOProjectVars2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx context.Context, sel ast.SelectionSet, v model.APIProjectVars) graphql.Marshaler {

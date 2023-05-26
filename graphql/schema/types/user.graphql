@@ -126,11 +126,17 @@ type GithubUser {
 
 type Notifications {
   buildBreak: String
+  buildBreakId: String
   commitQueue: String
+  commitQueueId: String
   patchFinish: String
+  patchFinishId: String
   patchFirstFailure: String
+  patchFirstFailureId: String
   spawnHostExpiration: String
+  spawnHostExpirationId: String
   spawnHostOutcome: String
+  spawnHostOutcomeId: String
 }
 
 type UseSpruceOptions {

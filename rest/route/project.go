@@ -451,6 +451,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid triggers"))
 	}
 
+	// Validate Parsley filters before updating project.
+	err = dbModel.ValidateParsleyFilters(h.newProjectRef.ParsleyFilters)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))
+	}
+
 	err = dbModel.ValidateBbProject(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating build baron config"))
@@ -758,58 +764,9 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := dbModel.FindBranchProjectRef(h.projectName)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
+	if err := data.HideBranch(h.projectName); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	if project == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", h.projectName))
-	}
-
-	if project.IsHidden() {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' is already hidden", h.projectName))
-	}
-
-	if !project.UseRepoSettings() {
-		return gimlet.MakeJSONErrorResponder(
-			errors.Errorf("project '%s' must be attached to a repo to be eligible for deletion", h.projectName))
-	}
-
-	skeletonProj := dbModel.ProjectRef{
-		Id:        project.Id,
-		Owner:     project.Owner,
-		Repo:      project.Repo,
-		Branch:    project.Branch,
-		RepoRefId: project.RepoRefId,
-		Enabled:   false,
-		Hidden:    utility.TruePtr(),
-	}
-	if err = skeletonProj.Update(); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", project.Id))
-	}
-	if err = dbModel.UpdateAdminRoles(project, nil, project.Admins); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project admin roles"))
-	}
-
-	projectAliases, err := dbModel.FindAliasesForProjectFromDb(project.Id)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for project '%s'", project.Id))
-	}
-
-	for _, alias := range projectAliases {
-		if err := dbModel.RemoveProjectAlias(alias.ID.Hex()); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(
-				errors.Wrapf(err, "removing project alias '%s' for project '%s'", alias.ID.Hex(), project.Id))
-		}
-	}
-
-	skeletonProjVars := dbModel.ProjectVars{
-		Id: project.Id,
-	}
-	if _, err := skeletonProjVars.Upsert(); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating vars for project '%s'", project.Id))
-	}
-
 	return gimlet.NewJSONResponse(struct{}{})
 }
 

@@ -311,21 +311,17 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task/{task_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskPage).Get()
 	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskPage).Get()
 	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.taskModify).Put()
-	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLoginToggleable, needsContext, viewLogs).Handler(uis.taskLog).Get()
-	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLoginToggleable, needsContext, viewLogs).Handler(uis.taskLog).Get()
-	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLoginToggleable, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
-
-	// Performance Discovery pages
-	app.AddRoute("/perfdiscovery/").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
-	app.AddRoute("/perfdiscovery/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.perfdiscoveryPage).Get()
+	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
+	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
+	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
 
 	// Test Logs
-	app.AddRoute("/test_log/{log_id}").Wrap(needsLoginToggleable, needsContext, allowsCORS).Handler(uis.testLog).Get()
-	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsLoginToggleable, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{log_id}").Wrap(needsLogin, needsContext, allowsCORS).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 	// TODO: We are keeping this route temporarily for backwards
 	// compatibility. Please use
 	// `/test_log/{task_id}/{task_execution}?test_name={test_name}`.
-	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsLoginToggleable, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
 	// Build page
 	app.AddRoute("/build/{build_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.buildPage).Get()
@@ -342,7 +338,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
-	app.AddRoute("/host/{host_id}").Wrap(needsLoginToggleable, needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, editHosts).Handler(uis.modifyHost).Put()
 	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
@@ -358,11 +354,11 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
-	app.AddRoute("/distros").Wrap(needsLoginToggleable, needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros").Wrap(needsLogin, needsContext, createDistro).Handler(uis.addDistro).Put()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLoginToggleable, needsContext, createDistro).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLoginToggleable, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLoginToggleable, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// TODO (EVG-17986): route should require pod-specific permissions.
 	app.AddRoute("/pod/{pod_id}").Wrap(needsLogin).Handler(uis.podPage).Get()
@@ -431,7 +427,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Admin routes
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminSettings).Get()
-	app.AddRoute("/admin/cleartokens").Wrap(needsLoginToggleable, adminSettings).Handler(uis.clearAllUserTokens).Post()
+	app.AddRoute("/admin/cleartokens").Wrap(needsLogin, adminSettings).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
 
 	// Plugin routes
