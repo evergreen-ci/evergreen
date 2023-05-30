@@ -490,7 +490,7 @@ func TestGetPRNotificationDescription(t *testing.T) {
 		}
 		assert.Equal(t, "none succeeded, 1 failed in 10s", b.GetPRNotificationDescription(tasks))
 	})
-	t.Run("UnfinishedEssentialTasksThatWillNotRunReturnsIncompleteBuild", func(t *testing.T) {
+	t.Run("UnscheduledEssentialTasksThatWillNotRunReturnsIncompleteBuild", func(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskSucceeded},
 			{Status: evergreen.TaskFailed},
@@ -498,7 +498,15 @@ func TestGetPRNotificationDescription(t *testing.T) {
 		}
 		assert.Equal(t, "build is incomplete - 1 required PR task(s) not scheduled", b.GetPRNotificationDescription(tasks))
 	})
-	t.Run("UnfinishedEssentialTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
+	t.Run("MixOfUnscheduledEssentialTasksAndRunningTasksReturnsIncompleteBuild", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskStarted},
+			{Status: evergreen.TaskFailed},
+			{Status: evergreen.TaskUndispatched, IsEssentialToFinish: true, Activated: false},
+		}
+		assert.Equal(t, "build is incomplete - 1 required PR task(s) not scheduled", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("RunningEssentialTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskSucceeded},
 			{Status: evergreen.TaskFailed},
@@ -506,7 +514,7 @@ func TestGetPRNotificationDescription(t *testing.T) {
 		}
 		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
 	})
-	t.Run("UnfinishedTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
+	t.Run("ScheduledTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskUndispatched, Activated: true},
 		}

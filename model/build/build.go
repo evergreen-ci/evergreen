@@ -334,8 +334,7 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 	success := 0
 	failed := 0
 	other := 0
-	unfinished := 0
-	unfinishedActivated := 0
+	runningOrWillRun := 0
 	unscheduledEssential := 0
 	for _, t := range tasks {
 		switch {
@@ -346,9 +345,8 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 			failed++
 
 		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
-			unfinished++
-			if t.Activated && !t.Blocked() && !t.IsFinished() {
-				unfinishedActivated++
+			if utility.StringSliceContains([]string{evergreen.TaskDispatched, evergreen.TaskStarted}, t.Status) || (t.Activated && !t.Blocked() && !t.IsFinished()) {
+				runningOrWillRun++
 			}
 			if t.IsUnscheduled() && t.IsEssentialToFinish {
 				unscheduledEssential++
@@ -364,13 +362,13 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 		"build_id": b.Id,
 	})
 
-	if unfinished == unscheduledEssential && unscheduledEssential > 0 {
-		// If there's only unfinished tasks left and they're all essential tasks
-		// that won't run, send a special status indicating that the patch is
-		// incomplete because they need to run.
+	if unscheduledEssential > 0 {
+		// If there are unscheduled essential tasks that won't run, send a
+		// special status indicating that the patch is incomplete until they're
+		// run.
 		return UnscheduledEssentialTasksPRBuildDescription(unscheduledEssential)
 	}
-	if unfinishedActivated > 0 {
+	if runningOrWillRun > 0 {
 		return evergreen.PRTasksRunningDescription
 	}
 

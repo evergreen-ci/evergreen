@@ -1320,7 +1320,6 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		return true, nil
 	}
 
-	// kim: TODO: manually test in GitHub PR status update
 	if evergreen.IsFinishedBuildStatus(buildStatus.status) && len(buildStatus.unfinishedEssentialTasks) > 0 {
 		// If a build has only finished/deactivated tasks but some of those
 		// deactivated tasks are essential, the build is not considered
