@@ -71,6 +71,10 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	token := c.Token
 	if token == "" {
 		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
+		t, err := thirdparty.GetInstallationToken(ctx, conf.Project.Owner, conf.Project.Repo, nil)
+		if err == nil {
+			token = t
+		}
 	}
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{

@@ -584,7 +584,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		return nil, nil
 	}
 
-	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token) {
+	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token, pRef.Owner, pRef.Repo) {
 		grip.Debug(message.Fields{
 			"source":             "GitHub hook",
 			"msg_id":             gh.msgID,

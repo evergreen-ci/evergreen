@@ -281,7 +281,7 @@ const (
 	DefaultJasperPort = 2385
 
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
-	githubAppPrivateKey        = "github_app_private_key"
+	githubAppPrivateKey        = "github_app_test_key"
 
 	VSCodePort = 2021
 

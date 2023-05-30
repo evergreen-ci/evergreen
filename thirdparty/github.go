@@ -35,6 +35,9 @@ const (
 	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
+
+	defaultOwner = "evergreen-ci"
+	defaultRepo  = "commit-queue-sandbox"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -252,12 +255,34 @@ func getGithubClientRetry(token, caller string) *http.Client {
 	)
 }
 
+func GetInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return "", errors.Wrap(err, "getting evergreen settings")
+	}
+	token, err := settings.CreateInstallationToken(ctx, owner, repo, opts)
+	if err != nil {
+		grip.Info(message.Fields{
+			"message": "creating token",
+			"ticket":  "EVG-19966",
+			"owner":   owner,
+			"repo":    repo,
+			"err":     err.Error(),
+		})
+		return "", errors.Wrap(err, "installation token")
+	}
+	return token, nil
+}
+
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
-	httpClient := getGithubClientRetry(oauthToken, "GetGithubCommits")
+func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "GetGithubCommits")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
+
 	options := github.CommitsListOptions{
 		SHA: ref,
 		ListOptions: github.ListOptions{
@@ -271,8 +296,32 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 	commits, resp, err := client.Repositories.ListCommits(ctx, owner, repo, &options)
 	if resp != nil {
 		defer resp.Body.Close()
+		if err == nil {
+			return commits, resp.NextPage, nil
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get commits from GitHub",
+		"caller":  "GetGithubCommits",
+		"owner":   owner,
+		"repo":    repo,
+		"options": options,
+		"resp":    resp,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetGithubCommits")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	commits, newResp, err := client.Repositories.ListCommits(ctx, owner, repo, &options)
+	if newResp != nil {
+		defer newResp.Body.Close()
 		if err != nil {
-			return nil, 0, parseGithubErrorResponse(resp)
+			return nil, 0, parseGithubErrorResponse(newResp)
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from query for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
@@ -280,7 +329,7 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 		return nil, 0, APIResponseError{errMsg}
 	}
 
-	return commits, resp.NextPage, nil
+	return commits, newResp.NextPage, nil
 }
 
 func parseGithubErrorResponse(resp *github.Response) error {
@@ -297,8 +346,10 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
-func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref string) (*github.RepositoryContent, error) {
-	httpClient := getGithubClientRetry(oauthToken, "GetGithubFile")
+func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*github.RepositoryContent, error) {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "GetGithubFile")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -312,11 +363,36 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref strin
 	file, _, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opt)
 	if resp != nil {
 		defer resp.Body.Close()
-		if resp.StatusCode == http.StatusNotFound {
+		if err == nil && file != nil && file.Content != nil {
+			return file, nil
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get file from GitHub",
+		"caller":  "GetGithubFile",
+		"owner":   owner,
+		"repo":    repo,
+		"path":    path,
+		"options": opt,
+		"resp":    resp,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetGithubFile")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	file, _, newResp, err := client.Repositories.GetContents(ctx, owner, repo, path, opt)
+	if newResp != nil {
+		defer newResp.Body.Close()
+		if newResp.StatusCode == http.StatusNotFound {
 			return nil, FileNotFoundError{filepath: path}
 		}
 		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
+			return nil, parseGithubErrorResponse(newResp)
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
@@ -389,20 +465,46 @@ func SendPendingStatusToGithub(input SendGithubStatusInput) error {
 
 // GetGithubMergeBaseRevision compares baseRevision and currentCommitHash in a
 // GitHub repo and returns the merge base commit's SHA.
-func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
-	httpClient := getGithubClientRetry(oauthToken, "GetGithubMergeBaseRevision")
+func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision, currentCommitHash string) (string, error) {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "GetGithubMergeBaseRevision")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
-	compare, resp, err := client.Repositories.CompareCommits(ctx,
-		repoOwner, repo, baseRevision, currentCommitHash, nil)
+	compare, resp, err := client.Repositories.CompareCommits(ctx, owner, repo, baseRevision, currentCommitHash, nil)
 	if resp != nil {
 		defer resp.Body.Close()
+		if err == nil && compare != nil && compare.GetMergeBaseCommit() != nil && compare.GetMergeBaseCommit().GetSHA() != "" {
+			return compare.GetMergeBaseCommit().GetSHA(), nil
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get github merge base revision",
+		"caller":  "GetGithubMergeBaseRevision",
+		"owner":   owner,
+		"repo":    repo,
+		"base":    baseRevision,
+		"current": currentCommitHash,
+		"resp":    resp,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetGithubMergeBaseRevision")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	compare, newResp, err := client.Repositories.CompareCommits(ctx, owner, repo, baseRevision, currentCommitHash, nil)
+	if newResp != nil {
+		defer newResp.Body.Close()
 		if err != nil {
-			return "", parseGithubErrorResponse(resp)
+			return "", parseGithubErrorResponse(newResp)
 		}
 	} else {
-		apiErr := errors.Errorf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", repoOwner, repo, baseRevision, currentCommitHash, err)
+		apiErr := errors.Errorf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", owner, repo, baseRevision, currentCommitHash, err)
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":             "failed to compare commits to find merge base commit",
 			"op":                  "GetGithubMergeBaseRevision",
@@ -421,28 +523,54 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 	return *compare.MergeBaseCommit.SHA, nil
 }
 
-func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash string) (*github.RepositoryCommit, error) {
-	httpClient := getGithubClientRetry(oauthToken, "GetCommitEvent")
+func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*github.RepositoryCommit, error) {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "GetCommitEvent")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	grip.Info(message.Fields{
 		"message": "requesting commit from github",
 		"commit":  githash,
-		"repo":    repoOwner + "/" + repo,
+		"repo":    owner + "/" + repo,
 	})
 
-	commit, resp, err := client.Repositories.GetCommit(ctx, repoOwner, repo, githash, nil)
+	commit, resp, err := client.Repositories.GetCommit(ctx, owner, repo, githash, nil)
 	if resp != nil {
 		defer resp.Body.Close()
+		if err == nil && commit != nil {
+			return commit, nil
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get github commit",
+		"caller":  "GetCommitEvent",
+		"owner":   owner,
+		"repo":    repo,
+		"commit":  githash,
+		"resp":    resp,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetCommitEvent")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	commit, newResp, err := client.Repositories.GetCommit(ctx, owner, repo, githash, nil)
+	if newResp != nil {
+		defer newResp.Body.Close()
 		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
+			return nil, parseGithubErrorResponse(newResp)
 		}
 	} else {
-		err = errors.Wrapf(err, "nil response from repo %s/%s for %s", repoOwner, repo, githash)
+		err = errors.Wrapf(err, "nil response from repo %s/%s for %s", owner, repo, githash)
 		grip.Error(message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
-			"repo":    repoOwner + "/" + repo,
+			"repo":    owner + "/" + repo,
 			"message": "problem querying repo",
 		}))
 		return nil, APIResponseError{err.Error()}
@@ -453,7 +581,7 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 		"size":      resp.ContentLength,
 		"status":    resp.Status,
 		"query":     githash,
-		"repo":      repoOwner + "/" + repo,
+		"repo":      owner + "/" + repo,
 	}
 	if commit != nil && commit.SHA != nil {
 		msg["commit"] = *commit.SHA
@@ -468,22 +596,48 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 }
 
 // GetCommitDiff gets the diff of the specified commit via an API call to GitHub
-func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string) (string, error) {
-	httpClient := getGithubClientRetry(oauthToken, "GetCommitDiff")
+func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string, error) {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "GetCommitDiff")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
-	commit, resp, err := client.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: github.Diff})
+	commit, resp, err := client.Repositories.GetCommitRaw(ctx, owner, repo, sha, github.RawOptions{Type: github.Diff})
 	if resp != nil {
 		defer resp.Body.Close()
+		if err == nil {
+			return commit, nil
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get commit diff",
+		"caller":  "GetCommitDiff",
+		"owner":   owner,
+		"repo":    repo,
+		"commit":  sha,
+		"resp":    resp,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetCommitDiff")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	commit, newResp, err := client.Repositories.GetCommitRaw(ctx, owner, repo, sha, github.RawOptions{Type: github.Diff})
+	if newResp != nil {
+		defer newResp.Body.Close()
 		if err != nil {
-			return "", parseGithubErrorResponse(resp)
+			return "", parseGithubErrorResponse(newResp)
 		}
 	} else {
-		errMsg := fmt.Sprintf("nil response from '%s/%s': sha: '%s': %v", repoOwner, repo, sha, err)
+		errMsg := fmt.Sprintf("nil response from '%s/%s': sha: '%s': %v", owner, repo, sha, err)
 		grip.Error(message.Fields{
 			"message": errMsg,
-			"owner":   repoOwner,
+			"owner":   owner,
 			"repo":    repo,
 			"sha":     sha,
 		})
@@ -494,21 +648,47 @@ func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string)
 }
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
-func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch string) (*github.Branch, error) {
-	httpClient := getGithubClientRetry(oauthToken, "GetBranchEvent")
+func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*github.Branch, error) {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "GetBranchEvent")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
-	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", repoOwner, repo, branch)
-
-	branchEvent, resp, err := client.Repositories.GetBranch(ctx, repoOwner, repo, branch, false)
+	branchEvent, resp, err := client.Repositories.GetBranch(ctx, owner, repo, branch, false)
 	if resp != nil {
 		defer resp.Body.Close()
+		if err == nil {
+			return branchEvent, nil
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get github branch",
+		"caller":  "GetBranchEvent",
+		"owner":   owner,
+		"repo":    repo,
+		"branch":  branch,
+		"resp":    resp,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetBranchEvent")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
+
+	branchEvent, newResp, err := client.Repositories.GetBranch(ctx, owner, repo, branch, false)
+	if newResp != nil {
+		defer newResp.Body.Close()
 		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
+			return nil, parseGithubErrorResponse(newResp)
 		}
 	} else {
-		errMsg := fmt.Sprintf("nil response from github for '%s/%s': branch: '%s': %v", repoOwner, repo, branch, err)
+		errMsg := fmt.Sprintf("nil response from github for '%s/%s': branch: '%s': %v", owner, repo, branch, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
@@ -653,23 +833,52 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 }
 
 // GetTaggedCommitFromGithub gets the commit SHA for the given tag name.
-func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag string) (string, error) {
-	client := getGithubClientRetry(oauthToken, "GetTaggedCommitFromGithub")
-	defer utility.PutHTTPClient(client)
+func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag string) (string, error) {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
 
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
-	resp, err := client.Get(url)
+	httpClient := getGithubClientRetry(installationToken, "GetTaggedCommitFromGithub")
+	defer utility.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	tags, resp, err := client.Repositories.ListTags(ctx, owner, repo, nil)
 	if resp != nil {
 		defer resp.Body.Close()
+		if err == nil {
+			for _, t := range tags {
+				if t.GetName() == tag {
+					return t.GetCommit().GetSHA(), nil
+				}
+			}
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get tagged commit from github",
+		"caller":  "GetTaggedCommitFromGithub",
+		"owner":   owner,
+		"repo":    repo,
+		"resp":    resp,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetTaggedCommitFromGithub")
+	defer utility.PutHTTPClient(legacyClient)
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
+	newResp, err := legacyClient.Get(url)
+	if newResp != nil {
+		defer newResp.Body.Close()
 	}
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get tag information from GitHub")
 	}
-	if resp == nil {
+	if newResp == nil {
 		return "", errors.New("invalid github response")
 	}
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(newResp.Body)
 	if err != nil {
 		return "", ResponseReadError{err.Error()}
 	}
@@ -686,7 +895,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 		// lightweight tags are pointers to the commit itself
 		sha = tagSha
 	case tagObjectType:
-		githubClient := github.NewClient(client)
+		githubClient := github.NewClient(legacyClient)
 		annotatedTagResp, _, err = githubClient.Git.GetTag(ctx, owner, repo, tagSha)
 		if err != nil {
 			return "", errors.Wrapf(err, "error getting tag '%s' with SHA '%s'", tag, tagSha)
@@ -703,10 +912,42 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 	return sha, nil
 }
 
-func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken string) bool {
-	httpClient := getGithubClientRetry(oauthToken, "IsUserInGithubTeam")
+func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken, owner, repo string) bool {
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "IsUserInGithubTeam")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
+
+	catcher := grip.NewBasicCatcher()
+	for _, team := range teams {
+		//suppress error because it's not informative
+		membership, _, err := client.Teams.GetTeamMembershipBySlug(ctx, org, team, user)
+		if err != nil {
+			catcher.Add(err)
+			break
+		}
+		if membership != nil && membership.GetState() == "active" {
+			return true
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get github team membership",
+		"caller":  "IsUserInGithubTeam",
+		"owner":   owner,
+		"repo":    repo,
+		"org":     org,
+		"user":    user,
+		"teams":   teams,
+		"error":   catcher.Resolve(),
+	})
+
+	legacyClient := getGithubClientRetry(oauthToken, "IsUserInGithubTeam")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
 
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
@@ -771,15 +1012,31 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 }
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining
-func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) {
-	httpClient := getGithubClientRetry(oauthToken, "CheckGithubAPILimit")
+func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
+	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "CheckGithubAPILimit")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
-	limits, resp, err := client.RateLimits(ctx)
-	if resp != nil {
-		defer resp.Body.Close()
+	limits, _, err := client.RateLimits(ctx)
+	if err == nil && limits.Core != nil && limits.Core.Remaining >= 0 {
+		return int64(limits.Core.Remaining), nil
 	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to check github limit",
+		"caller":  "CheckGithubAPILimit",
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "CheckGithubAPILimit")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	limits, _, err = client.RateLimits(ctx)
 	if err != nil {
 		grip.Errorf("github GET rate limit failed: %+v", err)
 		return 0, err
@@ -796,12 +1053,32 @@ func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) 
 }
 
 // GetGithubUser fetches the github user with the given login name
-func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.User, error) {
-	httpClient := getGithubClientRetry(oauthToken, "GetGithubUser")
+func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, error) {
+	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+
+	httpClient := getGithubClientRetry(installationToken, "GetGithubUser")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	user, _, err := client.Users.Get(ctx, loginName)
+	if err == nil && user != nil && user.ID != nil && user.Login != nil {
+		return user, nil
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":     "EVG-19966",
+		"message":    "failed to github user",
+		"caller":     "GetGithubUser",
+		"login_name": loginName,
+		"error":      err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "GetGithubUser")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	user, _, err = client.Users.Get(ctx, loginName)
 	if err != nil {
 		return nil, err
 	}
@@ -817,34 +1094,81 @@ func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.U
 // given organization. The user with the attached token must have
 // visibility into organization membership, including private members
 func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
-	httpClient := getGithubClientRetry(token, "GithubUserInOrganization")
-	defer utility.PutHTTPClient(httpClient)
+	// opt := &github.InstallationTokenOptions{
+	// 	Permissions: &github.InstallationPermissions{
+	// 		Members: utility.ToStringPtr("read"),
+	// 	},
+	// }
+	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
 
+	httpClient := getGithubClientRetry(installationToken, "GithubUserInOrganization")
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
-	// doesn't count against API limits
-	limits, _, err := client.RateLimits(ctx)
-	if err != nil {
-		return false, err
-	}
-	if limits == nil || limits.Core == nil {
-		return false, errors.New("rate limits response was empty")
-	}
-	if limits.Core.Remaining < 3 {
-		return false, errors.New("github rate limit would be exceeded")
+	isMember, resp, err := client.Organizations.IsMember(context.Background(), requiredOrganization, username)
+	if err == nil {
+		return isMember, nil
 	}
 
-	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, username)
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":   "EVG-19966",
+		"message":  "failed to check if user is in github organization",
+		"caller":   "GithubUserInOrganization",
+		"org":      requiredOrganization,
+		"username": username,
+		"response": resp,
+		"error":    err.Error(),
+	})
+
+	// legacyClient := getGithubClientRetry(token, "GithubUserInOrganization")
+	// defer utility.PutHTTPClient(legacyClient)
+	// client = github.NewClient(legacyClient)
+
+	// // doesn't count against API limits
+	// limits, _, err := client.RateLimits(ctx)
+	// if err != nil {
+	// 	return false, err
+	// }
+	// if limits == nil || limits.Core == nil {
+	// 	return false, errors.New("rate limits response was empty")
+	// }
+	// if limits.Core.Remaining < 3 {
+	// 	return false, errors.New("github rate limit would be exceeded")
+	// }
+
+	// isMember, _, err = client.Organizations.IsMember(context.Background(), requiredOrganization, username)
 	return isMember, err
 }
 
 // AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
 // and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
 func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
-	httpClient := getGithubClientRetry(token, "AppAuthorizedForOrg")
-	defer utility.PutHTTPClient(httpClient)
+	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
 
+	httpClient := getGithubClientRetry(installationToken, "AppAuthorizedForOrg")
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
+
+	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, name)
+	if err == nil {
+		return isMember, nil
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to check if app is authorized for org",
+		"caller":  "AppAuthorizedForOrg",
+		"org":     requiredOrganization,
+		"app":     name,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetry(token, "AppAuthorizedForOrg")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
 	opts := &github.ListOptions{PerPage: 100}
 	for {
 		installations, resp, err := client.Organizations.ListInstallations(ctx, requiredOrganization, opts)
@@ -873,66 +1197,153 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 }
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GithubUserPermissionLevel")
-	defer utility.PutHTTPClient(httpClient)
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
 
+	httpClient := getGithubClientRetryWith404s(installationToken, "GithubUserPermissionLevel")
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	permissionLevel, _, err := client.Repositories.GetPermissionLevel(ctx, owner, repo, username)
+	// fallback to not using github app on error
+	if err == nil && permissionLevel != nil && permissionLevel.Permission != nil {
+		return permissionLevel.GetPermission(), nil
+	}
+
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get permissions from GitHub",
+		"caller":  "GithubUserPermissionLevel",
+		"owner":   owner,
+		"repo":    repo,
+		"user":    username,
+		"error":   err.Error(),
+	})
+
+	legacyClient := getGithubClientRetryWith404s(token, "GithubUserPermissionLevel")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	permissionLevel, _, err = client.Repositories.GetPermissionLevel(ctx, owner, repo, username)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get permissions from GitHub")
 	}
+
 	if permissionLevel == nil || permissionLevel.Permission == nil {
 		return "", errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
-	return *permissionLevel.Permission, nil
+	return permissionLevel.GetPermission(), nil
 }
 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
 func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch) (string, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetPullRequestMergeBase")
-	defer utility.PutHTTPClient(httpClient)
+	installationToken, _ := GetInstallationToken(ctx, data.BaseOwner, data.BaseRepo, nil)
 
+	httpClient := getGithubClientRetryWith404s(installationToken, "GetPullRequestMergeBase")
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	commits, _, err := client.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+	// fallback to not using github app on error
 	if err != nil {
-		return "", err
+		grip.Debug(message.Fields{
+			"ticket":    "EVG-19966",
+			"message":   "failed to get commits from GitHub",
+			"caller":    "GetPullRequestMergeBase",
+			"owner":     data.BaseOwner,
+			"repo":      data.BaseRepo,
+			"pr_number": data.PRNumber,
+			"error":     err.Error(),
+		})
+
+		legacyClient := getGithubClientRetryWith404s(token, "GetPullRequestMergeBase")
+		defer utility.PutHTTPClient(legacyClient)
+		client = github.NewClient(legacyClient)
+
+		commits, _, err = client.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+		if err != nil {
+			return "", err
+		}
 	}
+
 	if len(commits) == 0 {
 		return "", errors.New("No commits received from github")
 	}
-	if commits[0].SHA == nil {
+	if commits[0].GetSHA() == "" {
 		return "", errors.New("hash is missing from pull request commit list")
 	}
 
-	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA, nil)
+	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, commits[0].GetSHA(), nil)
+	// fallback to not using github app on error
 	if err != nil {
-		return "", err
+		grip.Debug(message.Fields{
+			"ticket":  "EVG-19966",
+			"message": "failed to get commit from GitHub",
+			"caller":  "GetPullRequestMergeBase",
+			"owner":   data.BaseOwner,
+			"repo":    data.BaseRepo,
+			"error":   err.Error(),
+			"commit":  commits[0].GetSHA(),
+		})
+
+		legacyClient := getGithubClientRetryWith404s(token, "GetPullRequestMergeBase")
+		defer utility.PutHTTPClient(legacyClient)
+		client = github.NewClient(legacyClient)
+
+		commit, _, err = client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, commits[0].GetSHA(), nil)
+		if err != nil {
+			return "", err
+		}
 	}
+
 	if commit == nil {
 		return "", errors.New("couldn't find commit")
 	}
 	if len(commit.Parents) == 0 {
 		return "", errors.New("can't find pull request branch point")
 	}
-	if commit.Parents[0].SHA == nil {
+	if commit.Parents[0].GetSHA() == "" {
 		return "", errors.New("parent hash is missing")
 	}
 
-	return *commit.Parents[0].SHA, nil
+	return commit.Parents[0].GetSHA(), nil
 }
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequest")
-	defer utility.PutHTTPClient(httpClient)
+	opt := &github.InstallationTokenOptions{
+		Permissions: &github.InstallationPermissions{
+			PullRequests: utility.ToStringPtr("read"),
+		},
+	}
+	installationToken, _ := GetInstallationToken(ctx, baseOwner, baseRepo, opt)
 
+	httpClient := getGithubClientRetryWith404s(installationToken, "GetGithubPullRequest")
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	pr, _, err := client.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
+	if err == nil {
+		return pr, nil
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":    "EVG-19966",
+		"message":   "failed to get pull request from GitHub",
+		"caller":    "GetGithubPullRequest",
+		"owner":     baseOwner,
+		"repo":      baseRepo,
+		"pr_number": prNumber,
+		"error":     err.Error(),
+	})
+
+	legacyClient := getGithubClientRetryWith404s(token, "GetGithubPullRequest")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	pr, _, err = client.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -942,14 +1353,33 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestDiff")
+	installationToken, _ := GetInstallationToken(ctx, gh.BaseOwner, gh.BaseRepo, nil)
 
+	httpClient := getGithubClientRetryWith404s(installationToken, "GetGithubPullRequestDiff")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	diff, _, err := client.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
+	// fallback to not using github app on error
 	if err != nil {
-		return "", nil, err
+		grip.Debug(message.Fields{
+			"ticket":    "EVG-19966",
+			"message":   "failed to get pull request diff from GitHub",
+			"caller":    "GetGithubPullRequestDiff",
+			"owner":     gh.BaseOwner,
+			"repo":      gh.BaseRepo,
+			"pr_number": gh.PRNumber,
+			"error":     err.Error(),
+		})
+
+		legacyClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestDiff")
+		defer utility.PutHTTPClient(legacyClient)
+		client = github.NewClient(legacyClient)
+
+		diff, _, err = client.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
+		if err != nil {
+			return "", nil, err
+		}
 	}
 
 	summaries, err := GetPatchSummaries(diff)
@@ -1087,18 +1517,17 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 }
 
 // CreateGithubHook creates a new GitHub webhook for a repo.
-func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner string, repo string) (*github.Hook, error) {
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, err
-	}
+func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
+	installationToken, _ := settings.CreateInstallationToken(ctx, owner, repo, nil)
+
 	if settings.Api.GithubWebhookSecret == "" {
 		return nil, errors.New("Evergreen is not configured for GitHub Webhooks")
 	}
 
-	httpClient := getGithubClient(token, "CreateGithubHook")
+	httpClient := getGithubClient(installationToken, "CreateGithubHook")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
+
 	hookObj := github.Hook{
 		Active: github.Bool(true),
 		Events: []string{"*"},
@@ -1111,9 +1540,40 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner st
 	}
 
 	respHook, resp, err := client.Repositories.CreateHook(ctx, owner, repo, &hookObj)
-	if err != nil {
-		return nil, err
+	if resp != nil {
+		defer resp.Body.Close()
+		if err == nil && resp.StatusCode == http.StatusCreated && respHook != nil && respHook.ID != nil {
+			return respHook, nil
+		}
 	}
+
+	// fallback to not using github app on error
+	if err != nil {
+		grip.Debug(message.Fields{
+			"ticket":  "EVG-19966",
+			"message": "failed to create hook",
+			"caller":  "CreateGithubHook",
+			"owner":   owner,
+			"repo":    repo,
+			"error":   err.Error(),
+			"hook":    hookObj,
+		})
+
+		token, err := settings.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting github oauth token")
+		}
+
+		legacyClient := getGithubClient(token, "CreateGithubHook")
+		defer utility.PutHTTPClient(legacyClient)
+		client = github.NewClient(legacyClient)
+
+		respHook, resp, err = client.Repositories.CreateHook(ctx, owner, repo, &hookObj)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
 		return nil, errors.New("unexpected data from GitHub")
@@ -1124,18 +1584,37 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner st
 // GetExistingGithubHook gets information from GitHub about an existing webhook
 // for a repo.
 func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GitHub token")
-	}
+	installationToken, _ := settings.CreateInstallationToken(ctx, owner, repo, nil)
 
-	httpClient := getGithubClient(token, "ListGithubHooks")
+	httpClient := getGithubClient(installationToken, "GetExistingGithubHook")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	respHooks, _, err := client.Repositories.ListHooks(ctx, owner, repo, nil)
+	// fallback to not using github app on error
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting hooks for owner '%s', repo '%s'", owner, repo)
+		grip.Debug(message.Fields{
+			"ticket":  "EVG-19966",
+			"message": "failed to get existing hook",
+			"caller":  "GetExistingGithubHook",
+			"owner":   owner,
+			"repo":    repo,
+			"error":   err.Error(),
+		})
+
+		token, err := settings.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting github oauth token")
+		}
+
+		legacyClient := getGithubClient(token, "GetExistingGithubHook")
+		defer utility.PutHTTPClient(legacyClient)
+		client = github.NewClient(legacyClient)
+
+		respHooks, _, err = client.Repositories.ListHooks(ctx, owner, repo, nil)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting hooks for owner '%s', repo '%s'", owner, repo)
+		}
 	}
 
 	url := fmt.Sprintf(githubHookURL, settings.ApiUrl)
@@ -1151,14 +1630,39 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 // MergePullRequest attempts to merge the given pull request. If commits are merged one after another, Github may
 // not have updated that this can be merged, so we allow retries.
 func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
-	httpClient := getGithubClient(token, "MergePullRequest")
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClient(installationToken, "MergePullRequest")
 	defer utility.PutHTTPClient(httpClient)
-	githubClient := github.NewClient(httpClient)
-	res, _, err := githubClient.PullRequests.Merge(ctx, owner, repo,
+	client := github.NewClient(httpClient)
+
+	res, _, err := client.PullRequests.Merge(ctx, owner, repo, prNum, commitMessage, mergeOpts)
+	if err == nil && res.GetMerged() {
+		return nil
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":         "EVG-19966",
+		"message":        "failed to merge pull request",
+		"caller":         "MergePullRequest",
+		"owner":          owner,
+		"repo":           repo,
+		"pr_number":      prNum,
+		"commit_message": commitMessage,
+		"error":          err.Error(),
+	})
+
+	legacyClient := getGithubClient(token, "MergePullRequest")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	res, _, err = client.PullRequests.Merge(ctx, owner, repo,
 		prNum, commitMessage, mergeOpts)
 	if err != nil {
 		return errors.Wrap(err, "accessing GitHub merge API")
 	}
+
 	if !res.GetMerged() {
 		return errors.Errorf("GitHub refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
 	}
@@ -1167,19 +1671,47 @@ func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage str
 
 // PostCommentToPullRequest posts the given comment to the associated PR.
 func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, prNum int, comment string) error {
-	httpClient := getGithubClient(token, "PostCommentToPullRequest")
+	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
+
+	httpClient := getGithubClient(installationToken, "PostCommentToPullRequest")
 	defer utility.PutHTTPClient(httpClient)
-	githubClient := github.NewClient(httpClient)
+	client := github.NewClient(httpClient)
 
 	githubComment := &github.IssueComment{
 		Body: &comment,
 	}
-	respComment, resp, err := githubClient.Issues.CreateComment(ctx, owner, repo, prNum, githubComment)
+
+	respComment, resp, err := client.Issues.CreateComment(ctx, owner, repo, prNum, githubComment)
+	if resp != nil {
+		defer resp.Body.Close()
+		if err == nil && resp.StatusCode == http.StatusCreated && respComment != nil && respComment.ID != nil {
+			return nil
+		}
+	}
+
+	// fallback to not using github app on error
+	grip.Debug(message.Fields{
+		"ticket":         "EVG-19966",
+		"message":        "failed to create comment",
+		"caller":         "PostCommentToPullRequest",
+		"owner":          owner,
+		"repo":           repo,
+		"pr_number":      prNum,
+		"github_comment": githubComment,
+		"error":          err.Error(),
+	})
+
+	legacyClient := getGithubClient(token, "PostCommentToPullRequest")
+	defer utility.PutHTTPClient(legacyClient)
+	client = github.NewClient(legacyClient)
+
+	respComment, newResp, err := client.Issues.CreateComment(ctx, owner, repo, prNum, githubComment)
 	if err != nil {
 		return errors.Wrap(err, "can't access GitHub merge API")
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
+
+	defer newResp.Body.Close()
+	if newResp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
 		return errors.New("unexpected data from GitHub")
 	}
 	return nil

@@ -879,11 +879,12 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 }
 
 type APIGithubAuthConfig struct {
-	ClientId     *string   `json:"client_id"`
-	ClientSecret *string   `json:"client_secret"`
-	Users        []*string `json:"users"`
-	Organization *string   `json:"organization"`
-	AppId        int64     `json:"app_id"`
+	ClientId      *string   `json:"client_id"`
+	ClientSecret  *string   `json:"client_secret"`
+	Users         []*string `json:"users"`
+	Organization  *string   `json:"organization"`
+	AppId         int64     `json:"app_id"`
+	AppPrivateKey *string   `json:"app_private_key"`
 }
 
 func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
@@ -896,6 +897,7 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Organization = utility.ToStringPtr(v.Organization)
 		a.AppId = v.AppId
+		a.AppPrivateKey = utility.ToStringPtr(v.AppPrivateKey)
 		for _, u := range v.Users {
 			a.Users = append(a.Users, utility.ToStringPtr(u))
 		}
@@ -910,10 +912,11 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.GithubAuthConfig{
-		ClientId:     utility.FromStringPtr(a.ClientId),
-		ClientSecret: utility.FromStringPtr(a.ClientSecret),
-		Organization: utility.FromStringPtr(a.Organization),
-		AppId:        a.AppId,
+		ClientId:      utility.FromStringPtr(a.ClientId),
+		ClientSecret:  utility.FromStringPtr(a.ClientSecret),
+		Organization:  utility.FromStringPtr(a.Organization),
+		AppId:         a.AppId,
+		AppPrivateKey: utility.FromStringPtr(a.AppPrivateKey),
 	}
 	for _, u := range a.Users {
 		config.Users = append(config.Users, utility.FromStringPtr(u))
