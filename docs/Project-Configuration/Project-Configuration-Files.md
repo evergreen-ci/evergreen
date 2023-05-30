@@ -897,7 +897,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](Project-Commands.md#generate-tasks)
+[generate.tasks](Project-Commands.md#generatetasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
@@ -1363,7 +1363,7 @@ parameters are available:
     not be automatically pulled in to the version.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
-    [`generate.tasks`](Project-Commands.md#generate-tasks) command), then generated tasks will not be included
+    [`generate.tasks`](Project-Commands.md#generatetasks) command), then generated tasks will not be included
     as dependencies.
 
 So, for example:
