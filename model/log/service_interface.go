@@ -7,10 +7,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-type logService interface {
+type logService interface { //nolint:unused
 	GetTaskLogs(context.Context, TaskOptions, GetOptions) (LogIterator, error)
 }
 
-func getServiceImpl(env evergreen.Environment, serviceVersion int) (logService, error) {
+func getServiceImpl(env evergreen.Environment, serviceVersion int) (logService, error) { //nolint:unused
 	return nil, errors.New("not implemented")
 }
