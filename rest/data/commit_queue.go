@@ -433,14 +433,6 @@ func checkPRIsMergeable(ctx context.Context, sc Connector, pr *github.PullReques
 				return pr, err
 			}
 			pr = refreshedPR
-			grip.Debug(message.Fields{
-				"message":            "calling refresh from commit queue",
-				"ticket":             "EVG-19827",
-				"owner":              info.Owner,
-				"repo":               info.Repo,
-				"pr":                 pr,
-				"new_mergeble_state": pr.GetMergeableState(),
-			})
 		}
 	}
 
