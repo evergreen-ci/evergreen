@@ -17,8 +17,7 @@ type LogLine struct {
 	Data      string
 }
 
-// GetTaskLogs returns the logs from a specific task run specified by the get
-// options.
+// GetTaskLogs returns the logs from a task run specified by the options.
 func GetTaskLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, opts GetOptions) (LogIterator, error) {
 	return nil, errors.New("not implemented")
 }
