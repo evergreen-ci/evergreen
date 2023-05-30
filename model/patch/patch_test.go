@@ -166,7 +166,7 @@ func (s *patchSuite) TestMakeMergePatch() {
 	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias, "title", "message")
 	s.NoError(err)
 	s.Equal("mci", p.Project)
-	s.Equal(evergreen.PatchCreated, p.Status)
+	s.Equal(evergreen.VersionCreated, p.Status)
 	s.Equal(*pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
 	s.Equal("title", p.GithubPatchData.CommitTitle)
 	s.Equal("message", p.GithubPatchData.CommitMessage)
@@ -946,22 +946,22 @@ func TestSetChildPatches(t *testing.T) {
 }
 
 func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
-	successful := []string{evergreen.PatchSucceeded}
-	assert.Equal(t, evergreen.PatchSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
+	successful := []string{evergreen.VersionSucceeded}
+	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromStatuses(successful))
 
-	failed := []string{evergreen.PatchSucceeded, evergreen.PatchFailed}
-	assert.Equal(t, evergreen.PatchFailed, GetCollectiveStatusFromPatchStatuses(failed))
+	failed := []string{evergreen.VersionSucceeded, evergreen.VersionFailed}
+	assert.Equal(t, evergreen.VersionFailed, GetCollectiveStatusFromStatuses(failed))
 
-	started := []string{evergreen.PatchStarted, evergreen.PatchSucceeded, evergreen.PatchFailed}
-	assert.Equal(t, evergreen.PatchStarted, GetCollectiveStatusFromPatchStatuses(started))
+	started := []string{evergreen.VersionStarted, evergreen.VersionSucceeded, evergreen.VersionFailed}
+	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromStatuses(started))
 
-	started = []string{evergreen.PatchCreated, evergreen.PatchSucceeded, evergreen.PatchFailed}
-	assert.Equal(t, evergreen.PatchStarted, GetCollectiveStatusFromPatchStatuses(started))
+	started = []string{evergreen.VersionCreated, evergreen.VersionSucceeded, evergreen.VersionFailed}
+	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromStatuses(started))
 
-	aborted := []string{evergreen.PatchSucceeded, evergreen.PatchAborted}
-	assert.Equal(t, evergreen.PatchAborted, GetCollectiveStatusFromPatchStatuses(aborted))
+	aborted := []string{evergreen.VersionSucceeded, evergreen.VersionAborted}
+	assert.Equal(t, evergreen.VersionAborted, GetCollectiveStatusFromStatuses(aborted))
 
-	created := []string{evergreen.PatchCreated}
-	assert.Equal(t, evergreen.PatchCreated, GetCollectiveStatusFromPatchStatuses(created))
+	created := []string{evergreen.VersionCreated}
+	assert.Equal(t, evergreen.VersionCreated, GetCollectiveStatusFromStatuses(created))
 
 }

@@ -120,17 +120,13 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		}
 
 		// Look at collective status because we don't know whether the last patch to finish in the version was a child or a parent.
-		patchStatus, err := p.CollectiveStatus()
+		versionStatus, err = p.CollectiveStatus()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
 		}
-		versionStatus, err = evergreen.PatchStatusToVersionStatus(patchStatus)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting version status for collective status '%s'", patchStatus)
-		}
+
 		grip.NoticeWhen(versionStatus != t.data.Status, message.Fields{
 			"message":                   "patch's current collective status does not match the version event data's status",
-			"patch_collective_status":   patchStatus,
 			"version_collective_status": versionStatus,
 			"version_event_status":      t.data.Status,
 			"patch_and_version_id":      t.version.Id,
@@ -166,8 +162,8 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		finishTime = time.Now() // this might be true for GitHub check statuses
 	}
 	slackColor := evergreenFailColor
-	if data.PastTenseStatus == evergreen.VersionSucceeded {
-		data.PastTenseStatus = "succeeded"
+	if evergreen.IsSuccessfulVersionStatus(data.PastTenseStatus) {
+		data.PastTenseStatus = evergreen.VersionSucceeded // TODO: Remove in EVG-20032 (as this will guarantee that PastTenseStatus is past tense)
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
 		data.githubDescription = fmt.Sprintf("version finished in %s", finishTime.Sub(t.version.StartTime).String())
@@ -204,7 +200,7 @@ func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride st
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if (t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed) || t.event.EventType == event.VersionChildrenCompletion {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
@@ -212,7 +208,7 @@ func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification
 }
 
 func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.GithubCheckStatus != evergreen.VersionSucceeded && t.data.GithubCheckStatus != evergreen.VersionFailed {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -243,7 +239,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 }
 
 func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType == event.VersionChildrenCompletion {
+	if !evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
@@ -251,7 +247,7 @@ func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification
 }
 
 func (t *versionTriggers) versionExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
 	thresholdString, ok := sub.TriggerData[event.VersionDurationKey]
@@ -270,7 +266,7 @@ func (t *versionTriggers) versionExceedsDuration(sub *event.Subscription) (*noti
 	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
 }
 func (t *versionTriggers) versionFamilyOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
 	if t.event.EventType != event.VersionChildrenCompletion {
@@ -304,7 +300,7 @@ func (t *versionTriggers) versionFamilyFailure(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionFamilySuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType != event.VersionChildrenCompletion {
+	if !evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
@@ -312,7 +308,7 @@ func (t *versionTriggers) versionFamilySuccess(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
 	percentString, ok := sub.TriggerData[event.VersionPercentChangeKey]

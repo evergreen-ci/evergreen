@@ -1406,10 +1406,10 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 		return nil
 	}
 
-	_, githubBuildStatus := getVersionActivationAndStatus(githubStatusBuilds)
+	_, githubVersionStatus := getVersionActivationAndStatus(githubStatusBuilds)
 
-	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
-		event.LogVersionGithubCheckFinishedEvent(v.Id, githubBuildStatus)
+	if evergreen.IsFinishedVersionStatus(githubVersionStatus) {
+		event.LogVersionGithubCheckFinishedEvent(v.Id, githubVersionStatus)
 	}
 
 	return nil
@@ -1471,9 +1471,10 @@ func updateVersionStatus(v *Version) (string, error) {
 
 // UpdatePatchStatus updates the status of a patch.
 func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
-	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
-	if err != nil {
-		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
+	patchStatus := versionStatus
+	// Resolve legacy status (to be removed in EVG-20032)
+	if patchStatus == evergreen.LegacyVersionSucceeded {
+		patchStatus = evergreen.VersionSucceeded
 	}
 
 	if patchStatus == p.Status {
@@ -1482,11 +1483,11 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 
 	event.LogPatchStateChangeEvent(p.Version, patchStatus)
 
-	if evergreen.IsFinishedPatchStatus(patchStatus) {
-		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
+	if evergreen.IsFinishedVersionStatus(patchStatus) {
+		if err := p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else if err = p.UpdateStatus(patchStatus); err != nil {
+	} else if err := p.UpdateStatus(patchStatus); err != nil {
 		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 	}
 
@@ -1570,14 +1571,10 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 			if err != nil {
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
-			versionStatus, err := evergreen.PatchStatusToVersionStatus(collectiveStatus)
-			if err != nil {
-				return errors.Wrapf(err, "getting version status")
-			}
 			if parentPatch != nil {
-				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
+				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
 			} else {
-				event.LogVersionChildrenCompletionEvent(p.Id.Hex(), versionStatus, p.Author)
+				event.LogVersionChildrenCompletionEvent(p.Id.Hex(), collectiveStatus, p.Author)
 			}
 
 		}
@@ -1665,7 +1662,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	if evergreen.IsPatchRequester(t.Requester) {
 		err := patch.TryMarkStarted(t.Version, startTime)
 		if err == nil {
-			updates.PatchNewStatus = evergreen.PatchStarted
+			updates.PatchNewStatus = evergreen.VersionStarted
 
 		} else if !adb.ResultsNotFound(err) {
 			return errors.WithStack(err)

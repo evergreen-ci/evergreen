@@ -108,7 +108,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	headRepo := strings.Split(s.headRepo, "/")
 	s.Equal(fmt.Sprintf("'%s' pull request #%d by %s: %s (https://github.com/evergreen-ci/evergreen/pull/5)", s.baseRepo, s.pr, s.user, s.title), patchDoc.Description)
 	s.Equal(evergreen.GithubPatchUser, patchDoc.Author)
-	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Equal(evergreen.VersionCreated, patchDoc.Status)
 
 	s.Equal(s.pr, patchDoc.GithubPatchData.PRNumber)
 	s.Equal(baseRepo[0], patchDoc.GithubPatchData.BaseOwner)
@@ -185,38 +185,38 @@ func (s *GithubSuite) TestSetProcessed() {
 
 func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	intents := []githubIntent{
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-		},
-		githubIntent{
+				},
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-		},
-		githubIntent{
+				},
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-		},
-		githubIntent{
+				},
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-		},
-		githubIntent{
+				},
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
-		},
-		githubIntent{
+				},
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
-		},
-		githubIntent{
+				},
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
-		},
+				},
 	}
 
 	for _, intent := range intents {
@@ -239,7 +239,7 @@ func (s *GithubSuite) TestNewPatch() {
 	s.Empty(patchDoc.Project)
 	s.Zero(patchDoc.PatchNumber)
 	s.Empty(patchDoc.Version)
-	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Equal(evergreen.VersionCreated, patchDoc.Status)
 	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)

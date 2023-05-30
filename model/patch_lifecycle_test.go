@@ -908,7 +908,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				Githash:    patchedRevision,
 				StartTime:  startTime.Add(-30 * time.Minute), // started out of range
 				FinishTime: startTime.Add(30 * time.Minute),
-				Status:     evergreen.PatchFailed,
+				Status:     evergreen.VersionFailed,
 				Alias:      evergreen.CommitQueueAlias,
 				GithubPatchData: thirdparty.GithubPatch{
 					PRNumber: 456,
@@ -934,7 +934,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 					Alias:       evergreen.CommitQueueAlias,
 					Author:      "me",
 					GithubPatchData: thirdparty.GithubPatch{
@@ -948,7 +948,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchSucceeded,
+					Status:      evergreen.VersionSucceeded,
 					Alias:       evergreen.CommitQueueAlias,
 				},
 				{ // within time frame, not commit queue
@@ -958,7 +958,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 				},
 				{ // not within time frame
 					Id:          mgobson.NewObjectId(),
@@ -967,7 +967,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   time.Date(2019, 6, 15, 12, 0, 0, 0, time.Local),
 					FinishTime:  time.Date(2019, 6, 15, 12, 20, 0, 0, time.Local),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 					Alias:       evergreen.CommitQueueAlias,
 				},
 			}
@@ -1089,7 +1089,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			p := patch.Patch{
 				Id:         id,
 				Version:    v.Id,
-				Status:     evergreen.PatchStarted,
+				Status:     evergreen.VersionStarted,
 				Activated:  true,
 				Project:    "project",
 				CreateTime: time.Now().Add(-time.Hour),

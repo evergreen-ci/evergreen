@@ -80,15 +80,11 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "setting up GitHub status logger")
 	}
 
-	status := evergreen.PatchFailed
-	if patchDoc.MergeStatus == evergreen.PatchSucceeded {
-		status = evergreen.PatchSucceeded
-	}
-	if status != evergreen.PatchSucceeded {
+	if !evergreen.IsSuccessfulVersionStatus(patchDoc.MergeStatus) {
 		logger.Task().Warning("At least 1 task failed, will not merge pull request.")
 		return nil
 	}
-	// only successful patches should get past here. Failed patches will just send the failed
+	// Only successful patches should get past here. Failed patches will just send the failed
 	// status to GitHub.
 
 	mergeOpts := &github.PullRequestOptions{

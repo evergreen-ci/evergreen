@@ -269,7 +269,9 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionIdentifierKey: project,
-			VersionStatusKey:     evergreen.VersionSucceeded,
+			VersionStatusKey: bson.M{
+				"$in": evergreen.VersionSucceededStatuses,
+			},
 			VersionRevisionOrderNumberKey: bson.M{
 				"$lt": beforeRevision,
 			},

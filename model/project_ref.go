@@ -2925,7 +2925,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.VersionSucceeded, evergreen.VersionFailed}, definition.Status) {
 		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 

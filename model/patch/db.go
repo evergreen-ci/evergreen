@@ -328,7 +328,7 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 func FindFailedCommitQueuePatchesInTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
 	query := bson.M{
 		ProjectKey: projectID,
-		StatusKey:  evergreen.PatchFailed,
+		StatusKey:  evergreen.VersionFailed,
 		AliasKey:   evergreen.CommitQueueAlias,
 		"$or": []bson.M{
 			{"$and": []bson.M{

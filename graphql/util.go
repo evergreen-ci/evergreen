@@ -157,18 +157,16 @@ func getVersionBaseTasks(versionID string) ([]task.Task, error) {
 	return baseTasks, nil
 }
 
-// GetDisplayStatus considers both child patch statuses and
-// aborted status, and returns an overall patch status
-// (this is because success is different for version/patches,
-// and for display we rely on the patch status. Will address this in EVG-19914).
+// getDisplayStatus considers both child patch statuses and
+// aborted status, and returns an overall status.
 func getDisplayStatus(v *model.Version) (string, error) {
-	patchStatus, err := evergreen.VersionStatusToPatchStatus(v.Status)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting version status for patch '%s'", v.Id)
-	}
+	patchStatus := v.Status
 	if v.Aborted {
-		patchStatus = evergreen.PatchAborted
+		patchStatus = evergreen.VersionAborted
+	} else if patchStatus == evergreen.LegacyVersionSucceeded {
+		patchStatus = evergreen.VersionSucceeded
 	}
+
 	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
 		return patchStatus, nil
 	}
@@ -192,14 +190,10 @@ func getDisplayStatus(v *model.Version) (string, error) {
 		if cpVersion.Aborted {
 			allStatuses = append(allStatuses, evergreen.VersionAborted)
 		} else {
-			cpStatus, err := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
-			if err != nil {
-				return "", errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
-			}
-			allStatuses = append(allStatuses, cpStatus)
+			allStatuses = append(allStatuses, cpVersion.Status)
 		}
 	}
-	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
+	return patch.GetCollectiveStatusFromStatuses(allStatuses), nil
 }
 
 func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) bool {

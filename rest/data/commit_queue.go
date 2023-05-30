@@ -424,7 +424,7 @@ func checkPRIsMergeable(ctx context.Context, sc Connector, pr *github.PullReques
 			// the PR patch to succeed. However, Evergreen does not guarantee
 			// that the GitHub status is up-to-date with the actual status in
 			// Evergreen. Refreshing the GitHub status here re-syncs the GitHub
-			// status in case a stale Evergreen patch status might be blocking
+			// status in case a stale Evergreen status might be blocking
 			// the merge.
 			refreshJob := units.NewGithubStatusRefreshJob(p)
 			refreshJob.Run(ctx)

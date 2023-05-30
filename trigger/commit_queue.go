@@ -108,7 +108,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 	}
 
 	slackColor := evergreenFailColor
-	if t.data.Status == evergreen.PatchSucceeded || t.data.Status == evergreen.MergeTestStarted {
+	if evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.data.Status == evergreen.MergeTestStarted {
 		slackColor = evergreenSuccessColor
 	}
 

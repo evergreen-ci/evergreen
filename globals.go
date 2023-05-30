@@ -131,20 +131,17 @@ const (
 	BuildFailed    = "failed"
 	BuildSucceeded = "success"
 
-	VersionStarted   = "started"
-	VersionCreated   = "created"
-	VersionFailed    = "failed"
-	VersionSucceeded = "success"
+	VersionStarted = "started"
+	VersionCreated = "created"
+	VersionFailed  = "failed"
 
-	PatchCreated     = "created"
-	PatchStarted     = "started"
-	PatchSucceeded   = "succeeded"
-	PatchFailed      = "failed"
-	PatchAllOutcomes = "*"
+	// LegacyVersionSucceeded should be removed in EVG-20032. In the meantime,
+	// will set with the new status but consider both statuses.
+	LegacyVersionSucceeded = "success"
+	VersionSucceeded       = "succeeded"
 
-	// VersionAborted and PatchAborted are display statuses only and not stored in the DB
+	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
-	PatchAborted   = "aborted"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
@@ -156,18 +153,17 @@ const (
 	MergeTestFailed    = "failed"
 	EnqueueFailed      = "failed to enqueue"
 
-	// maximum task (zero based) execution number
+	// MaxTaskExecution represents the maximum task (zero based) execution number
 	MaxTaskExecution = 9
 
-	// maximum task priority
+	// MaxTaskPriority is the highest you can set the priority without special permissions.
 	MaxTaskPriority = 100
 
 	DisabledTaskPriority = int64(-1)
 
-	// if a patch has NumTasksForLargePatch number of tasks or greater, we log to splunk for investigation
+	// NumTasksForLargePatch is the number of tasks at which we log to splunk for investigation
 	NumTasksForLargePatch = 10000
 
-	// LogMessage struct versions
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
@@ -305,6 +301,10 @@ const (
 	ContainerHealthDashboard = "container task health dashboard"
 )
 
+var VersionSucceededStatuses = []string{
+	LegacyVersionSucceeded, VersionSucceeded,
+}
+
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,
@@ -385,48 +385,19 @@ func IsValidTaskEndStatus(status string) bool {
 	return status == TaskSucceeded || status == TaskFailed
 }
 
-func IsFinishedPatchStatus(status string) bool {
-	return status == PatchFailed || status == PatchSucceeded
-}
-
 func IsFinishedBuildStatus(status string) bool {
 	return status == BuildFailed || status == BuildSucceeded
 }
 
+// IsFinishedVersionStatus returns true if the status represents a finished version.
 func IsFinishedVersionStatus(status string) bool {
-	return status == VersionFailed || status == VersionSucceeded
+	return status == VersionFailed || IsSuccessfulVersionStatus(status)
 }
 
-func VersionStatusToPatchStatus(versionStatus string) (string, error) {
-	switch versionStatus {
-	case VersionCreated:
-		return PatchCreated, nil
-	case VersionStarted:
-		return PatchStarted, nil
-	case VersionFailed:
-		return PatchFailed, nil
-	case VersionSucceeded:
-		return PatchSucceeded, nil
-	default:
-		return "", errors.Errorf("unknown version status: %s", versionStatus)
-	}
-}
-
-func PatchStatusToVersionStatus(patchStatus string) (string, error) {
-	switch patchStatus {
-	case PatchCreated:
-		return VersionCreated, nil
-	case PatchStarted:
-		return VersionStarted, nil
-	case PatchFailed:
-		return VersionFailed, nil
-	case PatchSucceeded:
-		return VersionSucceeded, nil
-	case PatchAborted:
-		return VersionAborted, nil
-	default:
-		return "", errors.Errorf("unknown patch status: %s", patchStatus)
-	}
+// IsSuccessfulVersionStatus returns true if the status represents a successful version.
+// Will deprecate this legacy status in EVG-20032.
+func IsSuccessfulVersionStatus(status string) bool {
+	return status == LegacyVersionSucceeded || status == VersionSucceeded
 }
 
 type ModificationAction string

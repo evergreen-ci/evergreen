@@ -129,7 +129,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 		EventType:    event.PatchStateChange,
 		ResourceId:   "12345",
 		Data: &event.PatchEventData{
-			Status: evergreen.PatchFailed,
+			Status: evergreen.VersionFailed,
 		},
 	}
 
@@ -211,7 +211,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
 		Project: "test",
-		Status:  evergreen.PatchFailed,
+		Status:  evergreen.VersionFailed,
 		Author:  "somebody",
 	}
 	s.NoError(p.Insert())
@@ -226,7 +226,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		EventType:    event.PatchStateChange,
 		ResourceId:   p.Id.Hex(),
 		Data: &event.PatchEventData{
-			Status: evergreen.PatchFailed,
+			Status: evergreen.VersionFailed,
 		},
 	}
 

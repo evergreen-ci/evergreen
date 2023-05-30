@@ -80,16 +80,16 @@ func (s *commitQueueSuite) SetupTest() {
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
-			commitqueue.CommitQueueItem{
+			{
 				Issue: "1",
 			},
-			commitqueue.CommitQueueItem{
+			{
 				Issue: "2",
 			},
-			commitqueue.CommitQueueItem{
+			{
 				Issue: "3",
 			},
-			commitqueue.CommitQueueItem{
+			{
 				Issue: "4",
 			},
 		},
@@ -129,7 +129,7 @@ func (s *commitQueueSuite) TestTryUnstickFixesBlockedMergeTask() {
 
 	p := &patch.Patch{
 		Id:     mgobson.NewObjectId(),
-		Status: evergreen.PatchStarted,
+		Status: evergreen.VersionStarted,
 	}
 	s.Require().NoError(p.Insert())
 
@@ -171,7 +171,7 @@ func (s *commitQueueSuite) TestTryUnstickDoesNotUnstickMergeTaskBlockedByResetti
 
 	p := &patch.Patch{
 		Id:     mgobson.NewObjectId(),
-		Status: evergreen.PatchStarted,
+		Status: evergreen.VersionStarted,
 	}
 	s.Require().NoError(p.Insert())
 

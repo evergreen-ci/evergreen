@@ -246,14 +246,14 @@ Alias".
 
 Options:
 
--   Alias: The name of the alias.
--   Project: The downstream project.
--   Module: Optionally specify a module to apply changes to.
--   Wait on: You can have the child patch wait on a complete(success or
-    failed), success, or failed status from the parent. Otherwise the
-    child patch will run immediately. If the patch depends on parent
+- Alias: The name of the alias.
+- Project: The downstream project.
+- Module: Optionally specify a module to apply changes to.
+- Wait on: By default, the child patch will run immediately.
+    You can set the child patch wait on a finished status ("*"), "succeeded" status,
+    or "failed" status from the parent. If the patch depends on parent
     status, at least one parent task must be scheduled.
--   Patch alias, variant and task regexes: Run a subset of tasks in the
+- Patch alias, variant and task regexes: Run a subset of tasks in the
     downstream project by specifying an alias or by specifying task and
     variant regexes.
 

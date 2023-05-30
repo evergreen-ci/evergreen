@@ -41,6 +41,8 @@ func makePatchTriggers() eventHandler {
 	return t
 }
 
+const patchAllOutcomes = "*"
+
 func (t *patchTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
 	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
@@ -82,7 +84,7 @@ func (t *patchTriggers) Attributes() event.Attributes {
 }
 
 func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if (t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed) || t.event.EventType == event.PatchChildrenCompletion {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
@@ -93,13 +95,13 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		}
 		ps := target.ParentStatus
 
-		if ps != evergreen.PatchSucceeded && ps != evergreen.PatchFailed && ps != evergreen.PatchAllOutcomes {
+		if !evergreen.IsFinishedVersionStatus(ps) && ps != patchAllOutcomes {
 			return nil, nil
 		}
 
-		successOutcome := (ps == evergreen.PatchSucceeded) && (t.data.Status == evergreen.PatchSucceeded)
-		failureOutcome := (ps == evergreen.PatchFailed) && (t.data.Status == evergreen.PatchFailed)
-		anyOutcome := ps == evergreen.PatchAllOutcomes
+		successOutcome := evergreen.IsSuccessfulVersionStatus(ps) && evergreen.IsSuccessfulVersionStatus(t.data.Status)
+		failureOutcome := (ps == evergreen.VersionFailed) && (t.data.Status == evergreen.VersionFailed)
+		anyOutcome := ps == patchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {
 			aborted, err := model.IsAborted(t.patch.Id.Hex())
@@ -121,7 +123,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 }
 
 func (t *patchTriggers) patchFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchFailed || t.event.EventType == event.PatchChildrenCompletion {
+	if t.data.Status != evergreen.VersionFailed || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
@@ -164,7 +166,7 @@ func finalizeChildPatch(sub *event.Subscription) error {
 }
 
 func (t *patchTriggers) patchSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchSucceeded || t.event.EventType == event.PatchChildrenCompletion {
+	if !evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
@@ -172,7 +174,7 @@ func (t *patchTriggers) patchSuccess(sub *event.Subscription) (*notification.Not
 }
 
 func (t *patchTriggers) patchStarted(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchStarted {
+	if t.data.Status != evergreen.VersionStarted {
 		return nil, nil
 	}
 
@@ -257,11 +259,11 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		finishTime = time.Now()
 	}
 
-	if collectiveStatus == evergreen.PatchSucceeded {
+	if evergreen.IsSuccessfulVersionStatus(collectiveStatus) {
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
 		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
-	} else if collectiveStatus == evergreen.PatchFailed {
+	} else if collectiveStatus == evergreen.VersionFailed {
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
 	}
@@ -323,7 +325,7 @@ func (t *patchTriggers) getGithubContext(projectIdentifier string) (string, erro
 }
 
 func (t *patchTriggers) patchFamilyOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
 	if t.event.EventType != event.PatchChildrenCompletion {
@@ -343,7 +345,7 @@ func (t *patchTriggers) patchFamilyOutcome(sub *event.Subscription) (*notificati
 }
 
 func (t *patchTriggers) patchFamilySuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchSucceeded || t.event.EventType != event.PatchChildrenCompletion {
+	if !evergreen.IsFinishedVersionStatus(t.data.Status) || t.event.EventType != event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
@@ -351,7 +353,7 @@ func (t *patchTriggers) patchFamilySuccess(sub *event.Subscription) (*notificati
 }
 
 func (t *patchTriggers) patchFamilyFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchFailed || t.event.EventType != event.PatchChildrenCompletion {
+	if t.data.Status != evergreen.VersionFailed || t.event.EventType != event.PatchChildrenCompletion {
 		return nil, nil
 	}
 	return t.generate(sub)

@@ -294,7 +294,7 @@ func (apiPatch *APIPatch) buildChildPatches(p patch.Patch) error {
 			childPatchAliases = append(childPatchAliases, childPatchAlias)
 		}
 	}
-	apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatusFromPatchStatuses(allStatuses))
+	apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatusFromStatuses(allStatuses))
 	apiPatch.ChildPatchAliases = childPatchAliases
 
 	return nil

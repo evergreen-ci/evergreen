@@ -352,7 +352,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	if !utility.IsZeroTime(patchDoc.FinishTime) {
 		j.dequeue(cq, nextItem)
 		status := evergreen.MergeTestSucceeded
-		if patchDoc.Status == evergreen.PatchFailed {
+		if patchDoc.Status == evergreen.VersionFailed {
 			status = evergreen.MergeTestFailed
 		}
 		event.LogCommitQueueConcludeTest(nextItem.Version, status)
