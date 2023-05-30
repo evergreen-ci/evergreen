@@ -557,9 +557,18 @@ func TestAttachToNewRepo(t *testing.T) {
 
 }
 
+func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentType string) {
+	events, err := MostRecentProjectEvents(project.Id, 10)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, project.Id, events[0].ResourceId)
+	assert.Equal(t, event.EventResourceTypeProject, events[0].ResourceType)
+	assert.Equal(t, attachmentType, events[0].EventType)
+}
+
 func TestAttachToRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, GithubHooksCollection, evergreen.ConfigCollection))
+		evergreen.RoleCollection, user.Collection, GithubHooksCollection, event.EventCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
@@ -592,6 +601,7 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NoError(t, pRef.AttachToRepo(u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
+	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -631,6 +641,7 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NoError(t, pRef.AttachToRepo(u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
+	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
 
 	pRefFromDB, err = FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -657,7 +668,7 @@ func TestDetachFromRepo(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
 		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
@@ -678,7 +689,7 @@ func TestDetachFromRepo(t *testing.T) {
 		},
 		"project variables are updated": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			vars, err := FindOneProjectVars(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, vars)
@@ -698,6 +709,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, repoAlias.Upsert())
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
@@ -729,6 +741,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(repoAliases, pRef.RepoRefId))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 3)
@@ -781,6 +794,7 @@ func TestDetachFromRepo(t *testing.T) {
 			}
 			assert.NoError(t, repoSubscription.Upsert())
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 
 			subs, err := event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
@@ -802,7 +816,7 @@ func TestDetachFromRepo(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, ProjectAliasCollection))
+				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection))
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
