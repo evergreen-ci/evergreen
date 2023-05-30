@@ -74,12 +74,11 @@ type OktaConfig struct {
 // including the ClientID, ClientSecret and CallbackUri which are given when
 // registering the application Furthermore,
 type GithubAuthConfig struct {
-	ClientId      string   `bson:"client_id" json:"client_id" yaml:"client_id"`
-	ClientSecret  string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
-	Users         []string `bson:"users" json:"users" yaml:"users"`
-	Organization  string   `bson:"organization" json:"organization" yaml:"organization"`
-	AppId         int64    `bson:"app_id" json:"app_id" yaml:"app_id"`
-	AppPrivateKey string   `bson:"app_private_key" json:"app_private_key" yaml:"app_private_key"`
+	ClientId     string   `bson:"client_id" json:"client_id" yaml:"client_id"`
+	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
+	Users        []string `bson:"users" json:"users" yaml:"users"`
+	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
+	AppId        int64    `bson:"app_id" json:"app_id" yaml:"app_id"`
 }
 
 // MultiAuthConfig contains settings for using multiple authentication
