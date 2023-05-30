@@ -11,6 +11,7 @@ import (
 
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -438,6 +439,17 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
+
+	smClient, err := cloud.MakeSecretsManagerClient(s.env.Settings())
+
+	s.Require().NoError(err)
+	defer func() {
+		s.Require().NoError(smClient.Close(ctx))
+	}()
+	vault, err := cloud.MakeSecretsManagerVault(smClient)
+	s.Require().NoError(err)
+
+	h.vault = vault
 
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()
