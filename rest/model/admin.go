@@ -2257,6 +2257,7 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
 	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
+	LegacyUIProjectPageDisabled     bool `json:"legacy_ui_project_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2545,6 +2546,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
+		as.LegacyUIProjectPageDisabled = v.LegacyUIProjectPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2586,6 +2588,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
 		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
+		LegacyUIProjectPageDisabled:     as.LegacyUIProjectPageDisabled,
 	}, nil
 }
 

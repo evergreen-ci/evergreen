@@ -1,0 +1,534 @@
+{
+    "subscriptions": [
+        {
+            "_id" : "5b466099b23736216dc0633f",
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_fca22796c7e32fbae6d6df4f7dc4d89183398030"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "richard.samuels"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : "testuser",
+            "owner_type" : "person",
+            "trigger_data" : {
+        
+            }
+        },
+        {
+            "_id" : "5b4ca3cd97b1d318ba392a81",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_29616e38b1bb624b06a7ce991cf9ed101f355eca"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ara"
+                }
+            ],
+            "owner" : "testuser",
+            "owner_type" : "",
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "regex_selectors" : [ ]
+        },
+        {
+            "_id" : "5b4ca793b23736753a523ad7",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_deb1dfa48bc388ecd638da99933b701c9f0fcfaf"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : "testuser",
+            "owner_type" : ""
+        },
+        {
+            "_id" : "5b4cab1c97b1d31cdff3dc1e",
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : "",
+            "owner_type" : "",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_f0ea77b6913c84eb89efbc39c4db3da528ae22ce"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ],
+            "regex_selectors" : [ ]
+        },
+        {
+            "_id" : "5b4cab1c97b1d31cdff3dc1f",
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : "",
+            "owner_type" : "",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_83878f6c8a9c5862ccbf245c28090eb20257453c"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ]
+        },
+        {
+            "_id" : "5b4cab1d97b1d31cdff3dc20",
+            "owner" : "",
+            "owner_type" : "",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_6c033905f64a5eae6d519a3efac8f3db34997c41"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            }
+        },
+        {
+            "_id" : "5b4cb352b23736753a52460c",
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : "",
+            "owner_type" : "",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_42105ae1951ee6bc464f95c295b10fa4d3a2cf7c"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ]
+        },
+        {
+            "_id" : "5b4cbb8397b1d31cdff3e381",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_efc0d9b113fcdc54d6cc4d0924039ef656cf96d6"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ara"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : "",
+            "owner_type" : ""
+        },
+        {
+            "_id" : "5b4cd4009dbe32385a7e12cf",
+            "type" : "VERSION",
+            "regex_selectors" : [ ],
+            "owner" : "",
+            "trigger_data" : {
+        
+            },
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_acfcc472cc8bc4ae3011e5a119c7ce489f45e32f"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner_type" : ""
+        },
+        {
+            "_id" : "5b4df7a69dbe3207f6d4f311",
+            "owner_type" : "",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_e8b596e7414e5c1aeb9dda0c9d815dee7c78d800"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : ""
+        },
+        {
+            "_id" : "5b4e116f97b1d37c98aaf058",
+            "owner_type" : "",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_f2f4b692ddf2761a6ae67e91d3321b805278be5c"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : ""
+        },
+        {
+            "_id" : "5b4e5a689dbe3238b63dafdf",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_3e6a715b107454b3bf9dcc800450d59c0176d638"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "owner" : "",
+            "owner_type" : "",
+            "trigger_data" : {
+        
+            },
+            "type" : "VERSION",
+            "trigger" : "regression",
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            }
+        },
+        {
+            "_id" : "5b4e5cbeb237361ea6ac94b0",
+            "owner_type" : "",
+            "type" : "VERSION",
+            "selectors" : [
+                {
+                    "type" : "id",
+                    "data" : "mci_07a3e3f330a1ae9d9416af20efa5dfc160000065"
+                },
+                {
+                    "type" : "project",
+                    "data" : "mci"
+                },
+                {
+                    "type" : "object",
+                    "data" : "version"
+                },
+                {
+                    "type" : "requester",
+                    "data" : "gitter_request"
+                },
+                {
+                    "type" : "project",
+                    "data" : "main"
+                },
+                {
+                    "type" : "owner",
+                    "data" : "ratarstar"
+                }
+            ],
+            "regex_selectors" : [ ],
+            "subscriber" : {
+                "type" : "email",
+                "target" : "ratarstararaasta@mongodb.com"
+            },
+            "owner" : "",
+            "trigger" : "regression",
+            "trigger_data" : {
+        
+            }
+        }
+    ]
+
+}

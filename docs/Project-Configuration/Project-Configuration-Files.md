@@ -584,7 +584,7 @@ Expansions are variables within your config file. They take the form
 `${key_name}` within your project, and are defined on a project-wide
 level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
-including shell scripts.
+including shell scripts. 
 
 ``` yaml
 command: s3.get
@@ -621,6 +621,18 @@ replaced with its default value. If there is no default value, the empty
 string will be used. If the default value is prepended with an asterisk
 and that expansion also does not exist, the empty string will also be
 used.
+
+
+Expansions are also case-sensitive.
+
+``` yaml
+command: shell.exec
+   params:
+      working_dir: src
+     script: |
+       echo ${HelloWorld}
+```
+
 
 #### Usage
 

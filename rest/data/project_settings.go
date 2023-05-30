@@ -275,8 +275,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 
 		if mergedSection.Enabled {
-			if mergedSection.Branch == "" {
-				return nil, errors.New("branch not set on enabled repo")
+			// Branches are not defined for repos, so only check that enabled projects have one specified.
+			if mergedSection.Branch == "" && !isRepo {
+				return nil, errors.New("branch not set on enabled project")
 			}
 
 			config, err := evergreen.GetConfig()
@@ -412,7 +413,12 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
 		}
+	case model.ProjectPageViewsAndFiltersSection:
+		if err = model.ValidateParsleyFilters(mergedSection.ParsleyFilters); err != nil {
+			return nil, errors.Wrap(err, "invalid Parsley filters")
+		}
 	}
+
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "saving project for section '%s'", section)

@@ -1044,7 +1044,7 @@ func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error
 	subIDs := removeGeneralSubscriptions(usr, subs)
 	err = data.DeleteSubscriptions(username, subIDs)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions %s", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions '%s'", err.Error()))
 	}
 	return len(subIDs), nil
 }
@@ -1057,6 +1057,17 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
+}
+
+// DeleteSubscriptions is the resolver for the deleteSubscriptions field.
+func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error) {
+	usr := mustHaveUser(ctx)
+	username := usr.Username()
+
+	if err := data.DeleteSubscriptions(username, subscriptionIds); err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions '%s'", err.Error()))
+	}
+	return len(subscriptionIds), nil
 }
 
 // RemovePublicKey is the resolver for the removePublicKey field.

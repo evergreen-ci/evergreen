@@ -396,9 +396,16 @@ scramble:
 mongodb/.get-mongodb:
 	rm -rf mongodb
 	mkdir -p mongodb
-	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
+	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(MONGODB_DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
 	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
+mongodb/.get-mongosh:
+	rm -rf mongosh
+	mkdir -p mongosh
+	cd mongosh && curl "$(MONGOSH_URL)" -o mongosh.tgz && $(MONGOSH_DECOMPRESS) mongosh.tgz && chmod +x ./mongosh-*/bin/*
+	cd mongosh && mv ./mongosh-*/bin/* .
 get-mongodb:mongodb/.get-mongodb
+	@touch $<
+get-mongosh: mongodb/.get-mongosh
 	@touch $<
 start-mongod:mongodb/.get-mongodb
 ifdef AUTH_ENABLED
@@ -406,12 +413,12 @@ ifdef AUTH_ENABLED
 	chmod 600 ./mongodb/keyfile.txt
 endif
 	./mongodb/mongod $(if $(AUTH_ENABLED),--auth --keyFile ./mongodb/keyfile.txt,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
-configure-mongod:mongodb/.get-mongodb
-	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
+configure-mongod:mongodb/.get-mongodb mongodb/.get-mongosh
+	./mongosh/mongosh --nodb ./cmd/init-mongo/wait_for_mongo.js
 	@echo "mongod is up"
-	./mongodb/mongo --eval 'rs.initiate()'
+	./mongosh/mongosh --eval 'rs.initiate()'
 ifdef AUTH_ENABLED
-	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
+	./mongosh/mongosh ./cmd/init-mongo/create_auth_user.js
 endif
 	@echo "configured mongod"
 # end mongodb targets

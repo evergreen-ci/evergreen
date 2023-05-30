@@ -1949,6 +1949,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
+			setUpdate[ProjectRefBranchKey] = p.Branch
 			setUpdate[ProjectRefEnabledKey] = p.Enabled
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
@@ -3213,6 +3214,34 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 	catcher.ErrorfWhen(numPodSecrets > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", numPodSecrets)
 
 	return combined, catcher.Resolve()
+}
+
+// ValidateParsleyFilters checks that there are no duplicate expressions among the Parsley filters. It also validates
+// each individual Parsley filter.
+func ValidateParsleyFilters(parsleyFilters []ParsleyFilter) error {
+	catcher := grip.NewBasicCatcher()
+
+	filtersSet := make(map[string]bool)
+	for _, filter := range parsleyFilters {
+		if filtersSet[filter.Expression] {
+			catcher.Errorf("duplicate filter expression '%s'", filter.Expression)
+		}
+		filtersSet[filter.Expression] = true
+		catcher.Add(filter.validate())
+	}
+
+	return catcher.Resolve()
+}
+
+func (p ParsleyFilter) validate() error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.NewWhen(p.Expression == "", "filter expression must be non-empty")
+
+	if _, regexErr := regexp.Compile(p.Expression); regexErr != nil {
+		catcher.Wrapf(regexErr, "filter expression '%s' is invalid regexp", p.Expression)
+	}
+
+	return catcher.Resolve()
 }
 
 func newContainerSecretExternalName(smConf evergreen.SecretsManagerConfig, projectID string, secret ContainerSecret) (string, error) {

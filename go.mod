@@ -17,9 +17,9 @@ require (
 	github.com/evergreen-ci/juniper v0.0.0-20230119161755-1aced8006202
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
-	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
+	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
 	github.com/evergreen-ci/timber v0.0.0-20230413164224-05a3a6e11d78
-	github.com/evergreen-ci/utility v0.0.0-20230508194838-873894227dc9
+	github.com/evergreen-ci/utility v0.0.0-20230519193518-4d91d64f59fb
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
@@ -30,7 +30,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/mongodb/amboy v0.0.0-20221207220239-4ab00e3ea9da
+	github.com/mongodb/amboy v0.0.0-20230524145255-082f8fd5857e
 	github.com/mongodb/anser v0.0.0-20230501213745-c62f11870fd4
 	github.com/mongodb/grip v0.0.0-20230503175150-8b2e395f3111
 	github.com/pkg/errors v0.9.1

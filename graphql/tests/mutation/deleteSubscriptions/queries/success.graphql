@@ -1,0 +1,8 @@
+mutation {
+  deleteSubscriptions(
+    subscriptionIds: [
+      "5b466099b23736216dc0633f",
+      "5b4ca3cd97b1d318ba392a81"
+    ]
+  )
+}

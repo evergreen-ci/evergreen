@@ -610,7 +610,6 @@ const (
 	S3PullCommandName             = "s3.pull"
 	ShellExecCommandName          = "shell.exec"
 	AttachResultsCommandName      = "attach.results"
-	ManifestLoadCommandName       = "manifest.load"
 	AttachArtifactsCommandName    = "attach.artifacts"
 	AttachXUnitResultsCommandName = "attach.xunit_results"
 )

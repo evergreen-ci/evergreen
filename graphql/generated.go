@@ -487,6 +487,7 @@ type ComplexityRoot struct {
 		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
 		DefaultSectionToRepo          func(childComplexity int, projectID string, section ProjectSettingsSection) int
 		DeleteProject                 func(childComplexity int, projectID string) int
+		DeleteSubscriptions           func(childComplexity int, subscriptionIds []string) int
 		DetachProjectFromRepo         func(childComplexity int, projectID string) int
 		DetachVolumeFromHost          func(childComplexity int, volumeID string) int
 		EditAnnotationNote            func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
@@ -633,6 +634,7 @@ type ComplexityRoot struct {
 	PeriodicBuild struct {
 		Alias         func(childComplexity int) int
 		ConfigFile    func(childComplexity int) int
+		Cron          func(childComplexity int) int
 		ID            func(childComplexity int) int
 		IntervalHours func(childComplexity int) int
 		Message       func(childComplexity int) int
@@ -840,7 +842,6 @@ type ComplexityRoot struct {
 	RepoRef struct {
 		Admins                   func(childComplexity int) int
 		BatchTime                func(childComplexity int) int
-		Branch                   func(childComplexity int) int
 		BuildBaronSettings       func(childComplexity int) int
 		CommitQueue              func(childComplexity int) int
 		ContainerSizeDefinitions func(childComplexity int) int
@@ -1413,6 +1414,7 @@ type MutationResolver interface {
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
+	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
@@ -3435,6 +3437,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteProject(childComplexity, args["projectId"].(string)), true
 
+	case "Mutation.deleteSubscriptions":
+		if e.complexity.Mutation.DeleteSubscriptions == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteSubscriptions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteSubscriptions(childComplexity, args["subscriptionIds"].([]string)), true
+
 	case "Mutation.detachProjectFromRepo":
 		if e.complexity.Mutation.DetachProjectFromRepo == nil {
 			break
@@ -4399,6 +4413,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PeriodicBuild.ConfigFile(childComplexity), true
+
+	case "PeriodicBuild.cron":
+		if e.complexity.PeriodicBuild.Cron == nil {
+			break
+		}
+
+		return e.complexity.PeriodicBuild.Cron(childComplexity), true
 
 	case "PeriodicBuild.id":
 		if e.complexity.PeriodicBuild.ID == nil {
@@ -5610,13 +5631,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.BatchTime(childComplexity), true
-
-	case "RepoRef.branch":
-		if e.complexity.RepoRef.Branch == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.Branch(childComplexity), true
 
 	case "RepoRef.buildBaronSettings":
 		if e.complexity.RepoRef.BuildBaronSettings == nil {
@@ -8673,6 +8687,21 @@ func (ec *executionContext) field_Mutation_deleteProject_args(ctx context.Contex
 		}
 	}
 	args["projectId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteSubscriptions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["subscriptionIds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subscriptionIds"))
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subscriptionIds"] = arg0
 	return args, nil
 }
 
@@ -15913,8 +15942,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_admins(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_RepoRef_batchTime(ctx, field)
-			case "branch":
-				return ec.fieldContext_RepoRef_branch(ctx, field)
 			case "buildBaronSettings":
 				return ec.fieldContext_RepoRef_buildBaronSettings(ctx, field)
 			case "commitQueue":
@@ -25977,6 +26004,61 @@ func (ec *executionContext) fieldContext_Mutation_createPublicKey(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_deleteSubscriptions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteSubscriptions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteSubscriptions(rctx, fc.Args["subscriptionIds"].([]string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteSubscriptions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteSubscriptions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_removePublicKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_removePublicKey(ctx, field)
 	if err != nil {
@@ -29915,6 +29997,50 @@ func (ec *executionContext) fieldContext_PeriodicBuild_intervalHours(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _PeriodicBuild_cron(ctx context.Context, field graphql.CollectedField, obj *model.APIPeriodicBuildDefinition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PeriodicBuild_cron(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cron, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PeriodicBuild_cron(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeriodicBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PeriodicBuild_message(ctx context.Context, field graphql.CollectedField, obj *model.APIPeriodicBuildDefinition) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PeriodicBuild_message(ctx, field)
 	if err != nil {
@@ -33149,6 +33275,8 @@ func (ec *executionContext) fieldContext_Project_periodicBuilds(ctx context.Cont
 				return ec.fieldContext_PeriodicBuild_configFile(ctx, field)
 			case "intervalHours":
 				return ec.fieldContext_PeriodicBuild_intervalHours(ctx, field)
+			case "cron":
+				return ec.fieldContext_PeriodicBuild_cron(ctx, field)
 			case "message":
 				return ec.fieldContext_PeriodicBuild_message(ctx, field)
 			case "nextRunTime":
@@ -39173,50 +39301,6 @@ func (ec *executionContext) fieldContext_RepoRef_batchTime(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_branch(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoRef_branch(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Branch, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoRef_branch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_buildBaronSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_buildBaronSettings(ctx, field)
 	if err != nil {
@@ -40470,6 +40554,8 @@ func (ec *executionContext) fieldContext_RepoRef_periodicBuilds(ctx context.Cont
 				return ec.fieldContext_PeriodicBuild_configFile(ctx, field)
 			case "intervalHours":
 				return ec.fieldContext_PeriodicBuild_intervalHours(ctx, field)
+			case "cron":
+				return ec.fieldContext_PeriodicBuild_cron(ctx, field)
 			case "message":
 				return ec.fieldContext_PeriodicBuild_message(ctx, field)
 			case "nextRunTime":
@@ -41545,8 +41631,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_admins(ctx, field)
 			case "batchTime":
 				return ec.fieldContext_RepoRef_batchTime(ctx, field)
-			case "branch":
-				return ec.fieldContext_RepoRef_branch(ctx, field)
 			case "buildBaronSettings":
 				return ec.fieldContext_RepoRef_buildBaronSettings(ctx, field)
 			case "commitQueue":
@@ -60077,7 +60161,7 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "alias", "configFile", "intervalHours", "message", "nextRunTime"}
+	fieldsInOrder := [...]string{"id", "alias", "configFile", "cron", "intervalHours", "message", "nextRunTime"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60105,6 +60189,14 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configFile"))
 			it.ConfigFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "cron":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cron"))
+			it.Cron, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60789,7 +60881,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60837,14 +60929,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("batchTime"))
 			it.BatchTime, err = ec.unmarshalOInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "branch":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("branch"))
-			it.Branch, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -65619,6 +65703,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "deleteSubscriptions":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteSubscriptions(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "removePublicKey":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -66499,6 +66592,13 @@ func (ec *executionContext) _PeriodicBuild(ctx context.Context, sel ast.Selectio
 		case "intervalHours":
 
 			out.Values[i] = ec._PeriodicBuild_intervalHours(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "cron":
+
+			out.Values[i] = ec._PeriodicBuild_cron(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -68585,13 +68685,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "batchTime":
 
 			out.Values[i] = ec._RepoRef_batchTime(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "branch":
-
-			out.Values[i] = ec._RepoRef_branch(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
