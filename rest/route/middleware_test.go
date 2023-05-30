@@ -794,11 +794,11 @@ func TestProjectViewPermission(t *testing.T) {
 	}
 	assert.NoError(env.RoleManager().AddScope(scopeAll))
 	proj1 := model.ProjectRef{
-		Id:      "proj1",
-		Private: utility.TruePtr(),
+		Id: "proj1",
 	}
 	proj2 := model.ProjectRef{
-		Id: "proj2",
+		Id:      "proj2",
+		Private: utility.FalsePtr(),
 	}
 	assert.NoError(proj1.Insert())
 	assert.NoError(proj2.Insert())

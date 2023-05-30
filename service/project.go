@@ -840,12 +840,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the projectRef too
-	projectRef.RepotrackerError.Exists = false
-	projectRef.RepotrackerError.InvalidRevision = ""
-	projectRef.RepotrackerError.MergeBaseRevision = ""
-	err = projectRef.Upsert()
-	if err != nil {
+	if err := projectRef.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}

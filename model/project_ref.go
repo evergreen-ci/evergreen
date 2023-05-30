@@ -304,7 +304,7 @@ var (
 	ProjectRefDeactivatePreviousKey       = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey               = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefHiddenKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
-	ProjectRefRepotrackerError            = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefRepotrackerErrorKey         = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefDisabledStatsCacheKey       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
@@ -344,8 +344,9 @@ var (
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
 )
 
+// IsPrivate returns if this project requires the user to be authed to view it.
 func (p *ProjectRef) IsPrivate() bool {
-	return utility.FromBoolPtr(p.Private)
+	return utility.FromBoolTPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {
@@ -654,7 +655,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 
 	mergedProject.RepoRefId = ""
-	if err = mergedProject.Upsert(); err != nil {
+	if err := mergedProject.Upsert(); err != nil {
 		return errors.Wrap(err, "detaching project from repo")
 	}
 
@@ -894,16 +895,6 @@ func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
 		}
 	}
 	return nil
-}
-
-func (projectRef *ProjectRef) Update() error {
-	return db.Update(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdKey: projectRef.Id,
-		},
-		projectRef,
-	)
 }
 
 func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
@@ -1890,8 +1881,8 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
-	conflicts, err := projectRef.GetGithubProjectConflicts()
+func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
+	conflicts, err := p.GetGithubProjectConflicts()
 	if err != nil {
 		return false, errors.Wrap(err, "finding GitHub conflicts")
 	}
@@ -1902,14 +1893,41 @@ func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 }
 
 // Upsert updates the project ref in the db if an entry already exists,
-// overwriting the existing ref. If no project ref exists, one is created
-func (projectRef *ProjectRef) Upsert() error {
-	_, err := db.Upsert(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdKey: projectRef.Id,
-		}, projectRef)
+// overwriting the existing ref. If no project ref exists, a new one is created.
+func (p *ProjectRef) Upsert() error {
+	if p.Private == nil {
+		// Projects are private by default unless they've been specially made
+		// public.
+		p.Private = utility.TruePtr()
+	}
+	_, err := db.Upsert(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
+}
+
+// SetRepotrackerError updates the repotracker error for the project ref.
+func (p *ProjectRef) SetRepotrackerError(d *RepositoryErrorDetails) error {
+	if err := db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": bson.M{
+			ProjectRefRepotrackerErrorKey: d,
+		},
+	}); err != nil {
+		return err
+	}
+	p.RepotrackerError = d
+	return nil
+}
+
+// SetContainerSecrets updates the container secrets for the project ref.
+func (p *ProjectRef) SetContainerSecrets(secrets []ContainerSecret) error {
+	if err := db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": bson.M{
+			projectRefContainerSecretsKey: secrets,
+		},
+	}); err != nil {
+		return err
+	}
+	p.ContainerSecrets = secrets
+	return nil
 }
 
 // SaveProjectPageForSection updates the project or repo ref variables for the section (if no project is given, we unset to default to repo).
