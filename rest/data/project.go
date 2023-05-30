@@ -147,12 +147,13 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	grip.Warning(message.WrapError(tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef), message.Fields{
-		"message":            "failed to copy container secrets to new project",
-		"op":                 "CreateProject",
-		"project_id":         projectRef.Id,
-		"project_identifier": projectRef.Identifier,
-	}))
+	err = tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef)
+	if err != nil {
+		return false, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "copying container secrets for project '%s'", projectRef.Identifier).Error(),
+		}
+	}
 
 	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
@@ -165,8 +166,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 }
 
 func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
-	// TODO (PM-2950): remove this temporary error-checking once the AWS
-	// infrastructure is productionized and AWS admin settings are set.
 	smClient, err := cloud.MakeSecretsManagerClient(settings)
 	if err != nil {
 		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")

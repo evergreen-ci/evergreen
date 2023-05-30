@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -472,22 +471,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			InvalidRevision:   "",
 			MergeBaseRevision: "",
 		}
-	}
-
-	// TODO (PM-2950): remove this temporary conditional initialization for the
-	// vault once the AWS infrastructure is productionized and AWS admin
-	// settings are set.
-	if h.vault == nil && (len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0) {
-		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
-		}
-		defer smClient.Close(ctx)
-		vault, err := cloud.MakeSecretsManagerVault(smClient)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
-		}
-		h.vault = vault
 	}
 
 	// This intentionally deletes the container secrets from external storage
