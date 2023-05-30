@@ -121,27 +121,3 @@ func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (conte
 	}
 	return context.WithTimeout(ctx, timeout)
 }
-
-func (a *Agent) startEarlyTerminationWatcher(ctx context.Context, tc *taskContext, check func() bool, action func(), doneChan chan<- bool) {
-	defer recovery.LogStackTraceAndContinue("early termination watcher")
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			grip.Info("Early termination watcher canceled.")
-			return
-		case <-ticker.C:
-			if check() {
-				if tc != nil && tc.project != nil && tc.project.EarlyTermination != nil {
-					tc.logger.Execution().Error(a.runCommands(ctx, tc, tc.project.EarlyTermination.List(), runCommandsOptions{}, earlyTermBlock))
-				}
-				action()
-				if doneChan != nil {
-					doneChan <- true
-				}
-				return
-			}
-		}
-	}
-}
