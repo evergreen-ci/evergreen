@@ -2195,7 +2195,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	}
 
 	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
-		return errors.Wrapf(err, "updating mathing dependencies for task '%s'", t.Id)
+		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
 	}
 
 	if err := t.RefreshUnattainableDependency(); err != nil {
