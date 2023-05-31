@@ -1574,6 +1574,18 @@ func CountActivatedTasksForVersion(versionId string) (int, error) {
 	}))
 }
 
+// HasActivatedDependentTasks returns true if there are active tasks waiting on the given task.
+func HasActivatedDependentTasks(taskId string) (bool, error) {
+	numDependentTasks, err := Count(db.Query(bson.M{
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): taskId,
+		ActivatedKey: true,
+	}))
+	if err != nil {
+		return false, err
+	}
+	return numDependentTasks > 0, nil
+}
+
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	tasks, err := FindWithSort(bson.M{
 		BuildIdKey:   buildId,
