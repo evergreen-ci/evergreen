@@ -1890,7 +1890,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 	return err
 }
 
-// HasUnfinishedTaskForVersion returns true if there are any scheduled but
+// HasUnfinishedTaskForVersions returns true if there are any scheduled but
 // unfinished tasks matching the given conditions.
 func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
 	count, err := Count(
