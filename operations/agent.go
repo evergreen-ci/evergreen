@@ -164,9 +164,9 @@ func Agent() cli.Command {
 				return errors.Wrap(err, "constructing agent")
 			}
 
-			defer agt.Close(ctx)
+			go hardShutdownForSignals(ctx, cancel, agt.Close)
 
-			go hardShutdownForSignals(ctx, cancel)
+			defer agt.Close(ctx)
 
 			sender, err := agt.GetSender(ctx, opts.LogPrefix)
 			if err != nil {
@@ -186,7 +186,7 @@ func Agent() cli.Command {
 	}
 }
 
-func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc) {
+func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc, closeAgent func(ctx context.Context)) {
 	defer recovery.LogStackTraceAndExit("agent signal handler")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -196,6 +196,11 @@ func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelF
 	case <-sigChan:
 		grip.Info("service exiting after receiving signal")
 	}
+
+	// Close may not succeed if the context is cancelled, but this is a
+	// best-effort attempt to clean up before imminent shutdown anyways.
+	closeAgent(ctx)
+
 	serviceCanceler()
 	os.Exit(2)
 }
