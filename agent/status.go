@@ -35,7 +35,6 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/status").Handler(a.statusHandler()).Get()
 	app.AddRoute("/task_status").Handler(a.endTaskHandler).Post()
-	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
 
@@ -136,35 +135,6 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.endTaskResp = &resp
-}
-
-func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		_ = grip.GetSender().Close()
-	}()
-
-	msg := message.Fields{
-		"message": "terminating agent triggered",
-		"host_id": r.Host,
-	}
-	grip.Info(msg)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	out, err := json.MarshalIndent(msg, " ", " ")
-	if err != nil {
-		grip.Error(errors.Wrap(err, "marshalling JSON response"))
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	_, err = w.Write(out)
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
-	}
-	grip.Error(errors.Wrap(err, "writing response"))
-
-	// need to use os.exit rather than a panic because the panic
-	// handler will recover.
-	os.Exit(1)
 }
 
 // buildResponse produces the response document for the current
