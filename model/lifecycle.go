@@ -88,15 +88,6 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		for _, t := range tasksToModify {
 			taskIds = append(taskIds, t.Id)
 		}
-		msg := message.Fields{
-			"source":              "github hook",
-			"message":             "deactivating version tasks",
-			"patch_id":            versionId,
-			"task_ids":            taskIds,
-			"ticket":              "EVG-18657",
-			"len_tasks_to_modify": len(tasksToModify),
-		}
-		grip.Debug(msg)
 		if len(tasksToModify) > 0 {
 			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
 				return errors.Wrap(err, "deactivating tasks")

@@ -166,7 +166,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"event":   gh.eventType,
 				"action":  *event.Action,
 				"message": "pull request closed; aborting patch",
-				"ticket":  "EVG-18657",
 			})
 
 			if err := data.AbortPatchesFromPullRequest(event); err != nil {

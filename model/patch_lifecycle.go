@@ -906,7 +906,6 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 		"repo":           repo,
 		"message":        "fetched patches to abort",
 		"num_patches":    len(patches),
-		"ticket":         "EVG-18657",
 	})
 
 	catcher := grip.NewSimpleCatcher()
@@ -941,7 +940,6 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				"pr":             p.GithubPatchData.PRNumber,
 				"project":        p.Project,
 				"version":        p.Version,
-				"ticket":         "EVG-18657",
 			}
 			grip.Error(message.WrapError(err, msg))
 			catcher.Add(err)

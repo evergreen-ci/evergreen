@@ -213,7 +213,7 @@ func setVersionStatus(versionId, newStatus string) error {
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
 func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
-	query := db.Query(task.ByVersionWithChildTasks(v.Id)).WithFields(
+	query := db.Query(task.ByVersion(v.Id)).WithFields(
 		task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(query)
 	if err != nil {

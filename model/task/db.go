@@ -440,6 +440,7 @@ func ByVersions(versionIDs []string) bson.M {
 	return bson.M{VersionKey: bson.M{"$in": versionIDs}}
 }
 
+// ByVersionsWithChildTasks produces a query that returns tasks and child tasks for the given version.
 func ByVersionsWithChildTasks(versionIDs []string) bson.M {
 	return bson.M{
 		"$or": []bson.M{
