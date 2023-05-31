@@ -882,6 +882,7 @@ func (e *envState) initTracer(ctx context.Context) error {
 		trace.WithBatcher(exp),
 		trace.WithResource(resource),
 	)
+	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 
 	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {

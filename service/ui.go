@@ -299,7 +299,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddPrefixRoute("/lobster").Handler(uis.lobsterPage).Get()
 
 	// GraphQL
-	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
+	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()
 	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
 
 	// Waterfall pages
@@ -314,10 +314,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
-
-	// Performance Discovery pages
-	app.AddRoute("/perfdiscovery/").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
-	app.AddRoute("/perfdiscovery/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.perfdiscoveryPage).Get()
 
 	// Test Logs
 	app.AddRoute("/test_log/{log_id}").Wrap(needsLogin, needsContext, allowsCORS).Handler(uis.testLog).Get()

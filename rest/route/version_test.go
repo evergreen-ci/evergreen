@@ -232,7 +232,7 @@ func (s *VersionSuite) TestAbortVersion() {
 	for _, t := range tasks {
 		foundTask, err := task.FindOneId(t)
 		s.NoError(err)
-		if utility.StringSliceContains(evergreen.TaskAbortableStatuses, foundTask.Status) {
+		if utility.StringSliceContains(evergreen.TaskInProgressStatuses, foundTask.Status) {
 			s.Equal(foundTask.Aborted, true)
 		}
 	}

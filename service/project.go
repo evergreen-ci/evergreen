@@ -42,6 +42,15 @@ func (uis *UIServer) filterViewableProjects(u *user.DBUser) ([]model.ProjectRef,
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+	}
+	if flags.LegacyUIProjectPageDisabled {
+		newUIProjectsLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
+		http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
+	}
+
 	allProjects, err := uis.filterViewableProjects(dbUser)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -831,12 +840,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the projectRef too
-	projectRef.RepotrackerError.Exists = false
-	projectRef.RepotrackerError.InvalidRevision = ""
-	projectRef.RepotrackerError.MergeBaseRevision = ""
-	err = projectRef.Upsert()
-	if err != nil {
+	if err := projectRef.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}

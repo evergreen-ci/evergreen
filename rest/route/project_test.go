@@ -292,6 +292,81 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Nil(p.Restricted)
 }
 
+func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+
+	// fail - empty expression
+	jsonBody := []byte(`{"parsley_filters": [{"expression": "", "case_sensitive": true, "exact_match": false}]}`)
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	errResp := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(errResp.Message, "filter expression must be non-empty")
+
+	// fail - invalid regular expression
+	jsonBody = []byte(`{"parsley_filters": [{"expression": "*", "case_sensitive": true, "exact_match": false}]}`)
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	errResp = (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(errResp.Message, "filter expression '*' is invalid regexp")
+
+	// fail - duplicate filter expressions
+	jsonBody = []byte(`{"parsley_filters": [
+		{"expression": "dupe", "case_sensitive": true, "exact_match": false}, 
+		{"expression": "dupe", "case_sensitive": true, "exact_match": false},
+		{"expression": "also_a_dupe", "case_sensitive": true, "exact_match": false},
+		{"expression": "also_a_dupe", "case_sensitive": true, "exact_match": false}
+	]}`)
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	errResp = (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(errResp.Message, "duplicate filter expression 'dupe'")
+	s.Contains(errResp.Message, "duplicate filter expression 'also_a_dupe'")
+
+	// success
+	jsonBody = []byte(`{"parsley_filters": [{"expression": "filter1", "case_sensitive": true, "exact_match": false}, {"expression": "filter2", "case_sensitive": true, "exact_match": false}]}`)
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	p, err := data.FindProjectById("dimoxinil", true, false)
+	s.NoError(err)
+	s.NotNil(p)
+	s.Len(p.ParsleyFilters, 2)
+}
+
 func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1016,6 +1091,7 @@ func TestDeleteProject(t *testing.T) {
 			RepoRefId: repo.Id,
 			Enabled:   false,
 			Hidden:    utility.TruePtr(),
+			Private:   utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -1086,7 +1162,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId is populated
 
 	pRef.RepoRefId = ""
-	assert.NoError(t, pRef.Update())
+	assert.NoError(t, pRef.Upsert())
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)
@@ -1160,7 +1236,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId isn't populated
 
 	pRef.RepoRefId = repoRef.Id
-	assert.NoError(t, pRef.Update())
+	assert.NoError(t, pRef.Upsert())
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)

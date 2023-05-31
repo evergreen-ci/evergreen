@@ -91,6 +91,7 @@ type Mutation {
   # user
   clearMySubscriptions: Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  deleteSubscriptions(subscriptionIds: [String!]!): Int!
   removePublicKey(keyName: String!): [PublicKey!]!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   updatePublicKey(

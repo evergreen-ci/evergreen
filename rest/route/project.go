@@ -451,6 +451,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid triggers"))
 	}
 
+	// Validate Parsley filters before updating project.
+	err = dbModel.ValidateParsleyFilters(h.newProjectRef.ParsleyFilters)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))
+	}
+
 	err = dbModel.ValidateBbProject(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating build baron config"))
@@ -530,12 +536,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = h.newProjectRef.Update(); err != nil {
+	if err = h.newProjectRef.Upsert(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 
-	// This updates the container secrets in the DB project ref only, not the
-	// in-memory copy.
+	// Under the hood, this is updating the container secrets in the DB project
+	// ref, but this function's copy of the in-memory project ref won't reflect
+	// those changes.
 	if err := data.UpsertContainerSecrets(ctx, h.vault, allContainerSecrets); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
 	}

@@ -629,6 +629,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
+
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
 			ProjectRef:       creationInfo.ProjectRef,
@@ -641,6 +642,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
 			SyncAtEndOpts:    p.SyncAtEndOpts,
+			// When a GitHub PR patch is finalized with the PR alias, all of the
+			// tasks selected by the alias must finish in order for the
+			// build/version to be finished.
+			ActivatedTasksAreEssentialToComplete: evergreen.IsGitHubPatchRequester(requester),
 		}
 		var build *build.Build
 		var tasks task.Tasks

@@ -39,6 +39,9 @@ const (
 	refTags = "refs/tags/"
 )
 
+// skipCILabels are a set of labels which will skip creating PR patch if part of the commit description or message.
+var skipCILabels = []string{"[skip ci]", "[skip-ci]"}
+
 type githubHookApi struct {
 	queue  amboy.Queue
 	secret []byte
@@ -415,6 +418,22 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy 
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
+	// If there are no errors with the PR, verify that we aren't skipping CI before adding the intent (and send a message).
+	for _, label := range skipCILabels {
+		if strings.Contains(strings.ToLower(pr.GetTitle()), label) ||
+			strings.Contains(strings.ToLower(pr.GetBody()), label) {
+			grip.Info(message.Fields{
+				"message": "skipping CI on PR",
+				"owner":   pr.Base.User.GetLogin(),
+				"repo":    pr.Base.Repo.GetName(),
+				"ref":     pr.Head.GetRef(),
+				"pr_num":  pr.GetNumber(),
+				"label":   label,
+			})
+			return nil
+		}
+	}
+
 	if err := data.AddPatchIntent(ghi, gh.queue); err != nil {
 		return errors.Wrap(err, "saving patch intent")
 	}
