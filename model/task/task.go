@@ -123,7 +123,9 @@ type Task struct {
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
-	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	// UnattainableDependency caches the contents of DependsOn for more efficient querying.
+	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
+	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
 	// wait for its dependencies to finish before running.
 	OverrideDependencies bool `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
@@ -2193,7 +2195,12 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	}
 
 	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
-		return err
+		return errors.Wrapf(err, "updating mathing dependencies for task '%s'", t.Id)
+	}
+
+	t.UnattainableDependency = t.hasUnattainableDependency()
+	if err := updateUnattainableDependency(t.Id, t.UnattainableDependency); err != nil {
+		return errors.Wrapf(err, "caching unattainable dependency for task '%s'", t.Id)
 	}
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
@@ -2201,6 +2208,15 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		event.LogTaskBlocked(t.Id, t.Execution)
 	}
 	return nil
+}
+
+func (t *Task) hasUnattainableDependency() bool {
+	for _, dependency := range t.DependsOn {
+		if dependency.Unattainable {
+			return true
+		}
+	}
+	return false
 }
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
@@ -2950,13 +2966,7 @@ func (t *Task) Blocked() bool {
 	if t.OverrideDependencies {
 		return false
 	}
-	for _, dependency := range t.DependsOn {
-		if dependency.Unattainable {
-			return true
-		}
-	}
-
-	return false
+	return t.hasUnattainableDependency()
 }
 
 // WillRun returns true if the task will run eventually, but has not started

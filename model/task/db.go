@@ -60,6 +60,7 @@ var (
 	SecondaryDistrosKey            = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
 	BuildVariantKey                = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
+	UnattainableDependencyKey      = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDepsKey                     = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
@@ -1838,6 +1839,13 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 		}}),
 	)
 	return res.Err()
+}
+
+func updateUnattainableDependency(taskID string, unattainableDependency bool) error {
+	return UpdateOne(
+		bson.M{IdKey: taskID},
+		bson.M{"$set": bson.M{UnattainableDependencyKey: unattainableDependency}},
+	)
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
