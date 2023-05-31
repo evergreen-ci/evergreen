@@ -299,7 +299,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddPrefixRoute("/lobster").Handler(uis.lobsterPage).Get()
 
 	// GraphQL
-	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
+	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()
 	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
 
 	// Waterfall pages

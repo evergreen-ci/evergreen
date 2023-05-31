@@ -103,7 +103,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
-	require.NoError(t, project0.Update())
+	require.NoError(t, project0.Upsert())
 	mergedVars, err = FindMergedProjectVars(project0.Id)
 	assert.NoError(err)
 	assert.Equal(project0Vars, *mergedVars)

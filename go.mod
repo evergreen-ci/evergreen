@@ -3,7 +3,7 @@ module github.com/evergreen-ci/evergreen
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.20
+	github.com/99designs/gqlgen v0.17.31
 	github.com/PuerkitoBio/rehttp v1.1.0
 	github.com/aws/aws-sdk-go v1.44.210
 	github.com/cheynewallace/tabby v1.1.1
@@ -34,7 +34,7 @@ require (
 	github.com/mongodb/anser v0.0.0-20230501213745-c62f11870fd4
 	github.com/mongodb/grip v0.0.0-20230503175150-8b2e395f3111
 	github.com/pkg/errors v0.9.1
-	github.com/ravilushqa/otelgqlgen v0.11.0
+	github.com/ravilushqa/otelgqlgen v0.13.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
@@ -85,7 +85,7 @@ require (
 	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/dghubble/oauth1 v0.7.2 // indirect
@@ -125,7 +125,7 @@ require (
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.12.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
@@ -164,7 +164,7 @@ require (
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
-	github.com/urfave/cli/v2 v2.8.1 // indirect
+	github.com/urfave/cli/v2 v2.24.4 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
@@ -174,14 +174,14 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.opentelemetry.io/contrib v1.10.0 // indirect
+	go.opentelemetry.io/contrib v1.16.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.15.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 )

@@ -315,7 +315,7 @@ use performance tooling.
 Enabling this feature allows users to push and pull their task working
 directory to and from a remote store (S3). This can be done either using
 the
-[s3.push](Project-Commands.md#s3-push)
+[s3.push](Project-Commands.md#s3push)
 or
 [s3.pull](Project-Commands.md#s3pull)
 project commands, or using it from [the CLI](../CLI.md#task-sync).
