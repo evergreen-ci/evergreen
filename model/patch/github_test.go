@@ -189,34 +189,34 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-				},
+		},
 		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-				},
+		},
 		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-				},
+		},
 		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
-				},
+		},
 		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
-				},
+		},
 		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
-				},
+		},
 		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
-				},
+		},
 	}
 
 	for _, intent := range intents {
