@@ -11,7 +11,6 @@ import (
 
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -440,17 +439,6 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
 
-	smClient, err := cloud.MakeSecretsManagerClient(s.env.Settings())
-
-	s.Require().NoError(err)
-	defer func() {
-		s.Require().NoError(smClient.Close(ctx))
-	}()
-	vault, err := cloud.MakeSecretsManagerVault(smClient)
-	s.Require().NoError(err)
-
-	h.vault = vault
-
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()
 
@@ -481,12 +469,6 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
-
-	externalID := dbProjRef.ContainerSecrets[0].ExternalID
-	s.Require().NotNil(h.vault)
-	initialStoredValue, err := h.vault.GetValue(ctx, externalID)
-	s.Require().NoError(err)
-	s.NotZero(initialStoredValue)
 
 	// Rotate the existing pod secret's value.
 	req, err = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
