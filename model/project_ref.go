@@ -1496,8 +1496,8 @@ func FindBranchAdminsForRepo(repoId string) ([]string, error) {
 	return utility.UniqueStrings(allBranchAdmins), nil
 }
 
-// Find repos that have that trigger / are enabled
-// find projects that have this repo ID and nil triggers,OR that have the trigger
+// FindDownstreamProjects finds projects that have that trigger enabled or
+// inherits it from the repo project.
 func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 

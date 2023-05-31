@@ -1716,6 +1716,12 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	if err != nil {
 		return errors.Wrap(err, "deactivating tasks")
 	}
+	grip.Debug(message.Fields{
+		"source":   "github hook",
+		"message":  "deactivated version tasks!!",
+		"task_ids": taskIDs,
+		"ticket":   "EVG-18657",
+	})
 	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
