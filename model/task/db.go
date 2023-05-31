@@ -738,6 +738,15 @@ func needsContainerAllocation() bson.M {
 	return q
 }
 
+// IsContainerTaskScheduledQuery returns a query indicating if the container is
+// in a state where it is scheduled to run and is logically equivalent to
+// (Task).isContainerScheduled. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all tasks that could
+//     eventually run (i.e. evergreen.TaskWillRun from (Task).GetDisplayStatus),
+//     because a container task is not scheduled until all of its dependencies
+//     have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func IsContainerTaskScheduledQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
@@ -1835,7 +1844,7 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1858,7 +1867,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 		bson.M{
 			VersionKey: versionId, // Include to improve query.
 			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 		},
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,

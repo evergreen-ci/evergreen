@@ -430,7 +430,7 @@ func (t *Task) IsDispatchable() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return t.IsHostTask() && t.Status == evergreen.TaskUndispatched && t.Activated
+	return t.IsHostTask() && t.WillRun()
 }
 
 // IsHostTask returns true if it's a task that runs on hosts.
@@ -476,8 +476,15 @@ func (t *Task) IsContainerDispatchable() bool {
 	return t.isContainerScheduled()
 }
 
-// isContainerTaskScheduled returns whether the task is in a state
-// where it should eventually dispatch to run on a container.
+// isContainerTaskScheduled returns whether the task is in a state where it
+// should eventually dispatch to run on a container and is logically equivalent
+// to IsContainerTaskScheduledQuery. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all container tasks that
+//     could eventually run (i.e. evergreen.TaskWillRun from
+//     (Task).GetDisplayStatus), because a container task is not scheduled until
+//     all of its dependencies have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func (t *Task) isContainerScheduled() bool {
 	if !t.IsContainerTask() {
 		return false
@@ -2201,7 +2208,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 func AbortBuild(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2239,7 +2246,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 func AbortVersion(versionId string, reason AbortInfo) error {
 	q := bson.M{
 		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2952,9 +2959,24 @@ func (t *Task) Blocked() bool {
 	return false
 }
 
-// isUnscheduled returns true if a task is unscheduled and will not run
+// WillRun returns true if the task will run eventually, but has not started
+// running yet. This is logically equivalent to evergreen.TaskWillRun from
+// (Task).GetDisplayStatus.
+func (t *Task) WillRun() bool {
+	return t.Status == evergreen.TaskUndispatched && t.Activated && !t.Blocked()
+}
+
+// IsUnscheduled returns true if a task is unscheduled and will not run. This is
+// logically equivalent to evergreen.TaskUnscheduled from
+// (Task).GetDisplayStatus.
 func (t *Task) IsUnscheduled() bool {
 	return t.Status == evergreen.TaskUndispatched && !t.Activated
+}
+
+// IsInProgress returns true if the task has been dispatched and is about to
+// run, or is already running.
+func (t *Task) IsInProgress() bool {
+	return utility.StringSliceContains(evergreen.TaskInProgressStatuses, t.Status)
 }
 
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {

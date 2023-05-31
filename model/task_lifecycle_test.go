@@ -473,7 +473,7 @@ func TestSetActiveState(t *testing.T) {
 			DistroId:          "arch",
 			Version:           v.Id,
 			Project:           "p",
-			Status:            evergreen.TaskDispatched,
+			Status:            evergreen.TaskUndispatched,
 			CommitQueueMerge:  true,
 			Requester:         evergreen.MergeTestRequester,
 			TaskGroup:         "tg",

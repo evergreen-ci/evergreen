@@ -1175,9 +1175,9 @@ type buildStatus struct {
 	status              string
 	allTasksBlocked     bool
 	allTasksUnscheduled bool
-	// unfinishedEssentialTasks is a list of task IDs which are still waiting to
+	// numUnfinishedEssentialTasks is the number of tasks are still waiting to
 	// complete.
-	unfinishedEssentialTasks []string
+	numUnfinishedEssentialTasks int
 }
 
 // getBuildStatus returns a string denoting the status of the build based on the
@@ -1214,31 +1214,28 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 	}
 
 	var hasUnfinishedTask bool
-	var unfinishedEssentialTasks []string
-	// Check if tasks are started but not finished.
+	var numUnfinishedEssentialTasks int
+	// Check if tasks will run or must run, but are not finished.
 	for _, t := range buildTasks {
-		if t.Status == evergreen.TaskStarted {
-			hasUnfinishedTask = true
-		}
-		if t.Activated && !t.Blocked() && !t.IsFinished() {
+		if t.WillRun() || t.IsInProgress() {
 			hasUnfinishedTask = true
 		}
 		if t.IsEssentialToFinish && !t.IsFinished() {
-			unfinishedEssentialTasks = append(unfinishedEssentialTasks, t.Id)
+			numUnfinishedEssentialTasks++
 		}
 	}
 	if hasUnfinishedTask {
-		return buildStatus{status: evergreen.BuildStarted, unfinishedEssentialTasks: unfinishedEssentialTasks}
+		return buildStatus{status: evergreen.BuildStarted, numUnfinishedEssentialTasks: numUnfinishedEssentialTasks}
 	}
 
 	// Check if tasks are finished but failed.
 	for _, t := range buildTasks {
 		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
-			return buildStatus{status: evergreen.BuildFailed, unfinishedEssentialTasks: unfinishedEssentialTasks}
+			return buildStatus{status: evergreen.BuildFailed, numUnfinishedEssentialTasks: numUnfinishedEssentialTasks}
 		}
 	}
 
-	return buildStatus{status: evergreen.BuildSucceeded, unfinishedEssentialTasks: unfinishedEssentialTasks}
+	return buildStatus{status: evergreen.BuildSucceeded, numUnfinishedEssentialTasks: numUnfinishedEssentialTasks}
 }
 
 // updateBuildGithubStatus updates the GitHub check status for a build. If the
@@ -1320,7 +1317,7 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		return true, nil
 	}
 
-	if evergreen.IsFinishedBuildStatus(buildStatus.status) && len(buildStatus.unfinishedEssentialTasks) > 0 {
+	if evergreen.IsFinishedBuildStatus(buildStatus.status) && buildStatus.numUnfinishedEssentialTasks > 0 {
 		// If a build has only finished/deactivated tasks but some of those
 		// deactivated tasks are essential, the build is not considered
 		// finished because they have to run.
@@ -1331,7 +1328,7 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		// build's old status and new status.
 		oldStatus := b.Status
 		b.Status = evergreen.BuildStarted
-		desc := build.UnscheduledEssentialTasksPRBuildDescription(len(buildStatus.unfinishedEssentialTasks))
+		desc := build.UnscheduledEssentialTasksPRBuildDescription(buildStatus.numUnfinishedEssentialTasks)
 		grip.Error(message.WrapError(checkUpdateBuildPRStatusPending(b, desc, "update-build-status"), message.Fields{
 			"message": "could not update build PR status after finishing all scheduled tasks but some essential ones",
 			"status":  buildStatus.status,

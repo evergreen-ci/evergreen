@@ -819,9 +819,9 @@ var (
 		HostsOverallocatedTerminate,
 	}
 
-	// TaskAbortableStatuses have been picked up by an agent but have not
+	// TaskInProgressStatuses have been picked up by an agent but have not
 	// finished running.
-	TaskAbortableStatuses = []string{TaskStarted, TaskDispatched}
+	TaskInProgressStatuses = []string{TaskStarted, TaskDispatched}
 	// TaskCompletedStatuses are statuses for tasks that have finished running.
 	// This does not include task display statuses.
 	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
