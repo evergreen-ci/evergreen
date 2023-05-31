@@ -1764,7 +1764,11 @@ func MarkOneTaskReset(t *task.Task) error {
 	}
 
 	if err := UpdateUnblockedDependencies(t); err != nil {
-		return errors.Wrap(err, "clearing cached unattainable dependencies")
+		return errors.Wrap(err, "clearing unattainable dependencies")
+	}
+
+	if err := t.RefreshUnattainableDependency(); err != nil {
+		return errors.Wrap(err, "refreshing cached unattainable status")
 	}
 
 	if err := t.MarkDependenciesFinished(false); err != nil {
@@ -1792,7 +1796,8 @@ func MarkTasksReset(taskIds []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing cached unattainable dependencies for task '%s'", t.Id)
+		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing unattainable dependencies for task '%s'", t.Id)
+		catcher.Wrapf(t.RefreshUnattainableDependency(), "refreshing cached unattainable status for task '%s'", t.Id)
 		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 

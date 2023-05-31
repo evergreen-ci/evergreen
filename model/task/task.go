@@ -2198,8 +2198,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		return errors.Wrapf(err, "updating mathing dependencies for task '%s'", t.Id)
 	}
 
-	t.UnattainableDependency = t.hasUnattainableDependency()
-	if err := updateUnattainableDependency(t.Id, t.UnattainableDependency); err != nil {
+	if err := t.RefreshUnattainableDependency(); err != nil {
 		return errors.Wrapf(err, "caching unattainable dependency for task '%s'", t.Id)
 	}
 
@@ -2208,6 +2207,13 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		event.LogTaskBlocked(t.Id, t.Execution)
 	}
 	return nil
+}
+
+// RefreshUnattainableDependency refreshes the contents of the task's UnattainableDependency field
+// by iterating through the task's DependsOn.
+func (t *Task) RefreshUnattainableDependency() error {
+	t.UnattainableDependency = t.hasUnattainableDependency()
+	return updateUnattainableDependency(t.Id, t.UnattainableDependency)
 }
 
 func (t *Task) hasUnattainableDependency() bool {
