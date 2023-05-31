@@ -43,11 +43,12 @@ type GetOptions struct {
 	// represented as a Unix timestamp in nanoseconds.
 	End *int64
 	// LineLimit specifies the number of log lines to return. Invalid if
-	// specified along with Tail or if Paginate is set to true.
+	// specified along with Tail or PageSize.
 	LineLimit *int
 	// Tail specifies the last N log lines to return. Invalid if specified
-	// along with LineLimit or if Paginate is set to true.
+	// along with LineLimit or PageSize.
 	Tail *int
-	// Paginate indicates whether to enable byte-based pagination.
-	Paginate bool
+	// PageSize is the number of bytes for byte-based pagination. Invalid
+	// if specified along with LineLimit or Tail.
+	PageSize *int
 }
