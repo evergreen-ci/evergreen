@@ -441,15 +441,12 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	h.user = &user.DBUser{Id: "me"}
 
 	smClient, err := cloud.MakeSecretsManagerClient(s.env.Settings())
-
 	s.Require().NoError(err)
 	defer func() {
 		s.Require().NoError(smClient.Close(ctx))
 	}()
-	v, err := cloud.MakeSecretsManagerVault(smClient)
+	vault, err := cloud.MakeSecretsManagerVault(smClient)
 	s.Require().NoError(err)
-
-	vault := v
 
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()

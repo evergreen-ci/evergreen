@@ -473,9 +473,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// TODO (PM-2950): remove this temporary conditional initialization for the
-	// vault once the AWS infrastructure is productionized and AWS admin
-	// settings are set.
 	var vault cocoa.Vault
 	if len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0 {
 		smClient, err := cloud.MakeSecretsManagerClient(h.settings)

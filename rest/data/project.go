@@ -139,16 +139,15 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 			"repo":               projectRef.Repo,
 		}))
 	}
-	err = projectRef.Add(u)
-	if err != nil {
+
+	if err = projectRef.Add(u); err != nil {
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
 		}
 	}
 
-	err = tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef)
-	if err != nil {
+	if err = tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef); err != nil {
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "copying container secrets for project '%s'", projectRef.Identifier).Error(),
