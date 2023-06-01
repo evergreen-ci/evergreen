@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -496,13 +494,6 @@ func getAllTaskStatuses(tasks []task.Task) []string {
 	return statusesArr
 }
 
-func formatDuration(duration string) string {
-	regex := regexp.MustCompile(`\d*[dhms]`)
-	return strings.TrimSpace(regex.ReplaceAllStringFunc(duration, func(m string) string {
-		return m + " "
-	}))
-}
-
 func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
 	filteredSubscriptions := make([]string, 0, len(subscriptions))
 	for _, subscription := range subscriptions {
@@ -512,6 +503,23 @@ func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscrip
 	}
 
 	return filteredSubscriptions
+}
+
+func makePatchDuration(t, m string) *PatchDuration {
+	var tPointer *string
+	if t != "0s" {
+		tPointer = &t
+	}
+
+	var mPointer *string
+	if m != "0s" {
+		mPointer = &m
+	}
+
+	return &PatchDuration{
+		Makespan:  mPointer,
+		TimeTaken: tPointer,
+	}
 }
 
 func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selectors []restModel.APISelector) (string, string, error) {

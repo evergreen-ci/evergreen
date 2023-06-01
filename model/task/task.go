@@ -3097,6 +3097,22 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
+func GetFormattedTimeSpent(tasks []Task) (string, string) {
+	timeTaken, makespan := GetTimeSpent(tasks)
+
+	t := timeTaken.Round(time.Second).String()
+	m := makespan.Round(time.Second).String()
+
+	return formatDuration(t), formatDuration(m)
+}
+
+func formatDuration(duration string) string {
+	regex := regexp.MustCompile(`\d*[dhms]`)
+	return strings.TrimSpace(regex.ReplaceAllStringFunc(duration, func(m string) string {
+		return m + " "
+	}))
+}
+
 type TasksSortOrder struct {
 	Key   string
 	Order int
