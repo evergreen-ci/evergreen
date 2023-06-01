@@ -124,6 +124,12 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 		pp.Timeout = toMerge.Timeout
 	}
 
+	if pp.EarlyTermination != nil && toMerge.EarlyTermination != nil {
+		catcher.New("early termination can only be defined in one YAML")
+	} else if toMerge.EarlyTermination != nil {
+		pp.EarlyTermination = toMerge.EarlyTermination
+	}
+
 	return catcher.Resolve()
 }
 
