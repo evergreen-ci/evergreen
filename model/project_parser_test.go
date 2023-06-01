@@ -2181,11 +2181,6 @@ func TestMergeOrderedUnique(t *testing.T) {
 				Command: "timeout",
 			},
 		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "early termination",
-			},
-		},
 	}
 
 	err := main.mergeOrderedUnique(add)
@@ -2193,7 +2188,6 @@ func TestMergeOrderedUnique(t *testing.T) {
 	assert.NotNil(t, main.Pre)
 	assert.NotNil(t, main.Post)
 	assert.NotNil(t, main.Timeout)
-	assert.NotNil(t, main.EarlyTermination)
 }
 
 func TestMergeOrderedUniqueFail(t *testing.T) {
@@ -2213,11 +2207,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 				Command: "timeout",
 			},
 		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "early termination",
-			},
-		},
 	}
 
 	add := &ParserProject{
@@ -2234,11 +2223,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 		Timeout: &YAMLCommandSet{
 			SingleCommand: &PluginCommandConf{
 				Command: "add timeout",
-			},
-		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "add early termination",
 			},
 		},
 	}
