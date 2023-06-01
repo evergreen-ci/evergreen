@@ -6,7 +6,7 @@
 
 Many of the these REST endpoints do not require authentication to
 access, but some do. These will return a 404 if no authentication
-headers are sent, if the username is invalid, or if the API key is
+headers are sent, if the username is invalid, or if the API key 
 incorrect. Use the `user` and `api_key` fields from the
 [settings](https://spruce.mongodb.com/preferences/cli) page to set two headers,
 `Api-User` and `Api-Key`.
@@ -746,7 +746,7 @@ Returns a paginated list of all patches associated with a specific user
 
 ##### Fetch Patch By Id
 
-    GET /projects/<project_id>/patches
+    GET /patches/<patch_id>
 
 Fetch a single patch using its ID
 
