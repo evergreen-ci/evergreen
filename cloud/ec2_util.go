@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -84,16 +84,16 @@ func AztoRegion(az string) string {
 // ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
 // provider-specific status codes.
 func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
-	switch ec2Status {
-	case ec2.InstanceStateNamePending:
+	switch types.InstanceStateName(ec2Status) {
+	case types.InstanceStateNamePending:
 		return StatusInitializing
-	case ec2.InstanceStateNameRunning:
+	case types.InstanceStateNameRunning:
 		return StatusRunning
-	case ec2.InstanceStateNameStopped:
+	case types.InstanceStateNameStopped:
 		return StatusStopped
-	case ec2.InstanceStateNameStopping:
+	case types.InstanceStateNameStopping:
 		return StatusStopping
-	case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
+	case types.InstanceStateNameTerminated, types.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
 		grip.Error(message.Fields{
@@ -168,16 +168,16 @@ func hostToEC2Tags(hostTags []host.Tag) []types.Tag {
 	return tags
 }
 
-func makeTagTemplate(hostTags []host.Tag) []*ec2.LaunchTemplateTagSpecificationRequest {
+func makeTagTemplate(hostTags []host.Tag) []types.LaunchTemplateTagSpecificationRequest {
 	tags := hostToEC2Tags(hostTags)
-	tagTemplates := []*ec2.LaunchTemplateTagSpecificationRequest{
+	tagTemplates := []types.LaunchTemplateTagSpecificationRequest{
 		{
-			ResourceType: aws.String(ec2.ResourceTypeInstance),
+			ResourceType: types.ResourceTypeInstance,
 			Tags:         tags,
 		},
 		// every host has at least a root volume that needs to be tagged
 		{
-			ResourceType: aws.String(ec2.ResourceTypeVolume),
+			ResourceType: types.ResourceTypeVolume,
 			Tags:         tags,
 		},
 	}
@@ -185,15 +185,15 @@ func makeTagTemplate(hostTags []host.Tag) []*ec2.LaunchTemplateTagSpecificationR
 	return tagTemplates
 }
 
-func makeTagSpecifications(hostTags []host.Tag) []*ec2.TagSpecification {
+func makeTagSpecifications(hostTags []host.Tag) []types.TagSpecification {
 	tags := hostToEC2Tags(hostTags)
-	return []*ec2.TagSpecification{
+	return []types.TagSpecification{
 		{
-			ResourceType: aws.String(ec2.ResourceTypeInstance),
+			ResourceType: types.ResourceTypeInstance,
 			Tags:         tags,
 		},
 		{
-			ResourceType: aws.String(ec2.ResourceTypeVolume),
+			ResourceType: types.ResourceTypeVolume,
 			Tags:         tags,
 		},
 	}
@@ -277,7 +277,7 @@ func validateUserDataSize(userData, distroID string) error {
 	return errors.WithStack(err)
 }
 
-func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
+func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, client AWSClient) error {
 	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
 		return errors.New("instance missing availability zone")
 	}
@@ -350,24 +350,24 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]types.BlockDeviceMapping, e
 			return nil, errors.New("must provide either a virtual name or an EBS size")
 		}
 
-		m := &types.BlockDeviceMapping{
+		m := types.BlockDeviceMapping{
 			DeviceName: aws.String(mount.DeviceName),
 		}
 		// Without a virtual name, this is EBS
 		if mount.VirtualName == "" {
 			m.Ebs = &types.EbsBlockDevice{
 				DeleteOnTermination: aws.Bool(true),
-				VolumeSize:          aws.Int64(mount.Size),
-				VolumeType:          aws.String(types.VolumeTypeGp2),
+				VolumeSize:          aws.Int32(mount.Size),
+				VolumeType:          types.VolumeTypeGp2,
 			}
 			if mount.Iops != 0 {
-				m.Ebs.Iops = aws.Int64(mount.Iops)
+				m.Ebs.Iops = aws.Int32(mount.Iops)
 			}
 			if mount.SnapshotID != "" {
 				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
 			}
 			if mount.VolumeType != "" {
-				m.Ebs.VolumeType = aws.String(mount.VolumeType)
+				m.Ebs.VolumeType = types.VolumeType(mount.VolumeType)
 			}
 			if mount.Throughput != 0 {
 				//aws only allows values between 125 and 1000
@@ -375,10 +375,10 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]types.BlockDeviceMapping, e
 					return nil, errors.New("throughput must be between 125 and 1000")
 				}
 				// This parameter is valid only for gp3 volumes.
-				if utility.FromStringPtr(m.Ebs.VolumeType) != types.VolumeTypeGp3 {
-					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType))
+				if m.Ebs.VolumeType != types.VolumeTypeGp3 {
+					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", m.Ebs.VolumeType)
 				}
-				m.Ebs.Throughput = aws.Int64(mount.Throughput)
+				m.Ebs.Throughput = aws.Int32(mount.Throughput)
 			}
 		} else { // With a virtual name, this is an instance store
 			m.VirtualName = aws.String(mount.VirtualName)
@@ -392,7 +392,7 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]types.LaunchTemplat
 	if len(mounts) == 0 {
 		return nil, nil
 	}
-	mappings := []*types.LaunchTemplateBlockDeviceMappingRequest{}
+	mappings := []types.LaunchTemplateBlockDeviceMappingRequest{}
 	for _, mount := range mounts {
 		if mount.DeviceName == "" {
 			return nil, errors.New("missing device name")
@@ -401,7 +401,7 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]types.LaunchTemplat
 			return nil, errors.New("must provide either a virtual name or an EBS size")
 		}
 
-		m := &types.LaunchTemplateBlockDeviceMappingRequest{
+		m := types.LaunchTemplateBlockDeviceMappingRequest{
 			DeviceName: aws.String(mount.DeviceName),
 		}
 		// Without a virtual name, this is EBS
@@ -418,7 +418,7 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]types.LaunchTemplat
 				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
 			}
 			if mount.VolumeType != "" {
-				m.Ebs.VolumeType = mount.VolumeType
+				m.Ebs.VolumeType = types.VolumeType(mount.VolumeType)
 			}
 			if mount.Throughput != 0 {
 				//aws only allows values between 125 and 1000
@@ -426,8 +426,8 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]types.LaunchTemplat
 					return nil, errors.New("throughput must be between 125 and 1000")
 				}
 				// This parameter is valid only for gp3 volumes.
-				if utility.FromStringPtr(m.Ebs.VolumeType) != types.VolumeTypeGp3 {
-					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType))
+				if m.Ebs.VolumeType != types.VolumeTypeGp3 {
+					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", m.Ebs.VolumeType)
 				}
 				m.Ebs.Throughput = aws.Int32(mount.Throughput)
 			}
@@ -472,7 +472,7 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2.DescribeI
 		} else {
 			instance := reservation.Instances[0]
 			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance ID")
-			catcher.NewWhen(instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0, "instance missing state name")
+			catcher.NewWhen(instance.State == nil || len(instance.State.Name) == 0, "instance missing state name")
 		}
 	}
 
