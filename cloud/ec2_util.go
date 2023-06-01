@@ -83,8 +83,8 @@ func AztoRegion(az string) string {
 
 // ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
 // provider-specific status codes.
-func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
-	switch types.InstanceStateName(ec2Status) {
+func ec2StatusToEvergreenStatus(ec2Status types.InstanceStateName) CloudStatus {
+	switch ec2Status {
 	case types.InstanceStateNamePending:
 		return StatusInitializing
 	case types.InstanceStateNameRunning:

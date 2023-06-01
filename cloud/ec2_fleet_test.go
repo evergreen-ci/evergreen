@@ -132,25 +132,6 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Nil(t, overrides)
 		},
-		"SubnetMatchesAz": func(*testing.T) {
-			subnet := &ec2.Subnet{
-				Tags: []*ec2.Tag{
-					{Key: aws.String("key1"), Value: aws.String("value1")},
-					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-extra")},
-				},
-				AvailabilityZone: aws.String("us-east-1a"),
-			}
-			assert.False(t, subnetMatchesAz(subnet))
-
-			subnet = &ec2.Subnet{
-				Tags: []*ec2.Tag{
-					{Key: aws.String("key1"), Value: aws.String("value1")},
-					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
-				},
-				AvailabilityZone: aws.String("us-east-1a"),
-			}
-			assert.True(t, subnetMatchesAz(subnet))
-		},
 	} {
 		h = &host.Host{
 			Id:  "h1",

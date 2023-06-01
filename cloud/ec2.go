@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -147,11 +148,11 @@ func (s *EC2ProviderSettings) FromDocument(doc *birch.Document) error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) getSecurityGroups() []*string {
-	groups := []*string{}
+func (s *EC2ProviderSettings) getSecurityGroups() []string {
+	groups := []string{}
 	if len(s.SecurityGroupIDs) > 0 {
 		for _, group := range s.SecurityGroupIDs {
-			groups = append(groups, aws.String(group))
+			groups = append(groups, group)
 		}
 		return groups
 	}
@@ -175,20 +176,20 @@ type FleetConfig struct {
 	UseCapacityOptimized bool `mapstructure:"use_capacity_optimized" json:"use_capacity_optimized,omitempty" bson:"use_capacity_optimized,omitempty"`
 }
 
-func (f *FleetConfig) awsTargetCapacityType() *string {
+func (f *FleetConfig) awsTargetCapacityType() types.DefaultTargetCapacityType {
 	if f.UseOnDemand {
-		return aws.String(ec2.DefaultTargetCapacityTypeOnDemand)
+		return types.DefaultTargetCapacityTypeOnDemand
 	}
 
-	return aws.String(ec2.DefaultTargetCapacityTypeSpot)
+	return types.DefaultTargetCapacityTypeSpot
 }
 
-func (f *FleetConfig) awsAllocationStrategy() *string {
+func (f *FleetConfig) awsAllocationStrategy() types.SpotAllocationStrategy {
 	if !f.UseOnDemand && f.UseCapacityOptimized {
-		return aws.String(ec2.SpotAllocationStrategyCapacityOptimized)
+		return types.SpotAllocationStrategyCapacityOptimized
 	}
 
-	return nil
+	return ""
 }
 
 func (f *FleetConfig) validate() error {
