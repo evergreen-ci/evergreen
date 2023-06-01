@@ -584,7 +584,10 @@ Expansions are variables within your config file. They take the form
 `${key_name}` within your project, and are defined on a project-wide
 level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
-including shell scripts. 
+including shell scripts.
+
+Expansions cannot be used recursively. In other words, you can't define an
+expansion whose value uses another expansion.
 
 ``` yaml
 command: s3.get
