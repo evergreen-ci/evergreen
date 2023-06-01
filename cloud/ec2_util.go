@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -51,9 +51,9 @@ var (
 type MountPoint struct {
 	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
 	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
-	Size        int64  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
-	Iops        int64  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
-	Throughput  int64  `mapstructure:"throughput" json:"throughput,omitempty" bson:"throughput,omitempty"`
+	Size        int32  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
+	Iops        int32  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
+	Throughput  int32  `mapstructure:"throughput" json:"throughput,omitempty" bson:"throughput,omitempty"`
 	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
 	VolumeType  string `mapstructure:"volume_type" json:"volume_type,omitempty" bson:"volume_type,omitempty"`
 }
@@ -160,12 +160,10 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	return intentHost.InstanceTags
 }
 
-func hostToEC2Tags(hostTags []host.Tag) []*ec2.Tag {
-	var tags []*ec2.Tag
+func hostToEC2Tags(hostTags []host.Tag) []types.Tag {
+	var tags []types.Tag
 	for _, tag := range hostTags {
-		key := tag.Key
-		val := tag.Value
-		tags = append(tags, &ec2.Tag{Key: &key, Value: &val})
+		tags = append(tags, types.Tag{Key: aws.String(tag.Key), Value: aws.String(tag.Value)})
 	}
 	return tags
 }
@@ -339,11 +337,11 @@ func generateDeviceNameForVolume(opts generateDeviceNameOptions) (string, error)
 	return "", errors.New("no available device names to generate")
 }
 
-func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
+func makeBlockDeviceMappings(mounts []MountPoint) ([]types.BlockDeviceMapping, error) {
 	if len(mounts) == 0 {
 		return nil, nil
 	}
-	mappings := []*ec2aws.BlockDeviceMapping{}
+	mappings := []types.BlockDeviceMapping{}
 	for _, mount := range mounts {
 		if mount.DeviceName == "" {
 			return nil, errors.New("missing device name")
@@ -352,15 +350,15 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			return nil, errors.New("must provide either a virtual name or an EBS size")
 		}
 
-		m := &ec2aws.BlockDeviceMapping{
+		m := &types.BlockDeviceMapping{
 			DeviceName: aws.String(mount.DeviceName),
 		}
 		// Without a virtual name, this is EBS
 		if mount.VirtualName == "" {
-			m.Ebs = &ec2aws.EbsBlockDevice{
+			m.Ebs = &types.EbsBlockDevice{
 				DeleteOnTermination: aws.Bool(true),
 				VolumeSize:          aws.Int64(mount.Size),
-				VolumeType:          aws.String(ec2aws.VolumeTypeGp2),
+				VolumeType:          aws.String(types.VolumeTypeGp2),
 			}
 			if mount.Iops != 0 {
 				m.Ebs.Iops = aws.Int64(mount.Iops)
@@ -377,7 +375,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 					return nil, errors.New("throughput must be between 125 and 1000")
 				}
 				// This parameter is valid only for gp3 volumes.
-				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
+				if utility.FromStringPtr(m.Ebs.VolumeType) != types.VolumeTypeGp3 {
 					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType))
 				}
 				m.Ebs.Throughput = aws.Int64(mount.Throughput)
@@ -390,11 +388,11 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 	return mappings, nil
 }
 
-func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTemplateBlockDeviceMappingRequest, error) {
+func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]types.LaunchTemplateBlockDeviceMappingRequest, error) {
 	if len(mounts) == 0 {
 		return nil, nil
 	}
-	mappings := []*ec2aws.LaunchTemplateBlockDeviceMappingRequest{}
+	mappings := []*types.LaunchTemplateBlockDeviceMappingRequest{}
 	for _, mount := range mounts {
 		if mount.DeviceName == "" {
 			return nil, errors.New("missing device name")
@@ -403,24 +401,24 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 			return nil, errors.New("must provide either a virtual name or an EBS size")
 		}
 
-		m := &ec2aws.LaunchTemplateBlockDeviceMappingRequest{
+		m := &types.LaunchTemplateBlockDeviceMappingRequest{
 			DeviceName: aws.String(mount.DeviceName),
 		}
 		// Without a virtual name, this is EBS
 		if mount.VirtualName == "" {
-			m.Ebs = &ec2aws.LaunchTemplateEbsBlockDeviceRequest{
+			m.Ebs = &types.LaunchTemplateEbsBlockDeviceRequest{
 				DeleteOnTermination: aws.Bool(true),
-				VolumeSize:          aws.Int64(mount.Size),
-				VolumeType:          aws.String(ec2aws.VolumeTypeGp2),
+				VolumeSize:          aws.Int32(mount.Size),
+				VolumeType:          types.VolumeTypeGp2,
 			}
 			if mount.Iops != 0 {
-				m.Ebs.Iops = aws.Int64(mount.Iops)
+				m.Ebs.Iops = aws.Int32(mount.Iops)
 			}
 			if mount.SnapshotID != "" {
 				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
 			}
 			if mount.VolumeType != "" {
-				m.Ebs.VolumeType = aws.String(mount.VolumeType)
+				m.Ebs.VolumeType = mount.VolumeType
 			}
 			if mount.Throughput != 0 {
 				//aws only allows values between 125 and 1000
@@ -428,10 +426,10 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 					return nil, errors.New("throughput must be between 125 and 1000")
 				}
 				// This parameter is valid only for gp3 volumes.
-				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
+				if utility.FromStringPtr(m.Ebs.VolumeType) != types.VolumeTypeGp3 {
 					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType))
 				}
-				m.Ebs.Throughput = aws.Int64(mount.Throughput)
+				m.Ebs.Throughput = aws.Int32(mount.Throughput)
 			}
 		} else { // With a virtual name, this is an instance store
 			m.VirtualName = aws.String(mount.VirtualName)
@@ -441,7 +439,7 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 	return mappings, nil
 }
 
-func makeVolumeAttachments(devices []*ec2.InstanceBlockDeviceMapping) []host.VolumeAttachment {
+func makeVolumeAttachments(devices []types.InstanceBlockDeviceMapping) []host.VolumeAttachment {
 	attachments := []host.VolumeAttachment{}
 	for _, device := range devices {
 		if device.Ebs != nil && device.Ebs.VolumeId != nil && device.DeviceName != nil {
@@ -454,7 +452,7 @@ func makeVolumeAttachments(devices []*ec2.InstanceBlockDeviceMapping) []host.Vol
 	return attachments
 }
 
-func ec2CreateFleetResponseContainsInstance(createFleetResponse *ec2aws.CreateFleetOutput) bool {
+func ec2CreateFleetResponseContainsInstance(createFleetResponse *ec2.CreateFleetOutput) bool {
 	if createFleetResponse == nil {
 		return false
 	}
@@ -466,7 +464,7 @@ func ec2CreateFleetResponseContainsInstance(createFleetResponse *ec2aws.CreateFl
 	return true
 }
 
-func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.DescribeInstancesOutput) error {
+func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2.DescribeInstancesOutput) error {
 	catcher := grip.NewBasicCatcher()
 	for _, reservation := range describeInstancesResponse.Reservations {
 		if len(reservation.Instances) == 0 {

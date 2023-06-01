@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -247,7 +247,7 @@ type EC2ManagerOptions struct {
 // ec2Manager starts and configures instances in EC2.
 type ec2Manager struct {
 	*EC2ManagerOptions
-	credentials *credentials.Credentials
+	credentials aws.CredentialsProvider
 	env         evergreen.Environment
 	settings    *evergreen.Settings
 }
@@ -269,10 +269,7 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 		return errors.New("provider key/secret can't be empty")
 	}
 
-	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     m.providerKey,
-		SecretAccessKey: m.providerSecret,
-	})
+	m.credentials = credentials.NewStaticCredentialsProvider(m.providerKey, m.providerSecret, "")
 
 	return nil
 }
