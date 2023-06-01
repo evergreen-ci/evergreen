@@ -279,7 +279,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		return nil, errors.Wrapf(err, "getting tasks for patch '%s'", t.patch.Id)
 	}
 	if tasks == nil {
-		return nil, errors.Wrapf(err, "no tasks found for patch '%s'", t.patch.Id)
+		return nil, errors.Errorf("no tasks found for patch '%s'", t.patch.Id)
 	}
 	_, makespan := task.GetFormattedTimeSpent(tasks)
 
