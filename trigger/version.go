@@ -152,7 +152,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
 		githubContext:     "evergreen",
-		githubDescription: "tasks are running",
+		githubDescription: evergreen.PRTasksRunningDescription,
 	}
 	if t.data.GithubCheckStatus != "" {
 		data.PastTenseStatus = t.data.GithubCheckStatus
