@@ -1578,12 +1578,11 @@ func CountActivatedTasksForVersion(versionId string) (int, error) {
 func HasActivatedDependentTasks(taskId string) (bool, error) {
 	numDependentTasks, err := Count(db.Query(bson.M{
 		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): taskId,
-		ActivatedKey: true,
+		ActivatedKey:            true,
+		OverrideDependenciesKey: bson.M{"$ne": true},
 	}))
-	if err != nil {
-		return false, err
-	}
-	return numDependentTasks > 0, nil
+
+	return numDependentTasks > 0, err
 }
 
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {

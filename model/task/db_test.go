@@ -1769,6 +1769,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 }
 
 func TestHasActivatedDependentTasks(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
 	t1 := Task{
 		Id:        "activeDependent",
 		Activated: true,
@@ -1800,7 +1801,14 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, hasDependentTasks)
 
+	// Tasks overriding dependencies don't count as dependent.
+	assert.NoError(t, t3.SetOverrideDependencies("me"))
+	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
+	assert.NoError(t, err)
+	assert.False(t, hasDependentTasks)
+
 	hasDependentTasks, err = HasActivatedDependentTasks("inactive")
 	assert.NoError(t, err)
 	assert.False(t, hasDependentTasks)
+
 }
