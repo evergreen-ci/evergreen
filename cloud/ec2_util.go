@@ -584,7 +584,7 @@ func IsEC2InstanceID(id string) bool {
 // Gp2EquivalentThroughputForGp3 returns a throughput value for gp3 volumes that's at least
 // equivalent to the throughput of gp2 volumes.
 // See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/general-purpose.html for more information.
-func Gp2EquivalentThroughputForGp3(volumeSize int) int {
+func Gp2EquivalentThroughputForGp3(volumeSize int32) int32 {
 	if volumeSize <= 170 {
 		return 128
 	}
@@ -594,7 +594,7 @@ func Gp2EquivalentThroughputForGp3(volumeSize int) int {
 // Gp2EquivalentIOPSForGp3 returns an IOPS value for gp3 volumes that's at least
 // equivalent to the IOPS of gp2 volumes.
 // See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/general-purpose.html for more information.
-func Gp2EquivalentIOPSForGp3(volumeSize int) int {
+func Gp2EquivalentIOPSForGp3(volumeSize int32) int32 {
 	iops := volumeSize * 3
 
 	if volumeSize <= 1000 {
