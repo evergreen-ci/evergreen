@@ -147,7 +147,6 @@ type Patch struct {
 	PatchNumber        int              `bson:"patch_number"`
 	Author             string           `bson:"author"`
 	Version            string           `bson:"version"`
-	Status             string           `bson:"status"`
 	CreateTime         time.Time        `bson:"create_time"`
 	StartTime          time.Time        `bson:"start_time"`
 	FinishTime         time.Time        `bson:"finish_time"`
@@ -159,6 +158,8 @@ type Patch struct {
 	SyncAtEndOpts      SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 	Patches            []ModulePatch    `bson:"patches"`
 	Parameters         []Parameter      `bson:"parameters,omitempty"`
+	// Status indicates the current status of the patch, using the same statuses as versions.
+	Status string `bson:"status"`
 	// Activated indicates whether or not the patch is finalized (i.e.
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.

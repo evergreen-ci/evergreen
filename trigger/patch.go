@@ -100,7 +100,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		}
 
 		successOutcome := evergreen.IsSuccessfulVersionStatus(ps) && evergreen.IsSuccessfulVersionStatus(t.data.Status)
-		failureOutcome := (ps == evergreen.VersionFailed) && (t.data.Status == evergreen.VersionFailed)
+		failureOutcome := ps == evergreen.VersionFailed && t.data.Status == evergreen.VersionFailed
 		anyOutcome := ps == patchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {

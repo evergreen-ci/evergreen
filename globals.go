@@ -131,17 +131,17 @@ const (
 	BuildFailed    = "failed"
 	BuildSucceeded = "success"
 
-	VersionStarted = "started"
-	VersionCreated = "created"
-	VersionFailed  = "failed"
+	// Version statuses are used for both version and patch statuses.
+	VersionStarted   = "started"
+	VersionCreated   = "created"
+	VersionFailed    = "failed"
+	VersionSucceeded = "succeeded"
+	// VersionAborted is a display status only and not stored in the DB (used for both patches and versions).
+	VersionAborted = "aborted"
 
 	// LegacyVersionSucceeded should be removed in EVG-20032. In the meantime,
 	// will set with the new status but consider both statuses.
 	LegacyVersionSucceeded = "success"
-	VersionSucceeded       = "succeeded"
-
-	// VersionAborted is a display status only and not stored in the DB
-	VersionAborted = "aborted"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
@@ -397,7 +397,7 @@ func IsFinishedVersionStatus(status string) bool {
 // IsSuccessfulVersionStatus returns true if the status represents a successful version.
 // Will deprecate this legacy status in EVG-20032.
 func IsSuccessfulVersionStatus(status string) bool {
-	return status == LegacyVersionSucceeded || status == VersionSucceeded
+	return utility.StringSliceContains(VersionSucceededStatuses, status)
 }
 
 type ModificationAction string
