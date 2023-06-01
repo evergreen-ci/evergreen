@@ -1,5 +1,7 @@
 # REST v2 API
 
+Base URL: `http://<EVERGREEN_HOST>/rest/v2/`
+
 ## General Functionality
 
 ### A note on authentication
