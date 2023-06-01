@@ -773,7 +773,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	}
 	volumeRequest := host.Volume{
 		AvailabilityZone: spawnVolumeInput.AvailabilityZone,
-		Size:             spawnVolumeInput.Size,
+		Size:             int32(spawnVolumeInput.Size),
 		Type:             spawnVolumeInput.Type,
 		CreatedBy:        mustHaveUser(ctx).Id,
 	}
