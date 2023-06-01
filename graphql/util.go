@@ -505,21 +505,18 @@ func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscrip
 	return filteredSubscriptions
 }
 
-func makePatchDuration(t, m string) *PatchDuration {
-	var tPointer *string
-	if t != "0s" {
-		tPointer = &t
+func makePatchDuration(timeTaken, makeSpan string) *PatchDuration {
+	res := &PatchDuration{}
+
+	if timeTaken != "0s" {
+		res.TimeTaken = &timeTaken
 	}
 
-	var mPointer *string
-	if m != "0s" {
-		mPointer = &m
+	if makeSpan != "0s" {
+		res.Makespan = &makeSpan
 	}
 
-	return &PatchDuration{
-		Makespan:  mPointer,
-		TimeTaken: tPointer,
-	}
+	return res
 }
 
 func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selectors []restModel.APISelector) (string, string, error) {
