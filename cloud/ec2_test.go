@@ -1029,21 +1029,6 @@ func (s *EC2Suite) TestUserDataExpand() {
 	s.Equal("expand a thing", expanded)
 }
 
-func (s *EC2Suite) TestGetSecurityGroups() {
-	settings := EC2ProviderSettings{
-		SecurityGroupIDs: []string{"sg-1"},
-	}
-	s.Equal([]string{"sg-1"}, settings.getSecurityGroups())
-	settings = EC2ProviderSettings{
-		SecurityGroupIDs: []string{"sg-1"},
-	}
-	s.Equal([]string{"sg-1"}, settings.getSecurityGroups())
-	settings = EC2ProviderSettings{
-		SecurityGroupIDs: []string{"sg-1", "sg-2"},
-	}
-	s.Equal([]string{"sg-1", "sg-2"}, settings.getSecurityGroups())
-}
-
 func (s *EC2Suite) TestCacheHostData() {
 	ec2m := s.onDemandManager.(*ec2Manager)
 

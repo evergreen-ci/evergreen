@@ -148,17 +148,6 @@ func (s *EC2ProviderSettings) FromDocument(doc *birch.Document) error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) getSecurityGroups() []string {
-	groups := []string{}
-	if len(s.SecurityGroupIDs) > 0 {
-		for _, group := range s.SecurityGroupIDs {
-			groups = append(groups, group)
-		}
-		return groups
-	}
-	return groups
-}
-
 func (s *EC2ProviderSettings) getRegion() string {
 	if s.Region != "" {
 		return s.Region
@@ -295,7 +284,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int32(0),
-				Groups:                   ec2Settings.getSecurityGroups(),
+				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
@@ -304,7 +293,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			input.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
 		}
 	} else {
-		input.SecurityGroups = ec2Settings.getSecurityGroups()
+		input.SecurityGroups = ec2Settings.SecurityGroupIDs
 	}
 
 	if ec2Settings.UserData != "" {

@@ -768,8 +768,7 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 
 func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.DescribeLaunchTemplatesInput) ([]types.LaunchTemplate, error) {
 	var templates []types.LaunchTemplate
-	var err error
-	err = utility.Retry(
+	err := utility.Retry(
 		ctx,
 		func() (bool, error) {
 			templates = []types.LaunchTemplate{}
