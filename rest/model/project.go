@@ -96,6 +96,9 @@ func (t *APIPatchTriggerDefinition) BuildFromService(def patch.PatchTriggerDefin
 	t.ChildProjectIdentifier = utility.ToStringPtr(identifier)
 	// not sure in which direction this should go
 	t.Alias = utility.ToStringPtr(def.Alias)
+	if def.Status == evergreen.LegacyVersionSucceeded {
+		def.Status = evergreen.VersionSucceeded
+	}
 	t.Status = utility.ToStringPtr(def.Status)
 	t.ParentAsModule = utility.ToStringPtr(def.ParentAsModule)
 	var specifiers []APITaskSpecifier
@@ -113,6 +116,9 @@ func (t *APIPatchTriggerDefinition) ToService() patch.PatchTriggerDefinition {
 
 	trigger.ChildProject = utility.FromStringPtr(t.ChildProjectIdentifier) // we'll fix this to be the ID in case it's changed
 	trigger.Status = utility.FromStringPtr(t.Status)
+	if trigger.Status == evergreen.LegacyVersionSucceeded {
+		trigger.Status = evergreen.VersionSucceeded
+	}
 	trigger.Alias = utility.FromStringPtr(t.Alias)
 	trigger.ParentAsModule = utility.FromStringPtr(t.ParentAsModule)
 	var specifiers []patch.TaskSpecifier
