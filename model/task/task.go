@@ -3097,7 +3097,7 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-// GetTimeSpent returns the total time_taken and makespan of tasks as a formatted string
+// GetFormattedTimeSpent returns the total time_taken and makespan of tasks as a formatted string
 func GetFormattedTimeSpent(tasks []Task) (string, string) {
 	timeTaken, makespan := GetTimeSpent(tasks)
 
