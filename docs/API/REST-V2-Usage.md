@@ -427,7 +427,7 @@ A test is a sub-operation of a task performed by Evergreen.
 | Name       | Type     | Description                                                |
 |------------|----------|------------------------------------------------------------|
 | task_id    | string   | Identifier of the task this test is a part of              |
-| Status     | string   | Execution status of the test                               |
+| status     | string   | Execution status of the test                               |
 | test_file  | string   | Name of the test file that this test was run in            |
 | logs       | test_log | Object containing information about the logs for this test |
 | exit_code  | int      | The exit code of the process that ran this test            |
@@ -695,7 +695,7 @@ A patch is a manually initiated version submitted to test local changes.
 | git_hash              | string         | Hash of commit off which the patch was initiated                                                                                     |
 | patch_number          | int            | Incrementing counter of user's patches                                                                                               |
 | author                | string         | Author of the patch                                                                                                                  |
-| status                | string         | Status of patch                                                                                                                      |
+| status                | string         | Status of patch (possible values are "created", "started", "success", or "failed")                                                   |
 | commit_queue_position | int            | Only populated for commit queue patches: returns the 0-indexed position of the patch on the queue, or -1 if not on the queue anymore |
 | create_time           | time           | Time patch was created                                                                                                               |
 | start_time            | time           | Time patch started to run                                                                                                            |
@@ -710,7 +710,7 @@ A patch is a manually initiated version submitted to test local changes.
 | Name  | Type       | Description                                      |
 |-------|------------|--------------------------------------------------|
 | name  | string     | Name of build variant                            |
-| tasks | string[] | All tasks available to run on this build variant |
+| tasks | string[] | All tasks available to run on this build variant   |
 
 
 #### Endpoints
@@ -916,7 +916,7 @@ A version is a commit in a project.
 | `author`                | string          | Author of the version                                                                                                                                                                                                                                    |
 | `author_email`          | string          | Email of the author of the version                                                                                                                                                                                                                       |
 | `message`               | string          | Message left with the commit                                                                                                                                                                                                                             |
-| `status`                | string          | The status of the version                                                                                                                                                                                                                                |
+| `status`                | string          | The status of the version (possible values are "created", "started", "success", or "failed")                                                                                                                                                             |
 | `repo`                  | string          | The github repository where the commit was made                                                                                                                                                                                                          |
 | `branch`                | string          | The version control branch where the commit was made                                                                                                                                                                                                     |
 | `build_variants_status` | []buildDetail   | List of documents of the associated build variant and the build id                                                                                                                                                                                       |
