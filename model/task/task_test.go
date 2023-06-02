@@ -1659,6 +1659,46 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, makespan)
 }
 
+func TestGetFormattedTimeSpent(t *testing.T) {
+	assert := assert.New(t)
+	referenceTime := time.Unix(1136239445, 0)
+	tasks := []Task{
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(time.Hour),
+			TimeTaken:  time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(2 * time.Hour),
+			TimeTaken:  2 * time.Hour,
+		},
+		{
+			DisplayOnly: true,
+			FinishTime:  referenceTime.Add(3 * time.Hour),
+			TimeTaken:   2 * time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: utility.ZeroTime,
+			TimeTaken:  0,
+		},
+		{
+			StartTime:  utility.ZeroTime,
+			FinishTime: utility.ZeroTime,
+			TimeTaken:  0,
+		},
+	}
+
+	timeTaken, makespan := GetFormattedTimeSpent(tasks)
+	assert.Equal("2h 0m 0s", makespan)
+	assert.Equal("3h 0m 0s", timeTaken)
+
+	timeTaken, makespan = GetFormattedTimeSpent(tasks[2:])
+	assert.Equal("0s", makespan)
+	assert.Equal("0s", timeTaken)
+}
+
 func TestUpdateDependsOn(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}
