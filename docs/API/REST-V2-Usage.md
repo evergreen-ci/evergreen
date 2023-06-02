@@ -695,7 +695,7 @@ A patch is a manually initiated version submitted to test local changes.
 | git_hash              | string         | Hash of commit off which the patch was initiated                                                                                     |
 | patch_number          | int            | Incrementing counter of user's patches                                                                                               |
 | author                | string         | Author of the patch                                                                                                                  |
-| status                | string         | Status of patch                                                                                                                      |
+| status                | string         | Status of patch (created, started, success, failed)                                                                                  |
 | commit_queue_position | int            | Only populated for commit queue patches: returns the 0-indexed position of the patch on the queue, or -1 if not on the queue anymore |
 | create_time           | time           | Time patch was created                                                                                                               |
 | start_time            | time           | Time patch started to run                                                                                                            |

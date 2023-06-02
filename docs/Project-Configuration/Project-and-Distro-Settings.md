@@ -258,8 +258,8 @@ Options:
 - Project: The downstream project.
 - Module: Optionally specify a module to apply changes to.
 - Wait on: By default, the child patch will run immediately.
-    You can set the child patch wait on any finished status ("*"), "succeeded" status,
-    or "failed" status from the parent. If the patch depends on parent
+    You can set the child patch wait on any finished status ("*"), the "success" status,
+    or the "failed" status from the parent. If the patch depends on parent
     status, at least one parent task must be scheduled.
 - Patch alias, variant and task regexes: Run a subset of tasks in the
     downstream project by specifying an alias or by specifying task and
