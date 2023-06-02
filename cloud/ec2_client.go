@@ -11,7 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/smithy-go"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -187,11 +188,12 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 			msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.client.RunInstances(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+					if strings.Contains(apiErr.Error(), EC2InsufficientCapacity) {
 						return false, EC2InsufficientCapacityError
 					}
-					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -214,8 +216,9 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 			msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DescribeInstances(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -237,8 +240,9 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 			msg := makeAWSLogMessage("ModifyInstanceAttribute", fmt.Sprintf("%T", c), input)
 			output, err = c.client.ModifyInstanceAttribute(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -260,8 +264,9 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 			msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DescribeInstanceTypeOfferings(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -284,8 +289,9 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 			msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
 			output, err = c.client.CreateTags(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -308,8 +314,9 @@ func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 			msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DeleteTags(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -332,19 +339,19 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 			msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.client.TerminateInstances(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					if strings.Contains(ec2err.Code(), EC2ErrorNotFound) {
-						grip.Debug(message.WrapError(ec2err, message.Fields{
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					if strings.Contains(apiErr.Error(), EC2ErrorNotFound) {
+						grip.Debug(message.WrapError(apiErr, message.Fields{
 							"client":          fmt.Sprintf("%T", c),
 							"message":         "instance ID not found in AWS",
 							"args":            input,
-							"ec2_err_message": ec2err.Message(),
-							"ec2_err_code":    ec2err.Code(),
+							"ec2_err_message": apiErr.ErrorMessage(),
+							"ec2_err_code":    apiErr.ErrorCode(),
 						}))
 						return false, nil
 					}
-
-					grip.Debug(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -367,8 +374,9 @@ func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstan
 			msg := makeAWSLogMessage("StopInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.client.StopInstances(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -391,8 +399,9 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 			msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.client.StartInstances(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -416,13 +425,14 @@ func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolum
 			msg := makeAWSLogMessage("CreateVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.client.CreateVolume(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					if strings.Contains(ec2err.Error(), EC2InvalidParam) {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+					if strings.Contains(apiErr.Error(), EC2InvalidParam) {
 						return false, err
 					}
-					grip.Debug(message.WrapError(ec2err, msg))
+					return true, err
 				}
-				return true, err
 			}
 			grip.Info(msg)
 			return false, nil
@@ -444,11 +454,12 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 			msg := makeAWSLogMessage("DeleteVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DeleteVolume(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					if strings.Contains(ec2err.Error(), EC2VolumeNotFound) {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+					if strings.Contains(apiErr.Error(), EC2VolumeNotFound) {
 						return false, nil
 					}
-					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -472,9 +483,10 @@ func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 			msg := makeAWSLogMessage("ModifyVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.client.ModifyVolume(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
-					if ModifyVolumeBadRequest(ec2err) {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+					if ModifyVolumeBadRequest(apiErr) {
 						return false, err
 					}
 				}
@@ -500,9 +512,10 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			msg := makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.client.AttachVolume(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
-					if AttachVolumeBadRequest(ec2err) {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+					if AttachVolumeBadRequest(apiErr) {
 						return false, err
 					}
 				}
@@ -528,8 +541,9 @@ func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolum
 			msg := makeAWSLogMessage("DetachVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DetachVolume(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -554,8 +568,9 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 			msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DescribeVolumes(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -578,8 +593,9 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 			msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DescribeSubnets(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -602,8 +618,9 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 			msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DescribeVpcs(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -651,8 +668,9 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 			msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
 			output, err = c.client.CreateKeyPair(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -673,13 +691,13 @@ func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyP
 			msg := makeAWSLogMessage("ImportKeyPair", fmt.Sprintf("%T", c), input)
 			output, err = c.client.ImportKeyPair(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 					// Don't retry if the key already exists
-					if ec2err.Code() == EC2DuplicateKeyPair {
-						grip.Info(msg)
-						return false, ec2err
+					if apiErr.ErrorCode() == EC2DuplicateKeyPair {
+						return false, apiErr
 					}
-					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -702,8 +720,9 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 			msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DeleteKeyPair(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -727,13 +746,14 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 			msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
 			output, err = c.client.CreateLaunchTemplate(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 					// Don't retry if the template was already created.
-					if strings.Contains(ec2err.Code(), ec2TemplateNameExists) {
+					if strings.Contains(apiErr.Error(), ec2TemplateNameExists) {
 						grip.Info(msg)
 						return false, ec2TemplateNameExistsError
 					}
-					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -758,8 +778,9 @@ func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.Descr
 			for paginator.HasMorePages() {
 				output, err := paginator.NextPage(ctx)
 				if err != nil {
-					if ec2err, ok := err.(awserr.Error); ok {
-						grip.Debug(message.WrapError(ec2err, msg))
+					var apiErr smithy.APIError
+					if errors.As(err, &apiErr) {
+						grip.Debug(message.WrapError(apiErr, msg))
 					}
 					return true, err
 				}
@@ -784,8 +805,9 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 			msg := makeAWSLogMessage("DeleteLaunchTemplate", fmt.Sprintf("%T", c), input)
 			output, err = c.client.DeleteLaunchTemplate(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Debug(message.WrapError(ec2err, msg))
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -809,11 +831,12 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
 			output, err = c.client.CreateFleet(ctx, input)
 			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+					if strings.Contains(apiErr.Error(), EC2InsufficientCapacity) {
 						return false, err
 					}
-					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -822,15 +845,14 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// usually (but not always!) EC2.CreateFleet will not return an
 			// error. Instead it will populate the output.Error array with a single
 			// item describing the error, using an error type that does _not_
-			// implement awserr.Error. We therefore have to check this case in addition
+			// implement smithy.APIError. We therefore have to check this case in addition
 			// to the standard `err != nil` case above.
 			if !ec2CreateFleetResponseContainsInstance(output) {
 				if len(output.Errors) > 0 {
-					err := errors.New("CreateFleet error")
-					if output.Errors[0].ErrorMessage != nil {
-						err = errors.New(*output.Errors[0].ErrorMessage)
-					}
-					grip.Debug(message.WrapError(err, msg))
+					grip.Debug(message.WrapError(&smithy.GenericAPIError{
+						Code:    utility.FromStringPtr(output.Errors[0].ErrorCode),
+						Message: utility.FromStringPtr(output.Errors[0].ErrorMessage),
+					}, msg))
 					return true, errors.Wrap(err, "CreateFleet response contained errors")
 				}
 				err := errors.New("CreateFleet response contained neither an instance ID nor error")
@@ -1358,6 +1380,6 @@ func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
 		"message":  "AWS API call",
 		"api_name": name,
 		"client":   client,
-		"args":     args,
+		"args":     spew.Sprintf("%v", args),
 	}
 }
