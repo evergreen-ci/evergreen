@@ -13,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -549,7 +549,8 @@ func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair)
 		KeyName:           aws.String(pair.Name),
 		PublicKeyMaterial: []byte(pair.Public),
 	}); err != nil {
-		if ec2err, ok := err.(awserr.Error); ok && ec2err.Code() == EC2DuplicateKeyPair {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) && apiErr.ErrorCode() == EC2DuplicateKeyPair {
 			return nil
 		}
 		return errors.Wrap(err, "importing public SSH key")
@@ -613,7 +614,9 @@ func isEC2InstanceNotFound(err error) bool {
 	if err == noReservationError {
 		return true
 	}
-	if ec2Err, ok := errors.Cause(err).(awserr.Error); ok && ec2Err.Code() == EC2ErrorNotFound {
+
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) && apiErr.ErrorCode() == EC2ErrorNotFound {
 		return true
 	}
 	return false
