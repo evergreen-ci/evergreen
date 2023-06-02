@@ -344,7 +344,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", runInput.InstanceType)
+	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("keyName", *runInput.KeyName)
 	s.Require().Len(runInput.BlockDeviceMappings, 1)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
@@ -393,7 +393,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", runInput.InstanceType)
+	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("keyName", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
@@ -489,7 +489,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", runInput.InstanceType)
+	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("evg_auto_evergreen", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
@@ -1033,15 +1033,15 @@ func (s *EC2Suite) TestGetSecurityGroups() {
 	settings := EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
+	s.Equal([]string{"sg-1"}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
+	s.Equal([]string{"sg-1"}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
-	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
+	s.Equal([]string{"sg-1", "sg-2"}, settings.getSecurityGroups())
 }
 
 func (s *EC2Suite) TestCacheHostData() {
@@ -1243,7 +1243,7 @@ func (s *EC2Suite) TestCreateVolume() {
 	s.True(ok)
 
 	input := *mock.CreateVolumeInput
-	s.Equal("standard", input.VolumeType)
+	s.EqualValues("standard", input.VolumeType)
 
 	foundVolume, err := host.FindVolumeByID(volume.ID)
 	s.NotNil(foundVolume)
@@ -1384,7 +1384,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 
 	vol, err := host.FindVolumeByID(s.volume.ID)
 	s.NoError(err)
-	s.Equal(vol.Size, 100)
+	s.EqualValues(vol.Size, 100)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -1392,7 +1392,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 	s.True(ok)
 
 	input := *mock.ModifyVolumeInput
-	s.Equal(int(*input.Size), 100)
+	s.EqualValues(*input.Size, 100)
 }
 
 func (s *EC2Suite) TestModifyVolumeName() {
