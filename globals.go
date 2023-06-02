@@ -139,13 +139,13 @@ const (
 	VersionStarted   = "started"
 	VersionCreated   = "created"
 	VersionFailed    = "failed"
-	VersionSucceeded = "succeeded"
+	VersionSucceeded = "success"
 	// VersionAborted is a display status only and not stored in the DB (used for both patches and versions).
 	VersionAborted = "aborted"
 
 	// LegacyVersionSucceeded should be removed in EVG-20032. In the meantime,
 	// will set with the new status but consider both statuses.
-	LegacyVersionSucceeded = "success"
+	LegacyVersionSucceeded = "succeeded"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
