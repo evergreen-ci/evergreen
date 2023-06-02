@@ -7,7 +7,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -74,26 +73,9 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	if tasks == nil {
 		return nil, ResourceNotFound.Send(ctx, "Could not find any tasks for patch")
 	}
-	timeTaken, makespan := task.GetTimeSpent(tasks)
+	timeTaken, makespan := task.GetFormattedTimeSpent(tasks)
 
-	// return nil if rounded timeTaken/makespan == 0s
-	t := timeTaken.Round(time.Second).String()
-	var tPointer *string
-	if t != "0s" {
-		tFormated := formatDuration(t)
-		tPointer = &tFormated
-	}
-	m := makespan.Round(time.Second).String()
-	var mPointer *string
-	if m != "0s" {
-		mFormated := formatDuration(m)
-		mPointer = &mFormated
-	}
-
-	return &PatchDuration{
-		Makespan:  mPointer,
-		TimeTaken: tPointer,
-	}, nil
+	return makePatchDuration(timeTaken, makespan), nil
 }
 
 // PatchTriggerAliases is the resolver for the patchTriggerAliases field.

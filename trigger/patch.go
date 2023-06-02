@@ -273,15 +273,15 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			Color:     slackColor,
 		})
 	}
-	var makespan time.Duration
-	if utility.IsZeroTime(t.patch.FinishTime) {
-		patchTasks, err := task.Find(task.ByVersion(t.patch.Id.Hex()))
-		if err == nil {
-			_, makespan = task.GetTimeSpent(patchTasks)
-		}
-	} else {
-		makespan = t.patch.FinishTime.Sub(t.patch.StartTime)
+
+	tasks, err := task.Find(task.ByVersion(t.patch.Id.Hex()))
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting tasks for patch '%s'", t.patch.Id)
 	}
+	if tasks == nil {
+		return nil, errors.Errorf("no tasks found for patch '%s'", t.patch.Id)
+	}
+	_, makespan := task.GetFormattedTimeSpent(tasks)
 
 	data.slack = append(data.slack, message.SlackAttachment{
 		Title:     "Evergreen Patch",
@@ -291,7 +291,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		Fields: []*message.SlackAttachmentField{
 			{
 				Title: "Time Taken",
-				Value: makespan.String(),
+				Value: makespan,
 			},
 		},
 	})

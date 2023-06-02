@@ -449,7 +449,7 @@ func AbortTask(taskId, caller string) error {
 
 // DeactivatePreviousTasks deactivates any previously activated but undispatched
 // tasks for the same build variant + display name + project combination
-// as the task.
+// as the task, provided nothing is waiting on it.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	filter, sort := task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
@@ -463,34 +463,16 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	if err != nil {
 		return errors.Wrapf(err, "finding previous tasks to deactivate for task '%s'", t.Id)
 	}
-	extraTasks := []task.Task{}
-	if t.DisplayOnly {
-		for _, dt := range allTasks {
-			if len(dt.ExecutionTasks) == 0 { // previous display tasks may not have execution tasks added yet
-				continue
-			}
-			var execTasks []task.Task
-			execTasks, err = task.Find(task.ByIds(dt.ExecutionTasks))
-			if err != nil {
-				return errors.Wrapf(err, "finding execution tasks to deactivate for task '%s'", dt.Id)
-			}
-			canDeactivate := true
-			for _, et := range execTasks {
-				if et.IsFinished() || et.IsAbortable() {
-					canDeactivate = false
-					break
-				}
-			}
-			if canDeactivate {
-				extraTasks = append(extraTasks, execTasks...)
-			}
-		}
-	}
-	allTasks = append(allTasks, extraTasks...)
-
 	for _, t := range allTasks {
-		if err = SetActiveState(caller, false, t); err != nil {
-			return err
+		// Only deactivate tasks that other tasks aren't waiting for.
+		hasDependentTasks, err := task.HasActivatedDependentTasks(t.Id)
+		if err != nil {
+			return errors.Wrapf(err, "getting activated dependencies for '%s'", t.Id)
+		}
+		if !hasDependentTasks {
+			if err = SetActiveState(caller, false, t); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1764,7 +1746,11 @@ func MarkOneTaskReset(t *task.Task) error {
 	}
 
 	if err := UpdateUnblockedDependencies(t); err != nil {
-		return errors.Wrap(err, "clearing cached unattainable dependencies")
+		return errors.Wrap(err, "clearing unattainable dependencies")
+	}
+
+	if err := t.RefreshUnattainableDependency(); err != nil {
+		return errors.Wrap(err, "refreshing cached unattainable status")
 	}
 
 	if err := t.MarkDependenciesFinished(false); err != nil {
@@ -1792,7 +1778,8 @@ func MarkTasksReset(taskIds []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing cached unattainable dependencies for task '%s'", t.Id)
+		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing unattainable dependencies for task '%s'", t.Id)
+		catcher.Wrapf(t.RefreshUnattainableDependency(), "refreshing cached unattainable status for task '%s'", t.Id)
 		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
