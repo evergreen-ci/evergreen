@@ -986,8 +986,8 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		v := &Version{
 			Id: "testVersion",
 		}
-		previousTask := &task.Task{
-			Id:                  "one",
+		previouserTask := &task.Task{
+			Id:                  "zero",
 			DisplayName:         displayName,
 			RevisionOrderNumber: 1,
 			Priority:            1,
@@ -999,11 +999,56 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
+		activeDependentTask := &task.Task{
+			Id:                  "dependentOnZero",
+			DisplayName:         "something else",
+			RevisionOrderNumber: 1,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b.Id,
+			Version:             v.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			DependsOn: []task.Dependency{
+				{TaskId: "zero"},
+			},
+		}
+		previousTask := &task.Task{
+			Id:                  "one",
+			DisplayName:         displayName,
+			RevisionOrderNumber: 2,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b.Id,
+			Version:             v.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+		inactiveDependentTask := &task.Task{
+			Id:                  "dependentOnOne",
+			DisplayName:         "something else",
+			RevisionOrderNumber: 2,
+			Priority:            1,
+			Activated:           false,
+			ActivatedBy:         "user",
+			BuildId:             b.Id,
+			Version:             v.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			DependsOn: []task.Dependency{
+				{TaskId: "one"},
+			},
+		}
 		currentTask := &task.Task{
 			Id:                  "two",
 			DisplayName:         displayName,
-			RevisionOrderNumber: 2,
-			Status:              evergreen.TaskFailed,
+			RevisionOrderNumber: 3,
+			Status:              evergreen.TaskSucceeded,
 			Priority:            1,
 			Activated:           true,
 			BuildId:             b.Id,
@@ -1013,14 +1058,23 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		}
 		So(b.Insert(), ShouldBeNil)
 		So(v.Insert(), ShouldBeNil)
+		So(previouserTask.Insert(), ShouldBeNil)
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
-		Convey("activating a previous task should set the previous task's active field to true", func() {
+		So(activeDependentTask.Insert(), ShouldBeNil)
+		So(inactiveDependentTask.Insert(), ShouldBeNil)
+		Convey("should deactivate previous task", func() {
 			So(DeactivatePreviousTasks(currentTask, userName), ShouldBeNil)
 			var err error
+			// Deactivates this task even though it has a dependent task, because it's inactive.
 			previousTask, err = task.FindOne(db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(previousTask.Activated, ShouldBeFalse)
+
+			// Shouldn't deactivate this task because it has an active dependent task.
+			previouserTask, err = task.FindOne(db.Query(task.ById(previouserTask.Id)))
+			So(err, ShouldBeNil)
+			So(previouserTask.Activated, ShouldBeTrue)
 		})
 	})
 	Convey("With a display task", t, func() {
