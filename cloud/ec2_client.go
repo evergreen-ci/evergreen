@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -1376,10 +1376,16 @@ func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
+	argString := fmt.Sprintf("%+v", args)
+	argJSON, err := json.Marshal(args)
+	if err == nil {
+		argString = string(argJSON)
+	}
+
 	return message.Fields{
 		"message":  "AWS API call",
 		"api_name": name,
 		"client":   client,
-		"args":     spew.Sprintf("%v", args),
+		"args":     argString,
 	}
 }
