@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -269,14 +268,14 @@ func TestDeleteVolumeHandler(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	volumes := []host.Volume{
-		host.Volume{
+		{
 			ID:               "my-volume",
 			CreatedBy:        "user",
-			AvailabilityZone: utility.FromStringPtr(aws.String("us-east-1a")),
+			AvailabilityZone: "us-east-1a",
 		},
 	}
 	hosts := []host.Host{
-		host.Host{
+		{
 			Id:        "my-host",
 			UserHost:  true,
 			StartedBy: "user",
