@@ -72,6 +72,14 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 }
 
 func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
+	payload := getPayload(r.Context())
+	if payload == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "payload not in context",
+		}
+	}
+
 	gh.eventType = r.Header.Get("X-Github-Event")
 	gh.msgID = r.Header.Get("X-Github-Delivery")
 
@@ -82,18 +90,8 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	body, err := github.ValidatePayload(r, gh.secret)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":  "GitHub hook",
-			"message": "rejecting GitHub webhook",
-			"msg_id":  gh.msgID,
-			"event":   gh.eventType,
-		}))
-		return errors.Wrap(err, "reading and validating GitHub request payload")
-	}
-
-	gh.event, err = github.ParseWebHook(gh.eventType, body)
+	var err error
+	gh.event, err = github.ParseWebHook(gh.eventType, payload)
 	if err != nil {
 		return errors.Wrap(err, "parsing webhook")
 	}
