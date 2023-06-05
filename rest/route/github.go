@@ -72,7 +72,7 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 }
 
 func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
-	payload := getPayload(r.Context())
+	payload := getGitHubPayload(r.Context())
 	if payload == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

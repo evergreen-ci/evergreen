@@ -34,8 +34,8 @@ type (
 
 const (
 	// These are private custom types to avoid key collisions.
-	RequestContext requestContextKey = 0
-	payloadKey     requestContextKey = 3
+	RequestContext   requestContextKey = 0
+	githubPayloadKey requestContextKey = 3
 )
 
 type projCtxMiddleware struct{}
@@ -938,15 +938,15 @@ func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request
 		return
 	}
 
-	r = setPayload(r, payload)
+	r = setGitHubPayload(r, payload)
 	next(rw, r)
 }
 
-func setPayload(r *http.Request, payload []byte) *http.Request {
+func setGitHubPayload(r *http.Request, payload []byte) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), payloadKey, payload))
 }
 
-func getPayload(ctx context.Context) []byte {
+func getGitHubPayload(ctx context.Context) []byte {
 	if rv := ctx.Value(payloadKey); rv != nil {
 		if t, ok := rv.([]byte); ok {
 			return t
