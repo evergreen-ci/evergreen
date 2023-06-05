@@ -90,8 +90,8 @@ comprise a suite of tests or generation of a set of artifacts.
 | `tags`                 | []string      | List of tags defined for the task, if any                                                                                                                                                                                                               |
 | `execution`            | int           | The number of the execution of this particular task                                                                                                                                                                                                     |
 | `order`                | int           | For mainline commits, represents the position in the commit history of commit this task is associated with. For patches, this represents the number of total patches submitted by the user.                                                             |
-| `status`               | string        | The current status of this task                                                                                                                                                                                                                         |
-| `display_status`       | string        | The status of this task that is displayed in the UI                                                                                                                                                                                                     |
+| `status`               | string        | The current status of this task (possible values are "undispatched", "dispatched", "started", "success", and "failed")                                                                                                                                  |
+| `display_status`       | string        | The status of this task that is displayed in the UI (possible values are "will-run", "unscheduled", "blocked", "dispatched", "started", "success", "failed", "aborted", "system-failed", "system-unresponsive", "system-timed-out", "task-timed-out")   |
 | `status_details`       | status_object | Object containing additional information about the status                                                                                                                                                                                               |
 | `logs`                 | logs_object   | Object containing raw and event logs for this task                                                                                                                                                                                                      |
 | `parsley_logs`         | logs_object   | Object containing parsley logs for this task                                                                                                                                                                                                            |
@@ -430,7 +430,7 @@ A test is a sub-operation of a task performed by Evergreen.
 | Name       | Type     | Description                                                |
 |------------|----------|------------------------------------------------------------|
 | task_id    | string   | Identifier of the task this test is a part of              |
-| Status     | string   | Execution status of the test                               |
+| status     | string   | Execution status of the test                               |
 | test_file  | string   | Name of the test file that this test was run in            |
 | logs       | test_log | Object containing information about the logs for this test |
 | exit_code  | int      | The exit code of the process that ran this test            |
@@ -698,7 +698,7 @@ A patch is a manually initiated version submitted to test local changes.
 | git_hash              | string         | Hash of commit off which the patch was initiated                                                                                     |
 | patch_number          | int            | Incrementing counter of user's patches                                                                                               |
 | author                | string         | Author of the patch                                                                                                                  |
-| status                | string         | Status of patch                                                                                                                      |
+| status                | string         | Status of patch (possible values are "created", "started", "success", or "failed")                                                   |
 | commit_queue_position | int            | Only populated for commit queue patches: returns the 0-indexed position of the patch on the queue, or -1 if not on the queue anymore |
 | create_time           | time           | Time patch was created                                                                                                               |
 | start_time            | time           | Time patch started to run                                                                                                            |
@@ -713,7 +713,7 @@ A patch is a manually initiated version submitted to test local changes.
 | Name  | Type       | Description                                      |
 |-------|------------|--------------------------------------------------|
 | name  | string     | Name of build variant                            |
-| tasks | string[] | All tasks available to run on this build variant |
+| tasks | string[] | All tasks available to run on this build variant   |
 
 
 #### Endpoints
@@ -842,7 +842,7 @@ buildvariant.
 | `branch`                | string   | The branch of project the build is running                                                                                                                                                                                                                                       |
 | `gitspec`               | string   | Hash of the revision on which this build is running                                                                                                                                                                                                                              |
 | `build_variant`         | string   | Build distro and architecture information                                                                                                                                                                                                                                        |
-| `status`                | string   | The status of the build                                                                                                                                                                                                                                                          |
+| `status`                | string   | The status of the build (possible values are "created", "started", "success", or "failed")                                                                                                                                                                                       |
 | `tags`                  | []string | List of tags defined for the build variant, if any                                                                                                                                                                                                                               |
 | `activated`             | bool     | Whether this build was manually initiated                                                                                                                                                                                                                                        |
 | `activated_by`          | string   | Who initiated the build                                                                                                                                                                                                                                                          |
@@ -855,7 +855,7 @@ buildvariant.
 | `actual_makespan_ms`    | int      | Actual makespan measured during execution                                                                                                                                                                                                                                        |
 | `origin`                | string   | The source of the patch, a commit or a patch                                                                                                                                                                                                                                     |
 | `status_counts`         | Object   | Contains aggregated data about the statuses of tasks in this build. The keys of this object are statuses and the values are the number of tasks within this build in that status. Note that this field provides data that you can get yourself by querying tasks for this build. |
-| `task_cache`            | Object   | Contains a subset of information about tasks for the build; this is not provided/accurate for most routes ([get versions for project](REST-V2-Usage.md#get-versions-for-a-project) is an exception).                                 |
+| `task_cache`            | Object   | Contains a subset of information about tasks for the build; this is not provided/accurate for most routes ([get versions for project](REST-V2-Usage.md#get-versions-for-a-project) is an exception).                                                                             |
 | `definition_info`       | Object   | Some routes will return information about the variant as defined in the project. Does not expand expansions; they will be returned as written in the project yaml (i.e. `${syntax}`)                                                                                             |
 
 
@@ -919,7 +919,7 @@ A version is a commit in a project.
 | `author`                | string          | Author of the version                                                                                                                                                                                                                                    |
 | `author_email`          | string          | Email of the author of the version                                                                                                                                                                                                                       |
 | `message`               | string          | Message left with the commit                                                                                                                                                                                                                             |
-| `status`                | string          | The status of the version                                                                                                                                                                                                                                |
+| `status`                | string          | The status of the version (possible values are "created", "started", "success", or "failed")                                                                                                                                                             |
 | `repo`                  | string          | The github repository where the commit was made                                                                                                                                                                                                          |
 | `branch`                | string          | The version control branch where the commit was made                                                                                                                                                                                                     |
 | `build_variants_status` | []buildDetail   | List of documents of the associated build variant and the build id                                                                                                                                                                                       |
@@ -1234,7 +1234,7 @@ start as query parameters to support legacy behavior).
 | `revision`              | string        | The version control identifier                                                                                                       |
 | `author`                | string        | Author of the version                                                                                                                |
 | `message`               | string        | Message left with the commit                                                                                                         |
-| `status`                | string        | The status of the version                                                                                                            |
+| `status`                | string        | The status of the version (possible values are "created", "started", "success", or "failed")                                         |
 | `errors`                | []string      | List of errors creating the version                                                                                                  |
 | `build_variants_status` | []buildDetail | List of documents of the associated build variant and the build id (this won't be populated if include_builds is set)                |
 | `builds`                | []APIBuild    | List of builds for the version (only populated if include_builds is set). If include_tasks is set, then the task_cache is populated. |
