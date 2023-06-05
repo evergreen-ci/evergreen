@@ -40,7 +40,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/stretchr/testify v1.8.4
-	github.com/urfave/cli v1.22.10
+	github.com/urfave/cli v1.22.13
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmware/govmomi v0.27.1
 	go.mongodb.org/mongo-driver v1.11.2
