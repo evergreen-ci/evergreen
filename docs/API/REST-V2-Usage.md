@@ -1,5 +1,7 @@
 # REST v2 API
 
+Base URL: `http://<EVERGREEN_HOST>/rest/v2/`
+
 ## General Functionality
 
 ### A note on authentication
@@ -746,7 +748,7 @@ Returns a paginated list of all patches associated with a specific user
 
 ##### Fetch Patch By Id
 
-    GET /projects/<project_id>/patches
+    GET /patches/<patch_id>
 
 Fetch a single patch using its ID
 
