@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.31
 	github.com/PuerkitoBio/rehttp v1.1.0
-	github.com/aws/aws-sdk-go v1.44.210
+	github.com/aws/aws-sdk-go v1.44.266
 	github.com/aws/aws-sdk-go-v2 v1.18.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.24
@@ -49,17 +49,17 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/vmware/govmomi v0.27.1
 	go.mongodb.org/mongo-driver v1.11.2
-	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.15.0
+	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.17.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.15.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.40.0
-	go.opentelemetry.io/otel v1.15.1
+	go.opentelemetry.io/otel v1.16.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.15.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.15.0
-	go.opentelemetry.io/otel/metric v0.38.0
-	go.opentelemetry.io/otel/sdk v1.15.1
+	go.opentelemetry.io/otel/metric v1.16.0
+	go.opentelemetry.io/otel/sdk v1.16.0
 	go.opentelemetry.io/otel/sdk/metric v0.38.0
-	go.opentelemetry.io/otel/trace v1.15.1
+	go.opentelemetry.io/otel/trace v1.16.0
 	go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto v0.7.0
 	golang.org/x/oauth2 v0.7.0
