@@ -41,7 +41,7 @@ type AWSClient interface {
 	// DescribeInstances is a wrapper for ec2.DescribeInstances.
 	DescribeInstances(context.Context, *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error)
 
-	// ModifyInstanceAttribute is a wrapper for ec2.ModifyInstanceAttribute
+	// ModifyInstanceAttribute is a wrapper for ec2.ModifyInstanceAttribute.
 	ModifyInstanceAttribute(context.Context, *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error)
 
 	// DescribeInstanceTypeOfferings is a wrapper for ec2.DescribeInstanceTypeOfferings.
@@ -98,16 +98,16 @@ type AWSClient interface {
 	// DeleteKeyPair is a wrapper for ec2.DeleteKeyPair.
 	DeleteKeyPair(context.Context, *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error)
 
-	// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplate
+	// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplate.
 	CreateLaunchTemplate(context.Context, *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error)
 
-	// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplate
+	// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplate.
 	DeleteLaunchTemplate(context.Context, *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error)
 
 	// GetLaunchTemplates gets all the launch templates that match the input.
 	GetLaunchTemplates(context.Context, *ec2.DescribeLaunchTemplatesInput) ([]types.LaunchTemplate, error)
 
-	// CreateFleet is a wrapper for ec2.CreateFleet
+	// CreateFleet is a wrapper for ec2.CreateFleet.
 	CreateFleet(context.Context, *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error)
 
 	GetKey(context.Context, *host.Host) (string, error)
@@ -735,7 +735,7 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 	return output, nil
 }
 
-// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplate
+// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplate.
 func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
 	var output *ec2.CreateLaunchTemplateOutput
 	var err error
@@ -794,7 +794,7 @@ func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.Descr
 	return templates, nil
 }
 
-// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplate
+// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplate.
 func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
 	var output *ec2.DeleteLaunchTemplateOutput
 	var err error
@@ -819,7 +819,7 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 	return output, nil
 }
 
-// CreateFleet is a wrapper for ec2.CreateFleet
+// CreateFleet is a wrapper for ec2.CreateFleet.
 func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
 	var output *ec2.CreateFleetOutput
 	var err error
