@@ -22,7 +22,7 @@ require (
 	github.com/evergreen-ci/utility v0.0.0-20230519193518-4d91d64f59fb
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
-	github.com/gophercloud/gophercloud v0.1.0
+	github.com/gophercloud/gophercloud v1.4.0
 	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
