@@ -34,7 +34,7 @@ require (
 	github.com/mongodb/anser v0.0.0-20230501213745-c62f11870fd4
 	github.com/mongodb/grip v0.0.0-20230503175150-8b2e395f3111
 	github.com/pkg/errors v0.9.1
-	github.com/ravilushqa/otelgqlgen v0.13.0
+	github.com/ravilushqa/otelgqlgen v0.13.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
