@@ -416,6 +416,7 @@ func TestReliabilityParse(t *testing.T) {
 						evergreen.PatchVersionRequester,
 						evergreen.GithubPRRequester,
 						evergreen.MergeTestRequester,
+						evergreen.GithubMergeRequester,
 					}, handler.filter.Requesters)
 					require.Equal(t, time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), handler.filter.AfterDate)
 					require.Equal(t, time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC), handler.filter.BeforeDate)
