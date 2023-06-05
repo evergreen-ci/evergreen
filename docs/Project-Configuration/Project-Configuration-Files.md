@@ -516,21 +516,6 @@ pre:
   - ...
 ```
 
-### Early Host Termination
-
-You can specify commands to be run in case that the host needs to be
-unexpectedly terminated. Currently, these commands are only called when
-AWS informs evergreen that a specific spot instance will be reclaimed.
-Commands specified here are not guaranteed to be run, and should
-complete well under 2 minutes.
-
-``` yaml
-early_termination:
-- command: shell.exec
-  params:
-    script: "echo 'spot instance is being taken away'"
-```
-
 ### Limiting When a Task Will Run
 
 To limit the conditions when a task will run, the following settings can be
@@ -584,7 +569,10 @@ Expansions are variables within your config file. They take the form
 `${key_name}` within your project, and are defined on a project-wide
 level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
-including shell scripts. 
+including shell scripts.
+
+Expansions cannot be used recursively. In other words, you can't define an
+expansion whose value uses another expansion.
 
 ``` yaml
 command: s3.get

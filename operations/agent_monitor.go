@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -420,12 +419,6 @@ func (m *monitor) runAgent(ctx context.Context, retry utility.RetryOptions) erro
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := utility.Retry(ctx, func() (bool, error) {
-			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.cloudProvider) {
-				if agentutil.SpotHostWillTerminateSoon() {
-					return true, errors.New("spot host terminating soon, not starting a new agent")
-				}
-			}
-
 			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
 			if err != nil {
 				return true, errors.Wrap(err, "retrieving client URLs")

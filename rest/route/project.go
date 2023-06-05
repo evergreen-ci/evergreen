@@ -262,7 +262,6 @@ type projectIDPatchHandler struct {
 	apiNewProjectRef *model.APIProjectRef
 
 	settings *evergreen.Settings
-	vault    cocoa.Vault
 }
 
 func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
@@ -474,27 +473,25 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// TODO (PM-2950): remove this temporary conditional initialization for the
-	// vault once the AWS infrastructure is productionized and AWS admin
-	// settings are set.
-	if h.vault == nil && (len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0) {
+	var vault cocoa.Vault
+	if len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0 {
 		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
 		}
 		defer smClient.Close(ctx)
-		vault, err := cloud.MakeSecretsManagerVault(smClient)
+		v, err := cloud.MakeSecretsManagerVault(smClient)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
 		}
-		h.vault = vault
+		vault = v
 	}
 
 	// This intentionally deletes the container secrets from external storage
 	// before updating the project ref. Deleting the secrets before updating the
 	// project ref ensures that the cloud secrets are cleaned up before removing
 	// references to them in the project ref.
-	remainingSecretsAfterDeletion, err := data.DeleteContainerSecrets(ctx, h.vault, h.originalProject, h.apiNewProjectRef.DeleteContainerSecrets)
+	remainingSecretsAfterDeletion, err := data.DeleteContainerSecrets(ctx, vault, h.originalProject, h.apiNewProjectRef.DeleteContainerSecrets)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting container secrets"))
 	}
@@ -543,7 +540,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// Under the hood, this is updating the container secrets in the DB project
 	// ref, but this function's copy of the in-memory project ref won't reflect
 	// those changes.
-	if err := data.UpsertContainerSecrets(ctx, h.vault, allContainerSecrets); err != nil {
+	if err := data.UpsertContainerSecrets(ctx, vault, allContainerSecrets); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
 	}
 

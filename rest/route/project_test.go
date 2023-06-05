@@ -11,6 +11,7 @@ import (
 
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -439,6 +440,14 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
 
+	smClient, err := cloud.MakeSecretsManagerClient(s.env.Settings())
+	s.Require().NoError(err)
+	defer func() {
+		s.Require().NoError(smClient.Close(ctx))
+	}()
+	vault, err := cloud.MakeSecretsManagerVault(smClient)
+	s.Require().NoError(err)
+
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()
 
@@ -471,8 +480,8 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
 
 	externalID := dbProjRef.ContainerSecrets[0].ExternalID
-	s.Require().NotNil(h.vault)
-	initialStoredValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NotNil(vault)
+	initialStoredValue, err := vault.GetValue(ctx, externalID)
 	s.Require().NoError(err)
 	s.NotZero(initialStoredValue)
 
@@ -497,8 +506,8 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
 
 	externalID = dbProjRef.ContainerSecrets[0].ExternalID
-	s.Require().NotNil(h.vault)
-	newStoredValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NotNil(vault)
+	newStoredValue, err := vault.GetValue(ctx, externalID)
 	s.Require().NoError(err)
 	s.NotZero(newStoredValue)
 	s.NotEqual(initialStoredValue, newStoredValue)
@@ -522,7 +531,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(dbProjRef)
 	s.Empty(dbProjRef.ContainerSecrets, "container secret should have been deleted")
 
-	_, err = h.vault.GetValue(ctx, externalID)
+	_, err = vault.GetValue(ctx, externalID)
 	s.Error(err, "secret should have been deleted from the vault")
 }
 
