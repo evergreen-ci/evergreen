@@ -47,7 +47,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.13
 	github.com/vektah/gqlparser/v2 v2.5.1
-	github.com/vmware/govmomi v0.27.1
+	github.com/vmware/govmomi v0.30.4
 	go.mongodb.org/mongo-driver v1.11.6
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.15.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.15.0
