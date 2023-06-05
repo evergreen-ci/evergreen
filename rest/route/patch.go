@@ -450,18 +450,45 @@ func (p *schedulePatchHandler) Factory() gimlet.RouteHandler {
 func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	if p.patchId == "" {
+		grip.Error(message.Fields{
+			"message": "no patch ID specified",
+			"ticket":  "EVG-20063",
+			"route":   "/patches/{patch_id}/configure",
+			"request": gimlet.GetRequestID(ctx),
+		})
 		return errors.New("must specify a patch ID")
 	}
 	var err error
 	apiPatch, err := data.FindPatchById(p.patchId)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "problem while finding patch",
+			"ticket":   "EVG-20063",
+			"patch_id": p.patchId,
+			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":  gimlet.GetRequestID(ctx),
+		}))
 		return err
 	}
 	if apiPatch == nil {
+		grip.Error(message.Fields{
+			"message":  "could not find patch",
+			"ticket":   "EVG-20063",
+			"patch_id": p.patchId,
+			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":  gimlet.GetRequestID(ctx),
+		})
 		return errors.New("patch not found")
 	}
 	p.patch, err = apiPatch.ToService()
 	if err != nil {
+		grip.Error(message.Fields{
+			"message":  "could not convert API patch to DB patch",
+			"ticket":   "EVG-20063",
+			"patch_id": p.patchId,
+			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":  gimlet.GetRequestID(ctx),
+		})
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "converting patch to service model").Error(),
@@ -471,9 +498,23 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 	defer body.Close()
 	tasks := patchTasks{}
 	if err = utility.ReadJSON(body, &tasks); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "could not read JSON request body for variants/tasks",
+			"ticket":   "EVG-20063",
+			"patch_id": p.patchId,
+			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":  gimlet.GetRequestID(ctx),
+		}))
 		return errors.Wrap(err, "reading tasks from JSON request body")
 	}
 	if len(tasks.Variants) == 0 {
+		grip.Error(message.Fields{
+			"message":  "request body did not contain any variants/tasks",
+			"ticket":   "EVG-20063",
+			"patch_id": p.patchId,
+			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":  gimlet.GetRequestID(ctx),
+		})
 		return errors.New("no variants specified")
 	}
 	p.variantTasks = tasks
@@ -493,6 +534,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				"patch_id":       p.patchId,
 				"variants_tasks": p.variantTasks,
 				"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+				"request":        gimlet.GetRequestID(ctx),
 			}))
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 		}
@@ -504,6 +546,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				"patch_id":       p.patchId,
 				"variants_tasks": p.variantTasks,
 				"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+				"request":        gimlet.GetRequestID(ctx),
 			}))
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}
@@ -516,6 +559,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				"patch_id":       p.patchId,
 				"variants_tasks": p.variantTasks,
 				"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+				"request":        gimlet.GetRequestID(ctx),
 			}))
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for version '%s'", dbVersion.Id))
 		}
@@ -538,6 +582,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 					"patch_id":       p.patchId,
 					"variants_tasks": p.variantTasks,
 					"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+					"request":        gimlet.GetRequestID(ctx),
 				}))
 				return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("variant '%s' not found", v.Id))
 			}
@@ -566,6 +611,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			"patch_id":       p.patchId,
 			"variants_tasks": p.variantTasks,
 			"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":        gimlet.GetRequestID(ctx),
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "scheduling patch"))
 	}
@@ -578,6 +624,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			"patch_id":       p.patchId,
 			"variants_tasks": p.variantTasks,
 			"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":        gimlet.GetRequestID(ctx),
 		})
 		resp := gimlet.NewResponseBuilder()
 		_ = resp.SetStatus(code)
@@ -590,6 +637,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			"ticket":   "EVG-20063",
 			"patch_id": p.patchId,
 			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":  gimlet.GetRequestID(ctx),
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version for patch '%s'", p.patchId))
 	}
@@ -599,6 +647,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			"ticket":   "EVG-20063",
 			"patch_id": p.patchId,
 			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+			"request":  gimlet.GetRequestID(ctx),
 		})
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("version for patch '%s' not found", p.patchId))
 	}
