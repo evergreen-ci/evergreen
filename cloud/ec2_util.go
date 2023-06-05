@@ -472,7 +472,7 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2.DescribeI
 		} else {
 			instance := reservation.Instances[0]
 			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance ID")
-			catcher.NewWhen(instance.State == nil || len(instance.State.Name) == 0, "instance missing state name")
+			catcher.NewWhen(instance.State == nil || instance.State.Name == "", "instance missing state name")
 		}
 	}
 
