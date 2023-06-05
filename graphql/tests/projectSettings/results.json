@@ -20,7 +20,7 @@
               "prTestingEnabled": true,
               "stepbackDisabled": false,
               "batchTime": 2,
-              "projectHealthView": "failed",
+              "projectHealthView": "FAILED",
               "parsleyFilters": [
                 {
                   "expression": "filter1",
