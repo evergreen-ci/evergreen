@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -427,6 +429,8 @@ type variant struct {
 	Tasks []string `json:"tasks"`
 }
 
+// POST /patches/{patch_id}/configure
+
 type schedulePatchHandler struct {
 	variantTasks patchTasks
 
@@ -483,15 +487,36 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if dbVersion == nil {
 		githubOauthToken, err := p.env.Settings().GetGithubOauthToken()
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "could not get GitHub OAuth token",
+				"ticket":         "EVG-20063",
+				"patch_id":       p.patchId,
+				"variants_tasks": p.variantTasks,
+				"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+			}))
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 		}
 		project, _, err = dbModel.GetPatchedProject(ctx, p.env.Settings(), &p.patch, githubOauthToken)
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "could not get patched project",
+				"ticket":         "EVG-20063",
+				"patch_id":       p.patchId,
+				"variants_tasks": p.variantTasks,
+				"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+			}))
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}
 	} else {
 		project, err = dbModel.FindProjectFromVersionID(dbVersion.Id)
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "could not get find project from version ID",
+				"ticket":         "EVG-20063",
+				"patch_id":       p.patchId,
+				"variants_tasks": p.variantTasks,
+				"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+			}))
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for version '%s'", dbVersion.Id))
 		}
 	}
@@ -506,6 +531,14 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if len(v.Tasks) > 0 && v.Tasks[0] == "*" {
 			projectVariant := project.FindBuildVariant(v.Id)
 			if projectVariant == nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":        "could not find build variant in version",
+					"build_variant":  v.Id,
+					"ticket":         "EVG-20063",
+					"patch_id":       p.patchId,
+					"variants_tasks": p.variantTasks,
+					"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+				}))
 				return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("variant '%s' not found", v.Id))
 			}
 			variantToSchedule.DisplayTasks = projectVariant.DisplayTasks
@@ -526,18 +559,47 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	code, err := units.SchedulePatch(ctx, p.env, p.patchId, dbVersion, patchUpdateReq)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "could not schedule patch",
+			"ticket":         "EVG-20063",
+			"patch_update":   patchUpdateReq,
+			"patch_id":       p.patchId,
+			"variants_tasks": p.variantTasks,
+			"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "scheduling patch"))
 	}
 	if code != http.StatusOK {
+		grip.Error(message.Fields{
+			"message":        "scheduling patch is returning unexpected non-OK response",
+			"status_code":    code,
+			"ticket":         "EVG-20063",
+			"patch_update":   patchUpdateReq,
+			"patch_id":       p.patchId,
+			"variants_tasks": p.variantTasks,
+			"route":          fmt.Sprintf("/patches/%s/configure", p.patchId),
+		})
 		resp := gimlet.NewResponseBuilder()
 		_ = resp.SetStatus(code)
 		return resp
 	}
 	dbVersion, err = dbModel.VersionFindOneId(p.patchId)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "could not find version after scheduling patch",
+			"ticket":   "EVG-20063",
+			"patch_id": p.patchId,
+			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version for patch '%s'", p.patchId))
 	}
 	if dbVersion == nil {
+		grip.Error(message.Fields{
+			"message":  "version not found after scheduling patch",
+			"ticket":   "EVG-20063",
+			"patch_id": p.patchId,
+			"route":    fmt.Sprintf("/patches/%s/configure", p.patchId),
+		})
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("version for patch '%s' not found", p.patchId))
 	}
 	restVersion := model.APIVersion{}
