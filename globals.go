@@ -41,27 +41,12 @@ const (
 
 	HostExternalUserName = "external"
 
-	// Task Statuses used in the database models or in the UI
-
-	// TaskInactive is a deprecated legacy status that used to mean that the
-	// task was not scheduled to run. This is equivalent to the TaskUnscheduled
-	// display status. These are not stored in the task status (although they
-	// used to be for very old tasks) and may be still used in some outdated
-	// pieces of code.
-	TaskInactive = "inactive"
+	// Task statuses stored in the database (i.e. (Task).Status):
 
 	// TaskUndispatched indicates either:
 	//  1. a task is not scheduled to run (when Task.Activated == false)
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
-	// TaskUnscheduled indicates that the task is undispatched and is not
-	// scheduled to eventually run. This is a display status, so it's only used
-	// in the UI.
-	TaskUnscheduled = "unscheduled"
-	// TaskWillRun indicates that the task is scheduled to eventually run,
-	// unless one of its dependencies becomes unattainable. This is a display
-	// status, so it's only used in the UI.
-	TaskWillRun = "will-run"
 
 	// TaskDispatched indicates that an agent has received the task, but
 	// the agent has not yet told Evergreen that it's running the task
@@ -78,6 +63,25 @@ const (
 	// encompasses any task failure, regardless of the specific failure reason
 	// which can be found in the task end details.
 	TaskFailed = "failed"
+
+	// Task statuses used for the UI or other special-case purposes:
+
+	// TaskUnscheduled indicates that the task is undispatched and is not
+	// scheduled to eventually run. This is a display status, so it's only used
+	// in the UI.
+	TaskUnscheduled = "unscheduled"
+	// TaskInactive is a deprecated legacy status that used to mean that the
+	// task was not scheduled to run. This is equivalent to the TaskUnscheduled
+	// display status. These are not stored in the task status (although they
+	// used to be for very old tasks) but may be still used in some outdated
+	// pieces of code.
+	TaskInactive = "inactive"
+
+	// TaskWillRun indicates that the task is scheduled to eventually run,
+	// unless one of its dependencies becomes unattainable. This is a display
+	// status, so it's only used in the UI.
+	TaskWillRun = "will-run"
+
 	// All other task failure reasons other than TaskFailed are display
 	// statuses, so they're only used in the UI. These are not stored in the
 	// task status (although they used to be for very old tasks).
@@ -85,21 +89,23 @@ const (
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
 
+	// TaskAborted indicates that the task was aborted while it was running.
 	TaskAborted = "aborted"
 
 	// TaskStatusBlocked indicates that the task cannot run because it is
 	// blocked by an unattainable dependency. This is a display status, so it's
 	// only used in the UI.
 	TaskStatusBlocked = "blocked"
-	// TaskStatusPending is a special state that's used for one specific return
-	// value. Generally do not use this status as it is neither a meaningful
-	// status in the UI nor in the back end.
-	TaskStatusPending = "pending"
 
 	// TaskKnownIssue indicates that the task has failed and is being tracked by
 	// a linked issue in the task annotations. This is a display status, so it's
 	// only used in the UI.
 	TaskKnownIssue = "known-issue"
+
+	// TaskStatusPending is a special state that's used for one specific return
+	// value. Generally do not use this status as it is neither a meaningful
+	// status in the UI nor in the back end.
+	TaskStatusPending = "pending"
 
 	// TaskAll is not a status, but rather a UI filter indicating that it should
 	// select all tasks regardless of their status.
