@@ -187,7 +187,7 @@ require (
 )
 
 require (
-	github.com/mholt/archiver v2.0.1-0.20180417220235-e4ef56d48eb0+incompatible
+	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 )
 
