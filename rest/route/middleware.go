@@ -1,8 +1,10 @@
 package route
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -911,6 +914,38 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		}
 	}
 
+	next(rw, r)
+}
+
+// NewGithubAuthMiddleware returns a middleware that verifies the payload
+func NewGithubAuthMiddleware() gimlet.Middleware {
+	return &githubAuthMiddleware{}
+}
+
+type githubAuthMiddleware struct{}
+
+func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	githubSecret := []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+
+	// save the body for future reads
+	payload, err := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewBuffer(payload))
+
+	_, err = github.ValidatePayload(r, githubSecret)
+
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "GitHub hook",
+			"message": "rejecting GitHub webhook",
+			"msg_id":  r.Header.Get("X-Github-Delivery"),
+			"event":   r.Header.Get("X-Github-Event"),
+		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to validate github payload")))
+		return
+	}
+
+	//reset the body so that it can be parsed again
+	r.Body = io.NopCloser(bytes.NewBuffer(payload))
 	next(rw, r)
 }
 
