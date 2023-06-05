@@ -932,7 +932,6 @@ func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request
 	r.Body = io.NopCloser(bytes.NewBuffer(payload))
 
 	_, err = github.ValidatePayload(r, githubSecret)
-
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
@@ -940,7 +939,7 @@ func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request
 			"msg_id":  r.Header.Get("X-Github-Delivery"),
 			"event":   r.Header.Get("X-Github-Event"),
 		}))
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to validate github payload")))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating github payload")))
 		return
 	}
 
