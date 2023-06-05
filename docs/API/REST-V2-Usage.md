@@ -164,9 +164,10 @@ patch tasks)
 
 Fetch a single task using its ID
 
-| Name                 | Type | Description                                                             |
-|----------------------|------|-------------------------------------------------------------------------|
-| fetch_all_executions | any  | Optional. Fetches previous executions of the task if they are available |
+| Name                 | Type | Description                                                                                                  |
+|----------------------|------|--------------------------------------------------------------------------------------------------------------|
+| execution            | int  | Optional. The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution |
+| fetch_all_executions | any  | Optional. Fetches previous executions of the task if they are available                                      |
 
 ##### Restart A Task
 
