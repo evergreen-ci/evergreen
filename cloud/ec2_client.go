@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -1375,16 +1375,18 @@ func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
-	argString := fmt.Sprintf("%+v", args)
-	argJSON, err := json.Marshal(args)
-	if err == nil {
-		argString = string(argJSON)
-	}
-
-	return message.Fields{
+	msg := message.Fields{
 		"message":  "AWS API call",
 		"api_name": name,
 		"client":   client,
-		"args":     argString,
 	}
+
+	argMap := make(map[string]interface{})
+	if err := mapstructure.Decode(args, &argMap); err == nil {
+		msg["args"] = argMap
+	} else {
+		msg["args"] = fmt.Sprintf("%+v", args)
+	}
+
+	return msg
 }
