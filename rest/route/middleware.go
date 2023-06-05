@@ -943,11 +943,11 @@ func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request
 }
 
 func setGitHubPayload(r *http.Request, payload []byte) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), payloadKey, payload))
+	return r.WithContext(context.WithValue(r.Context(), githubPayloadKey, payload))
 }
 
 func getGitHubPayload(ctx context.Context) []byte {
-	if rv := ctx.Value(payloadKey); rv != nil {
+	if rv := ctx.Value(githubPayloadKey); rv != nil {
 		if t, ok := rv.([]byte); ok {
 			return t
 		}
