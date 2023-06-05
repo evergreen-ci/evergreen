@@ -8,7 +8,7 @@ Base URL: `http://<EVERGREEN_HOST>/rest/v2/`
 
 Many of the these REST endpoints do not require authentication to
 access, but some do. These will return a 404 if no authentication
-headers are sent, if the username is invalid, or if the API key 
+headers are sent, if the username is invalid, or if the API key is
 incorrect. Use the `user` and `api_key` fields from the
 [settings](https://spruce.mongodb.com/preferences/cli) page to set two headers,
 `Api-User` and `Api-Key`.
