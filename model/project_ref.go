@@ -138,8 +138,8 @@ type ParsleyFilter struct {
 type ProjectHealthView string
 
 const (
-	ProjectHealthViewFailed ProjectHealthView = "failed"
-	ProjectHealthViewAll    ProjectHealthView = "all"
+	ProjectHealthViewAll    ProjectHealthView = "ALL"
+	ProjectHealthViewFailed ProjectHealthView = "FAILED"
 )
 
 type ProjectBanner struct {
