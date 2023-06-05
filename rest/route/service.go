@@ -34,6 +34,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	// Middleware
 	requireUser := gimlet.NewRequireAuthHandler()
+	requireValidGithubPayload := NewGithubAuthMiddleware()
 	requireTask := NewTaskAuthMiddleware()
 	requireTaskHost := NewTaskHostAuthMiddleware()
 	requireHost := NewHostAuthMiddleware()
@@ -135,8 +136,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	// client_urls is used by the agent monitor deploy job which does not pass in user info
 	app.AddRoute("/distros/{distro_id}/client_urls").Version(2).Get().RouteHandler(makeGetDistroClientURLs(env))
 
-	// Middleware is omitted for webhook routes because they cannot be called by users and validation occurs in Parse function.
-	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
+	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
+	// Middleware is omitted for hooks/aws routes because they cannot be called by users and validation occurs in Parse function.
 	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeEC2SNS(env, opts.APIQueue))
 	app.AddRoute("/hooks/aws/ecs").Version(2).Post().RouteHandler(makeECSSNS(env, opts.APIQueue))
 

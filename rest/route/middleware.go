@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -33,7 +34,8 @@ type (
 
 const (
 	// These are private custom types to avoid key collisions.
-	RequestContext requestContextKey = 0
+	RequestContext   requestContextKey = 0
+	githubPayloadKey requestContextKey = 3
 )
 
 type projCtxMiddleware struct{}
@@ -912,6 +914,46 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 	}
 
 	next(rw, r)
+}
+
+// NewGithubAuthMiddleware returns a middleware that verifies the payload.
+func NewGithubAuthMiddleware() gimlet.Middleware {
+	return &githubAuthMiddleware{}
+}
+
+type githubAuthMiddleware struct{}
+
+func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	githubSecret := []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+
+	payload, err := github.ValidatePayload(r, githubSecret)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "GitHub hook",
+			"message": "rejecting GitHub webhook",
+			"msg_id":  r.Header.Get("X-Github-Delivery"),
+			"event":   r.Header.Get("X-Github-Event"),
+		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating GitHub payload")))
+		return
+	}
+
+	r = setGitHubPayload(r, payload)
+	next(rw, r)
+}
+
+func setGitHubPayload(r *http.Request, payload []byte) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), githubPayloadKey, payload))
+}
+
+func getGitHubPayload(ctx context.Context) []byte {
+	if rv := ctx.Value(githubPayloadKey); rv != nil {
+		if t, ok := rv.([]byte); ok {
+			return t
+		}
+	}
+
+	return []byte{}
 }
 
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
