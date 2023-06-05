@@ -1345,7 +1345,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		"operation":   "mark end",
 		"duration":    time.Since(finishTime),
 		"should_exit": endTaskResp.ShouldExit,
-		"status":      h.details.Status,
+		"status":      t.Status,
 		"path":        fmt.Sprintf("/rest/v2/hosts/%s/task/%s/end", currentHost.Id, t.Id),
 	}
 

@@ -2,13 +2,16 @@ package model
 
 import (
 	"context"
+	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/v52/github"
 	"github.com/pkg/errors"
 )
@@ -47,6 +50,36 @@ func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitq
 	}
 
 	return modulePRs, modulePatches, nil
+}
+
+// CommitQueueRemoveItem dequeues an item from the commit queue and returns the
+// removed item. If the item is already being tested in a batch, later items in
+// the batch are restarted.
+func CommitQueueRemoveItem(cq *commitqueue.CommitQueue, item commitqueue.CommitQueueItem, user, reason string) (*commitqueue.CommitQueueItem, error) {
+	if item.Version != "" {
+		// If the patch has been finalized, it may already be running in a
+		// batch, so it has to restart later items that are running in its
+		// batch.
+		removed, err := DequeueAndRestartForVersion(cq, cq.ProjectID, item.Version, user, reason)
+		if err != nil {
+			return nil, errors.Wrap(err, "dequeueing and restarting finalized commit queue item")
+		}
+		return removed, nil
+	}
+
+	// If the patch hasn't been finalized yet, it can simply be removed from
+	// the commit queue.
+	removed, err := RemoveItemAndPreventMerge(cq, item.Issue, user)
+	if err != nil {
+		return nil, errors.Wrap(err, "removing unfinalized commit queue item")
+	}
+	if removed == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("item '%s' not found in commit queue", item.Issue).Error(),
+		}
+	}
+	return removed, nil
 }
 
 func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*commitqueue.CommitQueueItem, error) {
@@ -88,6 +121,8 @@ func RemoveItemAndPreventMerge(cq *commitqueue.CommitQueue, issue string, user s
 	return removed, errors.Wrapf(err, "preventing merge for item '%s' in commit queue for project '%s'", issue, cq.ProjectID)
 }
 
+// preventMergeForItem disables the merge task for a commit queue item to
+// prevent it from running.
 func preventMergeForItem(item commitqueue.CommitQueueItem, user string) error {
 	// Disable the merge task
 	mergeTask, err := task.FindMergeTaskForVersion(item.Version)
@@ -96,6 +131,12 @@ func preventMergeForItem(item commitqueue.CommitQueueItem, user string) error {
 	}
 	if mergeTask == nil {
 		return errors.New("merge task doesn't exist")
+	}
+	if mergeTask.Priority <= evergreen.DisabledTaskPriority && !mergeTask.Activated {
+		// kim: TODO: test this
+		// The merge task is already disabled, so there's no need to disable it
+		// again.
+		return nil
 	}
 	event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
 	if err = DisableTasks(user, *mergeTask); err != nil {

@@ -871,6 +871,7 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 // DequeueAndRestartForVersion restarts all items after the commit queue
 // item, aborts/dequeues this version, and sends an updated status to GitHub. If
 // it succeeds, it returns the removed item.
+// kim: TODO: validate that this updates the version/build statuses.
 func DequeueAndRestartForVersion(cq *commitqueue.CommitQueue, project, version, user, reason string) (*commitqueue.CommitQueueItem, error) {
 	return dequeueAndRestartItem(dequeueAndRestartOptions{
 		cq:            cq,
