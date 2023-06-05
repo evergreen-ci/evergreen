@@ -62,7 +62,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.15.1
 	go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto v0.9.0
-	golang.org/x/oauth2 v0.7.0
+	golang.org/x/oauth2 v0.8.0
 	golang.org/x/text v0.9.0
 	golang.org/x/tools v0.7.0
 	gonum.org/v1/gonum v0.13.0
