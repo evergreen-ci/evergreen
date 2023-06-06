@@ -224,6 +224,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 
+	// This case merely logs. EVG-19964 will add logic to create a version from the GitHub merge queue.
 	case *github.MergeGroupEvent:
 		grip.Debug(message.Fields{
 			"source":   "GitHub hook",
