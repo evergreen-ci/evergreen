@@ -46,8 +46,6 @@ account the new requester.
 
 ### Post results
 
-Post a check called "evergreen/github-merge-queue.  Although "evergreen" might
-seem simpler, overloading the word might complicate workflows, since "evergreen"
-is already used by Evergreen's GitHub pull request integration.
-"evergreen/github-merge-queue" adheres to the principle "explicit is better than
-implicit".
+Post a check to the checks API. Note that GitHub "status checks" are of two
+types, "statuses" and "checks". Branch protection rules are fulfilled by
+statuses, whereas the GitHub merge queue listens for a check.
