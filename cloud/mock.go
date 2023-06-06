@@ -40,7 +40,7 @@ type MockInstance struct {
 type MockVolume struct {
 	DeviceName   string
 	Type         string
-	Size         int32
+	Size         int
 	Expiration   time.Time
 	NoExpiration bool
 }

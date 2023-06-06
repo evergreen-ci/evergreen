@@ -7,16 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/smithy-go"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -30,18 +29,18 @@ var noReservationError = errors.New("no reservation returned for instance")
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(context.Context, aws.CredentialsProvider, string) error
+	Create(*credentials.Credentials, string) error
 
 	// Close an aws-sdk-client or mock.
 	Close()
 
 	// RunInstances is a wrapper for ec2.RunInstances.
-	RunInstances(context.Context, *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error)
+	RunInstances(context.Context, *ec2.RunInstancesInput) (*ec2.Reservation, error)
 
 	// DescribeInstances is a wrapper for ec2.DescribeInstances.
 	DescribeInstances(context.Context, *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error)
 
-	// ModifyInstanceAttribute is a wrapper for ec2.ModifyInstanceAttribute.
+	// ModifyInstanceAttribute is a wrapper for ec2.ModifyInstanceAttribute
 	ModifyInstanceAttribute(context.Context, *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error)
 
 	// DescribeInstanceTypeOfferings is a wrapper for ec2.DescribeInstanceTypeOfferings.
@@ -63,16 +62,16 @@ type AWSClient interface {
 	StartInstances(context.Context, *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error)
 
 	// CreateVolume is a wrapper for ec2.CreateVolume.
-	CreateVolume(context.Context, *ec2.CreateVolumeInput) (*ec2.CreateVolumeOutput, error)
+	CreateVolume(context.Context, *ec2.CreateVolumeInput) (*ec2.Volume, error)
 
 	// DeleteVolume is a wrapper for ec2.DeleteWrapper.
 	DeleteVolume(context.Context, *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error)
 
 	// AttachVolume is a wrapper for ec2.AttachVolume. Generates device name on error if applicable.
-	AttachVolume(context.Context, *ec2.AttachVolumeInput, generateDeviceNameOptions) (*ec2.AttachVolumeOutput, error)
+	AttachVolume(context.Context, *ec2.AttachVolumeInput, generateDeviceNameOptions) (*ec2.VolumeAttachment, error)
 
 	// DetachVolume is a wrapper for ec2.DetachVolume.
-	DetachVolume(context.Context, *ec2.DetachVolumeInput) (*ec2.DetachVolumeOutput, error)
+	DetachVolume(context.Context, *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error)
 
 	// ModifyVolume is a wrapper for ec2.ModifyVolume.
 	ModifyVolume(context.Context, *ec2.ModifyVolumeInput) (*ec2.ModifyVolumeOutput, error)
@@ -87,34 +86,34 @@ type AWSClient interface {
 	DescribeVpcs(context.Context, *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
 
 	// GetInstanceInfo returns info about an ec2 instance.
-	GetInstanceInfo(context.Context, string) (*types.Instance, error)
+	GetInstanceInfo(context.Context, string) (*ec2.Instance, error)
 
-	// CreateKeyPair is a wrapper for ec2.CreateKeyPair.
+	// CreateKeyPair is a wrapper for ec2.CreateKeyPairWithContext.
 	CreateKeyPair(context.Context, *ec2.CreateKeyPairInput) (*ec2.CreateKeyPairOutput, error)
 
-	// ImportKeyPair is a wrapper for ec2.ImportKeyPair.
+	// ImportKeyPair is a wrapper for ec2.ImportKeyPairWithContext.
 	ImportKeyPair(context.Context, *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error)
 
-	// DeleteKeyPair is a wrapper for ec2.DeleteKeyPair.
+	// DeleteKeyPair is a wrapper for ec2.DeleteKeyPairWithContext.
 	DeleteKeyPair(context.Context, *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error)
 
-	// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplate.
+	// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplateWithContext
 	CreateLaunchTemplate(context.Context, *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error)
 
-	// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplate.
+	// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplateWithContext
 	DeleteLaunchTemplate(context.Context, *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error)
 
 	// GetLaunchTemplates gets all the launch templates that match the input.
-	GetLaunchTemplates(context.Context, *ec2.DescribeLaunchTemplatesInput) ([]types.LaunchTemplate, error)
+	GetLaunchTemplates(context.Context, *ec2.DescribeLaunchTemplatesInput) ([]*ec2.LaunchTemplate, error)
 
-	// CreateFleet is a wrapper for ec2.CreateFleet.
+	// CreateFleet is a wrapper for ec2.CreateFleetWithContext
 	CreateFleet(context.Context, *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error)
 
 	GetKey(context.Context, *host.Host) (string, error)
 
 	SetTags(context.Context, []string, *host.Host) error
 
-	GetInstanceBlockDevices(context.Context, *host.Host) ([]types.InstanceBlockDeviceMapping, error)
+	GetInstanceBlockDevices(context.Context, *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error)
 
 	GetVolumeIDs(context.Context, *host.Host) ([]string, error)
 
@@ -123,9 +122,9 @@ type AWSClient interface {
 
 // awsClientImpl wraps ec2.EC2.
 type awsClientImpl struct { //nolint:all
-	config     *aws.Config
+	session    *session.Session
 	httpClient *http.Client
-	client     *ec2.Client
+	*ec2.EC2
 }
 
 type generateDeviceNameOptions struct {
@@ -146,26 +145,26 @@ func awsClientDefaultRetryOptions() utility.RetryOptions {
 }
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(ctx context.Context, creds aws.CredentialsProvider, region string) error {
+func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) error {
 	if creds == nil {
 		return errors.New("creds must not be nil")
 	}
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
-	if c.config == nil {
+	if c.session == nil {
 		c.httpClient = utility.GetHTTPClient()
-		config, err := config.LoadDefaultConfig(ctx,
-			config.WithRegion(region),
-			config.WithHTTPClient(c.httpClient),
-			config.WithCredentialsProvider(creds),
-		)
+		s, err := session.NewSession(&aws.Config{
+			HTTPClient:  c.httpClient,
+			Region:      aws.String(region),
+			Credentials: creds,
+		})
 		if err != nil {
-			return errors.Wrap(err, "loading config")
+			return errors.Wrap(err, "creating session")
 		}
-		c.config = &config
+		c.session = s
 	}
-	c.client = ec2.NewFromConfig(*c.config)
+	c.EC2 = ec2.New(c.session)
 	return nil
 }
 
@@ -177,23 +176,21 @@ func (c *awsClientImpl) Close() {
 }
 
 // RunInstances is a wrapper for ec2.RunInstances.
-func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error) {
-	var output *ec2.RunInstancesOutput
+func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
+	var output *ec2.Reservation
 	var err error
-	input.ClientToken = aws.String(utility.RandomString())
-
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.RunInstances(ctx, input)
+			output, err = c.EC2.RunInstancesWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-					if strings.Contains(apiErr.Error(), EC2InsufficientCapacity) {
+				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
 						return false, EC2InsufficientCapacityError
 					}
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -214,11 +211,10 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeInstances(ctx, input)
+			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -238,11 +234,10 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("ModifyInstanceAttribute", fmt.Sprintf("%T", c), input)
-			output, err = c.client.ModifyInstanceAttribute(ctx, input)
+			output, err = c.EC2.ModifyInstanceAttributeWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -262,11 +257,10 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeInstanceTypeOfferings(ctx, input)
+			output, err = c.EC2.DescribeInstanceTypeOfferingsWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -287,11 +281,10 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateTags(ctx, input)
+			output, err = c.EC2.CreateTagsWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -312,11 +305,10 @@ func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteTags(ctx, input)
+			output, err = c.EC2.DeleteTagsWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -337,21 +329,21 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.TerminateInstances(ctx, input)
+			output, err = c.EC2.TerminateInstancesWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					if strings.Contains(apiErr.Error(), EC2ErrorNotFound) {
-						grip.Debug(message.WrapError(apiErr, message.Fields{
+				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2ErrorNotFound) {
+						grip.Debug(message.WrapError(ec2err, message.Fields{
 							"client":          fmt.Sprintf("%T", c),
 							"message":         "instance ID not found in AWS",
 							"args":            input,
-							"ec2_err_message": apiErr.ErrorMessage(),
-							"ec2_err_code":    apiErr.ErrorCode(),
+							"ec2_err_message": ec2err.Message(),
+							"ec2_err_code":    ec2err.Code(),
 						}))
 						return false, nil
 					}
-					grip.Debug(message.WrapError(apiErr, msg))
+
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -372,11 +364,10 @@ func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstan
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("StopInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.StopInstances(ctx, input)
+			output, err = c.EC2.StopInstancesWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -397,11 +388,10 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.StartInstances(ctx, input)
+			output, err = c.EC2.StartInstancesWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -415,24 +405,23 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 }
 
 // CreateVolume is a wrapper for ec2.CreateVolume.
-func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.CreateVolumeOutput, error) {
-	var output *ec2.CreateVolumeOutput
+func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
+	var output *ec2.Volume
 	var err error
-	input.ClientToken = aws.String(utility.RandomString())
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateVolume(ctx, input)
+			output, err = c.EC2.CreateVolumeWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-					if strings.Contains(apiErr.Error(), EC2InvalidParam) {
+				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Error(), EC2InvalidParam) {
 						return false, err
 					}
-					return true, err
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
+				return true, err
 			}
 			grip.Info(msg)
 			return false, nil
@@ -452,14 +441,13 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteVolume(ctx, input)
+			output, err = c.EC2.DeleteVolumeWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-					if strings.Contains(apiErr.Error(), EC2VolumeNotFound) {
+				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Error(), EC2VolumeNotFound) {
 						return false, nil
 					}
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -481,12 +469,11 @@ func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("ModifyVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.ModifyVolume(ctx, input)
+			output, err = c.EC2.ModifyVolumeWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-					if ModifyVolumeBadRequest(apiErr) {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
+					if ModifyVolumeBadRequest(ec2err) {
 						return false, err
 					}
 				}
@@ -503,19 +490,18 @@ func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 }
 
 // AttachVolume is a wrapper for ec2.AttachVolume.
-func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, opts generateDeviceNameOptions) (*ec2.AttachVolumeOutput, error) {
-	var output *ec2.AttachVolumeOutput
+func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, opts generateDeviceNameOptions) (*ec2.VolumeAttachment, error) {
+	var output *ec2.VolumeAttachment
 	var err error
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.AttachVolume(ctx, input)
+			output, err = c.EC2.AttachVolumeWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-					if AttachVolumeBadRequest(apiErr) {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
+					if AttachVolumeBadRequest(ec2err) {
 						return false, err
 					}
 				}
@@ -532,18 +518,17 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 }
 
 // DetachVolume is a wrapper for ec2.DetachVolume.
-func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolumeInput) (*ec2.DetachVolumeOutput, error) {
-	var output *ec2.DetachVolumeOutput
+func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error) {
+	var output *ec2.VolumeAttachment
 	var err error
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DetachVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DetachVolume(ctx, input)
+			output, err = c.EC2.DetachVolumeWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -566,11 +551,10 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeVolumes(ctx, input)
+			output, err = c.EC2.DescribeVolumesWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -591,11 +575,10 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeSubnets(ctx, input)
+			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -616,11 +599,10 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeVpcs(ctx, input)
+			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -633,12 +615,12 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 	return output, nil
 }
 
-func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*types.Instance, error) {
+func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
 	if host.IsIntentHostId(id) {
 		return nil, errors.Errorf("host ID '%s' is for an intent host", id)
 	}
-	resp, err := c.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []string{id},
+	resp, err := c.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: []*string{aws.String(id)},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "EC2 API returned error for DescribeInstances")
@@ -655,7 +637,7 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*types.
 		return nil, err
 	}
 
-	return &instances[0], nil
+	return instances[0], nil
 }
 
 // CreateKeyPair is a wrapper for ec2.CreateKeyPair.
@@ -666,11 +648,10 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateKeyPair(ctx, input)
+			output, err = c.EC2.CreateKeyPairWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -689,15 +670,15 @@ func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyP
 	err = utility.Retry(
 		ctx, func() (bool, error) {
 			msg := makeAWSLogMessage("ImportKeyPair", fmt.Sprintf("%T", c), input)
-			output, err = c.client.ImportKeyPair(ctx, input)
+			output, err = c.EC2.ImportKeyPairWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
 					// Don't retry if the key already exists
-					if apiErr.ErrorCode() == EC2DuplicateKeyPair {
-						return false, apiErr
+					if ec2err.Code() == EC2DuplicateKeyPair {
+						grip.Info(msg)
+						return false, ec2err
 					}
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -718,11 +699,10 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteKeyPair(ctx, input)
+			output, err = c.EC2.DeleteKeyPairWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -735,25 +715,24 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 	return output, nil
 }
 
-// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplate.
+// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplateWithContext
 func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
 	var output *ec2.CreateLaunchTemplateOutput
 	var err error
-	input.ClientToken = aws.String(utility.RandomString())
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateLaunchTemplate(ctx, input)
+			output, err = c.EC2.CreateLaunchTemplateWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
 					// Don't retry if the template was already created.
-					if strings.Contains(apiErr.Error(), ec2TemplateNameExists) {
+					if strings.Contains(ec2err.Code(), ec2TemplateNameExists) {
 						grip.Info(msg)
 						return false, ec2TemplateNameExistsError
 					}
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -766,26 +745,26 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 	return output, nil
 }
 
-func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.DescribeLaunchTemplatesInput) ([]types.LaunchTemplate, error) {
-	var templates []types.LaunchTemplate
-	err := utility.Retry(
+func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.DescribeLaunchTemplatesInput) ([]*ec2.LaunchTemplate, error) {
+	var templates []*ec2.LaunchTemplate
+	var err error
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			templates = []types.LaunchTemplate{}
 			msg := makeAWSLogMessage("DescribeLaunchTemplates", fmt.Sprintf("%T", c), input)
-			paginator := ec2.NewDescribeLaunchTemplatesPaginator(c.client, input)
-			for paginator.HasMorePages() {
-				output, err := paginator.NextPage(ctx)
-				if err != nil {
-					var apiErr smithy.APIError
-					if errors.As(err, &apiErr) {
-						grip.Debug(message.WrapError(apiErr, msg))
-					}
-					return true, err
-				}
+			templates = []*ec2.LaunchTemplate{}
+			err = c.EC2.DescribeLaunchTemplatesPagesWithContext(ctx, input, func(output *ec2.DescribeLaunchTemplatesOutput, _ bool) bool {
 				templates = append(templates, output.LaunchTemplates...)
+				return true
+			})
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
+				}
+				return true, err
 			}
 			grip.Info(msg)
+
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -794,7 +773,7 @@ func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.Descr
 	return templates, nil
 }
 
-// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplate.
+// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplateWithContext
 func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
 	var output *ec2.DeleteLaunchTemplateOutput
 	var err error
@@ -802,11 +781,10 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteLaunchTemplate", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteLaunchTemplate(ctx, input)
+			output, err = c.EC2.DeleteLaunchTemplateWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -819,39 +797,36 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 	return output, nil
 }
 
-// CreateFleet is a wrapper for ec2.CreateFleet.
+// CreateFleet is a wrapper for ec2.CreateFleetWithContext
 func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
 	var output *ec2.CreateFleetOutput
 	var err error
-	input.ClientToken = aws.String(utility.RandomString())
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateFleet(ctx, input)
+			output, err = c.EC2.CreateFleetWithContext(ctx, input)
 			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-					if strings.Contains(apiErr.Error(), EC2InsufficientCapacity) {
+				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
 						return false, err
 					}
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
-			// CreateFleet has oddball behavior. If there is a
+			// CreateFleetWithContext has oddball behavior. If there is a
 			// RequestLimitExceeded error while using CreateFleet in instant mode,
-			// usually (but not always!) EC2.CreateFleet will not return an
+			// usually (but not always!) EC2.CreateFleetWithContext will not return an
 			// error. Instead it will populate the output.Error array with a single
 			// item describing the error, using an error type that does _not_
-			// implement smithy.APIError. We therefore have to check this case in addition
+			// implement awserr.Error. We therefore have to check this case in addition
 			// to the standard `err != nil` case above.
 			if !ec2CreateFleetResponseContainsInstance(output) {
 				if len(output.Errors) > 0 {
-					grip.Debug(message.WrapError(&smithy.GenericAPIError{
-						Code:    utility.FromStringPtr(output.Errors[0].ErrorCode),
-						Message: utility.FromStringPtr(output.Errors[0].ErrorMessage),
-					}, msg))
+					err := errors.New(output.Errors[0].String())
+					grip.Debug(message.WrapError(err, msg))
 					return true, errors.Wrap(err, "CreateFleet response contained errors")
 				}
 				err := errors.New("CreateFleet response contained neither an instance ID nor error")
@@ -917,7 +892,7 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, h *host.
 func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host.Host) error {
 	tags := hostToEC2Tags(makeTags(h))
 	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: resources,
+		Resources: aws.StringSlice(resources),
 		Tags:      tags,
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -945,7 +920,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 	return nil
 }
 
-func (c *awsClientImpl) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]types.InstanceBlockDeviceMapping, error) {
+func (c *awsClientImpl) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error) {
 	instance, err := c.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting instance info")
@@ -989,6 +964,7 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
+	*credentials.Credentials
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
 	*ec2.DescribeInstanceTypeOfferingsInput
@@ -1013,27 +989,28 @@ type awsClientMock struct { //nolint
 	*ec2.DeleteLaunchTemplateInput
 	*ec2.CreateFleetInput
 
-	*types.Instance
+	*ec2.Instance
 	*ec2.DescribeInstancesOutput
 	RequestGetInstanceInfoError error
 	*ec2.DescribeInstanceTypeOfferingsOutput
 
-	launchTemplates []types.LaunchTemplate
+	launchTemplates []*ec2.LaunchTemplate
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(ctx context.Context, creds aws.CredentialsProvider, region string) error {
+func (c *awsClientMock) Create(creds *credentials.Credentials, region string) error {
+	c.Credentials = creds
 	return nil
 }
 
 func (c *awsClientMock) Close() {}
 
 // RunInstances is a mock for ec2.RunInstances.
-func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error) {
+func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	c.RunInstancesInput = input
-	return &ec2.RunInstancesOutput{
-		Instances: []types.Instance{
-			{
+	return &ec2.Reservation{
+		Instances: []*ec2.Instance{
+			&ec2.Instance{
 				InstanceId: aws.String("instance_id"),
 				KeyName:    aws.String("keyName"),
 			},
@@ -1047,34 +1024,34 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 	if c.DescribeInstancesOutput != nil {
 		return c.DescribeInstancesOutput, nil
 	}
-	ipv6 := types.InstanceIpv6Address{}
-	ipv6.Ipv6Address = aws.String(MockIPV6)
+	ipv6 := ec2.InstanceIpv6Address{}
+	ipv6.SetIpv6Address(MockIPV6)
 	return &ec2.DescribeInstancesOutput{
-		Reservations: []types.Reservation{
-			{
-				Instances: []types.Instance{
-					{
-						InstanceId:   aws.String(input.InstanceIds[0]),
-						InstanceType: "instance_type",
-						State: &types.InstanceState{
-							Name: types.InstanceStateNameRunning,
+		Reservations: []*ec2.Reservation{
+			&ec2.Reservation{
+				Instances: []*ec2.Instance{
+					&ec2.Instance{
+						InstanceId:   input.InstanceIds[0],
+						InstanceType: aws.String("instance_type"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 						PublicDnsName:    aws.String("public_dns_name"),
 						PrivateIpAddress: aws.String(MockIPV4),
-						NetworkInterfaces: []types.InstanceNetworkInterface{
-							{
-								Ipv6Addresses: []types.InstanceIpv6Address{
-									ipv6,
+						NetworkInterfaces: []*ec2.InstanceNetworkInterface{
+							&ec2.InstanceNetworkInterface{
+								Ipv6Addresses: []*ec2.InstanceIpv6Address{
+									&ipv6,
 								},
 							},
 						},
-						Placement: &types.Placement{
+						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
-						BlockDeviceMappings: []types.InstanceBlockDeviceMapping{
-							{
-								Ebs: &types.EbsInstanceBlockDevice{
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							&ec2.InstanceBlockDeviceMapping{
+								Ebs: &ec2.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
 							},
@@ -1117,10 +1094,10 @@ func (c *awsClientMock) TerminateInstances(ctx context.Context, input *ec2.Termi
 // StopInstances is a mock for ec2.StopInstances.
 func (c *awsClientMock) StopInstances(ctx context.Context, input *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error) {
 	c.StopInstancesInput = input
-	c.Instance = &types.Instance{
+	c.Instance = &ec2.Instance{
 		InstanceId: aws.String("id"),
-		State: &types.InstanceState{
-			Name: types.InstanceStateNameStopped,
+		State: &ec2.InstanceState{
+			Name: aws.String(ec2.InstanceStateNameStopped),
 		},
 	}
 	return &ec2.StopInstancesOutput{}, nil
@@ -1129,12 +1106,12 @@ func (c *awsClientMock) StopInstances(ctx context.Context, input *ec2.StopInstan
 // StartInstances is a mock for ec2.StartInstances.
 func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error) {
 	c.StartInstancesInput = input
-	c.Instance = &types.Instance{
+	c.Instance = &ec2.Instance{
 		InstanceId: aws.String("id"),
-		State: &types.InstanceState{
-			Name: types.InstanceStateNameRunning,
+		State: &ec2.InstanceState{
+			Name: aws.String(ec2.InstanceStateNameRunning),
 		},
-		Placement: &types.Placement{
+		Placement: &ec2.Placement{
 			AvailabilityZone: aws.String("us-east-1a"),
 		},
 		PublicDnsName:    aws.String("public_dns_name"),
@@ -1145,9 +1122,9 @@ func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInst
 }
 
 // CreateVolume is a mock for ec2.CreateVolume.
-func (c *awsClientMock) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.CreateVolumeOutput, error) {
+func (c *awsClientMock) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
 	c.CreateVolumeInput = input
-	return &ec2.CreateVolumeOutput{
+	return &ec2.Volume{
 		VolumeId:         aws.String("test-volume"),
 		VolumeType:       input.VolumeType,
 		AvailabilityZone: input.AvailabilityZone,
@@ -1167,13 +1144,13 @@ func (c *awsClientMock) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 }
 
 // AttachVolume is a mock for ec2.AttachVolume.
-func (c *awsClientMock) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, opts generateDeviceNameOptions) (*ec2.AttachVolumeOutput, error) {
+func (c *awsClientMock) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, opts generateDeviceNameOptions) (*ec2.VolumeAttachment, error) {
 	c.AttachVolumeInput = input
 	return nil, nil
 }
 
 // DetachVolume is a mock for ec2.DetachVolume.
-func (c *awsClientMock) DetachVolume(ctx context.Context, input *ec2.DetachVolumeInput) (*ec2.DetachVolumeOutput, error) {
+func (c *awsClientMock) DetachVolume(ctx context.Context, input *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error) {
 	c.DetachVolumeInput = input
 	return nil, nil
 }
@@ -1182,10 +1159,10 @@ func (c *awsClientMock) DetachVolume(ctx context.Context, input *ec2.DetachVolum
 func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	c.DescribeVolumesInput = input
 	return &ec2.DescribeVolumesOutput{
-		Volumes: []types.Volume{
-			{
-				VolumeId: aws.String(input.VolumeIds[0]),
-				Size:     aws.Int32(10),
+		Volumes: []*ec2.Volume{
+			&ec2.Volume{
+				VolumeId: input.VolumeIds[0],
+				Size:     aws.Int64(10),
 			},
 		},
 	}, nil
@@ -1195,11 +1172,11 @@ func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.Describe
 func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
 	c.DescribeSubnetsInput = input
 	return &ec2.DescribeSubnetsOutput{
-		Subnets: []types.Subnet{
-			{
+		Subnets: []*ec2.Subnet{
+			&ec2.Subnet{
 				SubnetId: aws.String("subnet-654321"),
-				Tags: []types.Tag{
-					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
+				Tags: []*ec2.Tag{
+					&ec2.Tag{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
 				},
 				AvailabilityZone: aws.String("us-east-1a"),
 			},
@@ -1211,13 +1188,13 @@ func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.Describe
 func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
 	c.DescribeVpcsInput = input
 	return &ec2.DescribeVpcsOutput{
-		Vpcs: []types.Vpc{
-			{VpcId: aws.String("vpc-123456")},
+		Vpcs: []*ec2.Vpc{
+			&ec2.Vpc{VpcId: aws.String("vpc-123456")},
 		},
 	}, nil
 }
 
-func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*types.Instance, error) {
+func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
 	if c.RequestGetInstanceInfoError != nil {
 		return nil, c.RequestGetInstanceInfoError
 	}
@@ -1226,27 +1203,27 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*types.
 		return c.Instance, nil
 	}
 
-	instance := &types.Instance{}
-	instance.Placement = &types.Placement{}
+	instance := &ec2.Instance{}
+	instance.Placement = &ec2.Placement{}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
-	instance.InstanceType = "m3.4xlarge"
+	instance.InstanceType = aws.String("m3.4xlarge")
 	instance.LaunchTime = aws.Time(time.Now())
 	instance.PublicDnsName = aws.String("public_dns_name")
 	instance.PrivateIpAddress = aws.String(MockIPV4)
-	ipv6 := types.InstanceIpv6Address{}
-	ipv6.Ipv6Address = aws.String(MockIPV6)
-	instance.NetworkInterfaces = []types.InstanceNetworkInterface{
-		{
-			Ipv6Addresses: []types.InstanceIpv6Address{
-				ipv6,
+	ipv6 := ec2.InstanceIpv6Address{}
+	ipv6.SetIpv6Address(MockIPV6)
+	instance.NetworkInterfaces = []*ec2.InstanceNetworkInterface{
+		&ec2.InstanceNetworkInterface{
+			Ipv6Addresses: []*ec2.InstanceIpv6Address{
+				&ipv6,
 			},
 		},
 	}
-	instance.State = &types.InstanceState{}
-	instance.State.Name = "running"
-	instance.BlockDeviceMappings = []types.InstanceBlockDeviceMapping{
-		{
-			Ebs: &types.EbsInstanceBlockDevice{
+	instance.State = &ec2.InstanceState{}
+	instance.State.Name = aws.String("running")
+	instance.BlockDeviceMappings = []*ec2.InstanceBlockDeviceMapping{
+		&ec2.InstanceBlockDeviceMapping{
+			Ebs: &ec2.EbsInstanceBlockDevice{
 				VolumeId: aws.String("volume_id"),
 			},
 			DeviceName: aws.String("device_name"),
@@ -1276,29 +1253,29 @@ func (c *awsClientMock) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 	return &ec2.DeleteKeyPairOutput{}, nil
 }
 
-// CreateLaunchTemplate is a mock for ec2.CreateLaunchTemplate
+// CreateLaunchTemplate is a mock for ec2.CreateLaunchTemplateWithContext
 func (c *awsClientMock) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
 	c.CreateLaunchTemplateInput = input
 
 	for _, lt := range c.launchTemplates {
-		if utility.FromStringPtr(input.LaunchTemplateName) == utility.FromStringPtr(lt.LaunchTemplateName) {
+		if aws.StringValue(input.LaunchTemplateName) == aws.StringValue(lt.LaunchTemplateName) {
 			return nil, ec2TemplateNameExistsError
 		}
 	}
-	c.launchTemplates = append(c.launchTemplates, types.LaunchTemplate{
+	c.launchTemplates = append(c.launchTemplates, &ec2.LaunchTemplate{
 		LaunchTemplateName: input.LaunchTemplateName,
 	})
 
 	return nil, nil
 }
 
-// DeleteLaunchTemplate is a mock for ec2.DeleteLaunchTemplate
+// DeleteLaunchTemplate is a mock for ec2.DeleteLaunchTemplateWithContext
 func (c *awsClientMock) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
 	c.DeleteLaunchTemplateInput = input
 
 	index := 0
 	for _, template := range c.launchTemplates {
-		if utility.FromStringPtr(template.LaunchTemplateId) != utility.FromStringPtr(input.LaunchTemplateId) {
+		if aws.StringValue(template.LaunchTemplateId) != aws.StringValue(input.LaunchTemplateId) {
 			c.launchTemplates[index] = template
 			index++
 		}
@@ -1308,18 +1285,18 @@ func (c *awsClientMock) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 	return &ec2.DeleteLaunchTemplateOutput{}, nil
 }
 
-func (c *awsClientMock) GetLaunchTemplates(ctx context.Context, input *ec2.DescribeLaunchTemplatesInput) ([]types.LaunchTemplate, error) {
+func (c *awsClientMock) GetLaunchTemplates(ctx context.Context, input *ec2.DescribeLaunchTemplatesInput) ([]*ec2.LaunchTemplate, error) {
 	return c.launchTemplates, nil
 }
 
-// CreateFleet is a mock for ec2.CreateFleet
+// CreateFleet is a mock for ec2.CreateFleetWithContext
 func (c *awsClientMock) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
 	c.CreateFleetInput = input
 	return &ec2.CreateFleetOutput{
-		Instances: []types.CreateFleetInstance{
+		Instances: []*ec2.CreateFleetInstance{
 			{
-				InstanceIds: []string{
-					"i-12345",
+				InstanceIds: []*string{
+					aws.String("i-12345"),
 				},
 			},
 		},
@@ -1331,9 +1308,9 @@ func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error
 }
 
 func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host.Host) error {
-	tagSlice := []types.Tag{}
+	tagSlice := []*ec2.Tag{}
 	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: resources,
+		Resources: aws.StringSlice(resources),
 		Tags:      tagSlice,
 	}); err != nil {
 		return err
@@ -1341,11 +1318,11 @@ func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host
 	return nil
 }
 
-func (c *awsClientMock) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]types.InstanceBlockDeviceMapping, error) {
-	return []types.InstanceBlockDeviceMapping{
-		{
+func (c *awsClientMock) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error) {
+	return []*ec2.InstanceBlockDeviceMapping{
+		&ec2.InstanceBlockDeviceMapping{
 			DeviceName: aws.String("device_name"),
-			Ebs: &types.EbsInstanceBlockDevice{
+			Ebs: &ec2.EbsInstanceBlockDevice{
 				VolumeId: aws.String("volume_id"),
 			},
 		},
@@ -1375,18 +1352,10 @@ func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
-	msg := message.Fields{
+	return message.Fields{
 		"message":  "AWS API call",
 		"api_name": name,
 		"client":   client,
+		"args":     args,
 	}
-
-	argMap := make(map[string]interface{})
-	if err := mapstructure.Decode(args, &argMap); err == nil {
-		msg["args"] = argMap
-	} else {
-		msg["args"] = fmt.Sprintf("%+v", args)
-	}
-
-	return msg
 }

@@ -829,7 +829,7 @@ func hostModifyVolume() cli.Command {
 
 			opts := restModel.VolumeModifyOptions{
 				NewName:       name,
-				Size:          int32(size),
+				Size:          size,
 				NoExpiration:  noExpiration,
 				HasExpiration: hasExpiration,
 			}
@@ -952,7 +952,7 @@ func hostCreateVolume() cli.Command {
 
 			volumeRequest := &host.Volume{
 				Type:             volumeType,
-				Size:             int32(volumeSize),
+				Size:             volumeSize,
 				AvailabilityZone: volumeZone,
 				DisplayName:      volumeName,
 			}

@@ -14,9 +14,9 @@ type Volume struct {
 	DisplayName      string    `bson:"display_name" json:"display_name"`
 	CreatedBy        string    `bson:"created_by" json:"created_by"`
 	Type             string    `bson:"type" json:"type"`
-	Size             int32     `bson:"size" json:"size"`
-	Throughput       int32     `bson:"throughput,omitempty" json:"throughput,omitempty"`
-	IOPS             int32     `bson:"iops,omitempty" json:"iops,omitempty"`
+	Size             int       `bson:"size" json:"size"`
+	Throughput       int       `bson:"throughput,omitempty" json:"throughput,omitempty"`
+	IOPS             int       `bson:"iops,omitempty" json:"iops,omitempty"`
 	AvailabilityZone string    `bson:"availability_zone" json:"availability_zone"`
 	Expiration       time.Time `bson:"expiration" json:"expiration"`
 	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
@@ -62,7 +62,7 @@ func (v *Volume) SetDisplayName(displayName string) error {
 	return nil
 }
 
-func (v *Volume) SetSize(size int32) error {
+func (v *Volume) SetSize(size int) error {
 	err := db.Update(VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeSizeKey: size}})
