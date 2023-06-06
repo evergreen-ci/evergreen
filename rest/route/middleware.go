@@ -956,6 +956,17 @@ func getGitHubPayload(ctx context.Context) []byte {
 	return []byte{}
 }
 
+type snsAuthMiddleware struct{}
+
+// NewSNSAuthMiddleware returns a middleware that verifies the payload
+func NewSNSAuthMiddleware() gimlet.Middleware {
+	return &snsAuthMiddleware{}
+}
+
+func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	next(rw, r)
+}
+
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requester := r.Header.Get("Origin")

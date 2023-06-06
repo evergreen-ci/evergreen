@@ -34,7 +34,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	// Middleware
 	requireUser := gimlet.NewRequireAuthHandler()
-	requireValidGithubPayload := NewGithubAuthMiddleware()
+	requireValidSNSPayload := NewSNSAuthMiddleware()
 	requireTask := NewTaskAuthMiddleware()
 	requireTaskHost := NewTaskHostAuthMiddleware()
 	requireHost := NewHostAuthMiddleware()
@@ -137,9 +137,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/client_urls").Version(2).Get().RouteHandler(makeGetDistroClientURLs(env))
 
 	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
-	// Middleware is omitted for hooks/aws routes because they cannot be called by users and validation occurs in Parse function.
-	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeEC2SNS(env, opts.APIQueue))
-	app.AddRoute("/hooks/aws/ecs").Version(2).Post().RouteHandler(makeECSSNS(env, opts.APIQueue))
+	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireValidSNSPayload).RouteHandler(makeEC2SNS(env, opts.APIQueue))
+	app.AddRoute("/hooks/aws/ecs").Version(2).Post().Wrap(requireValidSNSPayload).RouteHandler(makeECSSNS(env, opts.APIQueue))
 
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStartProcesses(env))
