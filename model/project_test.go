@@ -429,6 +429,21 @@ func TestPopulateExpansions(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionRequesterKey: evergreen.GithubMergeRequester},
+	}))
+	p = patch.Patch{
+		Version: v.Id,
+	}
+	require.NoError(t, p.Insert())
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	assert.NoError(err)
+	assert.Len(map[string]string(expansions), 24)
+	assert.Equal("true", expansions.Get("is_patch"))
+	assert.Equal("true", expansions.Get("is_github_merge_queue"))
+	assert.False(expansions.Exists("is_commit_queue"))
+	require.NoError(t, db.ClearCollections(patch.Collection))
+
+	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
 	p = patch.Patch{

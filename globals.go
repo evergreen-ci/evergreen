@@ -607,8 +607,9 @@ const (
 	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
-	MergeTestRequester          = "merge_test" // commit queue
-	AdHocRequester              = "ad_hoc"     // periodic build
+	MergeTestRequester          = "merge_test"           // Evergreen commit queue
+	AdHocRequester              = "ad_hoc"               // periodic build
+	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 
 var AllRequesterTypes = []string{
@@ -619,6 +620,7 @@ var AllRequesterTypes = []string{
 	TriggerRequester,
 	MergeTestRequester,
 	AdHocRequester,
+	GithubMergeRequester,
 }
 
 // Constants related to requester types.
@@ -714,6 +716,7 @@ var (
 		PatchVersionRequester,
 		GithubPRRequester,
 		MergeTestRequester,
+		GithubMergeRequester,
 	}
 
 	SystemActivators = []string{
@@ -901,7 +904,7 @@ func IsPatchRequester(requester string) bool {
 }
 
 func IsGitHubPatchRequester(requester string) bool {
-	return requester == GithubPRRequester || requester == MergeTestRequester
+	return requester == GithubPRRequester || requester == MergeTestRequester || requester == GithubMergeRequester
 }
 
 func IsGitTagRequester(requester string) bool {
