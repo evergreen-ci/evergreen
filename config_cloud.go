@@ -93,7 +93,6 @@ type AWSConfig struct {
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
-	S3 S3Credentials `bson:"s3_credentials"`
 	// TaskSync stores credentials for storing task data in S3.
 	TaskSync S3Credentials `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
 	// TaskSyncRead stores credentials for reading task data in S3.
