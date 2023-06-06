@@ -112,6 +112,7 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProjec
 		origin = triggerAdHoc
 	case evergreen.GitTagRequester:
 		origin = gitTagOrigin
+	}
 	apiBuild.Origin = utility.ToStringPtr(origin)
 	if v.Project != "" {
 		identifier, err := model.GetIdentifierForProject(v.Project)
