@@ -11,4 +11,4 @@ updates:
     commit-message:
       prefix: "CHORE: "
     reviewers:
-      - evg-app
+      - evergreen-ci/evg-app
