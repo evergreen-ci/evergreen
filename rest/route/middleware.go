@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,6 +27,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	sns "github.com/robbiet480/go.sns"
 )
 
 type (
@@ -36,6 +39,7 @@ const (
 	// These are private custom types to avoid key collisions.
 	RequestContext   requestContextKey = 0
 	githubPayloadKey requestContextKey = 3
+	snsPayloadKey    requestContextKey = 5
 )
 
 type projCtxMiddleware struct{}
@@ -964,7 +968,43 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 }
 
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
+		return
+	}
+	var payload sns.Payload
+	if err = json.Unmarshal(body, &payload); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON payload")))
+		return
+	}
+
+	if err = payload.VerifyPayload(); err != nil {
+		msg := "AWS SNS message failed validation"
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": msg,
+			"payload": payload,
+		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, msg)))
+		return
+	}
+
+	r = setSNSPayload(r, payload)
 	next(rw, r)
+}
+
+func setSNSPayload(r *http.Request, payload sns.Payload) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), snsPayloadKey, payload))
+}
+
+func getSNSPayload(ctx context.Context) sns.Payload {
+	if rv := ctx.Value(snsPayloadKey); rv != nil {
+		if t, ok := rv.(sns.Payload); ok {
+			return t
+		}
+	}
+
+	return sns.Payload{}
 }
 
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {

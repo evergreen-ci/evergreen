@@ -34,6 +34,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	// Middleware
 	requireUser := gimlet.NewRequireAuthHandler()
+	requireValidGithubPayload := NewGithubAuthMiddleware()
 	requireValidSNSPayload := NewSNSAuthMiddleware()
 	requireTask := NewTaskAuthMiddleware()
 	requireTaskHost := NewTaskHostAuthMiddleware()
