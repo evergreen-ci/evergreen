@@ -1,0 +1,14 @@
+---
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: monthly
+      time: "06:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 99
+    commit-message:
+      prefix: "CHORE: "
+    reviewers:
+      - evergreen-ci/evg-app

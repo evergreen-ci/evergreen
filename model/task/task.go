@@ -123,7 +123,9 @@ type Task struct {
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
-	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	// UnattainableDependency caches the contents of DependsOn for more efficient querying.
+	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
+	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
 	// wait for its dependencies to finish before running.
 	OverrideDependencies bool `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
@@ -2194,7 +2196,11 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	}
 
 	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
-		return err
+		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
+	}
+
+	if err := t.RefreshUnattainableDependency(); err != nil {
+		return errors.Wrapf(err, "caching unattainable dependency for task '%s'", t.Id)
 	}
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
@@ -2204,8 +2210,23 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	return nil
 }
 
+// RefreshUnattainableDependency refreshes the contents of the task's UnattainableDependency field
+// by iterating through the task's DependsOn.
+func (t *Task) RefreshUnattainableDependency() error {
+	t.UnattainableDependency = t.hasUnattainableDependency()
+	return updateUnattainableDependency(t.Id, t.UnattainableDependency)
+}
+
+func (t *Task) hasUnattainableDependency() bool {
+	for _, dependency := range t.DependsOn {
+		if dependency.Unattainable {
+			return true
+		}
+	}
+	return false
+}
+
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
-// state
 func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
@@ -2926,13 +2947,7 @@ func (t *Task) Blocked() bool {
 	if t.OverrideDependencies {
 		return false
 	}
-	for _, dependency := range t.DependsOn {
-		if dependency.Unattainable {
-			return true
-		}
-	}
-
-	return false
+	return t.hasUnattainableDependency()
 }
 
 // WillRun returns true if the task will run eventually, but has not started
@@ -3071,6 +3086,23 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	}
 
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
+}
+
+// GetFormattedTimeSpent returns the total time_taken and makespan of tasks as a formatted string
+func GetFormattedTimeSpent(tasks []Task) (string, string) {
+	timeTaken, makespan := GetTimeSpent(tasks)
+
+	t := timeTaken.Round(time.Second).String()
+	m := makespan.Round(time.Second).String()
+
+	return formatDuration(t), formatDuration(m)
+}
+
+func formatDuration(duration string) string {
+	regex := regexp.MustCompile(`\d*[dhms]`)
+	return strings.TrimSpace(regex.ReplaceAllStringFunc(duration, func(m string) string {
+		return m + " "
+	}))
 }
 
 type TasksSortOrder struct {

@@ -8,28 +8,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 // metadataBaseURL is the URL to make requests for instance-specific metadata on
 // EC2 instances.
 const metadataBaseURL = "http://169.254.169.254/latest/meta-data"
-
-// SpotHostWillTerminateSoon returns true if the EC2 spot host it is running on will terminate soon.
-func SpotHostWillTerminateSoon() bool {
-	url := fmt.Sprintf("%s/spot/termination-time", metadataBaseURL)
-	c := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(c)
-	resp, err := c.Get(url)
-	if err != nil {
-		grip.Info(errors.Wrap(err, "getting spot host termination time"))
-		return false
-	}
-	defer resp.Body.Close()
-
-	return resp.StatusCode == http.StatusOK
-}
 
 // GetEC2InstanceID returns the instance ID from the metadata endpoint if it's
 // an EC2 instance.

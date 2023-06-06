@@ -72,6 +72,14 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 }
 
 func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
+	payload := getGitHubPayload(r.Context())
+	if payload == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "payload not in context",
+		}
+	}
+
 	gh.eventType = r.Header.Get("X-Github-Event")
 	gh.msgID = r.Header.Get("X-Github-Delivery")
 
@@ -82,18 +90,8 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	body, err := github.ValidatePayload(r, gh.secret)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":  "GitHub hook",
-			"message": "rejecting GitHub webhook",
-			"msg_id":  gh.msgID,
-			"event":   gh.eventType,
-		}))
-		return errors.Wrap(err, "reading and validating GitHub request payload")
-	}
-
-	gh.event, err = github.ParseWebHook(gh.eventType, body)
+	var err error
+	gh.event, err = github.ParseWebHook(gh.eventType, payload)
 	if err != nil {
 		return errors.Wrap(err, "parsing webhook")
 	}
@@ -223,6 +221,19 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "removing hook"))
 			}
 		}
+
+	// This case merely logs. EVG-19964 will add logic to create a version from the GitHub merge queue.
+	case *github.MergeGroupEvent:
+		grip.Debug(message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      event.GetOrg(),
+			"repo":     event.GetRepo(),
+			"base_sha": event.GetMergeGroup().GetBaseSHA(),
+			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+		})
+
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

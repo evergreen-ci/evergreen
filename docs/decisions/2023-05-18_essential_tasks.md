@@ -14,6 +14,7 @@ and Evergreen where all the automatically-configured tasks that are expected to 
 actually run if a user intervenes to deactivate them.
 
 ## Decision Outcome
+
 The behavior was changed so that all tasks automatically selected to run for GitHub PR patches must be in a finished
 state before the version is in a finished state. This still allows users to manually schedule more (optional) tasks on
 top of the auto-selected ones, while ensuring that the essential ones need to finish for the GitHub status to show

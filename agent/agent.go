@@ -592,13 +592,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	heartbeat := make(chan string, 1)
 	go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
-	if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, a.opts.CloudProvider) {
-		exitAgent := func() {
-			grip.Info("Spot instance is terminating, so agent is exiting.")
-			os.Exit(1)
-		}
-		go a.startEarlyTerminationWatcher(tskCtx, tc, agentutil.SpotHostWillTerminateSoon, exitAgent, nil)
-	}
 
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
