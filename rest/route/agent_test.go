@@ -296,9 +296,6 @@ func TestAgentSetup(t *testing.T) {
 			assert.Equal(t, data.SplunkServerURL, s.Splunk.SplunkConnectionInfo.ServerURL)
 			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
 			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
-			assert.Equal(t, data.S3Bucket, s.Providers.AWS.S3.Bucket)
-			assert.Equal(t, data.S3Key, s.Providers.AWS.S3.Key)
-			assert.Equal(t, data.S3Secret, s.Providers.AWS.S3.Secret)
 			assert.Equal(t, data.LogkeeperURL, s.LoggerConfig.LogkeeperURL)
 		},
 		"ReturnsEmpty": func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings) {
@@ -326,11 +323,6 @@ func TestAgentSetup(t *testing.T) {
 				},
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
-						S3: evergreen.S3Credentials{
-							Bucket: "bucket",
-							Key:    "key",
-							Secret: "secret",
-						},
 						TaskSync: evergreen.S3Credentials{
 							Bucket: "bucket",
 							Key:    "key",
