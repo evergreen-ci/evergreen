@@ -848,11 +848,12 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// to the standard `err != nil` case above.
 			if !ec2CreateFleetResponseContainsInstance(output) {
 				if len(output.Errors) > 0 {
-					grip.Debug(message.WrapError(&smithy.GenericAPIError{
+					err = &smithy.GenericAPIError{
 						Code:    utility.FromStringPtr(output.Errors[0].ErrorCode),
 						Message: utility.FromStringPtr(output.Errors[0].ErrorMessage),
-					}, msg))
-					return true, errors.Wrap(err, "CreateFleet response contained errors")
+					}
+					grip.Debug(message.WrapError(err, msg))
+					return true, err
 				}
 				err := errors.New("CreateFleet response contained neither an instance ID nor error")
 				grip.Error(message.WrapError(err, msg))
