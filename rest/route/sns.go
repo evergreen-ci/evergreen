@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -57,45 +56,37 @@ func makeBaseSNS(env evergreen.Environment, queue amboy.Queue) baseSNS {
 	}
 }
 
-func (sns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
-	sns.messageType = r.Header.Get("x-amz-sns-message-type")
+func (bsns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
+	bsns.messageType = r.Header.Get("x-amz-sns-message-type")
+	payload := getSNSPayload(r.Context())
+	if (payload == sns.Payload{}) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "payload not in context",
+		}
+	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return errors.Wrap(err, " reading body")
-	}
-	if err = json.Unmarshal(body, &sns.payload); err != nil {
-		return errors.Wrap(err, "unmarshalling JSON payload")
-	}
-
-	if err = sns.payload.VerifyPayload(); err != nil {
-		msg := "AWS SNS message failed validation"
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": msg,
-			"payload": sns.payload,
-		}))
-		return errors.Wrap(err, msg)
-	}
+	bsns.payload = payload
 
 	return nil
 }
 
-func (sns *baseSNS) handleSNSConfirmation() (handled bool) {
+func (bsns *baseSNS) handleSNSConfirmation() (handled bool) {
 	// Subscription/Unsubscription is a rare action that we will handle manually
 	// and will be logged to splunk given the logging level.
-	switch sns.messageType {
+	switch bsns.messageType {
 	case messageTypeSubscriptionConfirmation:
 		grip.Alert(message.Fields{
 			"message":       "got AWS SNS subscription confirmation. Visit subscribe_url to confirm",
-			"subscribe_url": sns.payload.SubscribeURL,
-			"topic_arn":     sns.payload.TopicArn,
+			"subscribe_url": bsns.payload.SubscribeURL,
+			"topic_arn":     bsns.payload.TopicArn,
 		})
 		return true
 	case messageTypeUnsubscribeConfirmation:
 		grip.Alert(message.Fields{
 			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
-			"unsubscribe_url": sns.payload.UnsubscribeURL,
-			"topic_arn":       sns.payload.TopicArn,
+			"unsubscribe_url": bsns.payload.UnsubscribeURL,
+			"topic_arn":       bsns.payload.TopicArn,
 		})
 		return true
 	default:
