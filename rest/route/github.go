@@ -221,6 +221,19 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "removing hook"))
 			}
 		}
+
+	// This case merely logs. EVG-19964 will add logic to create a version from the GitHub merge queue.
+	case *github.MergeGroupEvent:
+		grip.Debug(message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      event.GetOrg(),
+			"repo":     event.GetRepo(),
+			"base_sha": event.GetMergeGroup().GetBaseSHA(),
+			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+		})
+
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
