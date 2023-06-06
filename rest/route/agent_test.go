@@ -323,11 +323,6 @@ func TestAgentSetup(t *testing.T) {
 				},
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
-						S3: evergreen.S3Credentials{
-							Bucket: "bucket",
-							Key:    "key",
-							Secret: "secret",
-						},
 						TaskSync: evergreen.S3Credentials{
 							Bucket: "bucket",
 							Key:    "key",
