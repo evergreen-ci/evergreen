@@ -772,14 +772,16 @@ func logTaskEndStats(t *task.Task) error {
 	return nil
 }
 
-// UpdateBlockedDependencies traverses the dependency graph and recursively sets each
-// parent dependency as unattainable in depending tasks.
+// UpdateBlockedDependencies traverses the dependency graph and recursively sets
+// each parent dependency as unattainable in depending tasks. It updates the
+// status of builds as well, in case they change due to blocking dependencies.
 func UpdateBlockedDependencies(t *task.Task) error {
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
+	buildIDsSet := make(map[string]struct{})
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
 			return errors.Wrap(err, "marking dependency unattainable")
@@ -787,7 +789,27 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
+		buildIDsSet[dependentTask.BuildId] = struct{}{}
 	}
+
+	// kim: TODO: test:
+	// * Blocks a few tasks in another variant, changing the build status to
+	// created and version status to finished.
+	// * Blocks a subset of tasks in another variant with otherwise finished
+	// tasks, changing the build to finished.
+	// * Blocks a subset of tasks in the same variant, keeping the build status
+	// still running.
+	//
+	// kim: TODO: test state of builds/versions with cross-variant failed
+	// dependency before and after change in staging.
+	var buildIDs []string
+	for buildID := range buildIDsSet {
+		buildIDs = append(buildIDs, buildID)
+	}
+	if err = UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
+		return errors.Wrap(err, "updating build, version, and patch statuses")
+	}
+
 	return nil
 }
 
@@ -1428,6 +1450,9 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 
 	// Check if builds are started but not finished.
 	for _, b := range builds {
+		// kim: NOTE: b.AllTasksBlocked will _not_ be true for the cross-variant
+		// dependency because that one will not be evaluated by a task finishing
+		// in a different variant.
 		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
 			return true, evergreen.VersionStarted
 		}
@@ -1567,6 +1592,13 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 // and the task's version based on all the builds in the version.
 // Also update build and version Github statuses based on the subset of tasks and builds included in github checks
 func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
+	// kim: TODO: need to update Build.AllTasksBlocked for cross-variant child
+	// dependencies of this task, since those tasks are blocked.
+	// kim: TODO: verify if updating state needs to be done for all
+	// UpdateBlockedDependencies and UpdateUnblockedDependencies calls, or if
+	// just doing this here is sufficient. I think putting
+	// UpdateBuildAndVersionStatusForTask in the update dependency calls would
+	// be more thorough and less likely to be accidentally missed.
 	taskBuild, err := build.FindOneId(t.BuildId)
 	if err != nil {
 		return errors.Wrapf(err, "getting build for task '%s'", t.Id)

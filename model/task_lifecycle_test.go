@@ -6091,18 +6091,34 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 
 func TestUpdateBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection, event.EventCollection))
+	require := require.New(t)
+	require.NoError(db.ClearCollections(VersionCollection, task.Collection, build.Collection, event.EventCollection))
 
-	b := build.Build{Id: "build0"}
+	v := Version{Id: "version0"}
+	require.NoError(v.Insert())
+	b0 := build.Build{
+		Id:      "build0",
+		Version: v.Id,
+		Status:  evergreen.BuildStarted,
+	}
+	require.NoError(b0.Insert())
+	b1 := build.Build{
+		Id:      "build1",
+		Version: v.Id,
+		Status:  evergreen.BuildCreated,
+	}
+	require.NoError(b1.Insert())
 	tasks := []task.Task{
 		{
 			Id:      "t0",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b0.Id,
 			Status:  evergreen.TaskFailed,
 		},
 		{
 			Id:      "t1",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b0.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId: "t0",
@@ -6117,7 +6133,8 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		},
 		{
 			Id:          "t2",
-			BuildId:     b.Id,
+			Version:     v.Id,
+			BuildId:     b0.Id,
 			Status:      evergreen.TaskUndispatched,
 			DisplayOnly: true,
 			DependsOn: []task.Dependency{
@@ -6130,7 +6147,8 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t3",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b0.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId:       "t2",
@@ -6142,23 +6160,27 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t4",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b1.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId: "t3",
 					Status: evergreen.TaskSucceeded,
 				},
 			},
+			Status: evergreen.TaskUndispatched,
 		},
 		{
 			Id:      "t5",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b1.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId: "t0",
 					Status: evergreen.TaskSucceeded,
 				},
 			},
+			Status: evergreen.TaskUndispatched,
 		},
 	}
 	for _, t := range tasks {
@@ -6172,11 +6194,10 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 				Status: evergreen.TaskSucceeded,
 			},
 		},
-		BuildId:     b.Id,
+		BuildId:     b0.Id,
 		DisplayTask: &tasks[2],
 	}
 	assert.NoError(execTask.Insert())
-	assert.NoError(b.Insert())
 
 	assert.NoError(UpdateBlockedDependencies(&tasks[0]))
 
@@ -6208,10 +6229,26 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.NoError(err)
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
 
-	// one event inserted for every updated task
+	dbBuild0, err := build.FindOneId(b0.Id)
+	require.NoError(err)
+	require.NotZero(dbBuild0)
+	assert.Equal(evergreen.BuildFailed, dbBuild0.Status, "build status with failed and blocked tasks should be updated")
+
+	dbBuild1, err := build.FindOneId(b1.Id)
+	require.NoError(err)
+	require.NotZero(dbBuild1)
+	assert.Equal(evergreen.BuildCreated, dbBuild1.Status, "build status should not need to be updated")
+
+	dbVersion, err := VersionFindOneId(v.Id)
+	require.NoError(err)
+	require.NotZero(dbVersion)
+	assert.Equal(evergreen.VersionFailed, dbVersion.Status, "version status with all finished or blocked tasks should be updated")
+
+	// one event inserted for every updated task, one for the updated build, and
+	// one for the updated version.
 	events, err := event.Find(db.Q{})
 	assert.NoError(err)
-	assert.Len(events, 4)
+	assert.Len(events, 6)
 
 }
 
