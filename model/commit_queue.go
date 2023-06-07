@@ -126,7 +126,7 @@ func preventMergeForItem(item commitqueue.CommitQueueItem, user string) error {
 	// Disable the merge task
 	mergeTask, err := task.FindMergeTaskForVersion(item.Version)
 	if err != nil {
-		return errors.Wrapf(err, "finding merge task for '%s'", item.Issue)
+		return errors.Wrapf(err, "finding merge task for item '%s'", item.Issue)
 	}
 	if mergeTask == nil {
 		return errors.New("merge task doesn't exist")

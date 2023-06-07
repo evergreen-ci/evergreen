@@ -307,7 +307,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 				"job_id":   j.ID(),
 			})
 			j.dequeue(cq, nextItem, "merge task was found deactivated or disabled")
-			event.LogCommitQueueConcludeTest(nextItem.Version, evergreen.EnqueueFailed)
+			return
 		}
 		if mergeTask.Blocked() {
 			// The head of the commit queue could be blocked temporarily if its
@@ -349,29 +349,23 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 					"job_id":  j.ID(),
 				})
 				j.dequeue(cq, nextItem, "merge task was found blocked")
-				event.LogCommitQueueConcludeTest(nextItem.Version, evergreen.EnqueueFailed)
+				return
 			}
 		}
 	}
 
 	// patch is done
 	if !utility.IsZeroTime(patchDoc.FinishTime) {
-		j.dequeue(cq, nextItem, "patch is already finished but still in the commit queue")
-		status := evergreen.MergeTestSucceeded
-		if patchDoc.Status == evergreen.PatchFailed {
-			status = evergreen.MergeTestFailed
-		}
-		event.LogCommitQueueConcludeTest(nextItem.Version, status)
 		grip.Info(message.Fields{
+			"message":               "patch is already done, dequeueing",
 			"source":                "commit queue",
-			"patch status":          status,
 			"job_id":                j.ID(),
 			"item":                  nextItem,
 			"project_id":            cq.ProjectID,
 			"time_since_enqueue":    time.Since(nextItem.EnqueueTime).Seconds(),
 			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
-			"message":               "patch done and dequeued",
 		})
+		j.dequeue(cq, nextItem, "patch is already finished but still in the commit queue")
 	}
 }
 
