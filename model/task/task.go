@@ -2235,7 +2235,7 @@ func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 	}
-	return abortTasksByQuery(q, reason)
+	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for build '%s'", buildId)
 }
 
 // AbortVersionTasks sets the abort flag on all tasks associated with the version which are in an
@@ -2248,7 +2248,7 @@ func AbortVersionTasks(versionId string, reason AbortInfo) error {
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
 		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
-	return abortTasksByQuery(q, reason)
+	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for version '%s'", versionId)
 }
 
 func abortTasksByQuery(q bson.M, reason AbortInfo) error {

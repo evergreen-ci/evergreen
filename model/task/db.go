@@ -1560,11 +1560,13 @@ func FindStuckDispatching() ([]Task, error) {
 	return tasks, nil
 }
 
+// FindAllTaskIDsFromVersion returns a list of task IDs associated with a version.
 func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
 	q := db.Query(ByVersion(versionId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
+// FindAllTaskIDsFromBuild returns a list of task IDs associated with a build.
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
 	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
@@ -1584,6 +1586,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 	return tasks, nil
 }
 
+// FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
 func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 	return FindWithFields(ByVersions(versionIds),
 		IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey)
