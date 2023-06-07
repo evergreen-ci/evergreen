@@ -427,6 +427,8 @@ type variant struct {
 	Tasks []string `json:"tasks"`
 }
 
+// POST /patches/{patch_id}/configure
+
 type schedulePatchHandler struct {
 	variantTasks patchTasks
 
@@ -506,7 +508,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if len(v.Tasks) > 0 && v.Tasks[0] == "*" {
 			projectVariant := project.FindBuildVariant(v.Id)
 			if projectVariant == nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("variant '%s' not found", v.Id))
+				return gimlet.MakeJSONErrorResponder(errors.Errorf("variant '%s' not found", v.Id))
 			}
 			variantToSchedule.DisplayTasks = projectVariant.DisplayTasks
 			for _, projectTask := range projectVariant.Tasks {

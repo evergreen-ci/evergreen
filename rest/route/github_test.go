@@ -177,6 +177,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	ctx := context.Background()
 	secret := []byte(s.conf.Api.GithubWebhookSecret)
 	req, err := makeRequest("1", "pull_request", s.prBody, secret)
+	req = setGitHubPayload(req, s.prBody)
 	s.NoError(err)
 
 	err = s.h.Parse(ctx, req)
@@ -186,6 +187,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	s.Equal("1", s.h.msgID)
 
 	req, err = makeRequest("2", "push", s.pushBody, secret)
+	req = setGitHubPayload(req, s.pushBody)
 	s.NoError(err)
 	s.NotNil(req)
 
@@ -196,6 +198,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	s.Equal("2", s.h.msgID)
 
 	req, err = makeRequest("3", "issue_comment", s.commitQueueCommentBody, secret)
+	req = setGitHubPayload(req, s.commitQueueCommentBody)
 	s.NoError(err)
 	s.NotNil(req)
 

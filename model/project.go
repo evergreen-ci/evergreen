@@ -1144,6 +1144,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		requesterExpansion = "commit_queue"
 	case evergreen.AdHocRequester:
 		requesterExpansion = "ad_hoc"
+	case evergreen.GithubMergeRequester:
+		requesterExpansion = "github_merge_queue"
 	default:
 		requesterExpansion = "unknown_requester"
 	}
@@ -1169,6 +1171,10 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		if v.Requester == evergreen.MergeTestRequester {
 			expansions.Put("is_commit_queue", "true")
 			expansions.Put("commit_message", p.Description)
+		}
+
+		if v.Requester == evergreen.GithubMergeRequester {
+			expansions.Put("is_github_merge_queue", "true")
 		}
 
 		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {

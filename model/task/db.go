@@ -60,6 +60,7 @@ var (
 	SecondaryDistrosKey            = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
 	BuildVariantKey                = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
+	UnattainableDependencyKey      = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDepsKey                     = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
@@ -1574,6 +1575,17 @@ func CountActivatedTasksForVersion(versionId string) (int, error) {
 	}))
 }
 
+// HasActivatedDependentTasks returns true if there are active tasks waiting on the given task.
+func HasActivatedDependentTasks(taskId string) (bool, error) {
+	numDependentTasks, err := Count(db.Query(bson.M{
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): taskId,
+		ActivatedKey:            true,
+		OverrideDependenciesKey: bson.M{"$ne": true},
+	}))
+
+	return numDependentTasks > 0, err
+}
+
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	tasks, err := FindWithSort(bson.M{
 		BuildIdKey:   buildId,
@@ -1840,6 +1852,13 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 	return res.Err()
 }
 
+func updateUnattainableDependency(taskID string, unattainableDependency bool) error {
+	return UpdateOne(
+		bson.M{IdKey: taskID},
+		bson.M{"$set": bson.M{UnattainableDependencyKey: unattainableDependency}},
+	)
+}
+
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
 func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
@@ -1878,7 +1897,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 	return err
 }
 
-// HasUnfinishedTaskForVersion returns true if there are any scheduled but
+// HasUnfinishedTaskForVersions returns true if there are any scheduled but
 // unfinished tasks matching the given conditions.
 func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
 	count, err := Count(

@@ -41,19 +41,12 @@ const (
 
 	HostExternalUserName = "external"
 
-	// Task Statuses used in the database models
-
-	// TaskInactive is not assigned to any new tasks, but can be found
-	// in the database and is used in the UI.
-	TaskInactive = "inactive"
+	// Task statuses stored in the database (i.e. (Task).Status):
 
 	// TaskUndispatched indicates either:
 	//  1. a task is not scheduled to run (when Task.Activated == false)
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
-	TaskUnscheduled  = "unscheduled"
-	// TaskWillRun is a subset of undispatched tasks and is only used in the UI.
-	TaskWillRun = "will-run"
 
 	// TaskDispatched indicates that an agent has received the task, but
 	// the agent has not yet told Evergreen that it's running the task
@@ -63,31 +56,59 @@ const (
 	TaskStarted = "started"
 
 	// The task statuses below indicate that a task has finished.
+	// TaskSucceeded indicates that the task has finished and is successful.
 	TaskSucceeded = "success"
 
-	// These statuses indicate the types of failures. Of these, TaskFailed is
-	// the only one that's allowed in the Task.Status field - the other ones are
-	// computed for the UI based on the Task.Status and its Task.Details.
+	// TaskFailed indicates that the task has finished and failed. This
+	// encompasses any task failure, regardless of the specific failure reason
+	// which can be found in the task end details.
 	TaskFailed = "failed"
-	// All task failure reasons other than TaskFailed are only for UI display
-	// purposes. These are not stored in the task status (although they used to
-	// be for very old tasks).
+
+	// Task statuses used for the UI or other special-case purposes:
+
+	// TaskUnscheduled indicates that the task is undispatched and is not
+	// scheduled to eventually run. This is a display status, so it's only used
+	// in the UI.
+	TaskUnscheduled = "unscheduled"
+	// TaskInactive is a deprecated legacy status that used to mean that the
+	// task was not scheduled to run. This is equivalent to the TaskUnscheduled
+	// display status. These are not stored in the task status (although they
+	// used to be for very old tasks) but may be still used in some outdated
+	// pieces of code.
+	TaskInactive = "inactive"
+
+	// TaskWillRun indicates that the task is scheduled to eventually run,
+	// unless one of its dependencies becomes unattainable. This is a display
+	// status, so it's only used in the UI.
+	TaskWillRun = "will-run"
+
+	// All other task failure reasons other than TaskFailed are display
+	// statuses, so they're only used in the UI. These are not stored in the
+	// task status (although they used to be for very old tasks).
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
 
-	// This is not an official task status; however it is used by the front end to distinguish aborted and failing tasks
-	// Tasks can be filtered on the front end by `aborted` status
+	// TaskAborted indicates that the task was aborted while it was running.
 	TaskAborted = "aborted"
 
-	// Not official task statuses; used to indicate if a task is unreachable or if it's still waiting on dependencies.
+	// TaskStatusBlocked indicates that the task cannot run because it is
+	// blocked by an unattainable dependency. This is a display status, so it's
+	// only used in the UI.
 	TaskStatusBlocked = "blocked"
-	TaskStatusPending = "pending"
 
-	// This is not an official task status; it is used by the front end to indicate that there is a linked issue in the annotation
+	// TaskKnownIssue indicates that the task has failed and is being tracked by
+	// a linked issue in the task annotations. This is a display status, so it's
+	// only used in the UI.
 	TaskKnownIssue = "known-issue"
 
-	// This is not an official task status; it is used by the front end to indicate that the filter should apply to all of the tasks
+	// TaskStatusPending is a special state that's used for one specific return
+	// value. Generally do not use this status as it is neither a meaningful
+	// status in the UI nor in the back end.
+	TaskStatusPending = "pending"
+
+	// TaskAll is not a status, but rather a UI filter indicating that it should
+	// select all tasks regardless of their status.
 	TaskAll = "all"
 
 	// Task Command Types
@@ -557,8 +578,9 @@ const (
 	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
-	MergeTestRequester          = "merge_test" // commit queue
-	AdHocRequester              = "ad_hoc"     // periodic build
+	MergeTestRequester          = "merge_test"           // Evergreen commit queue
+	AdHocRequester              = "ad_hoc"               // periodic build
+	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 
 var AllRequesterTypes = []string{
@@ -569,6 +591,7 @@ var AllRequesterTypes = []string{
 	TriggerRequester,
 	MergeTestRequester,
 	AdHocRequester,
+	GithubMergeRequester,
 }
 
 // Constants related to requester types.
@@ -664,6 +687,7 @@ var (
 		PatchVersionRequester,
 		GithubPRRequester,
 		MergeTestRequester,
+		GithubMergeRequester,
 	}
 
 	SystemActivators = []string{
@@ -851,7 +875,7 @@ func IsPatchRequester(requester string) bool {
 }
 
 func IsGitHubPatchRequester(requester string) bool {
-	return requester == GithubPRRequester || requester == MergeTestRequester
+	return requester == GithubPRRequester || requester == MergeTestRequester || requester == GithubMergeRequester
 }
 
 func IsGitTagRequester(requester string) bool {

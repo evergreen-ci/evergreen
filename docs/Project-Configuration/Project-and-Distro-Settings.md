@@ -289,7 +289,10 @@ Options:
 
 - Interval: (Interval or cron required) Evergreen will create a version and run the specified tasks every X hours, with
     X being specified by this field. Unless set to a future time, the first run will happen immediately after the settings are saved.
-- Cron: (Interval or cron required) Evergreen will create a version on the specified cron schedule.
+- Cron: (Interval or cron required) Evergreen will create a version on the specified [cron schedule](https://crontab.guru/)
+  (i.e. Min \| Hour \| DayOfMonth \| Month \| DayOfWeekOptional) in the user's timezone. This also accepts descriptors
+  such as `@daily` (reference [cron](https://godoc.org/github.com/robfig/cron) for more example),
+  but does not accept intervals. (i.e.`@every <duration>`).
 - Config File: The .yml file that defines tasks to run. This can be
     the same one that defines tasks for commits in the project, or a
     different one.

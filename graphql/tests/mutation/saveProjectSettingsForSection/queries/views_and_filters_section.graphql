@@ -15,7 +15,7 @@ mutation {
             exactMatch: false
           }
         ]
-        projectHealthView: PROJECT_HEALTH_VIEW_FAILED
+        projectHealthView: FAILED
       }
     }
     section: VIEWS_AND_FILTERS

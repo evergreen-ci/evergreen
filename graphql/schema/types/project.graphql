@@ -174,8 +174,8 @@ type GithubProjectConflicts {
 }
 
 enum ProjectHealthView {
-  PROJECT_HEALTH_VIEW_ALL
-  PROJECT_HEALTH_VIEW_FAILED
+  ALL
+  FAILED
 }
 
 """

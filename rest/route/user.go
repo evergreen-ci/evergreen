@@ -230,7 +230,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		}
 	}
 	if len(rolesToCheck) == 0 {
-		gimlet.NewJSONResponse(struct{}{})
+		return gimlet.NewJSONResponse(struct{}{})
 	}
 
 	rolesForResource, err := h.rm.FilterForResource(rolesToCheck, h.resourceId, h.resourceType)
