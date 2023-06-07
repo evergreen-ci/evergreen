@@ -422,12 +422,12 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		config, err := evergreen.GetConfig()
 		if err != nil {
-			return errors.Wrap(err, "getting service flags")
+			return errors.Wrap(err, "getting admin settings")
 		}
 
-		if flags.SchedulerDisabled {
+		if config.ServiceFlags.SchedulerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "scheduler is disabled",
 				"impact":  "new tasks are not enqueued",
@@ -435,59 +435,19 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			})
 			return nil
 		}
-		config, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
-		}
-
-		catcher := grip.NewBasicCatcher()
-
-		lastPlanned, err := model.FindTaskQueueLastGenerationTimes()
-		catcher.Wrap(err, "finding task queue last generation time")
-
-		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
-		catcher.Wrap(err, "finding task queue generation runtime")
 
 		// find all active distros
 		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
-		catcher.Wrap(err, "finding distros that need planning")
-
-		grip.InfoWhen(sometimes.Percent(10), message.Fields{
-			"runner":   "scheduler",
-			"previous": lastPlanned,
-			"distros":  distro.DistroGroup(distros).GetDistroIds(),
-			"op":       "dispatcher",
-		})
-
-		grip.Error(message.WrapError(err, message.Fields{
-			"cron":      schedulerJobName,
-			"impact":    "new task scheduling non-operative",
-			"operation": "background task creation",
-		}))
-
-		ts := utility.RoundPartOfMinute(0)
-		settings, err := evergreen.GetConfig()
 		if err != nil {
-			grip.Critical(message.WrapError(err, message.Fields{
-				"cron":      schedulerJobName,
-				"operation": "retrieving settings object",
-			}))
-			return catcher.Resolve()
+			return errors.Wrap(err, "finding distros that need planning")
 		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := utility.RoundPartOfMinute(0)
 		for _, d := range distros {
-			if d.IsParent(settings) {
+			if d.IsParent(config) {
 				continue
 			}
-
-			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < 2*time.Minute {
-				continue
-			}
-
-			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
-				continue
-			}
-
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewDistroSchedulerJob(env, d.Id, ts)), "enqueueing scheduler job for distro '%s'", d.Id)
 		}
 
@@ -497,12 +457,12 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		config, err := evergreen.GetConfig()
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "getting admin settings")
 		}
 
-		if flags.SchedulerDisabled {
+		if config.ServiceFlags.SchedulerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "scheduler is disabled",
 				"impact":  "new tasks are not enqueued",
@@ -510,34 +470,17 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 			})
 			return nil
 		}
-		config, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		catcher := grip.NewBasicCatcher()
-
-		lastPlanned, err := model.FindTaskSecondaryQueueLastGenerationTimes()
-		catcher.Add(err)
 
 		// find all active distros
 		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
-		catcher.Add(err)
+		if err != nil {
+			return errors.Wrap(err, "finding distros that need planning")
+		}
 
-		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
-		catcher.Add(err)
-
+		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfMinute(0)
 		for _, d := range distros {
-			// do not create scheduler jobs for parent distros
 			if d.IsParent(config) {
-				continue
-			}
-
-			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < 2*time.Minute {
-				continue
-			}
-			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
 				continue
 			}
 
