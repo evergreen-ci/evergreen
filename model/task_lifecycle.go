@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -848,6 +849,9 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 
 // DequeueAndRestartForTask restarts all items after the given task's version,
 // aborts/dequeues the current version, and sends an updated status to GitHub.
+// kim: TODO: test that this marks a build as finished eventually. It seems like
+// the "starting" bug manifests when the failing task is not the last one in the
+// build and it deactivates some other tasks (including the merge task).
 func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubState message.GithubState, caller, reason string) error {
 	mergeErrMsg := fmt.Sprintf("commit queue item '%s' is being dequeued: %s", t.Version, reason)
 	if t.Details.Type == evergreen.CommandTypeSetup {
@@ -871,7 +875,9 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 // DequeueAndRestartForVersion restarts all items after the commit queue
 // item, aborts/dequeues this version, and sends an updated status to GitHub. If
 // it succeeds, it returns the removed item.
-// kim: TODO: validate that this updates the version/build statuses.
+// kim: TODO: validate that this updates the version/build statuses when the
+// merge task is blocked.
+// kim: TODO: test this in staging
 func DequeueAndRestartForVersion(cq *commitqueue.CommitQueue, project, version, user, reason string) (*commitqueue.CommitQueueItem, error) {
 	return dequeueAndRestartItem(dequeueAndRestartOptions{
 		cq:            cq,
@@ -926,6 +932,26 @@ func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQu
 		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.itemVersionID)
 	}
 
+	// Update build/version statuses for the dequeued item, since it's now
+	// considered finished (the remaining tasks have been unscheduled/aborted).
+	// This may not
+	// kim: NOTE: this could be doing too much work to do since it'll happen for
+	// every dequeue. Ideally, there'd be a better way to re-evaluate the
+	// builds/versions state after dequeueing the whole version without needing
+	// to recompute it entirely.
+	// kim: NOTE: there's a few  cases to consider:
+	// * The task failed, so it's dequeueing when it's not the final task in the
+	// item (i.e. it's not the merge task), in which case _some_ task will be
+	// deactivated and the version will update its status in
+	// tryDequeueAndAbortCommitQueueItem.
+	// * The item is being manually removed, so some tasks will be deactivated,
+	// which will update its status in tryDequeueAndAbortCommitQueueItem.
+	// * The commit queue unsticker has detected that the merge task won't run
+	// (because it's blocked, disabled, etc), so it
+	// if err := UpdateStatusesForVersion(opts.itemVersionID); err != nil {
+	//     return nil, errors.Wrapf(err, "updating build and version statuses for commit queue item '%s'", opts.itemVersionID)
+	// }
+
 	grip.Info(message.Fields{
 		"message":      "commit queue item was dequeued and later items were restarted",
 		"source":       "commit queue",
@@ -959,6 +985,7 @@ func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
 	if cq == nil {
 		return errors.Errorf("no commit queue found for '%s'", t.Project)
 	}
+
 	if status != evergreen.TaskSucceeded && !t.Aborted {
 		return dequeueAndRestartWithStepback(cq, t, evergreen.MergeTestRequester, fmt.Sprintf("task '%s' failed", t.DisplayName))
 	} else if status == evergreen.TaskSucceeded {
@@ -991,9 +1018,10 @@ func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
 					return nil
 				}
 			}
-
 		}
 	}
+	// kim: TODO: this has to re-evaluate the version status since the commit
+	// queue item has been disabled.
 	return nil
 }
 
@@ -1043,6 +1071,7 @@ func tryDequeueAndAbortCommitQueueItem(p *patch.Patch, cq commitqueue.CommitQueu
 	}
 
 	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeErrMsg)
+	pp.Println("CancelPatch")
 	if err := CancelPatch(p, task.AbortInfo{TaskID: taskID, User: caller}); err != nil {
 		return nil, errors.Wrap(err, "aborting failed commit queue patch")
 	}
@@ -1612,8 +1641,8 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
-// UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
-// builds associated with the given input list of build IDs.
+// UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
+// patches and builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
@@ -1664,6 +1693,21 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 
 	return nil
 }
+
+// UpdateVersionAndPatchStatusForBuilds updates the status a version, its patch,
+// and its builds based on the current build statuses.
+// func UpdateStatusesForVersion(versionID string) error {
+//     builds, err := build.FindBuildsByVersions([]string{versionID})
+//     if err != nil {
+//         return errors.Wrapf(err, "finding builds for version")
+//     }
+//     buildIDs := make([]string, 0, len(builds))
+//     for _, b := range builds {
+//         buildIDs = append(buildIDs, b.Id)
+//     }
+//
+//     return UpdateVersionAndPatchStatusForBuilds(buildIDs)
+// }
 
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
 func MarkStart(t *task.Task, updates *StatusChanges) error {

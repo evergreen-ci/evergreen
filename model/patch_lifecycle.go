@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -879,9 +880,11 @@ func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPa
 // CancelPatch aborts all of a patch's in-progress tasks and deactivates its undispatched tasks.
 func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 	if p.Version != "" {
+		pp.Println("SetVersionActivation")
 		if err := SetVersionActivation(p.Version, false, reason.User); err != nil {
 			return errors.WithStack(err)
 		}
+		pp.Println("AbortVersion")
 		return errors.WithStack(task.AbortVersion(p.Version, reason))
 	}
 

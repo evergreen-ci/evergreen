@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -3065,6 +3066,12 @@ func TestDequeueAndRestartForItemInMiddleOfBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, dbTask4.Execution)
 	assert.Equal(t, evergreen.TaskUndispatched, dbTask4.Status)
+
+	dbVersion2, err := VersionFindOneId(v2.Hex())
+	require.NoError(t, err)
+	require.NotZero(t, dbVersion2)
+	pp.Println(dbVersion2.Status)
+	assert.True(t, evergreen.IsFinishedVersionStatus(dbVersion2.Status), "removed item should be finished")
 }
 
 func TestMarkStart(t *testing.T) {

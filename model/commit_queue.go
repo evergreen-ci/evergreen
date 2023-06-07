@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -131,12 +130,6 @@ func preventMergeForItem(item commitqueue.CommitQueueItem, user string) error {
 	}
 	if mergeTask == nil {
 		return errors.New("merge task doesn't exist")
-	}
-	if mergeTask.Priority <= evergreen.DisabledTaskPriority && !mergeTask.Activated {
-		// kim: TODO: test this
-		// The merge task is already disabled, so there's no need to disable it
-		// again.
-		return nil
 	}
 	event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
 	if err = DisableTasks(user, *mergeTask); err != nil {

@@ -306,11 +306,12 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 		// should in fact run (ie. has not been dequeued due to a task failure)
 		if !mergeTask.Activated || mergeTask.Priority < 0 {
 			grip.Error(message.Fields{
-				"message":  "merge task is not dispatchable",
+				"message":  "merge task is not dispatchable, dequeueing the version",
 				"project":  mergeTask.Project,
 				"task":     mergeTask.Id,
 				"active":   mergeTask.Activated,
 				"priority": mergeTask.Priority,
+				"version":  nextItem.Version,
 				"source":   "commit queue",
 				"job_id":   j.ID(),
 			})
@@ -333,6 +334,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 				"message": "cannot check number of dependencies for blocked merge task that are still waiting to abort and reset",
 				"project": mergeTask.Project,
 				"task":    mergeTask.Id,
+				"version": nextItem.Version,
 				"source":  "commit queue",
 				"job_id":  j.ID(),
 			}))
@@ -346,6 +348,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 				"dependencies_resetting": taskIDsResetting,
 				"project":                mergeTask.Project,
 				"task":                   mergeTask.Id,
+				"version":                nextItem.Version,
 				"source":                 "commit queue",
 				"job_id":                 j.ID(),
 			})
@@ -555,9 +558,6 @@ func (j *commitQueueJob) logError(err error, item commitqueue.CommitQueueItem) {
 }
 
 func (j *commitQueueJob) dequeue(cq *commitqueue.CommitQueue, item commitqueue.CommitQueueItem, reason string) {
-	// kim: TODO: remove
-	// _, err := cq.Remove(item.Issue)
-	// kim: TODO: test
 	_, err := model.CommitQueueRemoveItem(cq, item, evergreen.User, reason)
 	j.logError(errors.Wrap(err, "dequeueing commit queue item"), item)
 }
