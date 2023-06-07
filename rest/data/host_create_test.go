@@ -127,7 +127,6 @@ func TestCreateHostsFromTask(t *testing.T) {
 	env := &mock.Environment{}
 	assert.NoError(t, env.Configure(ctx))
 	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
-	assert.NoError(t, evergreen.UpdateConfig(env.Settings()))
 	var err error
 	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
 		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
@@ -398,12 +397,12 @@ buildvariants:
 	}
 	require.NoError(parent.Insert())
 
+	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
-	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
-	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
-	assert.NoError(evergreen.UpdateConfig(env.EvergreenSettings))
+	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
 	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
 		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
 			return queue.NewLocalLimitedSize(2, 1048), nil

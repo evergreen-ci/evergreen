@@ -60,7 +60,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
-		intentHost, err := data.MakeIntentHost(ctx, h.env, h.taskID, "", "", h.createHost)
+		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
 		}

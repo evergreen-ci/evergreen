@@ -153,7 +153,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 			continue
 		}
 		for i := 0; i < numHosts; i++ {
-			_, err := MakeIntentHost(ctx, env, t.Id, user.Username(), keyVal, createHost)
+			_, err := MakeHost(ctx, env, t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
 				return errors.Wrap(err, "creating intent host")
 			}
@@ -246,7 +246,7 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 	return createHost, nil
 }
 
-func MakeIntentHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if evergreen.IsDockerProvider(createHost.CloudProvider) {
 		return makeDockerIntentHost(env, taskID, userID, createHost)
 	}
