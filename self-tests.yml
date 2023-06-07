@@ -614,6 +614,12 @@ tasks:
         params:
           script: |
             echo hello child
+  - name: kim-other-task
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo hello other
 
 task_groups:
   - name: dist-and-upload-clis
@@ -699,6 +705,7 @@ buildvariants:
       - ubuntu2204-small
     tasks:
       - kim-child-task
+      - kim-other-task
 
   - name: lint
     display_name: Lint
