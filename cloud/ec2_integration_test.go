@@ -75,7 +75,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.client.Create(ctx, m.credentials, evergreen.DefaultEC2Region))
+	require.NoError(m.client.Create(m.credentials, evergreen.DefaultEC2Region))
 
 	d := fetchTestDistro()
 	h := host.NewIntent(host.CreateOptions{

@@ -606,7 +606,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-	if err := checkVolumeLimitExceeded(u.Username(), int(h.volume.Size), maxVolumeFromSettings); err != nil {
+	if err := checkVolumeLimitExceeded(u.Username(), h.volume.Size, maxVolumeFromSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 	}
 
@@ -771,7 +771,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("volumes can only be sized up (current size is %d GiB)", volume.Size))
 		}
 		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-		if err = checkVolumeLimitExceeded(u.Username(), int(sizeIncrease), maxVolumeFromSettings); err != nil {
+		if err = checkVolumeLimitExceeded(u.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 		}
 	}

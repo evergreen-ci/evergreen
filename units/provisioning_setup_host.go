@@ -649,12 +649,12 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 		} else {
 			// create the volume
 			volume, err = cloudMgr.CreateVolume(ctx, &host.Volume{
-				Size:             int32(h.HomeVolumeSize),
+				Size:             h.HomeVolumeSize,
 				AvailabilityZone: h.Zone,
 				CreatedBy:        h.StartedBy,
 				Type:             evergreen.DefaultEBSType,
-				IOPS:             cloud.Gp2EquivalentIOPSForGp3(int32(h.HomeVolumeSize)),
-				Throughput:       cloud.Gp2EquivalentThroughputForGp3(int32(h.HomeVolumeSize)),
+				IOPS:             cloud.Gp2EquivalentIOPSForGp3(h.HomeVolumeSize),
+				Throughput:       cloud.Gp2EquivalentThroughputForGp3(h.HomeVolumeSize),
 				HomeVolume:       true,
 			})
 			if err != nil {

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -268,14 +269,14 @@ func TestDeleteVolumeHandler(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	volumes := []host.Volume{
-		{
+		host.Volume{
 			ID:               "my-volume",
 			CreatedBy:        "user",
-			AvailabilityZone: "us-east-1a",
+			AvailabilityZone: utility.FromStringPtr(aws.String("us-east-1a")),
 		},
 	}
 	hosts := []host.Host{
-		{
+		host.Host{
 			Id:        "my-host",
 			UserHost:  true,
 			StartedBy: "user",
@@ -428,7 +429,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})
 	assert.NoError(t, h.Parse(context.Background(), r))
 	assert.Equal(t, "volume1", h.volumeID)
-	assert.EqualValues(t, 20, h.opts.Size)
+	assert.Equal(t, 20, h.opts.Size)
 	assert.Equal(t, "my-favorite-volume", h.opts.NewName)
 
 	h.provider = evergreen.ProviderNameMock

@@ -3,12 +3,12 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -57,9 +57,9 @@ func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, se
 func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
 	// DescribeInstanceTypeOfferings only returns AZs in the client's region
 	output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
-		LocationType: types.LocationTypeAvailabilityZone,
-		Filters: []types.Filter{
-			{Name: aws.String("instance-type"), Values: []string{instanceRegion.instanceType}},
+		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
+		Filters: []*ec2.Filter{
+			{Name: aws.String("instance-type"), Values: []*string{aws.String(instanceRegion.instanceType)}},
 		},
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen
 	}
 	supportingAZs := make([]string, 0, len(output.InstanceTypeOfferings))
 	for _, offering := range output.InstanceTypeOfferings {
-		if offering.Location != nil {
+		if offering != nil && offering.Location != nil {
 			supportingAZs = append(supportingAZs, *offering.Location)
 		}
 	}
@@ -87,7 +87,7 @@ type EC2FleetManagerOptions struct {
 
 type ec2FleetManager struct {
 	*EC2FleetManagerOptions
-	credentials aws.CredentialsProvider
+	credentials *credentials.Credentials
 	settings    *evergreen.Settings
 	env         evergreen.Environment
 }
@@ -108,7 +108,11 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 		return errors.New("provider key/secret can't be empty")
 	}
 
-	m.credentials = credentials.NewStaticCredentialsProvider(m.providerKey, m.providerSecret, "")
+	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+		AccessKeyID:     m.providerKey,
+		SecretAccessKey: m.providerSecret,
+	})
+
 	return nil
 }
 
@@ -117,7 +121,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -166,12 +170,12 @@ func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModif
 }
 
 func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
-	instanceIDs := make([]string, 0, len(hosts))
+	instanceIDs := make([]*string, 0, len(hosts))
 	for _, h := range hosts {
-		instanceIDs = append(instanceIDs, h.Id)
+		instanceIDs = append(instanceIDs, aws.String(h.Id))
 	}
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -195,12 +199,12 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 
 	statuses := map[string]CloudStatus{}
-	instanceMap := map[string]*types.Instance{}
+	instanceMap := map[string]*ec2.Instance{}
 	for i := range describeInstancesOutput.Reservations {
-		instanceMap[*describeInstancesOutput.Reservations[i].Instances[0].InstanceId] = &describeInstancesOutput.Reservations[i].Instances[0]
+		instanceMap[*describeInstancesOutput.Reservations[i].Instances[0].InstanceId] = describeInstancesOutput.Reservations[i].Instances[0]
 		instanceInfo := describeInstancesOutput.Reservations[i].Instances[0]
 		instanceID := *instanceInfo.InstanceId
-		status := ec2StatusToEvergreenStatus(instanceInfo.State.Name)
+		status := ec2StatusToEvergreenStatus(*instanceInfo.State.Name)
 		statuses[instanceID] = status
 	}
 
@@ -224,7 +228,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	status := StatusUnknown
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return status, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -243,10 +247,10 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 		return status, errors.Wrap(err, "getting instance info")
 	}
 
-	if instance.State == nil || instance.State.Name == "" {
+	if instance.State == nil || instance.State.Name == nil || *instance.State.Name == "" {
 		return status, errors.New("state name is missing")
 	}
-	status = ec2StatusToEvergreenStatus(instance.State.Name)
+	status = ec2StatusToEvergreenStatus(*instance.State.Name)
 	if status == StatusRunning {
 		// cache instance information so we can make fewer calls to AWS's API
 		grip.Error(message.WrapError(cacheHostData(ctx, h, instance, m.client), message.Fields{
@@ -263,7 +267,7 @@ func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Hos
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -273,10 +277,10 @@ func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType st
 	}
 	validTypes := []string{}
 	for _, availableType := range output.InstanceTypeOfferings {
-		if availableType.InstanceType == types.InstanceType(instanceType) {
+		if availableType.InstanceType != nil && (*availableType.InstanceType) == instanceType {
 			return nil
 		}
-		validTypes = append(validTypes, string(availableType.InstanceType))
+		validTypes = append(validTypes, *availableType.InstanceType)
 	}
 	return errors.Errorf("available types for region '%s' are: %s", m.region, validTypes)
 }
@@ -285,13 +289,13 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
-		InstanceIds: []string{h.Id},
+		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -305,7 +309,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	}
 
 	for _, stateChange := range resp.TerminatingInstances {
-		if stateChange.InstanceId == nil {
+		if stateChange == nil || stateChange.InstanceId == nil {
 			grip.Error(message.Fields{
 				"message":       "state change missing instance ID",
 				"user":          user,
@@ -339,14 +343,14 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
 	launchTemplates, err := m.client.GetLaunchTemplates(ctx, &ec2.DescribeLaunchTemplatesInput{
-		Filters: []types.Filter{
-			{Name: aws.String("tag-key"), Values: []string{evergreen.TagDistro}},
+		Filters: []*ec2.Filter{
+			{Name: aws.String("tag-key"), Values: []*string{aws.String(evergreen.TagDistro)}},
 		},
 	})
 	if err != nil {
@@ -354,20 +358,21 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	deletedCount := 0
+	deleted := []string{}
 	for _, template := range launchTemplates {
 		if template.CreateTime != nil && template.CreateTime.Before(time.Now().Add(-launchTemplateExpiration)) {
 			_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateId: template.LaunchTemplateId})
 			catcher.Add(err)
 			if err == nil {
-				deletedCount++
+				deleted = append(deleted, aws.StringValue(template.LaunchTemplateId))
 			}
 		}
 	}
 
-	grip.InfoWhen(deletedCount > 0, message.Fields{
+	grip.InfoWhen(len(deleted) > 0, message.Fields{
 		"message":       "removed launch templates",
-		"deleted_count": deletedCount,
+		"deleted_count": len(deleted),
+		"deleted":       deleted,
 		"provider":      evergreen.ProviderNameEc2Fleet,
 		"region":        m.region,
 	})
@@ -400,7 +405,7 @@ func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*VolumeA
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -431,7 +436,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	if err != nil {
 		return errors.Wrapf(err, "requesting fleet")
 	}
-	h.Id = instanceID
+	h.Id = *instanceID
 
 	return nil
 }
@@ -442,33 +447,32 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		return errors.Wrap(err, "making block device mappings")
 	}
 
-	launchTemplate := &types.RequestLaunchTemplateData{
+	launchTemplate := &ec2.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		KeyName:             aws.String(ec2Settings.KeyName),
-		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
+		InstanceType:        aws.String(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagTemplate(makeTags(h)),
 	}
 
 	if ec2Settings.IAMInstanceProfileARN != "" {
-		launchTemplate.IamInstanceProfile = &types.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
+		launchTemplate.IamInstanceProfile = &ec2.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
 	if ec2Settings.IsVpc {
-		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
+		launchTemplate.NetworkInterfaces = []*ec2.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{
 				AssociatePublicIpAddress: aws.Bool(true),
-				DeviceIndex:              aws.Int32(0),
-				Groups:                   ec2Settings.SecurityGroupIDs,
+				DeviceIndex:              aws.Int64(0),
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 aws.String(ec2Settings.SubnetId),
 			},
 		}
 		if ec2Settings.IPv6 {
-			launchTemplate.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
-			launchTemplate.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
+			launchTemplate.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
-		launchTemplate.SecurityGroups = ec2Settings.SecurityGroupIDs
+		launchTemplate.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	settings := *m.settings
@@ -500,9 +504,9 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	_, err = m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
 		LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag)),
-		TagSpecifications: []types.TagSpecification{{
-			ResourceType: types.ResourceTypeLaunchTemplate,
-			Tags:         []types.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}},
+		TagSpecifications: []*ec2.TagSpecification{{
+			ResourceType: aws.String(ec2.ResourceTypeLaunchTemplate),
+			Tags:         []*ec2.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}},
 		},
 	})
 	if err != nil {
@@ -520,46 +524,46 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	return nil
 }
 
-func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (string, error) {
-	var overrides []types.FleetLaunchTemplateOverridesRequest
+func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (*string, error) {
+	var overrides []*ec2.FleetLaunchTemplateOverridesRequest
 	var err error
 	if ec2Settings.VpcName != "" {
 		overrides, err = m.makeOverrides(ctx, ec2Settings)
 		if err != nil {
-			return "", errors.Wrapf(err, "making overrides for VPC '%s'", ec2Settings.VpcName)
+			return nil, errors.Wrapf(err, "making overrides for VPC '%s'", ec2Settings.VpcName)
 		}
 	}
 
 	// Create a fleet with a single spot instance from the launch template
 	createFleetInput := &ec2.CreateFleetInput{
-		LaunchTemplateConfigs: []types.FleetLaunchTemplateConfigRequest{
+		LaunchTemplateConfigs: []*ec2.FleetLaunchTemplateConfigRequest{
 			{
-				LaunchTemplateSpecification: &types.FleetLaunchTemplateSpecificationRequest{
+				LaunchTemplateSpecification: &ec2.FleetLaunchTemplateSpecificationRequest{
 					LaunchTemplateName: aws.String(h.Tag),
 					Version:            aws.String("$Latest"),
 				},
 				Overrides: overrides,
 			},
 		},
-		TargetCapacitySpecification: &types.TargetCapacitySpecificationRequest{
-			TotalTargetCapacity:       aws.Int32(1),
+		TargetCapacitySpecification: &ec2.TargetCapacitySpecificationRequest{
+			TotalTargetCapacity:       aws.Int64(1),
 			DefaultTargetCapacityType: ec2Settings.FleetOptions.awsTargetCapacityType(),
 		},
-		Type: types.FleetTypeInstant,
+		Type: aws.String(ec2.FleetTypeInstant),
 	}
 
-	if allocationStrategy := ec2Settings.FleetOptions.awsAllocationStrategy(); allocationStrategy != "" {
-		createFleetInput.SpotOptions = &types.SpotOptionsRequest{AllocationStrategy: allocationStrategy}
+	if allocationStrategy := ec2Settings.FleetOptions.awsAllocationStrategy(); allocationStrategy != nil {
+		createFleetInput.SpotOptions = &ec2.SpotOptionsRequest{AllocationStrategy: allocationStrategy}
 	}
 
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)
 	if err != nil {
-		return "", errors.Wrap(err, "creating fleet")
+		return nil, errors.Wrap(err, "creating fleet")
 	}
 	return createFleetResponse.Instances[0].InstanceIds[0], nil
 }
 
-func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2ProviderSettings) ([]types.FleetLaunchTemplateOverridesRequest, error) {
+func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2ProviderSettings) ([]*ec2.FleetLaunchTemplateOverridesRequest, error) {
 	subnets := m.settings.Providers.AWS.Subnets
 	if len(subnets) == 0 {
 		return nil, errors.New("no AWS subnets were configured")
@@ -572,16 +576,29 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	if len(supportingSubnets) == 0 || (len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId) {
 		return nil, nil
 	}
-	overrides := make([]types.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
+	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
 	for _, subnet := range supportingSubnets {
-		overrides = append(overrides, types.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
+		overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
 	}
 
 	return overrides, nil
 }
 
+func subnetMatchesAz(subnet *ec2.Subnet) bool {
+	for _, tag := range subnet.Tags {
+		if tag == nil || tag.Key == nil || tag.Value == nil {
+			continue
+		}
+		if *tag.Key == "Name" && strings.HasSuffix(*tag.Value, strings.Split(*subnet.AvailabilityZone, "-")[2]) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
