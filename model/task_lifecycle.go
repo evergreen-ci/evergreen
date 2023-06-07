@@ -780,7 +780,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
-	// buildIDsSet := make(map[string]struct{})
+	buildIDsSet := make(map[string]struct{})
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
 			return errors.Wrap(err, "marking dependency unattainable")
@@ -788,16 +788,16 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
-		// buildIDsSet[dependentTask.BuildId] = struct{}{}
+		buildIDsSet[dependentTask.BuildId] = struct{}{}
 	}
 
-	// var buildIDs []string
-	// for buildID := range buildIDsSet {
-	//     buildIDs = append(buildIDs, buildID)
-	// }
-	// if err = UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
-	//     return errors.Wrap(err, "updating build, version, and patch statuses")
-	// }
+	var buildIDs []string
+	for buildID := range buildIDsSet {
+		buildIDs = append(buildIDs, buildID)
+	}
+	if err = UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
+		return errors.Wrap(err, "updating build, version, and patch statuses")
+	}
 
 	return nil
 }
@@ -1311,16 +1311,6 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		return true, nil
 	}
 
-	grip.InfoWhen(buildStatus.allTasksBlocked || b.AllTasksBlocked, message.Fields{
-		"message":                    "kim: updated build status",
-		"build":                      b.Id,
-		"version":                    b.Version,
-		"original_all_tasks_blocked": b.AllTasksBlocked,
-		"updated_all_tasks_blocked":  buildStatus.allTasksBlocked,
-		"original_build_status":      b.Status,
-		"updated_build_status":       buildStatus.status,
-	})
-
 	if evergreen.IsFinishedBuildStatus(buildStatus.status) && buildStatus.numUnfinishedEssentialTasks > 0 {
 		// If a build has only finished/deactivated tasks but some of those
 		// deactivated tasks are essential, the build is not considered
@@ -1420,14 +1410,6 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 
 	// Check if builds are started but not finished.
 	for _, b := range builds {
-		grip.Info(message.Fields{
-			"message":                 "checking for version started status based on builds",
-			"version":                 b.Version,
-			"build":                   b.Id,
-			"build_activated":         b.Activated,
-			"build_status":            b.Status,
-			"build_all_tasks_blocked": b.AllTasksBlocked,
-		})
 		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
 			return true, evergreen.VersionStarted
 		}
@@ -1567,10 +1549,6 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 // and the task's version based on all the builds in the version.
 // Also update build and version Github statuses based on the subset of tasks and builds included in github checks
 func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
-	grip.Info(message.Fields{
-		"message": "kim: UpdateBuildAndVersionStatusForTask",
-		"task_id": t.Id,
-	})
 	taskBuild, err := build.FindOneId(t.BuildId)
 	if err != nil {
 		return errors.Wrapf(err, "getting build for task '%s'", t.Id)
@@ -1648,10 +1626,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
 // patches and builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
-	grip.Info(message.Fields{
-		"message":   "kim: UpdateVersionAndPatchStatusForBuilds",
-		"build_ids": buildIds,
-	})
 	if len(buildIds) == 0 {
 		return nil
 	}
@@ -1701,21 +1675,6 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 
 	return nil
 }
-
-// UpdateVersionAndPatchStatusForBuilds updates the status a version, its patch,
-// and its builds based on the current build statuses.
-// func UpdateStatusesForVersion(versionID string) error {
-//     builds, err := build.FindBuildsByVersions([]string{versionID})
-//     if err != nil {
-//         return errors.Wrapf(err, "finding builds for version")
-//     }
-//     buildIDs := make([]string, 0, len(builds))
-//     for _, b := range builds {
-//         buildIDs = append(buildIDs, b.Id)
-//     }
-//
-//     return UpdateVersionAndPatchStatusForBuilds(buildIDs)
-// }
 
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
 func MarkStart(t *task.Task, updates *StatusChanges) error {
