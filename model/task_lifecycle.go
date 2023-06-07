@@ -771,14 +771,16 @@ func logTaskEndStats(t *task.Task) error {
 	return nil
 }
 
-// UpdateBlockedDependencies traverses the dependency graph and recursively sets each
-// parent dependency as unattainable in depending tasks.
+// UpdateBlockedDependencies traverses the dependency graph and recursively sets
+// each parent dependency as unattainable in depending tasks. It updates the
+// status of builds as well, in case they change due to blocking dependencies.
 func UpdateBlockedDependencies(t *task.Task) error {
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
+	buildIDsSet := make(map[string]struct{})
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
 			return errors.Wrap(err, "marking dependency unattainable")
@@ -786,7 +788,17 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
+		buildIDsSet[dependentTask.BuildId] = struct{}{}
 	}
+
+	var buildIDs []string
+	for buildID := range buildIDsSet {
+		buildIDs = append(buildIDs, buildID)
+	}
+	if err = UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
+		return errors.Wrap(err, "updating build, version, and patch statuses")
+	}
+
 	return nil
 }
 
@@ -958,6 +970,7 @@ func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
 	if cq == nil {
 		return errors.Errorf("no commit queue found for '%s'", t.Project)
 	}
+
 	if status != evergreen.TaskSucceeded && !t.Aborted {
 		return dequeueAndRestartWithStepback(cq, t, evergreen.MergeTestRequester, fmt.Sprintf("task '%s' failed", t.DisplayName))
 	} else if status == evergreen.TaskSucceeded {
@@ -990,7 +1003,6 @@ func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
 					return nil
 				}
 			}
-
 		}
 	}
 	return nil
@@ -1442,7 +1454,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 // been updated prior to this.
 func updateVersionStatus(v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
-		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))
+		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey, build.AllTasksBlockedKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
@@ -1611,8 +1623,8 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
-// UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
-// builds associated with the given input list of build IDs.
+// UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
+// patches and builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil

@@ -109,7 +109,7 @@ func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 }
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveNonexistentItem() {
-	found, err := CommitQueueRemoveItem("mci", "not_here", "user", "reason")
+	found, err := FindAndRemoveCommitQueueItem("mci", "not_here", "user", "reason")
 	s.Error(err)
 	s.Nil(found)
 }
@@ -134,7 +134,7 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveUnfinalizedItem() {
 		s.Require().Equal(i, pos)
 	}
 
-	found, err := CommitQueueRemoveItem(project, "0", "user", "reason")
+	found, err := FindAndRemoveCommitQueueItem(project, "0", "user", "reason")
 	s.NoError(err)
 	s.NotNil(found)
 	cq, err := FindCommitQueueForProject(project)
@@ -186,7 +186,7 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveFinalizedItem() {
 		s.Require().Equal(i, pos)
 	}
 
-	found, err := CommitQueueRemoveItem(project, "0", "user", "reason")
+	found, err := FindAndRemoveCommitQueueItem(project, "0", "user", "reason")
 	s.NoError(err)
 	s.NotNil(found)
 	cq, err := FindCommitQueueForProject(project)
