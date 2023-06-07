@@ -1351,14 +1351,6 @@ func (t *Task) MarkSystemFailed(description string) error {
 	t.FinishTime = time.Now()
 	t.Details = GetSystemFailureDetails(description)
 
-	switch t.ExecutionPlatform {
-	case ExecutionPlatformHost:
-		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
-	case ExecutionPlatformContainer:
-		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
-	default:
-		event.LogTaskFinished(t.Id, t.Execution, evergreen.TaskSystemFailed)
-	}
 	grip.Info(message.Fields{
 		"message":            "marking task system failed",
 		"included_on":        evergreen.ContainerHealthDashboard,
@@ -1374,7 +1366,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 	t.ContainerAllocated = false
 	t.ContainerAllocatedTime = time.Time{}
 
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -1390,6 +1382,18 @@ func (t *Task) MarkSystemFailed(description string) error {
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
+	switch t.ExecutionPlatform {
+	case ExecutionPlatformHost:
+		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	case ExecutionPlatformContainer:
+		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
+	default:
+		event.LogTaskFinished(t.Id, t.Execution, evergreen.TaskSystemFailed)
+	}
+	return nil
 }
 
 // GetSystemFailureDetails returns a task's end details based on an input description.
