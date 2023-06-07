@@ -27,7 +27,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TSFormat = "2006-01-02.15-04-05"
+const (
+	TSFormat = "2006-01-02.15-04-05"
+
+	createHostQueueGroup            = "service.host.create"
+	commitQueueQueueGroup           = "service.commitqueue"
+	eventNotifierQueueGroup         = "service.event.notifier"
+	podAllocationQueueGroup         = "service.pod.allocate"
+	podDefinitionCreationQueueGroup = "service.pod.definition.create"
+	podCreationQueueGroup           = "service.pod.create"
+)
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {

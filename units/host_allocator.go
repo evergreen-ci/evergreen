@@ -194,6 +194,16 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"duration_secs": time.Since(hostSpawningBegins).Seconds(),
 	})
 
+	ts := utility.RoundPartOfHour(0).Format(TSFormat)
+	for _, h := range hostsSpawned {
+		queue, err := j.env.RemoteQueueGroup().Get(ctx, createHostQueueGroup)
+		if err != nil {
+			j.AddError(errors.Wrap(err, "getting host create queue"))
+			return
+		}
+		j.AddError(errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostCreateJob(j.env, h, ts, 0, false)), "enqueueing host create job for '%s'", h.Id))
+	}
+
 	// ignoring all the tasks that will take longer than the threshold to run,
 	// and the hosts allocated for them,
 	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
