@@ -205,10 +205,10 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 	return apiCommitQueue, nil
 }
 
-// CommitQueueRemoveItem dequeues an item from the commit queue and returns the
+// FindAndRemoveCommitQueueItem dequeues an item from the commit queue and returns the
 // removed item. If the item is already being tested in a batch, later items in
 // the batch are restarted.
-func CommitQueueRemoveItem(cqId, issue, user, reason string) (*restModel.APICommitQueueItem, error) {
+func FindAndRemoveCommitQueueItem(cqId, issue, user, reason string) (*restModel.APICommitQueueItem, error) {
 	cq, err := commitqueue.FindOneId(cqId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting commit queue '%s'", cqId)
