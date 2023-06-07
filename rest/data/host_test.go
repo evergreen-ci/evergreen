@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -16,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -143,6 +146,9 @@ func (s *HostConnectorSuite) TearDownSuite() {
 }
 
 func (s *HostConnectorSuite) TestSpawnHost() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	testDistroID := utility.RandomString()
 	const testPublicKey = "ssh-rsa 1234567890abcdef"
 	const testPublicKeyName = "testPubKey"
@@ -151,9 +157,15 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testUserdata = "#!/bin/bash\necho this is a dummy sentence"
 	const testInstanceType = "testInstanceType"
 
-	config, err := evergreen.GetConfig()
+	env := &mock.Environment{}
+	s.NoError(env.Configure(ctx))
+	env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
 	s.NoError(err)
-	config.Spawnhost.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
 
 	d := &distro.Distro{
 		Id:                   testDistroID,
@@ -166,7 +178,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		Id:     testUserID,
 		APIKey: testUserAPIKey,
 	}
-	ctx := gimlet.AttachUser(context.Background(), testUser)
+	ctx = gimlet.AttachUser(ctx, testUser)
 	testUser.PubKeys = append(testUser.PubKeys, user.PubKey{
 		Name: testPublicKeyName,
 		Key:  testPublicKey,
@@ -181,10 +193,10 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		InstanceTags: nil,
 	}
 
-	intentHost, err := NewIntentHost(ctx, options, testUser, config)
+	intentHost, err := NewIntentHost(ctx, options, testUser, env)
 	s.NoError(err)
 	s.Require().NotNil(intentHost)
-	foundHost, err := host.FindOne(host.ById(intentHost.Id))
+	foundHost, err := host.FindOneByIdOrTag(intentHost.Id)
 	s.NotNil(foundHost)
 	s.NoError(err)
 	s.True(foundHost.UserHost)
@@ -197,11 +209,13 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 
 	// with instance type
 	options.InstanceType = testInstanceType
-	_, err = NewIntentHost(ctx, options, testUser, config)
+	_, err = NewIntentHost(ctx, options, testUser, env)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "not been allowed by admins")
-	config.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
-	s.NoError(config.Set())
+
+	env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
+	_, err = NewIntentHost(ctx, options, testUser, env)
+	s.NoError(err)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {

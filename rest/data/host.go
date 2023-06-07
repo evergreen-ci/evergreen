@@ -41,13 +41,13 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
 func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
-	settings *evergreen.Settings) (*host.Host, error) {
+	env evergreen.Environment) (*host.Host, error) {
 	spawnOptions, err := makeSpawnOptions(options, user)
 	if err != nil {
 		return nil, err
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(ctx, *spawnOptions, settings)
+	intentHost, err := cloud.CreateSpawnHost(ctx, *spawnOptions, env.Settings())
 	if err != nil {
 		return nil, errors.Wrap(err, "creating spawn host")
 	}
@@ -62,6 +62,14 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		"distro":   intentHost.Distro.Id,
 		"user":     user.Username(),
 	})
+
+	queue, err := env.RemoteQueueGroup().Get(ctx, units.CreateHostQueueGroup)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting host create queue")
+	}
+	if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostCreateJob(env, *intentHost, utility.RoundPartOfHour(0).Format(units.TSFormat), 0, false)); err != nil {
+		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intentHost.Id)
+	}
 
 	return intentHost, nil
 }

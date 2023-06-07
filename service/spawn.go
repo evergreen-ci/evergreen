@@ -291,7 +291,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := uis.env.Context()
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, authedUser)
-	spawnHost, err := data.NewIntentHost(ctx, options, authedUser, &uis.Settings)
+	spawnHost, err := data.NewIntentHost(ctx, options, authedUser, uis.env)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
 		return
