@@ -30,7 +30,7 @@ import (
 const (
 	TSFormat = "2006-01-02.15-04-05"
 
-	createHostQueueGroup            = "service.host.create"
+	CreateHostQueueGroup            = "service.host.create"
 	commitQueueQueueGroup           = "service.commitqueue"
 	eventNotifierQueueGroup         = "service.event.notifier"
 	podAllocationQueueGroup         = "service.pod.allocate"

@@ -21,9 +21,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -245,11 +248,11 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 	return createHost, nil
 }
 
-func MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+func MakeIntentHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if evergreen.IsDockerProvider(createHost.CloudProvider) {
 		return makeDockerIntentHost(taskID, userID, createHost)
 	}
-	return makeEC2IntentHost(taskID, userID, publicKey, createHost)
+	return makeEC2IntentHost(ctx, env, taskID, userID, publicKey, createHost)
 }
 
 func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost) (*host.Host, error) {
@@ -325,7 +328,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 
 }
 
-func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if createHost.Region == "" {
 		createHost.Region = evergreen.DefaultEC2Region
 	}
@@ -426,6 +429,12 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if err = intent.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
+
+	queue, err := env.RemoteQueueGroup().Get(ctx, units.CreateHostQueueGroup)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting host create queue")
+	}
+	errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, units.NewHostCreateJob(env, *intent, utility.RoundPartOfHour(0).Format(units.TSFormat), 0, false)), "enqueueing host create job for '%s'", intent.Id)
 
 	return intent, nil
 }

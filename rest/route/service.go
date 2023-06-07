@@ -158,7 +158,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{host_id}/status").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerStatusManager())
 	app.AddRoute("/hosts/{host_id}/logs/output").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerLogsRouteManager(false))
 	app.AddRoute("/hosts/{host_id}/logs/error").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerLogsRouteManager(true))
-	app.AddRoute("/hosts/{task_id}/create").Version(2).Post().Wrap(requireTask).RouteHandler(makeHostCreateRouteManager())
+	app.AddRoute("/hosts/{task_id}/create").Version(2).Post().Wrap(requireTask).RouteHandler(makeHostCreateRouteManager(env))
 	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().Wrap(requireTask).RouteHandler(makeHostListRouteManager())
 	app.AddRoute("/hosts/{host_id}/attach").Version(2).Post().Wrap(requireUser).RouteHandler(makeAttachVolume(env))
 	app.AddRoute("/hosts/{host_id}/detach").Version(2).Post().Wrap(requireUser).RouteHandler(makeDetachVolume(env))
