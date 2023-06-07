@@ -142,8 +142,6 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
-
-	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
