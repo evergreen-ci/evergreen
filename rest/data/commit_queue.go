@@ -208,7 +208,6 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 // CommitQueueRemoveItem dequeues an item from the commit queue and returns the
 // removed item. If the item is already being tested in a batch, later items in
 // the batch are restarted.
-// kim: TODO: move most of the tests into model.CommitQueueRemoveItem tests.
 func CommitQueueRemoveItem(cqId, issue, user, reason string) (*restModel.APICommitQueueItem, error) {
 	cq, err := commitqueue.FindOneId(cqId)
 	if err != nil {

@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -56,8 +55,6 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	// kim: NOTE: this query _should_ catch the remaining tasks that are being
-	// deactivated and have more than one tasksToModify
 	q := bson.M{
 		task.VersionKey: versionId,
 		task.StatusKey:  evergreen.TaskUndispatched,
@@ -88,7 +85,6 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		pp.Println("tasks to modify", tasksToModify)
 		if len(tasksToModify) > 0 {
 			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
 				return errors.Wrap(err, "deactivating tasks")

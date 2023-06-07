@@ -250,15 +250,6 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 	return nil
 }
 
-// kim: TODO: either:
-// * Replace j.dequeue with CommitQueueRemoveItem in all places in this function
-// because the version status needs to update.
-// * Call model.UpdateBuildAndVersionStatusForTask for the merge task
-// TryUnstick tries to automatically dequeue commit queue items that are still
-// enqueued but whose merge tasks are either unrunnable (e.g. due to being
-// disabled or blocked) or are already finished and not dequeued. Note that this
-// can race with ending a failed task because it may see intermediate state
-// as the task end tries to fix up the commit queue state.
 func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {
 	nextItem, valid := cq.Next()
 	if !valid {
@@ -315,11 +306,6 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 				"source":   "commit queue",
 				"job_id":   j.ID(),
 			})
-			// kim: NOTE: this logged for version, indicating that the commit
-			// queue tried to unstick just as the task was blocking the merge
-			// task, which resulted in it getting dequeued without updating the
-			// status.
-			// kim: TODO: see if can be replaced with data.CommitQueueRemoveItem
 			j.dequeue(cq, nextItem, "merge task was found deactivated or disabled")
 			event.LogCommitQueueConcludeTest(nextItem.Version, evergreen.EnqueueFailed)
 		}

@@ -598,6 +598,22 @@ tasks:
           AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
+  - name: kim-parent-task
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo hello parent
+            exit 1
+  - name: kim-child-task
+    depends_on:
+      - name: kim-parent-task
+        variant: ubuntu2204
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo hello child
 
 task_groups:
   - name: dist-and-upload-clis
@@ -637,6 +653,7 @@ buildvariants:
       - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
+      - kim-parent-task
 
   - name: race-detector
     display_name: Race Detector
@@ -675,6 +692,13 @@ buildvariants:
       - name: ".linter"
       - name: test-db-auth
       - name: "dist-staging"
+
+  - name: kim-variant
+    display_name: Kim's variant
+    run_on:
+      - ubuntu2204-small
+    tasks:
+      - kim-child-task
 
   - name: lint
     display_name: Lint
