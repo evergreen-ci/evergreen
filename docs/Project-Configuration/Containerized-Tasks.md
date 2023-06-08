@@ -3,15 +3,12 @@
 We're excited to introduce the ability to run Evergreen tasks in containers. 
 
 This offering is designed to streamline work and reduce friction caused by software dependency requirements. 
-Greater flexibility and control over task environments is achievable with containers, ensuring that each task runs in an isolated, dedicated space with its own specific set of dependencies. 
-
-This means fewer conflicts, 
-more consistent results, and the potential for more efficient execution as multiple tasks can run simultaneously on the same host, enabling more efficient utilization of resources, and reducing the likelihood of scheduling delays due to unavailable hosts.
+Greater flexibility and control over task environments is achievable with containers, ensuring that each task runs in an isolated, dedicated space with its own specific set of software dependencies.
 
 ## Important Note
-Container tasks are still undergoing active testing and, at this stage, is used by the internal Evergreen team only.
+Container tasks at this time are still an experimental feature, therefore they are subject to change as we iterate further on our roadmap. The feature may have bugs that get discovered as we roll it out as an initial offering.
 
-If you have any questions about container tasks or are interested in exploring how this feature could benefit your project, we encourage you to reach out to us. 
+If you have any questions about container tasks or are interested in exploring how this feature could benefit your project, we encourage you to reach out to us in #evergreen-users. 
 We'll discuss its potential applications and assist you in preparing for its broader release.
 
 ## What's Different
@@ -21,11 +18,18 @@ While tasks running on containers come with all the capabilities you're familiar
 1. Task Groups: The initial release of container tasks does not support configuring task groups. This is something we aim to support in future iterations.
 
 2. Priority: The priority setting feature will not be available during the initial release for container tasks.
+
+3. Greater configurability: When running container tasks, resources such as CPU and memory usage must be explicitly configured, unlike in the current distro model.
+Users are also responsible for picking the image to use, and all required software is downloaded during runtime. Furthermore, the container your task runs on is dedicated solely to that task
+and is never reused, so you are free to do whatever you want with it without needing to worry about leaving the environment in a messy state for the next task.
+
 ## YAML Configuration
 
+Configuring your project to use container tasks is done in YAML. Container definitions are similar to distro configurations in that
+they both are ultimately referenced in the `run_on` field of a build variant. However, container configurations are defined by the user,
+rather than distros which are configured by Evergreen admins.
 
-Configuring your project to use container tasks is done in YAML. 
-Below is an example configuration:
+Below is an example setup for configuring a build variant to run container tasks:
 
 ``` yaml
 containers:
@@ -39,24 +43,24 @@ containers:
       cpu_architecture: x86_64
       operating_system: linux
       
-  - name: example-windows-container
+  - name: example-small-container
     working_dir: /
-    image: "custom/container-windows-image"
+    image: "custom/container-secondary-image"
     size: small-container
     system:
       cpu_architecture: x86_64
-      operating_system: windows
-      windows_version: 2019
+      operating_system: linux
 ```
 Fields:
 
 -   `name`: a user-defined name for the container that represents the task or the environment of the container
 -   `working_dir`: the working directory for your tasks within the container. In the example, it's set to the root directory
--   `image`: the Docker image to use for the container. As part of the initial offering, the images specificable in this field will be 
-restricted to a predefined list of approved base images that our platform will specify.
+-   `image`: the Docker image to use for the container. Initially, this must be one of our pre-approved base images. Users will be able to submit Dockerfiles to us for review,
+ at which point we'll build them into a container registry. Defining arbitrary Dockerfiles will be unsupported to start as we need to vet them as we scope out the best image-building 
+primitives that are both sustainable and secure.
 -   `resources`: the resources allocated to the container: cpu and memory_mb set the CPU units and the memory (in MB), respectively, that the container is allocated
 -   `size`: an alternative to the resources section, a preset size for the container configured within the UI
--   `system`: specification for the CPU architecture and the operating system to be used by your container
+-   `system`: specification for the CPU architecture and the operating system to be used by your container (currently `linux` is the only supported operating system) 
 
 You can define as many containers as your project requires by adding more entries. 
 
@@ -73,11 +77,12 @@ buildvariants:
       - name: test-js
 ```
 
-The container must be put in the `run_on` field, in the same way that
+The container name must be put in the `run_on` field, in the same way that
 a distro may be put there. Unlike the distro model, where a primary and
 secondary distro can be specified in this field (hence why the field is a list),
 only one container may be specified in the `run_on` field for a containerized
-variant.
+variant. If more than one container name is specified, all but the first container
+will be ignored.
 
 ### UI Changes
 Once configured properly, a variant with container tasks is ready to schedule tasks.
@@ -112,7 +117,9 @@ Task events such as container assignment and status changes are also recorded, a
 ![container_event_logs.png](../images/container_event_logs.png)
 
 ### Disk Space Considerations
-Each instance is provisioned with 200GB of space; however, the actual disk space available for each container task can vary depending on the number and the nature of tasks sharing the same instance. The more memory and CPU a task requires, 
-the less likely it is to share an instance with other tasks. Conversely, less resource-hungry tasks are more likely to share the instance with other tasks, which means they will also be sharing the available disk space.
+Each instance is provisioned with 200GB of space; however, the actual disk space available for each container task can vary depending on the number and the nature of tasks sharing the same instance.
+In this sense, while CPU and memory are isolated allocations to each container, disk space is a shared resource across all containers on the same host. As such, dedicating more memory and CPU for a container
+makes it less likely to share the instance's disk space with other containers. Conversely, less resource-hungry containers are more likely to share the instance with others, so they will likely have a smaller share of the available disk space.
 
-In practical terms, this means that while each instance has a maximum of 200GB of disk space, please bear in mind that the effective disk space available to your container tasks might be less, depending on what other tasks are running concurrently on the same instance.
+In practical terms, this means that while each instance has a maximum of 200GB of disk space, please bear in mind that the effective disk space available to your container tasks might be less and fluctuate, as other containers take and release 
+disk space as they get created and exit, respectively. While we work on a more robust solution to this notion of isolating disk space, we recommend that you keep your container task disk space usage to a maximum of 10GB.
