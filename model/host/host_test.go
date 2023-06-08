@@ -1920,10 +1920,21 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 	}
 }
 
+func setupIdleHostQueryIndex(t *testing.T) {
+	require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
+		Keys: startedByStatusIndex,
+	}))
+}
+
 func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	setupIdleHostQueryIndex(t)
+
+	defer func() {
+		assert.NoError(db.DropCollections(Collection))
+	}()
 
 	const (
 		d1 = "distro1"
