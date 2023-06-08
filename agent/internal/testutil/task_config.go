@@ -22,14 +22,10 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	appToken, err := settings.CreateInstallationToken(ctx, data.Project.Owner, data.Project.Repo, nil)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":       "EVG-19966",
-			"message":      "error creating GitHub app token",
-			"caller":       "MakeTaskConfigFromModelData",
-			"owner":        data.ProjectRef.Owner,
-			"projectowner": data.Project.Owner,
-			"repo":         data.ProjectRef.Repo,
-			"projectrepo":  data.Project.Repo,
-			"task":         data.Task.Id,
+			"ticket":  "EVG-19966",
+			"message": "error creating GitHub app token",
+			"caller":  "MakeTaskConfigFromModelData",
+			"task":    data.Task.Id,
 		}))
 	}
 	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken, appToken)

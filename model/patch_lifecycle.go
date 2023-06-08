@@ -570,8 +570,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Parameters:          params,
 		Activated:           utility.TruePtr(),
 		AuthorEmail:         authorEmail,
-		Owner:               projectRef.Owner,
-		Repo:                projectRef.Repo,
 	}
 
 	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings)
