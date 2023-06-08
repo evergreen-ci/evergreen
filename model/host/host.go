@@ -1965,8 +1965,8 @@ var StatusIndex = bson.D{
 	},
 }
 
-// startedByStatusIndex is the started_by_1_status_1 index.
-var startedByStatusIndex = bson.D{
+// StartedByStatusIndex is the started_by_1_status_1 index.
+var StartedByStatusIndex = bson.D{
 	{
 		Key:   StartedByKey,
 		Value: 1,
