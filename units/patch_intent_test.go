@@ -1178,7 +1178,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NoError(err)
 	s.Nil(patchDoc)
 
-	unprocessedIntents, err := patch.findUnprocessedGithubIntents()
+	unprocessedIntents, err := patch.FindUprocessedGithubIntents()
 	s.Require().NoError(err)
 	s.Require().Len(unprocessedIntents, 1)
 
@@ -1214,7 +1214,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.NoError(err)
 	s.Nil(versionDoc)
 
-	unprocessedIntents, err := patch.findUnprocessedGithubIntents()
+	unprocessedIntents, err := patch.FindUprocessedGithubIntents()
 	s.Require().NoError(err)
 	s.Require().Empty(unprocessedIntents)
 }

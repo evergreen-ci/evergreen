@@ -125,7 +125,7 @@ func (s *GithubSuite) TestInsert() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	intents, err := findUnprocessedGithubIntents()
+	intents, err := FindUprocessedGithubIntents()
 	s.NoError(err)
 	s.Len(intents, 1)
 
@@ -165,7 +165,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(intent.Insert())
 	s.NoError(intent.SetProcessed())
 
-	found, err := findUnprocessedGithubIntents()
+	found, err := FindUprocessedGithubIntents()
 	s.NoError(err)
 	s.Len(found, 0)
 
@@ -183,7 +183,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Equal(GithubIntentType, intents[0].GetType())
 }
 
-func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
+func (s *GithubSuite) TestFindUprocessedGithubIntents() {
 	intents := []githubIntent{
 		githubIntent{
 			DocumentID: utility.RandomString(),
@@ -223,7 +223,7 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 		s.NoError(intent.Insert())
 	}
 
-	found, err := findUnprocessedGithubIntents()
+	found, err := FindUprocessedGithubIntents()
 	s.NoError(err)
 	s.Len(found, 3)
 }
