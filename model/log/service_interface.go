@@ -8,7 +8,8 @@ import (
 )
 
 type logService interface { //nolint:unused
-	GetTaskLogs(context.Context, TaskOptions, GetOptions) (LogIterator, error)
+	GetTaskLogPrefix(TaskOptions, TaskLogType) (string, error)
+	GetTaskLogs(context.Context, TaskOptions, GetOptions) (LogReader, error)
 }
 
 func getServiceImpl(env evergreen.Environment, serviceVersion int) (logService, error) { //nolint:unused
