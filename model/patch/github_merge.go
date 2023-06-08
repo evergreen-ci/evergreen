@@ -18,7 +18,7 @@ const (
 )
 
 // githubMergeIntent represents an intent to create a patch build as a result of a
-// PullRequestEvent webhook. These intents are processed asynchronously by an
+// MergeGroupEvent webhook. These intents are processed asynchronously by an
 // amboy queue.
 type githubMergeIntent struct {
 	// DocumentID is created by the driver and has no special meaning to the application
