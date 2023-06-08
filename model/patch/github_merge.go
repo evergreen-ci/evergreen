@@ -138,6 +138,7 @@ func (g *githubMergeIntent) GetCalledBy() string {
 	return g.CalledBy
 }
 
+// NewPatch creates a patch document from a merge intent.
 func (g *githubMergeIntent) NewPatch() *Patch {
 	patchDoc := &Patch{
 		Id:     mgobson.NewObjectId(),
