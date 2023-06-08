@@ -11,6 +11,9 @@ Container tasks at this time are still an experimental feature, therefore they a
 If you have any questions about container tasks or are interested in exploring how this feature could benefit your project, we encourage you to reach out to us in #evergreen-users. 
 We'll discuss its potential applications and assist you in preparing for its broader release.
 
+It's important to distinguish that this feature is entirely separate from the existing functionality Evergreen has to spin up docker hosts
+via the `host.create` command, as this feature is designed to run entire tasks within containers, rather than spinning them up within the existing model.
+
 ## What's Different
 
 While tasks running on containers come with the same general capabilities you're familiar with in regular host tasks,
