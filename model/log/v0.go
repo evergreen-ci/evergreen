@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
@@ -46,9 +45,21 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, prefix string, getOpts G
 
 	var its []LogIterator
 	for _, chunkGroup := range chunkGroups {
-		its = append(its, newChunkIterator(s.bucket, chunkGroup, 2, utility.FromInt64Ptr(getOpts.Start), utility.FromInt64Ptr(getOpts.End)))
+		its = append(its, newChunkIterator(chunkIteratorOptions{
+			bucket:     s.bucket,
+			chunks:     chunkGroup,
+			lineParser: s.lineParser(),
+			batchSize:  2,
+			start:      getOpts.Start,
+			end:        getOpts.End,
+			lineLimit:  getOpts.LineLimit,
+			tailN:      getOpts.TailN,
+		}))
 	}
 
+	if len(chunkGroups) == 1 {
+		return its[0], nil
+	}
 	return newMergingIterator(its...), nil
 }
 

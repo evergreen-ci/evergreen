@@ -16,11 +16,6 @@ type LogIterator interface {
 	Next(context.Context) bool
 	// Item returns the current LogLine item held by the iterator.
 	Item() LogLine
-	// Reverse returns a reversed copy of the iterator.
-	Reverse() LogIterator
-	// IsReversed returns true if the iterator is in reverse order and
-	// false otherwise.
-	IsReversed() bool
 	// Exhausted returns true if the iterator has not yet been exhausted,
 	// regardless if it has been closed or not.
 	Exhausted() bool
@@ -31,7 +26,6 @@ type LogIterator interface {
 	Close() error
 }
 
-// TODO: Keep this function?
 // StreamFromLogIterator streams log lines from the given log iterator to the
 // returned channel. It is the responsibility of the caller to close the
 // iterator.

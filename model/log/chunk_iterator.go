@@ -13,26 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type chunkIterator struct {
-	bucket               pail.Bucket
-	lineParser           func(string) (LogLine, error)
-	batchSize            int
-	chunks               []chunkInfo
-	chunkIndex           int
-	start                int64
-	end                  int64
-	reverse              bool
-	lineCount            int
-	keyIndex             int
-	readers              map[string]io.ReadCloser
-	currentReverseReader *reverseLineReader
-	currentReader        *bufio.Reader
-	currentItem          LogLine
-	catcher              grip.Catcher
-	exhausted            bool
-	closed               bool
-}
-
 type chunkInfo struct {
 	prefix   string
 	key      string
@@ -41,54 +21,64 @@ type chunkInfo struct {
 	end      int64
 }
 
+type chunkIterator struct {
+	opts            chunkIteratorOptions
+	chunkIndex      int
+	lineCountOffset int
+	lineCount       int
+	chunkLineCount  int
+	keyIndex        int
+	readers         map[string]io.ReadCloser
+	currentReader   *bufio.Reader
+	currentItem     LogLine
+	catcher         grip.Catcher
+	exhausted       bool
+	closed          bool
+}
+
+type chunkIteratorOptions struct {
+	bucket     pail.Bucket
+	chunks     []chunkInfo
+	lineParser func(string) (LogLine, error)
+	batchSize  int
+	start      int64
+	end        int64
+	lineLimit  int
+	tailN      int
+}
+
 // newChunkIterator returns a LogIterator that fetches batches (size set by the
 // caller) of chunks from blob storage in parallel while iterating over lines
 // of a log.
-// TODO: make an options struct?
-func newChunkIterator(bucket pail.Bucket, chunks []chunkInfo, batchSize int, start, end int64) LogIterator {
-	chunks = filterChunksByTimeRange(chunks, start, end)
+func newChunkIterator(opts chunkIteratorOptions) LogIterator {
+	var lineCountOffset int
+	opts.chunks = filterChunksByTimeRange(opts.chunks, opts.start, opts.end)
+	opts.chunks, lineCountOffset = filterChunksByTailN(opts.chunks, opts.tailN)
+	opts.chunks = filterChunksByLimit(opts.chunks, opts.lineLimit)
 
 	return &chunkIterator{
-		bucket:    bucket,
-		batchSize: batchSize,
-		chunks:    chunks,
-		start:     start,
-		end:       end,
-		catcher:   grip.NewBasicCatcher(),
+		opts:            opts,
+		lineCountOffset: lineCountOffset,
+		catcher:         grip.NewBasicCatcher(),
 	}
 }
-
-func (i *chunkIterator) Reverse() LogIterator {
-	chunks := make([]chunkInfo, len(i.chunks))
-	_ = copy(chunks, i.chunks)
-	reverseChunks(chunks)
-
-	return &chunkIterator{
-		bucket:    i.bucket,
-		batchSize: i.batchSize,
-		chunks:    chunks,
-		start:     i.start,
-		end:       i.end,
-		reverse:   !i.reverse,
-		catcher:   grip.NewBasicCatcher(),
-	}
-}
-
-func (i *chunkIterator) IsReversed() bool { return i.reverse }
 
 func (i *chunkIterator) Next(ctx context.Context) bool {
 	if i.closed {
 		return false
 	}
+	if i.opts.lineLimit > 0 && i.lineCount == i.opts.lineLimit {
+		return false
+	}
 
 	for {
-		if i.currentReader == nil && i.currentReverseReader == nil {
-			if i.keyIndex >= len(i.chunks) {
+		if i.currentReader == nil {
+			if i.keyIndex >= len(i.opts.chunks) {
 				i.exhausted = true
 				return false
 			}
 
-			reader, ok := i.readers[i.chunks[i.keyIndex].key]
+			reader, ok := i.readers[i.opts.chunks[i.keyIndex].key]
 			if !ok {
 				if err := i.getNextBatch(ctx); err != nil {
 					i.catcher.Add(err)
@@ -97,54 +87,45 @@ func (i *chunkIterator) Next(ctx context.Context) bool {
 				continue
 			}
 
-			if i.reverse {
-				i.currentReverseReader = newReverseLineReader(reader)
-			} else {
-				i.currentReader = bufio.NewReader(reader)
+			if err := i.skipLines(reader); err != nil {
+				i.catcher.Add(err)
+				return false
 			}
+			i.currentReader = bufio.NewReader(reader)
 		}
 
 		var (
 			data string
 			err  error
 		)
-		if i.reverse {
-			data, err = i.currentReverseReader.ReadLine()
-		} else {
-			data, err = i.currentReader.ReadString('\n')
-		}
+		data, err = i.currentReader.ReadString('\n')
 		if err == io.EOF {
-			if i.lineCount != i.chunks[i.keyIndex].numLines {
+			if i.chunkLineCount != i.opts.chunks[i.keyIndex].numLines {
 				i.catcher.Add(errors.New("corrupt data"))
 			}
 
-			i.currentReverseReader = nil
 			i.currentReader = nil
 			i.lineCount = 0
 			i.keyIndex++
-
 			return i.Next(ctx)
 		} else if err != nil {
 			i.catcher.Wrap(err, "getting line")
 			return false
 		}
 
-		item, err := i.lineParser(data)
+		item, err := i.opts.lineParser(data)
 		if err != nil {
 			i.catcher.Wrap(err, "parsing log line")
 			return false
 		}
+		i.chunkLineCount++
 		i.lineCount++
 
-		if item.Timestamp > i.end && !i.reverse {
+		if item.Timestamp > i.opts.end {
 			i.exhausted = true
 			return false
 		}
-		if item.Timestamp < i.start && i.reverse {
-			i.exhausted = true
-			return false
-		}
-		if item.Timestamp >= i.start && item.Timestamp <= i.end {
+		if item.Timestamp >= i.opts.start && item.Timestamp <= i.opts.end {
 			i.currentItem = item
 			break
 		}
@@ -162,12 +143,12 @@ func (i *chunkIterator) getNextBatch(ctx context.Context) error {
 		return errors.Wrap(err, "closing readers")
 	}
 
-	end := i.chunkIndex + i.batchSize
-	if end > len(i.chunks) {
-		end = len(i.chunks)
+	end := i.chunkIndex + i.opts.batchSize
+	if end > len(i.opts.chunks) {
+		end = len(i.opts.chunks)
 	}
 	work := make(chan chunkInfo, end-i.chunkIndex)
-	for _, chunk := range i.chunks[i.chunkIndex:end] {
+	for _, chunk := range i.opts.chunks[i.chunkIndex:end] {
 		work <- chunk
 	}
 	close(work)
@@ -192,7 +173,7 @@ func (i *chunkIterator) getNextBatch(ctx context.Context) error {
 					return
 				}
 
-				r, err := i.bucket.Get(ctx, chunk.key)
+				r, err := i.opts.bucket.Get(ctx, chunk.key)
 				if err != nil {
 					catcher.Add(err)
 					return
@@ -208,6 +189,16 @@ func (i *chunkIterator) getNextBatch(ctx context.Context) error {
 	i.chunkIndex = end
 	i.readers = readers
 	return errors.Wrap(catcher.Resolve(), "downloading log artifacts")
+}
+
+func (i *chunkIterator) skipLines(r io.Reader) error {
+	scanner := bufio.NewScanner(r)
+	for i.lineCountOffset > 0 && scanner.Scan() {
+		i.lineCountOffset--
+		i.chunkLineCount++
+	}
+
+	return errors.Wrap(scanner.Err(), "skipping offset lines")
 }
 
 func (i *chunkIterator) Exhausted() bool { return i.exhausted }
@@ -228,7 +219,7 @@ func (i *chunkIterator) Close() error {
 }
 
 func filterChunksByTimeRange(chunks []chunkInfo, start, end int64) []chunkInfo {
-	filteredChunks := []chunkInfo{}
+	var filteredChunks []chunkInfo
 	for i := 0; i < len(chunks); i++ {
 		if (end > 0 && end < chunks[i].start) || start > chunks[i].end {
 			continue
@@ -239,53 +230,28 @@ func filterChunksByTimeRange(chunks []chunkInfo, start, end int64) []chunkInfo {
 	return filteredChunks
 }
 
-func reverseChunks(chunks []chunkInfo) {
-	for i, j := 0, len(chunks)-1; i < j; i, j = i+1, j-1 {
-		chunks[i], chunks[j] = chunks[j], chunks[i]
-	}
-}
-
-type reverseLineReader struct {
-	r     *bufio.Reader
-	lines []string
-	i     int
-}
-
-func newReverseLineReader(r io.Reader) *reverseLineReader {
-	return &reverseLineReader{r: bufio.NewReader(r)}
-}
-
-func (r *reverseLineReader) ReadLine() (string, error) {
-	if r.lines == nil {
-		if err := r.getLines(); err != nil {
-			return "", errors.Wrap(err, "reading lines")
-		}
+func filterChunksByTailN(chunks []chunkInfo, tailN int) ([]chunkInfo, int) {
+	var (
+		filteredChunks []chunkInfo
+		lineCount      int
+	)
+	for i := len(chunks) - 1; i >= 0 && lineCount < tailN; i-- {
+		filteredChunks = append(filteredChunks, chunks[i])
+		lineCount += chunks[i].numLines
 	}
 
-	r.i--
-	if r.i < 0 {
-		return "", io.EOF
-	}
-
-	return r.lines[r.i], nil
+	return filteredChunks, lineCount - tailN
 }
 
-func (r *reverseLineReader) getLines() error {
-	r.lines = []string{}
-
-	for {
-		p, err := r.r.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		r.lines = append(r.lines, p)
+func filterChunksByLimit(chunks []chunkInfo, limit int) []chunkInfo {
+	var (
+		filteredChunks []chunkInfo
+		lineCount      int
+	)
+	for i := 0; i < len(chunks) && lineCount < limit; i++ {
+		filteredChunks = append(filteredChunks, chunks[i])
+		lineCount += chunks[i].numLines
 	}
 
-	r.i = len(r.lines)
-
-	return nil
+	return filteredChunks
 }

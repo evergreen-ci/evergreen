@@ -20,26 +20,10 @@ type mergingIterator struct {
 func newMergingIterator(iterators ...LogIterator) LogIterator {
 	return &mergingIterator{
 		iterators:    iterators,
-		iteratorHeap: &logIteratorHeap{min: true},
+		iteratorHeap: &logIteratorHeap{},
 		catcher:      grip.NewBasicCatcher(),
 	}
 }
-
-func (i *mergingIterator) Reverse() LogIterator {
-	for j := range i.iterators {
-		if !i.iterators[j].IsReversed() {
-			i.iterators[j] = i.iterators[j].Reverse()
-		}
-	}
-
-	return &mergingIterator{
-		iterators:    i.iterators,
-		iteratorHeap: &logIteratorHeap{min: false},
-		catcher:      grip.NewBasicCatcher(),
-	}
-}
-
-func (i *mergingIterator) IsReversed() bool { return !i.iteratorHeap.min }
 
 func (i *mergingIterator) Next(ctx context.Context) bool {
 	if !i.started {
@@ -120,21 +104,15 @@ func (i *mergingIterator) Close() error {
 // logIteratorHeap is a heap of LogIterator items.
 type logIteratorHeap struct {
 	its []LogIterator
-	min bool
 }
 
 // Len returns the size of the heap.
 func (h logIteratorHeap) Len() int { return len(h.its) }
 
 // Less returns true if the object at index i is less than the object at index
-// j in the heap, false otherwise, when min is true. When min is false, the
-// opposite is returned.
+// j in the heap, false otherwise.
 func (h logIteratorHeap) Less(i, j int) bool {
-	if h.min {
-		return h.its[i].Item().Timestamp < h.its[j].Item().Timestamp
-	} else {
-		return h.its[i].Item().Timestamp > h.its[j].Item().Timestamp
-	}
+	return h.its[i].Item().Timestamp < h.its[j].Item().Timestamp
 }
 
 // Swap swaps the objects at indexes i and j.

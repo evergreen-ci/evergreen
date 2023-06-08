@@ -23,10 +23,15 @@ type GetOptions struct {
 	LogNames []string
 	// Start is the start time (inclusive) of the time range filter,
 	// represented as a Unix timestamp in nanoseconds. Optional.
-	Start *int64
+	Start int64
 	// End is the end time (inclusive) of the time range filter,
 	// represented as a Unix timestamp in nanoseconds. Optional.
-	End *int64
+	End int64
+	// LineLimit limits the number of lines read from the log. Optional.
+	LineLimit int
+	// TailN is the number of lines to read from the tail of the log.
+	// Optional.
+	TailN int
 }
 
 // TaskOptions represents the task-level information required to fetch logs
