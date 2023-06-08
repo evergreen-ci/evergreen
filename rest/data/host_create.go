@@ -319,7 +319,8 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 		return nil, errors.Wrap(err, "inserting parent intent hosts")
 	}
 
-	queue, err := env.RemoteQueueGroup().Get(ctx, units.CreateHostQueueGroup)
+	appCtx, _ := env.Context()
+	queue, err := env.RemoteQueueGroup().Get(appCtx, units.CreateHostQueueGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting host create queue")
 	}
@@ -435,7 +436,8 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
 
-	queue, err := env.RemoteQueueGroup().Get(ctx, units.CreateHostQueueGroup)
+	appCtx, _ := env.Context()
+	queue, err := env.RemoteQueueGroup().Get(appCtx, units.CreateHostQueueGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting host create queue")
 	}

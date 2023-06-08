@@ -195,8 +195,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	})
 
 	ts := utility.RoundPartOfHour(0).Format(TSFormat)
+
+	appCtx, _ := j.env.Context()
 	for _, h := range hostsSpawned {
-		queue, err := j.env.RemoteQueueGroup().Get(ctx, CreateHostQueueGroup)
+		queue, err := j.env.RemoteQueueGroup().Get(appCtx, CreateHostQueueGroup)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "getting host create queue"))
 			return

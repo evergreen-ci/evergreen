@@ -63,7 +63,8 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		"user":     user.Username(),
 	})
 
-	queue, err := env.RemoteQueueGroup().Get(ctx, units.CreateHostQueueGroup)
+	appCtx, _ := env.Context()
+	queue, err := env.RemoteQueueGroup().Get(appCtx, units.CreateHostQueueGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting host create queue")
 	}
