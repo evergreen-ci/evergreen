@@ -463,8 +463,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.DropCollections(host.Collection))
-	assert.NoError(db.DropCollections(distro.Collection))
+	assert.NoError(db.DropCollections(host.Collection, distro.Collection))
 	defer func() {
 		assert.NoError(db.DropCollections(host.Collection, distro.Collection))
 	}()
