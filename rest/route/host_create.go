@@ -31,7 +31,11 @@ func makeHostCreateRouteManager(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostCreateHandler{env: env}
 }
 
-func (h *hostCreateHandler) Factory() gimlet.RouteHandler { return &hostCreateHandler{} }
+func (h *hostCreateHandler) Factory() gimlet.RouteHandler {
+	return &hostCreateHandler{
+		env: h.env,
+	}
+}
 
 func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
