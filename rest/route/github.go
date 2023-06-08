@@ -38,6 +38,7 @@ const (
 
 	refTags = "refs/tags/"
 
+	// This will be removed when EVG-19964 is ready.
 	disableMergeGroup = true
 )
 
