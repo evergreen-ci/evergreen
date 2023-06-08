@@ -205,7 +205,7 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 		},
 	}
 
-	if err := db.Aggregate(Collection, pipeline, &idlehostsByDistroID); err != nil {
+	if err := db.AggregateWithHint(Collection, pipeline, startedByStatusIndex, &idlehostsByDistroID); err != nil {
 		return nil, errors.Wrap(err, "grouping idle hosts by distro ID")
 	}
 

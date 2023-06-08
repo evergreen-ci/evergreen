@@ -42,7 +42,8 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 // test.
 func testFlaggingIdleHostsSetupTest(t *testing.T) {
 	require.NoError(t, db.DropCollections(host.Collection, distro.Collection), "dropping collections")
-	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "adding host index")
+	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "adding running_task_1 index")
+	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, false, false, host.StartedByKey, host.StatusKey), "adding started_by_1_status_1 index")
 }
 
 // testFlaggingIdleHostsTeardownTest resets the relevant DB collections after a
