@@ -41,7 +41,7 @@ type LogIteratorReaderOptions struct {
 }
 
 // NewlogIteratorReader returns a LogReader that reads the log lines from the
-// LogIterator with the given options.
+// iterator with the given options.
 func NewLogIteratorReader(ctx context.Context, it LogIterator, opts LogIteratorReaderOptions) LogReader {
 	return &logIteratorReader{
 		ctx:  ctx,

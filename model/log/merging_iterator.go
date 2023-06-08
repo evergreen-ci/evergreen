@@ -16,7 +16,7 @@ type mergingIterator struct {
 }
 
 // newMergeIterator returns a LogIterator that merges N logs, passed in as
-// LogIterators, respecting the order of each line's timestamp.
+// iterators, respecting the order of each line's timestamp.
 func newMergingIterator(iterators ...LogIterator) LogIterator {
 	return &mergingIterator{
 		iterators:    iterators,
@@ -101,7 +101,7 @@ func (i *mergingIterator) Close() error {
 // Log Iterator Heap
 ////////////////////
 
-// logIteratorHeap is a heap of LogIterator items.
+// logIteratorHeap is a heap of log iterators.
 type logIteratorHeap struct {
 	its []LogIterator
 }

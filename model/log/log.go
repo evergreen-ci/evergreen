@@ -4,11 +4,14 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
-// LogLine represents a single line in a log.
+// LogLine represents a single line in an Evergreen log.
 type LogLine struct {
 	LogName   string
 	Priority  level.Priority
@@ -16,7 +19,7 @@ type LogLine struct {
 	Data      string
 }
 
-// GetOptions represents the arguments for fetching logs.
+// GetOptions represents the arguments for fetching Evergreen logs.
 type GetOptions struct {
 	// LogNames are the names of the logs to fetch and merge, prefixes may
 	// be specified. At least one name must be specified.
@@ -64,4 +67,27 @@ func GetTaskLogTypePrefix(env evergreen.Environment, taskOpts TaskOptions, opts 
 // GetTaskLogs returns the logs from a task run specified by the options.
 func GetTaskLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, opts GetOptions) (LogIterator, error) {
 	return nil, errors.New("not implemented")
+}
+
+// StreamFromLogIterator streams log lines from the given iterator to the
+// returned channel. It is the responsibility of the caller to close the
+// iterator.
+func StreamFromLogIterator(ctx context.Context, it LogIterator) chan LogLine {
+	logLines := make(chan LogLine)
+	go func() {
+		defer recovery.LogStackTraceAndContinue("streaming lines from log iterator")
+		defer close(logLines)
+
+		for it.Next(ctx) {
+			logLines <- it.Item()
+		}
+
+		if err := it.Err(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "streaming lines from log iterator",
+			}))
+		}
+	}()
+
+	return logLines
 }
