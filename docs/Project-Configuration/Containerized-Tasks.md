@@ -13,7 +13,11 @@ We'll discuss its potential applications and assist you in preparing for its bro
 
 ## What's Different
 
-While tasks running on containers come with all the capabilities you're familiar with in regular host tasks, there are a couple of differences to note as we roll out this new feature:
+While tasks running on containers come with the same general capabilities you're familiar with in regular host tasks,
+ultimately they are not hosts themselves, meaning certain low-level system processes such as `systemd` present on the host that 
+may not be readily available within a container.
+To learn more, the [docker security documentation](https://docs.docker.com/engine/security/) explains the features of Docker's isolation model.
+there are a couple of differences to note as we roll out this new feature:
 
 1. Task Groups: The initial release of container tasks does not support configuring task groups. This is something we aim to support in future iterations.
 
