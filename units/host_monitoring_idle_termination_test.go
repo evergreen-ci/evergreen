@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testing.T) (int, []string) {
@@ -462,8 +463,15 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(host.Collection))
-	assert.NoError(db.ClearCollections(distro.Collection))
+	assert.NoError(db.DropCollections(host.Collection))
+	assert.NoError(db.DropCollections(distro.Collection))
+	defer func() {
+		assert.NoError(db.DropCollections(host.Collection, distro.Collection))
+	}()
+
+	require.NoError(t, db.EnsureIndex(host.Collection, mongo.IndexModel{
+		Keys: host.StartedByStatusIndex,
+	}))
 
 	distro1 := distro.Distro{
 		Id:       "distro1",
