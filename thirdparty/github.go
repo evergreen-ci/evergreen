@@ -36,6 +36,7 @@ const (
 
 	GithubInvestigation = "Github API Limit Investigation"
 
+	// TODO EVG-20103: move this to admin settings
 	defaultOwner = "evergreen-ci"
 	defaultRepo  = "commit-queue-sandbox"
 )
@@ -255,7 +256,7 @@ func getGithubClientRetry(token, caller string) *http.Client {
 	)
 }
 
-// GetInstallationToken creates an installation token using github app auth.
+// GetInstallationToken creates an installation token using Github app auth.
 func GetInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -272,6 +273,10 @@ func GetInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "creating installation token")
 	}
 	return token, nil
+}
+
+func getInstallationTokenWithoutOwnerRepo(ctx context.Context) (string, error) {
+	return GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
 }
 
 // GetGithubCommits returns a slice of GithubCommit objects from
@@ -837,10 +842,11 @@ func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag stri
 	tags, resp, err := client.Repositories.ListTags(ctx, owner, repo, nil)
 	if resp != nil {
 		defer resp.Body.Close()
-		for _, t := range tags {
-			if t.GetName() == tag {
-				return t.GetCommit().GetSHA(), nil
-			}
+	}
+
+	for _, t := range tags {
+		if t.GetName() == tag {
+			return t.GetCommit().GetSHA(), nil
 		}
 	}
 
@@ -1003,7 +1009,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining
 func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
-	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
 
 	httpClient := getGithubClientRetry(installationToken, "CheckGithubAPILimit")
 	defer utility.PutHTTPClient(httpClient)
@@ -1043,7 +1049,7 @@ func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 
 // GetGithubUser fetches the github user with the given login name
 func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, error) {
-	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
 
 	httpClient := getGithubClientRetry(installationToken, "GetGithubUser")
 	defer utility.PutHTTPClient(httpClient)
@@ -1082,7 +1088,7 @@ func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, 
 // given organization. The user with the attached token must have
 // visibility into organization membership, including private members
 func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
-	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
 
 	httpClient := getGithubClientRetry(installationToken, "GithubUserInOrganization")
 	defer utility.PutHTTPClient(httpClient)
@@ -1126,7 +1132,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 // AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
 // and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
 func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
-	installationToken, _ := GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
 
 	httpClient := getGithubClientRetry(installationToken, "AppAuthorizedForOrg")
 	defer utility.PutHTTPClient(httpClient)
@@ -1611,10 +1617,8 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 
 // MergePullRequest attempts to merge the given pull request. If commits are merged one after another, Github may
 // not have updated that this can be merged, so we allow retries.
-func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-
-	httpClient := getGithubClient(installationToken, "MergePullRequest")
+func MergePullRequest(ctx context.Context, token, appToken, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
+	httpClient := getGithubClient(appToken, "MergePullRequest")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 

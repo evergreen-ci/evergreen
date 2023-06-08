@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/v52/github"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -71,11 +72,14 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	token := c.Token
 	if token == "" {
 		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
-		// TODO EVG-1996: return on error
-		t, err := thirdparty.GetInstallationToken(ctx, conf.Project.Owner, conf.Project.Repo, nil)
-		if err == nil {
-			token = t
-		}
+	}
+	appToken := conf.Expansions.Get(evergreen.GithubAppToken)
+	if appToken == "" {
+		logger.Task().Debug(message.Fields{
+			"ticket":  "EVG-19966",
+			"message": "github app token expansion for commit queue not found",
+			"caller":  "git.merge_pr",
+		})
 	}
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
@@ -106,7 +110,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	// Add retry logic in case multiple PRs are merged in quick succession, since
 	// it takes GitHub some time to put the PR back in a mergeable state.
 	err = utility.Retry(ctx, func() (bool, error) {
-		err = thirdparty.MergePullRequest(ctx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+		err = thirdparty.MergePullRequest(ctx, token, appToken, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 			patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
 		if err != nil {
 			return true, errors.Wrap(err, "getting pull request data from GitHub")

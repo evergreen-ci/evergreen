@@ -22,6 +22,7 @@ type APIVersion struct {
 	AuthorEmail        *string        `json:"author_email"`
 	Message            *string        `json:"message"`
 	Status             *string        `json:"status"`
+	Owner              *string        `json:"owner"`
 	Repo               *string        `json:"repo"`
 	Branch             *string        `json:"branch"`
 	Parameters         []APIParameter `json:"parameters"`
@@ -49,6 +50,7 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 	apiVersion.AuthorEmail = utility.ToStringPtr(v.AuthorEmail)
 	apiVersion.Message = utility.ToStringPtr(v.Message)
 	apiVersion.Status = utility.ToStringPtr(v.Status)
+	apiVersion.Owner = utility.ToStringPtr(v.Owner)
 	apiVersion.Repo = utility.ToStringPtr(v.Repo)
 	apiVersion.Branch = utility.ToStringPtr(v.Branch)
 	apiVersion.Order = v.RevisionOrderNumber

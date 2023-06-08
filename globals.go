@@ -280,7 +280,9 @@ const (
 
 	DefaultJasperPort = 2385
 
+	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
+	GithubAppToken             = "github_app_token"
 	githubAppPrivateKey        = "github_app_test_key"
 
 	VSCodePort = 2021
