@@ -2559,7 +2559,7 @@ func (p *ProjectRef) removeFromAdminsList(user string) {
 	}
 }
 
-func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string, token string) bool {
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, token, owner, repo string) bool {
 	if utility.StringSliceContains(p.GitTagAuthorizedUsers, githubUser) {
 		return true
 	}
@@ -2583,7 +2583,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string,
 		}
 	}
 
-	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token)
+	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token, owner, repo)
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands
