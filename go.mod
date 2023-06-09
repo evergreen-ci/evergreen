@@ -2,6 +2,8 @@ module github.com/evergreen-ci/evergreen
 
 go 1.20
 
+replace github.com/evergreen-ci/utility => /Users/jonathan.brill/repos/utility
+
 require (
 	github.com/99designs/gqlgen v0.17.31
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -53,6 +55,7 @@ require (
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.17.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.42.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.42.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0
 	go.opentelemetry.io/otel v1.16.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.39.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.16.0
