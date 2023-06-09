@@ -10,19 +10,9 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// LogReader implements the io.Reader interface for log lines with additional
-// utility functionality.
-type LogReader interface {
-	// NextTimestamp returns the Unix nanosecond timestamp of the next
-	// unread line, if applicable. This should be called after the reader
-	// is exhausted, successfully returning an io.EOF error. Useful for
-	// pagination.
-	NextTimestamp() *int64
-
-	io.Reader
-}
-
-type logIteratorReader struct {
+// LogIteratorReader implements the io.Reader interface for log lines with
+// additional utility functionality.
+type LogIteratorReader struct {
 	ctx            context.Context
 	it             LogIterator
 	opts           LogIteratorReaderOptions
@@ -31,7 +21,8 @@ type logIteratorReader struct {
 	lastItem       LogLine
 }
 
-// LogIteratorReaderOptions describes the options for creating a LogReader.
+// LogIteratorReaderOptions describes the options for creating a
+// a new LogIteratorReader.
 type LogIteratorReaderOptions struct {
 	// PrintTime, when true, prints the timestamp of each log line along
 	// with the line in the following format:
@@ -49,25 +40,28 @@ type LogIteratorReaderOptions struct {
 	SoftSizeLimit int
 }
 
-// NewlogIteratorReader returns a LogReader that reads the log lines from the
+// NewLogIteratorReader returns a reader that reads the log lines from the
 // iterator with the given options. It is the responsibility of the caller to
 // close the iterator.
-func NewLogIteratorReader(ctx context.Context, it LogIterator, opts LogIteratorReaderOptions) *logIteratorReader {
-	return &logIteratorReader{
+func NewLogIteratorReader(ctx context.Context, it LogIterator, opts LogIteratorReaderOptions) *LogIteratorReader {
+	return &LogIteratorReader{
 		ctx:  ctx,
 		it:   it,
 		opts: opts,
 	}
 }
 
-func (r *logIteratorReader) NextTimestamp() *int64 {
+// NextTimestamp returns the Unix nanosecond timestamp of the next unread line,
+// if applicable. This should be called after the reader is exhausted,
+// successfully returning an io.EOF error. Useful for pagination.
+func (r *LogIteratorReader) NextTimestamp() *int64 {
 	if r.it.Exhausted() {
 		return nil
 	}
 	return utility.ToInt64Ptr(r.it.Item().Timestamp)
 }
 
-func (r *logIteratorReader) Read(p []byte) (int, error) {
+func (r *LogIteratorReader) Read(p []byte) (int, error) {
 	n := 0
 
 	if r.leftOver != nil {
@@ -108,7 +102,7 @@ func (r *logIteratorReader) Read(p []byte) (int, error) {
 	return n, io.EOF
 }
 
-func (r *logIteratorReader) writeToBuffer(data, buffer []byte, n int) int {
+func (r *LogIteratorReader) writeToBuffer(data, buffer []byte, n int) int {
 	if len(buffer) == 0 {
 		return 0
 	}
