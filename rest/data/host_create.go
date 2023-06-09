@@ -187,6 +187,9 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding project ref '%s'", t.Project)
 	}
+	if pRef == nil {
+		return nil, nil, errors.Errorf("project ref '%s' not found", t.Project)
+	}
 
 	appToken, err := settings.CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
 	if err != nil {

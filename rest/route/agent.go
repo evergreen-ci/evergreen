@@ -372,6 +372,12 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
 	}
+	if pRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
+		})
+	}
 
 	appToken, err := h.settings.CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
 	if err != nil {
@@ -408,7 +414,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	v, err := model.VersionFindOneId(t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
