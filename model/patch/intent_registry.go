@@ -31,9 +31,10 @@ func GetIntent(intentType string) (Intent, bool) {
 func init() {
 	intentFactoryRegistry = &patchIntentFactoryRegistry{
 		r: map[string]patchIntentFactory{
-			GithubIntentType:  func() Intent { return &githubIntent{} },
-			CliIntentType:     func() Intent { return &cliIntent{} },
-			TriggerIntentType: func() Intent { return &TriggerIntent{} },
+			GithubIntentType:      func() Intent { return &githubIntent{} },
+			CliIntentType:         func() Intent { return &cliIntent{} },
+			TriggerIntentType:     func() Intent { return &TriggerIntent{} },
+			GithubMergeIntentType: func() Intent { return &githubMergeIntent{} },
 		},
 	}
 }
