@@ -319,8 +319,9 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 	if err != nil {
 		return nil, errors.Wrap(err, "getting host create queue")
 	}
+	ts := utility.RoundPartOfHour(0).Format(units.TSFormat)
 	for _, intent := range append(containerIntents, parentIntents...) {
-		if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostCreateJob(env, intent, utility.RoundPartOfHour(0).Format(units.TSFormat), 0, false)); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostCreateJob(env, intent, ts, 0, false)); err != nil {
 			return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intent.Id)
 		}
 	}

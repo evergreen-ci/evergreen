@@ -28,6 +28,7 @@ import (
 const (
 	TSFormat = "2006-01-02.15-04-05"
 
+	// CreateHostQueueGroup is the queue group for the provisioning-create-host job.
 	CreateHostQueueGroup            = "service.host.create"
 	commitQueueQueueGroup           = "service.commitqueue"
 	eventNotifierQueueGroup         = "service.event.notifier"
