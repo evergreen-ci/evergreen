@@ -46,14 +46,14 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, prefix string, getOpts G
 	var its []LogIterator
 	for _, chunkGroup := range chunkGroups {
 		its = append(its, newChunkIterator(chunkIteratorOptions{
-			bucket:     s.bucket,
-			chunks:     chunkGroup,
-			lineParser: s.lineParser(),
-			batchSize:  2,
-			start:      getOpts.Start,
-			end:        getOpts.End,
-			lineLimit:  getOpts.LineLimit,
-			tailN:      getOpts.TailN,
+			bucket:    s.bucket,
+			chunks:    chunkGroup,
+			parser:    s.getParser(),
+			batchSize: 2,
+			start:     getOpts.Start,
+			end:       getOpts.End,
+			lineLimit: getOpts.LineLimit,
+			tailN:     getOpts.TailN,
 		}))
 	}
 
@@ -97,7 +97,7 @@ func (s *logServiceV0) createChunkKey(start, end int64, numLines int) string {
 }
 
 // parseChunkKey returns a chunkInfo object with the information encoded in the
-// given key. The key must have been created by createChunkKey (see above).
+// given key.
 func (s *logServiceV0) parseChunkKey(key string) (chunkInfo, error) {
 	var prefix string
 	if lastIdx := strings.LastIndex(key, "/"); lastIdx >= 0 {
@@ -132,11 +132,15 @@ func (s *logServiceV0) parseChunkKey(key string) (chunkInfo, error) {
 	}, nil
 }
 
-// lineParser returns a function that parses a raw v0 log line into a LogLine
+func (s *logServiceV0) formatRawLine(line LogLine) string {
+	return fmt.Sprintf("%d %d %s", line.Priority, line.Timestamp, line.Data)
+}
+
+// parser returns a function that parses a raw v0 log line into a LogLine
 // struct.
-func (s *logServiceV0) lineParser() func(string) (LogLine, error) {
+func (s *logServiceV0) getParser() lineParser {
 	return func(data string) (LogLine, error) {
-		lineParts := strings.SplitN(data, " ", 2)
+		lineParts := strings.SplitN(data, " ", 3)
 		if len(lineParts) != 3 {
 			return LogLine{}, errors.New("malformed log line")
 		}

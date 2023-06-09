@@ -15,7 +15,7 @@ import (
 type LogReader interface {
 	// NextTimestamp returns the Unix nanosecond timestamp of the next
 	// unread line, if applicable. This should be called after the reader
-	// is exhausted, succesfully returning an io.EOF error. Useful for
+	// is exhausted, successfully returning an io.EOF error. Useful for
 	// pagination.
 	NextTimestamp() *int64
 

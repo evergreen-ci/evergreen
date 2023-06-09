@@ -21,3 +21,5 @@ type LogIterator interface {
 	// iterator is no longer needed.
 	Close() error
 }
+
+type lineParser func(string) (LogLine, error)

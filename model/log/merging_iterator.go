@@ -17,7 +17,7 @@ type mergingIterator struct {
 
 // newMergeIterator returns a LogIterator that merges N logs, passed in as
 // iterators, respecting the order of each line's timestamp.
-func newMergingIterator(iterators ...LogIterator) LogIterator {
+func newMergingIterator(iterators ...LogIterator) *mergingIterator {
 	return &mergingIterator{
 		iterators:    iterators,
 		iteratorHeap: &logIteratorHeap{},
@@ -53,7 +53,7 @@ func (i *mergingIterator) Exhausted() bool {
 	exhaustedCount := 0
 	for _, it := range i.iterators {
 		if it.Exhausted() {
-			exhaustedCount += 1
+			exhaustedCount++
 		}
 	}
 
