@@ -35,6 +35,7 @@ providers:
     # connecting to AWS.
     pod:
       ecs:
+        allowed_images: ["hadjri/evg-container-self-tests"]
         client_type: "mock"
       secrets_manager:
         client_type: "mock"
