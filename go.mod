@@ -52,14 +52,14 @@ require (
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.15.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.15.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.40.0
-	go.opentelemetry.io/otel v1.15.1
+	go.opentelemetry.io/otel v1.16.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.15.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.15.0
-	go.opentelemetry.io/otel/metric v0.38.0
+	go.opentelemetry.io/otel/metric v1.16.0
 	go.opentelemetry.io/otel/sdk v1.15.1
 	go.opentelemetry.io/otel/sdk/metric v0.38.0
-	go.opentelemetry.io/otel/trace v1.15.1
+	go.opentelemetry.io/otel/trace v1.16.0
 	go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto v0.9.0
 	golang.org/x/oauth2 v0.8.0
@@ -86,7 +86,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.33 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.27 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.34 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.19.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.27 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.27 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.22.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.12.10 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.10 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.19.0 // indirect
@@ -188,6 +192,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib v1.16.1 // indirect
+	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.42.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.15.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
