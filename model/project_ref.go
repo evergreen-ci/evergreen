@@ -3193,13 +3193,18 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 	combined := make([]ContainerSecret, len(original))
 	_ = copy(combined, original)
 
-	var numPodSecrets int
 	catcher := grip.NewBasicCatcher()
+	podSecrets := make(map[string]bool)
+	for _, originalSecret := range original {
+		if originalSecret.Type == ContainerSecretPodSecret {
+			podSecrets[originalSecret.Name] = true
+		}
+	}
 	for _, updatedSecret := range toUpdate {
 		name := updatedSecret.Name
 
 		if updatedSecret.Type == ContainerSecretPodSecret {
-			numPodSecrets++
+			podSecrets[name] = true
 		}
 
 		idx := -1
@@ -3236,7 +3241,7 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 		combined = append(combined, updatedSecret)
 	}
 
-	catcher.ErrorfWhen(numPodSecrets > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", numPodSecrets)
+	catcher.ErrorfWhen(len(podSecrets) > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", len(podSecrets))
 
 	return combined, catcher.Resolve()
 }
