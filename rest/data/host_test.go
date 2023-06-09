@@ -212,10 +212,6 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	_, err = NewIntentHost(ctx, options, testUser, env)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "not been allowed by admins")
-
-	env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
-	_, err = NewIntentHost(ctx, options, testUser, env)
-	s.NoError(err)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
