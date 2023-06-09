@@ -438,7 +438,7 @@ func TestPopulateExpansions(t *testing.T) {
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 24)
+	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_github_merge_queue"))
 	assert.False(expansions.Exists("is_commit_queue"))
