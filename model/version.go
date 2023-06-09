@@ -690,7 +690,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings, token string) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -701,14 +701,11 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		Branch:      projectRef.Branch,
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting github oauth token")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var baseManifest *manifest.Manifest
+	var err error
 	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
 	if isPatch {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
@@ -776,7 +773,11 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 
 // CreateManifest inserts a newly constructed manifest into the DB.
 func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings)
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting GitHub token")
+	}
+	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

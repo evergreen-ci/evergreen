@@ -216,6 +216,9 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	if p.IsPRMergePatch() {
 		hash = p.GithubPatchData.MergeCommitSHA
 	}
+	if p.IsGithubMergePatch() {
+		hash = p.GithubMergeData.HeadSHA
+	}
 	opts.Revision = hash
 
 	path := projectRef.RemotePath
@@ -572,7 +575,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		AuthorEmail:         authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings)
+	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings, githubOauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -811,6 +814,10 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 	if p.IsPRMergePatch() {
 		hash = p.GithubPatchData.MergeCommitSHA
 	}
+	if p.IsGithubMergePatch() {
+		hash = p.GithubMergeData.HeadSHA
+	}
+
 	opts := GetProjectOpts{
 		Ref:          projectRef,
 		Token:        githubOauthToken,
@@ -946,7 +953,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 	return errors.Wrap(catcher.Resolve(), "aborting patches")
 }
 
-func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project) string {
+func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project, githubMergePatch bool) string {
 	commitFmtString := "'%s' into '%s/%s:%s'"
 	description := []string{}
 	for _, p := range patches {
@@ -973,7 +980,11 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 		description = []string{"No Commits Added"}
 	}
 
-	return "Commit Queue Merge: " + strings.Join(description, " || ")
+	if githubMergePatch {
+		return "GitHub Merge Queue: " + description[0]
+	} else {
+		return "Commit Queue Merge: " + strings.Join(description, " || ")
+	}
 }
 
 type EnqueuePatch struct {
@@ -1061,7 +1072,7 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {
 		return nil, errors.Wrap(err, "making merge patches from existing patch")
 	}
-	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project)
+	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project, patchDoc.IsGithubMergePatch())
 
 	// verify the commit queue has tasks/variants enabled that match the project
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
