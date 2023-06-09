@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -20,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -68,7 +66,6 @@ type Options struct {
 	AgentSleepInterval     time.Duration
 	MaxAgentSleepInterval  time.Duration
 	Cleanup                bool
-	S3Opts                 pail.S3Options
 	SetupData              apimodels.AgentSetupData
 	CloudProvider          string
 	TraceCollectorEndpoint string
@@ -104,7 +101,6 @@ type taskContext struct {
 	ranSetupGroup  bool
 	taskConfig     *internal.TaskConfig
 	taskDirectory  string
-	logDirectories map[string]interface{}
 	timeout        timeoutInfo
 	project        *model.Project
 	taskModel      *task.Task
@@ -157,13 +153,6 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	if setupData != nil {
 		opts.SetupData = *setupData
 		opts.LogkeeperURL = setupData.LogkeeperURL
-		opts.S3Opts = pail.S3Options{
-			Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
-			Region:      endpoints.UsEast1RegionID,
-			Name:        setupData.S3Bucket,
-			Permissions: pail.S3PermissionsPublicRead,
-			ContentType: "text/plain",
-		}
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
 	}
 
@@ -571,7 +560,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
-	tskCtx = contextWithTaskAttributes(tskCtx, tc.taskConfig.TaskAttributes())
+	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
 	defer span.End()
 
@@ -592,13 +581,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	heartbeat := make(chan string, 1)
 	go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
-	if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, a.opts.CloudProvider) {
-		exitAgent := func() {
-			grip.Info("Spot instance is terminating, so agent is exiting.")
-			os.Exit(1)
-		}
-		go a.startEarlyTerminationWatcher(tskCtx, tc, agentutil.SpotHostWillTerminateSoon, exitAgent, nil)
-	}
 
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
@@ -704,8 +686,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	a.killProcs(ctx, tc, false)
 
 	if tc.logger != nil {
-		err := a.uploadToS3(ctx, tc)
-		tc.logger.Execution().Error(errors.Wrap(err, "uploading log files to S3"))
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
 		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()

@@ -557,9 +557,18 @@ func TestAttachToNewRepo(t *testing.T) {
 
 }
 
+func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentType string) {
+	events, err := MostRecentProjectEvents(project.Id, 10)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, project.Id, events[0].ResourceId)
+	assert.Equal(t, event.EventResourceTypeProject, events[0].ResourceType)
+	assert.Equal(t, attachmentType, events[0].EventType)
+}
+
 func TestAttachToRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, GithubHooksCollection, evergreen.ConfigCollection))
+		evergreen.RoleCollection, user.Collection, GithubHooksCollection, event.EventCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
@@ -592,6 +601,7 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NoError(t, pRef.AttachToRepo(u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
+	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -631,6 +641,7 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NoError(t, pRef.AttachToRepo(u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
+	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
 
 	pRefFromDB, err = FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -657,7 +668,7 @@ func TestDetachFromRepo(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
 		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
@@ -678,7 +689,7 @@ func TestDetachFromRepo(t *testing.T) {
 		},
 		"project variables are updated": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			vars, err := FindOneProjectVars(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, vars)
@@ -698,6 +709,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, repoAlias.Upsert())
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
@@ -729,6 +741,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(repoAliases, pRef.RepoRefId))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 3)
@@ -781,6 +794,7 @@ func TestDetachFromRepo(t *testing.T) {
 			}
 			assert.NoError(t, repoSubscription.Upsert())
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 
 			subs, err := event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
@@ -802,7 +816,7 @@ func TestDetachFromRepo(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, ProjectAliasCollection))
+				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection))
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
@@ -1530,7 +1544,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 
 	// doc doesn't default to repo
 	doc.CommitQueue.Enabled = utility.FalsePtr()
-	assert.NoError(doc.Update())
+	assert.NoError(doc.Upsert())
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
@@ -1979,6 +1993,23 @@ func TestValidateContainerSecrets(t *testing.T) {
 			},
 		}
 		_, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
+		assert.Error(t, err)
+
+		toUpdate = []ContainerSecret{
+			{
+				Name:  "pear",
+				Type:  ContainerSecretPodSecret,
+				Value: "abcde",
+			},
+		}
+		original := []ContainerSecret{
+			{
+				Name:  "dragonfruit",
+				Type:  ContainerSecretPodSecret,
+				Value: "abcde",
+			},
+		}
+		_, err = ValidateContainerSecrets(&settings, projectID, original, toUpdate)
 		assert.Error(t, err)
 	})
 }
@@ -2873,6 +2904,16 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
 	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
 
+	// Test parsley filters and view update
+	update = &ProjectRef{
+		ParsleyFilters: []ParsleyFilter{
+			{Expression: "filter", CaseSensitive: false, ExactMatch: true},
+		},
+		ProjectHealthView: ProjectHealthViewAll,
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	assert.NoError(err)
+
 	// Test private field does not get updated
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
@@ -2883,9 +2924,10 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	projectRef, err = FindBranchProjectRef("iden_")
 	assert.NoError(err)
 	assert.NotNil(t, projectRef)
+	assert.Len(projectRef.ParsleyFilters, 1)
+	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
-
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
@@ -3012,4 +3054,74 @@ func TestGetNextCronTime(t *testing.T) {
 	weekdayCron := "0 0 * * 1-5"
 	_, err = GetNextCronTime(curTime, weekdayCron)
 	assert.NoError(t, err)
+}
+
+func TestSetRepotrackerError(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	}()
+	pRef := ProjectRef{
+		Id:         "id",
+		Identifier: "identifier",
+		RepotrackerError: &RepositoryErrorDetails{
+			InvalidRevision:   "abc123",
+			MergeBaseRevision: "def456",
+		},
+	}
+	require.NoError(t, pRef.Insert())
+	t.Run("OverwritesError", func(t *testing.T) {
+		repotrackerErr := &RepositoryErrorDetails{
+			Exists:            true,
+			InvalidRevision:   "invalid_revision",
+			MergeBaseRevision: "merge_base_revision",
+		}
+		require.NoError(t, pRef.SetRepotrackerError(repotrackerErr))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		require.NotZero(t, dbProjRef.RepotrackerError)
+		assert.Equal(t, *repotrackerErr, *dbProjRef.RepotrackerError)
+	})
+	t.Run("ClearsError", func(t *testing.T) {
+		require.NoError(t, pRef.SetRepotrackerError(&RepositoryErrorDetails{}))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		assert.Empty(t, dbProjRef.RepotrackerError)
+	})
+}
+
+func TestSetContainerSecrets(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	}()
+	pRef := ProjectRef{
+		Id:               "id",
+		Identifier:       "identifier",
+		ContainerSecrets: []ContainerSecret{{Name: "secret"}},
+	}
+	require.NoError(t, pRef.Insert())
+	t.Run("OverwritesContainerSecrets", func(t *testing.T) {
+		secrets := []ContainerSecret{{
+			Name:         "new_secret",
+			Type:         ContainerSecretPodSecret,
+			ExternalName: "external_name",
+			ExternalID:   "external_id",
+		}}
+		require.NoError(t, pRef.SetContainerSecrets(secrets))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		require.NotZero(t, dbProjRef.ContainerSecrets)
+		assert.Equal(t, secrets, dbProjRef.ContainerSecrets)
+	})
+	t.Run("ClearsContainerSecrets", func(t *testing.T) {
+		require.NoError(t, pRef.SetContainerSecrets(nil))
+		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+		assert.Empty(t, dbProjRef.RepotrackerError)
+	})
 }

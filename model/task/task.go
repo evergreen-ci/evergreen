@@ -123,7 +123,9 @@ type Task struct {
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
-	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	// UnattainableDependency caches the contents of DependsOn for more efficient querying.
+	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
+	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
 	// wait for its dependencies to finish before running.
 	OverrideDependencies bool `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
@@ -177,7 +179,13 @@ type Task struct {
 	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
 	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
 
-	// Status represents the various stages the task could be in
+	// Status represents the various stages the task could be in. Note that this
+	// task status is distinct from the way a task status is displayed in the
+	// UI. For example, a task that has failed will have a status of
+	// evergreen.TaskFailed regardless of the specific cause of failure.
+	// However, in the UI, the displayed status supports more granular failure
+	// type such as system failed and setup failed by checking this status and
+	// the task status details.
 	Status    string                  `bson:"status" json:"status"`
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
@@ -248,6 +256,13 @@ type Task struct {
 
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
+
+	// IsEssentialToFinish indicates that this task must finish in order for
+	// the build and version to be considered complete. For example, tasks
+	// selected by the GitHub PR alias must succeed for the GitHub PR requester
+	// before its build or version can be considered complete, but tasks
+	// manually scheduled by the user afterwards are not required.
+	IsEssentialToFinish bool `bson:"is_essential_to_finish" json:"is_essential_to_finish"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -417,7 +432,7 @@ func (t *Task) IsDispatchable() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return t.IsHostTask() && t.Status == evergreen.TaskUndispatched && t.Activated
+	return t.IsHostTask() && t.WillRun()
 }
 
 // IsHostTask returns true if it's a task that runs on hosts.
@@ -463,8 +478,15 @@ func (t *Task) IsContainerDispatchable() bool {
 	return t.isContainerScheduled()
 }
 
-// isContainerTaskScheduled returns whether the task is in a state
-// where it should eventually dispatch to run on a container.
+// isContainerTaskScheduled returns whether the task is in a state where it
+// should eventually dispatch to run on a container and is logically equivalent
+// to IsContainerTaskScheduledQuery. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all container tasks that
+//     could eventually run (i.e. evergreen.TaskWillRun from
+//     (Task).GetDisplayStatus), because a container task is not scheduled until
+//     all of its dependencies have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func (t *Task) isContainerScheduled() bool {
 	if !t.IsContainerTask() {
 		return false
@@ -2173,7 +2195,11 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	}
 
 	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
-		return err
+		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
+	}
+
+	if err := t.RefreshUnattainableDependency(); err != nil {
+		return errors.Wrapf(err, "caching unattainable dependency for task '%s'", t.Id)
 	}
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
@@ -2183,12 +2209,28 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	return nil
 }
 
+// RefreshUnattainableDependency refreshes the contents of the task's UnattainableDependency field
+// by iterating through the task's DependsOn.
+func (t *Task) RefreshUnattainableDependency() error {
+	t.UnattainableDependency = t.hasUnattainableDependency()
+	return updateUnattainableDependency(t.Id, t.UnattainableDependency)
+}
+
+func (t *Task) hasUnattainableDependency() bool {
+	for _, dependency := range t.DependsOn {
+		if dependency.Unattainable {
+			return true
+		}
+	}
+	return false
+}
+
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state
 func AbortBuild(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2226,7 +2268,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 func AbortVersion(versionId string, reason AbortInfo) error {
 	q := bson.M{
 		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2930,18 +2972,27 @@ func (t *Task) Blocked() bool {
 	if t.OverrideDependencies {
 		return false
 	}
-	for _, dependency := range t.DependsOn {
-		if dependency.Unattainable {
-			return true
-		}
-	}
-
-	return false
+	return t.hasUnattainableDependency()
 }
 
-// isUnscheduled returns true if a task is unscheduled and will not run
+// WillRun returns true if the task will run eventually, but has not started
+// running yet. This is logically equivalent to evergreen.TaskWillRun from
+// (Task).GetDisplayStatus.
+func (t *Task) WillRun() bool {
+	return t.Status == evergreen.TaskUndispatched && t.Activated && !t.Blocked()
+}
+
+// IsUnscheduled returns true if a task is unscheduled and will not run. This is
+// logically equivalent to evergreen.TaskUnscheduled from
+// (Task).GetDisplayStatus.
 func (t *Task) IsUnscheduled() bool {
 	return t.Status == evergreen.TaskUndispatched && !t.Activated
+}
+
+// IsInProgress returns true if the task has been dispatched and is about to
+// run, or is already running.
+func (t *Task) IsInProgress() bool {
+	return utility.StringSliceContains(evergreen.TaskInProgressStatuses, t.Status)
 }
 
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
@@ -3060,6 +3111,23 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	}
 
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
+}
+
+// GetFormattedTimeSpent returns the total time_taken and makespan of tasks as a formatted string
+func GetFormattedTimeSpent(tasks []Task) (string, string) {
+	timeTaken, makespan := GetTimeSpent(tasks)
+
+	t := timeTaken.Round(time.Second).String()
+	m := makespan.Round(time.Second).String()
+
+	return formatDuration(t), formatDuration(m)
+}
+
+func formatDuration(duration string) string {
+	regex := regexp.MustCompile(`\d*[dhms]`)
+	return strings.TrimSpace(regex.ReplaceAllStringFunc(duration, func(m string) string {
+		return m + " "
+	}))
 }
 
 type TasksSortOrder struct {

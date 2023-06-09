@@ -1555,7 +1555,6 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
-	S3                   *APIS3Credentials         `json:"s3_credentials"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
@@ -1584,12 +1583,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
-
-		s3Creds := &APIS3Credentials{}
-		if err := s3Creds.BuildFromService(v.S3); err != nil {
-			return errors.Wrap(err, "converting S3 credentials to API model")
-		}
-		a.S3 = s3Creds
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
@@ -1635,19 +1628,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
-
-	i, err = a.S3.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting S3 credentials to service model")
-	}
-	var s3 evergreen.S3Credentials
-	if i != nil {
-		s3, ok = i.(evergreen.S3Credentials)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
-		}
-	}
-	config.S3 = s3
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {
@@ -2257,6 +2237,7 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
 	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
+	LegacyUIProjectPageDisabled     bool `json:"legacy_ui_project_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2545,6 +2526,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
+		as.LegacyUIProjectPageDisabled = v.LegacyUIProjectPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2586,6 +2568,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
 		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
+		LegacyUIProjectPageDisabled:     as.LegacyUIProjectPageDisabled,
 	}, nil
 }
 

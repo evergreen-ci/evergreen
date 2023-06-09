@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -1657,6 +1659,46 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, makespan)
 }
 
+func TestGetFormattedTimeSpent(t *testing.T) {
+	assert := assert.New(t)
+	referenceTime := time.Unix(1136239445, 0)
+	tasks := []Task{
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(time.Hour),
+			TimeTaken:  time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(2 * time.Hour),
+			TimeTaken:  2 * time.Hour,
+		},
+		{
+			DisplayOnly: true,
+			FinishTime:  referenceTime.Add(3 * time.Hour),
+			TimeTaken:   2 * time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: utility.ZeroTime,
+			TimeTaken:  0,
+		},
+		{
+			StartTime:  utility.ZeroTime,
+			FinishTime: utility.ZeroTime,
+			TimeTaken:  0,
+		},
+	}
+
+	timeTaken, makespan := GetFormattedTimeSpent(tasks)
+	assert.Equal("2h 0m 0s", makespan)
+	assert.Equal("3h 0m 0s", timeTaken)
+
+	timeTaken, makespan = GetFormattedTimeSpent(tasks[2:])
+	assert.Equal("0s", makespan)
+	assert.Equal("0s", timeTaken)
+}
+
 func TestUpdateDependsOn(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}
@@ -2657,6 +2699,148 @@ func getTaskThatNeedsContainerAllocation() Task {
 		Activated:         true,
 		ExecutionPlatform: ExecutionPlatformContainer,
 	}
+}
+
+func TestMarkUnattainableDependency(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	t.Run("BlockedDependency", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		dependentTask := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: false,
+				},
+				{
+					TaskId:       "t2",
+					Unattainable: false,
+				},
+			},
+		}
+		require.NoError(t, dependentTask.Insert())
+
+		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", true))
+		assert.True(t, dependentTask.Blocked())
+		assert.True(t, dependentTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.True(t, dependentTask.DependsOn[0].Unattainable)
+		assert.False(t, dependentTask.DependsOn[1].Unattainable)
+
+		dbTask, err := FindOneId("t0")
+		require.NoError(t, err)
+		assert.True(t, dbTask.Blocked())
+		assert.True(t, dbTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.True(t, dbTask.DependsOn[0].Unattainable)
+		assert.False(t, dbTask.DependsOn[1].Unattainable)
+	})
+
+	t.Run("NonExistentDependency", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		dependentTask := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: false,
+				},
+				{
+					TaskId:       "t2",
+					Unattainable: false,
+				},
+			},
+		}
+		require.NoError(t, dependentTask.Insert())
+
+		assert.NoError(t, dependentTask.MarkUnattainableDependency("t3", true))
+		assert.False(t, dependentTask.Blocked())
+		assert.False(t, dependentTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dependentTask.DependsOn[0].Unattainable)
+		assert.False(t, dependentTask.DependsOn[1].Unattainable)
+
+		dbTask, err := FindOneId("t0")
+		require.NoError(t, err)
+		assert.False(t, dbTask.Blocked())
+		assert.False(t, dbTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dbTask.DependsOn[0].Unattainable)
+		assert.False(t, dbTask.DependsOn[1].Unattainable)
+	})
+
+	t.Run("OneDependencyUnblocked", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		dependentTask := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: true,
+				},
+				{
+					TaskId:       "t2",
+					Unattainable: true,
+				},
+			},
+		}
+		require.NoError(t, dependentTask.Insert())
+
+		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", false))
+		assert.True(t, dependentTask.Blocked())
+		assert.True(t, dependentTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dependentTask.DependsOn[0].Unattainable)
+		assert.True(t, dependentTask.DependsOn[1].Unattainable)
+
+		dbTask, err := FindOneId("t0")
+		require.NoError(t, err)
+		assert.True(t, dbTask.Blocked())
+		assert.True(t, dbTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dbTask.DependsOn[0].Unattainable)
+		assert.True(t, dbTask.DependsOn[1].Unattainable)
+	})
+
+	t.Run("AllDependenciesUnblocked", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		dependentTask := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: true,
+				},
+				{
+					TaskId:       "t2",
+					Unattainable: false,
+				},
+			},
+		}
+		require.NoError(t, dependentTask.Insert())
+
+		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", false))
+		assert.False(t, dependentTask.Blocked())
+		assert.False(t, dependentTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dependentTask.DependsOn[0].Unattainable)
+		assert.False(t, dependentTask.DependsOn[1].Unattainable)
+
+		dbTask, err := FindOneId("t0")
+		require.NoError(t, err)
+		assert.False(t, dbTask.Blocked())
+		assert.False(t, dbTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dbTask.DependsOn[0].Unattainable)
+		assert.False(t, dbTask.DependsOn[1].Unattainable)
+	})
 }
 
 func TestSetGeneratedTasksToActivate(t *testing.T) {
@@ -4040,6 +4224,75 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			opts, err := test.tsk.CreateTestResultsTaskOptions()
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedOpts, opts)
+		})
+	}
+}
+
+func TestWillRun(t *testing.T) {
+	t.Run("TaskWillRunIfActivated", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskUndispatched,
+			Activated: true,
+		}
+		assert.True(t, tsk.WillRun())
+	})
+	t.Run("TaskWillNotRunIfDeactivated", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskUndispatched,
+			Activated: false,
+		}
+		assert.False(t, tsk.WillRun())
+	})
+	t.Run("TaskWillNotRunIfItIsAlreadyInProgress", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskStarted,
+			Activated: true,
+		}
+		assert.False(t, tsk.WillRun())
+	})
+	t.Run("TaskWillRunEvenIfDependenciesAreNotYetFinished", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskUndispatched,
+			Activated: true,
+			DependsOn: []Dependency{{Finished: false}},
+		}
+		assert.True(t, tsk.WillRun())
+	})
+	t.Run("TaskWillRunIfAllDependenciesAreMet", func(t *testing.T) {
+		tsk := Task{
+			Status:            evergreen.TaskUndispatched,
+			Activated:         true,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			DependsOn:         []Dependency{{Finished: true, Unattainable: false}},
+		}
+		assert.True(t, tsk.WillRun())
+	})
+	t.Run("TaskWillNotRunIfDependenciesAreUnattainable", func(t *testing.T) {
+		tsk := Task{
+			Status:            evergreen.TaskUndispatched,
+			Activated:         true,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			DependsOn:         []Dependency{{Finished: true, Unattainable: true}},
+		}
+		assert.False(t, tsk.WillRun())
+	})
+}
+
+func TestIsInProgress(t *testing.T) {
+	for _, status := range evergreen.TaskCompletedStatuses {
+		t.Run(fmt.Sprintf("Status%sIsNotInProgress", cases.Title(language.AmericanEnglish).String(status)), func(t *testing.T) {
+			tsk := Task{
+				Status: status,
+			}
+			assert.False(t, tsk.IsInProgress())
+		})
+	}
+	for _, status := range evergreen.TaskInProgressStatuses {
+		t.Run(fmt.Sprintf("Status%sIsInProgress", cases.Title(language.AmericanEnglish).String(status)), func(t *testing.T) {
+			tsk := Task{
+				Status: status,
+			}
+			assert.True(t, tsk.IsInProgress())
 		})
 	}
 }

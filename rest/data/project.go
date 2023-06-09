@@ -139,20 +139,20 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 			"repo":               projectRef.Repo,
 		}))
 	}
-	err = projectRef.Add(u)
-	if err != nil {
+
+	if err = projectRef.Add(u); err != nil {
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
 		}
 	}
 
-	grip.Warning(message.WrapError(tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef), message.Fields{
-		"message":            "failed to copy container secrets to new project",
-		"op":                 "CreateProject",
-		"project_id":         projectRef.Id,
-		"project_identifier": projectRef.Identifier,
-	}))
+	if err = tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef); err != nil {
+		return false, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "copying container secrets for project '%s'", projectRef.Identifier).Error(),
+		}
+	}
 
 	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
@@ -165,8 +165,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 }
 
 func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
-	// TODO (PM-2950): remove this temporary error-checking once the AWS
-	// infrastructure is productionized and AWS admin settings are set.
 	smClient, err := cloud.MakeSecretsManagerClient(settings)
 	if err != nil {
 		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
@@ -178,16 +176,18 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 		return errors.Wrap(err, "setting up Secrets Manager vault to store newly-created project's container secrets")
 	}
 
-	pRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, settings, vault, pRef.Id, existingSecrets)
+	secrets, err := getCopiedContainerSecrets(ctx, settings, vault, pRef.Id, existingSecrets)
 	if err != nil {
 		return errors.Wrapf(err, "copying existing container secrets")
 	}
-	if err := pRef.Update(); err != nil {
-		return errors.Wrapf(err, "updating project ref's container secrets")
+	if err := pRef.SetContainerSecrets(secrets); err != nil {
+		return errors.Wrap(err, "setting container secrets")
 	}
-	// This updates the container secrets in the DB project ref only, not
-	// the in-memory copy.
-	if err := UpsertContainerSecrets(ctx, vault, pRef.ContainerSecrets); err != nil {
+
+	// Under the hood, this is updating the container secrets in the DB project
+	// ref, but this function's copy of the in-memory project ref won't reflect
+	// those changes.
+	if err := UpsertContainerSecrets(ctx, vault, secrets); err != nil {
 		return errors.Wrapf(err, "upserting container secrets")
 	}
 
@@ -427,7 +427,7 @@ func HideBranch(projectID string) error {
 		Enabled:   false,
 		Hidden:    utility.TruePtr(),
 	}
-	if err := skeletonProj.Update(); err != nil {
+	if err := skeletonProj.Upsert(); err != nil {
 		return errors.Wrapf(err, "updating project '%s'", pRef.Id)
 	}
 	if err := model.UpdateAdminRoles(pRef, nil, pRef.Admins); err != nil {

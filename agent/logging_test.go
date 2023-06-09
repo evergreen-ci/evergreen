@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +28,7 @@ func TestGetSenderLocal(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestCommandFileLogging(t *testing.T) {
+func TestAgentFileLogging(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -111,25 +109,6 @@ func TestCommandFileLogging(t *testing.T) {
 	assert.NoError(f.Close())
 	require.NoError(err)
 	assert.Contains(string(bytes), "hello world")
-
-	// mock upload the logs
-	bucket, err := pail.NewLocalBucket(pail.LocalOptions{
-		Path: tmpDirName,
-	})
-	require.NoError(err)
-	require.NoError(agt.uploadLogDir(ctx, tc, bucket, filepath.Join(tmpDirName, taskLogDirectory), ""))
-
-	// verify uploaded log contents
-	f, err = os.Open(fmt.Sprintf("%s/logs/%s/%d/%s/task.log", tmpDirName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, "shell.exec"))
-	require.NoError(err)
-	bytes, err = io.ReadAll(f)
-	assert.NoError(f.Close())
-	require.NoError(err)
-	assert.Contains(string(bytes), "hello world")
-
-	// verify populated URLs
-	assert.Equal("shell.exec", tc.logs.TaskLogURLs[0].Command)
-	assert.Contains(tc.logs.TaskLogURLs[0].URL, "/logs/t1/0/shell.exec/task.log")
 }
 
 func TestStartLogging(t *testing.T) {

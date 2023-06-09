@@ -516,21 +516,6 @@ pre:
   - ...
 ```
 
-### Early Host Termination
-
-You can specify commands to be run in case that the host needs to be
-unexpectedly terminated. Currently, these commands are only called when
-AWS informs evergreen that a specific spot instance will be reclaimed.
-Commands specified here are not guaranteed to be run, and should
-complete well under 2 minutes.
-
-``` yaml
-early_termination:
-- command: shell.exec
-  params:
-    script: "echo 'spot instance is being taken away'"
-```
-
 ### Limiting When a Task Will Run
 
 To limit the conditions when a task will run, the following settings can be
@@ -586,6 +571,9 @@ level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
 including shell scripts.
 
+Expansions cannot be used recursively. In other words, you can't define an
+expansion whose value uses another expansion.
+
 ``` yaml
 command: s3.get
    params:
@@ -621,6 +609,18 @@ replaced with its default value. If there is no default value, the empty
 string will be used. If the default value is prepended with an asterisk
 and that expansion also does not exist, the empty string will also be
 used.
+
+
+Expansions are also case-sensitive.
+
+``` yaml
+command: shell.exec
+   params:
+      working_dir: src
+     script: |
+       echo ${HelloWorld}
+```
+
 
 #### Usage
 
@@ -885,7 +885,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](Project-Commands.md#generate-tasks)
+[generate.tasks](Project-Commands.md#generatetasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
@@ -1351,7 +1351,7 @@ parameters are available:
     not be automatically pulled in to the version.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
-    [`generate.tasks`](Project-Commands.md#generate-tasks) command), then generated tasks will not be included
+    [`generate.tasks`](Project-Commands.md#generatetasks) command), then generated tasks will not be included
     as dependencies.
 
 So, for example:

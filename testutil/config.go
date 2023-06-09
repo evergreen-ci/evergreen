@@ -301,11 +301,6 @@ func MockConfig() *evergreen.Settings {
 					},
 					Prefix: "parser_project_prefix",
 				},
-				S3: evergreen.S3Credentials{
-					Key:    "s3_key",
-					Secret: "s3_secret",
-					Bucket: "s3_bucket",
-				},
 				TaskSync: evergreen.S3Credentials{
 					Key:    "task_sync_key",
 					Secret: "task_sync_secret",
@@ -418,6 +413,7 @@ func MockConfig() *evergreen.Settings {
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
 			LegacyUIPublicAccessDisabled:    true,
+			LegacyUIProjectPageDisabled:     true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

@@ -57,12 +57,14 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"path":    "/graphql/query",
-			"query":   queryPath,
-			"args":    args,
-			"request": gimlet.GetRequestID(ctx),
-		}))
+		if !errors.Is(err, context.Canceled) {
+			grip.Error(message.WrapError(err, message.Fields{
+				"path":    "/graphql/query",
+				"query":   queryPath,
+				"args":    args,
+				"request": gimlet.GetRequestID(ctx),
+			}))
+		}
 		return graphql.DefaultErrorPresenter(ctx, err)
 	})
 	return srv.ServeHTTP

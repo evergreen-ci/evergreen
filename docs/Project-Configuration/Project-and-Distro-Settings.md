@@ -123,6 +123,14 @@ push to each pull request. In order for this to work, you must fill out
 at least 1 row in the section titled "GitHub Patch Definitions," as
 those define what tasks will be run in this patch.
 
+The status of each build and the patch overall will appear as GitHub statuses
+under your pull request. These will update as tasks in your PR complete. All the
+tasks selected by the GitHub patch definition **must** pass for the patch to be
+considered complete (except if they have specific activation conditions like
+`activate: false`). For example, if you unschedule some of the tasks
+automatically configured by the GitHub patch definition, the GitHub build status
+will remain pending until all those tasks finish running.
+
 If you'd like the option of creating patches but wouldn't like it to happen automatically,
 you can enable "Manual Testing".
 
@@ -281,7 +289,10 @@ Options:
 
 - Interval: (Interval or cron required) Evergreen will create a version and run the specified tasks every X hours, with
     X being specified by this field. Unless set to a future time, the first run will happen immediately after the settings are saved.
-- Cron: (Interval or cron required) Evergreen will create a version on the specified cron schedule.
+- Cron: (Interval or cron required) Evergreen will create a version on the specified [cron schedule](https://crontab.guru/)
+  (i.e. Min \| Hour \| DayOfMonth \| Month \| DayOfWeekOptional) in the user's timezone. This also accepts descriptors
+  such as `@daily` (reference [cron](https://godoc.org/github.com/robfig/cron) for more example),
+  but does not accept intervals. (i.e.`@every <duration>`).
 - Config File: The .yml file that defines tasks to run. This can be
     the same one that defines tasks for commits in the project, or a
     different one.
@@ -307,7 +318,7 @@ use performance tooling.
 Enabling this feature allows users to push and pull their task working
 directory to and from a remote store (S3). This can be done either using
 the
-[s3.push](Project-Commands.md#s3-push)
+[s3.push](Project-Commands.md#s3push)
 or
 [s3.pull](Project-Commands.md#s3pull)
 project commands, or using it from [the CLI](../CLI.md#task-sync).

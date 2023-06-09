@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -181,10 +178,6 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		grip.Error(errors.Wrapf(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "making log directory '%s'", in.LogDirectory))
 		logDir = in.LogDirectory
 	}
-	if tc.logDirectories == nil {
-		tc.logDirectories = map[string]interface{}{}
-	}
-	tc.logDirectories[logDir] = nil
 	return client.LogOpts{
 		LogkeeperURL:      a.opts.LogkeeperURL,
 		LogkeeperBuildNum: tc.taskModel.Execution,
@@ -194,83 +187,4 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		SplunkToken:       splunkToken,
 		Filepath:          filepath.Join(logDir, fileName),
 	}
-}
-
-func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
-	if a.opts.S3Opts.Name == "" {
-		return nil
-	}
-	bucket, err := pail.NewS3Bucket(a.opts.S3Opts)
-	if err != nil {
-		return errors.Wrap(err, "creating Pail bucket")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for logDir := range tc.logDirectories {
-		catcher.Wrapf(a.uploadLogDir(ctx, tc, bucket, logDir, ""), "uploading log directory '%s'", logDir)
-	}
-
-	return catcher.Resolve()
-}
-
-func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.Bucket, directoryName, commandName string) error {
-	if tc.taskConfig == nil || tc.taskConfig.Task == nil {
-		return nil
-	}
-	catcher := grip.NewBasicCatcher()
-	if commandName != "" {
-		directoryName = filepath.Join(directoryName, commandName)
-	}
-	dir, err := os.ReadDir(directoryName)
-	if err != nil {
-		catcher.Wrapf(err, "reading log directory '%s'", directoryName)
-		return catcher.Resolve()
-	}
-	for _, f := range dir {
-		if f.IsDir() {
-			catcher.Wrapf(a.uploadLogDir(ctx, tc, bucket, directoryName, f.Name()), "uploading log directory '%s'", f.Name())
-		} else {
-			catcher.Wrapf(a.uploadSingleFile(ctx, tc, bucket, f.Name(), tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, commandName), "uploading log file '%s'", f.Name())
-		}
-	}
-
-	return catcher.Resolve()
-}
-
-func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pail.Bucket, file string, taskID string, execution int, cmd string) error {
-	localDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
-	remotePath := fmt.Sprintf("logs/%s/%s", taskID, strconv.Itoa(execution))
-	if cmd != "" {
-		localDir = filepath.Join(localDir, cmd)
-		remotePath = fmt.Sprintf("%s/%s", remotePath, cmd)
-	}
-	localPath := filepath.Join(localDir, file)
-	_, err := os.Stat(localPath)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	err = bucket.Upload(ctx, fmt.Sprintf("%s/%s", remotePath, file), localPath)
-	if err != nil {
-		return errors.Wrapf(err, "uploading file path '%s' to S3", localPath)
-	}
-	remoteURL := util.S3DefaultURL(a.opts.S3Opts.Name, strings.Join([]string{remotePath, file}, "/"))
-	tc.logger.Execution().Infof("Uploaded file '%s' from local path '%s' to remote path '%s/%s' (%s).", file, localPath, remotePath, file, remoteURL)
-	switch file {
-	case agentLogFileName:
-		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
-			Command: cmd,
-			URL:     remoteURL,
-		})
-	case systemLogFileName:
-		tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, apimodels.LogInfo{
-			Command: cmd,
-			URL:     remoteURL,
-		})
-	case taskLogFileName:
-		tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, apimodels.LogInfo{
-			Command: cmd,
-			URL:     remoteURL,
-		})
-	}
-	return nil
 }

@@ -29,16 +29,16 @@ type AbortInfo struct {
 type BuildBaron struct {
 	BbTicketCreationDefined bool                         `json:"bbTicketCreationDefined"`
 	BuildBaronConfigured    bool                         `json:"buildBaronConfigured"`
-	SearchReturnInfo        *thirdparty.SearchReturnInfo `json:"searchReturnInfo"`
+	SearchReturnInfo        *thirdparty.SearchReturnInfo `json:"searchReturnInfo,omitempty"`
 }
 
 // BuildVariantOptions is an input to the mainlineCommits query.
 // It stores values for statuses, tasks, and variants which are used to filter for matching versions.
 type BuildVariantOptions struct {
-	IncludeBaseTasks *bool    `json:"includeBaseTasks"`
-	Statuses         []string `json:"statuses"`
-	Tasks            []string `json:"tasks"`
-	Variants         []string `json:"variants"`
+	IncludeBaseTasks *bool    `json:"includeBaseTasks,omitempty"`
+	Statuses         []string `json:"statuses,omitempty"`
+	Tasks            []string `json:"tasks,omitempty"`
+	Variants         []string `json:"variants,omitempty"`
 }
 
 type Dependency struct {
@@ -57,17 +57,17 @@ type DisplayTask struct {
 // EditSpawnHostInput is the input to the editSpawnHost mutation.
 // Its fields determine how a given host will be modified.
 type EditSpawnHostInput struct {
-	AddedInstanceTags   []*host.Tag     `json:"addedInstanceTags"`
-	DeletedInstanceTags []*host.Tag     `json:"deletedInstanceTags"`
-	DisplayName         *string         `json:"displayName"`
-	Expiration          *time.Time      `json:"expiration"`
+	AddedInstanceTags   []*host.Tag     `json:"addedInstanceTags,omitempty"`
+	DeletedInstanceTags []*host.Tag     `json:"deletedInstanceTags,omitempty"`
+	DisplayName         *string         `json:"displayName,omitempty"`
+	Expiration          *time.Time      `json:"expiration,omitempty"`
 	HostID              string          `json:"hostId"`
-	InstanceType        *string         `json:"instanceType"`
-	NoExpiration        *bool           `json:"noExpiration"`
-	PublicKey           *PublicKeyInput `json:"publicKey"`
-	SavePublicKey       *bool           `json:"savePublicKey"`
-	ServicePassword     *string         `json:"servicePassword"`
-	Volume              *string         `json:"volume"`
+	InstanceType        *string         `json:"instanceType,omitempty"`
+	NoExpiration        *bool           `json:"noExpiration,omitempty"`
+	PublicKey           *PublicKeyInput `json:"publicKey,omitempty"`
+	SavePublicKey       *bool           `json:"savePublicKey,omitempty"`
+	ServicePassword     *string         `json:"servicePassword,omitempty"`
+	Volume              *string         `json:"volume,omitempty"`
 }
 
 type ExternalLinkForMetadata struct {
@@ -77,13 +77,13 @@ type ExternalLinkForMetadata struct {
 
 type GroupedBuildVariant struct {
 	DisplayName string           `json:"displayName"`
-	Tasks       []*model.APITask `json:"tasks"`
+	Tasks       []*model.APITask `json:"tasks,omitempty"`
 	Variant     string           `json:"variant"`
 }
 
 type GroupedFiles struct {
-	Files    []*model.APIFile `json:"files"`
-	TaskName *string          `json:"taskName"`
+	Files    []*model.APIFile `json:"files,omitempty"`
+	TaskName *string          `json:"taskName,omitempty"`
 }
 
 // GroupedProjects is the return value for the projects & viewableProjectRefs queries.
@@ -91,7 +91,7 @@ type GroupedFiles struct {
 type GroupedProjects struct {
 	GroupDisplayName string                 `json:"groupDisplayName"`
 	Projects         []*model.APIProjectRef `json:"projects"`
-	Repo             *model.APIProjectRef   `json:"repo"`
+	Repo             *model.APIProjectRef   `json:"repo,omitempty"`
 }
 
 // HostEvents is the return value for the hostEvents query.
@@ -104,40 +104,40 @@ type HostEvents struct {
 // HostsResponse is the return value for the hosts query.
 // It contains an array of Hosts matching the filter conditions, as well as some count information.
 type HostsResponse struct {
-	FilteredHostsCount *int             `json:"filteredHostsCount"`
+	FilteredHostsCount *int             `json:"filteredHostsCount,omitempty"`
 	Hosts              []*model.APIHost `json:"hosts"`
 	TotalHostsCount    int              `json:"totalHostsCount"`
 }
 
 type MainlineCommitVersion struct {
-	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions"`
-	Version          *model.APIVersion   `json:"version"`
+	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions,omitempty"`
+	Version          *model.APIVersion   `json:"version,omitempty"`
 }
 
 // MainlineCommits is returned by the mainline commits query.
 // It contains information about versions (both unactivated and activated) which is surfaced on the Project Health page.
 type MainlineCommits struct {
-	NextPageOrderNumber *int                     `json:"nextPageOrderNumber"`
-	PrevPageOrderNumber *int                     `json:"prevPageOrderNumber"`
+	NextPageOrderNumber *int                     `json:"nextPageOrderNumber,omitempty"`
+	PrevPageOrderNumber *int                     `json:"prevPageOrderNumber,omitempty"`
 	Versions            []*MainlineCommitVersion `json:"versions"`
 }
 
 // MainlineCommitsOptions is an input to the mainlineCommits query.
 // Its fields determine what mainline commits we fetch for a given projectID.
 type MainlineCommitsOptions struct {
-	Limit             *int     `json:"limit"`
+	Limit             *int     `json:"limit,omitempty"`
 	ProjectIdentifier string   `json:"projectIdentifier"`
-	Requesters        []string `json:"requesters"`
-	ShouldCollapse    *bool    `json:"shouldCollapse"`
-	SkipOrderNumber   *int     `json:"skipOrderNumber"`
+	Requesters        []string `json:"requesters,omitempty"`
+	ShouldCollapse    *bool    `json:"shouldCollapse,omitempty"`
+	SkipOrderNumber   *int     `json:"skipOrderNumber,omitempty"`
 }
 
 type Manifest struct {
 	ID              string                 `json:"id"`
 	Branch          string                 `json:"branch"`
 	IsBase          bool                   `json:"isBase"`
-	ModuleOverrides map[string]string      `json:"moduleOverrides"`
-	Modules         map[string]interface{} `json:"modules"`
+	ModuleOverrides map[string]string      `json:"moduleOverrides,omitempty"`
+	Modules         map[string]interface{} `json:"modules,omitempty"`
 	Project         string                 `json:"project"`
 	Revision        string                 `json:"revision"`
 }
@@ -154,15 +154,15 @@ type MoveProjectInput struct {
 // It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 type PatchConfigure struct {
 	Description         string                `json:"description"`
-	Parameters          []*model.APIParameter `json:"parameters"`
-	PatchTriggerAliases []string              `json:"patchTriggerAliases"`
+	Parameters          []*model.APIParameter `json:"parameters,omitempty"`
+	PatchTriggerAliases []string              `json:"patchTriggerAliases,omitempty"`
 	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
 }
 
 type PatchDuration struct {
-	Makespan  *string    `json:"makespan"`
-	Time      *PatchTime `json:"time"`
-	TimeTaken *string    `json:"timeTaken"`
+	Makespan  *string    `json:"makespan,omitempty"`
+	Time      *PatchTime `json:"time,omitempty"`
+	TimeTaken *string    `json:"timeTaken,omitempty"`
 }
 
 type PatchProject struct {
@@ -170,8 +170,8 @@ type PatchProject struct {
 }
 
 type PatchTime struct {
-	Finished    *string `json:"finished"`
-	Started     *string `json:"started"`
+	Finished    *string `json:"finished,omitempty"`
+	Started     *string `json:"started,omitempty"`
 	SubmittedAt string  `json:"submittedAt"`
 }
 
@@ -185,9 +185,9 @@ type Patches struct {
 // PatchesInput is the input value to the patches field for the User and Project types.
 // Based on the information in PatchesInput, we return a list of Patches for either an individual user or a project.
 type PatchesInput struct {
-	IncludeCommitQueue *bool    `json:"includeCommitQueue"`
+	IncludeCommitQueue *bool    `json:"includeCommitQueue,omitempty"`
 	Limit              int      `json:"limit"`
-	OnlyCommitQueue    *bool    `json:"onlyCommitQueue"`
+	OnlyCommitQueue    *bool    `json:"onlyCommitQueue,omitempty"`
 	Page               int      `json:"page"`
 	PatchName          string   `json:"patchName"`
 	Statuses           []string `json:"statuses"`
@@ -236,42 +236,42 @@ type SortOrder struct {
 // Its fields determine the properties of the host that will be spawned.
 type SpawnHostInput struct {
 	DistroID                string          `json:"distroId"`
-	Expiration              *time.Time      `json:"expiration"`
-	HomeVolumeSize          *int            `json:"homeVolumeSize"`
+	Expiration              *time.Time      `json:"expiration,omitempty"`
+	HomeVolumeSize          *int            `json:"homeVolumeSize,omitempty"`
 	IsVirtualWorkStation    bool            `json:"isVirtualWorkStation"`
 	NoExpiration            bool            `json:"noExpiration"`
 	PublicKey               *PublicKeyInput `json:"publicKey"`
 	Region                  string          `json:"region"`
 	SavePublicKey           bool            `json:"savePublicKey"`
-	SetUpScript             *string         `json:"setUpScript"`
-	SpawnHostsStartedByTask *bool           `json:"spawnHostsStartedByTask"`
-	TaskID                  *string         `json:"taskId"`
-	TaskSync                *bool           `json:"taskSync"`
-	UseProjectSetupScript   *bool           `json:"useProjectSetupScript"`
-	UserDataScript          *string         `json:"userDataScript"`
-	UseTaskConfig           *bool           `json:"useTaskConfig"`
-	VolumeID                *string         `json:"volumeId"`
+	SetUpScript             *string         `json:"setUpScript,omitempty"`
+	SpawnHostsStartedByTask *bool           `json:"spawnHostsStartedByTask,omitempty"`
+	TaskID                  *string         `json:"taskId,omitempty"`
+	TaskSync                *bool           `json:"taskSync,omitempty"`
+	UseProjectSetupScript   *bool           `json:"useProjectSetupScript,omitempty"`
+	UserDataScript          *string         `json:"userDataScript,omitempty"`
+	UseTaskConfig           *bool           `json:"useTaskConfig,omitempty"`
+	VolumeID                *string         `json:"volumeId,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.
 // Its fields determine the properties of the volume that will be spawned.
 type SpawnVolumeInput struct {
 	AvailabilityZone string     `json:"availabilityZone"`
-	Expiration       *time.Time `json:"expiration"`
-	Host             *string    `json:"host"`
-	NoExpiration     *bool      `json:"noExpiration"`
+	Expiration       *time.Time `json:"expiration,omitempty"`
+	Host             *string    `json:"host,omitempty"`
+	NoExpiration     *bool      `json:"noExpiration,omitempty"`
 	Size             int        `json:"size"`
 	Type             string     `json:"type"`
 }
 
 type Subscriber struct {
-	EmailSubscriber       *string                         `json:"emailSubscriber"`
-	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
-	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
-	JiraCommentSubscriber *string                         `json:"jiraCommentSubscriber"`
-	JiraIssueSubscriber   *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber"`
-	SlackSubscriber       *string                         `json:"slackSubscriber"`
-	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber"`
+	EmailSubscriber       *string                         `json:"emailSubscriber,omitempty"`
+	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber,omitempty"`
+	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber,omitempty"`
+	JiraCommentSubscriber *string                         `json:"jiraCommentSubscriber,omitempty"`
+	JiraIssueSubscriber   *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber,omitempty"`
+	SlackSubscriber       *string                         `json:"slackSubscriber,omitempty"`
+	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber,omitempty"`
 }
 
 // TaskFiles is the return value for the taskFiles query.
@@ -283,15 +283,15 @@ type TaskFiles struct {
 
 // TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
 type TaskFilterOptions struct {
-	BaseStatuses               []string     `json:"baseStatuses"`
-	IncludeEmptyActivation     *bool        `json:"includeEmptyActivation"`
-	IncludeNeverActivatedTasks *bool        `json:"includeNeverActivatedTasks"`
-	Limit                      *int         `json:"limit"`
-	Page                       *int         `json:"page"`
-	Sorts                      []*SortOrder `json:"sorts"`
-	Statuses                   []string     `json:"statuses"`
-	TaskName                   *string      `json:"taskName"`
-	Variant                    *string      `json:"variant"`
+	BaseStatuses               []string     `json:"baseStatuses,omitempty"`
+	IncludeEmptyActivation     *bool        `json:"includeEmptyActivation,omitempty"`
+	IncludeNeverActivatedTasks *bool        `json:"includeNeverActivatedTasks,omitempty"`
+	Limit                      *int         `json:"limit,omitempty"`
+	Page                       *int         `json:"page,omitempty"`
+	Sorts                      []*SortOrder `json:"sorts,omitempty"`
+	Statuses                   []string     `json:"statuses,omitempty"`
+	TaskName                   *string      `json:"taskName,omitempty"`
+	Variant                    *string      `json:"variant,omitempty"`
 }
 
 // TaskLogs is the return value for the task.taskLogs query.
@@ -343,12 +343,12 @@ type TestFilter struct {
 // TestFilterOptions is an input for the task.Tests query.
 // It's used to filter, sort, and paginate test results of a task.
 type TestFilterOptions struct {
-	TestName *string            `json:"testName"`
-	Statuses []string           `json:"statuses"`
-	GroupID  *string            `json:"groupID"`
-	Sort     []*TestSortOptions `json:"sort"`
-	Limit    *int               `json:"limit"`
-	Page     *int               `json:"page"`
+	TestName *string            `json:"testName,omitempty"`
+	Statuses []string           `json:"statuses,omitempty"`
+	GroupID  *string            `json:"groupID,omitempty"`
+	Sort     []*TestSortOptions `json:"sort,omitempty"`
+	Limit    *int               `json:"limit,omitempty"`
+	Page     *int               `json:"page,omitempty"`
 }
 
 // TestSortOptions is an input for the task.Tests query.
@@ -361,9 +361,9 @@ type TestSortOptions struct {
 // UpdateVolumeInput is the input to the updateVolume mutation.
 // Its fields determine how a given volume will be modified.
 type UpdateVolumeInput struct {
-	Expiration   *time.Time `json:"expiration"`
-	Name         *string    `json:"name"`
-	NoExpiration *bool      `json:"noExpiration"`
+	Expiration   *time.Time `json:"expiration,omitempty"`
+	Name         *string    `json:"name,omitempty"`
+	NoExpiration *bool      `json:"noExpiration,omitempty"`
 	VolumeID     string     `json:"volumeId"`
 }
 
@@ -373,10 +373,10 @@ type UpstreamProject struct {
 	Repo        string            `json:"repo"`
 	ResourceID  string            `json:"resourceID"`
 	Revision    string            `json:"revision"`
-	Task        *model.APITask    `json:"task"`
+	Task        *model.APITask    `json:"task,omitempty"`
 	TriggerID   string            `json:"triggerID"`
 	TriggerType string            `json:"triggerType"`
-	Version     *model.APIVersion `json:"version"`
+	Version     *model.APIVersion `json:"version,omitempty"`
 }
 
 // UserConfig is returned by the userConfig query.
@@ -401,8 +401,8 @@ type VersionTasks struct {
 }
 
 type VersionTiming struct {
-	Makespan  *model.APIDuration `json:"makespan"`
-	TimeTaken *model.APIDuration `json:"timeTaken"`
+	Makespan  *model.APIDuration `json:"makespan,omitempty"`
+	TimeTaken *model.APIDuration `json:"timeTaken,omitempty"`
 }
 
 // VolumeHost is the input to the attachVolumeToHost mutation.
@@ -565,6 +565,7 @@ const (
 	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
 	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
 	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
+	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
@@ -579,11 +580,12 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPeriodicBuilds,
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionContainers,
+	ProjectSettingsSectionViewsAndFilters,
 }
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters:
 		return true
 	}
 	return false

@@ -37,7 +37,13 @@ const (
 	evergreenHelpComment    = "evergreen help"
 
 	refTags = "refs/tags/"
+
+	// This will be removed when EVG-19964 is ready.
+	disableMergeGroup = true
 )
+
+// skipCILabels are a set of labels which will skip creating PR patch if part of the commit description or message.
+var skipCILabels = []string{"[skip ci]", "[skip-ci]"}
 
 type githubHookApi struct {
 	queue  amboy.Queue
@@ -69,6 +75,14 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 }
 
 func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
+	payload := getGitHubPayload(r.Context())
+	if payload == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "payload not in context",
+		}
+	}
+
 	gh.eventType = r.Header.Get("X-Github-Event")
 	gh.msgID = r.Header.Get("X-Github-Delivery")
 
@@ -79,18 +93,8 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	body, err := github.ValidatePayload(r, gh.secret)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":  "GitHub hook",
-			"message": "rejecting GitHub webhook",
-			"msg_id":  gh.msgID,
-			"event":   gh.eventType,
-		}))
-		return errors.Wrap(err, "reading and validating GitHub request payload")
-	}
-
-	gh.event, err = github.ParseWebHook(gh.eventType, body)
+	var err error
+	gh.event, err = github.ParseWebHook(gh.eventType, payload)
 	if err != nil {
 		return errors.Wrap(err, "parsing webhook")
 	}
@@ -220,9 +224,57 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "removing hook"))
 			}
 		}
+
+	case *github.MergeGroupEvent:
+		var msg string
+		if disableMergeGroup {
+			msg = "merge group received, skipping"
+		} else {
+			msg = "merge group received, attempting to queue"
+		}
+		grip.Info(message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      event.GetOrg(),
+			"repo":     event.GetRepo(),
+			"base_sha": event.GetMergeGroup().GetBaseSHA(),
+			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+			"message":  msg,
+		})
+
+		// This will be removed when EVG-19964 is ready.
+		if disableMergeGroup {
+			return gimlet.NewJSONResponse(struct{}{})
+		}
+		if err := gh.AddIntentForGithubMerge(event.GetMergeGroup()); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":   "GitHub hook",
+				"msg_id":   gh.msgID,
+				"event":    gh.eventType,
+				"org":      event.GetOrg(),
+				"repo":     event.GetRepo(),
+				"base_sha": event.GetMergeGroup().GetBaseSHA(),
+				"head_sha": event.GetMergeGroup().GetHeadSHA(),
+				"message":  "can't add intent",
+			}))
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
+func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroup) error {
+	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
+	if err != nil {
+		return errors.Wrap(err, "creating GitHub merge intent")
+	}
+	if err := data.AddPatchIntent(intent, gh.queue); err != nil {
+		return errors.Wrap(err, "saving GitHub merge intent")
+	}
+	return nil
 }
 
 // handleComment parses a given comment and takes the relevant action, if it's an Evergreen-tracked comment.
@@ -414,8 +466,24 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy 
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
+	// If there are no errors with the PR, verify that we aren't skipping CI before adding the intent (and send a message).
+	for _, label := range skipCILabels {
+		if strings.Contains(strings.ToLower(pr.GetTitle()), label) ||
+			strings.Contains(strings.ToLower(pr.GetBody()), label) {
+			grip.Info(message.Fields{
+				"message": "skipping CI on PR",
+				"owner":   pr.Base.User.GetLogin(),
+				"repo":    pr.Base.Repo.GetName(),
+				"ref":     pr.Head.GetRef(),
+				"pr_num":  pr.GetNumber(),
+				"label":   label,
+			})
+			return nil
+		}
+	}
+
 	if err := data.AddPatchIntent(ghi, gh.queue); err != nil {
-		return errors.Wrap(err, "saving patch intent")
+		return errors.Wrap(err, "saving GitHub patch intent")
 	}
 
 	return nil

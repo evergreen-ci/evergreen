@@ -11,6 +11,7 @@ import (
 
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -292,6 +293,81 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Nil(p.Restricted)
 }
 
+func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+
+	// fail - empty expression
+	jsonBody := []byte(`{"parsley_filters": [{"expression": "", "case_sensitive": true, "exact_match": false}]}`)
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	errResp := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(errResp.Message, "filter expression must be non-empty")
+
+	// fail - invalid regular expression
+	jsonBody = []byte(`{"parsley_filters": [{"expression": "*", "case_sensitive": true, "exact_match": false}]}`)
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	errResp = (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(errResp.Message, "filter expression '*' is invalid regexp")
+
+	// fail - duplicate filter expressions
+	jsonBody = []byte(`{"parsley_filters": [
+		{"expression": "dupe", "case_sensitive": true, "exact_match": false}, 
+		{"expression": "dupe", "case_sensitive": true, "exact_match": false},
+		{"expression": "also_a_dupe", "case_sensitive": true, "exact_match": false},
+		{"expression": "also_a_dupe", "case_sensitive": true, "exact_match": false}
+	]}`)
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	errResp = (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(errResp.Message, "duplicate filter expression 'dupe'")
+	s.Contains(errResp.Message, "duplicate filter expression 'also_a_dupe'")
+
+	// success
+	jsonBody = []byte(`{"parsley_filters": [{"expression": "filter1", "case_sensitive": true, "exact_match": false}, {"expression": "filter2", "case_sensitive": true, "exact_match": false}]}`)
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	p, err := data.FindProjectById("dimoxinil", true, false)
+	s.NoError(err)
+	s.NotNil(p)
+	s.Len(p.ParsleyFilters, 2)
+}
+
 func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -364,6 +440,14 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
 
+	smClient, err := cloud.MakeSecretsManagerClient(s.env.Settings())
+	s.Require().NoError(err)
+	defer func() {
+		s.Require().NoError(smClient.Close(ctx))
+	}()
+	vault, err := cloud.MakeSecretsManagerVault(smClient)
+	s.Require().NoError(err)
+
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()
 
@@ -396,8 +480,8 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
 
 	externalID := dbProjRef.ContainerSecrets[0].ExternalID
-	s.Require().NotNil(h.vault)
-	initialStoredValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NotNil(vault)
+	initialStoredValue, err := vault.GetValue(ctx, externalID)
 	s.Require().NoError(err)
 	s.NotZero(initialStoredValue)
 
@@ -422,8 +506,8 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
 
 	externalID = dbProjRef.ContainerSecrets[0].ExternalID
-	s.Require().NotNil(h.vault)
-	newStoredValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NotNil(vault)
+	newStoredValue, err := vault.GetValue(ctx, externalID)
 	s.Require().NoError(err)
 	s.NotZero(newStoredValue)
 	s.NotEqual(initialStoredValue, newStoredValue)
@@ -447,7 +531,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(dbProjRef)
 	s.Empty(dbProjRef.ContainerSecrets, "container secret should have been deleted")
 
-	_, err = h.vault.GetValue(ctx, externalID)
+	_, err = vault.GetValue(ctx, externalID)
 	s.Error(err, "secret should have been deleted from the vault")
 }
 
@@ -1016,6 +1100,7 @@ func TestDeleteProject(t *testing.T) {
 			RepoRefId: repo.Id,
 			Enabled:   false,
 			Hidden:    utility.TruePtr(),
+			Private:   utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -1086,7 +1171,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId is populated
 
 	pRef.RepoRefId = ""
-	assert.NoError(t, pRef.Update())
+	assert.NoError(t, pRef.Upsert())
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)
@@ -1160,7 +1245,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId isn't populated
 
 	pRef.RepoRefId = repoRef.Id
-	assert.NoError(t, pRef.Update())
+	assert.NoError(t, pRef.Upsert())
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)

@@ -60,6 +60,7 @@ var (
 	SecondaryDistrosKey            = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
 	BuildVariantKey                = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
+	UnattainableDependencyKey      = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDepsKey                     = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
@@ -110,6 +111,7 @@ var (
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
+	IsEssentialToFinishKey      = bsonutil.MustHaveTag(Task{}, "IsEssentialToFinish")
 )
 
 var (
@@ -737,6 +739,15 @@ func needsContainerAllocation() bson.M {
 	return q
 }
 
+// IsContainerTaskScheduledQuery returns a query indicating if the container is
+// in a state where it is scheduled to run and is logically equivalent to
+// (Task).isContainerScheduled. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all tasks that could
+//     eventually run (i.e. evergreen.TaskWillRun from (Task).GetDisplayStatus),
+//     because a container task is not scheduled until all of its dependencies
+//     have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func IsContainerTaskScheduledQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
@@ -1564,6 +1575,17 @@ func CountActivatedTasksForVersion(versionId string) (int, error) {
 	}))
 }
 
+// HasActivatedDependentTasks returns true if there are active tasks waiting on the given task.
+func HasActivatedDependentTasks(taskId string) (bool, error) {
+	numDependentTasks, err := Count(db.Query(bson.M{
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): taskId,
+		ActivatedKey:            true,
+		OverrideDependenciesKey: bson.M{"$ne": true},
+	}))
+
+	return numDependentTasks > 0, err
+}
+
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	tasks, err := FindWithSort(bson.M{
 		BuildIdKey:   buildId,
@@ -1830,11 +1852,18 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 	return res.Err()
 }
 
+func updateUnattainableDependency(taskID string, unattainableDependency bool) error {
+	return UpdateOne(
+		bson.M{IdKey: taskID},
+		bson.M{"$set": bson.M{UnattainableDependencyKey: unattainableDependency}},
+	)
+}
+
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
 func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1857,7 +1886,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 		bson.M{
 			VersionKey: versionId, // Include to improve query.
 			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 		},
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,
@@ -1868,7 +1897,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 	return err
 }
 
-// HasUnfinishedTaskForVersion returns true if there are any scheduled but
+// HasUnfinishedTaskForVersions returns true if there are any scheduled but
 // unfinished tasks matching the given conditions.
 func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
 	count, err := Count(
