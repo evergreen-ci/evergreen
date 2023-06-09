@@ -1965,6 +1965,18 @@ var StatusIndex = bson.D{
 	},
 }
 
+// StartedByStatusIndex is the started_by_1_status_1 index.
+var StartedByStatusIndex = bson.D{
+	{
+		Key:   StartedByKey,
+		Value: 1,
+	},
+	{
+		Key:   StatusKey,
+		Value: 1,
+	},
+}
+
 func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 	var counts []InactiveHostCounts
 	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &counts)

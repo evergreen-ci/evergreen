@@ -712,7 +712,7 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 // For example, it excludes  setup failures.
 func isValidFailedTaskStatus(status string) bool {
 	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed ||
-		status == evergreen.TaskTimedOut || status == evergreen.TaskTestTimedOut
+		status == evergreen.TaskSystemUnresponse || status == evergreen.TaskTimedOut || status == evergreen.TaskTestTimedOut
 }
 
 func isTestStatusRegression(oldStatus, newStatus string) bool {

@@ -108,25 +108,25 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 	createHostCmds := []apimodels.CreateHost{}
 	catcher := grip.NewBasicCatcher()
 	for _, commandConf := range projectTask.Commands {
-		var createHost *apimodels.CreateHost
+		var cmds []model.PluginCommandConf
 		if commandConf.Function != "" {
-			cmds := proj.Functions[commandConf.Function]
-			for _, cmd := range cmds.List() {
-				createHost, err = createHostFromCommand(cmd)
-				if err != nil {
-					return err
-				}
-				if createHost == nil {
-					continue
-				}
-				createHostCmds = append(createHostCmds, *createHost)
-			}
+			cmds = proj.Functions[commandConf.Function].List()
 		} else {
-			createHost, err = createHostFromCommand(commandConf)
+			cmds = []model.PluginCommandConf{commandConf}
+		}
+		for _, cmd := range cmds {
+			createHost, err := createHostFromCommand(cmd)
 			if err != nil {
 				return err
 			}
 			if createHost == nil {
+				continue
+			}
+			cmdExpansions := util.NewExpansions(commandConf.Vars)
+			cmdExpansions.Update(expansions.Map())
+			err = createHost.Expand(cmdExpansions)
+			if err != nil {
+				catcher.Wrap(err, "handling expansions")
 				continue
 			}
 			createHostCmds = append(createHostCmds, *createHost)
@@ -137,11 +137,6 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 	}
 
 	for _, createHost := range createHostCmds {
-		err = createHost.Expand(expansions)
-		if err != nil {
-			catcher.Wrap(err, "handling expansions")
-			continue
-		}
 		err = createHost.Validate()
 		if err != nil {
 			catcher.Add(err)
@@ -387,9 +382,9 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	for _, mount := range createHost.EBSDevices {
 		ec2Settings.MountPoints = append(ec2Settings.MountPoints, cloud.MountPoint{
 			DeviceName: mount.DeviceName,
-			Size:       int64(mount.SizeGiB),
-			Iops:       int64(mount.IOPS),
-			Throughput: int64(mount.Throughput),
+			Size:       int32(mount.SizeGiB),
+			Iops:       int32(mount.IOPS),
+			Throughput: int32(mount.Throughput),
 			SnapshotID: mount.SnapshotID,
 		})
 	}

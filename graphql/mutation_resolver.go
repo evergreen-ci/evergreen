@@ -773,7 +773,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	}
 	volumeRequest := host.Volume{
 		AvailabilityZone: spawnVolumeInput.AvailabilityZone,
-		Size:             spawnVolumeInput.Size,
+		Size:             int32(spawnVolumeInput.Size),
 		Type:             spawnVolumeInput.Type,
 		CreatedBy:        mustHaveUser(ctx).Id,
 	}
@@ -1174,7 +1174,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 // RemoveItemFromCommitQueue is the resolver for the removeItemFromCommitQueue field.
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
 	username := gimlet.GetUser(ctx).DisplayName()
-	result, err := data.CommitQueueRemoveItem(commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
+	result, err := data.FindAndRemoveCommitQueueItem(commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))

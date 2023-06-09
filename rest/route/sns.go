@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
 	awsECS "github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
@@ -166,22 +166,22 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 			}
 		}
 	case instanceStateChangeType:
-		switch notification.Detail.State {
-		case ec2.InstanceStateNameRunning:
+		switch types.InstanceStateName(notification.Detail.State) {
+		case types.InstanceStateNameRunning:
 			if err := sns.handleInstanceRunning(ctx, notification.Detail.InstanceID, notification.EventTime); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "processing running instance").Error(),
 				}
 			}
-		case ec2.InstanceStateNameTerminated:
+		case types.InstanceStateNameTerminated:
 			if err := sns.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "processing instance termination").Error(),
 				}
 			}
-		case ec2.InstanceStateNameStopped, ec2.InstanceStateNameStopping:
+		case types.InstanceStateNameStopped, types.InstanceStateNameStopping:
 			if err := sns.handleInstanceStopped(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
