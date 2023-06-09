@@ -188,14 +188,16 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"ref":        event.GetRef(),
 			"is_tag":     isTag(event.GetRef()),
 		})
+		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
+		// to ensure we're up-to-date on the commit the tag is being pushed to.
+		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
+		}
 		if isTag(event.GetRef()) {
 			if err := gh.handleGitTag(ctx, event); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling git tag"))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
-		}
-		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 
 	case *github.IssueCommentEvent:
