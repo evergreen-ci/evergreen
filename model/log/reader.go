@@ -22,6 +22,15 @@ type LogReader interface {
 	io.Reader
 }
 
+type logIteratorReader struct {
+	ctx            context.Context
+	it             LogIterator
+	opts           LogIteratorReaderOptions
+	leftOver       []byte
+	totalBytesRead int
+	lastItem       LogLine
+}
+
 // LogIteratorReaderOptions describes the options for creating a LogReader.
 type LogIteratorReaderOptions struct {
 	// PrintTime, when true, prints the timestamp of each log line along
@@ -41,22 +50,14 @@ type LogIteratorReaderOptions struct {
 }
 
 // NewlogIteratorReader returns a LogReader that reads the log lines from the
-// iterator with the given options.
-func NewLogIteratorReader(ctx context.Context, it LogIterator, opts LogIteratorReaderOptions) LogReader {
+// iterator with the given options. It is the responsibility of the caller to
+// close the iterator.
+func NewLogIteratorReader(ctx context.Context, it LogIterator, opts LogIteratorReaderOptions) *logIteratorReader {
 	return &logIteratorReader{
 		ctx:  ctx,
 		it:   it,
 		opts: opts,
 	}
-}
-
-type logIteratorReader struct {
-	ctx            context.Context
-	it             LogIterator
-	opts           LogIteratorReaderOptions
-	leftOver       []byte
-	totalBytesRead int
-	lastItem       LogLine
 }
 
 func (r *logIteratorReader) NextTimestamp() *int64 {
