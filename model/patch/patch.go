@@ -772,8 +772,14 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+// IsCommitQueuePatch returns whether the patch belongs to either Evergreen's
+// commit queue or GitHub's.
 func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch()
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.GithubMergeData.HeadRef != ""
+}
+
+func (p *Patch) IsGithubMergePatch() bool {
+	return p.GithubMergeData.HeadRef != ""
 }
 
 func (p *Patch) IsBackport() bool {

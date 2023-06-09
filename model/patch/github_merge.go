@@ -140,13 +140,24 @@ func (g *githubMergeIntent) GetCalledBy() string {
 
 // NewPatch creates a patch document from a merge intent.
 func (g *githubMergeIntent) NewPatch() *Patch {
+	// TODO Set owner, repo, and branch. Waiting on GitHub support.
+	// Missing merge_group event webhooks.
+	// EVG-19964
+	owner := "TODO"
+	repo := "TODO"
+	branch := "TODO"
 	patchDoc := &Patch{
-		Id:     mgobson.NewObjectId(),
-		Alias:  g.GetAlias(),
-		Status: evergreen.PatchCreated,
+		Id:      mgobson.NewObjectId(),
+		Alias:   g.GetAlias(),
+		Status:  evergreen.PatchCreated,
+		Author:  evergreen.GithubMergeUser,
+		Githash: g.HeadSHA,
 		GithubMergeData: thirdparty.GithubMergeGroup{
 			HeadRef: g.HeadRef,
 			HeadSHA: g.HeadSHA,
+			Owner:   owner,
+			Repo:    repo,
+			Branch:  branch,
 		},
 	}
 	return patchDoc

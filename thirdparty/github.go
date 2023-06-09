@@ -90,6 +90,9 @@ type GithubPatch struct {
 type GithubMergeGroup struct {
 	HeadRef string `bson:"head_ref"`
 	HeadSHA string `bson:"head_sha"`
+	Owner   string `bson:"owner"`
+	Repo    string `bson:"repo"`
+	Branch  string `bson:"branch"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains

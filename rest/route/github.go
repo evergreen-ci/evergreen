@@ -271,7 +271,7 @@ func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroup) error {
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")
 	}
-	if err := data.AddPatchIntent(intent, gh.queue); err != nil {
+	if err := data.AddGithubMergeIntent(intent, gh.queue); err != nil {
 		return errors.Wrap(err, "saving GitHub merge intent")
 	}
 	return nil
