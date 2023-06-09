@@ -436,7 +436,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
