@@ -42,12 +42,13 @@ const (
 )
 
 const (
-	packageName      = "github.com/evergreen-ci/evergreen/thirdparty"
-	ownerAttribute   = "evergreen.github.owner"
-	repoAttribute    = "evergreen.github.repo"
-	refAttribute     = "evergreen.github.ref"
-	pathAttribute    = "evergreen.github.path"
-	retriesAttribute = "evergreen.github.retries"
+	packageName       = "github.com/evergreen-ci/evergreen/thirdparty"
+	endpointAttribute = "evergreen.github.endpoint"
+	ownerAttribute    = "evergreen.github.owner"
+	repoAttribute     = "evergreen.github.repo"
+	refAttribute      = "evergreen.github.ref"
+	pathAttribute     = "evergreen.github.path"
+	retriesAttribute  = "evergreen.github.retries"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -217,11 +218,11 @@ func githubShouldRetry(caller string, retryCount *int, config retryConfig) utili
 func getGithubClient(ctx context.Context, token, caller string, config retryConfig, attributes []attribute.KeyValue) (context.Context, *http.Client, func()) {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
-		"message": "called getGithubClientRetry",
+		"message": "called getGithubClient",
 		"caller":  caller,
 	})
 
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(attributes...))
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(append(attributes, attribute.String(endpointAttribute, caller))...))
 
 	client := utility.GetHTTPClient()
 	originalTransport := client.Transport
