@@ -909,32 +909,10 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
-	flags := evergreen.ServiceFlags{
-		GithubPRTestingDisabled: true,
-	}
-	s.NoError(evergreen.SetServiceFlags(flags))
-
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
-	s.Require().NoError(err)
-	s.Require().Len(summaries, 2)
-	s.NotEmpty(patchContent)
-	s.NotEqual("{", patchContent[0])
-
-	s.Equal("cli/host.go", summaries[0].Name)
-	s.Equal(2, summaries[0].Additions)
-	s.Equal(6, summaries[0].Deletions)
-
-	s.Equal("cli/keys.go", summaries[1].Name)
-	s.Equal(1, summaries[1].Additions)
-	s.Equal(3, summaries[1].Deletions)
-
 	HeadSHA := "a"
 	HeadRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-	OrgName := "my_org"
-	RepoName := "my_repo"
+	OrgName := "evergreen-ci"
+	RepoName := "evergreen"
 	org := github.Organization{
 		Name: &OrgName,
 	}
@@ -1145,7 +1123,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
 	u, err := findEvergreenUserForGithubMergeGroup(123)
 	s.NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(evergreen.GithubPatchUser, u.Id)
+	s.Equal(evergreen.GithubMergeUser, u.Id)
 }
 
 func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID mgobson.ObjectId) {

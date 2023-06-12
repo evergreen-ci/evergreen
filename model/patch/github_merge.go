@@ -161,8 +161,9 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 	if len(split) != 5 {
 		return nil
 	}
+	baseBranch := split[3] // e.g., main
 	// produce a branch name like gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
-	branch := strings.Join([]string{split[2], split[3], split[4]}, "/")
+	headBranch := strings.Join([]string{split[2], split[3], split[4]}, "/")
 	patchDoc := &Patch{
 		Id:      mgobson.NewObjectId(),
 		Alias:   g.GetAlias(),
@@ -170,10 +171,11 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 		Author:  evergreen.GithubMergeUser,
 		Githash: g.HeadSHA,
 		GithubMergeData: thirdparty.GithubMergeGroup{
-			Org:     g.Org,
-			Repo:    g.Repo,
-			Branch:  branch,
-			HeadSHA: g.HeadSHA,
+			Org:        g.Org,
+			Repo:       g.Repo,
+			BaseBranch: baseBranch,
+			HeadBranch: headBranch,
+			HeadSHA:    g.HeadSHA,
 		},
 	}
 	return patchDoc

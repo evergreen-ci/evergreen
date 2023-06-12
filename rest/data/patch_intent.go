@@ -69,7 +69,7 @@ func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 func AddGithubMergeIntent(intent patch.Intent, queue amboy.Queue) error {
 	patchDoc := intent.NewPatch()
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
-		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.Branch)
+		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
