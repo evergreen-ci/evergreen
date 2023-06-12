@@ -132,9 +132,9 @@ type retryConfig struct {
 	retry404 bool
 }
 
-func githubShouldRetry(caller string, retryCount *int, config retryConfig) utility.HTTPRetryFunction {
+func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		*retryCount = index
+		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(retriesAttribute, index))
 
 		if !(config.retry || config.retry404) {
 			return false
@@ -228,11 +228,10 @@ func getGithubClient(ctx context.Context, token, caller string, config retryConf
 	originalTransport := client.Transport
 	client.Transport = otelhttp.NewTransport(client.Transport)
 
-	retryCount := 0
 	return ctx,
 		utility.SetupOauth2CustomHTTPRetryableClient(
 			token,
-			githubShouldRetry(caller, &retryCount, config),
+			githubShouldRetry(caller, config),
 			utility.RetryHTTPDelay(utility.RetryOptions{
 				MaxAttempts: numGithubAttempts,
 				MinDelay:    githubRetryMinDelay,
@@ -242,7 +241,6 @@ func getGithubClient(ctx context.Context, token, caller string, config retryConf
 			client.Transport = originalTransport
 			utility.PutHTTPClient(client)
 
-			span.SetAttributes(attribute.Int(retriesAttribute, retryCount))
 			span.End()
 		}
 }
