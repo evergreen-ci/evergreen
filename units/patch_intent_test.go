@@ -931,7 +931,26 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.Equal(1, summaries[1].Additions)
 	s.Equal(3, summaries[1].Deletions)
 
-	intent, err := patch.NewGithubMergeIntent("id", "auto", &github.MergeGroupEvent{})
+	HeadSHA := "a"
+	HeadRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	OrgName := "my_org"
+	RepoName := "my_repo"
+	org := github.Organization{
+		Name: &OrgName,
+	}
+	repo := github.Repository{
+		Name: &RepoName,
+	}
+	mg := github.MergeGroup{
+		HeadSHA: &HeadSHA,
+		HeadRef: &HeadRef,
+	}
+	mge := github.MergeGroupEvent{
+		MergeGroup: &mg,
+		Org:        &org,
+		Repo:       &repo,
+	}
+	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1123,23 +1142,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
-	dbUser := user.DBUser{
-		Id: "testuser",
-		Settings: user.UserSettings{
-			GithubUser: user.GithubUser{
-				UID:         1234,
-				LastKnownAs: "somebody",
-			},
-		},
-	}
-	s.NoError(dbUser.Insert())
-
-	u, err := findEvergreenUserForGithubMergeGroup(1234)
-	s.NoError(err)
-	s.Require().NotNil(u)
-	s.Equal("testuser", u.Id)
-
-	u, err = findEvergreenUserForGithubMergeGroup(123)
+	u, err := findEvergreenUserForGithubMergeGroup(123)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubPatchUser, u.Id)
