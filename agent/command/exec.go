@@ -173,7 +173,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
 		for k, v := range expansions {
-			if k == evergreen.GlobalGitHubTokenExpansion || k == evergreen.GithubAppToken {
+			if k == evergreen.GlobalGitHubTokenExpansion {
 				//users should not be able to use the global github token expansion
 				//as it can result in the breaching of Evergreen's GitHub API limit
 				continue
@@ -183,7 +183,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	}
 
 	for _, expName := range opts.includeExpansionsInEnv {
-		if val, ok := expansions[expName]; ok && expName != evergreen.GlobalGitHubTokenExpansion && expName != evergreen.GithubAppToken {
+		if val, ok := expansions[expName]; ok && expName != evergreen.GlobalGitHubTokenExpansion {
 			env[expName] = val
 		}
 	}
