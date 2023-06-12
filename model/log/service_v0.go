@@ -132,11 +132,12 @@ func (s *logServiceV0) parseChunkKey(key string) (chunkInfo, error) {
 	}, nil
 }
 
+// formatRawLing returns a log line in the raw storage format.
 func (s *logServiceV0) formatRawLine(line LogLine) string {
 	return fmt.Sprintf("%d %d %s", line.Priority, line.Timestamp, line.Data)
 }
 
-// parser returns a function that parses a raw v0 log line into a LogLine
+// getParser returns a function that parses a raw v0 log line into a LogLine
 // struct.
 func (s *logServiceV0) getParser() lineParser {
 	return func(data string) (LogLine, error) {

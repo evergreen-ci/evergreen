@@ -73,10 +73,15 @@ func TestLogIteratorReader(t *testing.T) {
 			),
 			opts: LogIteratorReaderOptions{SoftSizeLimit: 5000},
 			expectedLines: func() []LogLine {
+				// With a soft size limit 5000 bytes and 100
+				// character lines grouped into batches of
+				// three with the same timestamp, we should
+				// read the first 51 lines. This tests that the
+				// reader accounts correctly for streams with
+				// overlapping timestamps after hitting the
+				// soft size limit.
 				var mergedLines []LogLine
-				for i := 0; i < 17; i++ { // Soft size limit 5000 bytes => 51 lines each 100 characters.
-					// This ensures we have overlapping
-					// timestamps.
+				for i := 0; i < 17; i++ {
 					mergedLines = append(mergedLines, lines[i], lines[i], lines[i])
 				}
 				return mergedLines

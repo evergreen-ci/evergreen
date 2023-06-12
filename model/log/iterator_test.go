@@ -508,7 +508,6 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 
 var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-// TODO: Better way to do this?
 func newRandCharSetString(length int) string {
 	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
