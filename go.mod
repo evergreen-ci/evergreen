@@ -2,8 +2,6 @@ module github.com/evergreen-ci/evergreen
 
 go 1.20
 
-replace github.com/evergreen-ci/utility => /Users/jonathan.brill/repos/utility
-
 require (
 	github.com/99designs/gqlgen v0.17.31
 	github.com/PuerkitoBio/rehttp v1.1.0

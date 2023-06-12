@@ -211,8 +211,9 @@ func githubShouldRetry(caller string, retryCount *int, config retryConfig) utili
 	}
 }
 
-// getGithubClient will retry github operations if the error is temporary, resp is nil,
-// or we hit a bad gateway error.
+// getGithubClient returns an *http.Client that will retry according to supplied retryConfig.
+// Also creates a span tracking the lifespan of the client.
+// Defer the returned function to release the client to the pool and close the span.
 func getGithubClient(ctx context.Context, token, caller string, config retryConfig, attributes []attribute.KeyValue) (context.Context, *http.Client, func()) {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
