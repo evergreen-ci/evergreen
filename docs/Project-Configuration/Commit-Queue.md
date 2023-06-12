@@ -71,7 +71,7 @@ Pass in either a single commit hash, or a range `<commit_hash1>..<commit_hash2>`
 * `--force` 
 
 This flag forces the patch to the front of the queue. Use this sparingly and only for urgent scenarios, such as an urgent revert.
-When trying to use this flag with a paused patch, use use this flag along with the `--resume` flag and not the `--pause` flag.
+When trying to use this flag with a paused patch, use this flag along with the `--resume` flag and not the `--pause` flag.
 
 #### Feedback
 The merge is performed by a "Commit Queue Merge" task added to the patch when the changes reach the head of the queue.
