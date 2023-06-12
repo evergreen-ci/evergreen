@@ -88,11 +88,6 @@ func (it *chunkIterator) Next() bool {
 				it.exhausted = !it.catcher.HasErrors()
 				return false
 			}
-
-			if err := it.skipOffsetLines(); err != nil {
-				it.catcher.Add(err)
-				return false
-			}
 		}
 
 		data, err := it.reader.ReadString('\n')
@@ -115,13 +110,18 @@ func (it *chunkIterator) Next() bool {
 			it.catcher.Wrap(err, "getting next line")
 			return false
 		}
+		it.chunkLineCount++
+
+		if it.lineOffset > 0 {
+			it.lineOffset--
+			continue
+		}
 
 		item, err := it.opts.parser(data)
 		if err != nil {
 			it.catcher.Wrap(err, "parsing log line")
 			return false
 		}
-		it.chunkLineCount++
 		it.lineCount++
 
 		if it.opts.end > 0 && item.Timestamp > it.opts.end {
@@ -132,21 +132,10 @@ func (it *chunkIterator) Next() bool {
 			it.item = item
 			break
 		}
+
 	}
 
 	return true
-}
-
-func (it *chunkIterator) skipOffsetLines() error {
-	for it.lineOffset > 0 {
-		if _, err := it.reader.ReadString('\n'); err != nil {
-			return errors.Wrap(err, "skipping offset lines")
-		}
-		it.lineOffset--
-		it.chunkLineCount++
-	}
-
-	return nil
 }
 
 func (it *chunkIterator) worker(ctx context.Context) {
