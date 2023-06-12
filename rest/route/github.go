@@ -247,7 +247,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if disableMergeGroup {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
-		if err := gh.AddIntentForGithubMerge(event.GetMergeGroup()); err != nil {
+		if err := gh.AddIntentForGithubMerge(event); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":   "GitHub hook",
 				"msg_id":   gh.msgID,
@@ -266,7 +266,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 }
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
-func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroup) error {
+func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroupEvent) error {
 	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")

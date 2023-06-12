@@ -88,11 +88,10 @@ type GithubPatch struct {
 
 // GithubMergeGroup stores patch data for patches created from GitHub merge groups
 type GithubMergeGroup struct {
-	HeadRef string `bson:"head_ref"`
-	HeadSHA string `bson:"head_sha"`
-	Owner   string `bson:"owner"`
+	Org     string `bson:"org"`
 	Repo    string `bson:"repo"`
 	Branch  string `bson:"branch"`
+	HeadSHA string `bson:"head_sha"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains

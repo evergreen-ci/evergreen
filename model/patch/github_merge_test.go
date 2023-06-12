@@ -15,36 +15,48 @@ func TestGithubMergeIntent(t *testing.T) {
 	defer func() {
 		require.NoError(t, db.Clear(IntentCollection))
 	}()
-	for tName, tCase := range map[string]func(t *testing.T, mg *github.MergeGroup){
-		"EmptyMessageDeliveryIDErrors": func(t *testing.T, mg *github.MergeGroup) {
-			intent, err := NewGithubMergeIntent("", "auto", mg)
+	for tName, tCase := range map[string]func(t *testing.T, mge *github.MergeGroupEvent){
+		"EmptyMessageDeliveryIDErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
+			intent, err := NewGithubMergeIntent("", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
-		"EmptyCallerErrors": func(t *testing.T, mg *github.MergeGroup) {
-			intent, err := NewGithubMergeIntent("abc123", "", mg)
+		"EmptyCallerErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
+			intent, err := NewGithubMergeIntent("abc123", "", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
-		"MissingHeadRefErrors": func(t *testing.T, mg *github.MergeGroup) {
-			mg.HeadRef = nil
-			intent, err := NewGithubMergeIntent("abc123", "auto", mg)
+		"MissingHeadRefErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
+			mge.MergeGroup.HeadRef = nil
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
-		"MissingHeadSHAErrors": func(t *testing.T, mg *github.MergeGroup) {
-			mg.HeadSHA = nil
-			intent, err := NewGithubMergeIntent("abc123", "auto", mg)
+		"MissingHeadSHAErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
+			mge.MergeGroup.HeadSHA = nil
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
-		"CorrectArgsSucceed": func(t *testing.T, mg *github.MergeGroup) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mg)
+		"MissingOrgErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
+			mge.Org.Name = nil
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			assert.Nil(t, intent)
+			assert.Error(t, err)
+		},
+		"MissingRepoErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
+			mge.Repo.Name = nil
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			assert.Nil(t, intent)
+			assert.Error(t, err)
+		},
+		"CorrectArgsSucceed": func(t *testing.T, mge *github.MergeGroupEvent) {
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 		},
-		"RoundTrip": func(t *testing.T, mg *github.MergeGroup) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mg)
+		"RoundTrip": func(t *testing.T, mge *github.MergeGroupEvent) {
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 			assert.NoError(t, intent.Insert())
@@ -54,8 +66,8 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Len(t, intents, 1)
 			assert.Equal(t, intent, &intents[0])
 		},
-		"SetProcessed": func(t *testing.T, mg *github.MergeGroup) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mg)
+		"SetProcessed": func(t *testing.T, mge *github.MergeGroupEvent) {
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.False(t, intent.IsProcessed())
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
@@ -67,8 +79,8 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Len(t, intents, 1)
 			assert.True(t, intents[0].IsProcessed())
 		},
-		"Accessors": func(t *testing.T, mg *github.MergeGroup) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mg)
+		"Accessors": func(t *testing.T, mge *github.MergeGroupEvent) {
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 			assert.Equal(t, GithubMergeIntentType, intent.GetType())
@@ -84,26 +96,39 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Equal(t, "auto", intent.GetCalledBy())
 			assert.Equal(t, evergreen.CommitQueueAlias, intent.GetAlias())
 		},
-		"NewPatch": func(t *testing.T, mg *github.MergeGroup) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mg)
+		"NewPatch": func(t *testing.T, mge *github.MergeGroupEvent) {
+			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 			assert.NoError(t, intent.Insert())
 			p := intent.NewPatch()
 			assert.Equal(t, evergreen.CommitQueueAlias, p.Alias)
-			assert.Equal(t, *mg.HeadSHA, p.GithubMergeData.HeadSHA)
-			assert.Equal(t, *mg.HeadRef, p.GithubMergeData.HeadRef)
+			assert.Equal(t, *mge.MergeGroup.HeadSHA, p.GithubMergeData.HeadSHA)
+			// TODO
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.Clear(IntentCollection))
 			HeadSHA := "a"
-			HeadRef := "b"
+			HeadRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+			OrgName := "my_org"
+			RepoName := "my_repo"
+			org := github.Organization{
+				Name: &OrgName,
+			}
+			repo := github.Repository{
+				Name: &RepoName,
+			}
 			mg := github.MergeGroup{
 				HeadSHA: &HeadSHA,
 				HeadRef: &HeadRef,
 			}
-			tCase(t, &mg)
+			mge := github.MergeGroupEvent{
+				MergeGroup: &mg,
+				Org:        &org,
+				Repo:       &repo,
+			}
+			tCase(t, &mge)
 		})
 	}
 }

@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -47,28 +48,42 @@ type githubMergeIntent struct {
 
 	// HeadHash is the SHA of the head of the merge group. Evergreen checks this out.
 	HeadSHA string `bson:"head_hash"`
+
+	// Owner is the GitHub repository organization name.
+	Org string `bson:"org"`
+
+	// Repo is the GitHub repository name
+	Repo string `bson:"repo"`
 }
 
 // NewGithubIntent creates an Intent from a google/go-github MergeGroup.
-func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeGroup) (Intent, error) {
+func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeGroupEvent) (Intent, error) {
 	if msgDeliveryID == "" {
 		return nil, errors.New("message ID cannot be empty")
 	}
 	if caller == "" {
 		return nil, errors.New("empty caller errors")
 	}
-	if mg.GetHeadRef() == "" {
+	if mg.GetOrg().GetName() == "" {
+		return nil, errors.New("merge group org name cannot be empty")
+	}
+	if mg.GetRepo().GetName() == "" {
+		return nil, errors.New("merge group repo name cannot be empty")
+	}
+	if headRef := mg.GetMergeGroup().GetHeadRef(); headRef == "" {
 		return nil, errors.New("merge group head ref cannot be empty")
 	}
-	if mg.GetHeadSHA() == "" {
+	if mg.GetMergeGroup().GetHeadSHA() == "" {
 		return nil, errors.New("head ref cannot be empty")
 	}
 	return &githubMergeIntent{
 		DocumentID: msgDeliveryID,
 		MsgID:      msgDeliveryID,
 		IntentType: GithubMergeIntentType,
-		HeadRef:    mg.GetHeadRef(),
-		HeadSHA:    mg.GetHeadSHA(),
+		Org:        mg.GetOrg().GetName(),
+		Repo:       mg.GetRepo().GetName(),
+		HeadRef:    mg.GetMergeGroup().GetHeadRef(),
+		HeadSHA:    mg.GetMergeGroup().GetHeadSHA(),
 		CalledBy:   caller,
 	}, nil
 }
@@ -140,12 +155,14 @@ func (g *githubMergeIntent) GetCalledBy() string {
 
 // NewPatch creates a patch document from a merge intent.
 func (g *githubMergeIntent) NewPatch() *Patch {
-	// TODO Set owner, repo, and branch. Waiting on GitHub support.
-	// Missing merge_group event webhooks.
-	// EVG-19964
-	owner := "TODO"
-	repo := "TODO"
-	branch := "TODO"
+	// merge_group.head_ref looks like this:
+	// refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
+	split := strings.Split(g.HeadRef, "/")
+	if len(split) != 5 {
+		return nil
+	}
+	// produce a branch name like gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
+	branch := strings.Join([]string{split[2], split[3], split[4]}, "/")
 	patchDoc := &Patch{
 		Id:      mgobson.NewObjectId(),
 		Alias:   g.GetAlias(),
@@ -153,11 +170,10 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 		Author:  evergreen.GithubMergeUser,
 		Githash: g.HeadSHA,
 		GithubMergeData: thirdparty.GithubMergeGroup{
-			HeadRef: g.HeadRef,
-			HeadSHA: g.HeadSHA,
-			Owner:   owner,
-			Repo:    repo,
+			Org:     g.Org,
+			Repo:    g.Repo,
 			Branch:  branch,
+			HeadSHA: g.HeadSHA,
 		},
 	}
 	return patchDoc

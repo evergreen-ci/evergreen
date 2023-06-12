@@ -119,7 +119,9 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				msg["pr_number"] = patchDoc.GithubPatchData.PRNumber
 				msg["commit"] = patchDoc.GithubPatchData.HeadHash
 			} else if j.IntentType == patch.GithubMergeIntentType {
-				msg["head_ref"] = patchDoc.GithubMergeData.HeadRef
+				msg["owner"] = patchDoc.GithubMergeData.Org
+				msg["repo"] = patchDoc.GithubMergeData.Repo
+				msg["branch"] = patchDoc.GithubMergeData.Branch
 				msg["head_sha"] = patchDoc.GithubMergeData.HeadSHA
 			}
 			grip.Error(message.WrapError(err, msg))
@@ -917,16 +919,16 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		}))
 	}()
 
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Owner,
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.Branch)
 	if err != nil {
 		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
-			patchDoc.GithubMergeData.Owner, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.Branch,
+			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.Branch,
 		)
 	}
 	if projectRef == nil {
 		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' not found",
-			patchDoc.GithubMergeData.Owner, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.Branch)
+			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.Branch)
 	}
 	j.user, err = findEvergreenUserForGithubMergeGroup(patchDoc.GithubPatchData.AuthorUID)
 	if err != nil {

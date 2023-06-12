@@ -68,7 +68,7 @@ func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 
 func AddGithubMergeIntent(intent patch.Intent, queue amboy.Queue) error {
 	patchDoc := intent.NewPatch()
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Owner,
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.Branch)
 	if err != nil {
 		return gimlet.ErrorResponse{
