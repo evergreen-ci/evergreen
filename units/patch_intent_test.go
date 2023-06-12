@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -908,6 +909,61 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
+	flags := evergreen.ServiceFlags{
+		GithubPRTestingDisabled: true,
+	}
+	s.NoError(evergreen.SetServiceFlags(flags))
+
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
+	s.Require().NoError(err)
+	s.Require().Len(summaries, 2)
+	s.NotEmpty(patchContent)
+	s.NotEqual("{", patchContent[0])
+
+	s.Equal("cli/host.go", summaries[0].Name)
+	s.Equal(2, summaries[0].Additions)
+	s.Equal(6, summaries[0].Deletions)
+
+	s.Equal("cli/keys.go", summaries[1].Name)
+	s.Equal(1, summaries[1].Additions)
+	s.Equal(3, summaries[1].Deletions)
+
+	intent, err := patch.NewGithubMergeIntent("id", "auto", &github.MergeGroupEvent{})
+
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
+
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
+
+	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	s.NoError(err)
+	s.Require().NotNil(dbPatch)
+	s.True(patchDoc.Activated, "patch should be finalized")
+
+	s.verifyPatchDoc(dbPatch, j.PatchID)
+	s.projectExists(j.PatchID.Hex())
+
+	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
+	s.verifyParserProjectDoc(dbPatch)
+
+	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester)
+
+	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
+
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.Require().Empty(out)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
