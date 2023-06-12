@@ -907,6 +907,9 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	s.Equal([]string{"t1", "t2", "t3", "t4"}, currentPatchDoc.Tasks)
 }
 
+func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
+}
+
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
@@ -1058,6 +1061,29 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 	s.Equal("testuser", u.Id)
 
 	u, err = findEvergreenUserForPR(123)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(evergreen.GithubPatchUser, u.Id)
+}
+
+func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
+	dbUser := user.DBUser{
+		Id: "testuser",
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID:         1234,
+				LastKnownAs: "somebody",
+			},
+		},
+	}
+	s.NoError(dbUser.Insert())
+
+	u, err := findEvergreenUserForGithubMergeGroup(1234)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal("testuser", u.Id)
+
+	u, err = findEvergreenUserForGithubMergeGroup(123)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubPatchUser, u.Id)
