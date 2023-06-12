@@ -106,7 +106,8 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Equal(t, *mge.MergeGroup.HeadSHA, p.GithubMergeData.HeadSHA)
 			assert.Equal(t, *mge.Org.Name, p.GithubMergeData.Org)
 			assert.Equal(t, *mge.Repo.Name, p.GithubMergeData.Repo)
-			assert.Equal(t, "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056", p.GithubMergeData.Branch)
+			assert.Equal(t, "main", p.GithubMergeData.BaseBranch)
+			assert.Equal(t, "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056", p.GithubMergeData.HeadBranch)
 			// TODO
 		},
 	} {
