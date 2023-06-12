@@ -92,7 +92,7 @@ func (s *logServiceV0) getChunkGroups(ctx context.Context, prefix string) (map[s
 }
 
 // createChunkKey returns a pail-backed bucket storage key that encodes the
-// given log chunk information. This is used primarily for fething logs.
+// given log chunk information. This is used primarily for fetching logs.
 func (s *logServiceV0) createChunkKey(start, end int64, numLines int) string {
 	return fmt.Sprintf("%d_%d_%d", start, end, numLines)
 }
