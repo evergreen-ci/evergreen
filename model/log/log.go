@@ -72,13 +72,13 @@ func GetTaskLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOp
 // StreamFromLogIterator streams log lines from the given iterator to the
 // returned channel. It is the responsibility of the caller to close the
 // iterator.
-func StreamFromLogIterator(ctx context.Context, it LogIterator) chan LogLine {
+func StreamFromLogIterator(it LogIterator) chan LogLine {
 	logLines := make(chan LogLine)
 	go func() {
 		defer recovery.LogStackTraceAndContinue("streaming lines from log iterator")
 		defer close(logLines)
 
-		for it.Next(ctx) {
+		for it.Next() {
 			logLines <- it.Item()
 		}
 

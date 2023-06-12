@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"runtime"
-	"sync"
 
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -22,116 +20,118 @@ type chunkInfo struct {
 }
 
 type chunkIterator struct {
-	opts            chunkIteratorOptions
-	chunkIndex      int
-	keyIndex        int
-	lineCountOffset int
-	lineCount       int
-	chunkLineCount  int
-	readers         map[string]io.ReadCloser
-	reader          *bufio.Reader
-	currentItem     LogLine
-	catcher         grip.Catcher
-	exhausted       bool
-	closed          bool
+	opts           chunkIteratorOptions
+	idx            int
+	lineOffset     int
+	lineCount      int
+	chunkLineCount int
+	next           chan io.ReadCloser
+	reader         *chunkReader
+	item           LogLine
+	catcher        grip.Catcher
+	exhausted      bool
+	closed         bool
 }
 
 type chunkIteratorOptions struct {
 	bucket    pail.Bucket
 	chunks    []chunkInfo
 	parser    lineParser
-	batchSize int
 	start     int64
 	end       int64
 	lineLimit int
 	tailN     int
 }
 
-// newChunkIterator returns a LogIterator that fetches batches (size set by the
-// caller) of chunks from blob storage in parallel while iterating over lines
-// of a log.
-func newChunkIterator(opts chunkIteratorOptions) *chunkIterator {
-	var lineCountOffset int
+// newChunkIterator returns a LogIterator that iterates over lines of a log
+// stored as a set of chunks in pail-backed bucket storage.
+func newChunkIterator(ctx context.Context, opts chunkIteratorOptions) *chunkIterator {
+	var lineOffset int
 	if opts.start > 0 || opts.end > 0 {
 		opts.chunks = filterChunksByTimeRange(opts.chunks, opts.start, opts.end)
 	}
 	if opts.tailN > 0 {
-		opts.chunks, lineCountOffset = filterChunksByTailN(opts.chunks, opts.tailN)
+		opts.chunks, lineOffset = filterChunksByTailN(opts.chunks, opts.tailN)
 	}
 	if opts.lineLimit > 0 {
 		opts.chunks = filterChunksByLimit(opts.chunks, opts.lineLimit)
 	}
 
-	return &chunkIterator{
-		opts:            opts,
-		lineCountOffset: lineCountOffset,
-		catcher:         grip.NewBasicCatcher(),
+	it := &chunkIterator{
+		opts:       opts,
+		lineOffset: lineOffset,
+		next:       make(chan io.ReadCloser, 1),
+		catcher:    grip.NewBasicCatcher(),
 	}
+	go it.worker(ctx)
+
+	return it
 }
 
-func (i *chunkIterator) Next(ctx context.Context) bool {
-	if i.closed || i.exhausted {
+func (it *chunkIterator) Next() bool {
+	if it.closed || it.exhausted {
 		return false
 	}
-	if i.opts.lineLimit > 0 && i.lineCount == i.opts.lineLimit {
-		i.exhausted = true
+	if it.opts.lineLimit > 0 && it.lineCount == it.opts.lineLimit {
+		it.exhausted = true
 		return false
 	}
 
 	for {
-		if i.reader == nil {
-			if i.keyIndex >= len(i.opts.chunks) {
-				i.exhausted = true
-				return false
-			}
-
-			r, ok := i.readers[i.opts.chunks[i.keyIndex].key]
+		if it.reader == nil {
+			r, ok := <-it.next
 			if !ok {
-				if err := i.getNextBatch(ctx); err != nil {
-					i.catcher.Add(err)
-					return false
-				}
-				continue
+				// If the next channel is closed and there are
+				// no errors, this means that the worker go
+				// routine successfully exhausted all of the
+				// chunks.
+				it.exhausted = !it.catcher.HasErrors()
+				return false
 			}
 
-			i.reader = bufio.NewReader(r)
-			if err := i.skipLines(); err != nil {
-				i.catcher.Add(err)
+			it.reader = newChunkReader(r)
+			if err := it.skipOffsetLines(); err != nil {
+				it.catcher.Add(err)
 				return false
 			}
 		}
 
-		data, err := i.reader.ReadString('\n')
+		data, err := it.reader.ReadString('\n')
 		if err == io.EOF {
-			if i.chunkLineCount != i.opts.chunks[i.keyIndex].numLines {
-				i.catcher.Add(errors.New("corrupt data"))
+			if it.chunkLineCount != it.opts.chunks[it.idx].numLines {
+				it.catcher.Add(errors.New("corrupt data"))
+				return false
+			}
+			if err = it.reader.Close(); err != nil {
+				it.catcher.Add(err)
+				return false
 			}
 
-			i.reader = nil
-			i.chunkLineCount = 0
-			i.keyIndex++
-			return i.Next(ctx)
+			it.reader = nil
+			it.chunkLineCount = 0
+			it.idx++
+			return it.Next()
 
 		}
 		if err != nil {
-			i.catcher.Wrap(err, "getting next line")
+			it.catcher.Wrap(err, "getting next line")
 			return false
 		}
 
-		item, err := i.opts.parser(data)
+		item, err := it.opts.parser(data)
 		if err != nil {
-			i.catcher.Wrap(err, "parsing log line")
+			it.catcher.Wrap(err, "parsing log line")
 			return false
 		}
-		i.chunkLineCount++
-		i.lineCount++
+		it.chunkLineCount++
+		it.lineCount++
 
-		if i.opts.end > 0 && item.Timestamp > i.opts.end {
-			i.exhausted = true
+		if it.opts.end > 0 && item.Timestamp > it.opts.end {
+			it.exhausted = true
 			return false
 		}
-		if item.Timestamp >= i.opts.start {
-			i.currentItem = item
+		if item.Timestamp >= it.opts.start {
+			it.item = item
 			break
 		}
 	}
@@ -139,90 +139,56 @@ func (i *chunkIterator) Next(ctx context.Context) bool {
 	return true
 }
 
-func (i *chunkIterator) getNextBatch(ctx context.Context) error {
-	catcher := grip.NewBasicCatcher()
-	for _, r := range i.readers {
-		catcher.Add(r.Close())
-	}
-	if err := catcher.Resolve(); err != nil {
-		return errors.Wrap(err, "closing readers")
-	}
-
-	end := i.chunkIndex + i.opts.batchSize
-	if end > len(i.opts.chunks) {
-		end = len(i.opts.chunks)
-	}
-	work := make(chan chunkInfo, end-i.chunkIndex)
-	for _, chunk := range i.opts.chunks[i.chunkIndex:end] {
-		work <- chunk
-	}
-	close(work)
-
-	var (
-		wg  sync.WaitGroup
-		mux sync.Mutex
-	)
-	readers := map[string]io.ReadCloser{}
-	catcher = grip.NewBasicCatcher()
-	for j := 0; j < runtime.NumCPU(); j++ {
-		wg.Add(1)
-		go func() {
-			defer func() {
-				catcher.Add(recovery.HandlePanicWithError(recover(), nil, "log iterator worker"))
-				wg.Done()
-			}()
-
-			for chunk := range work {
-				if err := ctx.Err(); err != nil {
-					catcher.Add(err)
-					return
-				}
-
-				r, err := i.opts.bucket.Get(ctx, chunk.key)
-				if err != nil {
-					catcher.Add(err)
-					return
-				}
-				mux.Lock()
-				readers[chunk.key] = r
-				mux.Unlock()
-			}
-		}()
-	}
-	wg.Wait()
-
-	i.chunkIndex = end
-	i.readers = readers
-	return errors.Wrap(catcher.Resolve(), "downloading log artifacts")
-}
-
-func (i *chunkIterator) skipLines() error {
-	for i.lineCountOffset > 0 {
-		if _, err := i.reader.ReadString('\n'); err != nil {
+func (it *chunkIterator) skipOffsetLines() error {
+	for it.lineOffset > 0 {
+		if _, err := it.reader.ReadString('\n'); err != nil {
 			return errors.Wrap(err, "skipping offset lines")
 		}
-		i.lineCountOffset--
-		i.chunkLineCount++
+		it.lineOffset--
+		it.chunkLineCount++
 	}
 
 	return nil
 }
 
-func (i *chunkIterator) Exhausted() bool { return i.exhausted }
+func (it *chunkIterator) worker(ctx context.Context) {
+	defer func() {
+		it.catcher.Add(recovery.HandlePanicWithError(recover(), nil, "log chunk iterator worker"))
+		close(it.next)
+	}()
 
-func (i *chunkIterator) Err() error { return i.catcher.Resolve() }
+	for _, chunk := range it.opts.chunks {
+		r, err := it.opts.bucket.Get(ctx, chunk.key)
+		if err != nil {
+			it.catcher.Wrap(err, "getting chunk from bucket")
+			return
+		}
 
-func (i *chunkIterator) Item() LogLine { return i.currentItem }
-
-func (i *chunkIterator) Close() error {
-	i.closed = true
-	catcher := grip.NewBasicCatcher()
-
-	for _, r := range i.readers {
-		catcher.Add(r.Close())
+		select {
+		case it.next <- r:
+		case <-ctx.Done():
+			it.catcher.Add(ctx.Err())
+			return
+		}
 	}
+}
 
-	return catcher.Resolve()
+func (it *chunkIterator) Exhausted() bool { return it.exhausted }
+
+func (it *chunkIterator) Err() error { return it.catcher.Resolve() }
+
+func (it *chunkIterator) Item() LogLine { return it.item }
+
+func (it *chunkIterator) Close() error {
+	if it.closed {
+		return nil
+	}
+	it.closed = true
+
+	if it.reader != nil {
+		return it.reader.Close()
+	}
+	return nil
 }
 
 func filterChunksByTimeRange(chunks []chunkInfo, start, end int64) []chunkInfo {
@@ -255,4 +221,16 @@ func filterChunksByLimit(chunks []chunkInfo, limit int) []chunkInfo {
 	}
 
 	return chunks[:numChunks]
+}
+
+type chunkReader struct {
+	*bufio.Reader
+	io.ReadCloser
+}
+
+func newChunkReader(r io.ReadCloser) *chunkReader {
+	return &chunkReader{
+		Reader:     bufio.NewReader(r),
+		ReadCloser: r,
+	}
 }

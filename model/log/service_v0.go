@@ -45,11 +45,10 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, prefix string, getOpts G
 
 	var its []LogIterator
 	for _, chunkGroup := range chunkGroups {
-		its = append(its, newChunkIterator(chunkIteratorOptions{
+		its = append(its, newChunkIterator(ctx, chunkIteratorOptions{
 			bucket:    s.bucket,
 			chunks:    chunkGroup,
 			parser:    s.getParser(),
-			batchSize: 2,
 			start:     getOpts.Start,
 			end:       getOpts.End,
 			lineLimit: getOpts.LineLimit,
@@ -63,6 +62,8 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, prefix string, getOpts G
 	return newMergingIterator(its...), nil
 }
 
+// getChunkGroups maps each logical log to its chunk files stored in
+// pail-backed bucket storage for the given prefix.
 func (s *logServiceV0) getChunkGroups(ctx context.Context, prefix string) (map[string][]chunkInfo, error) {
 	chunkGroups := map[string][]chunkInfo{}
 
@@ -90,7 +91,7 @@ func (s *logServiceV0) getChunkGroups(ctx context.Context, prefix string) (map[s
 	return chunkGroups, nil
 }
 
-// createChunkKey returns a pail-backed offline storage key that encodes the
+// createChunkKey returns a pail-backed bucket storage key that encodes the
 // given log chunk information. This is used primarily for fething logs.
 func (s *logServiceV0) createChunkKey(start, end int64, numLines int) string {
 	return fmt.Sprintf("%d_%d_%d", start, end, numLines)

@@ -40,11 +40,11 @@ func TestLogIterator(t *testing.T) {
 		{
 			name: "EmptyIterator",
 			iterators: map[string]LogIterator{
-				chunk:   newChunkIterator(chunkIteratorOptions{bucket: bucket}),
-				merging: newMergingIterator(newChunkIterator(chunkIteratorOptions{bucket: bucket})),
+				chunk:   newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket}),
+				merging: newMergingIterator(newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket})),
 			},
 			test: func(t *testing.T, it LogIterator) {
-				assert.False(t, it.Next(ctx))
+				assert.False(t, it.Next())
 				assert.True(t, it.Exhausted())
 				assert.NoError(t, it.Err())
 				assert.Zero(t, it.Item())
@@ -54,22 +54,20 @@ func TestLogIterator(t *testing.T) {
 		{
 			name: "ExhaustedIterator",
 			iterators: map[string]LogIterator{
-				chunk: newChunkIterator(chunkIteratorOptions{
-					bucket:    bucket,
-					chunks:    chunks,
-					parser:    parser,
-					batchSize: 2,
+				chunk: newChunkIterator(ctx, chunkIteratorOptions{
+					bucket: bucket,
+					chunks: chunks,
+					parser: parser,
 				}),
-				merging: newMergingIterator(newChunkIterator(chunkIteratorOptions{
-					bucket:    bucket,
-					chunks:    chunks,
-					parser:    parser,
-					batchSize: 2,
+				merging: newMergingIterator(newChunkIterator(ctx, chunkIteratorOptions{
+					bucket: bucket,
+					chunks: chunks,
+					parser: parser,
 				})),
 			},
 			test: func(t *testing.T, it LogIterator) {
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count, len(lines))
 					require.Equal(t, lines[count], it.Item())
 					count++
@@ -83,21 +81,19 @@ func TestLogIterator(t *testing.T) {
 		{
 			name: "ErroredIterator",
 			iterators: map[string]LogIterator{
-				chunk: newChunkIterator(chunkIteratorOptions{
-					bucket:    badBucket,
-					chunks:    chunks,
-					parser:    parser,
-					batchSize: 2,
+				chunk: newChunkIterator(ctx, chunkIteratorOptions{
+					bucket: badBucket,
+					chunks: chunks,
+					parser: parser,
 				}),
-				merging: newMergingIterator(newChunkIterator(chunkIteratorOptions{
-					bucket:    badBucket,
-					chunks:    chunks,
-					parser:    parser,
-					batchSize: 2,
+				merging: newMergingIterator(newChunkIterator(ctx, chunkIteratorOptions{
+					bucket: badBucket,
+					chunks: chunks,
+					parser: parser,
 				})),
 			},
 			test: func(t *testing.T, it LogIterator) {
-				assert.False(t, it.Next(ctx))
+				assert.False(t, it.Next())
 				assert.False(t, it.Exhausted())
 				assert.Error(t, it.Err())
 				assert.NoError(t, it.Close())
@@ -133,10 +129,9 @@ func TestChunkIterator(t *testing.T) {
 		{
 			name: "CorruptData",
 			opts: chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    chunks,
-				parser:    parser,
-				batchSize: 2,
+				bucket: bucket,
+				chunks: chunks,
+				parser: parser,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				chunks[0].numLines--
@@ -144,10 +139,10 @@ func TestChunkIterator(t *testing.T) {
 					chunks[0].numLines++
 				}()
 
-				for it.Next(ctx) {
+				for it.Next() {
 					// Exhaust.
 				}
-				assert.True(t, it.Exhausted())
+				assert.False(t, it.Exhausted())
 				assert.Error(t, it.Err())
 				assert.NoError(t, it.Close())
 			},
@@ -155,13 +150,12 @@ func TestChunkIterator(t *testing.T) {
 		{
 			name: "ParsingError",
 			opts: chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    chunks,
-				parser:    func(_ string) (LogLine, error) { return LogLine{}, errors.New("parsing error") },
-				batchSize: 2,
+				bucket: bucket,
+				chunks: chunks,
+				parser: func(_ string) (LogLine, error) { return LogLine{}, errors.New("parsing error") },
 			},
 			test: func(t *testing.T, it *chunkIterator) {
-				assert.False(t, it.Next(ctx))
+				assert.False(t, it.Next())
 				assert.False(t, it.Exhausted())
 				assert.Error(t, it.Err())
 				assert.NoError(t, it.Close())
@@ -179,11 +173,10 @@ func TestChunkIterator(t *testing.T) {
 						end:      time.Now().UTC().UnixNano(),
 					},
 				},
-				parser:    parser,
-				batchSize: 2,
+				parser: parser,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
-				assert.False(t, it.Next(ctx))
+				assert.False(t, it.Next())
 				assert.False(t, it.Exhausted())
 				assert.Error(t, it.Err())
 				assert.NoError(t, it.Close())
@@ -192,14 +185,13 @@ func TestChunkIterator(t *testing.T) {
 		{
 			name: "SingleChunk",
 			opts: chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    append([]chunkInfo{}, chunks[0]),
-				parser:    parser,
-				batchSize: 2,
+				bucket: bucket,
+				chunks: append([]chunkInfo{}, chunks[0]),
+				parser: parser,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count, len(lines))
 					require.Equal(t, lines[count], it.Item())
 					count++
@@ -212,16 +204,15 @@ func TestChunkIterator(t *testing.T) {
 		{
 			name: "Start",
 			opts: chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    chunks,
-				parser:    parser,
-				batchSize: 2,
-				start:     chunks[1].start,
+				bucket: bucket,
+				chunks: chunks,
+				parser: parser,
+				start:  chunks[1].start,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				offset := chunks[0].numLines
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count+offset, len(lines))
 					require.Equal(t, lines[count+offset], it.Item())
 					count++
@@ -235,15 +226,14 @@ func TestChunkIterator(t *testing.T) {
 		{
 			name: "End",
 			opts: chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    chunks,
-				parser:    parser,
-				batchSize: 2,
-				end:       chunks[1].start,
+				bucket: bucket,
+				chunks: chunks,
+				parser: parser,
+				end:    chunks[1].start,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count, len(lines))
 					require.Equal(t, lines[count], it.Item())
 					count++
@@ -257,17 +247,16 @@ func TestChunkIterator(t *testing.T) {
 		{
 			name: "StartAndEnd",
 			opts: chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    chunks,
-				parser:    parser,
-				batchSize: 2,
-				start:     chunks[1].start,
-				end:       chunks[len(chunks)-1].end - int64(time.Millisecond),
+				bucket: bucket,
+				chunks: chunks,
+				parser: parser,
+				start:  chunks[1].start,
+				end:    chunks[len(chunks)-1].end - int64(time.Millisecond),
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				offset := chunks[0].numLines
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count+offset, len(lines))
 					require.Equal(t, lines[count+offset], it.Item())
 					count++
@@ -284,12 +273,11 @@ func TestChunkIterator(t *testing.T) {
 				bucket:    bucket,
 				chunks:    chunks,
 				parser:    parser,
-				batchSize: 2,
 				lineLimit: 35,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count, len(lines))
 					require.Equal(t, lines[count], it.Item())
 					count++
@@ -303,16 +291,15 @@ func TestChunkIterator(t *testing.T) {
 		{
 			name: "TailN",
 			opts: chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    chunks,
-				parser:    parser,
-				batchSize: 2,
-				tailN:     20,
+				bucket: bucket,
+				chunks: chunks,
+				parser: parser,
+				tailN:  20,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				offset := len(lines) - 20
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count+offset, len(lines))
 					require.Equal(t, lines[count+offset], it.Item())
 					count++
@@ -329,7 +316,6 @@ func TestChunkIterator(t *testing.T) {
 				bucket:    bucket,
 				chunks:    chunks,
 				parser:    parser,
-				batchSize: 2,
 				start:     chunks[0].start,
 				end:       chunks[1].end,
 				lineLimit: 5,
@@ -338,7 +324,7 @@ func TestChunkIterator(t *testing.T) {
 			test: func(t *testing.T, it *chunkIterator) {
 				offset := chunks[0].numLines + chunks[1].numLines - 20
 				var count int
-				for it.Next(ctx) {
+				for it.Next() {
 					require.Less(t, count+offset, len(lines))
 					require.Equal(t, lines[count+offset], it.Item())
 					count++
@@ -351,7 +337,7 @@ func TestChunkIterator(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			test.test(t, newChunkIterator(test.opts))
+			test.test(t, newChunkIterator(ctx, test.opts))
 		})
 	}
 }
@@ -365,15 +351,14 @@ func TestMergingIterator(t *testing.T) {
 		require.NoError(t, err)
 		chunks, lines, parser, err := generateTestLog(ctx, bucket, 100, 10)
 		require.NoError(t, err)
-		it := newMergingIterator(newChunkIterator(chunkIteratorOptions{
-			bucket:    bucket,
-			chunks:    chunks,
-			parser:    parser,
-			batchSize: 2,
+		it := newMergingIterator(newChunkIterator(ctx, chunkIteratorOptions{
+			bucket: bucket,
+			chunks: chunks,
+			parser: parser,
 		}))
 
 		var count int
-		for it.Next(ctx) {
+		for it.Next() {
 			require.Less(t, count, len(lines))
 			require.Equal(t, lines[count], it.Item())
 			count++
@@ -391,11 +376,10 @@ func TestMergingIterator(t *testing.T) {
 			require.NoError(t, err)
 			chunks, lines, parser, err := generateTestLog(ctx, bucket, 100, 10)
 			require.NoError(t, err)
-			its[i] = newChunkIterator(chunkIteratorOptions{
-				bucket:    bucket,
-				chunks:    chunks,
-				parser:    parser,
-				batchSize: 2,
+			its[i] = newChunkIterator(ctx, chunkIteratorOptions{
+				bucket: bucket,
+				chunks: chunks,
+				parser: parser,
 			})
 			for _, line := range lines {
 				lineMap[line.Data] = false
@@ -407,7 +391,7 @@ func TestMergingIterator(t *testing.T) {
 			count         int
 			lastTimestamp int64
 		)
-		for it.Next(ctx) {
+		for it.Next() {
 			logLine := it.Item()
 			require.LessOrEqual(t, lastTimestamp, logLine.Timestamp)
 			seen, ok := lineMap[logLine.Data]
@@ -428,20 +412,18 @@ func TestMergingIterator(t *testing.T) {
 		chunks, _, parser, err := generateTestLog(ctx, bucket, 100, 10)
 		require.NoError(t, err)
 
-		it0 := newChunkIterator(chunkIteratorOptions{
-			bucket:    bucket,
-			chunks:    chunks,
-			parser:    parser,
-			batchSize: 2,
+		it0 := newChunkIterator(ctx, chunkIteratorOptions{
+			bucket: bucket,
+			chunks: chunks,
+			parser: parser,
 		})
-		it1 := newChunkIterator(chunkIteratorOptions{
-			bucket:    bucket,
-			chunks:    chunks,
-			parser:    parser,
-			batchSize: 2,
+		it1 := newChunkIterator(ctx, chunkIteratorOptions{
+			bucket: bucket,
+			chunks: chunks,
+			parser: parser,
 		})
 
-		for it1.Next(ctx) {
+		for it1.Next() {
 			// Exhaust.
 		}
 		require.True(t, it1.Exhausted())
@@ -449,7 +431,7 @@ func TestMergingIterator(t *testing.T) {
 
 		it := newMergingIterator(it0, it1)
 		assert.False(t, it.Exhausted())
-		for it.Next(ctx) {
+		for it.Next() {
 			// Exhaust.
 		}
 		assert.True(t, it.Exhausted())

@@ -2,7 +2,6 @@ package log
 
 import (
 	"container/heap"
-	"context"
 
 	"github.com/mongodb/grip"
 )
@@ -25,9 +24,9 @@ func newMergingIterator(iterators ...LogIterator) *mergingIterator {
 	}
 }
 
-func (i *mergingIterator) Next(ctx context.Context) bool {
+func (i *mergingIterator) Next() bool {
 	if !i.started {
-		i.init(ctx)
+		i.init()
 	}
 
 	it := i.iteratorHeap.SafePop()
@@ -36,7 +35,7 @@ func (i *mergingIterator) Next(ctx context.Context) bool {
 	}
 	i.currentItem = it.Item()
 
-	if it.Next(ctx) {
+	if it.Next() {
 		i.iteratorHeap.SafePush(it)
 	} else {
 		i.catcher.Add(it.Err())
@@ -60,11 +59,11 @@ func (i *mergingIterator) Exhausted() bool {
 	return exhaustedCount == len(i.iterators)
 }
 
-func (i *mergingIterator) init(ctx context.Context) {
+func (i *mergingIterator) init() {
 	heap.Init(i.iteratorHeap)
 
 	for j := range i.iterators {
-		if i.iterators[j].Next(ctx) {
+		if i.iterators[j].Next() {
 			i.iteratorHeap.SafePush(i.iterators[j])
 		}
 

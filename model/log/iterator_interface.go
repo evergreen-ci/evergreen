@@ -1,15 +1,11 @@
 package log
 
-import (
-	"context"
-)
-
 // LogIterator is an interface that enables iterating over lines of Evergreen
 // logs.
 type LogIterator interface {
 	// Next returns true if the iterator has not yet been exhausted or
 	// closed, false otherwise.
-	Next(context.Context) bool
+	Next() bool
 	// Item returns the current log line held by the iterator.
 	Item() LogLine
 	// Exhausted returns true if the iterator has not yet been exhausted,

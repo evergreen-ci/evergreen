@@ -32,13 +32,13 @@ func TestLogIteratorReader(t *testing.T) {
 	}{
 		{
 			name:          "LineDataOnly",
-			it:            newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
+			it:            newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			formatLine:    func(line LogLine) string { return line.Data },
 			expectedLines: lines,
 		},
 		{
 			name:          "PrintTime",
-			it:            newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
+			it:            newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			opts:          LogIteratorReaderOptions{PrintTime: true},
 			expectedLines: lines,
 			formatLine: func(line LogLine) string {
@@ -47,14 +47,14 @@ func TestLogIteratorReader(t *testing.T) {
 		},
 		{
 			name:          "PrintPriority",
-			it:            newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
+			it:            newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			opts:          LogIteratorReaderOptions{PrintPriority: true},
 			expectedLines: lines,
 			formatLine:    func(line LogLine) string { return fmt.Sprintf("[P:%3d] %s", line.Priority, line.Data) },
 		},
 		{
 			name: "PrintTimeAndPriority",
-			it:   newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
+			it:   newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			opts: LogIteratorReaderOptions{
 				PrintTime:     true,
 				PrintPriority: true,
@@ -67,9 +67,9 @@ func TestLogIteratorReader(t *testing.T) {
 		{
 			name: "SoftSizeLimit",
 			it: newMergingIterator(
-				newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
-				newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
-				newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
+				newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
+				newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
+				newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			),
 			opts: LogIteratorReaderOptions{SoftSizeLimit: 5000},
 			expectedLines: func() []LogLine {
@@ -90,7 +90,7 @@ func TestLogIteratorReader(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			r := NewLogIteratorReader(ctx, test.it, test.opts)
+			r := NewLogIteratorReader(test.it, test.opts)
 
 			formattedLines := make([]string, len(test.expectedLines))
 			for i, line := range test.expectedLines {
@@ -132,8 +132,7 @@ func TestLogIteratorReader(t *testing.T) {
 	}
 	t.Run("EmptyBuffer", func(t *testing.T) {
 		r := NewLogIteratorReader(
-			ctx,
-			newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
+			newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			LogIteratorReaderOptions{},
 		)
 
@@ -146,14 +145,12 @@ func TestLogIteratorReader(t *testing.T) {
 		errCtx, errCancel := context.WithCancel(context.Background())
 		errCancel()
 		r := NewLogIteratorReader(
-			errCtx,
-			newChunkIterator(chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser, batchSize: 2}),
+			newChunkIterator(errCtx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			LogIteratorReaderOptions{},
 		)
 
 		p := make([]byte, 4096)
-		n, err := r.Read(p)
-		assert.Zero(t, n)
+		_, err := r.Read(p)
 		assert.Error(t, err)
 	})
 }

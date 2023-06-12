@@ -1,7 +1,6 @@
 package log
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"time"
@@ -13,7 +12,6 @@ import (
 // LogIteratorReader implements the io.Reader interface for log lines with
 // additional utility functionality.
 type LogIteratorReader struct {
-	ctx            context.Context
 	it             LogIterator
 	opts           LogIteratorReaderOptions
 	leftOver       []byte
@@ -21,8 +19,8 @@ type LogIteratorReader struct {
 	lastItem       LogLine
 }
 
-// LogIteratorReaderOptions describes the options for creating a
-// a new LogIteratorReader.
+// LogIteratorReaderOptions describes the options for creating a new
+// LogIteratorReader.
 type LogIteratorReaderOptions struct {
 	// PrintTime, when true, prints the timestamp of each log line along
 	// with the line in the following format:
@@ -43,9 +41,8 @@ type LogIteratorReaderOptions struct {
 // NewLogIteratorReader returns a reader that reads the log lines from the
 // iterator with the given options. It is the responsibility of the caller to
 // close the iterator.
-func NewLogIteratorReader(ctx context.Context, it LogIterator, opts LogIteratorReaderOptions) *LogIteratorReader {
+func NewLogIteratorReader(it LogIterator, opts LogIteratorReaderOptions) *LogIteratorReader {
 	return &LogIteratorReader{
-		ctx:  ctx,
 		it:   it,
 		opts: opts,
 	}
@@ -73,7 +70,7 @@ func (r *LogIteratorReader) Read(p []byte) (int, error) {
 		}
 	}
 
-	for r.it.Next(r.ctx) {
+	for r.it.Next() {
 		if r.opts.SoftSizeLimit > 0 && r.totalBytesRead >= r.opts.SoftSizeLimit && r.lastItem.Timestamp != r.it.Item().Timestamp {
 			break
 		}
