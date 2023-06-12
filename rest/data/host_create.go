@@ -25,7 +25,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -178,27 +177,8 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
-	pRef, err := model.FindBranchProjectRef(t.Project)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding project ref '%s'", t.Project)
-	}
-	if pRef == nil {
-		return nil, nil, errors.Errorf("project ref '%s' not found", t.Project)
-	}
 
-	appToken, err := settings.CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-19966",
-			"message": "error creating GitHub app token",
-			"caller":  "makeProjectAndExpansionsFromTask",
-			"owner":   pRef.Owner,
-			"repo":    pRef.Repo,
-			"task":    t.Id,
-		}))
-	}
-
-	expansions, err := model.PopulateExpansions(t, h, oauthToken, appToken)
+	expansions, err := model.PopulateExpansions(t, h, oauthToken)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}

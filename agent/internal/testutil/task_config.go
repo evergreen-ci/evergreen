@@ -8,8 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -19,16 +17,7 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	if err != nil {
 		return nil, errors.Wrap(err, "getting global GitHub OAuth token")
 	}
-	appToken, err := settings.CreateInstallationToken(ctx, data.Project.Owner, data.Project.Repo, nil)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-19966",
-			"message": "error creating GitHub app token",
-			"caller":  "MakeTaskConfigFromModelData",
-			"task":    data.Task.Id,
-		}))
-	}
-	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken, appToken)
+	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "populating expansions")
 	}
