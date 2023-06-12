@@ -21,11 +21,10 @@ type chunkInfo struct {
 
 type chunkIterator struct {
 	opts           chunkIteratorOptions
-	idx            int
 	lineOffset     int
 	lineCount      int
 	chunkLineCount int
-	next           chan io.ReadCloser
+	next           chan *chunkReader
 	reader         *chunkReader
 	item           LogLine
 	catcher        grip.Catcher
@@ -60,7 +59,7 @@ func newChunkIterator(ctx context.Context, opts chunkIteratorOptions) *chunkIter
 	it := &chunkIterator{
 		opts:       opts,
 		lineOffset: lineOffset,
-		next:       make(chan io.ReadCloser, 1),
+		next:       make(chan *chunkReader, 1),
 		catcher:    grip.NewBasicCatcher(),
 	}
 	go it.worker(ctx)
@@ -79,7 +78,8 @@ func (it *chunkIterator) Next() bool {
 
 	for {
 		if it.reader == nil {
-			r, ok := <-it.next
+			var ok bool
+			it.reader, ok = <-it.next
 			if !ok {
 				// If the next channel is closed and there are
 				// no errors, this means that the worker go
@@ -89,7 +89,6 @@ func (it *chunkIterator) Next() bool {
 				return false
 			}
 
-			it.reader = newChunkReader(r)
 			if err := it.skipOffsetLines(); err != nil {
 				it.catcher.Add(err)
 				return false
@@ -98,7 +97,7 @@ func (it *chunkIterator) Next() bool {
 
 		data, err := it.reader.ReadString('\n')
 		if err == io.EOF {
-			if it.chunkLineCount != it.opts.chunks[it.idx].numLines {
+			if it.chunkLineCount != it.reader.numLines {
 				it.catcher.Add(errors.New("corrupt data"))
 				return false
 			}
@@ -109,7 +108,6 @@ func (it *chunkIterator) Next() bool {
 
 			it.reader = nil
 			it.chunkLineCount = 0
-			it.idx++
 			return it.Next()
 
 		}
@@ -165,7 +163,7 @@ func (it *chunkIterator) worker(ctx context.Context) {
 		}
 
 		select {
-		case it.next <- r:
+		case it.next <- newChunkReader(r, chunk.numLines):
 		case <-ctx.Done():
 			it.catcher.Add(ctx.Err())
 			return
@@ -224,12 +222,14 @@ func filterChunksByLimit(chunks []chunkInfo, limit int) []chunkInfo {
 }
 
 type chunkReader struct {
+	numLines int
 	*bufio.Reader
 	io.ReadCloser
 }
 
-func newChunkReader(r io.ReadCloser) *chunkReader {
+func newChunkReader(r io.ReadCloser, numLines int) *chunkReader {
 	return &chunkReader{
+		numLines:   numLines,
 		Reader:     bufio.NewReader(r),
 		ReadCloser: r,
 	}
