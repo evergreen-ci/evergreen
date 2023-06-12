@@ -103,7 +103,7 @@ func (it *chunkIterator) Next() bool {
 
 			it.reader = nil
 			it.chunkLineCount = 0
-			return it.Next()
+			continue
 
 		}
 		if err != nil {
