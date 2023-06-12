@@ -1221,14 +1221,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 
 	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, creationInfo.BuildVariant.RunOn, creationInfo.Project.Containers)
 	if t.IsContainerTask() {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return nil, errors.Wrap(err, "getting service flags")
-		}
-		if flags.ContainerConfigurationsDisabled {
-			return nil, errors.Errorf("container configurations are disabled; task '%s' cannot run", t.DisplayName)
-		}
-
+		var err error
 		t.Container, err = getContainerFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
 		if err != nil {
 			return nil, err
