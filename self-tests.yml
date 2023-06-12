@@ -736,7 +736,7 @@ buildvariants:
 containers:
   - name: evg-container
     working_dir: /
-    image: "hadjri/evg-container-self-testing"
+    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/production-ecs:latest"
     resources:
       cpu: 4096
       memory_mb: 8192
