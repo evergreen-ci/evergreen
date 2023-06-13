@@ -12,7 +12,6 @@ import (
 )
 
 type chunkInfo struct {
-	prefix   string
 	key      string
 	numLines int
 	start    int64
@@ -212,6 +211,7 @@ func filterChunksByLimit(chunks []chunkInfo, limit int) []chunkInfo {
 
 type chunkReader struct {
 	numLines int
+
 	*bufio.Reader
 	io.ReadCloser
 }

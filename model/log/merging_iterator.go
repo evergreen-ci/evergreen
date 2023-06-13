@@ -49,14 +49,13 @@ func (i *mergingIterator) Next() bool {
 }
 
 func (i *mergingIterator) Exhausted() bool {
-	exhaustedCount := 0
 	for _, it := range i.iterators {
-		if it.Exhausted() {
-			exhaustedCount++
+		if !it.Exhausted() {
+			return false
 		}
 	}
 
-	return exhaustedCount == len(i.iterators)
+	return true
 }
 
 func (i *mergingIterator) init() {

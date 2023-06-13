@@ -453,6 +453,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 	}
 	chunks := make([]chunkInfo, numChunks)
 	ts := time.Now().UTC().UnixNano()
+	logName := newRandCharSetString(16)
 
 	for i := 0; i < numChunks; i++ {
 		chunks[i] = chunkInfo{start: ts}
@@ -465,6 +466,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 			line := newRandCharSetString(100)
 			lineNum := lineCount + i*chunkSize
 			lines[lineNum] = LogLine{
+				LogName:   logName,
 				Priority:  level.Debug,
 				Timestamp: ts,
 				Data:      line + "\n",
@@ -476,7 +478,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 
 		chunks[i].end = ts - int64(time.Millisecond)
 		chunks[i].numLines = lineCount
-		chunks[i].key = service.createChunkKey(chunks[i].start, chunks[i].end, chunks[i].numLines)
+		chunks[i].key = logName + "/" + service.createChunkKey(chunks[i].start, chunks[i].end, chunks[i].numLines)
 
 		if err := bucket.Put(ctx, chunks[i].key, strings.NewReader(rawLines)); err != nil {
 			return []chunkInfo{}, []LogLine{}, nil, errors.Wrap(err, "adding chunk to bucket")
@@ -485,7 +487,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 		ts += int64(time.Hour)
 	}
 
-	return chunks, lines, service.getParser(), nil
+	return chunks, lines, service.getParser(logName), nil
 }
 
 var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
