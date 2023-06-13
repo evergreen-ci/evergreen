@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -14,19 +13,19 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
 	defer func() {
-		if p := recover(); p != nil {
+		if pErr := recovery.HandlePanicWithError(recover(), nil, "running commands"); pErr != nil {
 			m := message.Fields{
 				"message":   "programmatic error: task panicked while running task",
 				"operation": "running task",
-				"panic":     p,
 				"stack":     message.NewStack(1, "").Raw(),
 			}
-			grip.Alert(m)
+			grip.Alert(message.WrapError(pErr, m))
 			tc.logger.Execution().Error("Evergreen agent hit a runtime panic, marking task system-failed.")
 			trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		}
@@ -91,7 +90,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.logger.Execution().Info("Reporting task started.")
 	if err = a.comm.StartTask(ctx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return
 	}
 
@@ -178,10 +177,10 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts, preBlock)
 	}
 	if err != nil {
-		msg := fmt.Sprintf("Running pre-task commands failed: %s", err)
-		tc.logger.Task().Error(msg)
+		err = errors.Wrap(err, "Running pre-task commands failed")
+		tc.logger.Task().Error(err)
 		if opts.failPreAndPost {
-			return errors.New(msg)
+			return err
 		}
 	}
 	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")

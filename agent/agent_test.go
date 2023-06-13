@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,16 +14,16 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
-)
-
-const (
-	versionId = "v1"
 )
 
 type AgentSuite struct {
@@ -32,6 +31,7 @@ type AgentSuite struct {
 	a                *Agent
 	mockCommunicator *client.Mock
 	tc               *taskContext
+	ctx              context.Context
 	canceler         context.CancelFunc
 	tmpDirName       string
 }
@@ -56,30 +56,46 @@ func (s *AgentSuite) SetupTest() {
 	s.a.jasper, err = jasper.NewSynchronizedManager(true)
 	s.Require().NoError(err)
 
+	const versionID = "v1"
+	const bvName = "some_build_variant"
+	tsk := &task.Task{
+		Id:           "task_id",
+		BuildVariant: bvName,
+		Version:      versionID,
+	}
+
+	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
+	s.Require().NoError(err)
+
+	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, &model.Project{
+		BuildVariants: []model.BuildVariant{{Name: bvName}},
+	}, tsk, &model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}, &patch.Patch{}, util.Expansions{})
+	s.Require().NoError(err)
+
 	s.tc = &taskContext{
 		task: client.TaskData{
 			ID:     "task_id",
 			Secret: "task_secret",
 		},
-		taskConfig: &internal.TaskConfig{
-			Project: &model.Project{},
-			Task:    &task.Task{},
-		},
-		taskModel:     &task.Task{},
+		taskConfig:    taskConfig,
+		taskModel:     tsk,
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
+		expansions:    util.Expansions{},
+		taskDirectory: s.tmpDirName,
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	s.canceler = cancel
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.ctx = ctx
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, s.tc.task, nil)
 	s.NoError(err)
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
-	s.Require().NoError(err)
-	s.tc.taskDirectory = s.tmpDirName
 	sender, err := s.a.GetSender(ctx, evergreen.LocalLoggingOverride)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -96,7 +112,7 @@ func (s *AgentSuite) TestNextTaskResponseShouldExit() {
 		TaskSecret: "",
 		ShouldExit: true}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
 	errs := make(chan error, 1)
@@ -116,7 +132,7 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
 		ShouldExit: false}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
 	agentCtx, agentCancel := context.WithCancel(ctx)
@@ -136,7 +152,7 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 
 func (s *AgentSuite) TestErrorGettingNextTask() {
 	s.mockCommunicator.NextTaskShouldFail = true
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
 	errs := make(chan error, 1)
@@ -155,7 +171,7 @@ func (s *AgentSuite) TestCanceledContext() {
 	s.a.opts.AgentSleepInterval = time.Millisecond
 	s.a.opts.MaxAgentSleepInterval = time.Millisecond
 	s.mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 	errs := make(chan error, 1)
 
@@ -174,7 +190,7 @@ func (s *AgentSuite) TestCanceledContext() {
 
 func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{ShouldExit: true}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
 	errs := make(chan error, 1)
@@ -191,7 +207,7 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 
 func (s *AgentSuite) TestNextTaskConflict() {
 	s.mockCommunicator.NextTaskShouldConflict = true
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
 	agentCtx, agentCancel := context.WithCancel(ctx)
@@ -214,7 +230,7 @@ func (s *AgentSuite) TestNextTaskConflict() {
 
 func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
@@ -223,7 +239,7 @@ func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 }
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	s.mockCommunicator.EndTaskShouldFail = true
@@ -233,16 +249,39 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 }
 
 func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
-	complete := make(chan string)
-	ctx, cancel := context.WithCancel(context.Background())
+	complete := make(chan string, 1)
+	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
 	s.a.startTask(ctx, s.tc, complete)
-	msgs := s.mockCommunicator.GetMockMessages()
-	s.Zero(len(msgs))
+	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
+}
+
+func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
+	complete := make(chan string, 1)
+
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	defer cancel()
+
+	// Simulate a situation where the task is not allowed to start, which should
+	// result in system failure. Also, startTask should not block if there is
+	// no consumer running in parallel to pick up the complete status.
+	s.mockCommunicator.StartTaskShouldFail = true
+	s.a.startTask(ctx, s.tc, complete)
+
+	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
+
+	select {
+	case <-ctx.Done():
+		s.Fail("test context cancelled before startTask returned: %s", ctx.Err())
+	case status := <-complete:
+		s.Equal(evergreen.TaskSystemFailed, status)
+	}
 }
 
 func (s *AgentSuite) TestCancelledRunningCommandsIsNonBlocking() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
 	cmd := model.PluginCommandConf{
 		Command: "shell.exec",
@@ -253,40 +292,34 @@ func (s *AgentSuite) TestCancelledRunningCommandsIsNonBlocking() {
 	cmds := []model.PluginCommandConf{cmd}
 	err := s.a.runCommands(ctx, s.tc, cmds, runCommandsOptions{}, "post")
 	s.Require().Error(err)
-	s.Contains(err.Error(), context.Canceled.Error())
+	s.True(utility.IsContextError(errors.Cause(err)))
+	s.Empty(s.getPanicLogs())
 }
 
 func (s *AgentSuite) TestPre() {
 	projYml := `
+buildvariants:
+- name: some_build_variant
+
 pre:
   - command: shell.exec
     params:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
-	_ = s.tc.logger.Close()
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running pre-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[3].Message)
-	s.Contains(msgs[len(msgs)-1].Message, "Finished running pre-task commands.")
+	s.tc.taskConfig.Project = p
+
+	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+
+	s.Empty(s.getPanicLogs())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running pre-task commands",
+		"Running command 'shell.exec'",
+		"Finished running pre-task commands",
+	)
 }
 
 func (s *AgentSuite) TestPreFailsTask() {
@@ -298,29 +331,19 @@ pre:
       command: "doesntexist"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
+	s.tc.taskConfig.Project = p
+	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
 }
 
 func (s *AgentSuite) TestPostFailsTask() {
 	projYml := `
+buildvariants:
+- name: some_build_variant
+
 post_error_fails_task: true
 post:
   - command: subprocess.exec
@@ -328,25 +351,14 @@ post:
       command: "doesntexist"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.Error(s.a.runPostTaskCommands(ctx, s.tc))
+	s.tc.taskConfig.Project = p
+	err = s.a.runPostTaskCommands(s.ctx, s.tc)
+	s.Require().Error(err)
+	s.NotContains(err.Error(), "panic")
 	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
 }
 
 func (s *AgentSuite) TestPost() {
@@ -357,29 +369,17 @@ post:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.a.runPostTaskCommands(ctx, s.tc))
-	_ = s.tc.logger.Close()
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running post-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
+	s.tc.taskConfig.Project = p
+	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running post-task commands",
+		"Running command 'shell.exec'",
+		"Finished command 'shell.exec'",
+		"Finished running post-task commands",
+	)
 }
 
 func (s *AgentSuite) TestPostContinuesOnError() {
@@ -393,44 +393,17 @@ post:
       script: "exit 0"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.a.runPostTaskCommands(ctx, s.tc))
-	_ = s.tc.logger.Close()
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running post-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 2).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
-	found := map[string]bool{
-		"Running post-task commands.":                 false,
-		"Running command 'shell.exec' (step 1 of 2).": false,
-		"Running command 'shell.exec' (step 2 of 2).": false,
-	}
-	for _, msg := range msgs {
-		for f := range found {
-			if f == msg.Message {
-				found[f] = true
-			}
-		}
-	}
-	for f, b := range found {
-		s.True(b, fmt.Sprintf("did not find string %s in logs", f))
-	}
+	s.tc.taskConfig.Project = p
+	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running post-task commands",
+		"Running command 'shell.exec' (step 1 of 2)",
+		"Running command 'shell.exec' (step 2 of 2)",
+		"Finished running post-task commands",
+	)
 }
 
 func (s *AgentSuite) TestEndTaskResponse() {
@@ -466,26 +439,17 @@ func (s *AgentSuite) TestEndTaskResponse() {
 func (s *AgentSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Nanosecond
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, err := s.a.runTask(ctx, s.tc)
+	_, err := s.a.runTask(s.ctx, s.tc)
 	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	shouldFind := map[string]bool{
-		"initial task setup":                  false,
-		"Running post-task commands.":         false,
-		"Sending final task status: 'failed'": false,
-	}
-	s.Require().NoError(s.tc.logger.Close())
-	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
-		for toFind := range shouldFind {
-			if strings.Contains(m.Message, toFind) {
-				shouldFind[toFind] = true
-			}
-		}
-	}
-	for toFind, found := range shouldFind {
-		s.True(found, fmt.Sprintf("Expected to find '%s'", toFind))
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "aborting a task should send a failed status")
+
+	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
+
+	// kim: TODO: figure out why this doesn't show "Sending final task status"
+	// message.
+	for _, msg := range s.mockCommunicator.GetMockMessages()[s.tc.taskConfig.Task.Id] {
+		s.NotContains(msg.Message, "Running post-task commands", "aborted task should not run post block")
 	}
 }
 
@@ -497,9 +461,7 @@ func (s *AgentSuite) TestOOMTracker() {
 		PIDs:  pids,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, err := s.a.runTask(ctx, s.tc)
+	_, err := s.a.runTask(s.ctx, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
@@ -507,63 +469,32 @@ func (s *AgentSuite) TestOOMTracker() {
 }
 
 func (s *AgentSuite) TestWaitCompleteSuccess() {
-	heartbeat := make(chan string)
-	complete := make(chan string)
+	heartbeat := make(chan string, 1)
+	complete := make(chan string, 1)
 	go func() {
-		complete <- evergreen.TaskSucceeded
+		select {
+		case <-s.ctx.Done():
+		case complete <- evergreen.TaskSucceeded:
+		}
 	}()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	innerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	s.tc.project = &model.Project{}
-	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
+	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskSucceeded, status)
 	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentSuite) TestWaitCompleteFailure() {
-	heartbeat := make(chan string)
-	complete := make(chan string)
+	heartbeat := make(chan string, 1)
+	complete := make(chan string, 1)
 	go func() {
-		complete <- evergreen.TaskFailed
+		select {
+		case <-s.ctx.Done():
+		case complete <- evergreen.TaskFailed:
+		}
 	}()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	innerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	s.tc.project = &model.Project{}
-	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
+	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitExecTimeout() {
-	heartbeat := make(chan string)
-	complete := make(chan string)
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	innerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitHeartbeatTimeout() {
-	heartbeat := make(chan string)
-	complete := make(chan string)
-	go func() {
-		heartbeat <- evergreen.TaskUndispatched
-	}()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	innerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskUndispatched, status)
 	s.False(s.tc.hadTimedOut())
 }
 
@@ -595,21 +526,20 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 		oomTracker: &mock.OOMTracker{},
 		project:    &model.Project{},
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
-	heartbeat := make(chan string)
-	complete := make(chan string)
-	var innerCtx context.Context
-	innerCtx, cancel = context.WithCancel(context.Background())
-	cancel()
-	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
+	heartbeat := make(chan string, 1)
+	complete := make(chan string, 1)
+	var idleTimeoutCtx context.Context
+	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(s.ctx)
+	idleTimeoutCancel()
+
+	status := s.a.wait(s.ctx, idleTimeoutCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
 }
@@ -618,29 +548,30 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	var err error
 	nextTask := &apimodels.NextTaskResponse{}
 	tc := &taskContext{}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
 	tc.taskModel = &task.Task{}
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
-			Version: "version_base",
+			Version: "not_a_task_group_version",
 		},
 	}
 	tc.taskDirectory = "task_directory"
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
 	s.False(tc.ranSetupGroup, "if the next task is not in a group, ranSetupGroup should be false")
 	s.Equal("", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 
+	const versionID = "task_group_version"
 	nextTask.TaskGroup = "foo"
 	tc.taskGroup = "foo"
-	nextTask.Version = "version_name"
+	nextTask.Version = versionID
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
-			Version: "version_name",
+			Version: versionID,
 		},
 	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc.ranSetupGroup = false
@@ -651,39 +582,40 @@ func (s *AgentSuite) TestPrepareNextTask() {
 
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
-			Version: "version_name",
+			Version: versionID,
 		},
 	}
 	tc.ranSetupGroup = true
 	tc.taskDirectory = "task_directory"
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
 	s.True(tc.ranSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, ranSetupGroup should be true")
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("task_directory", tc.taskDirectory)
 
+	const newVersionID = "new_task_group_version"
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
-			Version: versionId,
+			Version: newVersionID,
 			BuildId: "build_id_1",
 		},
 	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
 	nextTask.TaskGroup = "bar"
-	nextTask.Version = versionId
+	nextTask.Version = newVersionID
 	nextTask.Build = "build_id_2"
 	tc.taskGroup = "bar"
 	tc.taskDirectory = "task_directory"
 	tc.taskModel = &task.Task{}
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
 	s.False(tc.ranSetupGroup, "if the next task in the same version but a different build, ranSetupGroup should be false")
 	s.Equal("bar", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 }
 
-func (s *AgentSuite) TestGroupPreGroupCommands() {
-	s.tc.taskGroup = "task_group_name"
-	s.tc.taskGroup = "task_group_name"
+func (s *AgentSuite) TestSetupGroup() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -693,34 +625,25 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
-	_ = s.tc.logger.Close()
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running pre-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[3].Message)
-	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.Project = p
+
+	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running pre-task commands",
+		"Running command 'shell.exec'",
+		"Finished command 'shell.exec'",
+		"Finished running pre-task commands",
+	)
 }
 
-func (s *AgentSuite) TestGroupPreGroupSetupTimeout() {
-	s.tc.taskGroup = "task_group_name"
+func (s *AgentSuite) TestSetupGroupTimeout() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -732,36 +655,19 @@ task_groups:
       script: "sleep 10"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
-		ProjectRef: &model.ProjectRef{
-			Id:         "abcdef",
-			Identifier: "project_identifier",
-		},
-		Timeout:    &internal.Timeout{},
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err = s.a.runPreTaskCommands(ctx, s.tc)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	err = s.a.runPreTaskCommands(s.ctx, s.tc)
 	s.Require().Error(err)
-	s.Contains(err.Error(), "context deadline exceeded")
+	s.True(utility.IsContextError(errors.Cause(err)))
 }
 
-func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
-	s.tc.taskGroup = "task_group_name"
+func (s *AgentSuite) TestSetupGroupFails() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
 	s.tc.ranSetupGroup = false
 	projYml := `
 task_groups:
@@ -773,32 +679,20 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Contains(msgs[len(msgs)-1].Message, "running task setup group")
 }
 
-func (s *AgentSuite) TestGroupPostGroupCommandsFail() {
-	s.tc.taskGroup = "task_group_name"
+func (s *AgentSuite) TestTeardownTaskFails() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -809,32 +703,20 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.Error(s.a.runPostTaskCommands(ctx, s.tc))
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Contains(msgs[len(msgs)-1].Message, "running post-task commands")
 }
 
-func (s *AgentSuite) TestGroupPreTaskCommands() {
-	s.tc.taskGroup = "task_group_name"
+func (s *AgentSuite) TestSetupTask() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -844,33 +726,19 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
-	_ = s.tc.logger.Close()
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
 	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[3].Message)
 	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
 }
 
-func (s *AgentSuite) TestGroupPostTaskCommands() {
+func (s *AgentSuite) TestTeardownTask() {
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
@@ -881,33 +749,19 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.a.runPostTaskCommands(ctx, s.tc))
-	_ = s.tc.logger.Close()
+	s.tc.taskConfig.Task.TaskGroup = s.tc.taskGroup
+	s.tc.taskConfig.Project = p
+	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
 	s.Contains(msgs[len(msgs)-2].Message, "Finished command 'shell.exec'")
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
 }
 
-func (s *AgentSuite) TestGroupPostGroupCommands() {
+func (s *AgentSuite) TestTeardownGroup() {
 	s.tc.taskModel = &task.Task{}
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
@@ -919,37 +773,24 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.a.runPostGroupCommands(ctx, s.tc)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = s.tc.taskGroup
+	s.a.runPostGroupCommands(s.ctx, s.tc)
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Require().True(len(msgs) >= 2)
 	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[1].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished command 'shell.exec'")
 }
 
-func (s *AgentSuite) TestGroupTimeoutCommands() {
+func (s *AgentSuite) TestTaskGroupTimeout() {
+	const taskGroup = "task_group_name"
 	s.tc.task = client.TaskData{
 		ID:     "task_id",
 		Secret: "task_secret",
 	}
-	s.tc.taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -959,32 +800,23 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.a.runTaskTimeoutCommands(ctx, s.tc)
-	_ = s.tc.logger.Close()
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-2].Message, "Finished command 'shell.exec'")
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
+	s.NoError(s.tc.logger.Close())
+	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running task-timeout commands",
+		"Running command 'shell.exec'",
+		"Finished command 'shell.exec'",
+		"Finished running timeout commands",
+	)
 }
 
-func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {
+func (s *AgentSuite) TestTimeoutDoesNotWaitForCommandsToFinish() {
 	s.tc.task = client.TaskData{
 		ID:     "task_id",
 		Secret: "task_secret",
@@ -1001,40 +833,23 @@ timeout:
       echo "bye"
 `
 	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	p.CallbackTimeout = 2
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project:    p,
-		WorkDir:    s.tc.taskDirectory,
-		Expansions: util.NewExpansions(nil),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.tc.taskConfig.Project = p
 	now := time.Now()
-	s.a.runTaskTimeoutCommands(ctx, s.tc)
+	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
 	then := time.Now()
 	s.True(then.Sub(now) < 4*time.Second)
-	_ = s.tc.logger.Close()
+	s.NoError(s.tc.logger.Close())
 }
 
 func (s *AgentSuite) TestFetchProjectConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	s.mockCommunicator.Project = &model.Project{
 		Identifier: "some_cool_project",
 	}
 
-	s.NoError(s.a.fetchProjectConfig(ctx, s.tc))
+	s.NoError(s.a.fetchProjectConfig(s.ctx, s.tc))
 
 	s.Require().NotZero(s.tc.project)
 	s.Equal(s.mockCommunicator.Project.Identifier, s.tc.project.Identifier)
@@ -1043,4 +858,43 @@ func (s *AgentSuite) TestFetchProjectConfig() {
 	s.Equal("new-parameter-value", s.tc.expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
 	s.Require().NotZero(s.tc.privateVars)
 	s.True(s.tc.privateVars["some_private_var"], "should include mock communicator private variables")
+}
+
+// getPanicLogs returns any panic-related mock logging.
+func (s *AgentSuite) getPanicLogs() []string {
+	var panicLogs []string
+	msgsByTask := s.mockCommunicator.GetMockMessages()
+	for _, msgs := range msgsByTask {
+		for _, msg := range msgs {
+			if strings.Contains(msg.Message, "panic") {
+				panicLogs = append(panicLogs, msg.Message)
+			}
+		}
+	}
+	return panicLogs
+}
+
+func (s *AgentSuite) checkLogs(taskID string, logsToFind ...string) {
+	logFound := make(map[string]bool)
+	for _, log := range logsToFind {
+		logFound[log] = false
+	}
+	var allLogs []string
+	for _, msg := range s.mockCommunicator.GetMockMessages()[taskID] {
+		for log := range logFound {
+			if strings.Contains(msg.Message, log) {
+				logFound[log] = true
+			}
+			allLogs = append(allLogs, msg.Message)
+		}
+	}
+	var displayLogs bool
+	for log, found := range logFound {
+		if !s.True(found, "expected log not found: %s", log) {
+			displayLogs = true
+		}
+	}
+	if displayLogs {
+		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
+	}
 }

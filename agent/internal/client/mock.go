@@ -41,6 +41,7 @@ type Mock struct {
 	loggingShouldFail           bool
 	NextTaskResponse            *apimodels.NextTaskResponse
 	NextTaskIsNil               bool
+	StartTaskShouldFail         bool
 	EndTaskResponse             *apimodels.EndTaskResponse
 	EndTaskShouldFail           bool
 	EndTaskResult               endTaskResult
@@ -116,7 +117,12 @@ func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData
 	return &apimodels.AgentSetupData{}, nil
 }
 
-func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
+func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
+	if c.StartTaskShouldFail {
+		return errors.New("start task mock failure")
+	}
+	return nil
+}
 
 // EndTask returns a mock EndTaskResponse.
 func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, td TaskData) (*apimodels.EndTaskResponse, error) {

@@ -40,7 +40,14 @@ type runCommandsOptions struct {
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
 	options runCommandsOptions, block string) (err error) {
 	var cmds []command.Command
-	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
+	defer func() {
+		if pErr := recovery.HandlePanicWithError(recover(), nil, "running commands"); pErr != nil {
+			catcher := grip.NewBasicCatcher()
+			catcher.Add(pErr)
+			catcher.Add(err)
+			err = catcher.Resolve()
+		}
+	}()
 
 	for i, commandInfo := range commands {
 		if err := ctx.Err(); err != nil {
