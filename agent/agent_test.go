@@ -232,7 +232,7 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	s.Error(err)
 }
 
-func (s *AgentSuite) TestCancelStartTask() {
+func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
 	complete := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -241,7 +241,7 @@ func (s *AgentSuite) TestCancelStartTask() {
 	s.Zero(len(msgs))
 }
 
-func (s *AgentSuite) TestCancelRunCommands() {
+func (s *AgentSuite) TestCancelledRunningCommandsIsNonBlocking() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	cmd := model.PluginCommandConf{

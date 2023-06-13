@@ -20,29 +20,15 @@ import (
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
 	defer func() {
 		if p := recover(); p != nil {
-			var pmsg string
-			if ps, ok := p.(string); ok {
-				pmsg = ps
-			} else {
-				pmsg = fmt.Sprintf("%+v", p)
-			}
-
 			m := message.Fields{
+				"message":   "programmatic error: task panicked while running task",
 				"operation": "running task",
-				"panic":     pmsg,
+				"panic":     p,
 				"stack":     message.NewStack(1, "").Raw(),
 			}
 			grip.Alert(m)
-			select {
-			case complete <- evergreen.TaskFailed:
-				tc.getCurrentCommand().SetType(evergreen.CommandTypeSystem)
-				grip.Debug("Marked task as system-failed after panic.")
-			default:
-				grip.Debug("Tried marking task system-failed during panic handling, but complete channel was blocked.")
-			}
-			if tc.logger != nil && !tc.logger.Closed() {
-				tc.logger.Execution().Error("Evergreen agent hit a runtime error, marking task system-failed.")
-			}
+			tc.logger.Execution().Error("Evergreen agent hit a runtime panic, marking task system-failed.")
+			trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		}
 	}()
 
@@ -51,19 +37,19 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
-		complete <- evergreen.TaskSystemFailed
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
 		return
 	}
 
 	if taskCtx.Err() != nil {
-		grip.Info("Task canceled.")
+		tc.logger.Execution().Infof("Stopping task execution before setup: %s", taskCtx.Err())
 		return
 	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
 	if taskCtx.Err() != nil {
-		grip.Info("Task canceled.")
+		tc.logger.Execution().Infof("Stopping task execution during setup: %s", taskCtx.Err())
 		return
 	}
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
@@ -71,7 +57,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.logger.System().Info("System logger initialized.")
 
 	if taskCtx.Err() != nil {
-		grip.Info("Task canceled.")
+		tc.logger.Execution().Infof("Stopping task execution: %s", taskCtx.Err())
 		return
 	}
 	hostname, err := os.Hostname()
@@ -97,7 +83,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
 	if ctx.Err() != nil {
-		tc.logger.Task().Info("Task canceled.")
+		tc.logger.Execution().Infof("Stopping task execution after setup: %s", ctx.Err())
 		return
 	}
 
@@ -105,14 +91,14 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.logger.Execution().Info("Reporting task started.")
 	if err = a.comm.StartTask(ctx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
-		complete <- evergreen.TaskFailed
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
 		return
 	}
 
 	a.killProcs(ctx, tc, false)
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
-		complete <- evergreen.TaskFailed
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
 		return
 	}
 
@@ -125,10 +111,23 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 
 	if err = a.runTaskCommands(innerCtx, tc); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
-		complete <- evergreen.TaskFailed
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
 		return
 	}
-	complete <- evergreen.TaskSucceeded
+
+	trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSucceeded)
+}
+
+// trySendTaskComplete attempts to send a task status to the given channel. This
+// is a non-blocking operation - if it tries to send the task status but the
+// channel is already blocked (either because it is full or there is no consumer
+// to receive the result), it will log an error and continue.
+func trySendTaskComplete(logger grip.Journaler, complete chan<- string, status string) {
+	select {
+	case complete <- status:
+	default:
+		logger.Errorf("Tried sending task status '%s', but complete channel was blocked.", status)
+	}
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
