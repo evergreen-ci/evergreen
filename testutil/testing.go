@@ -48,7 +48,7 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 	integrationSettings, err := evergreen.NewSettings(*settingsOverride)
 	require.NoError(t, err, "Error opening settings override file '%s'", *settingsOverride)
 
-	testSettings.Providers = integrationSettings.Providers
+	// testSettings.Providers = integrationSettings.Providers
 	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.AuthConfig = integrationSettings.AuthConfig
 	testSettings.Plugins = integrationSettings.Plugins

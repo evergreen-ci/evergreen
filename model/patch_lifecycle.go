@@ -575,6 +575,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		AuthorEmail:         authorEmail,
 	}
 
+	token, _ := settings.GetGithubOauthToken()
+	fmt.Println("do I haz token, v3", token)
 	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")

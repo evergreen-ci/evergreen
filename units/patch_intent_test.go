@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"sort"
@@ -65,6 +66,10 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	s.NotNil(s.env.Settings())
+
+	token, err := s.env.Settings().GetGithubOauthToken()
+	fmt.Println("getting auth token, head", token)
+	s.Require().NoError(err)
 
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection,
 		model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection,
@@ -141,6 +146,12 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Alias:     "doesntexist",
 		Variant:   "fake",
 		Task:      "fake",
+	}).Upsert())
+	s.NoError((&model.ProjectAlias{
+		ProjectID: "commit-queue-sandbox",
+		Alias:     evergreen.CommitQueueAlias,
+		Variant:   "^ubuntu2004$",
+		Task:      "^bynntask$",
 	}).Upsert())
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert())
@@ -923,6 +934,8 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
+	token, _ := s.env.Settings().GetGithubOauthToken()
+	fmt.Println("getting auth token", token)
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"

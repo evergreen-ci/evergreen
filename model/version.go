@@ -702,6 +702,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
 	token, err := settings.GetGithubOauthToken()
+	fmt.Println("do I haz token, v2", token)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting github oauth token")
 	}

@@ -642,6 +642,7 @@ func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	var tokens []string
 	var tokenName string
 
+	fmt.Println("creds/debug", s.Credentials)
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
 		// we want to make sure tokens[0] is always the default token

@@ -91,7 +91,7 @@ type GithubMergeGroup struct {
 	Org        string `bson:"org"`
 	Repo       string `bson:"repo"`
 	BaseBranch string `bson:"base_branch"` // BaseBranch is what GitHub merges to
-	HeadBranch string `bson:"head_branch"` // HeadBranch is the merge gruop's gh-readonly-queue branch
+	HeadBranch string `bson:"head_branch"` // HeadBranch is the merge group's gh-readonly-queue branch
 	HeadSHA    string `bson:"head_sha"`
 }
 
