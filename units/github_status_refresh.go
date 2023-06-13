@@ -182,7 +182,7 @@ func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, 
 	} else if p.Status == evergreen.PatchFailed {
 		state = message.GithubStateFailure
 	} else {
-		return message.GithubStatePending, evergreen.PRTasksRunningDescription
+		return message.GithubStatePending, "tasks are running"
 	}
 	duration := p.FinishTime.Sub(p.StartTime).String()
 	name := "version"
@@ -202,23 +202,25 @@ func (j *githubStatusRefreshJob) sendBuildStatuses() {
 		status.Context = fmt.Sprintf("%s/%s", evergreenContext, b.BuildVariant)
 		status.URL = b.GetURL(j.urlBase)
 
-		switch b.Status {
-		case evergreen.BuildSucceeded:
+		if b.Status == evergreen.BuildSucceeded {
 			status.State = message.GithubStateSuccess
-		case evergreen.BuildFailed:
+		} else if b.Status == evergreen.BuildFailed {
 			status.State = message.GithubStateFailure
-		default:
+		} else {
 			status.State = message.GithubStatePending
+			status.Description = "tasks are running"
 		}
 
-		query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.IsEssentialToFinishKey, task.ActivatedKey)
-		tasks, err := task.FindAll(query)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "finding tasks in build '%s'", b.Id))
-			continue
+		// Only need to fetch tasks to populate description if the build is finished.
+		if status.State != message.GithubStatePending {
+			query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey)
+			tasks, err := task.FindAll(query)
+			if err != nil {
+				j.AddError(errors.Wrapf(err, "finding tasks in build '%s'", b.Id))
+				continue
+			}
+			status.Description = b.GetFinishedNotificationDescription(tasks)
 		}
-		status.Description = b.GetPRNotificationDescription(tasks)
-
 		j.sendStatus(status)
 	}
 }
