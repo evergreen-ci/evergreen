@@ -257,6 +257,18 @@ func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
 	s.Empty(s.getPanicLogs())
 }
 
+func (s *AgentSuite) TestStartTaskIsPanicSafe() {
+	// Just having the logger is enough to verify if a panic gets logged, but
+	// still produces a panic since it relies on a lot of taskContext
+	// fields.
+	tc := &taskContext{
+		logger: s.tc.logger,
+	}
+	s.a.startTask(s.ctx, tc, nil)
+	s.NoError(tc.logger.Close())
+	s.NotEmpty(s.getPanicLogs())
+}
+
 func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
 	complete := make(chan string, 1)
 
@@ -374,6 +386,7 @@ post:
 	s.tc.taskConfig.Project = p
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
 	s.checkLogs(s.tc.taskConfig.Task.Id,
 		"Running post-task commands",
 		"Running command 'shell.exec'",
@@ -398,6 +411,7 @@ post:
 	s.tc.taskConfig.Project = p
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
 	s.checkLogs(s.tc.taskConfig.Task.Id,
 		"Running post-task commands",
 		"Running command 'shell.exec' (step 1 of 2)",
@@ -686,8 +700,8 @@ task_groups:
 
 	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Contains(msgs[len(msgs)-1].Message, "running task setup group")
+	s.Empty(s.getPanicLogs())
+	s.checkLogs(s.tc.taskConfig.Task.Id, "running task setup group")
 }
 
 func (s *AgentSuite) TestTeardownTaskFails() {
@@ -710,8 +724,8 @@ task_groups:
 
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Contains(msgs[len(msgs)-1].Message, "running post-task commands")
+	s.Empty(s.getPanicLogs())
+	s.checkLogs(s.tc.taskConfig.Task.Id, "running post-task commands")
 }
 
 func (s *AgentSuite) TestSetupTask() {
@@ -732,10 +746,13 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running pre-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[3].Message)
-	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
+	s.Empty(s.getPanicLogs())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running pre-task commands",
+		"Running command 'shell.exec'",
+		"Finished command 'shell.exec'",
+		"Finished running pre-task commands",
+	)
 }
 
 func (s *AgentSuite) TestTeardownTask() {
@@ -755,10 +772,12 @@ task_groups:
 	s.tc.taskConfig.Project = p
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-2].Message, "Finished command 'shell.exec'")
-	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
+	s.Empty(s.getPanicLogs())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running command 'shell.exec'",
+		"Finished command 'shell.exec'",
+		"Finished running post-task commands",
+	)
 }
 
 func (s *AgentSuite) TestTeardownGroup() {
@@ -778,10 +797,11 @@ task_groups:
 	s.tc.taskConfig.Project = p
 	s.tc.taskConfig.Task.TaskGroup = s.tc.taskGroup
 	s.a.runPostGroupCommands(s.ctx, s.tc)
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Require().True(len(msgs) >= 2)
-	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[1].Message)
-	s.Contains(msgs[len(msgs)-1].Message, "Finished command 'shell.exec'")
+	s.NoError(s.tc.logger.Close())
+	s.checkLogs(s.tc.taskConfig.Task.Id,
+		"Running command 'shell.exec'",
+		"Finished command 'shell.exec'",
+	)
 }
 
 func (s *AgentSuite) TestTaskGroupTimeout() {
@@ -805,7 +825,6 @@ task_groups:
 	s.tc.taskConfig.Project = p
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
-	s.NoError(s.tc.logger.Close())
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
 	s.checkLogs(s.tc.taskConfig.Task.Id,
@@ -842,6 +861,7 @@ timeout:
 	then := time.Now()
 	s.True(then.Sub(now) < 4*time.Second)
 	s.NoError(s.tc.logger.Close())
+	s.Empty(s.getPanicLogs())
 }
 
 func (s *AgentSuite) TestFetchProjectConfig() {
