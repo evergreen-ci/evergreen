@@ -63,12 +63,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		"user":     user.Username(),
 	})
 
-	appCtx, _ := env.Context()
-	queue, err := env.RemoteQueueGroup().Get(appCtx, units.CreateHostQueueGroup)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting host create queue")
-	}
-	if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostCreateJob(env, *intentHost, utility.RoundPartOfHour(0).Format(units.TSFormat), 0, false)); err != nil {
+	if err := units.EnqueueHostCreateJobs(ctx, env, []host.Host{*intentHost}); err != nil {
 		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intentHost.Id)
 	}
 

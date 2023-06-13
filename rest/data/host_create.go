@@ -24,9 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -314,16 +312,8 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 		return nil, errors.Wrap(err, "inserting parent intent hosts")
 	}
 
-	appCtx, _ := env.Context()
-	queue, err := env.RemoteQueueGroup().Get(appCtx, units.CreateHostQueueGroup)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting host create queue")
-	}
-	ts := utility.RoundPartOfHour(0).Format(units.TSFormat)
-	for _, intent := range append(containerIntents, parentIntents...) {
-		if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostCreateJob(env, intent, ts, 0, false)); err != nil {
-			return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intent.Id)
-		}
+	if err := units.EnqueueHostCreateJobs(ctx, env, append(containerIntents, parentIntents...)); err != nil {
+		return nil, errors.Wrapf(err, "enqueueing host create jobs")
 	}
 
 	return &containerIntents[0], nil
@@ -432,12 +422,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
 
-	appCtx, _ := env.Context()
-	queue, err := env.RemoteQueueGroup().Get(appCtx, units.CreateHostQueueGroup)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting host create queue")
-	}
-	if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostCreateJob(env, *intent, utility.RoundPartOfHour(0).Format(units.TSFormat), 0, false)); err != nil {
+	if err := units.EnqueueHostCreateJobs(ctx, env, []host.Host{*intent}); err != nil {
 		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intent.Id)
 	}
 
