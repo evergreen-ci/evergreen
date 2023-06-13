@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -42,13 +41,12 @@ const (
 )
 
 const (
-	packageName       = "github.com/evergreen-ci/evergreen/thirdparty"
-	endpointAttribute = "evergreen.github.endpoint"
-	ownerAttribute    = "evergreen.github.owner"
-	repoAttribute     = "evergreen.github.repo"
-	refAttribute      = "evergreen.github.ref"
-	pathAttribute     = "evergreen.github.path"
-	retriesAttribute  = "evergreen.github.retries"
+	githubEndpointAttribute = "evergreen.github.endpoint"
+	githubOwnerAttribute    = "evergreen.github.owner"
+	githubRepoAttribute     = "evergreen.github.repo"
+	githubRefAttribute      = "evergreen.github.ref"
+	githubPathAttribute     = "evergreen.github.path"
+	githubRetriesAttribute  = "evergreen.github.retries"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -60,8 +58,6 @@ var UnblockedGithubStatuses = []string{
 	githubPRUnknown,
 	githubPRUnstable,
 }
-
-var tracer = otel.GetTracerProvider().Tracer(packageName)
 
 const (
 	GithubPRBlocked = "blocked"
@@ -134,7 +130,7 @@ type retryConfig struct {
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(retriesAttribute, index))
+		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
 
 		if !(config.retry || config.retry404) {
 			return false
@@ -222,7 +218,7 @@ func getGithubClient(ctx context.Context, token, caller string, config retryConf
 		"caller":  caller,
 	})
 
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(append(attributes, attribute.String(endpointAttribute, caller))...))
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(append(attributes, attribute.String(githubEndpointAttribute, caller))...))
 
 	client := utility.GetHTTPClient()
 	originalTransport := client.Transport
@@ -249,9 +245,9 @@ func getGithubClient(ctx context.Context, token, caller string, config retryConf
 // the given commitsURL when provided a valid oauth token
 func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, oauthToken, "GetGithubCommits", retryConfig{retry: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
-		attribute.String(refAttribute, ref),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, ref),
 	})
 	defer putClient()
 	client := github.NewClient(httpClient)
@@ -296,10 +292,10 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
 func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref string) (*github.RepositoryContent, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, oauthToken, "GetGithubFile", retryConfig{retry: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
-		attribute.String(refAttribute, ref),
-		attribute.String(pathAttribute, path),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, ref),
+		attribute.String(githubPathAttribute, path),
 	})
 	defer putClient()
 
@@ -394,8 +390,8 @@ func SendPendingStatusToGithub(input SendGithubStatusInput) error {
 // GitHub repo and returns the merge base commit's SHA.
 func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, oauthToken, "GetGithubMergeBaseRevision", retryConfig{retry: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, repoOwner),
-		attribute.String(repoAttribute, repo),
+		attribute.String(githubOwnerAttribute, repoOwner),
+		attribute.String(githubRepoAttribute, repo),
 	})
 	defer putClient()
 	client := github.NewClient(httpClient)
@@ -429,9 +425,9 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 
 func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash string) (*github.RepositoryCommit, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, oauthToken, "GetCommitEvent", retryConfig{retry: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, repoOwner),
-		attribute.String(repoAttribute, repo),
-		attribute.String(refAttribute, githash),
+		attribute.String(githubOwnerAttribute, repoOwner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, githash),
 	})
 	defer putClient()
 	client := github.NewClient(httpClient)
@@ -480,9 +476,9 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 // GetCommitDiff gets the diff of the specified commit via an API call to GitHub
 func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string) (string, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, oauthToken, "GetCommitDiff", retryConfig{retry: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, repoOwner),
-		attribute.String(repoAttribute, repo),
-		attribute.String(refAttribute, sha),
+		attribute.String(githubOwnerAttribute, repoOwner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, sha),
 	})
 	defer putClient()
 	client := github.NewClient(httpClient)
@@ -510,9 +506,9 @@ func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string)
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
 func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch string) (*github.Branch, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, oauthToken, "GetBranchEvent", retryConfig{retry: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, repoOwner),
-		attribute.String(repoAttribute, repo),
-		attribute.String(refAttribute, branch),
+		attribute.String(githubOwnerAttribute, repoOwner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, branch),
 	})
 	defer putClient()
 	client := github.NewClient(httpClient)
@@ -673,9 +669,9 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 // GetTaggedCommitFromGithub gets the commit SHA for the given tag name.
 func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag string) (string, error) {
 	ctx, client, putClient := getGithubClient(ctx, oauthToken, "GetTaggedCommitFromGithub", retryConfig{retry: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
-		attribute.String(refAttribute, tag),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, tag),
 	})
 	defer putClient()
 
@@ -896,8 +892,8 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, token, "GithubUserPermissionLevel", retryConfig{retry404: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
 	})
 	defer putClient()
 
@@ -953,8 +949,8 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
 	ctx, httpClient, putClient := getGithubClient(ctx, token, "GetGithubPullRequest", retryConfig{retry404: true}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, baseOwner),
-		attribute.String(repoAttribute, baseRepo),
+		attribute.String(githubOwnerAttribute, baseOwner),
+		attribute.String(githubRepoAttribute, baseRepo),
 	})
 	defer putClient()
 
@@ -1124,8 +1120,8 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner st
 	}
 
 	ctx, httpClient, putClient := getGithubClient(ctx, token, "CreateGithubHook", retryConfig{}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
 	})
 	defer putClient()
 	client := github.NewClient(httpClient)
@@ -1160,8 +1156,8 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	}
 
 	ctx, httpClient, putClient := getGithubClient(ctx, token, "ListGithubHooks", retryConfig{}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
 	})
 	defer putClient()
 	client := github.NewClient(httpClient)
@@ -1185,8 +1181,8 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 // not have updated that this can be merged, so we allow retries.
 func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
 	ctx, httpClient, putClient := getGithubClient(ctx, token, "MergePullRequest", retryConfig{}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
 	})
 	defer putClient()
 	githubClient := github.NewClient(httpClient)
@@ -1204,8 +1200,8 @@ func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage str
 // PostCommentToPullRequest posts the given comment to the associated PR.
 func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, prNum int, comment string) error {
 	ctx, httpClient, putClient := getGithubClient(ctx, token, "PostCommentToPullRequest", retryConfig{}, []attribute.KeyValue{
-		attribute.String(ownerAttribute, owner),
-		attribute.String(repoAttribute, repo),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
 	})
 	defer putClient()
 	githubClient := github.NewClient(httpClient)
