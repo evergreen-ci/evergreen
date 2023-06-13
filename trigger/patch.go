@@ -222,7 +222,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		PastTenseStatus:   collectiveStatus,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
-		githubDescription: evergreen.PRTasksRunningDescription,
+		githubDescription: "tasks are running",
 	}
 
 	if t.patch.IsChild() {

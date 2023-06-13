@@ -446,7 +446,6 @@ github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuE
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
 github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118/go.mod h1:J23DaXv/35hpeeDLK1ay9KX/7zMF0HdVMAitqXQW9j0=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
-github.com/evergreen-ci/utility v0.0.0-20230216205613-b8156d58f1e5/go.mod h1:JOJFPxtV7r9EEPqdcgkhgMvUMFGNTkUuYp0u2d8zcQI=
 github.com/evergreen-ci/utility v0.0.0-20230613214910-daa83783f97c h1:OnWCdOTWPbdyg6Ios0ni8glf67vulFCYOwKP6g9sv60=
 github.com/evergreen-ci/utility v0.0.0-20230613214910-daa83783f97c/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
@@ -848,8 +847,8 @@ github.com/mongodb/grip v0.0.0-20211028155128-86e6e47bafdb/go.mod h1:0CTWxPoPDJP
 github.com/mongodb/grip v0.0.0-20211101151816-abbea0c0d465/go.mod h1:686LUUoh+vP85XVjr1ZYqC2mk52m138QmCZ4B2HZYkI=
 github.com/mongodb/grip v0.0.0-20220210164115-898ba2888109/go.mod h1:VAvqrRA7VH0xZmgcZNbN9ksYT20R5XywjeAv6o1CZZ8=
 github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21/go.mod h1:QfF6CwbaTQx1Kgww77c6ROPBFN+JCiU2qBnk2SjKHyU=
-github.com/mongodb/grip v0.0.0-20230503175150-8b2e395f3111 h1:mqvQQokI4q97oVGbyZ9o0CpGjAE/UN8fDK5t5irTtVk=
-github.com/mongodb/grip v0.0.0-20230503175150-8b2e395f3111/go.mod h1:2aBs5TWdJ2oxyEqC7HZWwR79ky0WMDHQZXbX7qdQRWI=
+github.com/mongodb/grip v0.0.0-20230612213531-4adb687f3581 h1:WHwwKe3bfd0IBFV4PmzZFG8HqfCCDlKJNscYGnEEQZE=
+github.com/mongodb/grip v0.0.0-20230612213531-4adb687f3581/go.mod h1:sTeVC9auNU5lNPBFNw8np8G4FrIgE6G9h5Ry5K0jEIo=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b h1:VeoszGUVkmmRmPxwiJIiO/psZbPwz7tc6qbX2xDoQLY=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b/go.mod h1:ZMsAlwE3H8Yh/L9bc3lliN3EZME41wButVxWpt2e4Io=
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=

@@ -37,7 +37,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20230524145255-082f8fd5857e
 	github.com/mongodb/anser v0.0.0-20230501213745-c62f11870fd4
-	github.com/mongodb/grip v0.0.0-20230503175150-8b2e395f3111
+	github.com/mongodb/grip v0.0.0-20230612213531-4adb687f3581
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.13.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
@@ -65,7 +65,6 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto v0.9.0
 	golang.org/x/oauth2 v0.8.0
-	golang.org/x/text v0.9.0
 	golang.org/x/tools v0.9.3
 	gonum.org/v1/gonum v0.13.0
 	google.golang.org/api v0.108.0
@@ -201,6 +200,7 @@ require (
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 )
