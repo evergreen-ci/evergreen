@@ -499,16 +499,25 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-// runTask returns true if the agent should exit, and separate an error if relevant
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
+// runTask runs a task. It returns true if the agent should exit.
+func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, err error) {
 	// we want to have separate context trees for tasks and loggers, so
 	// when a task is canceled by a context, it can log its clean up.
 	tskCtx, tskCancel := context.WithCancel(ctx)
 	defer tskCancel()
 
-	var err error
 	defer func() {
-		err = recovery.HandlePanicWithError(recover(), err, "running task")
+		if pErr := recovery.HandlePanicWithError(recover(), nil, "running task"); pErr != nil {
+			// kim: TODO: make this panic handler the same as the ones in
+			// EVG-20157.
+			catcher := grip.NewBasicCatcher()
+			catcher.Add(err)
+			catcher.Add(pErr)
+			grip.Alert(message.WrapError(catcher.Resolve(), message.Fields{
+				"message": "panicked while running task",
+			}))
+			tc.logger.Execution().Error(catcher.Resolve())
+		}
 	}()
 
 	// If the heartbeat aborts the task immediately, we should report that
