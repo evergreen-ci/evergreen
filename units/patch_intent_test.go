@@ -93,6 +93,20 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	}).Insert())
 
 	s.NoError((&model.ProjectRef{
+		Owner:            "evergreen-ci",
+		Repo:             "commit-queue-sandbox",
+		Id:               "commit-queue-sandbox",
+		Enabled:          true,
+		PatchingDisabled: utility.FalsePtr(),
+		Branch:           "main",
+		RemotePath:       "evergreen.yml",
+		PRTestingEnabled: utility.TruePtr(),
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+	}).Insert())
+
+	s.NoError((&model.ProjectRef{
 		Id:         "childProj",
 		Identifier: "childProj",
 		Owner:      "evergreen-ci",
@@ -909,19 +923,19 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
-	HeadSHA := "a"
-	HeadRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-	OrgName := "evergreen-ci"
-	RepoName := "evergreen"
+	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	orgName := "evergreen-ci"
+	repoName := "commit-queue-sandbox"
+	headSHA := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
 	org := github.Organization{
-		Name: &OrgName,
+		Name: &orgName,
 	}
 	repo := github.Repository{
-		Name: &RepoName,
+		Name: &repoName,
 	}
 	mg := github.MergeGroup{
-		HeadSHA: &HeadSHA,
-		HeadRef: &HeadRef,
+		HeadSHA: &headSHA,
+		HeadRef: &headRef,
 	}
 	mge := github.MergeGroupEvent{
 		MergeGroup: &mg,

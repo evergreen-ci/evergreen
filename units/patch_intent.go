@@ -936,6 +936,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		return errors.Wrap(err, "finding GitHub merge queue user")
 	}
 	patchDoc.Author = j.user.Id
+	patchDoc.Project = projectRef.Id
 
 	return nil
 }
@@ -1058,7 +1059,7 @@ func findEvergreenUserForGithubMergeGroup(githubUID int) (*user.DBUser, error) {
 	// and if that user doesn't exist, make it
 	if u == nil {
 		u = &user.DBUser{
-			Id:       evergreen.GithubMergeRequester,
+			Id:       evergreen.GithubMergeUser,
 			DispName: "GitHub Merge Queue",
 			APIKey:   utility.RandomString(),
 		}
