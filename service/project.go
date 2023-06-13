@@ -40,39 +40,8 @@ func (uis *UIServer) filterViewableProjects(u *user.DBUser) ([]model.ProjectRef,
 }
 
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
-	dbUser := MustHaveUser(r)
-
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
-	}
-	if flags.LegacyUIProjectPageDisabled {
-		newUIProjectsLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
-		http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
-	}
-
-	allProjects, err := uis.filterViewableProjects(dbUser)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	spruceLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
-	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = spruceLink
-	}
-
-	slackAppName := uis.Settings.Slack.Name
-
-	data := struct {
-		AllProjects []model.ProjectRef
-		ViewData
-		NewUILink    string
-		SlackAppName string
-	}{allProjects, uis.GetCommonViewData(w, r, true, true), newUILink, slackAppName}
-
-	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
+	newUIProjectsLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
 }
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
@@ -227,16 +196,6 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
-}
-
-// ProjectNotFound calls WriteHTML with the invalid-project page. It should be called whenever the
-// project specified by the user does not exist, or when there are no projects at all.
-func (uis *UIServer) ProjectNotFound(w http.ResponseWriter, r *http.Request) {
-	uis.projectNotFoundBase(w, r, uis.GetCommonViewData(w, r, false, false))
-}
-
-func (uis *UIServer) projectNotFoundBase(w http.ResponseWriter, r *http.Request, data interface{}) {
-	uis.render.WriteResponse(w, http.StatusNotFound, data, "base", "invalid_project.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
