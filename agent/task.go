@@ -20,13 +20,13 @@ import (
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
 	defer func() {
 		if pErr := recovery.HandlePanicWithError(recover(), nil, "running commands"); pErr != nil {
-			m := message.Fields{
+			msg := message.Fields{
 				"message":   "programmatic error: task panicked while running task",
 				"operation": "running task",
-				"stack":     message.NewStack(1, "").Raw(),
+				"stack":     message.NewStack(2, "").Raw(),
 			}
-			grip.Alert(message.WrapError(pErr, m))
-			tc.logger.Execution().Error("Evergreen agent hit a runtime panic, marking task system-failed.")
+			grip.Alert(message.WrapError(pErr, msg))
+			tc.logger.Execution().Error("programmatic error: Evergreen agent hit a runtime panic while running task, marking task system-failed.")
 			trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		}
 	}()

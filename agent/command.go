@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
@@ -42,6 +43,14 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 	var cmds []command.Command
 	defer func() {
 		if pErr := recovery.HandlePanicWithError(recover(), nil, "running commands"); pErr != nil {
+			msg := message.Fields{
+				"message":   "programmatic error: task panicked while running commands",
+				"operation": "running commands",
+				"block":     block,
+				"stack":     message.NewStack(2, "").Raw(),
+			}
+			grip.Alert(message.WrapError(pErr, msg))
+			tc.logger.Execution().Error("programmatic error: Evergreen agent hit a runtime panic while running commands")
 			catcher := grip.NewBasicCatcher()
 			catcher.Add(pErr)
 			catcher.Add(err)
