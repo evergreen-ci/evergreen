@@ -42,6 +42,8 @@ type Mock struct {
 	NextTaskResponse            *apimodels.NextTaskResponse
 	NextTaskIsNil               bool
 	StartTaskShouldFail         bool
+	GetTaskResponse             *task.Task
+	GetProjectResponse          *serviceModel.Project
 	EndTaskResponse             *apimodels.EndTaskResponse
 	EndTaskShouldFail           bool
 	EndTaskResult               endTaskResult
@@ -65,13 +67,13 @@ type Mock struct {
 	TestLogs         []*serviceModel.TestLog
 	TestLogCount     int
 
-	// data collected by mocked methods
-	logMessages      map[string][]apimodels.LogMessage
-	PatchFiles       map[string]string
-	keyVal           map[string]*serviceModel.KeyVal
+	logMessages map[string][]apimodels.LogMessage
+	PatchFiles  map[string]string
+	keyVal      map[string]*serviceModel.KeyVal
+
+	// Mock data returned from methods
 	LastMessageSent  time.Time
 	DownstreamParams []patchmodel.Parameter
-	Project          *serviceModel.Project
 
 	mu sync.RWMutex
 }
@@ -148,6 +150,9 @@ func (c *Mock) GetEndTaskDetail() *apimodels.TaskEndDetail {
 
 // GetTask returns a mock Task.
 func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
+	if c.GetTaskResponse != nil {
+		return c.GetTaskResponse, nil
+	}
 	return &task.Task{
 		Id:           "mock_task_id",
 		Secret:       "mock_task_secret",
@@ -183,8 +188,8 @@ func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, 
 }
 
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
-	if c.Project != nil {
-		return c.Project, nil
+	if c.GetProjectResponse != nil {
+		return c.GetProjectResponse, nil
 	}
 	var err error
 	var data []byte
