@@ -327,15 +327,14 @@ func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
 	return errors.Wrap(err, "bulk inserting builds")
 }
 
-// GetPRNotificationDescription returns a GitHub PR status description based on
-// the statuses of tasks in the build, to be used by jobs and notification
-// processing.
-func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
+// GetFinishedNotificationDescription returns a description of successful/failed tasks for the build,
+// to be used by jobs and notification processing.
+func (b *Build) GetFinishedNotificationDescription(tasks []task.Task) string {
 	success := 0
 	failed := 0
+	systemError := 0
 	other := 0
-	runningOrWillRun := 0
-	unscheduledEssential := 0
+	noReport := 0
 	for _, t := range tasks {
 		switch {
 		case t.Status == evergreen.TaskSucceeded:
@@ -344,13 +343,12 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 		case t.Status == evergreen.TaskFailed:
 			failed++
 
+		case evergreen.IsSystemFailedTaskStatus(t.Status):
+			systemError++
+
 		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
-			if utility.StringSliceContains([]string{evergreen.TaskDispatched, evergreen.TaskStarted}, t.Status) || (t.Activated && !t.Blocked() && !t.IsFinished()) {
-				runningOrWillRun++
-			}
-			if t.IsUnscheduled() && t.IsEssentialToFinish {
-				unscheduledEssential++
-			}
+			noReport++
+
 		default:
 			other++
 		}
@@ -362,34 +360,20 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 		"build_id": b.Id,
 	})
 
-	if unscheduledEssential > 0 {
-		// If there are unscheduled essential tasks that won't run, send a
-		// special status indicating that the patch is incomplete until they're
-		// run.
-		return UnscheduledEssentialTasksPRBuildDescription(unscheduledEssential)
-	}
-	if runningOrWillRun > 0 {
-		return evergreen.PRTasksRunningDescription
-	}
-
-	if success == 0 && failed == 0 && other == 0 {
+	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
 		return "no tasks were run"
 	}
 
 	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
 		taskStatusSubformat(failed, "failed"))
+	if systemError > 0 {
+		desc += fmt.Sprintf(", %d internal errors", systemError)
+	}
 	if other > 0 {
 		desc += fmt.Sprintf(", %d other", other)
 	}
 
 	return b.appendTime(desc)
-}
-
-// UnscheduledEssentialTasksPRBuildDescription returns a GitHub PR status
-// description indicating that the build is incomplete because some essential
-// tasks are not scheduled to run.
-func UnscheduledEssentialTasksPRBuildDescription(numEssentialTasksNeeded int) string {
-	return fmt.Sprintf("build is incomplete - %d required PR task(s) not scheduled", numEssentialTasksNeeded)
 }
 
 func taskStatusSubformat(n int, verb string) string {

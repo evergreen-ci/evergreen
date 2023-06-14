@@ -179,13 +179,7 @@ type Task struct {
 	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
 	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
 
-	// Status represents the various stages the task could be in. Note that this
-	// task status is distinct from the way a task status is displayed in the
-	// UI. For example, a task that has failed will have a status of
-	// evergreen.TaskFailed regardless of the specific cause of failure.
-	// However, in the UI, the displayed status supports more granular failure
-	// type such as system failed and setup failed by checking this status and
-	// the task status details.
+	// Status represents the various stages the task could be in
 	Status    string                  `bson:"status" json:"status"`
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
@@ -256,13 +250,6 @@ type Task struct {
 
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
-
-	// IsEssentialToFinish indicates that this task must finish in order for
-	// the build and version to be considered complete. For example, tasks
-	// selected by the GitHub PR alias must succeed for the GitHub PR requester
-	// before its build or version can be considered complete, but tasks
-	// manually scheduled by the user afterwards are not required.
-	IsEssentialToFinish bool `bson:"is_essential_to_finish" json:"is_essential_to_finish"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -432,7 +419,7 @@ func (t *Task) IsDispatchable() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return t.IsHostTask() && t.WillRun()
+	return t.IsHostTask() && t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
 // IsHostTask returns true if it's a task that runs on hosts.
@@ -478,15 +465,8 @@ func (t *Task) IsContainerDispatchable() bool {
 	return t.isContainerScheduled()
 }
 
-// isContainerTaskScheduled returns whether the task is in a state where it
-// should eventually dispatch to run on a container and is logically equivalent
-// to IsContainerTaskScheduledQuery. This encompasses two potential states:
-//  1. A container is not yet allocated to the task but it's ready to be
-//     allocated one. Note that this is a subset of all container tasks that
-//     could eventually run (i.e. evergreen.TaskWillRun from
-//     (Task).GetDisplayStatus), because a container task is not scheduled until
-//     all of its dependencies have been met.
-//  2. The container is allocated but the agent has not picked up the task yet.
+// isContainerTaskScheduled returns whether the task is in a state
+// where it should eventually dispatch to run on a container.
 func (t *Task) isContainerScheduled() bool {
 	if !t.IsContainerTask() {
 		return false
@@ -1738,6 +1718,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	if err != nil {
 		return errors.Wrap(err, "deactivating tasks")
 	}
+
 	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
@@ -2225,56 +2206,32 @@ func (t *Task) hasUnattainableDependency() bool {
 	return false
 }
 
-// AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
-// state
-func AbortBuild(buildId string, reason AbortInfo) error {
+// AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
+func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 	}
-	ids, err := findAllTaskIDs(db.Query(q))
-	if err != nil {
-		return errors.Wrapf(err, "finding tasks to abort from build '%s'", buildId)
-	}
-	if len(ids) == 0 {
-		grip.Info(message.Fields{
-			"message": "no tasks aborted for build",
-			"buildId": buildId,
-		})
-		return nil
-	}
-
-	_, err = UpdateAll(
-		bson.M{IdKey: bson.M{"$in": ids}},
-		bson.M{"$set": bson.M{
-			AbortedKey:   true,
-			AbortInfoKey: reason,
-		}},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "setting aborted statuses for tasks in build '%s'", buildId)
-	}
-
-	event.LogManyTaskAbortRequests(ids, reason.User)
-
-	return nil
+	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for build '%s'", buildId)
 }
 
-// AbortVersion sets the abort flag on all tasks associated with the version which are in an
+// AbortVersionTasks sets the abort flag on all tasks associated with the version which are in an
 // abortable state
-func AbortVersion(versionId string, reason AbortInfo) error {
-	q := bson.M{
-		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
-	}
+func AbortVersionTasks(versionId string, reason AbortInfo) error {
+	q := ByVersionWithChildTasks(versionId)
+	q[StatusKey] = bson.M{"$in": evergreen.TaskAbortableStatuses}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
 		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
+	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for version '%s'", versionId)
+}
+
+func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
 		return errors.Wrap(err, "finding updated tasks")
@@ -2282,9 +2239,8 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	if len(ids) == 0 {
 		return nil
 	}
-
 	_, err = UpdateAll(
-		bson.M{IdKey: bson.M{"$in": ids}},
+		ByIds(ids),
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,
 			AbortInfoKey: reason,
@@ -2293,7 +2249,6 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
 	}
-
 	event.LogManyTaskAbortRequests(ids, reason.User)
 	return nil
 }
@@ -2975,24 +2930,9 @@ func (t *Task) Blocked() bool {
 	return t.hasUnattainableDependency()
 }
 
-// WillRun returns true if the task will run eventually, but has not started
-// running yet. This is logically equivalent to evergreen.TaskWillRun from
-// (Task).GetDisplayStatus.
-func (t *Task) WillRun() bool {
-	return t.Status == evergreen.TaskUndispatched && t.Activated && !t.Blocked()
-}
-
-// IsUnscheduled returns true if a task is unscheduled and will not run. This is
-// logically equivalent to evergreen.TaskUnscheduled from
-// (Task).GetDisplayStatus.
+// isUnscheduled returns true if a task is unscheduled and will not run
 func (t *Task) IsUnscheduled() bool {
 	return t.Status == evergreen.TaskUndispatched && !t.Activated
-}
-
-// IsInProgress returns true if the task has been dispatched and is about to
-// run, or is already running.
-func (t *Task) IsInProgress() bool {
-	return utility.StringSliceContains(evergreen.TaskInProgressStatuses, t.Status)
 }
 
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {

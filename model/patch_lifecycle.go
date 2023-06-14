@@ -629,7 +629,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
-
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
 			ProjectRef:       creationInfo.ProjectRef,
@@ -642,10 +641,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
 			SyncAtEndOpts:    p.SyncAtEndOpts,
-			// When a GitHub PR patch is finalized with the PR alias, all of the
-			// tasks selected by the alias must finish in order for the
-			// build/version to be finished.
-			ActivatedTasksAreEssentialToComplete: requester == evergreen.GithubPRRequester,
 		}
 		var build *build.Build
 		var tasks task.Tasks
@@ -882,7 +877,7 @@ func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 		if err := SetVersionActivation(p.Version, false, reason.User); err != nil {
 			return errors.WithStack(err)
 		}
-		return errors.WithStack(task.AbortVersion(p.Version, reason))
+		return errors.WithStack(task.AbortVersionTasks(p.Version, reason))
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
@@ -910,36 +905,39 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 
 	catcher := grip.NewSimpleCatcher()
 	for _, p := range patches {
-		if p.Version != "" {
-			if p.IsCommitQueuePatch() {
-				mergeTask, err := task.FindMergeTaskForVersion(p.Version)
-				if err != nil {
-					return errors.Wrap(err, "finding merge task for version")
-				}
-				if mergeTask == nil {
-					return errors.New("no merge task found")
-				}
-				if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
-					// If the merge task already started, the PR merge is
-					// already ongoing, so it's better to just let it complete.
-					continue
-				}
-				catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
-			} else if err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"source":         "github hook",
-					"created_before": createdBefore.String(),
-					"owner":          owner,
-					"repo":           repo,
-					"message":        "failed to abort patch's version",
-					"patch_id":       p.Id.Hex(),
-					"pr":             p.GithubPatchData.PRNumber,
-					"project":        p.Project,
-					"version":        p.Version,
-				}))
+		if p.Version == "" { // Skip anything unfinalized
+			continue
+		}
 
-				catcher.Add(err)
+		if p.IsCommitQueuePatch() {
+			mergeTask, err := task.FindMergeTaskForVersion(p.Version)
+			if err != nil {
+				return errors.Wrap(err, "finding merge task for version")
 			}
+			if mergeTask == nil {
+				return errors.New("no merge task found")
+			}
+			if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
+				// If the merge task already started, the PR merge is
+				// already ongoing, so it's better to just let it complete.
+				continue
+			}
+			catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
+		} else {
+			err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
+			msg := message.Fields{
+				"source":         "github hook",
+				"created_before": createdBefore.String(),
+				"owner":          owner,
+				"repo":           repo,
+				"message":        "aborting patch's version",
+				"patch_id":       p.Id.Hex(),
+				"pr":             p.GithubPatchData.PRNumber,
+				"project":        p.Project,
+				"version":        p.Version,
+			}
+			grip.Error(message.WrapError(err, msg))
+			catcher.Add(err)
 		}
 	}
 

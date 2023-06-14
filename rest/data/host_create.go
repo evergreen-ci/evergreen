@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mitchellh/mapstructure"
@@ -83,7 +84,7 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 
 // CreateHostsFromTask creates intent hosts for those requested by the
 // host.create command in a task.
-func CreateHostsFromTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, user user.DBUser, keyNameOrVal string) error {
+func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task.Task, user user.DBUser, keyNameOrVal string) error {
 	if t == nil {
 		return errors.New("no task to create hosts from")
 	}
@@ -92,7 +93,7 @@ func CreateHostsFromTask(ctx context.Context, settings *evergreen.Settings, t *t
 		keyVal = keyNameOrVal
 	}
 
-	proj, expansions, err := makeProjectAndExpansionsFromTask(ctx, settings, t)
+	proj, expansions, err := makeProjectAndExpansionsFromTask(ctx, env.Settings(), t)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -133,7 +134,6 @@ func CreateHostsFromTask(ctx context.Context, settings *evergreen.Settings, t *t
 		return catcher.Resolve()
 	}
 
-	hosts := []host.Host{}
 	for _, createHost := range createHostCmds {
 		err = createHost.Validate()
 		if err != nil {
@@ -146,11 +146,10 @@ func CreateHostsFromTask(ctx context.Context, settings *evergreen.Settings, t *t
 			continue
 		}
 		for i := 0; i < numHosts; i++ {
-			intent, err := MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
+			_, err := MakeHost(ctx, env, t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
 				return errors.Wrap(err, "creating intent host")
 			}
-			hosts = append(hosts, *intent)
 		}
 	}
 
@@ -240,14 +239,14 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 	return createHost, nil
 }
 
-func MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if evergreen.IsDockerProvider(createHost.CloudProvider) {
-		return makeDockerIntentHost(taskID, userID, createHost)
+		return makeDockerIntentHost(ctx, env, taskID, userID, createHost)
 	}
-	return makeEC2IntentHost(taskID, userID, publicKey, createHost)
+	return makeEC2IntentHost(ctx, env, taskID, userID, publicKey, createHost)
 }
 
-func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost) (*host.Host, error) {
+func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID, userID string, createHost apimodels.CreateHost) (*host.Host, error) {
 	var d *distro.Distro
 	var err error
 
@@ -295,11 +294,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		EnvironmentVars:  envVars,
 	}
 
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting admin settings")
-	}
-	containerPool := config.ContainerPools.GetContainerPool(d.ContainerPool)
+	containerPool := env.Settings().ContainerPools.GetContainerPool(d.ContainerPool)
 	if containerPool == nil {
 		return nil, errors.Errorf("distro '%s' doesn't have a container pool", d.Id)
 	}
@@ -316,11 +311,16 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	if err = host.InsertMany(parentIntents); err != nil {
 		return nil, errors.Wrap(err, "inserting parent intent hosts")
 	}
+
+	if err := units.EnqueueHostCreateJobs(ctx, env, append(containerIntents, parentIntents...)); err != nil {
+		return nil, errors.Wrapf(err, "enqueueing host create jobs")
+	}
+
 	return &containerIntents[0], nil
 
 }
 
-func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if createHost.Region == "" {
 		createHost.Region = evergreen.DefaultEC2Region
 	}
@@ -420,6 +420,10 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	intent := host.NewIntent(*options)
 	if err = intent.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host")
+	}
+
+	if err := units.EnqueueHostCreateJobs(ctx, env, []host.Host{*intent}); err != nil {
+		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intent.Id)
 	}
 
 	return intent, nil

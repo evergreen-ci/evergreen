@@ -23,8 +23,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 var (
@@ -3214,7 +3212,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.False(t, utility.IsZeroTime(dtFromDB.ActivatedTime))
 }
 
-func TestAbortVersion(t *testing.T) {
+func TestAbortVersionTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	finishedExecTask := &Task{
 		Id:      "et1",
@@ -3239,7 +3237,7 @@ func TestAbortVersion(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
 
-	assert.NoError(t, AbortVersion("v1", AbortInfo{TaskID: "et2"}))
+	assert.NoError(t, AbortVersionTasks("v1", AbortInfo{TaskID: "et2"}))
 
 	var err error
 	dt, err = FindOneId("dt")
@@ -4224,75 +4222,6 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			opts, err := test.tsk.CreateTestResultsTaskOptions()
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedOpts, opts)
-		})
-	}
-}
-
-func TestWillRun(t *testing.T) {
-	t.Run("TaskWillRunIfActivated", func(t *testing.T) {
-		tsk := Task{
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-		}
-		assert.True(t, tsk.WillRun())
-	})
-	t.Run("TaskWillNotRunIfDeactivated", func(t *testing.T) {
-		tsk := Task{
-			Status:    evergreen.TaskUndispatched,
-			Activated: false,
-		}
-		assert.False(t, tsk.WillRun())
-	})
-	t.Run("TaskWillNotRunIfItIsAlreadyInProgress", func(t *testing.T) {
-		tsk := Task{
-			Status:    evergreen.TaskStarted,
-			Activated: true,
-		}
-		assert.False(t, tsk.WillRun())
-	})
-	t.Run("TaskWillRunEvenIfDependenciesAreNotYetFinished", func(t *testing.T) {
-		tsk := Task{
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			DependsOn: []Dependency{{Finished: false}},
-		}
-		assert.True(t, tsk.WillRun())
-	})
-	t.Run("TaskWillRunIfAllDependenciesAreMet", func(t *testing.T) {
-		tsk := Task{
-			Status:            evergreen.TaskUndispatched,
-			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: false}},
-		}
-		assert.True(t, tsk.WillRun())
-	})
-	t.Run("TaskWillNotRunIfDependenciesAreUnattainable", func(t *testing.T) {
-		tsk := Task{
-			Status:            evergreen.TaskUndispatched,
-			Activated:         true,
-			ExecutionPlatform: ExecutionPlatformContainer,
-			DependsOn:         []Dependency{{Finished: true, Unattainable: true}},
-		}
-		assert.False(t, tsk.WillRun())
-	})
-}
-
-func TestIsInProgress(t *testing.T) {
-	for _, status := range evergreen.TaskCompletedStatuses {
-		t.Run(fmt.Sprintf("Status%sIsNotInProgress", cases.Title(language.AmericanEnglish).String(status)), func(t *testing.T) {
-			tsk := Task{
-				Status: status,
-			}
-			assert.False(t, tsk.IsInProgress())
-		})
-	}
-	for _, status := range evergreen.TaskInProgressStatuses {
-		t.Run(fmt.Sprintf("Status%sIsInProgress", cases.Title(language.AmericanEnglish).String(status)), func(t *testing.T) {
-			tsk := Task{
-				Status: status,
-			}
-			assert.True(t, tsk.IsInProgress())
 		})
 	}
 }
