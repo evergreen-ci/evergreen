@@ -2388,7 +2388,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 }
 
 // GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
-func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([]string, error) {
+func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, baseVersionID string) ([]string, error) {
 	pipeline := []bson.M{}
 	taskField := "tasks"
 
@@ -2440,7 +2440,12 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 	})
 
 	res := []map[string]string{}
-	err := Aggregate(pipeline, &res)
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &res)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating base task statuses")
 	}

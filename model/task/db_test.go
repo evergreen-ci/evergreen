@@ -1476,7 +1476,8 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		BuildVariant:  "bv_2",
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
-	statuses, err := GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	ctx := context.TODO()
+	statuses, err := GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(statuses))
 	assert.Equal(t, statuses[0], evergreen.TaskStarted)
@@ -1484,7 +1485,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
-	statuses, err = GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	statuses, err = GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(statuses))
 }

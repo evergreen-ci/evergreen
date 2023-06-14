@@ -40,7 +40,7 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.A
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
-	statuses, err := task.GetBaseStatusesForActivatedTasks(*obj.Id, baseVersion.Id)
+	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, *obj.Id, baseVersion.Id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
 	}
