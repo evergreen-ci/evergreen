@@ -487,3 +487,19 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 
 	return false, errors.Wrapf(err, "replacing intent host '%s' with real host '%s'", j.HostID, j.host.Id)
 }
+
+func EnqueueHostCreateJobs(ctx context.Context, env evergreen.Environment, hostIntents []host.Host) error {
+	appCtx, _ := env.Context()
+	queue, err := env.RemoteQueueGroup().Get(appCtx, CreateHostQueueGroup)
+	if err != nil {
+		return errors.Wrap(err, "getting host create queue")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	ts := utility.RoundPartOfHour(0).Format(TSFormat)
+	for _, intent := range hostIntents {
+		catcher.Add(errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostCreateJob(env, intent, ts, 0, false)), "enqueueing host create job for '%s'", intent.Id))
+	}
+
+	return catcher.Resolve()
+}
