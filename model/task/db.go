@@ -2145,6 +2145,60 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	return results, count, nil
 }
 
+// GetTaskStatusesByVersion gets all unique task display statuses for a specific version
+func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+
+	opts := GetTasksByVersionOptions{
+		IncludeBaseTasks:               false,
+		FieldsToProject:                []string{DisplayStatusKey},
+		IncludeBuildVariantDisplayName: false,
+		IncludeNeverActivatedTasks:     true,
+		IncludeExecutionTasks:          false,
+	}
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "getting tasks by version pipeline")
+	}
+
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			"_id": nil,
+			"statuses": bson.M{
+				"$addToSet": "$" + DisplayStatusKey,
+			},
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			"_id": 0,
+			"statuses": bson.M{
+				"$sortArray": bson.M{
+					"input":  "$statuses",
+					"sortBy": 1,
+				},
+			},
+		},
+	})
+
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []struct {
+		Statuses []string `bson:"statuses"`
+	}
+	err = cursor.All(ctx, &results)
+
+	if err != nil {
+		return nil, err
+	}
+	return results[0].Statuses, nil
+
+}
+
 type StatusCount struct {
 	Status string `bson:"status"`
 	Count  int    `bson:"count"`
