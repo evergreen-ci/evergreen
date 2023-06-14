@@ -673,7 +673,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
-	case evergreen.TaskConflict:
+	case client.TaskConflict:
 		tc.logger.Task().Error("Task completed - CANCELED.")
 		// If we receive a 409, return control to the loop (ask for a new task)
 		return nil, nil
