@@ -161,7 +161,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	patchStatus := v.Status
 	if v.Aborted {
 		patchStatus = evergreen.VersionAborted
-	} else if patchStatus == evergreen.LegacyVersionSucceeded {
+	} else if patchStatus == evergreen.NewVersionSucceeded {
 		patchStatus = evergreen.VersionSucceeded
 	}
 

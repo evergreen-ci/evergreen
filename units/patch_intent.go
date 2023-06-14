@@ -636,7 +636,7 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 
 	triggerIntents := make([]patch.Intent, 0, len(aliasGroups))
 	for group, definitions := range aliasGroups {
-		if group.status == evergreen.LegacyVersionSucceeded {
+		if group.status == evergreen.NewVersionSucceeded {
 			group.status = evergreen.VersionSucceeded
 		}
 		triggerIntent := patch.NewTriggerIntent(patch.TriggerIntentOptions{

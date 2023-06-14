@@ -160,13 +160,14 @@ const (
 	VersionStarted   = "started"
 	VersionCreated   = "created"
 	VersionFailed    = "failed"
-	VersionSucceeded = "success"
+	VersionSucceeded = "succeeded"
 	// VersionAborted is a display status only and not stored in the DB (used for both patches and versions).
 	VersionAborted = "aborted"
 
-	// LegacyVersionSucceeded should be removed in EVG-20032. In the meantime,
-	// will set with the new status but consider both statuses.
-	LegacyVersionSucceeded = "succeeded"
+	// NewVersionSucceeded is introduced as step one of EVG-19914, for querying only,
+	// to maintain backwards compatibility with the UI. The following step will be to make this
+	// the default status, and "succeeded" the legacy status.
+	NewVersionSucceeded = "success"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
@@ -331,7 +332,7 @@ const (
 )
 
 var VersionSucceededStatuses = []string{
-	LegacyVersionSucceeded, VersionSucceeded,
+	NewVersionSucceeded, VersionSucceeded,
 }
 
 var TaskStatuses = []string{

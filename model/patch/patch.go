@@ -1215,7 +1215,7 @@ func GetCollectiveStatusFromStatuses(statuses []string) string {
 			hasCreated = true
 		case evergreen.VersionFailed:
 			hasFailure = true
-		case evergreen.VersionSucceeded, evergreen.LegacyVersionSucceeded:
+		case evergreen.VersionSucceeded, evergreen.NewVersionSucceeded:
 			hasSuccess = true
 		case evergreen.VersionAborted:
 			// Note that we only consider this if the passed in statuses considered display status handling.

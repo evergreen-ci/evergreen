@@ -1497,7 +1497,7 @@ func updateVersionStatus(v *Version) (string, error) {
 func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	patchStatus := versionStatus
 	// Resolve legacy status (to be removed in EVG-20032)
-	if patchStatus == evergreen.LegacyVersionSucceeded {
+	if patchStatus == evergreen.NewVersionSucceeded {
 		patchStatus = evergreen.VersionSucceeded
 	}
 
