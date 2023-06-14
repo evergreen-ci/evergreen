@@ -55,10 +55,9 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	q := bson.M{
-		task.VersionKey: versionId,
-		task.StatusKey:  evergreen.TaskUndispatched,
-	}
+	q := task.ByVersionWithChildTasks(versionId)
+	q[task.StatusKey] = evergreen.TaskUndispatched
+
 	var tasksToModify []task.Task
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller.
@@ -187,7 +186,7 @@ func AbortBuild(buildId string, caller string) error {
 		return errors.Wrapf(err, "deactivating build '%s'", buildId)
 	}
 
-	return errors.Wrapf(task.AbortBuild(buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
+	return errors.Wrapf(task.AbortBuildTasks(buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
 }
 
 func TryMarkVersionStarted(versionId string, startTime time.Time) error {
@@ -285,10 +284,10 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 	return nil
 }
 
-// SetVersionsPriority updates the priority field of all tasks associated with the given version ids.
+// SetVersionsPriority updates the priority field of all tasks and child tasks associated with the given version ids.
 func SetVersionsPriority(versionIds []string, priority int64, caller string) error {
-	_, err := task.UpdateAll(
-		bson.M{task.VersionKey: bson.M{"$in": versionIds}},
+	query := task.ByVersionsWithChildTasks(versionIds)
+	_, err := task.UpdateAll(query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
@@ -298,7 +297,7 @@ func SetVersionsPriority(versionIds []string, priority int64, caller string) err
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: bson.M{"$in": versionIds}}))
+		tasks, err = task.FindAll(db.Query(query))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks for versions")
 		}

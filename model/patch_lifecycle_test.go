@@ -168,13 +168,23 @@ func TestSetPriority(t *testing.T) {
 		Id:      "t1",
 		Version: "aabbccddeeff001122334455",
 	}
+	t2 := task.Task{
+		Id:            "t2",
+		Version:       "something_else",
+		ParentPatchID: t1.Version,
+	}
 	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t2.Insert())
 	for _, p := range patches {
 		assert.NoError(t, p.Insert())
 	}
 	err := SetVersionsPriority([]string{"aabbccddeeff001122334455"}, 7, "")
 	assert.NoError(t, err)
 	foundTask, err := task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(7), foundTask.Priority)
+
+	foundTask, err = task.FindOneId("t2")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7), foundTask.Priority)
 }
