@@ -48,7 +48,14 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 	integrationSettings, err := evergreen.NewSettings(*settingsOverride)
 	require.NoError(t, err, "Error opening settings override file '%s'", *settingsOverride)
 
-	// testSettings.Providers = integrationSettings.Providers
+	// Don't clobber allowed images if it doesn't exist in the override
+	// A longer-term fix will be in EVG-20160
+	allowedImages := testSettings.Providers.AWS.Pod.ECS.AllowedImages
+	testSettings.Providers = integrationSettings.Providers
+	if len(integrationSettings.Providers.AWS.Pod.ECS.AllowedImages) == 0 {
+		testSettings.Providers.AWS.Pod.ECS.AllowedImages = allowedImages
+	}
+
 	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.AuthConfig = integrationSettings.AuthConfig
 	testSettings.Plugins = integrationSettings.Plugins
