@@ -352,21 +352,22 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 				return
 			}
 		}
+		if mergeTask.IsFinished() {
+			grip.Info(message.Fields{
+				"message":               "merge task is already done, dequeueing",
+				"source":                "commit queue",
+				"job_id":                j.ID(),
+				"item":                  nextItem,
+				"project_id":            cq.ProjectID,
+				"task":                  mergeTask.Id,
+				"version":               mergeTask.Version,
+				"time_since_enqueue":    time.Since(nextItem.EnqueueTime).Seconds(),
+				"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
+			})
+			j.dequeue(cq, nextItem, "merge task is already finished but still in the commit queue")
+		}
 	}
 
-	// patch is done
-	if !utility.IsZeroTime(patchDoc.FinishTime) {
-		grip.Info(message.Fields{
-			"message":               "patch is already done, dequeueing",
-			"source":                "commit queue",
-			"job_id":                j.ID(),
-			"item":                  nextItem,
-			"project_id":            cq.ProjectID,
-			"time_since_enqueue":    time.Since(nextItem.EnqueueTime).Seconds(),
-			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
-		})
-		j.dequeue(cq, nextItem, "patch is already finished but still in the commit queue")
-	}
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
