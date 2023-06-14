@@ -37,6 +37,9 @@ const (
 	evergreenHelpComment    = "evergreen help"
 
 	refTags = "refs/tags/"
+
+	// This will be removed when EVG-19964 is ready.
+	disableMergeGroup = true
 )
 
 // skipCILabels are a set of labels which will skip creating PR patch if part of the commit description or message.
@@ -188,14 +191,16 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"ref":        event.GetRef(),
 			"is_tag":     isTag(event.GetRef()),
 		})
+		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
+		// to ensure we're up-to-date on the commit the tag is being pushed to.
+		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
+		}
 		if isTag(event.GetRef()) {
 			if err := gh.handleGitTag(ctx, event); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling git tag"))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
-		}
-		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 
 	case *github.IssueCommentEvent:
@@ -222,9 +227,14 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 
-	// This case merely logs. EVG-19964 will add logic to create a version from the GitHub merge queue.
 	case *github.MergeGroupEvent:
-		grip.Debug(message.Fields{
+		var msg string
+		if disableMergeGroup {
+			msg = "merge group received, skipping"
+		} else {
+			msg = "merge group received, attempting to queue"
+		}
+		grip.Info(message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
 			"event":    gh.eventType,
@@ -232,11 +242,41 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"repo":     event.GetRepo(),
 			"base_sha": event.GetMergeGroup().GetBaseSHA(),
 			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+			"message":  msg,
 		})
 
+		// This will be removed when EVG-19964 is ready.
+		if disableMergeGroup {
+			return gimlet.NewJSONResponse(struct{}{})
+		}
+		if err := gh.AddIntentForGithubMerge(event.GetMergeGroup()); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":   "GitHub hook",
+				"msg_id":   gh.msgID,
+				"event":    gh.eventType,
+				"org":      event.GetOrg(),
+				"repo":     event.GetRepo(),
+				"base_sha": event.GetMergeGroup().GetBaseSHA(),
+				"head_sha": event.GetMergeGroup().GetHeadSHA(),
+				"message":  "can't add intent",
+			}))
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
+func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroup) error {
+	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
+	if err != nil {
+		return errors.Wrap(err, "creating GitHub merge intent")
+	}
+	if err := data.AddPatchIntent(intent, gh.queue); err != nil {
+		return errors.Wrap(err, "saving GitHub merge intent")
+	}
+	return nil
 }
 
 // handleComment parses a given comment and takes the relevant action, if it's an Evergreen-tracked comment.
@@ -445,7 +485,7 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy 
 	}
 
 	if err := data.AddPatchIntent(ghi, gh.queue); err != nil {
-		return errors.Wrap(err, "saving patch intent")
+		return errors.Wrap(err, "saving GitHub patch intent")
 	}
 
 	return nil

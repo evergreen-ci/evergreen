@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -202,9 +203,9 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	s.NoError(err)
 	s.Len(b, 1)
 	s.Equal("device", *b[0].DeviceName)
-	s.Equal(int64(10), *b[0].Ebs.VolumeSize)
-	s.Equal(int64(100), *b[0].Ebs.Iops)
-	s.Equal(int64(150), *b[0].Ebs.Throughput)
+	s.Equal(int32(10), *b[0].Ebs.VolumeSize)
+	s.Equal(int32(100), *b[0].Ebs.Iops)
+	s.Equal(int32(150), *b[0].Ebs.Throughput)
 	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
@@ -257,9 +258,9 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 	s.NoError(err)
 	s.Len(b, 1)
 	s.Equal("device", *b[0].DeviceName)
-	s.Equal(int64(10), *b[0].Ebs.VolumeSize)
-	s.Equal(int64(100), *b[0].Ebs.Iops)
-	// s.Equal(int64(150), *b[0].Ebs.Throughput)
+	s.Equal(int32(10), *b[0].Ebs.VolumeSize)
+	s.Equal(int32(100), *b[0].Ebs.Iops)
+	s.Equal(int32(150), *b[0].Ebs.Throughput)
 	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
@@ -279,7 +280,7 @@ func (s *EC2Suite) TestConfigure() {
 	s.NoError(err)
 	ec2m, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
-	creds, err := ec2m.credentials.Get()
+	creds, err := ec2m.credentials.Retrieve(ctx)
 	s.NoError(err)
 	s.Equal("default-key", creds.AccessKeyID)
 	s.Equal("default-secret", creds.SecretAccessKey)
@@ -343,12 +344,12 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", *runInput.InstanceType)
+	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("keyName", *runInput.KeyName)
 	s.Require().Len(runInput.BlockDeviceMappings, 1)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *runInput.SecurityGroups[0])
+	s.Equal("sg-123456", runInput.SecurityGroups[0])
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Nil(runInput.SecurityGroupIds)
 	s.Nil(runInput.SubnetId)
@@ -392,7 +393,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", *runInput.InstanceType)
+	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("keyName", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
@@ -488,7 +489,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
-	s.Equal("instanceType", *runInput.InstanceType)
+	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("evg_auto_evergreen", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
@@ -784,33 +785,33 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	mock, ok := manager.client.(*awsClientMock)
 
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
-		Reservations: []*ec2.Reservation{
+		Reservations: []types.Reservation{
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-4"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameShuttingDown),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameShuttingDown,
 						},
 					},
 				},
 			},
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-2"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameRunning),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameRunning,
 						},
 						PublicDnsName:    aws.String("public_dns_name_3"),
 						PrivateIpAddress: aws.String("3.3.3.3"),
-						Placement: &ec2.Placement{
+						Placement: &types.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
-						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+						BlockDeviceMappings: []types.InstanceBlockDeviceMapping{
 							{
-								Ebs: &ec2.EbsInstanceBlockDevice{
+								Ebs: &types.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
 							},
@@ -819,11 +820,11 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				},
 			},
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-3"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameTerminated),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameTerminated,
 						},
 					},
 				},
@@ -844,23 +845,23 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	}, statuses)
 
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
-		Reservations: []*ec2.Reservation{
+		Reservations: []types.Reservation{
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-3"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameRunning),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameRunning,
 						},
 						PublicDnsName:    aws.String("public_dns_name_3"),
 						PrivateIpAddress: aws.String("3.3.3.3"),
-						Placement: &ec2.Placement{
+						Placement: &types.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
-						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+						BlockDeviceMappings: []types.InstanceBlockDeviceMapping{
 							{
-								Ebs: &ec2.EbsInstanceBlockDevice{
+								Ebs: &types.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
 							},
@@ -869,21 +870,21 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				},
 			},
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-1"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameRunning),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameRunning,
 						},
 						PublicDnsName:    aws.String("public_dns_name_1"),
 						PrivateIpAddress: aws.String("1.1.1.1"),
-						Placement: &ec2.Placement{
+						Placement: &types.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
-						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+						BlockDeviceMappings: []types.InstanceBlockDeviceMapping{
 							{
-								Ebs: &ec2.EbsInstanceBlockDevice{
+								Ebs: &types.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
 							},
@@ -892,31 +893,31 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				},
 			},
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-4"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameShuttingDown),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameShuttingDown,
 						},
 					},
 				},
 			},
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-2"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameRunning),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameRunning,
 						},
 						PublicDnsName:    aws.String("public_dns_name_2"),
 						PrivateIpAddress: aws.String("2.2.2.2"),
-						Placement: &ec2.Placement{
+						Placement: &types.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
-						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+						BlockDeviceMappings: []types.InstanceBlockDeviceMapping{
 							{
-								Ebs: &ec2.EbsInstanceBlockDevice{
+								Ebs: &types.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
 							},
@@ -929,10 +930,10 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	statuses, err = batchManager.GetInstanceStatuses(ctx, hosts)
 	s.NoError(err)
 	s.Len(mock.DescribeInstancesInput.InstanceIds, 4)
-	s.Equal("i-1", *mock.DescribeInstancesInput.InstanceIds[0])
-	s.Equal("i-2", *mock.DescribeInstancesInput.InstanceIds[1])
-	s.Equal("i-3", *mock.DescribeInstancesInput.InstanceIds[2])
-	s.Equal("i-4", *mock.DescribeInstancesInput.InstanceIds[3])
+	s.Equal("i-1", mock.DescribeInstancesInput.InstanceIds[0])
+	s.Equal("i-2", mock.DescribeInstancesInput.InstanceIds[1])
+	s.Equal("i-3", mock.DescribeInstancesInput.InstanceIds[2])
+	s.Equal("i-4", mock.DescribeInstancesInput.InstanceIds[3])
 	s.Len(statuses, 4)
 	s.Equal(map[string]CloudStatus{
 		"i-1": StatusRunning,
@@ -975,23 +976,23 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 	manager := s.onDemandManager.(*ec2Manager)
 	mock := manager.client.(*awsClientMock)
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
-		Reservations: []*ec2.Reservation{
+		Reservations: []types.Reservation{
 			{
-				Instances: []*ec2.Instance{
+				Instances: []types.Instance{
 					{
 						InstanceId: aws.String("i-1"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameRunning),
+						State: &types.InstanceState{
+							Name: types.InstanceStateNameRunning,
 						},
 						PublicDnsName:    aws.String("public_dns_name_2"),
 						PrivateIpAddress: aws.String("2.2.2.2"),
-						Placement: &ec2.Placement{
+						Placement: &types.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
-						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+						BlockDeviceMappings: []types.InstanceBlockDeviceMapping{
 							{
-								Ebs: &ec2.EbsInstanceBlockDevice{
+								Ebs: &types.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
 							},
@@ -1028,42 +1029,27 @@ func (s *EC2Suite) TestUserDataExpand() {
 	s.Equal("expand a thing", expanded)
 }
 
-func (s *EC2Suite) TestGetSecurityGroups() {
-	settings := EC2ProviderSettings{
-		SecurityGroupIDs: []string{"sg-1"},
-	}
-	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
-	settings = EC2ProviderSettings{
-		SecurityGroupIDs: []string{"sg-1"},
-	}
-	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
-	settings = EC2ProviderSettings{
-		SecurityGroupIDs: []string{"sg-1", "sg-2"},
-	}
-	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
-}
-
 func (s *EC2Suite) TestCacheHostData() {
 	ec2m := s.onDemandManager.(*ec2Manager)
 
 	s.Require().NoError(s.h.Insert())
 
-	instance := &ec2.Instance{Placement: &ec2.Placement{}}
+	instance := &types.Instance{Placement: &types.Placement{}}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
 	instance.LaunchTime = aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
-	instance.NetworkInterfaces = []*ec2.InstanceNetworkInterface{
-		&ec2.InstanceNetworkInterface{
-			Ipv6Addresses: []*ec2.InstanceIpv6Address{
+	instance.NetworkInterfaces = []types.InstanceNetworkInterface{
+		{
+			Ipv6Addresses: []types.InstanceIpv6Address{
 				{
 					Ipv6Address: aws.String("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
 				},
 			},
 		},
 	}
-	instance.BlockDeviceMappings = []*ec2.InstanceBlockDeviceMapping{
-		&ec2.InstanceBlockDeviceMapping{
+	instance.BlockDeviceMappings = []types.InstanceBlockDeviceMapping{
+		{
 			DeviceName: aws.String("device_name"),
-			Ebs: &ec2.EbsInstanceBlockDevice{
+			Ebs: &types.EbsInstanceBlockDevice{
 				VolumeId: aws.String("volume_id"),
 			},
 		},
@@ -1242,7 +1228,7 @@ func (s *EC2Suite) TestCreateVolume() {
 	s.True(ok)
 
 	input := *mock.CreateVolumeInput
-	s.Equal("standard", *input.VolumeType)
+	s.EqualValues("standard", input.VolumeType)
 
 	foundVolume, err := host.FindVolumeByID(volume.ID)
 	s.NotNil(foundVolume)
@@ -1383,7 +1369,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 
 	vol, err := host.FindVolumeByID(s.volume.ID)
 	s.NoError(err)
-	s.Equal(vol.Size, 100)
+	s.EqualValues(vol.Size, 100)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -1391,7 +1377,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 	s.True(ok)
 
 	input := *mock.ModifyVolumeInput
-	s.Equal(int(*input.Size), 100)
+	s.EqualValues(*input.Size, 100)
 }
 
 func (s *EC2Suite) TestModifyVolumeName() {

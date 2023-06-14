@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -41,7 +42,7 @@ func TestFleet(t *testing.T) {
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.DescribeInstancesInput.InstanceIds, 1)
-			assert.Equal(t, "h1", *mockClient.DescribeInstancesInput.InstanceIds[0])
+			assert.Equal(t, "h1", mockClient.DescribeInstancesInput.InstanceIds[0])
 
 			hDb, err := host.FindOneId("h1")
 			assert.NoError(t, err)
@@ -58,10 +59,13 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"GetInstanceStatusNonExistentInstance": func(*testing.T) {
-			awsError := awserr.New(EC2ErrorNotFound, "The instance ID 'test-id' does not exist", nil)
-			wrappedAwsError := errors.Wrap(awsError, "EC2 API returned error for DescribeInstances")
+			apiErr := &smithy.GenericAPIError{
+				Code:    EC2ErrorNotFound,
+				Message: "The instance ID 'test-id' does not exist",
+			}
+			wrappedAPIError := errors.Wrap(apiErr, "EC2 API returned error for DescribeInstances")
 			mockClient := m.client.(*awsClientMock)
-			mockClient.RequestGetInstanceInfoError = wrappedAwsError
+			mockClient.RequestGetInstanceInfoError = wrappedAPIError
 			status, err := m.GetInstanceStatus(context.Background(), h)
 			assert.NoError(t, err)
 			assert.Equal(t, StatusNonExistent, status)
@@ -78,7 +82,7 @@ func TestFleet(t *testing.T) {
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.TerminateInstancesInput.InstanceIds, 1)
-			assert.Equal(t, "h1", *mockClient.TerminateInstancesInput.InstanceIds[0])
+			assert.Equal(t, "h1", mockClient.TerminateInstancesInput.InstanceIds[0])
 
 			hDb, err := host.FindOneId("h1")
 			assert.NoError(t, err)
@@ -100,7 +104,7 @@ func TestFleet(t *testing.T) {
 
 			instanceID, err := m.requestFleet(context.Background(), h, ec2Settings)
 			assert.NoError(t, err)
-			assert.Equal(t, "i-12345", *instanceID)
+			assert.Equal(t, "i-12345", instanceID)
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.CreateFleetInput.LaunchTemplateConfigs, 1)
@@ -132,25 +136,6 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Nil(t, overrides)
 		},
-		"SubnetMatchesAz": func(*testing.T) {
-			subnet := &ec2.Subnet{
-				Tags: []*ec2.Tag{
-					{Key: aws.String("key1"), Value: aws.String("value1")},
-					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-extra")},
-				},
-				AvailabilityZone: aws.String("us-east-1a"),
-			}
-			assert.False(t, subnetMatchesAz(subnet))
-
-			subnet = &ec2.Subnet{
-				Tags: []*ec2.Tag{
-					{Key: aws.String("key1"), Value: aws.String("value1")},
-					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
-				},
-				AvailabilityZone: aws.String("us-east-1a"),
-			}
-			assert.True(t, subnetMatchesAz(subnet))
-		},
 	} {
 		h = &host.Host{
 			Id:  "h1",
@@ -174,10 +159,7 @@ func TestFleet(t *testing.T) {
 				client: &awsClientMock{},
 				region: "test-region",
 			},
-			credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
-				AccessKeyID:     "key",
-				SecretAccessKey: "secret",
-			}),
+			credentials: credentials.NewStaticCredentialsProvider("key", "secret", ""),
 			settings: &evergreen.Settings{
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
@@ -240,7 +222,7 @@ func TestCleanup(t *testing.T) {
 	}
 
 	t.Run("NotYetExpired", func(t *testing.T) {
-		client.launchTemplates = []*ec2.LaunchTemplate{
+		client.launchTemplates = []types.LaunchTemplate{
 			{
 				LaunchTemplateId: aws.String("lt0"),
 				CreateTime:       aws.Time(time.Now()),
@@ -258,7 +240,7 @@ func TestCleanup(t *testing.T) {
 	})
 
 	t.Run("AllExpired", func(t *testing.T) {
-		client.launchTemplates = []*ec2.LaunchTemplate{
+		client.launchTemplates = []types.LaunchTemplate{
 			{
 				LaunchTemplateId: aws.String("lt0"),
 				CreateTime:       aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
@@ -274,7 +256,7 @@ func TestCleanup(t *testing.T) {
 	})
 
 	t.Run("SomeExpired", func(t *testing.T) {
-		client.launchTemplates = []*ec2.LaunchTemplate{
+		client.launchTemplates = []types.LaunchTemplate{
 			{
 				LaunchTemplateId: aws.String("lt0"),
 				CreateTime:       aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
@@ -295,9 +277,9 @@ func TestInstanceTypeAZCache(t *testing.T) {
 	cache := instanceTypeSubnetCache{}
 	defaultRegionClient := &awsClientMock{
 		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
-			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
+			InstanceTypeOfferings: []types.InstanceTypeOffering{
 				{
-					InstanceType: aws.String("instanceType0"),
+					InstanceType: "instanceType0",
 					Location:     aws.String(evergreen.DefaultEBSAvailabilityZone),
 				},
 			},

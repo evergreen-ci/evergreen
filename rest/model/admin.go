@@ -2211,33 +2211,32 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled            bool `json:"task_dispatch_disabled"`
-	HostInitDisabled                bool `json:"host_init_disabled"`
-	PodInitDisabled                 bool `json:"pod_init_disabled"`
-	S3BinaryDownloadsDisabled       bool `json:"s3_binary_downloads_disabled"`
-	MonitorDisabled                 bool `json:"monitor_disabled"`
-	AlertsDisabled                  bool `json:"alerts_disabled"`
-	AgentStartDisabled              bool `json:"agent_start_disabled"`
-	RepotrackerDisabled             bool `json:"repotracker_disabled"`
-	SchedulerDisabled               bool `json:"scheduler_disabled"`
-	CheckBlockedTasksDisabled       bool `json:"check_blocked_tasks_disabled"`
-	GithubPRTestingDisabled         bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled              bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled         bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled             bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
-	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
-	CommitQueueDisabled             bool `json:"commit_queue_disabled"`
-	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
-	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
-	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
-	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
-	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
-	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
-	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
-	LegacyUIProjectPageDisabled     bool `json:"legacy_ui_project_page_disabled"`
+	TaskDispatchDisabled           bool `json:"task_dispatch_disabled"`
+	HostInitDisabled               bool `json:"host_init_disabled"`
+	PodInitDisabled                bool `json:"pod_init_disabled"`
+	S3BinaryDownloadsDisabled      bool `json:"s3_binary_downloads_disabled"`
+	MonitorDisabled                bool `json:"monitor_disabled"`
+	AlertsDisabled                 bool `json:"alerts_disabled"`
+	AgentStartDisabled             bool `json:"agent_start_disabled"`
+	RepotrackerDisabled            bool `json:"repotracker_disabled"`
+	SchedulerDisabled              bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled      bool `json:"check_blocked_tasks_disabled"`
+	GithubPRTestingDisabled        bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled             bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled        bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled            bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled          bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled     bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled        bool `json:"task_reliability_disabled"`
+	CommitQueueDisabled            bool `json:"commit_queue_disabled"`
+	HostAllocatorDisabled          bool `json:"host_allocator_disabled"`
+	PodAllocatorDisabled           bool `json:"pod_allocator_disabled"`
+	UnrecognizedPodCleanupDisabled bool `json:"unrecognized_pod_cleanup_disabled"`
+	BackgroundReauthDisabled       bool `json:"background_reauth_disabled"`
+	BackgroundCleanupDisabled      bool `json:"background_cleanup_disabled"`
+	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
+	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
+	LegacyUIProjectPageDisabled    bool `json:"legacy_ui_project_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2524,7 +2523,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
-		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.LegacyUIProjectPageDisabled = v.LegacyUIProjectPageDisabled
 	default:
@@ -2536,39 +2534,38 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
-		TaskDispatchDisabled:            as.TaskDispatchDisabled,
-		HostInitDisabled:                as.HostInitDisabled,
-		PodInitDisabled:                 as.PodInitDisabled,
-		S3BinaryDownloadsDisabled:       as.S3BinaryDownloadsDisabled,
-		MonitorDisabled:                 as.MonitorDisabled,
-		AlertsDisabled:                  as.AlertsDisabled,
-		AgentStartDisabled:              as.AgentStartDisabled,
-		RepotrackerDisabled:             as.RepotrackerDisabled,
-		SchedulerDisabled:               as.SchedulerDisabled,
-		CheckBlockedTasksDisabled:       as.CheckBlockedTasksDisabled,
-		GithubPRTestingDisabled:         as.GithubPRTestingDisabled,
-		CLIUpdatesDisabled:              as.CLIUpdatesDisabled,
-		EventProcessingDisabled:         as.EventProcessingDisabled,
-		JIRANotificationsDisabled:       as.JIRANotificationsDisabled,
-		SlackNotificationsDisabled:      as.SlackNotificationsDisabled,
-		EmailNotificationsDisabled:      as.EmailNotificationsDisabled,
-		WebhookNotificationsDisabled:    as.WebhookNotificationsDisabled,
-		GithubStatusAPIDisabled:         as.GithubStatusAPIDisabled,
-		BackgroundStatsDisabled:         as.BackgroundStatsDisabled,
-		TaskLoggingDisabled:             as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
-		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
-		CommitQueueDisabled:             as.CommitQueueDisabled,
-		HostAllocatorDisabled:           as.HostAllocatorDisabled,
-		PodAllocatorDisabled:            as.PodAllocatorDisabled,
-		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,
-		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
-		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
-		CloudCleanupDisabled:            as.CloudCleanupDisabled,
-		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
-		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
-		LegacyUIProjectPageDisabled:     as.LegacyUIProjectPageDisabled,
+		TaskDispatchDisabled:           as.TaskDispatchDisabled,
+		HostInitDisabled:               as.HostInitDisabled,
+		PodInitDisabled:                as.PodInitDisabled,
+		S3BinaryDownloadsDisabled:      as.S3BinaryDownloadsDisabled,
+		MonitorDisabled:                as.MonitorDisabled,
+		AlertsDisabled:                 as.AlertsDisabled,
+		AgentStartDisabled:             as.AgentStartDisabled,
+		RepotrackerDisabled:            as.RepotrackerDisabled,
+		SchedulerDisabled:              as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:      as.CheckBlockedTasksDisabled,
+		GithubPRTestingDisabled:        as.GithubPRTestingDisabled,
+		CLIUpdatesDisabled:             as.CLIUpdatesDisabled,
+		EventProcessingDisabled:        as.EventProcessingDisabled,
+		JIRANotificationsDisabled:      as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:     as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:     as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled:   as.WebhookNotificationsDisabled,
+		GithubStatusAPIDisabled:        as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:        as.BackgroundStatsDisabled,
+		TaskLoggingDisabled:            as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:          as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:     as.CacheStatsEndpointDisabled,
+		TaskReliabilityDisabled:        as.TaskReliabilityDisabled,
+		CommitQueueDisabled:            as.CommitQueueDisabled,
+		HostAllocatorDisabled:          as.HostAllocatorDisabled,
+		PodAllocatorDisabled:           as.PodAllocatorDisabled,
+		UnrecognizedPodCleanupDisabled: as.UnrecognizedPodCleanupDisabled,
+		BackgroundCleanupDisabled:      as.BackgroundCleanupDisabled,
+		BackgroundReauthDisabled:       as.BackgroundReauthDisabled,
+		CloudCleanupDisabled:           as.CloudCleanupDisabled,
+		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
+		LegacyUIProjectPageDisabled:    as.LegacyUIProjectPageDisabled,
 	}, nil
 }
 

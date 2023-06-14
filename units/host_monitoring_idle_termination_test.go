@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testing.T) (int, []string) {
@@ -42,7 +43,8 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 // test.
 func testFlaggingIdleHostsSetupTest(t *testing.T) {
 	require.NoError(t, db.DropCollections(host.Collection, distro.Collection), "dropping collections")
-	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "adding host index")
+	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "adding running_task_1 index")
+	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, false, false, host.StartedByKey, host.StatusKey), "adding started_by_1_status_1 index")
 }
 
 // testFlaggingIdleHostsTeardownTest resets the relevant DB collections after a
@@ -461,8 +463,14 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(host.Collection))
-	assert.NoError(db.ClearCollections(distro.Collection))
+	assert.NoError(db.DropCollections(host.Collection, distro.Collection))
+	defer func() {
+		assert.NoError(db.DropCollections(host.Collection, distro.Collection))
+	}()
+
+	require.NoError(t, db.EnsureIndex(host.Collection, mongo.IndexModel{
+		Keys: host.StartedByStatusIndex,
+	}))
 
 	distro1 := distro.Distro{
 		Id:       "distro1",
