@@ -69,8 +69,8 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) (map
 	logChunks := map[string][]chunkInfo{}
 
 	// To reduce potentially expensive list calls, use the LCP of the
-	// given log names when calling `bucket.List`. Key names that not have
-	// one of the log names as a prefix will get filtered out.
+	// given log names when calling `bucket.List`. Key names that do not
+	// have one of the log names as a prefix will get filtered out.
 	prefix := longestcommon.Prefix(logNames)
 	match := func(key string) bool {
 		for _, name := range logNames {
