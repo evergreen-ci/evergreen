@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/pail"
+	"github.com/jpillora/longestcommon"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
@@ -39,23 +40,21 @@ func (s *logServiceV0) GetTaskLogPrefix(opts TaskOptions, logType TaskLogType) (
 
 func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, getOpts GetOptions) (LogIterator, error) {
 	var its []LogIterator
-	for _, logName := range getOpts.LogNames {
-		logChunks, err := s.getLogChunks(ctx, logName)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting log chunks")
-		}
+	logChunks, err := s.getLogChunks(ctx, getOpts.LogNames)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting log chunks")
+	}
 
-		for name, chunks := range logChunks {
-			its = append(its, newChunkIterator(ctx, chunkIteratorOptions{
-				bucket:    s.bucket,
-				chunks:    chunks,
-				parser:    s.getParser(name),
-				start:     getOpts.Start,
-				end:       getOpts.End,
-				lineLimit: getOpts.LineLimit,
-				tailN:     getOpts.TailN,
-			}))
-		}
+	for name, chunks := range logChunks {
+		its = append(its, newChunkIterator(ctx, chunkIteratorOptions{
+			bucket:    s.bucket,
+			chunks:    chunks,
+			parser:    s.getParser(name),
+			start:     getOpts.Start,
+			end:       getOpts.End,
+			lineLimit: getOpts.LineLimit,
+			tailN:     getOpts.TailN,
+		}))
 	}
 
 	if len(its) == 1 {
@@ -66,8 +65,19 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, ge
 
 // getLogChunks maps each logical log to its chunk files stored in pail-backed
 // bucket storage for the given prefix.
-func (s *logServiceV0) getLogChunks(ctx context.Context, prefix string) (map[string][]chunkInfo, error) {
+func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) (map[string][]chunkInfo, error) {
 	logChunks := map[string][]chunkInfo{}
+
+	prefix := longestcommon.Prefix(logNames)
+	match := func(key string) bool {
+		for _, name := range logNames {
+			if strings.HasPrefix(key, name) {
+				return true
+			}
+		}
+
+		return false
+	}
 
 	it, err := s.bucket.List(ctx, prefix)
 	if err != nil {
@@ -76,6 +86,10 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, prefix string) (map[str
 	for it.Next(ctx) {
 		logName := prefix
 		chunkKey := it.Item().Name()
+
+		if !match(chunkKey) {
+			continue
+		}
 
 		// Strip any prefixes from the key and append it to the log's
 		// name as callers may pass in prefixes that contain multiple
