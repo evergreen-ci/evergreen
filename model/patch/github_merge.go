@@ -158,12 +158,17 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 	// merge_group.head_ref looks like this:
 	// refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
 	split := strings.Split(g.HeadRef, "/")
-	if len(split) != 5 {
-		return nil
+
+	// handle cases where base branch has a slash in it
+	baseBranchSlice := []string{}
+	for i := 3; i < len(split)-1; i++ {
+		baseBranchSlice = append(baseBranchSlice, split[i])
 	}
-	baseBranch := split[3] // e.g., main
+	baseBranch := strings.Join(baseBranchSlice, "/")
+
 	// produce a branch name like gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
-	headBranch := strings.Join([]string{split[2], split[3], split[4]}, "/")
+	headBranch := strings.Join([]string{split[2], baseBranch, split[len(split)-1]}, "/")
+
 	patchDoc := &Patch{
 		Id:      mgobson.NewObjectId(),
 		Alias:   g.GetAlias(),
