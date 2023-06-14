@@ -158,8 +158,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	}
 
 	if j.IntentType == patch.GithubMergeIntentType {
-		// TODO for the checks API, do we indicate that the check has begun, like we do with a status?
-		// will remove in EVG-19964, once checks API is supported
+		// TODO support status checks in EVG-19964
 		grip.Debug(message.Fields{
 			"message": "would start GitHub merge group check",
 			"ticket":  "EVG-19964",
