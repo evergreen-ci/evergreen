@@ -579,7 +579,8 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
-		return "", errors.New("Github app settings are not set")
+		// TODO EVG-19966: Return error here
+		return "", nil
 	}
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
