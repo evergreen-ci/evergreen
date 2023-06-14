@@ -57,6 +57,12 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			assert.Zero(t, exitCode)
 		},
 		"SetupLoggingCreatesExpectedLogger": func(ctx context.Context, t *testing.T, m *monitor) {
+			originalSender := grip.GetSender()
+			defer func() {
+				// Since the agent monitor sets the global logger, reset the
+				// sender at the end of the test to the original one.
+				grip.SetSender(originalSender)
+			}()
 			require.NoError(t, setupLogging(m))
 			const msg = "hello world!"
 

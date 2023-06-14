@@ -89,6 +89,7 @@ func agentMonitor() cli.Command {
 		clientPathFlagName      = "client_path"
 		distroIDFlagName        = "distro"
 		shellPathFlagName       = "shell_path"
+		logOutputFlagName       = "log_output"
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
 		portFlagName            = "port"
@@ -119,6 +120,11 @@ func agentMonitor() cli.Command {
 				Name:  shellPathFlagName,
 				Value: "bash",
 				Usage: "the path to the shell for starting the agent",
+			},
+			cli.StringFlag{
+				Name:  logOutputFlagName,
+				Value: string(agent.LogOutputFile),
+				Usage: "location for the agent monitor's log output (file, stdout)",
 			},
 			cli.StringFlag{
 				Name:  logPrefixFlagName,
@@ -161,6 +167,7 @@ func agentMonitor() cli.Command {
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
+				logOutput:       agent.LogOutputType(c.String(logOutputFlagName)),
 				logPrefix:       c.String(logPrefixFlagName),
 			}
 
