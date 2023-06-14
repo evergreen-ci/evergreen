@@ -1269,7 +1269,7 @@ func checkUpdateBuildPRStatusPending(b *build.Build) error {
 			Caller:    "pr-task-reset",
 			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		}
-		if err = thirdparty.SendPendingStatusToGithub(input); err != nil {
+		if err = thirdparty.SendPendingStatusToGithub(input, ""); err != nil {
 			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
 		}
 	}

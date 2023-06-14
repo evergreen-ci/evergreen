@@ -67,5 +67,5 @@ the PR to the merge queue.
 * [x] The intent will be procssed by the amboy [patch-intent-processor
 job](https://github.com/evergreen-ci/evergreen/blob/main/units/patch_intent.go).
 * [ ] New clone logic in the agent will clone the merge group branch.
-* [ ] Evergreen will post the result to the GitHub checks API.
+* [x] Evergreen will post the result to the GitHub checks API.
 * [ ] A new UI element will allow users to opt into the GitHub merge queue.

@@ -427,7 +427,7 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
-func SendPendingStatusToGithub(input SendGithubStatusInput) error {
+func SendPendingStatusToGithub(input SendGithubStatusInput, urlBase string) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
@@ -440,13 +440,15 @@ func SendPendingStatusToGithub(input SendGithubStatusInput) error {
 		return nil
 	}
 	env := evergreen.GetEnvironment()
-	uiConfig := evergreen.UIConfig{}
-	if err = uiConfig.Get(env); err != nil {
-		return errors.Wrap(err, "retrieving UI config")
-	}
-	urlBase := uiConfig.Url
 	if urlBase == "" {
-		return errors.New("url base doesn't exist")
+		uiConfig := evergreen.UIConfig{}
+		if err = uiConfig.Get(env); err != nil {
+			return errors.Wrap(err, "retrieving UI config")
+		}
+		urlBase := uiConfig.Url
+		if urlBase == "" {
+			return errors.New("url base doesn't exist")
+		}
 	}
 	status := &message.GithubStatus{
 		Owner:       input.Owner,
