@@ -874,14 +874,18 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 			logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
 		}
 
-		logger.Info("Cleaning up Docker artifacts.")
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
-		defer cancel()
-		if err := docker.Cleanup(ctx, logger); err != nil {
-			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+		// Agents running in containers don't have Docker available, so skip
+		// Docker cleanup for them.
+		if a.opts.Mode != PodMode {
+			logger.Info("Cleaning up Docker artifacts.")
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
+			defer cancel()
+			if err := docker.Cleanup(ctx, logger); err != nil {
+				logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+			}
+			logger.Info("Cleaned up Docker artifacts.")
 		}
-		logger.Info("Cleaned up Docker artifacts.")
 	}
 }
 
