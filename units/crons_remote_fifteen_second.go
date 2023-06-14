@@ -66,20 +66,20 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 
 	// Create dedicated queue for pod allocation.
 	appCtx, _ := j.env.Context()
-	podAllocationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.pod.allocate")
+	podAllocationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, podAllocationQueueGroup)
 	if err != nil {
 		catcher.Wrap(err, "getting pod allocator queue")
 	} else {
 		catcher.Wrap(PopulatePodAllocatorJobs(j.env)(ctx, podAllocationQueue), "populating pod allocator jobs")
 	}
 
-	podDefCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.pod.definition.create")
+	podDefCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, podDefinitionCreationQueueGroup)
 	if err != nil {
-		catcher.Wrap(err, "getting pod creation queue")
+		catcher.Wrap(err, "getting pod definition creation queue")
 	} else {
 		catcher.Wrap(PopulatePodDefinitionCreationJobs(j.env)(ctx, podDefCreationQueue), "populating pod definition creation jobs")
 	}
-	podCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.pod.create")
+	podCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, podCreationQueueGroup)
 	if err != nil {
 		catcher.Wrap(err, "getting pod creation queue")
 	} else {

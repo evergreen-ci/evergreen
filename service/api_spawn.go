@@ -72,7 +72,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := as.env.Context()
 	defer cancel()
-	spawnHost, err := data.NewIntentHost(ctx, options, user, &as.Settings)
+	spawnHost, err := data.NewIntentHost(ctx, options, user, as.env)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
