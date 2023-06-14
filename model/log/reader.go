@@ -49,8 +49,9 @@ func NewLogIteratorReader(it LogIterator, opts LogIteratorReaderOptions) *LogIte
 }
 
 // NextTimestamp returns the Unix nanosecond timestamp of the next unread line,
-// if applicable. This should be called after the reader is exhausted,
-// successfully returning an io.EOF error. Useful for pagination.
+// if applicable. This is mostly used for pagination as the next unread line's
+// timestamp is the start key of the next page—call after the reader
+// successfully returns an io.EOF error for this use case.
 func (r *LogIteratorReader) NextTimestamp() *int64 {
 	if r.it.Exhausted() {
 		return nil
