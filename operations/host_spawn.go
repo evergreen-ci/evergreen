@@ -399,7 +399,7 @@ func hostConfigure() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			projectRef, err := ac.GetProjectRef(project)
+			projectRef, err := ac.GetProjectWithWorkstationConfig(project)
 			if err != nil {
 				return errors.Wrapf(err, "finding project '%s'", project)
 			}

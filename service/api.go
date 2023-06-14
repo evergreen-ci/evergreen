@@ -130,19 +130,58 @@ func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, t)
 }
 
-// fetchProjectRef returns a project ref given the project identifier
-func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
-	id := gimlet.GetVars(r)["identifier"]
-	projectRef, err := model.FindMergedProjectRef(id, "", true)
+// fetchLimitedProjectRef returns a limited project ref given the project identifier
+func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Request) {
+	id := gimlet.GetVars(r)["projectId"]
+	p, err := model.FindMergedProjectRef(id, "", true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if projectRef == nil {
+	if p == nil {
 		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
 		return
 	}
-	gimlet.WriteJSON(w, projectRef)
+
+	limitedRef := &model.ProjectRef{
+		Id:     p.Id,
+		Owner:  p.Owner,
+		Repo:   p.Repo,
+		Branch: p.Branch,
+		CommitQueue: model.CommitQueueParams{
+			Message: p.CommitQueue.Message,
+			Enabled: p.CommitQueue.Enabled,
+		},
+	}
+
+	gimlet.WriteJSON(w, limitedRef)
+}
+
+// projectWithWorkstationConfig returns a limited project ref with the workstation config given the project identifier
+func (as *APIServer) projectWithWorkstationConfig(w http.ResponseWriter, r *http.Request) {
+	id := gimlet.GetVars(r)["projectId"]
+	p, err := model.FindMergedProjectRef(id, "", true)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if p == nil {
+		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
+		return
+	}
+
+	limitedRef := &model.ProjectRef{
+		Id:         p.Id,
+		Identifier: p.Identifier,
+		Owner:      p.Owner,
+		Repo:       p.Repo,
+		Branch:     p.Branch,
+		WorkstationConfig: model.WorkstationConfig{
+			SetupCommands: p.WorkstationConfig.SetupCommands,
+		},
+	}
+
+	gimlet.WriteJSON(w, limitedRef)
 }
 
 // listProjects returns the projects merged with the repo settings
@@ -322,7 +361,8 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{identifier}").Wrap(requireUser).Handler(as.fetchProjectRef).Get()
+	app.AddRoute("/ref/{projectId}").Wrap(requireUser).Handler(as.fetchLimitedProjectRef).Get()
+	app.AddRoute("/ref/{projectId}/workstation").Wrap(requireUser).Handler(as.projectWithWorkstationConfig).Get()
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
