@@ -305,15 +305,11 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			// Proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
 			// will make it check.
-			if conf.Task.DisplayName == evergreen.MergeTaskName {
-				commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
-				if err != nil {
-					commitToTest = conf.GithubPatchData.HeadHash
-					logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
-					logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
-				}
-			} else {
+			commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
+			if err != nil {
 				commitToTest = conf.GithubPatchData.HeadHash
+				logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
+				logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
 			}
 			ref = "merge"
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
