@@ -24,7 +24,7 @@ func TestGetSenderLocal(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err := (&Agent{}).GetSender(ctx, evergreen.LocalLoggingOverride)
+	_, err := (&Agent{}).GetSender(ctx, LogOutputStdout, "agent")
 	assert.NoError(err)
 }
 

@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -10,6 +11,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -51,6 +56,27 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			assert.True(t, proc.Complete(ctx))
 			assert.Zero(t, exitCode)
 		},
+		"SetupLoggingCreatesExpectedLogger": func(ctx context.Context, t *testing.T, m *monitor) {
+			require.NoError(t, setupLogging(m))
+			const msg = "hello world!"
+
+			grip.GetSender().Send(message.ConvertToComposer(level.Info, msg))
+
+			// Check the side effect that sending to the logger wrote a file to
+			// the temporary directory containing the content.
+			dir := filepath.Dir(m.logPrefix)
+			files, err := os.ReadDir(filepath.Dir(m.logPrefix))
+			require.NoError(t, err)
+			require.Len(t, files, 1, "logging should produce exactly one output file")
+			file, err := os.Open(filepath.Join(dir, files[0].Name()))
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, file.Close())
+			}()
+			content, err := io.ReadAll(file)
+			require.NoError(t, err)
+			assert.Contains(t, string(content), msg, "log message should appear in the file")
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, monitorTestTimeout)
@@ -61,6 +87,8 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			m := &monitor{
 				clientPath: filepath.Join(tmpDir, "evergreen"),
 				distroID:   "distro",
+				logOutput:  agent.LogOutputFile,
+				logPrefix:  filepath.Join(tmpDir, "agent-monitor"),
 				jasperPort: jasperPort,
 				port:       port,
 			}

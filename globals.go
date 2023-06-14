@@ -203,6 +203,7 @@ const (
 	MongodbAuthFile = "MONGO_CREDS_FILE"
 
 	// Special logging output targets
+	// kim: TODO: remove these
 	LocalLoggingOverride          = "LOCAL"
 	StandardOutputLoggingOverride = "STDOUT"
 

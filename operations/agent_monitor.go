@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -54,6 +55,7 @@ type monitor struct {
 	cloudProvider   string
 	distroID        string
 	shellPath       string
+	logOutput       agent.LogOutputType
 	logPrefix       string
 	jasperPort      int
 	port            int
@@ -218,6 +220,7 @@ func getAgentArgs(c *cli.Context, args []string) ([]string, error) {
 // credentials are available, it logs to splunk. If the logging is set to log
 // locally, it will log to standard output; otherwise it logs to a file.
 func setupLogging(m *monitor) error {
+	senderOutput := m.logOutput
 	senderName := m.logPrefix
 	senders := []send.Sender{}
 
@@ -233,13 +236,14 @@ func setupLogging(m *monitor) error {
 		senders = append(senders, sender)
 	}
 
-	if senderName == evergreen.LocalLoggingOverride || senderName == evergreen.StandardOutputLoggingOverride {
+	switch senderOutput {
+	case agent.LogOutputStdout:
 		sender, err := send.NewNativeLogger(senderName, send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return errors.Wrap(err, "creating native console logger")
 		}
 		senders = append(senders, sender)
-	} else {
+	default:
 		logDir := filepath.Dir(senderName)
 		if err := os.MkdirAll(logDir, 0777); err != nil {
 			return errors.Wrapf(err, "creating log directory '%s'", logDir)

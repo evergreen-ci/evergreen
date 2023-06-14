@@ -80,7 +80,7 @@ func (s *AgentSuite) SetupTest() {
 	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 	s.tc.taskDirectory = s.tmpDirName
-	sender, err := s.a.GetSender(ctx, evergreen.LocalLoggingOverride)
+	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent")
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
 }
