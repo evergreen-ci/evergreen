@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 )
 
 const MockIPV6 = "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
@@ -163,6 +164,8 @@ func (c *awsClientImpl) Create(ctx context.Context, creds aws.CredentialsProvide
 		if err != nil {
 			return errors.Wrap(err, "loading config")
 		}
+		otelaws.AppendMiddlewares(&config.APIOptions)
+
 		c.config = &config
 	}
 	c.client = ec2.NewFromConfig(*c.config)

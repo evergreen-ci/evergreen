@@ -1994,6 +1994,23 @@ func TestValidateContainerSecrets(t *testing.T) {
 		}
 		_, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
 		assert.Error(t, err)
+
+		toUpdate = []ContainerSecret{
+			{
+				Name:  "pear",
+				Type:  ContainerSecretPodSecret,
+				Value: "abcde",
+			},
+		}
+		original := []ContainerSecret{
+			{
+				Name:  "dragonfruit",
+				Type:  ContainerSecretPodSecret,
+				Value: "abcde",
+			},
+		}
+		_, err = ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		assert.Error(t, err)
 	})
 }
 

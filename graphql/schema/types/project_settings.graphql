@@ -181,6 +181,7 @@ type ProjectEventSettings {
 type ProjectAlias {
   id: String!
   alias: String!
+  description: String
   gitTag: String!
   remotePath: String!
   task: String!

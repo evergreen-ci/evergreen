@@ -58,27 +58,87 @@ func (s *githubSuite) TestGithubShouldRetry() {
 			Host:   "www.example.com",
 		},
 	}
-	resp := &http.Response{
-		StatusCode: 200,
-		Header: http.Header{
+
+	s.Run("RetryTrue", func() {
+		resp := &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
+
+		retryFn := githubShouldRetry("", retryConfig{retry: true})
+		s.False(retryFn(0, req, resp, nil))
+		s.True(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
+		s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
+
+		resp.StatusCode = http.StatusBadGateway
+		s.True(retryFn(0, req, resp, nil))
+
+		resp.StatusCode = http.StatusNotFound
+		s.False(retryFn(0, req, resp, nil))
+
+		resp.Header = http.Header{
 			"X-Ratelimit-Limit":     []string{"10"},
-			"X-Ratelimit-Remaining": []string{"10"},
-		},
-	}
+			"X-Ratelimit-Remaining": []string{"0"},
+		}
+		s.False(retryFn(0, req, resp, nil))
+	})
 
-	retryFn := githubShouldRetry("")
-	s.False(retryFn(0, req, resp, nil))
-	s.True(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
-	s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
+	s.Run("Retry404", func() {
+		resp := &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
 
-	resp.StatusCode = http.StatusBadGateway
-	s.True(retryFn(0, req, resp, nil))
+		retryFn := githubShouldRetry("", retryConfig{retry404: true})
+		s.False(retryFn(0, req, resp, nil))
+		s.True(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
+		s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
 
-	resp.Header = http.Header{
-		"X-Ratelimit-Limit":     []string{"10"},
-		"X-Ratelimit-Remaining": []string{"0"},
-	}
-	s.False(retryFn(0, req, resp, nil))
+		resp.StatusCode = http.StatusBadGateway
+		s.True(retryFn(0, req, resp, nil))
+
+		resp.StatusCode = http.StatusNotFound
+		s.True(retryFn(0, req, resp, nil))
+
+		resp.Header = http.Header{
+			"X-Ratelimit-Limit":     []string{"10"},
+			"X-Ratelimit-Remaining": []string{"0"},
+		}
+		s.False(retryFn(0, req, resp, nil))
+	})
+
+	s.Run("RetryFalse", func() {
+		resp := &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
+
+		retryFn := githubShouldRetry("", retryConfig{})
+		s.False(retryFn(0, req, resp, nil))
+		s.False(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
+		s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
+
+		resp.StatusCode = http.StatusBadGateway
+		s.False(retryFn(0, req, resp, nil))
+
+		resp.StatusCode = http.StatusNotFound
+		s.False(retryFn(0, req, resp, nil))
+
+		resp.Header = http.Header{
+			"X-Ratelimit-Limit":     []string{"10"},
+			"X-Ratelimit-Remaining": []string{"0"},
+		}
+		s.False(retryFn(0, req, resp, nil))
+	})
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {

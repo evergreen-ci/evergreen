@@ -180,14 +180,15 @@ type Patch struct {
 	// ProjectStorageMethod to decide where the parser project is persistently
 	// stored. This field is kept solely for backward compatibility with
 	// existing, unfinalized patches.
-	PatchedParserProject string                 `bson:"patched_config,omitempty"`
-	PatchedProjectConfig string                 `bson:"patched_project_config"`
-	Alias                string                 `bson:"alias"`
-	Triggers             TriggerInfo            `bson:"triggers"`
-	BackportOf           BackportInfo           `bson:"backport_of,omitempty"`
-	MergePatch           string                 `bson:"merge_patch"`
-	GithubPatchData      thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
-	GitInfo              *GitMetadata           `bson:"git_info,omitempty"`
+	PatchedParserProject string                      `bson:"patched_config,omitempty"`
+	PatchedProjectConfig string                      `bson:"patched_project_config"`
+	Alias                string                      `bson:"alias"`
+	Triggers             TriggerInfo                 `bson:"triggers"`
+	BackportOf           BackportInfo                `bson:"backport_of,omitempty"`
+	MergePatch           string                      `bson:"merge_patch"`
+	GithubPatchData      thirdparty.GithubPatch      `bson:"github_patch_data,omitempty"`
+	GithubMergeData      thirdparty.GithubMergeGroup `bson:"github_merge_data,omitempty"`
+	GitInfo              *GitMetadata                `bson:"git_info,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 	// MergeStatus is only used in gitServePatch to send the status of this
