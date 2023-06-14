@@ -45,6 +45,11 @@ to make a new type. A disadvantage is that anyone downstream who has written
 queries that assumes the number of requesters is fixed will need to take into
 account the new requester.
 
+### Inter-Project Triggers
+
+The GitHub merge queue integration does not create inter-project triggers. This
+will be left to another project if there is interest from users.
+
 ### Post results
 
 Post a check to the checks API. Note that GitHub "status checks" are of two
@@ -59,7 +64,7 @@ the PR to the merge queue.
 
 * [x] There is a new patch intent type in
 [model/patch](https://github.com/evergreen-ci/evergreen/blob/main/model/patch/github_merge_intent.go)
-* [ ] The intent will be procssed by the amboy [patch-intent-processor
+* [x] The intent will be procssed by the amboy [patch-intent-processor
 job](https://github.com/evergreen-ci/evergreen/blob/main/units/patch_intent.go).
 * [ ] New clone logic in the agent will clone the merge group branch.
 * [ ] Evergreen will post the result to the GitHub checks API.
