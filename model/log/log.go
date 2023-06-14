@@ -2,19 +2,66 @@ package log
 
 import (
 	"context"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
-// LogLine represents a single line in a log.
+// LogLine represents a single line in an Evergreen log.
 type LogLine struct {
 	LogName   string
-	Timestamp time.Time
 	Priority  level.Priority
+	Timestamp int64
 	Data      string
+}
+
+// GetOptions represents the arguments for fetching Evergreen logs.
+type GetOptions struct {
+	// LogNames are the names of the logs to fetch and merge, prefixes may
+	// be specified. At least one name must be specified.
+	LogNames []string
+	// Start is the start time (inclusive) of the time range filter,
+	// represented as a Unix timestamp in nanoseconds. Optional.
+	Start int64
+	// End is the end time (inclusive) of the time range filter,
+	// represented as a Unix timestamp in nanoseconds. Optional.
+	End int64
+	// LineLimit limits the number of lines read from the log. Optional.
+	LineLimit int
+	// TailN is the number of lines to read from the tail of the log.
+	// Optional.
+	TailN int
+}
+
+// TaskOptions represents the task-level information required to fetch logs
+// belonging to an Evergreen task run.
+type TaskOptions struct {
+	TaskID    string
+	Execution int
+	// ServiceVersion is the version of the backing logger service.
+	ServiceVersion int
+}
+
+// TaskLogType represents the recognized log types collected during a task run.
+type TaskLogType string
+
+const (
+	// TaskLogTypeAll includes agent, task, and system logs.
+	TaskLogTypeAll    = "all"
+	TaskLogTypeAgent  = "agent"
+	TaskLogTypeTask   = "task"
+	TaskLogTypeSystem = "system"
+	TaskLogTypeTest   = "test"
+)
+
+// GetTaskLogTypePrefix returns the appropriate "path" prefix for the given log
+// type.
+func GetTaskLogTypePrefix(env evergreen.Environment, taskOpts TaskOptions, opts GetOptions) (string, error) {
+	return "", errors.New("not implemented")
 }
 
 // GetTaskLogs returns the logs from a task run specified by the options.
@@ -22,33 +69,25 @@ func GetTaskLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOp
 	return nil, errors.New("not implemented")
 }
 
-// TaskOptions represents the task-level information required to fetch logs
-// from an Evergreen task run.
-type TaskOptions struct {
-	TaskID    string
-	Execution int
-}
+// StreamFromLogIterator streams log lines from the given iterator to the
+// returned channel. It is the responsibility of the caller to close the
+// iterator.
+func StreamFromLogIterator(it LogIterator) chan LogLine {
+	logLines := make(chan LogLine)
+	go func() {
+		defer recovery.LogStackTraceAndContinue("streaming lines from log iterator")
+		defer close(logLines)
 
-// GetOptions represents the arguments for fetching logs.
-type GetOptions struct {
-	// ServiceVersion is the version of the backing logger service.
-	ServiceVersion int
-	// LogNames are the names of the logs to fetch and merge, prefixes may
-	// be specified. At least one name must be specified.
-	LogNames []string
-	// Start is the start time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds. Optional.
-	Start *int64
-	// End is the end time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds.
-	End *int64
-	// LineLimit specifies the number of log lines to return. Invalid if
-	// specified along with Tail or PageSize.
-	LineLimit *int
-	// Tail specifies the last N log lines to return. Invalid if specified
-	// along with LineLimit or PageSize.
-	Tail *int
-	// PageSize is the number of bytes for byte-based pagination. Invalid
-	// if specified along with LineLimit or Tail.
-	PageSize *int
+		for it.Next() {
+			logLines <- it.Item()
+		}
+
+		if err := it.Err(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "streaming lines from log iterator",
+			}))
+		}
+	}()
+
+	return logLines
 }
