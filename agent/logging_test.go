@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -40,7 +39,8 @@ func TestAgentFileLogging(t *testing.T) {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogPrefix:        evergreen.LocalLoggingOverride,
+			LogOutput:        LogOutputStdout,
+			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
 		},
 		comm:   client.NewHostCommunicator("www.example.com", "host", "secret"),
@@ -119,7 +119,8 @@ func TestStartLogging(t *testing.T) {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogPrefix:        evergreen.LocalLoggingOverride,
+			LogOutput:        LogOutputStdout,
+			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
 		},
 		comm: client.NewMock("url"),
@@ -164,7 +165,8 @@ func TestStartLoggingErrors(t *testing.T) {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogPrefix:        evergreen.LocalLoggingOverride,
+			LogOutput:        LogOutputStdout,
+			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
 		},
 		comm: client.NewHostCommunicator("www.foo.com", "host", "secret"),
@@ -199,7 +201,8 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 			HostID:       "host",
 			HostSecret:   "secret",
 			StatusPort:   2286,
-			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogOutput:    LogOutputStdout,
+			LogPrefix:    "agent",
 			LogkeeperURL: "logkeeper",
 		},
 		comm: client.NewMock("mock"),
@@ -244,7 +247,8 @@ func TestDefaultSender(t *testing.T) {
 			HostID:       "host",
 			HostSecret:   "secret",
 			StatusPort:   2286,
-			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogOutput:    LogOutputStdout,
+			LogPrefix:    "agent",
 			LogkeeperURL: "logkeeper",
 		},
 		comm: client.NewMock("mock"),
@@ -299,7 +303,8 @@ func TestTimberSender(t *testing.T) {
 			HostID:       "host",
 			HostSecret:   "secret",
 			StatusPort:   2286,
-			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogOutput:    LogOutputStdout,
+			LogPrefix:    "agent",
 			LogkeeperURL: "logkeeper",
 		},
 		comm: client.NewMock("mock"),

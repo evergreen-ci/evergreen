@@ -279,7 +279,7 @@ func (c *Settings) ValidateAndDefault() error {
 		c.ClientBinariesDir = ClientDirectory
 	}
 	if c.LogPath == "" {
-		c.LogPath = LocalLoggingOverride
+		c.LogPath = localLoggingOverride
 	}
 	if c.ShutdownWaitSeconds < 0 {
 		c.ShutdownWaitSeconds = DefaultShutdownWaitSeconds
@@ -480,11 +480,11 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	// setup the base/default logger (generally direct to systemd
 	// or standard output)
 	switch s.LogPath {
-	case LocalLoggingOverride:
+	case localLoggingOverride:
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-	case StandardOutputLoggingOverride, "":
+	case standardOutputLoggingOverride, "":
 		sender = send.MakeNative()
 	default:
 		sender, err = send.MakeFileLogger(s.LogPath)
