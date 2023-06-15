@@ -775,7 +775,7 @@ func (p *Patch) IsPRMergePatch() bool {
 // IsCommitQueuePatch returns true if the the patch is part of any commit queue:
 // either Evergreen's commit queue or GitHub's merge queue.
 func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.GithubMergeData.HeadSHA != ""
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.IsGithubMergePatch()
 }
 
 // IsGithubMergePatch returns true if the patch is from the GitHub merge queue.

@@ -74,7 +74,7 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 		return nil, errors.New("merge group head ref cannot be empty")
 	}
 	if mg.GetMergeGroup().GetHeadSHA() == "" {
-		return nil, errors.New("head ref cannot be empty")
+		return nil, errors.New("head SHA cannot be empty")
 	}
 	return &githubMergeIntent{
 		DocumentID: msgDeliveryID,
@@ -167,7 +167,9 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 	baseBranch := strings.Join(baseBranchSlice, "/")
 
 	// produce a branch name like gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
-	headBranch := strings.Join([]string{split[2], baseBranch, split[len(split)-1]}, "/")
+	ghReadOnlyQueue := split[2]
+	lastElement := split[len(split)-1]
+	headBranch := strings.Join([]string{ghReadOnlyQueue, baseBranch, lastElement}, "/")
 
 	patchDoc := &Patch{
 		Id:      mgobson.NewObjectId(),
