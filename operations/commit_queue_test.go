@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -29,7 +29,6 @@ type CommitQueueSuite struct {
 	client client.Communicator
 	conf   *ClientSettings
 	ctx    context.Context
-	cancel context.CancelFunc
 	server *service.TestServer
 	suite.Suite
 }
@@ -49,7 +48,7 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupSuite() {
-	s.ctx, s.cancel = context.WithTimeout(context.Background(), time.Minute)
+	s.ctx = context.Background()
 	testutil.DisablePermissionsForTests()
 
 	var err error
@@ -76,7 +75,6 @@ func (s *CommitQueueSuite) SetupSuite() {
 }
 
 func (s *CommitQueueSuite) TearDownSuite() {
-	s.cancel()
 	testutil.EnablePermissionsForTests()
 	s.server.Close()
 	s.client.Close()
@@ -128,12 +126,18 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.NoError(err)
 	s.Equal(2, pos)
 
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
 
-	stringOut := s.withOutput(func() {
-		s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
-	})
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(w.Close())
+	os.Stdout = origStdout
+	out, _ := io.ReadAll(r)
+	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, "Description : do things")
@@ -176,11 +180,17 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
-	stringOut := s.withOutput(func() {
-		s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
-	})
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(w.Close())
+	os.Stdout = origStdout
+	out, _ := io.ReadAll(r)
+	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, "0:")
@@ -195,15 +205,15 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 		Queue: []commitqueue.CommitQueueItem{
 			{
 				Issue:  "123",
-				Source: commitqueue.SourceDiff,
+				Source: commitqueue.SourcePullRequest,
 			},
 			{
 				Issue:  "456",
-				Source: commitqueue.SourceDiff,
+				Source: commitqueue.SourcePullRequest,
 			},
 			{
 				Issue:  "789",
-				Source: commitqueue.SourceDiff,
+				Source: commitqueue.SourcePullRequest,
 			},
 		},
 	}
@@ -217,12 +227,18 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	}
 	s.Require().NoError(pRef.Insert())
 
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
 
-	stringOut := s.withOutput(func() {
-		s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
-	})
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(w.Close())
+	os.Stdout = origStdout
+	out, _ := io.ReadAll(r)
+	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, "0:")
@@ -269,11 +285,18 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 	}
 	s.Require().NoError(pRef.Insert())
 
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
+
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
-	stringOut := s.withOutput(func() {
-		s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
-	})
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(w.Close())
+	os.Stdout = origStdout
+	out, _ := io.ReadAll(r)
+	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, "PR # : 123")
@@ -323,31 +346,17 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	}
 	s.NoError(patch.Insert())
 
+	s.Error(deleteCommitQueueItem(s.ctx, s.client, "not_here"))
+
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
 	s.NoError(deleteCommitQueueItem(s.ctx, s.client, validId))
-	updatedCQ, err := commitqueue.FindOneId(cq.ProjectID)
-	s.Require().NoError(err)
-	s.Require().NotZero(updatedCQ)
-	s.Len(updatedCQ.Queue, 2)
-}
+	s.NoError(w.Close())
+	os.Stdout = origStdout
+	out, _ := io.ReadAll(r)
+	stringOut := string(out[:])
 
-func (s *CommitQueueSuite) withOutput(op func()) string {
-	originalSender := grip.GetSender()
-	defer func() {
-		grip.SetSender(originalSender)
-	}()
-
-	sender, err := send.NewInternalLogger("internal", send.LevelInfo{
-		Default:   level.Trace,
-		Threshold: level.Trace,
-	})
-	s.NoError(err)
-	s.NoError(grip.SetSender(sender))
-
-	op()
-
-	var output string
-	for i := 0; i < sender.Len(); i++ {
-		output = fmt.Sprintf("%s\n%s", output, sender.GetMessage().Message.String())
-	}
-	return output
+	s.Contains(stringOut, fmt.Sprintf("Item '%s' deleted", validId))
 }
