@@ -129,7 +129,7 @@ func agentMonitor() cli.Command {
 			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: monitorLoggerName,
-				Usage: "the prefix for the monitor's log name",
+				Usage: "the prefix for the monitor's log output",
 			},
 			cli.IntFlag{
 				Name:  jasperPortFlagName,
