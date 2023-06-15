@@ -12,14 +12,19 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
 	defer func() {
-		if pErr := a.checkAndLogPanic(tc.logger, nil, "running task pre and main blocks"); pErr != nil {
-			trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		op := "running task pre and main blocks"
+		pErr := recovery.HandlePanicWithError(recover(), nil, op)
+		if pErr == nil {
+			return
 		}
+		_ = a.logPanic(tc.logger, pErr, nil, op)
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 	}()
 
 	taskCtx, taskCancel := context.WithCancel(ctx)

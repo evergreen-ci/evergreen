@@ -507,7 +507,12 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	defer tskCancel()
 
 	defer func() {
-		err = a.checkAndLogPanic(tc.logger, err, "running task")
+		op := "running task"
+		pErr := recovery.HandlePanicWithError(recover(), nil, op)
+		if pErr == nil {
+			return
+		}
+		err = a.logPanic(tc.logger, pErr, err, op)
 	}()
 
 	// If the heartbeat aborts the task immediately, we should report that
@@ -920,13 +925,11 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	return true
 }
 
-// checkAndLogPanic checks if there was a panic and if so, logs that error and
-// returns it as well as the original error (if any). If there was no panic, it
-// returns the original error (if any).
-func (a *Agent) checkAndLogPanic(logger client.LoggerProducer, originalErr error, op string) error {
-	pErr := recovery.HandlePanicWithError(recover(), nil, op)
+// logPanic logs and returns a panic error, along with the original error (if
+// any). If there was no panic error, this is a no-op.
+func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, op string) error {
 	if pErr == nil {
-		return originalErr
+		return nil
 	}
 
 	msg := message.Fields{

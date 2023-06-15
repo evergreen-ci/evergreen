@@ -39,12 +39,17 @@ type runCommandsOptions struct {
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
 	options runCommandsOptions, block string) (err error) {
-	var cmds []command.Command
 	defer func() {
-		err = a.checkAndLogPanic(tc.logger, err, "running commands")
+		op := fmt.Sprintf("running commands for block '%s'", block)
+		pErr := recovery.HandlePanicWithError(recover(), nil, op)
+		if pErr == nil {
+			return
+		}
+		err = a.logPanic(tc.logger, pErr, err, op)
 	}()
 
 	for i, commandInfo := range commands {
+		var cmds []command.Command
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")
 		}
