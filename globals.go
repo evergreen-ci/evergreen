@@ -143,9 +143,6 @@ const (
 	TaskSystemTimedOut   = "system-timed-out"
 	TaskTimedOut         = "task-timed-out"
 
-	// TaskConflict is used only in communication with the Agent
-	TaskConflict = "task-conflict"
-
 	TestFailedStatus         = "fail"
 	TestSilentlyFailedStatus = "silentfail"
 	TestSkippedStatus        = "skip"
@@ -850,7 +847,6 @@ var (
 		TaskStarted,
 		TaskUndispatched,
 		TaskDispatched,
-		TaskConflict,
 		TaskInactive,
 	}
 
