@@ -199,9 +199,13 @@ const (
 	MongodbUrl      = "MONGO_URL"
 	MongodbAuthFile = "MONGO_CREDS_FILE"
 
-	// Special logging output targets
-	LocalLoggingOverride          = "LOCAL"
-	StandardOutputLoggingOverride = "STDOUT"
+	// localLoggingOverride is a special log path indicating that the app server
+	// should attempt to log to systemd if available, and otherwise fall back to
+	// logging to stdout.
+	localLoggingOverride = "LOCAL"
+	// standardOutputLoggingOverride is a special log path indicating that the
+	// app server should log to stdout.
+	standardOutputLoggingOverride = "STDOUT"
 
 	DefaultTaskActivator   = ""
 	StepbackTaskActivator  = "stepback"
