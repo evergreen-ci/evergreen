@@ -196,6 +196,10 @@ type Patch struct {
 	// MergedFrom is populated with the patch id of the existing patch
 	// the merged patch is based off of, if applicable.
 	MergedFrom string `bson:"merged_from,omitempty"`
+	// PRMergeCommitSHA is the SHA of the merge commit for a PR patch.
+	PRMergeCommitSHA string `bson:"pr_merge_commit_sha,omitempty"`
+	// PRIsMergeable indicates whether the PR is mergeable.
+	PRIsMergeable bool `bson:"pr_is_mergeable,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -559,6 +563,7 @@ func (p *Patch) Insert() error {
 	return db.Insert(Collection, p)
 }
 
+// UpdateStatus updates the status of the patch in the db
 func (p *Patch) UpdateStatus(newStatus string) error {
 	if p.Status == newStatus {
 		return nil
@@ -568,6 +573,34 @@ func (p *Patch) UpdateStatus(newStatus string) error {
 	update := bson.M{
 		"$set": bson.M{
 			StatusKey: newStatus,
+		},
+	}
+	return UpdateOne(bson.M{IdKey: p.Id}, update)
+}
+
+// UpdatePRInfo sets the merge commit sha and its mergeability
+// for the patch in the db. Meant to cache the value to reduce the need
+// for other tasks to ping GitHub directly, and is intended to be used for
+// commit queue patches only.
+func (p *Patch) UpdatePRInfo(sha string, mergeable bool) error {
+	if sha == "" {
+		return nil
+	}
+	update := bson.M{
+		"$set": bson.M{
+			PRIsMergeableKey: sha,
+			PRIsMergeableKey: mergeable,
+		},
+	}
+	return UpdateOne(bson.M{IdKey: p.Id}, update)
+}
+
+// ClearPRInfo clears the merge commit sha and its mergeability
+func (p *Patch) ClearPRInfo() error {
+	update := bson.M{
+		"$unset": bson.M{
+			PRMergeCommitSHAKey: "",
+			PRIsMergeableKey:    "",
 		},
 	}
 	return UpdateOne(bson.M{IdKey: p.Id}, update)

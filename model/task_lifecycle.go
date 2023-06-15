@@ -932,6 +932,10 @@ func dequeueAndRestartItem(opts dequeueAndRestartOptions) (*commitqueue.CommitQu
 		return nil, errors.Errorf("patch '%s' not found", opts.itemVersionID)
 	}
 
+	err = p.ClearPRInfo()
+	if err != nil {
+		return nil, errors.Wrapf(err, "clearing PR info for patch '%s'", p.Id.Hex())
+	}
 	removed, err := tryDequeueAndAbortCommitQueueItem(p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
 	if err != nil {
 		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.itemVersionID)

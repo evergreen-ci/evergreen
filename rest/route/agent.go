@@ -153,6 +153,33 @@ func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Req
 }
 
 func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	p, err := patch.FindOne(patch.ByVersion(t.Version))
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting patch for task '%s'", h.taskID))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch for task '%s' not found", h.taskID),
+		})
+	}
+	if p.PRMergeCommitSHA != "" {
+		return gimlet.NewJSONResponse(apimodels.PullRequestInfo{
+			Mergeable:      utility.ToBoolPtr(p.PRIsMergeable),
+			MergeCommitSHA: p.PRMergeCommitSHA,
+		})
+	}
+
 	token, err := h.settings.GetGithubOauthToken()
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
@@ -164,6 +191,10 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	resp := apimodels.PullRequestInfo{
 		Mergeable:      pr.Mergeable,
 		MergeCommitSHA: pr.GetMergeCommitSHA(),
+	}
+	err = p.UpdatePRInfo(resp.MergeCommitSHA, utility.FromBoolPtr(resp.Mergeable))
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating patch '%s'", p.Id))
 	}
 	if h.req.LastRetry && (!utility.FromBoolPtr(resp.Mergeable) || resp.MergeCommitSHA == "") {
 		grip.Debug(message.Fields{

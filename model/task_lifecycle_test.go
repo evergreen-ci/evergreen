@@ -2854,9 +2854,11 @@ func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 	}
 	require.NoError(t, p1.Insert())
 	p2 := patch.Patch{
-		Id:      v2,
-		Alias:   evergreen.CommitQueueAlias,
-		Version: v2.Hex(),
+		Id:               v2,
+		Alias:            evergreen.CommitQueueAlias,
+		Version:          v2.Hex(),
+		PRMergeCommitSHA: "abc",
+		PRIsMergeable:    true,
 	}
 	require.NoError(t, p2.Insert())
 	p3 := patch.Patch{
@@ -2899,6 +2901,10 @@ func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 	assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
 	assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
 	assert.Equal(t, p4.Id.Hex(), dbCq.Queue[2].Issue)
+	dbPatch, err := patch.FindOneId(p2.Id.Hex())
+	assert.NoError(t, err)
+	assert.Empty(t, dbPatch.PRMergeCommitSHA)
+	assert.False(t, dbPatch.PRIsMergeable)
 	dbTask1, err := task.FindOneId(t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, dbTask1.Execution)
