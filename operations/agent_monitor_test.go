@@ -61,7 +61,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			defer func() {
 				// Since the agent monitor sets the global logger, reset the
 				// sender at the end of the test to the original one.
-				grip.SetSender(originalSender)
+				assert.NoError(t, grip.SetSender(originalSender))
 			}()
 			require.NoError(t, setupLogging(m))
 			const msg = "hello world!"
