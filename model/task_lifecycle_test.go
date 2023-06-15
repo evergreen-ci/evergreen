@@ -2854,8 +2854,9 @@ func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 	}
 	require.NoError(t, p1.Insert())
 	p2 := patch.Patch{
-		Id:    v2,
-		Alias: evergreen.CommitQueueAlias,
+		Id:      v2,
+		Alias:   evergreen.CommitQueueAlias,
+		Version: v2.Hex(),
 	}
 	require.NoError(t, p2.Insert())
 	p3 := patch.Patch{
