@@ -173,10 +173,12 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 			Message:    fmt.Sprintf("patch for task '%s' not found", h.taskID),
 		})
 	}
-	if p.PRMergeCommitSHA != "" {
+	// This field is only set for PR merge patches.
+	if p.GithubPatchData.MergeCommitSHA != "" {
 		return gimlet.NewJSONResponse(apimodels.PullRequestInfo{
-			Mergeable:      utility.ToBoolPtr(p.PRIsMergeable),
-			MergeCommitSHA: p.PRMergeCommitSHA,
+			// Validation elsewhere in GetMergeablePullRequest ensures that all merge patches are mergeable.
+			Mergeable:      utility.TruePtr(),
+			MergeCommitSHA: p.GithubPatchData.MergeCommitSHA,
 		})
 	}
 
@@ -192,7 +194,6 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 		Mergeable:      pr.Mergeable,
 		MergeCommitSHA: pr.GetMergeCommitSHA(),
 	}
-	err = p.UpdatePRInfo(resp.MergeCommitSHA, utility.FromBoolPtr(resp.Mergeable))
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating patch '%s'", p.Id))
 	}

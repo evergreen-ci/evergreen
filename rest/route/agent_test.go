@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"net/http"
 	"testing"
 	"time"
@@ -397,10 +398,11 @@ func TestAgentCheckGetPullRequestHandler(t *testing.T) {
 				Version: "aaaaaaaaaaff001122334456",
 			}
 			patch := &patch.Patch{
-				Id:               patch.NewId("aaaaaaaaaaff001122334456"),
-				Version:          "aaaaaaaaaaff001122334456",
-				PRMergeCommitSHA: "abc",
-				PRIsMergeable:    true,
+				Id:      patch.NewId("aaaaaaaaaaff001122334456"),
+				Version: "aaaaaaaaaaff001122334456",
+				GithubPatchData: thirdparty.GithubPatch{
+					MergeCommitSHA: "abc",
+				},
 			}
 			require.NoError(t, tsk.Insert())
 			require.NoError(t, patch.Insert())

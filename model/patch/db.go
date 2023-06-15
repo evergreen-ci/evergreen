@@ -51,8 +51,6 @@ var (
 	MergePatchKey           = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 	TriggersKey             = bsonutil.MustHaveTag(Patch{}, "Triggers")
 	HiddenKey               = bsonutil.MustHaveTag(Patch{}, "Hidden")
-	PRMergeCommitSHAKey     = bsonutil.MustHaveTag(Patch{}, "PRMergeCommitSHA")
-	PRIsMergeableKey        = bsonutil.MustHaveTag(Patch{}, "PRIsMergeable")
 
 	// BSON fields for sync at end struct
 	SyncAtEndOptionsBuildVariantsKey = bsonutil.MustHaveTag(SyncAtEndOptions{}, "BuildVariants")
