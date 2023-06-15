@@ -43,7 +43,8 @@ type baseCommunicator struct {
 	httpClient      *http.Client
 	reqHeaders      map[string]string
 	cedarGRPCClient *grpc.ClientConn
-	loggerInfo      LoggerMetadata
+	// kim: TODO: delete
+	// loggerInfo      LoggerMetadata
 
 	lastMessageSent time.Time
 	mutex           sync.RWMutex
@@ -97,9 +98,10 @@ func (c *baseCommunicator) LastMessageAt() time.Time {
 	return c.lastMessageSent
 }
 
-func (c *baseCommunicator) GetLoggerMetadata() LoggerMetadata {
-	return c.loggerInfo
-}
+// kim: TODO: remove
+// func (c *baseCommunicator) GetLoggerMetadata() LoggerMetadata {
+//     return c.loggerInfo
+// }
 
 func (c *baseCommunicator) resetClient() {
 	c.mutex.Lock()
@@ -419,15 +421,19 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
 
 		// disallow sending system logs to S3 or logkeeper for security reasons
-		if prefix == apimodels.SystemLogPrefix && (opt.Sender == model.FileLogSender || opt.Sender == model.LogkeeperLogSender) {
+		// kim: TODO: delete
+		// if prefix == apimodels.SystemLogPrefix && (opt.Sender == model.FileLogSender || opt.Sender == model.LogkeeperLogSender) {
+		if prefix == apimodels.SystemLogPrefix && opt.Sender == model.FileLogSender {
 			opt.Sender = model.EvergreenLogSender
 		}
 		switch opt.Sender {
 		case model.FileLogSender:
+			fmt.Println("kim: creating file logger:", opt.Filepath)
 			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating file logger")
 			}
+			fmt.Println("kim: creating file logger succeeded")
 
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
@@ -448,36 +454,37 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
 			}
-		case model.LogkeeperLogSender:
-			config := send.BuildloggerConfig{
-				URL:        opt.LogkeeperURL,
-				Number:     opt.LogkeeperBuildNum,
-				Local:      grip.GetSender(),
-				Test:       prefix,
-				CreateTest: true,
-			}
-			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating Logkeeper logger")
-			}
-			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating buffered Logkeeper logger")
-			}
-
-			metadata := LogkeeperMetadata{
-				Build: config.GetBuildID(),
-				Test:  config.GetTestID(),
-			}
-			switch prefix {
-			case apimodels.AgentLogPrefix:
-				c.loggerInfo.Agent = append(c.loggerInfo.Agent, metadata)
-			case apimodels.SystemLogPrefix:
-				c.loggerInfo.System = append(c.loggerInfo.System, metadata)
-			case apimodels.TaskLogPrefix:
-				c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
-			}
+			// kim: TODO: delete
+		// case model.LogkeeperLogSender:
+		//     config := send.BuildloggerConfig{
+		//         URL:        opt.LogkeeperURL,
+		//         Number:     opt.LogkeeperBuildNum,
+		//         Local:      grip.GetSender(),
+		//         Test:       prefix,
+		//         CreateTest: true,
+		//     }
+		//     sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
+		//     if err != nil {
+		//         return nil, nil, errors.Wrap(err, "creating Logkeeper logger")
+		//     }
+		//     underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
+		//     sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
+		//     if err != nil {
+		//         return nil, nil, errors.Wrap(err, "creating buffered Logkeeper logger")
+		//     }
+		//
+		//     metadata := LogkeeperMetadata{
+		//         Build: config.GetBuildID(),
+		//         Test:  config.GetTestID(),
+		//     }
+		//     switch prefix {
+		//     case apimodels.AgentLogPrefix:
+		//         c.loggerInfo.Agent = append(c.loggerInfo.Agent, metadata)
+		//     case apimodels.SystemLogPrefix:
+		//         c.loggerInfo.System = append(c.loggerInfo.System, metadata)
+		//     case apimodels.TaskLogPrefix:
+		//         c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
+		//     }
 		case model.BuildloggerLogSender:
 			tk, err := c.GetTask(ctx, td)
 			if err != nil {

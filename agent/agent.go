@@ -56,12 +56,13 @@ type Options struct {
 	HostID     string
 	HostSecret string
 	// PodID and PodSecret only apply in pod mode.
-	PodID                  string
-	PodSecret              string
-	StatusPort             int
-	LogPrefix              string
-	LogOutput              LogOutputType
-	LogkeeperURL           string
+	PodID      string
+	PodSecret  string
+	StatusPort int
+	LogPrefix  string
+	LogOutput  LogOutputType
+	// kim: TODO: remove
+	// LogkeeperURL           string
 	WorkingDirectory       string
 	HeartbeatInterval      time.Duration
 	AgentSleepInterval     time.Duration
@@ -105,7 +106,8 @@ type taskContext struct {
 	privateVars    map[string]bool
 	logger         client.LoggerProducer
 	jasper         jasper.Manager
-	logs           *apimodels.TaskLogs
+	// kim: TODO: delete
+	// logs           *apimodels.TaskLogs
 	statsCollector *StatsCollector
 	task           client.TaskData
 	taskGroup      string
@@ -163,7 +165,8 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	grip.Alert(errors.Wrap(err, "getting agent setup data"))
 	if setupData != nil {
 		opts.SetupData = *setupData
-		opts.LogkeeperURL = setupData.LogkeeperURL
+		// kim: TODO: delete
+		// opts.LogkeeperURL = setupData.LogkeeperURL
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
 	}
 
@@ -766,7 +769,8 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		OOMTracker:      tc.getOomTrackerInfo(),
 		Status:          status,
 		Message:         message,
-		Logs:            tc.logs,
+		// kim: TODO: delete
+		// Logs:            tc.logs,
 	}
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths

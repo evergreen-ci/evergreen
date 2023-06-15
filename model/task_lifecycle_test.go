@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -1847,11 +1846,12 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			detail = &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,
-				Logs: &apimodels.TaskLogs{
-					AgentLogURLs:  []apimodels.LogInfo{{Command: "foo1", URL: "agent"}},
-					TaskLogURLs:   []apimodels.LogInfo{{Command: "foo2", URL: "task"}},
-					SystemLogURLs: []apimodels.LogInfo{{Command: "foo3", URL: "system"}},
-				},
+				// kim: TODO: delete
+				// Logs: &apimodels.TaskLogs{
+				//     AgentLogURLs:  []apimodels.LogInfo{{Command: "foo1", URL: "agent"}},
+				//     TaskLogURLs:   []apimodels.LogInfo{{Command: "foo2", URL: "task"}},
+				//     SystemLogURLs: []apimodels.LogInfo{{Command: "foo3", URL: "system"}},
+				// },
 			}
 			pRef := ProjectRef{Id: "p1"}
 			pConfig := ProjectConfig{Id: "p1"}
@@ -1866,7 +1866,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskHost.Insert(), ShouldBeNil)
 		}
 
-		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
+		Convey("task should not fail if there are no failed test", func() {
 			reset()
 			testTask.ResultsService = testresult.TestResultsServiceLocal
 			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
@@ -1882,7 +1882,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
-			So(reflect.DeepEqual(taskData.Logs, detail.Logs), ShouldBeTrue)
+			// kim: TODO: delete
+			// So(reflect.DeepEqual(taskData.Logs, detail.Logs), ShouldBeTrue)
 
 		})
 

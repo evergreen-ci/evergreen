@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -89,26 +88,27 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 	if err != nil {
 		return nil, err
 	}
-	loggerData := a.comm.GetLoggerMetadata()
-	tc.logs = &apimodels.TaskLogs{}
-	for _, agent := range loggerData.Agent {
-		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
-			Command: commandName,
-			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, agent.Build, agent.Test),
-		})
-	}
-	for _, system := range loggerData.System {
-		tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, apimodels.LogInfo{
-			Command: commandName,
-			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, system.Build, system.Test),
-		})
-	}
-	for _, task := range loggerData.Task {
-		tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, apimodels.LogInfo{
-			Command: commandName,
-			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, task.Build, task.Test),
-		})
-	}
+	// kim: TODO: remove
+	// loggerData := a.comm.GetLoggerMetadata()
+	// tc.logs = &apimodels.TaskLogs{}
+	// for _, agent := range loggerData.Agent {
+	//     tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
+	//         Command: commandName,
+	//         URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, agent.Build, agent.Test),
+	//     })
+	// }
+	// for _, system := range loggerData.System {
+	//     tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, apimodels.LogInfo{
+	//         Command: commandName,
+	//         URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, system.Build, system.Test),
+	//     })
+	// }
+	// for _, task := range loggerData.Task {
+	//     tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, apimodels.LogInfo{
+	//         Command: commandName,
+	//         URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, task.Build, task.Test),
+	//     })
+	// }
 	return logger, nil
 }
 
@@ -162,17 +162,19 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 	if err != nil {
 		grip.Error(errors.Wrap(err, "expanding Splunk token"))
 	}
+	// kim: TODO: delete
 	if in.LogDirectory != "" {
 		grip.Error(errors.Wrapf(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "making log directory '%s'", in.LogDirectory))
 		logDir = in.LogDirectory
 	}
 	return client.LogOpts{
-		LogkeeperURL:      a.opts.LogkeeperURL,
-		LogkeeperBuildNum: tc.taskModel.Execution,
-		BuilderID:         tc.taskModel.Id,
-		Sender:            in.Type,
-		SplunkServerURL:   splunkServer,
-		SplunkToken:       splunkToken,
-		Filepath:          filepath.Join(logDir, fileName),
+		// kim: TODO: delete logkeeper URL from agent setup data.
+		// LogkeeperURL:      a.opts.LogkeeperURL,
+		// LogkeeperBuildNum: tc.taskModel.Execution,
+		BuilderID:       tc.taskModel.Id,
+		Sender:          in.Type,
+		SplunkServerURL: splunkServer,
+		SplunkToken:     splunkToken,
+		Filepath:        filepath.Join(logDir, fileName),
 	}
 }

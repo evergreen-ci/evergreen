@@ -113,7 +113,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkChannel:     h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskSync:          h.settings.Providers.AWS.TaskSync,
 		EC2Keys:           h.settings.Providers.AWS.EC2Keys,
-		LogkeeperURL:      h.settings.LoggerConfig.LogkeeperURL,
+		// LogkeeperURL:      h.settings.LoggerConfig.LogkeeperURL,
 	}
 	if h.settings.Tracer.Enabled {
 		data.TraceCollectorEndpoint = h.settings.Tracer.CollectorEndpoint

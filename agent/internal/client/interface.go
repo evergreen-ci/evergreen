@@ -86,7 +86,7 @@ type SharedCommunicator interface {
 
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
-	GetLoggerMetadata() LoggerMetadata
+	// GetLoggerMetadata() LoggerMetadata
 
 	// SendLogMessages sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
@@ -123,16 +123,17 @@ type SharedCommunicator interface {
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 }
 
-type LoggerMetadata struct {
-	Agent  []LogkeeperMetadata
-	System []LogkeeperMetadata
-	Task   []LogkeeperMetadata
-}
-
-type LogkeeperMetadata struct {
-	Build string
-	Test  string
-}
+// kim: TODO: delete
+// type LoggerMetadata struct {
+//     Agent  []LogkeeperMetadata
+//     System []LogkeeperMetadata
+//     Task   []LogkeeperMetadata
+// }
+//
+// type LogkeeperMetadata struct {
+//     Build string
+//     Test  string
+// }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
 // some client methods.
@@ -149,15 +150,17 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender            string
-	SplunkServerURL   string
-	SplunkToken       string
-	Filepath          string
-	LogkeeperURL      string
-	LogkeeperBuildNum int
-	BuilderID         string
-	BufferDuration    time.Duration
-	BufferSize        int
+	Sender          string
+	SplunkServerURL string
+	SplunkToken     string
+	// kim :TODO: potentially delete file logger
+	Filepath string
+	// kim: TODO: delete
+	// LogkeeperURL      string
+	// LogkeeperBuildNum int
+	BuilderID      string
+	BufferDuration time.Duration
+	BufferSize     int
 }
 
 // LoggerProducer provides a mechanism for agents (and command plugins) to access the

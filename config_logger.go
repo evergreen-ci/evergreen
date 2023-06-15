@@ -59,8 +59,9 @@ func (c *LoggerConfig) Set() error {
 			"buffer":          c.Buffer,
 			"default_level":   c.DefaultLevel,
 			"threshold_level": c.ThresholdLevel,
-			"logkeeper_url":   c.LogkeeperURL,
-			"default_logger":  c.DefaultLogger,
+			// kim: TODO: delete
+			// "logkeeper_url":   c.LogkeeperURL,
+			"default_logger": c.DefaultLogger,
 		},
 	}, options.Update().SetUpsert(true))
 
