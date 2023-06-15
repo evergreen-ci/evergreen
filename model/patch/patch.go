@@ -588,8 +588,8 @@ func (p *Patch) UpdatePRInfo(sha string, mergeable bool) error {
 	}
 	update := bson.M{
 		"$set": bson.M{
-			PRIsMergeableKey: sha,
-			PRIsMergeableKey: mergeable,
+			PRMergeCommitSHAKey: sha,
+			PRIsMergeableKey:    mergeable,
 		},
 	}
 	return UpdateOne(bson.M{IdKey: p.Id}, update)
