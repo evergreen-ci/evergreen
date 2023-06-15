@@ -2765,6 +2765,9 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		return "", errors.Wrap(err, "getting project")
 	}
 
+	if pRef.SpawnHostScriptPath == "" {
+		return "", nil
+	}
 	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
