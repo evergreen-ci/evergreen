@@ -558,7 +558,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	})
 
 	defer a.killProcs(ctx, tc, false)
-	defer tskCancel()
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
