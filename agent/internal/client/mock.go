@@ -41,6 +41,9 @@ type Mock struct {
 	loggingShouldFail           bool
 	NextTaskResponse            *apimodels.NextTaskResponse
 	NextTaskIsNil               bool
+	StartTaskShouldFail         bool
+	GetTaskResponse             *task.Task
+	GetProjectResponse          *serviceModel.Project
 	EndTaskResponse             *apimodels.EndTaskResponse
 	EndTaskShouldFail           bool
 	EndTaskResult               endTaskResult
@@ -64,13 +67,13 @@ type Mock struct {
 	TestLogs         []*serviceModel.TestLog
 	TestLogCount     int
 
-	// data collected by mocked methods
-	logMessages      map[string][]apimodels.LogMessage
-	PatchFiles       map[string]string
-	keyVal           map[string]*serviceModel.KeyVal
+	logMessages map[string][]apimodels.LogMessage
+	PatchFiles  map[string]string
+	keyVal      map[string]*serviceModel.KeyVal
+
+	// Mock data returned from methods
 	LastMessageSent  time.Time
 	DownstreamParams []patchmodel.Parameter
-	Project          *serviceModel.Project
 
 	mu sync.RWMutex
 }
@@ -116,7 +119,12 @@ func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData
 	return &apimodels.AgentSetupData{}, nil
 }
 
-func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
+func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
+	if c.StartTaskShouldFail {
+		return errors.New("start task mock failure")
+	}
+	return nil
+}
 
 // EndTask returns a mock EndTaskResponse.
 func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, td TaskData) (*apimodels.EndTaskResponse, error) {
@@ -142,6 +150,9 @@ func (c *Mock) GetEndTaskDetail() *apimodels.TaskEndDetail {
 
 // GetTask returns a mock Task.
 func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
+	if c.GetTaskResponse != nil {
+		return c.GetTaskResponse, nil
+	}
 	return &task.Task{
 		Id:           "mock_task_id",
 		Secret:       "mock_task_secret",
@@ -177,8 +188,8 @@ func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, 
 }
 
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
-	if c.Project != nil {
-		return c.Project, nil
+	if c.GetProjectResponse != nil {
+		return c.GetProjectResponse, nil
 	}
 	var err error
 	var data []byte
