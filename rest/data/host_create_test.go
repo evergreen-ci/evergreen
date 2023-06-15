@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -16,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -120,6 +124,16 @@ func TestCreateHostsFromTask(t *testing.T) {
 	}
 	assert.NoError(t, pvars.Insert())
 
+	env := &mock.Environment{}
+	assert.NoError(t, env.Configure(ctx))
+	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
+	assert.NoError(t, err)
+
 	// Run tests
 	t.Run("Classic", func(t *testing.T) {
 		versionYaml := `
@@ -163,13 +177,8 @@ buildvariants:
 		pp.Id = "v1"
 		assert.NoError(t, pp.Insert())
 
-		settings := &evergreen.Settings{
-			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
-
-		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -236,14 +245,9 @@ buildvariants:
 		pp.Id = "v2"
 		assert.NoError(t, pp.Insert())
 
-		settings := &evergreen.Settings{
-			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
-
-		err = CreateHostsFromTask(ctx, settings, &t2, user.DBUser{Id: "me"}, "")
+		err = CreateHostsFromTask(ctx, env, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
-		createdHosts, err := host.Find(host.IsUninitialized)
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -315,9 +319,8 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		err = CreateHostsFromTask(ctx, settings, &t3, user.DBUser{Id: "me"}, "")
-		assert.NoError(t, err)
-		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, CreateHostsFromTask(ctx, env, &t3, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -384,8 +387,8 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t4, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, CreateHostsFromTask(ctx, env, &t4, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -471,11 +474,17 @@ buildvariants:
 	require.NoError(parent.Insert())
 
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
-	settings, err := evergreen.GetConfig()
+
+	env := &mock.Environment{}
+	assert.NoError(env.Configure(ctx))
+	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
 	assert.NoError(err)
-	settings.ContainerPools = poolConfig
-	assert.NoError(evergreen.UpdateConfig(settings))
+
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -503,9 +512,9 @@ buildvariants:
 	}
 	assert.NoError(pvars.Insert())
 
-	assert.NoError(CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
+	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 
-	createdHosts, err := host.Find(host.IsUninitialized)
+	createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 	assert.NoError(err)
 	require.Len(createdHosts, 1)
 	h := createdHosts[0]

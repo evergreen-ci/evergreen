@@ -423,22 +423,6 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
-
-	// Restart is handled through graphql because we need the user to specify
-	// which downstream tasks they want to restart.
-	if evergreen.IsPatchRequester(v.Requester) && modification.Action != evergreen.RestartAction {
-		// Only modify the child patch if it is finalized.
-		childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
-		if err != nil {
-			return ResourceNotFound.Send(ctx, err.Error())
-		}
-		for _, childPatchId := range childPatchIds {
-			if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
-				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -942,7 +926,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment().Settings(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
+		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
 		}
 	}

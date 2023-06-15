@@ -282,12 +282,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	githubOauthToken, err := as.Settings.GetGithubOauthToken()
-	if err != nil {
-		gimlet.WriteJSONError(w, err)
-		return
-	}
-
 	data := struct {
 		Module     string `json:"module"`
 		PatchBytes []byte `json:"patch_bytes"`
@@ -342,17 +336,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-	}
-
-	repoOwner, repo := module.GetRepoOwnerAndName()
-
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, repoOwner, repo, githash)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
 	}
 
 	// write the patch content into a GridFS file under a new ObjectId.

@@ -194,6 +194,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"duration_secs": time.Since(hostSpawningBegins).Seconds(),
 	})
 
+	if err := EnqueueHostCreateJobs(ctx, j.env, hostsSpawned); err != nil {
+		j.AddError(errors.Wrapf(err, "enqueueing host create jobs"))
+	}
+
 	// ignoring all the tasks that will take longer than the threshold to run,
 	// and the hosts allocated for them,
 	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through

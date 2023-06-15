@@ -8,6 +8,7 @@ import (
 )
 
 type logService interface { //nolint:unused
+	GetTaskLogPrefix(TaskOptions, TaskLogType) (string, error)
 	GetTaskLogs(context.Context, TaskOptions, GetOptions) (LogIterator, error)
 }
 

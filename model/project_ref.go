@@ -1494,8 +1494,8 @@ func FindBranchAdminsForRepo(repoId string) ([]string, error) {
 	return utility.UniqueStrings(allBranchAdmins), nil
 }
 
-// Find repos that have that trigger / are enabled
-// find projects that have this repo ID and nil triggers,OR that have the trigger
+// FindDownstreamProjects finds projects that have that trigger enabled or
+// inherits it from the repo project.
 func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
@@ -2765,6 +2765,9 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		return "", errors.Wrap(err, "getting project")
 	}
 
+	if pRef.SpawnHostScriptPath == "" {
+		return "", nil
+	}
 	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,

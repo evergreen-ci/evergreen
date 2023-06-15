@@ -291,7 +291,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := uis.env.Context()
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, authedUser)
-	spawnHost, err := data.NewIntentHost(ctx, options, authedUser, &uis.Settings)
+	spawnHost, err := data.NewIntentHost(ctx, options, authedUser, uis.env)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
 		return
@@ -310,7 +310,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("task not found"))
 			return
 		}
-		err = data.CreateHostsFromTask(ctx, uis.env.Settings(), t, *authedUser, putParams.PublicKey)
+		err = data.CreateHostsFromTask(ctx, uis.env, t, *authedUser, putParams.PublicKey)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error creating hosts from task",

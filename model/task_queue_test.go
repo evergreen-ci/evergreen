@@ -319,32 +319,6 @@ func TestFindNextTaskWithLastTask(t *testing.T) {
 	assert.Nil(next)
 }
 
-func TestTaskQueueGenerationTimes(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	require.NoError(db.ClearCollections(TaskQueuesCollection))
-	defer func() {
-		assert.NoError(db.ClearCollections(TaskQueuesCollection))
-	}()
-
-	now := time.Now().Round(time.Millisecond).UTC()
-	taskQueue := &TaskQueue{
-		Distro:      "foo",
-		GeneratedAt: now,
-	}
-
-	assert.NoError(db.Insert(TaskQueuesCollection, taskQueue))
-
-	times, err := FindTaskQueueLastGenerationTimes()
-	assert.NoError(err)
-	assert.NotNil(times)
-	assert.Len(times, 1)
-	genTime, ok := times["foo"]
-	assert.True(ok)
-	assert.Equal(now, genTime)
-}
-
 func TestClearTaskQueue(t *testing.T) {
 	assert := assert.New(t)
 	distro := "distro"

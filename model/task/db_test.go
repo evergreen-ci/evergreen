@@ -227,7 +227,43 @@ func TestFailedTasksByVersion(t *testing.T) {
 	})
 }
 
+func TestFindTasksByVersionWithChildTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	mainVersion := "main_version"
+	mainVersionTaskIds := []string{"t1", "t3"}
+	tasks := []Task{
+		{
+			Id:      "t1",
+			Version: mainVersion,
+		},
+		{
+			Id:      "t2",
+			Version: "different_version",
+		},
+		{
+			Id:            "t3",
+			Version:       "different_version",
+			ParentPatchID: mainVersion,
+		},
+		{
+			Id:            "t4",
+			Version:       "different_version",
+			ParentPatchID: "different_parent",
+		},
+	}
+	for _, task := range tasks {
+		assert.NoError(t, task.Insert())
+	}
+
+	dbTasks, err := Find(ByVersionWithChildTasks(mainVersion))
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 2)
+	for _, dbTask := range dbTasks {
+		assert.Contains(t, mainVersionTaskIds, dbTask.Id)
+	}
+}
 func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{
 			Id:            "t1",

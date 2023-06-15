@@ -673,7 +673,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
-	case evergreen.TaskConflict:
+	case client.TaskConflict:
 		tc.logger.Task().Error("Task completed - CANCELED.")
 		// If we receive a 409, return control to the loop (ask for a new task)
 		return nil, nil
@@ -881,14 +881,18 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 			logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
 		}
 
-		logger.Info("Cleaning up Docker artifacts.")
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
-		defer cancel()
-		if err := docker.Cleanup(ctx, logger); err != nil {
-			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+		// Agents running in containers don't have Docker available, so skip
+		// Docker cleanup for them.
+		if a.opts.Mode != PodMode {
+			logger.Info("Cleaning up Docker artifacts.")
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
+			defer cancel()
+			if err := docker.Cleanup(ctx, logger); err != nil {
+				logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+			}
+			logger.Info("Cleaned up Docker artifacts.")
 		}
-		logger.Info("Cleaned up Docker artifacts.")
 	}
 }
 

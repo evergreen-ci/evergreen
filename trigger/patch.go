@@ -222,7 +222,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		PastTenseStatus:   collectiveStatus,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
-		githubDescription: evergreen.PRTasksRunningDescription,
+		githubDescription: "tasks are running",
 	}
 
 	if t.patch.IsChild() {
@@ -274,7 +274,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		})
 	}
 
-	tasks, err := task.Find(task.ByVersion(t.patch.Id.Hex()))
+	tasks, err := task.Find(task.ByVersionWithChildTasks(t.patch.Id.Hex()))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting tasks for patch '%s'", t.patch.Id)
 	}

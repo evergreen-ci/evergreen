@@ -322,6 +322,10 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 	return &expAndVars, nil
 }
 
+// TaskConflict is a special agent-internal message that the heartbeat uses to
+// indicate that the task is failing because it's being aborted.
+const TaskConflict = "task-conflict"
+
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
 	data := interface{}("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
@@ -337,7 +341,7 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusConflict {
-		return evergreen.TaskConflict, errors.Errorf("unauthorized - wrong secret")
+		return TaskConflict, errors.Errorf("unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", util.RespErrorf(resp, "sending heartbeat")

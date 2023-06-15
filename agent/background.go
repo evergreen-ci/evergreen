@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 )
@@ -26,7 +27,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		select {
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
-			if signalBeat == evergreen.TaskConflict {
+			if signalBeat == client.TaskConflict {
 				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task.")
 				if err != nil {
 					tc.logger.Task().Error(err.Error())
@@ -58,7 +59,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 
 func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
 	resp, err := a.comm.Heartbeat(ctx, tc.task)
-	if resp == evergreen.TaskFailed || resp == evergreen.TaskConflict {
+	if resp == evergreen.TaskFailed || resp == client.TaskConflict {
 		return resp, err
 	}
 	return "", err

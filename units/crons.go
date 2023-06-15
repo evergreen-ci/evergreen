@@ -3,12 +3,10 @@ package units
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -27,7 +25,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TSFormat = "2006-01-02.15-04-05"
+const (
+	TSFormat = "2006-01-02.15-04-05"
+
+	// CreateHostQueueGroup is the queue group for the provisioning-create-host job.
+	CreateHostQueueGroup            = "service.host.create"
+	commitQueueQueueGroup           = "service.commitqueue"
+	eventNotifierQueueGroup         = "service.event.notifier"
+	podAllocationQueueGroup         = "service.pod.allocate"
+	podDefinitionCreationQueueGroup = "service.pod.definition.create"
+	podCreationQueueGroup           = "service.pod.create"
+)
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
@@ -422,12 +430,12 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		config, err := evergreen.GetConfig()
 		if err != nil {
-			return errors.Wrap(err, "getting service flags")
+			return errors.Wrap(err, "getting admin settings")
 		}
 
-		if flags.SchedulerDisabled {
+		if config.ServiceFlags.SchedulerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "scheduler is disabled",
 				"impact":  "new tasks are not enqueued",
@@ -435,59 +443,19 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			})
 			return nil
 		}
-		config, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
-		}
-
-		catcher := grip.NewBasicCatcher()
-
-		lastPlanned, err := model.FindTaskQueueLastGenerationTimes()
-		catcher.Wrap(err, "finding task queue last generation time")
-
-		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
-		catcher.Wrap(err, "finding task queue generation runtime")
 
 		// find all active distros
 		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
-		catcher.Wrap(err, "finding distros that need planning")
-
-		grip.InfoWhen(sometimes.Percent(10), message.Fields{
-			"runner":   "scheduler",
-			"previous": lastPlanned,
-			"distros":  distro.DistroGroup(distros).GetDistroIds(),
-			"op":       "dispatcher",
-		})
-
-		grip.Error(message.WrapError(err, message.Fields{
-			"cron":      schedulerJobName,
-			"impact":    "new task scheduling non-operative",
-			"operation": "background task creation",
-		}))
-
-		ts := utility.RoundPartOfMinute(0)
-		settings, err := evergreen.GetConfig()
 		if err != nil {
-			grip.Critical(message.WrapError(err, message.Fields{
-				"cron":      schedulerJobName,
-				"operation": "retrieving settings object",
-			}))
-			return catcher.Resolve()
+			return errors.Wrap(err, "finding distros that need planning")
 		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := utility.RoundPartOfMinute(0)
 		for _, d := range distros {
-			if d.IsParent(settings) {
+			if d.IsParent(config) {
 				continue
 			}
-
-			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < 2*time.Minute {
-				continue
-			}
-
-			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
-				continue
-			}
-
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewDistroSchedulerJob(env, d.Id, ts)), "enqueueing scheduler job for distro '%s'", d.Id)
 		}
 
@@ -497,12 +465,12 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		config, err := evergreen.GetConfig()
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "getting admin settings")
 		}
 
-		if flags.SchedulerDisabled {
+		if config.ServiceFlags.SchedulerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "scheduler is disabled",
 				"impact":  "new tasks are not enqueued",
@@ -510,34 +478,17 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 			})
 			return nil
 		}
-		config, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		catcher := grip.NewBasicCatcher()
-
-		lastPlanned, err := model.FindTaskSecondaryQueueLastGenerationTimes()
-		catcher.Add(err)
 
 		// find all active distros
 		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
-		catcher.Add(err)
+		if err != nil {
+			return errors.Wrap(err, "finding distros that need planning")
+		}
 
-		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
-		catcher.Add(err)
-
+		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfMinute(0)
 		for _, d := range distros {
-			// do not create scheduler jobs for parent distros
 			if d.IsParent(config) {
-				continue
-			}
-
-			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < 2*time.Minute {
-				continue
-			}
-			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
 				continue
 			}
 
@@ -760,71 +711,13 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			"message": "uninitialized hosts",
 			"number":  len(hosts),
 			"runner":  "hostinit",
+			"source":  "PopulateHostCreationJobs",
 		})
 
-		runningHosts, err := host.Find(db.Query(host.IsLive()))
-		if err != nil {
-			return errors.Wrap(err, "getting live hosts")
-		}
-		runningDistroCount := make(map[string]int)
-		for _, h := range runningHosts {
-			runningDistroCount[h.Distro.Id] += 1
-		}
-
-		ts := utility.RoundPartOfHour(part).Format(TSFormat)
-		submitted := 0
-
-		// shuffle hosts because hosts will always come off the index in insertion order
-		// and we want all of them to get an equal chance at being created on this pass
-		// (Fisher-Yates shuffle)
-		rand.Seed(time.Now().UnixNano())
-		for i := len(hosts) - 1; i > 0; i-- {
-			j := rand.Intn(i + 1)
-			hosts[i], hosts[j] = hosts[j], hosts[i]
-		}
-
-		// refresh HostInit
-		if err := env.Settings().HostInit.Get(env); err != nil {
-			return errors.Wrap(err, "getting host init config")
-		}
-		throttleCount := 0
 		catcher := grip.NewBasicCatcher()
+		ts := utility.RoundPartOfHour(part).Format(TSFormat)
 		for _, h := range hosts {
-			if !h.IsSubjectToHostCreationThrottle() {
-				// pass:
-				//    always start spawn hosts asap
-
-			} else {
-				num := runningDistroCount[h.Distro.Id]
-				if num == 0 || num < len(runningHosts)/100 {
-					// if there aren't many of these hosts up, start them even
-					// if `submitted` exceeds the throttle, but increment each
-					// time so we only create hosts up to the threshold
-					runningDistroCount[h.Distro.Id] += 1
-				} else {
-					if submitted > env.Settings().HostInit.HostThrottle {
-						// throttle hosts, so that we're starting very
-						// few hosts on every pass. Hostinit runs very
-						// frequently, lets not start too many all at
-						// once.
-						throttleCount++
-						continue
-					}
-				}
-				// only increment for task hosts, since otherwise
-				// spawn hosts and hosts spawned by tasks could
-				// starve task hosts
-				submitted++
-			}
-
 			catcher.Wrapf(queue.Put(ctx, NewHostCreateJob(env, h, ts, 0, false)), "enqueueing host creation job for host '%s'", h.Id)
-		}
-
-		if throttleCount > 0 {
-			grip.Info(message.Fields{
-				"message":           "host creation rate was throttled",
-				"hosts_not_created": throttleCount,
-			})
 		}
 
 		return catcher.Resolve()
