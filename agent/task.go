@@ -12,21 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
 	defer func() {
-		if pErr := recovery.HandlePanicWithError(recover(), nil, "running commands"); pErr != nil {
-			msg := message.Fields{
-				"message":   "programmatic error: task panicked while running task",
-				"operation": "running task",
-				"stack":     message.NewStack(2, "").Raw(),
-			}
-			grip.Alert(message.WrapError(pErr, msg))
-			tc.logger.Execution().Error("programmatic error: Evergreen agent hit a runtime panic while running task, marking task system-failed.")
+		if pErr := a.checkAndLogPanic(tc.logger, nil, "running task pre and main blocks"); pErr != nil {
 			trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		}
 	}()

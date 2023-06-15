@@ -507,17 +507,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	defer tskCancel()
 
 	defer func() {
-		if pErr := recovery.HandlePanicWithError(recover(), nil, "running task"); pErr != nil {
-			// kim: TODO: make this panic handler the same as the ones in
-			// EVG-20157.
-			catcher := grip.NewBasicCatcher()
-			catcher.Add(err)
-			catcher.Add(pErr)
-			grip.Alert(message.WrapError(catcher.Resolve(), message.Fields{
-				"message": "panicked while running task",
-			}))
-			tc.logger.Execution().Error(catcher.Resolve())
-		}
+		err = a.checkAndLogPanic(tc.logger, err, "running task")
 	}()
 
 	// If the heartbeat aborts the task immediately, we should report that
@@ -928,4 +918,34 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	}
 	// return true otherwise
 	return true
+}
+
+// checkAndLogPanic checks if there was a panic and if so, logs that error and
+// returns it as well as the original error (if any). If there was no panic, it
+// returns the original error (if any).
+func (a *Agent) checkAndLogPanic(logger client.LoggerProducer, originalErr error, op string) error {
+	pErr := recovery.HandlePanicWithError(recover(), nil, op)
+	if pErr == nil {
+		return originalErr
+	}
+
+	msg := message.Fields{
+		"message":   "programmatic error: agent panicked",
+		"operation": op,
+		"stack":     message.NewStack(2, "").Raw(),
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(originalErr)
+	catcher.Add(pErr)
+	grip.Alert(message.WrapError(catcher.Resolve(), msg))
+	if logger != nil && !logger.Closed() {
+		logMsg := message.Fields{
+			"message":   "programmatic error: Evergreen agent hit a runtime panic",
+			"operation": op,
+		}
+		logger.Execution().Error(logMsg)
+	}
+
+	return catcher.Resolve()
 }
