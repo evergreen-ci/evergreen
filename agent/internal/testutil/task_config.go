@@ -14,6 +14,7 @@ import (
 )
 
 // MakeTaskConfigFromModelData converts an API TestModelData to a TaskConfig.
+// This function is only used for tests.
 func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settings, data *testutil.TestModelData) (*internal.TaskConfig, error) {
 	oauthToken, err := settings.GetGithubOauthToken()
 	if err != nil {

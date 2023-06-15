@@ -298,8 +298,8 @@ func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until
 		options.Until = until
 	}
 
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetGithubCommits")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -365,8 +365,8 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 		}
 	}
 
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetGithubFile")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -374,7 +374,10 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 		file, _, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opt)
 		if resp != nil {
 			defer resp.Body.Close()
-			if err == nil && file != nil && file.Content != nil {
+			if file == nil || file.Content == nil {
+				return nil, APIRequestError{Message: "file is nil"}
+			}
+			if err == nil {
 				return file, nil
 			}
 		}
@@ -477,8 +480,8 @@ func SendPendingStatusToGithub(input SendGithubStatusInput) error {
 // GetGithubMergeBaseRevision compares baseRevision and currentCommitHash in a
 // GitHub repo and returns the merge base commit's SHA.
 func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision, currentCommitHash string) (string, error) {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetGithubMergeBaseRevision")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -486,7 +489,10 @@ func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRev
 		compare, resp, err := client.Repositories.CompareCommits(ctx, owner, repo, baseRevision, currentCommitHash, nil)
 		if resp != nil {
 			defer resp.Body.Close()
-			if err == nil && compare != nil && compare.GetMergeBaseCommit() != nil && compare.GetMergeBaseCommit().GetSHA() != "" {
+			if compare == nil || compare.MergeBaseCommit == nil || compare.MergeBaseCommit.SHA == nil {
+				return "", APIRequestError{Message: "missing data from GitHub compare response"}
+			}
+			if err == nil {
 				return compare.GetMergeBaseCommit().GetSHA(), nil
 			}
 		}
@@ -535,8 +541,8 @@ func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRev
 }
 
 func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*github.RepositoryCommit, error) {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetCommitEvent")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -608,8 +614,8 @@ func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*g
 
 // GetCommitDiff gets the diff of the specified commit via an API call to GitHub
 func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string, error) {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetCommitDiff")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -660,8 +666,8 @@ func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string,
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
 func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*github.Branch, error) {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetBranchEvent")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -848,8 +854,8 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 
 // GetTaggedCommitFromGithub gets the commit SHA for the given tag name.
 func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag string) (string, error) {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetTaggedCommitFromGithub")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -926,8 +932,8 @@ func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag stri
 }
 
 func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken, owner, repo string) bool {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "IsUserInGithubTeam")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1027,7 +1033,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining
 func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
-	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
+	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
 	if installationToken != "" {
 		httpClient := getGithubClientRetry(installationToken, "CheckGithubAPILimit")
 		defer utility.PutHTTPClient(httpClient)
@@ -1068,8 +1074,8 @@ func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 
 // GetGithubUser fetches the github user with the given login name
 func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, error) {
-	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
-	if installationToken != "" {
+	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GetGithubUser")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1108,8 +1114,8 @@ func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, 
 // given organization. The user with the attached token must have
 // visibility into organization membership, including private members
 func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
-	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
-	if installationToken != "" {
+	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "GithubUserInOrganization")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1153,8 +1159,8 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 // AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
 // and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
 func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
-	installationToken, _ := getInstallationTokenWithoutOwnerRepo(ctx)
-	if installationToken != "" {
+	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
+	if err != nil {
 		httpClient := getGithubClientRetry(installationToken, "AppAuthorizedForOrg")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1209,8 +1215,8 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 }
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetryWith404s(installationToken, "GithubUserPermissionLevel")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1252,8 +1258,8 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 // error is the result of hitting an api limit)
 func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch) (string, error) {
 	var commits []*github.RepositoryCommit
-	installationToken, _ := GetInstallationToken(ctx, data.BaseOwner, data.BaseRepo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, data.BaseOwner, data.BaseRepo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetryWith404s(installationToken, "GetPullRequestMergeBase")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1283,7 +1289,7 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 	defer utility.PutHTTPClient(legacyClient)
 	client := github.NewClient(legacyClient)
 
-	commits, _, err := client.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+	commits, _, err = client.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
 	if err != nil {
 		return "", err
 	}
@@ -1314,8 +1320,8 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 }
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
-	installationToken, _ := GetInstallationToken(ctx, baseOwner, baseRepo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, baseOwner, baseRepo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetryWith404s(installationToken, "GetGithubPullRequest")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1350,8 +1356,8 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
-	installationToken, _ := GetInstallationToken(ctx, gh.BaseOwner, gh.BaseRepo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, gh.BaseOwner, gh.BaseRepo, nil)
+	if err != nil {
 		httpClient := getGithubClientRetryWith404s(installationToken, "GetGithubPullRequestDiff")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
@@ -1679,8 +1685,8 @@ func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, pr
 		Body: &comment,
 	}
 
-	installationToken, _ := GetInstallationToken(ctx, owner, repo, nil)
-	if installationToken != "" {
+	installationToken, err := GetInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
 		httpClient := getGithubClient(installationToken, "PostCommentToPullRequest")
 		defer utility.PutHTTPClient(httpClient)
 		client := github.NewClient(httpClient)
