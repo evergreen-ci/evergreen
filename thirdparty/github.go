@@ -291,6 +291,9 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
 func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref string) (*github.RepositoryContent, error) {
+	if path == "" {
+		return nil, errors.New("remote repository path cannot be empty")
+	}
 	ctx, httpClient, putClient := getGithubClient(ctx, oauthToken, "GetGithubFile", retryConfig{retry: true}, []attribute.KeyValue{
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),

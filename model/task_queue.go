@@ -142,8 +142,6 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
-
-	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -575,107 +573,6 @@ func FindDistroSecondaryTaskQueue(distroID string) (TaskQueue, error) {
 	err := db.FindOneQ(TaskSecondaryQueuesCollection, q, &queue)
 
 	return queue, errors.WithStack(err)
-}
-
-func taskQueueGenerationTimesPipeline() []bson.M {
-	return []bson.M{
-		{
-			"$group": bson.M{
-				"_id": 0,
-				"distroQueue": bson.M{"$push": bson.M{
-					"k": "$" + taskQueueDistroKey,
-					"v": "$" + taskQueueGeneratedAtKey,
-				}}},
-		},
-		{
-			"$project": bson.M{
-				"root": bson.M{"$arrayToObject": "$distroQueue"},
-			},
-		},
-		{
-			"$replaceRoot": bson.M{"newRoot": "$root"},
-		},
-	}
-}
-
-func taskQueueGenerationRuntimePipeline() []bson.M {
-	return []bson.M{
-		{
-			"$group": bson.M{
-				"_id": 0,
-				"distroQueue": bson.M{"$push": bson.M{
-					"k": "$" + taskQueueDistroKey,
-					"v": bson.M{"$multiply": []interface{}{
-						// convert ms to ns
-						// for duration value
-						1000000,
-						bson.M{"$subtract": []interface{}{
-							"$" + taskQueueGeneratedAtKey,
-							"$" + bsonutil.GetDottedKeyName(taskQueueDistroQueueInfoKey, taskQueueInfoPlanCreatedAtKey),
-						}},
-					}}}}},
-		},
-		{
-			"$project": bson.M{
-				"root": bson.M{"$arrayToObject": "$distroQueue"},
-			},
-		},
-		{
-			"$replaceRoot": bson.M{"newRoot": "$root"},
-		},
-	}
-}
-
-func runTimeMapAggregation(collection string, pipe []bson.M) (map[string]time.Time, error) {
-	out := []map[string]time.Time{}
-
-	err := db.Aggregate(collection, pipe, &out)
-
-	if err != nil {
-		return map[string]time.Time{}, errors.Wrapf(err, "aggregating times from collection '%s'", collection)
-	}
-
-	switch len(out) {
-	case 0:
-		return map[string]time.Time{}, nil
-	case 1:
-		return out[0], nil
-	default:
-		return map[string]time.Time{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d elements", collection, len(out))
-	}
-
-}
-
-func runDurationMapAggregation(collection string, pipe []bson.M) (map[string]time.Duration, error) {
-	out := []map[string]time.Duration{}
-
-	err := db.Aggregate(collection, pipe, &out)
-
-	if err != nil {
-		return map[string]time.Duration{}, errors.Wrapf(err, "aggregating durations from collection '%s'", collection)
-	}
-
-	switch len(out) {
-	case 0:
-		return map[string]time.Duration{}, nil
-	case 1:
-		return out[0], nil
-	default:
-		return map[string]time.Duration{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d elements", collection, len(out))
-	}
-
-}
-
-func FindTaskQueueGenerationRuntime() (map[string]time.Duration, error) {
-	return runDurationMapAggregation(TaskQueuesCollection, taskQueueGenerationRuntimePipeline())
-}
-
-func FindTaskQueueLastGenerationTimes() (map[string]time.Time, error) {
-	return runTimeMapAggregation(TaskQueuesCollection, taskQueueGenerationTimesPipeline())
-}
-
-func FindTaskSecondaryQueueLastGenerationTimes() (map[string]time.Time, error) {
-	return runTimeMapAggregation(TaskSecondaryQueuesCollection, taskQueueGenerationTimesPipeline())
 }
 
 // pull out the task with the specified id from both the in-memory and db

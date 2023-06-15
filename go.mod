@@ -32,6 +32,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/jpillora/backoff v1.0.0
+	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0

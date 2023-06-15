@@ -515,14 +515,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Wrap(err, "resolving distro alias table for patch")
 	}
 
-	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	_, err = thirdparty.GetCommitEvent(githubCtx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
-	if err != nil {
-		return nil, errors.Wrap(err, "fetching commit information")
-	}
-
 	var parentPatchNumber int
 	if p.IsChild() {
 		parentPatch, err := p.SetParametersFromParent()
