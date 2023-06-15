@@ -370,7 +370,7 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 		file, _, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opt)
 		if resp != nil {
 			defer resp.Body.Close()
-			if file == nil || file.Content == nil {
+			if resp.StatusCode == http.StatusNotFound || file == nil || file.Content == nil {
 				return nil, APIRequestError{Message: "file is nil"}
 			}
 			if err == nil {
