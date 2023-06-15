@@ -143,9 +143,6 @@ const (
 	TaskSystemTimedOut   = "system-timed-out"
 	TaskTimedOut         = "task-timed-out"
 
-	// TaskConflict is used only in communication with the Agent
-	TaskConflict = "task-conflict"
-
 	TestFailedStatus         = "fail"
 	TestSilentlyFailedStatus = "silentfail"
 	TestSkippedStatus        = "skip"
@@ -330,10 +327,6 @@ const (
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
 	ContainerHealthDashboard = "container task health dashboard"
-
-	// PRTasksRunningDescription is the description for a GitHub PR status
-	// indicating that there are still running tasks.
-	PRTasksRunningDescription = "tasks are running"
 )
 
 var TaskStatuses = []string{
@@ -845,9 +838,9 @@ var (
 		HostsOverallocatedTerminate,
 	}
 
-	// TaskInProgressStatuses have been picked up by an agent but have not
+	// TaskAbortableStatuses have been picked up by an agent but have not
 	// finished running.
-	TaskInProgressStatuses = []string{TaskStarted, TaskDispatched}
+	TaskAbortableStatuses = []string{TaskStarted, TaskDispatched}
 	// TaskCompletedStatuses are statuses for tasks that have finished running.
 	// This does not include task display statuses.
 	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
@@ -856,7 +849,6 @@ var (
 		TaskStarted,
 		TaskUndispatched,
 		TaskDispatched,
-		TaskConflict,
 		TaskInactive,
 	}
 

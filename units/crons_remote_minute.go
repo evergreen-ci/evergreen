@@ -75,21 +75,21 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	// Create dedicated queues for host creation, event notifier, and commit
 	// queue jobs.
 	appCtx, _ := j.env.Context()
-	hcqueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.host.create")
+	hcqueue, err := j.env.RemoteQueueGroup().Get(appCtx, CreateHostQueueGroup)
 	if err != nil {
 		catcher.Wrap(err, "getting host create queue")
 	} else {
 		catcher.Add(PopulateHostCreationJobs(j.env, 0)(ctx, hcqueue))
 	}
 
-	commitQueueQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.commitqueue")
+	commitQueueQueue, err := j.env.RemoteQueueGroup().Get(appCtx, commitQueueQueueGroup)
 	if err != nil {
 		catcher.Wrap(err, "getting commit queue queue")
 	} else {
 		catcher.Add(PopulateCommitQueueJobs(j.env)(ctx, commitQueueQueue))
 	}
 
-	eventNotifierQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.event.notifier")
+	eventNotifierQueue, err := j.env.RemoteQueueGroup().Get(appCtx, eventNotifierQueueGroup)
 	if err != nil {
 		catcher.Wrap(err, "getting event notifier queue")
 	} else {

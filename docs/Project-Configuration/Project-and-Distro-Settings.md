@@ -123,14 +123,6 @@ push to each pull request. In order for this to work, you must fill out
 at least 1 row in the section titled "GitHub Patch Definitions," as
 those define what tasks will be run in this patch.
 
-The status of each build and the patch overall will appear as GitHub statuses
-under your pull request. These will update as tasks in your PR complete. All the
-tasks selected by the GitHub patch definition **must** pass for the patch to be
-considered complete (except if they have specific activation conditions like
-`activate: false`). For example, if you unschedule some of the tasks
-automatically configured by the GitHub patch definition, the GitHub build status
-will remain pending until all those tasks finish running.
-
 If you'd like the option of creating patches but wouldn't like it to happen automatically,
 you can enable "Manual Testing".
 

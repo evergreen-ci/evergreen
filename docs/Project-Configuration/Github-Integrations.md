@@ -1,6 +1,6 @@
-# GitHub Integration
+# Github Integration
 
-Specific GitHub pull request behavior can trigger behavior in Evergreen.
+Specific Github pull request behavior can trigger behavior in Evergreen.
 
 ## Help Text
 
@@ -8,12 +8,12 @@ Specific GitHub pull request behavior can trigger behavior in Evergreen.
 evergreen help
 ```
 
-We have documentation here but we also provide it on the PR itself. It will display commands that are available for your project, with some context about when to use them. If the commit queue is disabled but there is an available message, we will still display the message. If PR testing isn't enabled for the branch but [PR testing is set up for untracked branches](../Project-Configuration/Repo-Level-Settings#how-to-use-pr-testing-for-untracked-branches) then we will also still show the related GitHub Pull request commands (detailed below).
+We have documentation here but we also provide it on the PR itself. It will display commands that are available for your project, with some context about when to use them. If the commit queue is disabled but there is an available message, we will still display the message. If PR testing isn't enabled for the branch but [PR testing is set up for untracked branches](../Project-Configuration/Repo-Level-Settings#how-to-use-pr-testing-for-untracked-branches) then we will also still show the related Github Pull request commands (detailed below).
 
 
-## GitHub Pull Request Testing
+## Github Pull Request Testing
 
-Evergreen has an option to create patches for pull requests and this can be defined on the project page.
+Evergreen has an option to create patches for pull requests and this can be defined on the project page. 
 
 If "Automated Testing" is enabled, Evergreen will automatically create a patch for each pull request opened in the repository as well as each subsequent push to each pull request.
 
@@ -26,9 +26,9 @@ You can read more about these options [here](../Project-Configuration/Project-an
 ```
 evergreen retry
 ```
-Sometimes Evergreen has trouble creating a PR patch, due to internal server errors or GitHub flakiness. Commenting `evergreen retry` will attempt to recreate this patch. 
+Sometimes Evergreen has trouble creating a PR patch, due to internal server errors or Github flakiness. Commenting `evergreen retry` will attempt to recreate this patch. 
 
-Note that this is specific to GitHub PR checks; it won't retry a commit queue patch. For that, re-type `evergreen merge` (detailed below).
+Note that this is specific to Github PR checks; it won't retry a commit queue patch. For that, re-type `evergreen merge` (detailed below).
 
 #### Skip CI Testing
 
@@ -42,14 +42,14 @@ until the label is removed and a new comment or commit is pushed.
 ```
 evergreen patch
 ```
-If your project is configured for manual testing, then Evergreen will only add GitHub checks to the PR when prompted, as opposed to for every commit. Commenting `evergreen patch` will trigger this.
+If your project is configured for manual testing, then Evergreen will only add Github checks to the PR when prompted, as opposed to for every commit. Commenting `evergreen patch` will trigger this.
 
-#### Refresh GitHub checks
+#### Refresh Github checks
 
 ```
 evergreen refresh
 ```
-Sometimes Evergreen has trouble sending updated GitHub statuses, so the checks on the PR may not accurately reflect the state of patch on Evergreen. This is especially troublesome when the repository requires passing checks. To re-sync the GitHub checks with Evergreen, comment `evergreen refresh` on the PR.
+Sometimes Evergreen has trouble sending updated Github statuses, so the checks on the PR may not accurately reflect the state of patch on Evergreen. This is especially troublesome when the repository requires passing checks. To re-sync the Github checks with Evergreen, comment `evergreen refresh` on the PR.
 
 ## Commit Queue 
 

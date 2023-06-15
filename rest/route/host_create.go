@@ -24,13 +24,18 @@ import (
 type hostCreateHandler struct {
 	taskID     string
 	createHost apimodels.CreateHost
+	env        evergreen.Environment
 }
 
-func makeHostCreateRouteManager() gimlet.RouteHandler {
-	return &hostCreateHandler{}
+func makeHostCreateRouteManager(env evergreen.Environment) gimlet.RouteHandler {
+	return &hostCreateHandler{env: env}
 }
 
-func (h *hostCreateHandler) Factory() gimlet.RouteHandler { return &hostCreateHandler{} }
+func (h *hostCreateHandler) Factory() gimlet.RouteHandler {
+	return &hostCreateHandler{
+		env: h.env,
+	}
+}
 
 func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
@@ -59,7 +64,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
-		intentHost, err := data.MakeIntentHost(h.taskID, "", "", h.createHost)
+		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
 		}

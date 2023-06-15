@@ -31,7 +31,7 @@ var (
 		{Key: ActivatedKey, Value: 1},
 		{Key: PriorityKey, Value: 1},
 		{Key: OverrideDependenciesKey, Value: 1},
-		{Key: bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), Value: 1},
+		{Key: UnattainableDependencyKey, Value: 1},
 	}
 )
 
@@ -89,6 +89,7 @@ var (
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
+	ParentPatchIDKey               = bsonutil.MustHaveTag(Task{}, "ParentPatchID")
 	TaskGroupKey                   = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	TaskGroupMaxHostsKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
 	TaskGroupOrderKey              = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
@@ -111,7 +112,6 @@ var (
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
-	IsEssentialToFinishKey      = bsonutil.MustHaveTag(Task{}, "IsEssentialToFinish")
 )
 
 var (
@@ -389,6 +389,7 @@ func ByBuildId(buildId string) bson.M {
 	}
 }
 
+// ByBuildIdAndGithubChecks creates a query to return github check tasks with a certain build ID.
 func ByBuildIdAndGithubChecks(buildId string) bson.M {
 	return bson.M{
 		BuildIdKey:       buildId,
@@ -417,10 +418,35 @@ func ByActivation(active bool) bson.M {
 	}
 }
 
-// ByVersion creates a query to return tasks with a certain build id
+// ByVersion creates a query to return tasks with a certain version id
 func ByVersion(version string) bson.M {
 	return bson.M{
 		VersionKey: version,
+	}
+}
+
+// ByVersionWithChildTasks creates a query to return tasks or child tasks associated with the given version.
+func ByVersionWithChildTasks(version string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			ByVersion(version),
+			{ParentPatchIDKey: version},
+		},
+	}
+}
+
+// ByVersions produces a query that returns tasks for the given version.
+func ByVersions(versionIDs []string) bson.M {
+	return bson.M{VersionKey: bson.M{"$in": versionIDs}}
+}
+
+// ByVersionsWithChildTasks produces a query that returns tasks and child tasks for the given version.
+func ByVersionsWithChildTasks(versionIDs []string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			ByVersions(versionIDs),
+			{ParentPatchIDKey: bson.M{"$in": versionIDs}},
+		},
 	}
 }
 
@@ -471,12 +497,7 @@ func FailedTasksByIds(taskIds []string) bson.M {
 	}
 }
 
-// ByVersion produces a query that returns tasks for the given version.
-func ByVersions(versions []string) bson.M {
-	return bson.M{VersionKey: bson.M{"$in": versions}}
-}
-
-// NonExecutionTasksByVersion will filter out newer execution tasks that store if they have a display task.
+// NonExecutionTasksByVersions will filter out newer execution tasks that store if they have a display task.
 // Old execution tasks without display task ID populated will still be returned.
 func NonExecutionTasksByVersions(versions []string) bson.M {
 	return bson.M{
@@ -717,7 +738,7 @@ func schedulableHostTasksQuery() bson.M {
 		ByExecutionPlatform(ExecutionPlatformHost),
 		// Filter tasks containing unattainable dependencies
 		{"$or": []bson.M{
-			{bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true}},
+			{UnattainableDependencyKey: false},
 			{OverrideDependenciesKey: true},
 		}},
 	}
@@ -739,15 +760,6 @@ func needsContainerAllocation() bson.M {
 	return q
 }
 
-// IsContainerTaskScheduledQuery returns a query indicating if the container is
-// in a state where it is scheduled to run and is logically equivalent to
-// (Task).isContainerScheduled. This encompasses two potential states:
-//  1. A container is not yet allocated to the task but it's ready to be
-//     allocated one. Note that this is a subset of all tasks that could
-//     eventually run (i.e. evergreen.TaskWillRun from (Task).GetDisplayStatus),
-//     because a container task is not scheduled until all of its dependencies
-//     have been met.
-//  2. The container is allocated but the agent has not picked up the task yet.
 func IsContainerTaskScheduledQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
@@ -1502,6 +1514,7 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 	return task, nil
 }
 
+// findAllTaskIDs returns a list of task IDs associated with the given query.
 func findAllTaskIDs(q db.Q) ([]string, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
@@ -1537,21 +1550,21 @@ func FindStuckDispatching() ([]Task, error) {
 	return tasks, nil
 }
 
+// FindAllTaskIDsFromVersion returns a list of task IDs associated with a version.
 func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
-	q := db.Query(bson.M{VersionKey: versionId}).WithFields(IdKey)
+	q := db.Query(ByVersion(versionId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
+// FindAllTaskIDsFromBuild returns a list of task IDs associated with a build.
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
-	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
+	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
 // FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
 func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
-	q := db.Query(bson.M{
-		VersionKey: versionId,
-	}).WithFields(IdKey, DependsOnKey)
+	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
 	if adb.ResultsNotFound(err) {
@@ -1563,6 +1576,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 	return tasks, nil
 }
 
+// FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
 func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 	return FindWithFields(ByVersions(versionIds),
 		IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey)
@@ -1625,21 +1639,6 @@ func FindOld(filter bson.M) ([]Task, error) {
 	return tasks, err
 }
 
-func FindOldWithFields(filter bson.M, fields ...string) ([]Task, error) {
-	tasks := []Task{}
-	_, exists := filter[DisplayOnlyKey]
-	if !exists {
-		filter[DisplayOnlyKey] = bson.M{"$ne": true}
-	}
-	query := db.Query(filter).WithFields(fields...)
-	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
-	return tasks, err
-}
-
 // FindOldWithDisplayTasks returns all display and execution tasks from the old
 // collection that satisfy the given query.
 func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
@@ -1659,17 +1658,6 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	task, err := FindOneOldId(MakeOldID(id, execution))
 	if task == nil || err != nil {
 		return FindOneId(id)
-	}
-
-	return task, err
-}
-
-// FindOneIdNewOrOld returns a single task with the given ID and execution,
-// first looking in the tasks collection, then the old tasks collection.
-func FindOneIdNewOrOld(id string) (*Task, error) {
-	task, err := FindOneId(id)
-	if task == nil || err != nil {
-		return FindOneOldId(id)
 	}
 
 	return task, err
@@ -1863,7 +1851,7 @@ func updateUnattainableDependency(taskID string, unattainableDependency bool) er
 func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1886,7 +1874,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 		bson.M{
 			VersionKey: versionId, // Include to improve query.
 			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
+			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 		},
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,

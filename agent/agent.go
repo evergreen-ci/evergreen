@@ -582,7 +582,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
 
-	complete := make(chan string)
+	complete := make(chan string, 2)
 	go a.startTask(innerCtx, tc, complete)
 
 	return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete), "")
@@ -673,12 +673,19 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
-	case evergreen.TaskConflict:
+	case client.TaskConflict:
 		tc.logger.Task().Error("Task completed - CANCELED.")
 		// If we receive a 409, return control to the loop (ask for a new task)
 		return nil, nil
 	case evergreen.TaskSystemFailed:
-		grip.Error("Task system failure.")
+		// This is a special status indicating that the agent failed for reasons
+		// outside of a task's control (e.g. due to a panic). Therefore, it
+		// intentionally does not run the post task logic, because the task is
+		// likely in an unrecoverable state and should just give up. Note that
+		// this is a distinct case from a task failing and intentionally setting
+		// its failure type to system failed, as that is within a task's
+		// control.
+		tc.logger.Task().Error("Task encountered unexpected task lifecycle system failure.")
 	default:
 		tc.logger.Task().Errorf("Programmer error: invalid task status '%s'.", detail.Status)
 	}
@@ -874,14 +881,18 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 			logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
 		}
 
-		logger.Info("Cleaning up Docker artifacts.")
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
-		defer cancel()
-		if err := docker.Cleanup(ctx, logger); err != nil {
-			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+		// Agents running in containers don't have Docker available, so skip
+		// Docker cleanup for them.
+		if a.opts.Mode != PodMode {
+			logger.Info("Cleaning up Docker artifacts.")
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
+			defer cancel()
+			if err := docker.Cleanup(ctx, logger); err != nil {
+				logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+			}
+			logger.Info("Cleaned up Docker artifacts.")
 		}
-		logger.Info("Cleaned up Docker artifacts.")
 	}
 }
 

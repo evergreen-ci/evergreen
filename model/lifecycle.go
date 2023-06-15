@@ -55,10 +55,9 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	q := bson.M{
-		task.VersionKey: versionId,
-		task.StatusKey:  evergreen.TaskUndispatched,
-	}
+	q := task.ByVersionWithChildTasks(versionId)
+	q[task.StatusKey] = evergreen.TaskUndispatched
+
 	var tasksToModify []task.Task
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller.
@@ -187,7 +186,7 @@ func AbortBuild(buildId string, caller string) error {
 		return errors.Wrapf(err, "deactivating build '%s'", buildId)
 	}
 
-	return errors.Wrapf(task.AbortBuild(buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
+	return errors.Wrapf(task.AbortBuildTasks(buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
 }
 
 func TryMarkVersionStarted(versionId string, startTime time.Time) error {
@@ -285,10 +284,10 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 	return nil
 }
 
-// SetVersionsPriority updates the priority field of all tasks associated with the given version ids.
+// SetVersionsPriority updates the priority field of all tasks and child tasks associated with the given version ids.
 func SetVersionsPriority(versionIds []string, priority int64, caller string) error {
-	_, err := task.UpdateAll(
-		bson.M{task.VersionKey: bson.M{"$in": versionIds}},
+	query := task.ByVersionsWithChildTasks(versionIds)
+	_, err := task.UpdateAll(query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
@@ -298,7 +297,7 @@ func SetVersionsPriority(versionIds []string, priority int64, caller string) err
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: bson.M{"$in": versionIds}}))
+		tasks, err = task.FindAll(db.Query(query))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks for versions")
 		}
@@ -434,7 +433,7 @@ func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error 
 		return errors.Wrap(err, "finding builds for tasks")
 	}
 	for _, b := range builds {
-		if err = checkUpdateBuildPRStatusPending(&b, patchStatusChangeDescription, prTaskResetCaller); err != nil {
+		if err = checkUpdateBuildPRStatusPending(&b); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", b.Id)
 		}
 	}
@@ -1153,6 +1152,7 @@ func getTaskCreateTime(creationInfo TaskCreationInfo) (time.Time, error) {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildVariantTaskUnit) (*task.Task, error) {
+
 	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
 	isStepback := creationInfo.ActivationInfo.isStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
 
@@ -1211,7 +1211,6 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
 		IsGithubCheck:           isGithubCheck,
 		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
-		IsEssentialToFinish:     creationInfo.ActivatedTasksAreEssentialToComplete && activateTask,
 	}
 
 	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
@@ -1221,14 +1220,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 
 	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, creationInfo.BuildVariant.RunOn, creationInfo.Project.Containers)
 	if t.IsContainerTask() {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return nil, errors.Wrap(err, "getting service flags")
-		}
-		if flags.ContainerConfigurationsDisabled {
-			return nil, errors.Errorf("container configurations are disabled; task '%s' cannot run", t.DisplayName)
-		}
-
+		var err error
 		t.Container, err = getContainerFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
 		if err != nil {
 			return nil, err
@@ -1568,19 +1560,18 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !creationInfo.ActivationInfo.variantHasSpecificActivation(pair.Variant)
 		buildCreationArgs := TaskCreationInfo{
-			Project:                              creationInfo.Project,
-			ProjectRef:                           creationInfo.ProjectRef,
-			Version:                              creationInfo.Version,
-			TaskIDs:                              taskIdTables,
-			BuildVariantName:                     pair.Variant,
-			ActivateBuild:                        activateVariant,
-			TaskNames:                            taskNames,
-			DisplayNames:                         displayNames,
-			ActivationInfo:                       creationInfo.ActivationInfo,
-			GeneratedBy:                          creationInfo.GeneratedBy,
-			TaskCreateTime:                       createTime,
-			SyncAtEndOpts:                        creationInfo.SyncAtEndOpts,
-			ActivatedTasksAreEssentialToComplete: creationInfo.ActivatedTasksAreEssentialToComplete,
+			Project:          creationInfo.Project,
+			ProjectRef:       creationInfo.ProjectRef,
+			Version:          creationInfo.Version,
+			TaskIDs:          taskIdTables,
+			BuildVariantName: pair.Variant,
+			ActivateBuild:    activateVariant,
+			TaskNames:        taskNames,
+			DisplayNames:     displayNames,
+			ActivationInfo:   creationInfo.ActivationInfo,
+			GeneratedBy:      creationInfo.GeneratedBy,
+			TaskCreateTime:   createTime,
+			SyncAtEndOpts:    creationInfo.SyncAtEndOpts,
 		}
 
 		grip.Info(message.Fields{
