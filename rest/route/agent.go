@@ -194,9 +194,6 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 		Mergeable:      pr.Mergeable,
 		MergeCommitSHA: pr.GetMergeCommitSHA(),
 	}
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating patch '%s'", p.Id))
-	}
 	if h.req.LastRetry && (!utility.FromBoolPtr(resp.Mergeable) || resp.MergeCommitSHA == "") {
 		grip.Debug(message.Fields{
 			"message":         "last attempt to retry getting pull request",
