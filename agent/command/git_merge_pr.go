@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/v52/github"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -74,13 +73,6 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	}
 	appToken := conf.Expansions.Get(evergreen.GithubAppToken)
-	if appToken == "" {
-		logger.Task().Debug(message.Fields{
-			"ticket":  "EVG-19966",
-			"message": "github app token expansion for commit queue not found",
-			"caller":  "git.merge_pr",
-		})
-	}
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token: token,
