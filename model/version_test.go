@@ -389,11 +389,19 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.Equal(t, versions[0].Id, "your_version")
 	assert.Equal(t, versions[1].Id, "another_version")
 
-	opts = GetVersionsOptions{StartAfter: 10, Requester: evergreen.RepotrackerVersionRequester}
+	opts = GetVersionsOptions{Start: 10, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, versions[0].Id, "your_version")
+	assert.Equal(t, versions[1].Id, "another_version")
+
+	opts = GetVersionsOptions{RevisionsAfter: 10, Requester: evergreen.RepotrackerVersionRequester}
+	versions, err = GetVersionsWithOptions("my_project", opts)
+	assert.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, versions[0].Id, "my_version")
+	assert.Equal(t, versions[1].Id, "your_version")
 	assert.Equal(t, versions[1].Id, "another_version")
 }
 
