@@ -87,16 +87,9 @@ func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data i
 }
 
 func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*http.Response, error) {
-	var (
-		response *http.Response
-		err      error
-	)
-
 	r = r.WithContext(ctx)
 
-	func() {
-		response, err = c.httpClient.Do(r)
-	}()
+	response, err := c.httpClient.Do(r)
 
 	if err != nil {
 		c.resetClient()

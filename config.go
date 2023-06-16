@@ -13,6 +13,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
@@ -279,7 +280,7 @@ func (c *Settings) ValidateAndDefault() error {
 		c.ClientBinariesDir = ClientDirectory
 	}
 	if c.LogPath == "" {
-		c.LogPath = LocalLoggingOverride
+		c.LogPath = localLoggingOverride
 	}
 	if c.ShutdownWaitSeconds < 0 {
 		c.ShutdownWaitSeconds = DefaultShutdownWaitSeconds
@@ -480,11 +481,11 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	// setup the base/default logger (generally direct to systemd
 	// or standard output)
 	switch s.LogPath {
-	case LocalLoggingOverride:
+	case localLoggingOverride:
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-	case StandardOutputLoggingOverride, "":
+	case standardOutputLoggingOverride, "":
 		sender = send.MakeNative()
 	default:
 		sender, err = send.MakeFileLogger(s.LogPath)
@@ -578,14 +579,18 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
-		return "", errors.New("Github app settings are not set")
+		// TODO EVG-19966: Return error here
+		return "", nil
 	}
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
-	itr, err := ghinstallation.NewAppsTransport(httpClient.Transport, authFields.AppId, authFields.privateKey)
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
 	if err != nil {
-		return "", errors.Wrap(err, "creating transport with JWT")
+		return "", errors.Wrap(err, "parsing private key")
 	}
+
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppId, key)
 	httpClient.Transport = itr
 	client := github.NewClient(httpClient)
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)

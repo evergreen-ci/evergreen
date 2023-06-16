@@ -47,7 +47,8 @@ func (s *AgentSuite) SetupTest() {
 			HostID:     "host",
 			HostSecret: "secret",
 			StatusPort: 2286,
-			LogPrefix:  evergreen.LocalLoggingOverride,
+			LogOutput:  LogOutputStdout,
+			LogPrefix:  "agent",
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
@@ -96,7 +97,10 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	sender, err := s.a.GetSender(ctx, evergreen.LocalLoggingOverride)
+	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
+	s.Require().NoError(err)
+	s.tc.taskDirectory = s.tmpDirName
+	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent")
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
 }

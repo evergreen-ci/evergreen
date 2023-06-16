@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -42,9 +41,8 @@ func init() {
 func getInc() int { return <-idSource }
 
 // GetSender configures the agent's local logging to a file.
-func (a *Agent) GetSender(ctx context.Context, prefix string) (send.Sender, error) {
+func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string) (send.Sender, error) {
 	var senders []send.Sender
-
 	if a.opts.SetupData.SplunkClientToken != "" && a.opts.SetupData.SplunkServerURL != "" && a.opts.SetupData.SplunkChannel != "" {
 		info := send.SplunkConnectionInfo{
 			ServerURL: a.opts.SetupData.SplunkServerURL,
@@ -59,16 +57,15 @@ func (a *Agent) GetSender(ctx context.Context, prefix string) (send.Sender, erro
 		senders = append(senders, sender)
 	}
 
-	if prefix == "" {
-		// pass
-	} else if prefix == evergreen.LocalLoggingOverride || prefix == "--" || prefix == evergreen.StandardOutputLoggingOverride {
+	switch output {
+	case LogOutputStdout:
 		sender, err := send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return nil, errors.Wrap(err, "creating native console logger")
 		}
 
 		senders = append(senders, sender)
-	} else {
+	default:
 		sender, err := send.NewFileLogger("evergreen.agent",
 			fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc()), send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
