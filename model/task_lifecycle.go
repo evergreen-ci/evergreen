@@ -827,7 +827,7 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		buildIds = append(buildIds, buildId)
 	}
 	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
-		return errors.Wrapf(err, "updating version and patch status for builds")
+		return errors.Wrapf(err, "updating build, version, and patch statuses")
 	}
 
 	return nil

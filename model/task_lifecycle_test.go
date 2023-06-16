@@ -6344,7 +6344,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert.NoError(err)
 	assert.True(dbTask5.DependsOn[0].Unattainable)
 
-	// Restarting a dependent task should unblock builds
+	// Unblocking a dependent task should unblock its build
 	dbTask6, err := task.FindOneId(tasks[6].Id)
 	assert.NoError(err)
 	assert.False(dbTask6.DependsOn[0].Unattainable)
