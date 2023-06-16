@@ -443,7 +443,7 @@ func TestMergingIterator(t *testing.T) {
 
 // generateTestLog is a convenience function to generate random logs with 100
 // character long lines of the given size and chunk size in the given bucket.
-func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize int) ([]chunkInfo, []LogLine, lineParser, error) {
+func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize int) ([]chunkInfo, []LogLine, LineParser, error) {
 	service := &logServiceV0{}
 
 	lines := make([]LogLine, size)
@@ -471,7 +471,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 				Timestamp: ts,
 				Data:      line + "\n",
 			}
-			rawLines += service.formatRawLine(lines[lineNum])
+			rawLines += service.getFormatter()(lines[lineNum])
 			ts += int64(time.Millisecond)
 			lineCount++
 		}

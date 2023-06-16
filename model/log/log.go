@@ -19,6 +19,8 @@ type LogLine struct {
 	Data      string
 }
 
+type LineParser func(string) (LogLine, error)
+
 // GetOptions represents the arguments for fetching Evergreen logs.
 type GetOptions struct {
 	// LogNames are the names of the logs to fetch and merge, prefixes may
@@ -40,27 +42,28 @@ type GetOptions struct {
 // TaskOptions represents the task-level information required to fetch logs
 // belonging to an Evergreen task run.
 type TaskOptions struct {
+	ProjectID string
 	TaskID    string
 	Execution int
 	// ServiceVersion is the version of the backing logger service.
 	ServiceVersion int
 }
 
-// TaskLogType represents the recognized log types collected during a task run.
-type TaskLogType string
+// LogType represents the recognized log types collected on an Evergreen host.
+type LogType string
 
 const (
-	// TaskLogTypeAll includes agent, task, and system logs.
-	TaskLogTypeAll    = "all"
-	TaskLogTypeAgent  = "agent"
-	TaskLogTypeTask   = "task"
-	TaskLogTypeSystem = "system"
-	TaskLogTypeTest   = "test"
+	// LogTypeTaskAll includes agent, task, and system logs.
+	LogTypeTaskAll    = "all"
+	LogTypeTaskAgent  = "agent"
+	LogTypeTaskTask   = "task"
+	LogTypeTaskSystem = "system"
+	LogTypeTaskTest   = "test"
 )
 
 // GetTaskLogTypePrefix returns the appropriate "path" prefix for the given log
 // type.
-func GetTaskLogTypePrefix(env evergreen.Environment, taskOpts TaskOptions, opts GetOptions) (string, error) {
+func GetTaskLogTypePrefix(env evergreen.Environment, taskOpts TaskOptions, logType LogType) (string, error) {
 	return "", errors.New("not implemented")
 }
 

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -17,19 +18,19 @@ type logServiceV0 struct {
 	bucket pail.Bucket
 }
 
-func (s *logServiceV0) GetTaskLogPrefix(opts TaskOptions, logType TaskLogType) (string, error) {
-	prefix := fmt.Sprintf("task_id=%s/execution=%d", opts.TaskID, opts.Execution)
+func (s *logServiceV0) GetTaskLogPrefix(opts TaskOptions, logType LogType) (string, error) {
+	prefix := fmt.Sprintf("project_id=%s/task_id=%s/execution=%d/build/", opts.ProjectID, opts.TaskID, opts.Execution)
 
 	switch logType {
-	case TaskLogTypeAll:
+	case LogTypeTaskAll:
 		prefix += "/task_logs"
-	case TaskLogTypeAgent:
+	case LogTypeTaskAgent:
 		prefix += "/task_logs/agent"
-	case TaskLogTypeTask:
+	case LogTypeTaskTask:
 		prefix += "/task_logs/task"
-	case TaskLogTypeSystem:
+	case LogTypeTaskSystem:
 		prefix += "/task_logs/system"
-	case TaskLogTypeTest:
+	case LogTypeTaskTest:
 		prefix = "/test_logs"
 	default:
 		return "", errors.Errorf("unsupported task log type '%s'", logType)
@@ -61,6 +62,26 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, ge
 		return its[0], nil
 	}
 	return newMergingIterator(its...), nil
+}
+
+func (s *logServiceV0) WriteTaskLog(ctx context.Context, taskOpts TaskOptions, logType LogType, logName string, lines []LogLine) error {
+	prefix, err := s.GetTaskLogPrefix(taskOpts, logType)
+	if err != nil {
+		return err
+	}
+	key := fmt.Sprintf("%s/%s/%s", prefix, logName, s.createChunkKey(lines[0].start, lines[len(lines)-1].end, len(lines)))
+
+	// TODO: return nil here or error?
+	if len(lines) == 0 {
+		return nil
+	}
+
+	var rawLines []byte
+	for _, line := range lines {
+		rawLines = append(rawLines, s.formatRawLine(line))
+	}
+
+	return errors.Wrap(s.bucket.Put(ctx, key, bytes.NewReader(rawLines)), "writing log chunk to bucket")
 }
 
 // getLogChunks maps each logical log to its chunk files stored in pail-backed
@@ -159,14 +180,18 @@ func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 	}, nil
 }
 
-// formatRawLing returns a log line in the raw storage format.
+// formatRawLine formats a log line for storage.
 func (s *logServiceV0) formatRawLine(line LogLine) string {
+	if line.Data[len(line.Data)-1] != '\n' {
+		line.Data += "\n"
+	}
+
 	return fmt.Sprintf("%d %d %s", line.Priority, line.Timestamp, line.Data)
 }
 
 // getParser returns a function that parses a raw v0 log line into a LogLine
 // struct.
-func (s *logServiceV0) getParser(logName string) lineParser {
+func (s *logServiceV0) getParser(logName string) LineParser {
 	return func(data string) (LogLine, error) {
 		lineParts := strings.SplitN(data, " ", 3)
 		if len(lineParts) != 3 {
