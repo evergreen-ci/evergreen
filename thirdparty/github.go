@@ -48,6 +48,7 @@ const (
 	githubRefAttribute      = "evergreen.github.ref"
 	githubPathAttribute     = "evergreen.github.path"
 	githubRetriesAttribute  = "evergreen.github.retries"
+	githubCachedAttribute   = "evergreen.github.cached"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -86,6 +87,14 @@ func init() {
 	memoryCacheTransport := httpcache.NewMemoryCacheTransport()
 	memoryCacheTransport.Transport = otelTransport
 	cachingTransport = memoryCacheTransport
+}
+
+func respFromCache(resp *http.Response) bool {
+	// github.com/gregjones/httpcache adds the [X-From-Cache] header when the request is
+	// fulfilled from the cache.
+	//
+	// [X-From-Cache]: https://pkg.go.dev/github.com/gregjones/httpcache#pkg-constants
+	return resp.Header.Get("X-From-Cache") != ""
 }
 
 // IsUnblockedGithubStatus returns true if the status is in the list of unblocked statuses
@@ -274,6 +283,7 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 	commits, resp, err := githubClient.Repositories.ListCommits(ctx, owner, repo, &options)
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if err != nil {
 			return nil, 0, parseGithubErrorResponse(resp)
 		}
@@ -327,6 +337,7 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref strin
 	file, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, opt)
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, FileNotFoundError{filepath: path}
 		}
@@ -419,6 +430,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 		repoOwner, repo, baseRevision, currentCommitHash, nil)
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if err != nil {
 			return "", parseGithubErrorResponse(resp)
 		}
@@ -463,6 +475,7 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 	commit, resp, err := githubClient.Repositories.GetCommit(ctx, repoOwner, repo, githash, nil)
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if err != nil {
 			return nil, parseGithubErrorResponse(resp)
 		}
@@ -511,6 +524,7 @@ func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string)
 	commit, resp, err := githubClient.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: github.Diff})
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if err != nil {
 			return "", parseGithubErrorResponse(resp)
 		}
@@ -546,6 +560,7 @@ func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch str
 	branchEvent, resp, err := githubClient.Repositories.GetBranch(ctx, repoOwner, repo, branch, false)
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if err != nil {
 			return nil, parseGithubErrorResponse(resp)
 		}
@@ -711,6 +726,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 	resp, err := githubClient.Client().Get(url)
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp)))
 	}
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get tag information from GitHub")
@@ -729,18 +745,17 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 	}
 
 	var sha string
-	var annotatedTagResp *github.Tag
 	tagSha := tagResp.GetObject().GetSHA()
 	switch tagResp.GetObject().GetType() {
 	case commitObjectType:
 		// lightweight tags are pointers to the commit itself
 		sha = tagSha
 	case tagObjectType:
-		annotatedTagResp, _, err = githubClient.Git.GetTag(ctx, owner, repo, tagSha)
+		annotatedTag, err := getObjectTag(ctx, oauthToken, owner, repo, tagSha)
 		if err != nil {
 			return "", errors.Wrapf(err, "error getting tag '%s' with SHA '%s'", tag, tagSha)
 		}
-		sha = annotatedTagResp.GetObject().GetSHA()
+		sha = annotatedTag.GetObject().GetSHA()
 	default:
 		return "", errors.Errorf("unrecognized object type '%s'", tagResp.GetObject().GetType())
 	}
@@ -750,6 +765,33 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 	}
 
 	return sha, nil
+}
+
+func getObjectTag(ctx context.Context, oauthToken, owner, repo, sha string) (*github.Tag, error) {
+	caller := "getObjectTag"
+	githubClient := getGithubClient(oauthToken, caller, retryConfig{retry: true})
+
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, sha),
+	))
+	defer span.End()
+
+	tag, resp, err := githubClient.Git.GetTag(ctx, owner, repo, sha)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		if err != nil {
+			return nil, parseGithubErrorResponse(resp)
+		}
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting tag with SHA '%s'", sha)
+	}
+
+	return tag, nil
 }
 
 func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken string) bool {
@@ -791,6 +833,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	user, resp, err := githubClient.Users.Get(ctx, "")
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if err != nil {
 			var respBody []byte
 			respBody, err = io.ReadAll(resp.Body)
@@ -839,6 +882,7 @@ func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) 
 	limits, resp, err := githubClient.RateLimits(ctx)
 	if resp != nil {
 		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
 		grip.Errorf("github GET rate limit failed: %+v", err)
@@ -865,7 +909,11 @@ func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.U
 	))
 	defer span.End()
 
-	user, _, err := githubClient.Users.Get(ctx, loginName)
+	user, resp, err := githubClient.Users.Get(ctx, loginName)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -890,7 +938,11 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 	defer span.End()
 
 	// doesn't count against API limits
-	limits, _, err := githubClient.RateLimits(ctx)
+	limits, resp, err := githubClient.RateLimits(ctx)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return false, err
 	}
@@ -954,7 +1006,11 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 	))
 	defer span.End()
 
-	permissionLevel, _, err := githubClient.Repositories.GetPermissionLevel(ctx, owner, repo, username)
+	permissionLevel, resp, err := githubClient.Repositories.GetPermissionLevel(ctx, owner, repo, username)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return "", errors.Wrap(err, "can't get permissions from GitHub")
 	}
@@ -974,10 +1030,16 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, data.BaseOwner),
+		attribute.String(githubRepoAttribute, data.BaseRepo),
 	))
 	defer span.End()
 
-	commits, _, err := githubClient.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return "", err
 	}
@@ -988,12 +1050,9 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 		return "", errors.New("hash is missing from pull request commit list")
 	}
 
-	commit, _, err := githubClient.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA, nil)
+	commit, err := getCommit(ctx, token, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
 	if err != nil {
-		return "", err
-	}
-	if commit == nil {
-		return "", errors.New("couldn't find commit")
+		return "", errors.Wrapf(err, "getting commit on %s/%s with SHA '%s'", data.BaseOwner, data.BaseRepo, *commits[0].SHA)
 	}
 	if len(commit.Parents) == 0 {
 		return "", errors.New("can't find pull request branch point")
@@ -1003,6 +1062,33 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 	}
 
 	return *commit.Parents[0].SHA, nil
+}
+
+func getCommit(ctx context.Context, token, owner, repo, sha string) (*github.RepositoryCommit, error) {
+	caller := "getCommit"
+	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
+
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, sha),
+	))
+	defer span.End()
+
+	commit, resp, err := githubClient.Repositories.GetCommit(ctx, owner, repo, sha, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, err
+	}
+	if commit == nil {
+		return nil, errors.New("couldn't find commit")
+	}
+
+	return commit, nil
 }
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
@@ -1016,7 +1102,11 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	))
 	defer span.End()
 
-	pr, _, err := githubClient.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
+	pr, resp, err := githubClient.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -1031,10 +1121,16 @@ func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch)
 
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, gh.BaseOwner),
+		attribute.String(githubRepoAttribute, gh.BaseRepo),
 	))
 	defer span.End()
 
-	diff, _, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
+	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return "", nil, err
 	}
@@ -1205,10 +1301,13 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner st
 	}
 
 	respHook, resp, err := githubClient.Repositories.CreateHook(ctx, owner, repo, &hookObj)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
 		return nil, errors.New("unexpected data from GitHub")
 	}
@@ -1233,7 +1332,11 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	))
 	defer span.End()
 
-	respHooks, _, err := githubClient.Repositories.ListHooks(ctx, owner, repo, nil)
+	respHooks, resp, err := githubClient.Repositories.ListHooks(ctx, owner, repo, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting hooks for owner '%s', repo '%s'", owner, repo)
 	}
@@ -1261,8 +1364,12 @@ func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage str
 	))
 	defer span.End()
 
-	res, _, err := githubClient.PullRequests.Merge(ctx, owner, repo,
+	res, resp, err := githubClient.PullRequests.Merge(ctx, owner, repo,
 		prNum, commitMessage, mergeOpts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return errors.Wrap(err, "accessing GitHub merge API")
 	}
@@ -1288,10 +1395,13 @@ func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, pr
 		Body: &comment,
 	}
 	respComment, resp, err := githubClient.Issues.CreateComment(ctx, owner, repo, prNum, githubComment)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
 	if err != nil {
 		return errors.Wrap(err, "can't access GitHub merge API")
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
 		return errors.New("unexpected data from GitHub")
 	}
