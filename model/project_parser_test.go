@@ -2138,10 +2138,6 @@ func TestMergeUnordered(t *testing.T) {
 			"a",
 		},
 		Loggers: &LoggerConfig{
-			// kim: TODO: delete
-			// Agent:  []LogOpts{{Type: LogkeeperLogSender}},
-			// System: []LogOpts{{Type: LogkeeperLogSender}},
-			// Task:   []LogOpts{{Type: LogkeeperLogSender}},
 			Agent:  []LogOpts{{Type: BuildloggerLogSender}},
 			System: []LogOpts{{Type: BuildloggerLogSender}},
 			Task:   []LogOpts{{Type: BuildloggerLogSender}},

@@ -123,18 +123,6 @@ type SharedCommunicator interface {
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 }
 
-// kim: TODO: delete
-// type LoggerMetadata struct {
-//     Agent  []LogkeeperMetadata
-//     System []LogkeeperMetadata
-//     Task   []LogkeeperMetadata
-// }
-//
-// type LogkeeperMetadata struct {
-//     Build string
-//     Test  string
-// }
-
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
 // some client methods.
 type TaskData struct {
@@ -153,14 +141,10 @@ type LogOpts struct {
 	Sender          string
 	SplunkServerURL string
 	SplunkToken     string
-	// kim :TODO: potentially delete file logger
-	Filepath string
-	// kim: TODO: delete
-	// LogkeeperURL      string
-	// LogkeeperBuildNum int
-	BuilderID      string
-	BufferDuration time.Duration
-	BufferSize     int
+	Filepath        string
+	BuilderID       string
+	BufferDuration  time.Duration
+	BufferSize      int
 }
 
 // LoggerProducer provides a mechanism for agents (and command plugins) to access the

@@ -296,8 +296,6 @@ func TestAgentSetup(t *testing.T) {
 			assert.Equal(t, data.SplunkServerURL, s.Splunk.SplunkConnectionInfo.ServerURL)
 			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
 			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
-			// kim: TODO: delete
-			// assert.Equal(t, data.LogkeeperURL, s.LoggerConfig.LogkeeperURL)
 		},
 		"ReturnsEmpty": func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings) {
 			*s = evergreen.Settings{}
@@ -331,10 +329,6 @@ func TestAgentSetup(t *testing.T) {
 						},
 					},
 				},
-				// kim: TODO: delete
-				// LoggerConfig: evergreen.LoggerConfig{
-				//     LogkeeperURL: "logkeeper_url",
-				// },
 			}
 
 			r, ok := makeAgentSetup(s).(*agentSetup)

@@ -1828,13 +1828,11 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		},
 		bson.M{
 			"$set": bson.M{
-				FinishTimeKey: finishTime,
-				StatusKey:     detail.Status,
-				TimeTakenKey:  t.TimeTaken,
-				DetailsKey:    detail,
-				StartTimeKey:  t.StartTime,
-				// kim: TODO: delete
-				// LogsKey:               detail.Logs,
+				FinishTimeKey:         finishTime,
+				StatusKey:             detail.Status,
+				TimeTakenKey:          t.TimeTaken,
+				DetailsKey:            detail,
+				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
 			},
 			"$unset": bson.M{

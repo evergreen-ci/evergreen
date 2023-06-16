@@ -65,9 +65,7 @@ type TaskEndDetail struct {
 	TimeoutType     string          `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration time.Duration   `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
-	// kim: TODO: delete
-	// Logs            *TaskLogs       `bson:"-" json:"logs,omitempty"`
-	Modules ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
+	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
 }
 
 type OOMTrackerInfo struct {
@@ -108,14 +106,12 @@ type GetNextTaskDetails struct {
 }
 
 type AgentSetupData struct {
-	SplunkServerURL   string                  `json:"splunk_server_url"`
-	SplunkClientToken string                  `json:"splunk_client_token"`
-	SplunkChannel     string                  `json:"splunk_channel"`
-	TaskSync          evergreen.S3Credentials `json:"task_sync"`
-	EC2Keys           []evergreen.EC2Key      `json:"ec2_keys"`
-	// kim: TODO: delete
-	// LogkeeperURL           string `json:"logkeeper_url"`
-	TraceCollectorEndpoint string `json:"trace_collector_endpoint"`
+	SplunkServerURL        string                  `json:"splunk_server_url"`
+	SplunkClientToken      string                  `json:"splunk_client_token"`
+	SplunkChannel          string                  `json:"splunk_channel"`
+	TaskSync               evergreen.S3Credentials `json:"task_sync"`
+	EC2Keys                []evergreen.EC2Key      `json:"ec2_keys"`
+	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task

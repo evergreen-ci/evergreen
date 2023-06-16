@@ -1846,12 +1846,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			detail = &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,
-				// kim: TODO: delete
-				// Logs: &apimodels.TaskLogs{
-				//     AgentLogURLs:  []apimodels.LogInfo{{Command: "foo1", URL: "agent"}},
-				//     TaskLogURLs:   []apimodels.LogInfo{{Command: "foo2", URL: "task"}},
-				//     SystemLogURLs: []apimodels.LogInfo{{Command: "foo3", URL: "system"}},
-				// },
 			}
 			pRef := ProjectRef{Id: "p1"}
 			pConfig := ProjectConfig{Id: "p1"}
@@ -1882,9 +1876,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
-			// kim: TODO: delete
-			// So(reflect.DeepEqual(taskData.Logs, detail.Logs), ShouldBeTrue)
-
 		})
 
 		Convey("task should fail if there are failing tests", func() {

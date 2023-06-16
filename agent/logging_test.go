@@ -157,97 +157,6 @@ func TestStartLogging(t *testing.T) {
 	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
-// kim: TODO: delete because there's no way to get this to fail.
-// func TestStartLoggingErrors(t *testing.T) {
-//     assert := assert.New(t)
-//     // tmpDirName := t.TempDir()
-//     agt := &Agent{
-//         opts: Options{
-//             // HostID:           "host",
-//             // HostSecret:       "secret",
-//             // StatusPort:       2286,
-//             // LogOutput:        LogOutputStdout,
-//             // LogPrefix:        "agent",
-//             // WorkingDirectory: tmpDirName,
-//         },
-//         comm: client.NewHostCommunicator("www.foo.com", "host", "secret"),
-//     }
-//     // project := &model.Project{
-//     //     Loggers: &model.LoggerConfig{
-//     //         // kim: TODO: delete
-//     //         // Agent: []model.LogOpts{{Type: model.LogkeeperLogSender}},
-//     //         // Agent: []model.LogOpts{{
-//     //         //     Type:         model.FileLogSender,
-//     //         //     LogDirectory: filepath.Join("🍪", "is", "not", "a", "valid", "directory"),
-//     //         // }},
-//     //     },
-//     //     Tasks: []model.ProjectTask{},
-//     // }
-//     tc := &taskContext{
-//         // taskDirectory: tmpDirName,
-//         // task: client.TaskData{
-//         //     ID:     "logging_error",
-//         //     Secret: "secret",
-//         // },
-//         // ranSetupGroup: false,
-//         // taskConfig:    &internal.TaskConfig{},
-//         // project:       project,
-//         // taskModel:     &task.Task{},
-//     }
-//
-//     ctx := context.Background()
-//     assert.Error(agt.startLogging(ctx, tc))
-// }
-
-// kim: TODO: delete
-// func TestLogkeeperMetadataPopulated(t *testing.T) {
-//     assert := assert.New(t)
-//
-//     agt := &Agent{
-//         opts: Options{
-//             HostID:       "host",
-//             HostSecret:   "secret",
-//             StatusPort:   2286,
-//             LogOutput:    LogOutputStdout,
-//             LogPrefix:    "agent",
-//             LogkeeperURL: "logkeeper",
-//         },
-//         comm: client.NewMock("mock"),
-//     }
-//     ctx, cancel := context.WithCancel(context.Background())
-//     defer cancel()
-//
-//     taskID := "logging"
-//     taskSecret := "mock_task_secret"
-//     task := &task.Task{
-//         DisplayName: "task1",
-//     }
-//     tc := &taskContext{
-//         task: client.TaskData{
-//             ID:     taskID,
-//             Secret: taskSecret,
-//         },
-//         project: &model.Project{
-//             Loggers: &model.LoggerConfig{
-//                 Agent:  []model.LogOpts{{Type: model.LogkeeperLogSender}},
-//                 System: []model.LogOpts{{Type: model.LogkeeperLogSender}},
-//                 Task:   []model.LogOpts{{Type: model.LogkeeperLogSender}},
-//             },
-//         },
-//         taskConfig: &internal.TaskConfig{
-//             Task:         task,
-//             BuildVariant: &model.BuildVariant{Name: "bv"},
-//             Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-//         },
-//         taskModel: task,
-//     }
-//     assert.NoError(agt.startLogging(ctx, tc))
-//     assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0].URL)
-//     assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0].URL)
-//     assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0].URL)
-//     assert.Equal("", tc.logs.TaskLogURLs[0].Command)
-// }
-
 func TestDefaultSender(t *testing.T) {
 	agt := &Agent{
 		opts: Options{
@@ -256,8 +165,6 @@ func TestDefaultSender(t *testing.T) {
 			StatusPort: 2286,
 			LogOutput:  LogOutputStdout,
 			LogPrefix:  "agent",
-			// kim: TODO: remove
-			// LogkeeperURL: "logkeeper",
 		},
 		comm: client.NewMock("mock"),
 	}
@@ -313,8 +220,6 @@ func TestTimberSender(t *testing.T) {
 			StatusPort: 2286,
 			LogOutput:  LogOutputStdout,
 			LogPrefix:  "agent",
-			// kim: TODO: remove
-			// LogkeeperURL: "logkeeper",
 		},
 		comm: client.NewMock("mock"),
 	}
