@@ -817,6 +817,11 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		if err := UpdateUnblockedDependencies(&blockedTask); err != nil {
 			return errors.WithStack(err)
 		}
+
+		if err := UpdateBuildAndVersionStatusForTask(&blockedTask); err != nil {
+			return errors.Wrapf(err, "updating build and version status for task '%s'", blockedTask.Id)
+		}
+
 	}
 
 	return nil
