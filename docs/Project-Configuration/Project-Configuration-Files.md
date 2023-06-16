@@ -1389,7 +1389,7 @@ supported as a space-separated list. For example,
     variant: "A B C D"
 ```
 
-[Task/variant tags](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Configuration-Files#task-and-variant-tags) 
+[Task/variant tags](#task-and-variant-tags) 
 can also be used to define dependencies.
 
 ``` yaml
