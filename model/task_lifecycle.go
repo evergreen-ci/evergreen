@@ -822,11 +822,11 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		buildsToUpdate[blockedTask.BuildId] = true
 	}
 
-	var buildIds []string
-	for buildId := range buildsToUpdate {
-		buildIds = append(buildIds, buildId)
+	var buildIDs []string
+	for buildID := range buildsToUpdate {
+		buildIDs = append(buildIDs, buildID)
 	}
-	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+	if err := UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
 		return errors.Wrapf(err, "updating build, version, and patch statuses")
 	}
 
