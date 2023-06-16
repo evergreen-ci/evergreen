@@ -103,6 +103,12 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
+	grip.Info(message.Fields{
+		"source":   "GitHub hook",
+		"msg_id":   gh.msgID,
+		"event":    gh.eventType,
+		"bynnbynn": gh,
+	})
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		if event.HookID == nil {
