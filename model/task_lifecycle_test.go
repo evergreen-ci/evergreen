@@ -6238,8 +6238,8 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 	v := Version{Id: "v"}
-	b := build.Build{Id: "build0"}
-	b2 := build.Build{Id: "build2", AllTasksBlocked: true}
+	b := build.Build{Id: "build0", Version: v.Id}
+	b2 := build.Build{Id: "build2", Version: v.Id, AllTasksBlocked: true}
 	tasks := []task.Task{
 		{Id: "t0", BuildId: b.Id, Version: v.Id},
 		{Id: "t1", BuildId: b.Id, Version: v.Id, Status: evergreen.TaskFailed},
