@@ -164,8 +164,8 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig7.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.taskConfig7.BuildVariant.Modules = []string{"evergreen"}
 	s.taskConfig7.GithubMergeData = thirdparty.GithubMergeGroup{
-		HeadRef: "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
-		HeadSHA: "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
+		HeadBranch: "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
+		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
 	}
 	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
 }
