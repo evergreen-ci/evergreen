@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
@@ -15,13 +17,15 @@ const collection = "data_cache"
 type DBCache struct{}
 
 type cacheItem struct {
-	ID       string `bson:"_id"`
-	Contents []byte `bson:"contents"`
+	ID       string    `bson:"_id"`
+	Contents []byte    `bson:"contents"`
+	Updated  time.Time `bson:"updated"`
 }
 
 var (
 	IDKey       = bsonutil.MustHaveTag(cacheItem{}, "ID")
 	ContentsKey = bsonutil.MustHaveTag(cacheItem{}, "Contents")
+	UpdatedKey  = bsonutil.MustHaveTag(cacheItem{}, "Updated")
 )
 
 // Get returns the []byte representation of a cached response and a bool
@@ -54,6 +58,7 @@ func (c *DBCache) Set(key string, responseBytes []byte) {
 		bson.M{
 			"$set": bson.M{
 				ContentsKey: responseBytes,
+				UpdatedKey:  time.Now(),
 			},
 		},
 	)
