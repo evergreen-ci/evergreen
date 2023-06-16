@@ -559,6 +559,7 @@ func (p *Patch) Insert() error {
 	return db.Insert(Collection, p)
 }
 
+// UpdateStatus updates the status of the patch in the db
 func (p *Patch) UpdateStatus(newStatus string) error {
 	if p.Status == newStatus {
 		return nil
@@ -772,8 +773,15 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+// IsCommitQueuePatch returns true if the the patch is part of any commit queue:
+// either Evergreen's commit queue or GitHub's merge queue.
 func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch()
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.IsGithubMergePatch()
+}
+
+// IsGithubMergePatch returns true if the patch is from the GitHub merge queue.
+func (p *Patch) IsGithubMergePatch() bool {
+	return p.GithubMergeData.HeadSHA != ""
 }
 
 func (p *Patch) IsBackport() bool {

@@ -13,6 +13,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	GithubMergeUser = "github_merge_queue"
 	ParentPatchUser = "parent_patch"
 
 	HostRunning       = "running"
@@ -199,9 +200,13 @@ const (
 	MongodbUrl      = "MONGO_URL"
 	MongodbAuthFile = "MONGO_CREDS_FILE"
 
-	// Special logging output targets
-	LocalLoggingOverride          = "LOCAL"
-	StandardOutputLoggingOverride = "STDOUT"
+	// localLoggingOverride is a special log path indicating that the app server
+	// should attempt to log to systemd if available, and otherwise fall back to
+	// logging to stdout.
+	localLoggingOverride = "LOCAL"
+	// standardOutputLoggingOverride is a special log path indicating that the
+	// app server should log to stdout.
+	standardOutputLoggingOverride = "STDOUT"
 
 	DefaultTaskActivator   = ""
 	StepbackTaskActivator  = "stepback"
@@ -302,8 +307,10 @@ const (
 
 	DefaultJasperPort = 2385
 
+	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
-	githubAppPrivateKey        = "github_app_private_key"
+	GithubAppToken             = "github_app_token"
+	githubAppPrivateKey        = "github_app_test_key"
 
 	VSCodePort = 2021
 

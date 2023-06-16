@@ -1,6 +1,7 @@
 package route
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
@@ -339,6 +341,59 @@ func TestAgentSetup(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r, s)
+		})
+	}
+}
+
+func TestAgentCheckGetPullRequestHandler(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings) {
+			copied := rh.Factory()
+			assert.NotZero(t, copied)
+			_, ok := copied.(*agentCheckGetPullRequestHandler)
+			assert.True(t, ok)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings) {
+			json := []byte(`{
+                "owner": "evergreen",
+                "repo": "sandbox"
+            }`)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/task/t1/pull_request", bytes.NewBuffer(json))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+			require.NoError(t, err)
+			assert.NoError(t, rh.Parse(ctx, req))
+			assert.Equal(t, "t1", rh.taskID)
+			assert.Equal(t, "evergreen", rh.req.Owner)
+			assert.Equal(t, "sandbox", rh.req.Repo)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			assert.NoError(t, env.Configure(ctx))
+			env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
+
+			tsk := &task.Task{
+				Id:      "t1",
+				Version: "aaaaaaaaaaff001122334456",
+			}
+			patch := &patch.Patch{
+				Id:      patch.NewId("aaaaaaaaaaff001122334456"),
+				Version: "aaaaaaaaaaff001122334456",
+				GithubPatchData: thirdparty.GithubPatch{
+					MergeCommitSHA: "abc",
+				},
+			}
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, patch.Insert())
+
+			r, ok := makeAgentGetPullRequest(env.Settings()).(*agentCheckGetPullRequestHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, r, env.Settings())
 		})
 	}
 }

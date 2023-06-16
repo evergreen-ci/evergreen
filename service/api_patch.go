@@ -362,7 +362,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if p.IsCommitQueuePatch() {
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project)); err != nil {
+		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project, p.IsCommitQueuePatch())); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

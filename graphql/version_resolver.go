@@ -40,7 +40,7 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.A
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
-	statuses, err := task.GetBaseStatusesForActivatedTasks(*obj.Id, baseVersion.Id)
+	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, *obj.Id, baseVersion.Id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
 	}
@@ -329,20 +329,11 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 
 // TaskStatuses is the resolver for the taskStatuses field.
 func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		FieldsToProject:                []string{task.DisplayStatusKey},
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(ctx, *obj.Id, opts)
+	statuses, err := task.GetTaskStatusesByVersion(ctx, *obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task statuses for version with id '%s': %s", *obj.Id, err.Error()))
 	}
-	return getAllTaskStatuses(tasks), nil
+	return statuses, nil
 }
 
 // TaskStatusStats is the resolver for the taskStatusStats field.
