@@ -78,15 +78,14 @@ const (
 	githubPRUnstable = "unstable"
 )
 
-var cachingClient *http.Client
+var cachingTransport http.RoundTripper
 
 func init() {
-	cachingClient := utility.GetHTTPClient()
-	otelTransport := otelhttp.NewTransport(cachingClient.Transport)
+	baseTransport := utility.DefaultTransport()
+	otelTransport := otelhttp.NewTransport(baseTransport)
 	memoryCacheTransport := httpcache.NewMemoryCacheTransport()
 	memoryCacheTransport.Transport = otelTransport
-
-	cachingClient.Transport = memoryCacheTransport
+	cachingTransport = memoryCacheTransport
 }
 
 // IsUnblockedGithubStatus returns true if the status is in the list of unblocked statuses
@@ -242,7 +241,7 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 			MaxAttempts: numGithubAttempts,
 			MinDelay:    githubRetryMinDelay,
 		}),
-		cachingClient,
+		utility.DefaultHttpClient(cachingTransport),
 	)
 
 	return github.NewClient(client)
