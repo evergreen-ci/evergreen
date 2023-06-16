@@ -559,6 +559,7 @@ func (p *Patch) Insert() error {
 	return db.Insert(Collection, p)
 }
 
+// UpdateStatus updates the status of the patch in the db
 func (p *Patch) UpdateStatus(newStatus string) error {
 	if p.Status == newStatus {
 		return nil
