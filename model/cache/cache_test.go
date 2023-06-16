@@ -16,7 +16,7 @@ func init() {
 }
 
 func TestCache(t *testing.T) {
-	defer func() { db.Clear(collection) }()
+	defer func() { assert.NoError(t, db.Clear(collection)) }()
 
 	cache := DBCache{}
 
