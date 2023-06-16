@@ -809,6 +809,7 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		return errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
+	buildsToUpdate := make(map[string]bool)
 	for _, blockedTask := range blockedTasks {
 		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
 			return errors.Wrap(err, "marking dependency attainable")
@@ -817,6 +818,16 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		if err := UpdateUnblockedDependencies(&blockedTask); err != nil {
 			return errors.WithStack(err)
 		}
+
+		buildsToUpdate[blockedTask.BuildId] = true
+	}
+
+	var buildIDs []string
+	for buildID := range buildsToUpdate {
+		buildIDs = append(buildIDs, buildID)
+	}
+	if err := UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
+		return errors.Wrapf(err, "updating build, version, and patch statuses")
 	}
 
 	return nil
