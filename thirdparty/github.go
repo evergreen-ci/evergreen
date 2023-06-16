@@ -54,6 +54,7 @@ const (
 	githubPathAttribute     = "evergreen.github.path"
 	githubRetriesAttribute  = "evergreen.github.retries"
 	githubCachedAttribute   = "evergreen.github.cached"
+	githubAppTokenAttribute = "evergreen.github.app_token"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -267,6 +268,8 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 // getInstallationToken creates an installation token using Github app auth.
 // If creating a token fails it will return the legacyToken.
 func getInstallationToken(ctx context.Context, legacyToken, owner, repo string, opts *github.InstallationTokenOptions) string {
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(githubAppTokenAttribute, false))
+
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return legacyToken
@@ -281,6 +284,8 @@ func getInstallationToken(ctx context.Context, legacyToken, owner, repo string, 
 		}))
 		return legacyToken
 	}
+
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(githubAppTokenAttribute, true))
 	return token
 }
 
