@@ -292,8 +292,6 @@ func getInstallationTokenWithoutOwnerRepo(ctx context.Context, legacyToken strin
 // the given commitsURL when provided a valid oauth token
 func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
 	caller := "GetGithubCommits"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -301,6 +299,8 @@ func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until
 		attribute.String(githubRefAttribute, ref),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	options := github.CommitsListOptions{
 		SHA: ref,
@@ -343,13 +343,7 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
 func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*github.RepositoryContent, error) {
-	if path == "" {
-		return nil, errors.New("remote repository path cannot be empty")
-	}
-
 	caller := "GetGithubFile"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -358,6 +352,12 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 		attribute.String(githubPathAttribute, path),
 	))
 	defer span.End()
+
+	if path == "" {
+		return nil, errors.New("remote repository path cannot be empty")
+	}
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	var opt *github.RepositoryContentGetOptions
 	if len(ref) != 0 {
@@ -451,14 +451,14 @@ func SendPendingStatusToGithub(input SendGithubStatusInput, urlBase string) erro
 // GitHub repo and returns the merge base commit's SHA.
 func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision, currentCommitHash string) (string, error) {
 	caller := "GetGithubMergeBaseRevision"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	compare, resp, err := githubClient.Repositories.CompareCommits(ctx,
 		owner, repo, baseRevision, currentCommitHash, nil)
@@ -490,8 +490,6 @@ func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRev
 
 func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -499,6 +497,8 @@ func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*g
 		attribute.String(githubRefAttribute, githash),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	grip.Info(message.Fields{
 		"message": "requesting commit from github",
@@ -545,8 +545,6 @@ func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*g
 // GetCommitDiff gets the diff of the specified commit via an API call to GitHub
 func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string, error) {
 	caller := "GetCommitDiff"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -554,6 +552,8 @@ func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string,
 		attribute.String(githubRefAttribute, sha),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	commit, resp, err := githubClient.Repositories.GetCommitRaw(ctx, owner, repo, sha, github.RawOptions{Type: github.Diff})
 	if resp != nil {
@@ -579,8 +579,6 @@ func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string,
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
 func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*github.Branch, error) {
 	caller := "GetBranchEvent"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -588,6 +586,8 @@ func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*gi
 		attribute.String(githubRefAttribute, branch),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
 
@@ -749,8 +749,6 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 // GetTaggedCommitFromGithub gets the commit SHA for the given tag name.
 func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag string) (string, error) {
 	caller := "GetTaggedCommitFromGithub"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -758,6 +756,8 @@ func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag stri
 		attribute.String(githubRefAttribute, tag),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
 	resp, err := githubClient.Client().Get(url)
@@ -806,8 +806,6 @@ func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag stri
 
 func getObjectTag(ctx context.Context, token, owner, repo, sha string) (*github.Tag, error) {
 	caller := "getObjectTag"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -815,6 +813,8 @@ func getObjectTag(ctx context.Context, token, owner, repo, sha string) (*github.
 		attribute.String(githubRefAttribute, sha),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	tag, resp, err := githubClient.Git.GetTag(ctx, owner, repo, sha)
 	if resp != nil {
@@ -833,12 +833,12 @@ func getObjectTag(ctx context.Context, token, owner, repo, sha string) (*github.
 
 func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, token, owner, repo string) bool {
 	caller := "IsUserInGithubTeam"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry: true})
 
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
@@ -861,11 +861,12 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, token, o
 // and error
 func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (*GithubLoginUser, bool, error) {
 	caller := "GetGithubTokenUser"
-	githubClient := getGithubClient(fmt.Sprintf("token %s", token), caller, retryConfig{retry: true})
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(fmt.Sprintf("token %s", token), caller, retryConfig{retry: true})
 
 	user, resp, err := githubClient.Users.Get(ctx, "")
 	if resp != nil {
@@ -909,12 +910,12 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 // CheckGithubAPILimit queries Github for the number of API requests remaining
 func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 	caller := "CheckGithubAPILimit"
-	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
 
 	limits, resp, err := githubClient.RateLimits(ctx)
 	if resp != nil {
@@ -939,12 +940,12 @@ func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 // GetGithubUser fetches the github user with the given login name
 func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, error) {
 	caller := "GetGithubUser"
-	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
 
 	user, resp, err := githubClient.Users.Get(ctx, loginName)
 	if resp != nil {
@@ -967,12 +968,12 @@ func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, 
 // visibility into organization membership, including private members
 func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
 	caller := "GithubUserInOrganization"
-	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
 
 	isMember, resp, err := githubClient.Organizations.IsMember(context.Background(), requiredOrganization, username)
 	if resp != nil {
@@ -986,12 +987,12 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 // and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
 func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
 	caller := "AppAuthorizedForOrg"
-	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationTokenWithoutOwnerRepo(ctx, token), caller, retryConfig{retry: true})
 
 	opts := &github.ListOptions{PerPage: 100}
 	for {
@@ -1025,14 +1026,14 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
 	caller := "GithubUserPermissionLevel"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry404: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry404: true})
 
 	permissionLevel, resp, err := githubClient.Repositories.GetPermissionLevel(ctx, owner, repo, username)
 	if resp != nil {
@@ -1055,14 +1056,14 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 // error is the result of hitting an api limit)
 func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch) (string, error) {
 	caller := "GetPullRequestMergeBase"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, data.BaseOwner, data.BaseRepo, nil), caller, retryConfig{retry404: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, data.BaseOwner),
 		attribute.String(githubRepoAttribute, data.BaseRepo),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, data.BaseOwner, data.BaseRepo, nil), caller, retryConfig{retry404: true})
 
 	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
 	if resp != nil {
@@ -1096,8 +1097,6 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 
 func getCommit(ctx context.Context, token, owner, repo, sha string) (*github.RepositoryCommit, error) {
 	caller := "getCommit"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry404: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1105,6 +1104,8 @@ func getCommit(ctx context.Context, token, owner, repo, sha string) (*github.Rep
 		attribute.String(githubRefAttribute, sha),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{retry404: true})
 
 	commit, resp, err := githubClient.Repositories.GetCommit(ctx, owner, repo, sha, nil)
 	if resp != nil {
@@ -1123,14 +1124,14 @@ func getCommit(ctx context.Context, token, owner, repo, sha string) (*github.Rep
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
 	caller := "GetGithubPullRequest"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, baseOwner, baseRepo, nil), caller, retryConfig{retry404: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, baseOwner),
 		attribute.String(githubRepoAttribute, baseRepo),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, baseOwner, baseRepo, nil), caller, retryConfig{retry404: true})
 
 	pr, resp, err := githubClient.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
 	if resp != nil {
@@ -1147,14 +1148,14 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
 	caller := "GetGithubPullRequestDiff"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, gh.BaseOwner, gh.BaseRepo, nil), caller, retryConfig{retry404: true})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, gh.BaseOwner),
 		attribute.String(githubRepoAttribute, gh.BaseRepo),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, gh.BaseOwner, gh.BaseRepo, nil), caller, retryConfig{retry404: true})
 
 	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
 	if resp != nil {
@@ -1305,19 +1306,18 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner, r
 	}
 
 	caller := "CreateGithubHook"
-
-	legacyToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting github oauth token")
-	}
-	githubClient := getGithubClient(getInstallationToken(ctx, legacyToken, owner, repo, nil), caller, retryConfig{})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
+
+	legacyToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting github oauth token")
+	}
+	githubClient := getGithubClient(getInstallationToken(ctx, legacyToken, owner, repo, nil), caller, retryConfig{})
 
 	hookObj := github.Hook{
 		Active: github.Bool(true),
@@ -1348,19 +1348,18 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner, r
 // for a repo.
 func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
 	caller := "ListGithubHooks"
-
-	legacyToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting github oauth token")
-	}
-	githubClient := getGithubClient(getInstallationToken(ctx, legacyToken, owner, repo, nil), caller, retryConfig{})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
+
+	legacyToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting github oauth token")
+	}
+	githubClient := getGithubClient(getInstallationToken(ctx, legacyToken, owner, repo, nil), caller, retryConfig{})
 
 	respHooks, resp, err := githubClient.Repositories.ListHooks(ctx, owner, repo, nil)
 	if resp != nil {
@@ -1385,19 +1384,17 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 // not have updated that this can be merged, so we allow retries.
 func MergePullRequest(ctx context.Context, token, appToken, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
 	caller := "MergePullRequest"
-
-	if appToken != "" {
-		token = appToken
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
+
+	if appToken != "" {
+		token = appToken
+	}
+	githubClient := getGithubClient(token, caller, retryConfig{})
 
 	res, resp, err := githubClient.PullRequests.Merge(ctx, owner, repo,
 		prNum, commitMessage, mergeOpts)
@@ -1418,14 +1415,14 @@ func MergePullRequest(ctx context.Context, token, appToken, owner, repo, commitM
 // PostCommentToPullRequest posts the given comment to the associated PR.
 func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, prNum int, comment string) error {
 	caller := "PostCommentToPullRequest"
-	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{})
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
+
+	githubClient := getGithubClient(getInstallationToken(ctx, token, owner, repo, nil), caller, retryConfig{})
 
 	githubComment := &github.IssueComment{
 		Body: &comment,
