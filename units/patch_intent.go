@@ -102,24 +102,30 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	patchDoc := j.intent.NewPatch()
 
 	if err = j.finishPatch(ctx, patchDoc); err != nil {
-		if j.IntentType == patch.GithubIntentType {
+		if j.IntentType == patch.GithubIntentType || j.IntentType == patch.GithubMergeIntentType {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
 			}
 			j.sendGitHubErrorStatus(ctx, patchDoc)
-			grip.Error(message.WrapError(err, message.Fields{
+			msg := message.Fields{
 				"job":          j.ID(),
 				"message":      "sent GitHub status error",
 				"github_error": j.gitHubError,
-				"owner":        patchDoc.GithubPatchData.BaseOwner,
-				"repo":         patchDoc.GithubPatchData.BaseRepo,
-				"pr_number":    patchDoc.GithubPatchData.PRNumber,
-				"commit":       patchDoc.GithubPatchData.HeadHash,
-				"project":      patchDoc.Project,
-				"alias":        patchDoc.Alias,
-				"patch_id":     patchDoc.Id.Hex(),
-				"num_modules":  len(patchDoc.Patches),
-			}))
+				"intent_type":  j.IntentType,
+			}
+			if j.IntentType == patch.GithubIntentType {
+				msg["owner"] = patchDoc.GithubPatchData.BaseOwner
+				msg["repo"] = patchDoc.GithubPatchData.BaseRepo
+				msg["pr_number"] = patchDoc.GithubPatchData.PRNumber
+				msg["commit"] = patchDoc.GithubPatchData.HeadHash
+			} else if j.IntentType == patch.GithubMergeIntentType {
+				msg["owner"] = patchDoc.GithubMergeData.Org
+				msg["repo"] = patchDoc.GithubMergeData.Repo
+				msg["base_branch"] = patchDoc.GithubMergeData.BaseBranch
+				msg["head_branch"] = patchDoc.GithubMergeData.HeadBranch
+				msg["head_sha"] = patchDoc.GithubMergeData.HeadSHA
+			}
+			grip.Error(message.WrapError(err, msg))
 		}
 		j.AddError(err)
 		return
@@ -150,6 +156,14 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			false, patchDoc.Id.Hex(), patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber))
 	}
+
+	if j.IntentType == patch.GithubMergeIntentType {
+		// TODO support status checks in EVG-19964
+		grip.Debug(message.Fields{
+			"message": "would start GitHub merge group check",
+			"ticket":  "EVG-19964",
+		})
+	}
 }
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
@@ -174,6 +188,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 		catcher.Wrap(err, "building GitHub patch document")
+	case patch.GithubMergeIntentType:
+		if err := j.buildGithubMergeDoc(ctx, patchDoc, githubOauthToken); err != nil {
+			catcher.Wrap(err, "building GitHub merge queue patch document")
+		}
 	case patch.TriggerIntentType:
 		patchedProject, patchedParserProject, err = j.buildTriggerPatchDoc(patchDoc)
 		catcher.Wrap(err, "building trigger patch document")
@@ -317,8 +335,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.IsCommitQueuePatch() {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject)
+		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch())
 	}
+
 	if patchDoc.IsBackport() {
 		patchDoc.Description, err = patchDoc.MakeBackportDescription()
 		if err != nil {
@@ -888,6 +907,39 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
+func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
+	defer func() {
+		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+			"message":     "could not mark patch intent as processed",
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"patch_id":    j.PatchID,
+			"source":      "patch intents",
+			"job":         j.ID(),
+		}))
+	}()
+
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
+		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
+	if err != nil {
+		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
+			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch,
+		)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' not found",
+			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
+	}
+	j.user, err = findEvergreenUserForGithubMergeGroup(patchDoc.GithubPatchData.AuthorUID)
+	if err != nil {
+		return errors.Wrap(err, "finding GitHub merge queue user")
+	}
+	patchDoc.Author = j.user.Id
+	patchDoc.Project = projectRef.Id
+
+	return nil
+}
+
 func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
@@ -988,6 +1040,26 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 		u = &user.DBUser{
 			Id:       evergreen.GithubPatchUser,
 			DispName: "GitHub Pull Requests",
+			APIKey:   utility.RandomString(),
+		}
+		if err = u.Insert(); err != nil {
+			return nil, errors.Wrap(err, "inserting GitHub patch user")
+		}
+	}
+
+	return u, err
+}
+
+func findEvergreenUserForGithubMergeGroup(githubUID int) (*user.DBUser, error) {
+	u, err := user.FindOne(user.ById(evergreen.GithubMergeUser))
+	if err != nil {
+		return u, errors.Wrap(err, "finding GitHub merge queue user")
+	}
+	// and if that user doesn't exist, make it
+	if u == nil {
+		u = &user.DBUser{
+			Id:       evergreen.GithubMergeUser,
+			DispName: "GitHub Merge Queue",
 			APIKey:   utility.RandomString(),
 		}
 		if err = u.Insert(); err != nil {

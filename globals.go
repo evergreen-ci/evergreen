@@ -13,6 +13,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	GithubMergeUser = "github_merge_queue"
 	ParentPatchUser = "parent_patch"
 
 	HostRunning       = "running"
