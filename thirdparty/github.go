@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/cache"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
@@ -84,7 +85,7 @@ var cachingTransport http.RoundTripper
 func init() {
 	baseTransport := utility.DefaultTransport()
 	otelTransport := otelhttp.NewTransport(baseTransport)
-	memoryCacheTransport := httpcache.NewMemoryCacheTransport()
+	memoryCacheTransport := httpcache.NewTransport(&cache.DBCache{})
 	memoryCacheTransport.Transport = otelTransport
 	cachingTransport = memoryCacheTransport
 }
