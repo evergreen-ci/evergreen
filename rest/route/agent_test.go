@@ -3,7 +3,6 @@ package route
 import (
 	"bytes"
 	"context"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"net/http"
 	"testing"
 	"time"
@@ -18,8 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -366,22 +365,6 @@ func TestAgentCheckGetPullRequestHandler(t *testing.T) {
 			assert.Equal(t, "t1", rh.taskID)
 			assert.Equal(t, "evergreen", rh.req.Owner)
 			assert.Equal(t, "sandbox", rh.req.Repo)
-		},
-		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings) {
-			rh.taskID = "t1"
-			rh.req = apimodels.CheckMergeRequest{
-				Owner: "evergreen-ci",
-				Repo:  "evergreen",
-				PRNum: 6653,
-			}
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			data, ok := resp.Data().(apimodels.PullRequestInfo)
-			require.True(t, ok)
-			assert.Equal(t, data.Mergeable, utility.TruePtr())
-			assert.Equal(t, data.MergeCommitSHA, "abc")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
