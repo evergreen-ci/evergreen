@@ -720,7 +720,7 @@ func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*gi
 	}
 
 	// Fallback to not using the GitHub app on error.
-	ctx, legacyClient, putLegacyClient := getGithubClient(ctx, installationToken, "GetBranchEvent", retryConfig{retry: true}, []attribute.KeyValue{
+	ctx, legacyClient, putLegacyClient := getGithubClient(ctx, token, "GetBranchEvent", retryConfig{retry: true}, []attribute.KeyValue{
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 		attribute.String(githubRefAttribute, branch),
@@ -1074,7 +1074,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 // CheckGithubAPILimit queries Github for the number of API requests remaining
 func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
-	if installationToken != "" {
+	if err != nil {
 		ctx, httpClient, putClient := getGithubClient(ctx, installationToken, "CheckGithubAPILimit", retryConfig{retry: true}, nil)
 		defer putClient()
 		client := github.NewClient(httpClient)
