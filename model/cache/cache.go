@@ -9,7 +9,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-const collection = "response_cache"
+const collection = "data_cache"
 
 // DBCache stores and retrieves binary data in the database.
 type DBCache struct{}
