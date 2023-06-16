@@ -13,6 +13,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
@@ -37,7 +38,7 @@ var (
 	ClientVersion = "2023-06-02"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-06-14"
+	AgentVersion = "2023-06-15"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -578,14 +579,18 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
-		return "", errors.New("Github app settings are not set")
+		// TODO EVG-19966: Return error here
+		return "", nil
 	}
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
-	itr, err := ghinstallation.NewAppsTransport(httpClient.Transport, authFields.AppId, authFields.privateKey)
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
 	if err != nil {
-		return "", errors.Wrap(err, "creating transport with JWT")
+		return "", errors.Wrap(err, "parsing private key")
 	}
+
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppId, key)
 	httpClient.Transport = itr
 	client := github.NewClient(httpClient)
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
