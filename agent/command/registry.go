@@ -69,7 +69,6 @@ func GetCommandFactory(name string) (CommandFactory, bool) {
 // run. It resolves the command specification into either a single command (in
 // the case of standalone command) or a list of commands (in the case of a
 // function).
-// kim: TODO: test display name defaulting.
 func Render(c model.PluginCommandConf, project *model.Project, blockInfo BlockInfo) ([]Command, error) {
 	return evgRegistry.renderCommands(c, project, blockInfo)
 }
@@ -157,17 +156,9 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 					c.Type = commandInfo.Type
 				}
 
-				// kim: TODO: test Render for func sub-commands and standalone
-				// commands.
 				if c.DisplayName == "" {
-					// kim: TODO: test that UI display name displays the name
-					// more like how it's displayed in the logs.
-					// kim: TODO: may be better to instead display
-					// (#STEP_NUMBER) as "step FUNC.SUBCOMMAND of
-					// TOTAL_IN_BLOCK" format, would have to pass in total
-					// number of commands in the block.
 					funcInfo := FunctionInfo{
-						Function:     c.Function,
+						Function:     funcName,
 						SubCmdNum:    i + 1,
 						TotalSubCmds: len(cmdsInFunc),
 					}
@@ -183,8 +174,6 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		}
 	} else {
 		if commandInfo.DisplayName == "" {
-			// kim: TODO: standardize this display name against function.
-			// kim: TODO: test
 			commandInfo.DisplayName = GetDefaultDisplayName(commandInfo.Command, blockInfo, FunctionInfo{})
 		}
 		parsed = append(parsed, commandInfo)
@@ -201,7 +190,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		// Note: this parses the parameters before expansions are applied.
 		// Expansions are only available when the command is executed.
 		if err := cmd.ParseParams(c.Params); err != nil {
-			catcher.Wrapf(err, "parsing parameters for command '%s' ('%s')", c.Command, c.DisplayName)
+			catcher.Wrapf(err, "parsing parameters for command %s", c.DisplayName)
 			continue
 		}
 		cmd.SetType(c.GetType(project))
@@ -245,9 +234,6 @@ type FunctionInfo struct {
 // GetDefaultDisplayName returns the default display name for a command.
 // cmdNum is command/function number, subCmdNum only applies for subcmds in
 // functions
-// kim: TODO: add unit tests
-// kim: TODO: potentially pass in BlockInfo and FuncInfo structs for
-// cleanliness.
 func GetDefaultDisplayName(commandName string, blockInfo BlockInfo, funcInfo FunctionInfo) string {
 	displayName := fmt.Sprintf("'%s'", commandName)
 	if funcInfo.Function != "" {
@@ -266,7 +252,8 @@ func GetDefaultDisplayName(commandName string, blockInfo BlockInfo, funcInfo Fun
 	// name pretty long, and is omitted when it's running the main task block,
 	// so it's already a little wonky.
 	// Alternatively, maybe pass a showBlock option to DisplayName to choose
-	// when/where to show the block name.
+	// when/where to show the block name. Or even more alternatively, only set
+	// the block name when passing the end task details back to the app server.
 	if blockInfo.Block != "" {
 		displayName = fmt.Sprintf("%s in block '%s'", displayName, blockInfo.Block)
 	}

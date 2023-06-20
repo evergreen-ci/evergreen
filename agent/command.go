@@ -116,16 +116,13 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			return errors.Wrap(err, "canceled while running command list")
 		}
 
-		// kim: TODO: test that command name still displays the same as before.
 		funcInfo := command.FunctionInfo{
 			Function:     commandInfo.Function,
 			SubCmdNum:    idx + 1,
 			TotalSubCmds: len(cmds),
 		}
-		// kim: TODO: determine if logging the block name is too noisy, in which
-		// case it can be omitted.
-		// Don't use the command's display name here because it can include the
-		// block name, which makes it very verbose.
+		// Avoid using the command's display name here because it can include
+		// the block name, which makes it very verbose.
 		displayName := command.GetDefaultDisplayName(cmd.Name(), blockInfo, funcInfo)
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
@@ -243,25 +240,6 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 	return nil
 }
-
-// kim: TODO: delete
-// getCommandAndFunctionName gets a display name for a command. If the command
-// is run within a function, it includes the function context
-//
-//	func getCommandAndFunctionName(commandInfo model.PluginCommandConf, cmd command.Command) string {
-//	    // kim: TODO: determine if this can use cmd.DisplayName, may need to
-//	    // guarantee cmd.DisplayName gets set.
-//	    commandName := fmt.Sprintf(`'%s'`, cmd.Name())
-//	    if commandInfo.DisplayName != "" {
-//	        commandName = fmt.Sprintf(`'%s' (%s)`, commandInfo.DisplayName, commandName)
-//	    }
-//	    if commandInfo.Function != "" {
-//	        commandName = fmt.Sprintf(`%s in function '%s'`, commandName, commandInfo.Function)
-//	    }
-//
-//	    return commandName
-//	}
-//
 
 // getCommandNameForFileLogger gets the name of the command that should be used
 // when the file logger is being used.
