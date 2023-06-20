@@ -99,10 +99,6 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		}()
 	}
 
-	// Omit the block name from the display name, or else the display name
-	// becomes too verbose.
-	blockInfo.Block = ""
-
 	if commandInfo.Function != "" {
 		var commandSetSpan trace.Span
 		ctx, commandSetSpan = a.tracer.Start(ctx, fmt.Sprintf("function: '%s'", commandInfo.Function), trace.WithAttributes(
@@ -121,8 +117,10 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			SubCmdNum:    idx + 1,
 			TotalSubCmds: len(cmds),
 		}
-		// Avoid using the command's display name here because it can include
-		// the block name, which makes it very verbose.
+		// Avoid using the command's display name here if the user has
+		// explicitly configured it, because the user-defined display name may
+		// be ambiguous (e.g. if the command runs in multiple different blocks
+		// or functions).
 		displayName := command.GetDefaultDisplayName(cmd.Name(), blockInfo, funcInfo)
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
