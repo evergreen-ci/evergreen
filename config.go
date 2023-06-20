@@ -595,7 +595,8 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	client := github.NewClient(httpClient)
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
-		return "", errors.Wrapf(err, "finding installation token for '%s/%s'", owner, repo)
+		// TODO EVG-19966: Return error here
+		return "", nil
 	}
 	if installationId == nil {
 		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
