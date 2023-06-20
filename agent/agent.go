@@ -83,10 +83,14 @@ const (
 
 	MessageLimit = 500
 
-	taskTimeoutBlock = "task-timeout"
-	preBlock         = "pre"
-	postBlock        = "post"
-	endTaskBlock     = "end-task"
+	taskTimeoutBlock   = "timeout"
+	preBlock           = "pre"
+	setupTaskBlock     = "setup_task"
+	teardownTaskBlock  = "teardown_task"
+	setupGroupBlock    = "setup_group"
+	teardownGroupBlock = "teardown_group"
+	postBlock          = "post"
+	taskSyncBlock      = "task_sync"
 )
 
 // LogOutput represents the output locations for the agent's logs.
@@ -793,7 +797,11 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	}
 	if taskGroup.TeardownTask != nil {
 		opts.failPreAndPost = taskGroup.TeardownTaskCanFailTask
-		err = a.runCommandsInBlock(postCtx, tc, taskGroup.TeardownTask.List(), opts, postBlock)
+		block := postBlock
+		if tc.taskGroup != "" {
+			block = teardownTaskBlock
+		}
+		err = a.runCommandsInBlock(postCtx, tc, taskGroup.TeardownTask.List(), opts, block)
 		if err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
 			if taskGroup.TeardownTaskCanFailTask {
@@ -832,7 +840,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommandsInBlock(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{}, postBlock)
+		err := a.runCommandsInBlock(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{}, teardownGroupBlock)
 		grip.Error(errors.Wrap(err, "running post-group commands"))
 		grip.Info("Finished running post-group commands.")
 	}
@@ -861,7 +869,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	}
 	defer cancel()
 
-	if err := a.runCommandsInBlock(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{}, endTaskBlock); err != nil {
+	if err := a.runCommandsInBlock(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{}, taskSyncBlock); err != nil {
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message":    "error running task sync",
 			"total_time": time.Since(start).String(),

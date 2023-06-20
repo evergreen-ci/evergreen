@@ -64,6 +64,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 			return errors.Wrap(err, "canceled while running commands")
 		}
 		blockInfo := command.BlockInfo{
+			Block:     block,
 			CmdNum:    i + 1,
 			TotalCmds: len(commands),
 		}

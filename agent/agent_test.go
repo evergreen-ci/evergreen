@@ -334,8 +334,8 @@ pre:
 	s.Empty(s.getPanicLogs())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running pre-task commands",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
+		"Running command 'shell.exec' (step 1 of 1) in block 'pre'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'pre'",
 		"Finished running pre-task commands",
 	)
 }
@@ -395,8 +395,8 @@ post:
 	s.Empty(s.getPanicLogs())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running post-task commands",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished running post-task commands",
 	)
 }
@@ -420,8 +420,8 @@ post:
 	s.Empty(s.getPanicLogs())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running post-task commands",
-		"Running command 'shell.exec' (step 1 of 2)",
-		"Running command 'shell.exec' (step 2 of 2)",
+		"Running command 'shell.exec' (step 1 of 2) in block 'post'",
+		"Running command 'shell.exec' (step 2 of 2) in block 'post'",
 		"Finished running post-task commands",
 	)
 }
@@ -664,8 +664,8 @@ task_groups:
 	s.Empty(s.getPanicLogs())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running pre-task commands",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
+		"Running command 'shell.exec' (step 1 of 1) in block 'setup_group'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_group'",
 		"Finished running pre-task commands",
 	)
 }
@@ -764,8 +764,8 @@ task_groups:
 	s.Empty(s.getPanicLogs())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running pre-task commands",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
+		"Running command 'shell.exec' (step 1 of 1) in block 'setup_task'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_task'",
 		"Finished running pre-task commands",
 	)
 }
@@ -789,8 +789,8 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
+		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Finished running post-task commands",
 	)
 }
@@ -814,8 +814,8 @@ task_groups:
 	s.a.runPostGroupCommands(s.ctx, s.tc)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
+		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
 	)
 }
 
@@ -844,8 +844,8 @@ task_groups:
 	s.Empty(s.getPanicLogs())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running task-timeout commands",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
+		"Running command 'shell.exec' (step 1 of 1) in block 'timeout'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Finished running timeout commands",
 	)
 }
