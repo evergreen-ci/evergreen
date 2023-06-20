@@ -248,12 +248,6 @@ func GetDefaultDisplayName(commandName string, blockInfo BlockInfo, funcInfo Fun
 			displayName = fmt.Sprintf("%s (step %d of %d)", displayName, blockInfo.CmdNum, blockInfo.TotalCmds)
 		}
 	}
-	// kim: TODO: decide if having the block is worth it or not. It makes the
-	// name pretty long, and is omitted when it's running the main task block,
-	// so it's already a little wonky.
-	// Alternatively, maybe pass a showBlock option to DisplayName to choose
-	// when/where to show the block name. Or even more alternatively, only set
-	// the block name when passing the end task details back to the app server.
 	if blockInfo.Block != "" {
 		displayName = fmt.Sprintf("%s in block '%s'", displayName, blockInfo.Block)
 	}

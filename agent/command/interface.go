@@ -32,7 +32,7 @@ type Command interface {
 	// SetType sets the command's type (e.g. system or test).
 	SetType(string)
 
-	// DisplayName is the user-configured display name for the command. It can
+	// DisplayName is the user-configurable display name for the command. It can
 	// be set by the user; otherwise, it defaults to displaying information
 	// about the command and other relevant context like the function and block
 	// it runs in.
