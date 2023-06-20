@@ -87,12 +87,31 @@ const (
 
 var cachingTransport http.RoundTripper
 
+type cacheControlTransport struct {
+	base http.RoundTripper
+}
+
+func (t *cacheControlTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("Cache-Control", "max-age=0")
+	return t.base.RoundTrip(req)
+}
+
 func init() {
+	// Base transport that actually sends a request over the wire.
 	baseTransport := utility.DefaultTransport()
+
+	// Wrap in a transport that creates a new span for each request that goes over the wire.
 	otelTransport := otelhttp.NewTransport(baseTransport)
+
+	// Wrap in a transport that caches responses to reduce the number of calls that count against our rate limit.
 	memoryCacheTransport := httpcache.NewTransport(&cache.DBCache{})
 	memoryCacheTransport.Transport = otelTransport
-	cachingTransport = memoryCacheTransport
+
+	// Wrap in a transport that overrides the cache-control header so we don't rely on max-age
+	// from GitHub's response to not ask if there's been a change.
+	maxAgeTransport := &cacheControlTransport{base: memoryCacheTransport}
+
+	cachingTransport = maxAgeTransport
 }
 
 func respFromCache(resp *http.Response) bool {
@@ -237,14 +256,6 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 	}
 }
 
-// getGithubClient returns a github Client configured with a linked list of transports.
-// Starting with a default client from the pool, the chain will
-//   - inject an oauth token header into requests
-//   - retry requests according to the supplied retryConfig
-//   - cache responses in accordance with [rfc7234]
-//   - create an OTel span for any requests
-//
-// [rfc7234]: https://datatracker.ietf.org/doc/html/rfc7234
 func getGithubClient(token, caller string, config retryConfig) *github.Client {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
