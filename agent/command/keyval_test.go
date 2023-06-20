@@ -40,7 +40,7 @@ func TestIncKey(t *testing.T) {
 			for _, task := range conf.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmds, err := Render(command, &model.Project{}, "")
+					pluginCmds, err := Render(command, &model.Project{}, BlockInfo{})
 					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)

@@ -1202,9 +1202,15 @@ func validateCommands(section string, project *model.Project,
 	commands []model.PluginCommandConf) ValidationErrors {
 	errs := ValidationErrors{}
 
-	for _, cmd := range commands {
+	for i, cmd := range commands {
 		commandName := fmt.Sprintf("'%s' command", cmd.Command)
-		_, err := command.Render(cmd, project, "")
+		// kim: TODO: test that validation display name looks generally alright.
+		blockInfo := command.BlockInfo{
+			Block:     "",
+			CmdNum:    i + 1,
+			TotalCmds: len(commands),
+		}
+		_, err := command.Render(cmd, project, blockInfo)
 		if err != nil {
 			if cmd.Function != "" {
 				commandName = fmt.Sprintf("'%s' function", cmd.Function)

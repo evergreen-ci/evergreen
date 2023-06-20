@@ -153,7 +153,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 				ctx2, cancel = a.withCallbackTimeout(ctx, tc)
 			}
 			defer cancel()
-			err = a.runCommands(ctx2, tc, taskGroup.SetupGroup.List(), opts, preBlock)
+			err = a.runCommandsInBlock(ctx2, tc, taskGroup.SetupGroup.List(), opts, preBlock)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "running task setup group"))
 				if taskGroup.SetupGroupFailTask {
@@ -174,7 +174,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	if taskGroup.SetupTask != nil {
 		tc.logger.Task().Infof("Running setup task for task group '%s'.", taskGroup.Name)
 		opts.failPreAndPost = taskGroup.SetupGroupFailTask
-		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts, preBlock)
+		err = a.runCommandsInBlock(ctx, tc, taskGroup.SetupTask.List(), opts, preBlock)
 	}
 	if err != nil {
 		err = errors.Wrap(err, "Running pre-task commands failed")
@@ -193,7 +193,7 @@ func (tc *taskContext) setCurrentCommand(command command.Command) {
 	tc.currentCommand = command
 
 	if tc.logger != nil {
-		tc.logger.Execution().Infof("Current command set to '%s' (%s).", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
+		tc.logger.Execution().Infof("Current command set to %s (%s).", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
 	}
 }
 
@@ -220,7 +220,7 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 
 	tc.setIdleTimeout(timeout)
 	if tc.currentCommand != nil {
-		tc.logger.Execution().Debugf("Set idle timeout for '%s' (%s) to %s.",
+		tc.logger.Execution().Debugf("Set idle timeout for %s (%s) to %s.",
 			tc.currentCommand.DisplayName(), tc.currentCommand.Type(), tc.getIdleTimeout())
 	} else {
 		tc.logger.Execution().Debugf("Set current idle timeout to %s.", tc.getIdleTimeout())

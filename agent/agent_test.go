@@ -306,7 +306,7 @@ func (s *AgentSuite) TestCancelledRunningCommandsIsNonBlocking() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommands(ctx, s.tc, cmds, runCommandsOptions{}, "post")
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, postBlock)
 	s.Require().Error(err)
 	s.True(utility.IsContextError(errors.Cause(err)))
 	s.Empty(s.getPanicLogs())
