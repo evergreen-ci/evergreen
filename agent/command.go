@@ -118,18 +118,15 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 		// kim: TODO: test that command name still displays the same as before.
 		funcInfo := command.FunctionInfo{
-			Function: commandInfo.Function,
-		}
-		if len(cmds) > 1 {
-			// Include the function sub-command number only if it runs more than
-			// one command.
-			funcInfo.SubCmdNum = idx + 1
+			Function:     commandInfo.Function,
+			SubCmdNum:    idx + 1,
+			TotalSubCmds: len(cmds),
 		}
 		// kim: TODO: determine if logging the block name is too noisy, in which
 		// case it can be omitted.
 		// Don't use the command's display name here because it can include the
 		// block name, which makes it very verbose.
-		displayName := command.GetDefaultDisplayName(commandInfo.Command, blockInfo, funcInfo)
+		displayName := command.GetDefaultDisplayName(cmd.Name(), blockInfo, funcInfo)
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
 			tc.logger.Task().Infof("Skipping command %s on variant %s.", displayName, tc.taskConfig.BuildVariant.Name)

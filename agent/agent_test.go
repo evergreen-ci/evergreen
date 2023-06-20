@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 )
@@ -331,9 +332,10 @@ pre:
 	s.NoError(s.tc.logger.Close())
 
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running pre-task commands",
-		"Running command 'shell.exec'",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running pre-task commands",
 	)
 }
@@ -391,10 +393,10 @@ post:
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running post-task commands",
-		"Running command 'shell.exec'",
-		"Finished command 'shell.exec'",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running post-task commands",
 	)
 }
@@ -416,7 +418,7 @@ post:
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running post-task commands",
 		"Running command 'shell.exec' (step 1 of 2)",
 		"Running command 'shell.exec' (step 2 of 2)",
@@ -469,7 +471,7 @@ func (s *AgentSuite) TestAbort() {
 
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(originalTaskID,
+	checkMockLogs(s.T(), s.mockCommunicator, originalTaskID,
 		"Heartbeat received signal to abort task",
 		"Task completed - FAILURE",
 		"Sending final task status: 'failed'",
@@ -660,10 +662,10 @@ task_groups:
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running pre-task commands",
-		"Running command 'shell.exec'",
-		"Finished command 'shell.exec'",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running pre-task commands",
 	)
 }
@@ -714,7 +716,7 @@ task_groups:
 	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id, "running task setup group")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, "running task setup group")
 }
 
 func (s *AgentSuite) TestTeardownTaskFails() {
@@ -738,7 +740,7 @@ task_groups:
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id, "running post-task commands")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, "running post-task commands")
 }
 
 func (s *AgentSuite) TestSetupTask() {
@@ -760,10 +762,10 @@ task_groups:
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running pre-task commands",
-		"Running command 'shell.exec'",
-		"Finished command 'shell.exec'",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running pre-task commands",
 	)
 }
@@ -786,9 +788,9 @@ task_groups:
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
-		"Running command 'shell.exec'",
-		"Finished command 'shell.exec'",
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running post-task commands",
 	)
 }
@@ -811,9 +813,9 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = s.tc.taskGroup
 	s.a.runPostGroupCommands(s.ctx, s.tc)
 	s.NoError(s.tc.logger.Close())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
-		"Running command 'shell.exec'",
-		"Finished command 'shell.exec'",
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
 	)
 }
 
@@ -840,10 +842,10 @@ task_groups:
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
 	s.NoError(s.tc.logger.Close())
 	s.Empty(s.getPanicLogs())
-	s.checkLogs(s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Running task-timeout commands",
-		"Running command 'shell.exec'",
-		"Finished command 'shell.exec'",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running timeout commands",
 	)
 }
@@ -907,13 +909,13 @@ func (s *AgentSuite) getPanicLogs() []string {
 	return panicLogs
 }
 
-func (s *AgentSuite) checkLogs(taskID string, logsToFind ...string) {
+func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind ...string) {
 	logFound := make(map[string]bool)
 	for _, log := range logsToFind {
 		logFound[log] = false
 	}
 	var allLogs []string
-	for _, msg := range s.mockCommunicator.GetMockMessages()[taskID] {
+	for _, msg := range mc.GetMockMessages()[taskID] {
 		for log := range logFound {
 			if strings.Contains(msg.Message, log) {
 				logFound[log] = true
@@ -923,7 +925,7 @@ func (s *AgentSuite) checkLogs(taskID string, logsToFind ...string) {
 	}
 	var displayLogs bool
 	for log, found := range logFound {
-		if !s.True(found, "expected log not found: %s", log) {
+		if !assert.True(t, found, "expected log not found: %s", log) {
 			displayLogs = true
 		}
 	}

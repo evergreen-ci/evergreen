@@ -145,7 +145,8 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		if !ok {
 			catcher.Errorf("function '%s' not found in project functions", funcName)
 		} else if cmds != nil {
-			for i, c := range cmds.List() {
+			cmdsInFunc := cmds.List()
+			for i, c := range cmdsInFunc {
 				if c.Function != "" {
 					catcher.Errorf("cannot reference a function ('%s') within another function ('%s')", c.Function, funcName)
 					continue
@@ -156,6 +157,8 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 					c.Type = commandInfo.Type
 				}
 
+				// kim: TODO: test Render for func sub-commands and standalone
+				// commands.
 				if c.DisplayName == "" {
 					// kim: TODO: test that UI display name displays the name
 					// more like how it's displayed in the logs.
@@ -164,8 +167,9 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 					// TOTAL_IN_BLOCK" format, would have to pass in total
 					// number of commands in the block.
 					funcInfo := FunctionInfo{
-						Function:  c.Function,
-						SubCmdNum: i + 1,
+						Function:     c.Function,
+						SubCmdNum:    i + 1,
+						TotalSubCmds: len(cmdsInFunc),
 					}
 					c.DisplayName = GetDefaultDisplayName(c.Command, blockInfo, funcInfo)
 				}
@@ -226,14 +230,16 @@ type BlockInfo struct {
 	TotalCmds int
 }
 
-// FunctionInfo contains information about the enclosing block in which a
-// command listed within a function runs. For example, this would contain
-// information about the second shell.exec that runs in a function.
+// FunctionInfo contains information about the enclosing function in which a
+// command runs. For example, this would contain information about the second
+// shell.exec that runs in a function.
 type FunctionInfo struct {
 	// Function is the name of the function that the command is part of.
 	Function string
 	// SubCmdNum is the ordinal of the command within the function.
 	SubCmdNum int
+	// TotalSubCmds is the total number of sub-commands within the function.
+	TotalSubCmds int
 }
 
 // GetDefaultDisplayName returns the default display name for a command.
@@ -248,7 +254,9 @@ func GetDefaultDisplayName(commandName string, blockInfo BlockInfo, funcInfo Fun
 		displayName = fmt.Sprintf("%s in function '%s'", displayName, funcInfo.Function)
 	}
 	if blockInfo.CmdNum > 0 && blockInfo.TotalCmds > 0 {
-		if funcInfo.SubCmdNum > 0 {
+		if funcInfo.SubCmdNum > 0 && funcInfo.TotalSubCmds > 1 {
+			// Include the function sub-command number only if the function runs
+			// more than one command.
 			displayName = fmt.Sprintf("%s (step %d.%d of %d)", displayName, blockInfo.CmdNum, funcInfo.SubCmdNum, blockInfo.TotalCmds)
 		} else {
 			displayName = fmt.Sprintf("%s (step %d of %d)", displayName, blockInfo.CmdNum, blockInfo.TotalCmds)

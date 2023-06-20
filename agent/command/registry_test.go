@@ -57,7 +57,7 @@ func TestRenderCommands(t *testing.T) {
 		info := model.PluginCommandConf{Command: "command.mock"}
 		project := model.Project{}
 
-		cmds, err := registry.renderCommands(info, &project, "")
+		cmds, err := registry.renderCommands(info, &project, BlockInfo{})
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, model.DefaultCommandType, cmds[0].Type())
@@ -67,7 +67,7 @@ func TestRenderCommands(t *testing.T) {
 		info := model.PluginCommandConf{Command: "command.mock"}
 		project := model.Project{CommandType: evergreen.CommandTypeSetup}
 
-		cmds, err := registry.renderCommands(info, &project, "")
+		cmds, err := registry.renderCommands(info, &project, BlockInfo{})
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, evergreen.CommandTypeSetup, cmds[0].Type())
@@ -80,7 +80,7 @@ func TestRenderCommands(t *testing.T) {
 		}
 		project := model.Project{}
 
-		cmds, err := registry.renderCommands(info, &project, "")
+		cmds, err := registry.renderCommands(info, &project, BlockInfo{})
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, evergreen.CommandTypeSystem, cmds[0].Type())
@@ -93,9 +93,46 @@ func TestRenderCommands(t *testing.T) {
 		}
 		project := model.Project{CommandType: evergreen.CommandTypeSetup}
 
-		cmds, err := registry.renderCommands(info, &project, "")
+		cmds, err := registry.renderCommands(info, &project, BlockInfo{})
 		assert.NoError(t, err)
 		require.Len(t, cmds, 1)
 		assert.Equal(t, evergreen.CommandTypeSystem, cmds[0].Type())
+	})
+	t.Run("CommandHasExplicitDisplayName", func(t *testing.T) {
+		const displayName = "potato"
+		info := model.PluginCommandConf{
+			Command:     "command.mock",
+			DisplayName: displayName,
+		}
+		cmds, err := registry.renderCommands(info, &model.Project{}, BlockInfo{
+			Block:     "pre",
+			CmdNum:    5,
+			TotalCmds: 8,
+		})
+		require.NoError(t, err)
+		require.Len(t, cmds, 1)
+		assert.Equal(t, displayName, cmds[0].DisplayName())
+	})
+	t.Run("CommandHasDefaultDisplayName", func(t *testing.T) {
+		info := model.PluginCommandConf{
+			Command: "command.mock",
+		}
+		cmds, err := registry.renderCommands(info, &model.Project{}, BlockInfo{
+			Block:     "pre",
+			CmdNum:    5,
+			TotalCmds: 8,
+		})
+		require.NoError(t, err)
+		require.Len(t, cmds, 1)
+		assert.Equal(t, "'command.mock' (step 5 of 8) in block 'pre'", cmds[0].DisplayName())
+	})
+	t.Run("CommandHasDefaultDisplayNameWithNoBlockInfo", func(t *testing.T) {
+		info := model.PluginCommandConf{
+			Command: "command.mock",
+		}
+		cmds, err := registry.renderCommands(info, &model.Project{}, BlockInfo{})
+		require.NoError(t, err)
+		require.Len(t, cmds, 1)
+		assert.Equal(t, "'command.mock'", cmds[0].DisplayName())
 	})
 }
