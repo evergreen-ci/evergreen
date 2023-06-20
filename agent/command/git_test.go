@@ -52,9 +52,7 @@ type GitGetProjectSuite struct {
 	modelData5  *modelutil.TestModelData
 	taskConfig5 *internal.TaskConfig
 	modelData6  *modelutil.TestModelData
-	taskConfig6 *internal.TaskConfig     // used for TestMergeMultiplePatches
-	modelData7  *modelutil.TestModelData // GitHub merge queue
-	taskConfig7 *internal.TaskConfig     // GitHub merge queue
+	taskConfig6 *internal.TaskConfig // used for TestMergeMultiplePatches
 
 	comm   *client.Mock
 	jasper jasper.Manager
@@ -132,7 +130,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 		HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
 		Author:     "octocat",
 	}
-	s.taskConfig3.Task.Requester = evergreen.GithubPRRequester
 
 	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
 	s.Require().NoError(err)
@@ -156,18 +153,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig6.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
-
-	s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath3, modelutil.InlinePatch)
-	s.Require().NoError(err)
-	s.taskConfig7, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
-	s.Require().NoError(err)
-	s.taskConfig7.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
-	s.taskConfig7.BuildVariant.Modules = []string{"evergreen"}
-	s.taskConfig7.GithubMergeData = thirdparty.GithubMergeGroup{
-		HeadBranch: "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
-		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
-	}
-	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
@@ -600,32 +585,6 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
 	s.Equal("git log --oneline -n 10", cmds[8])
 }
-func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
-	conf := s.taskConfig7
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
-
-	c := gitFetchProject{
-		Directory: "dir",
-	}
-
-	opts := cloneOpts{
-		method: evergreen.CloneMethodLegacySSH,
-		branch: conf.ProjectRef.Branch,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		dir:    c.Directory,
-	}
-	s.Require().NoError(opts.setLocation())
-
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
-	s.NoError(err)
-	s.Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056/head:evg-mg-test-"))
-	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-mg-test-"))
-	s.Equal("git reset --hard d2a90288ad96adca4a7d0122d8d4fd1deb24db11", cmds[7])
-	s.Equal("git log --oneline -n 10", cmds[8])
-}
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	conf := s.taskConfig2
@@ -638,12 +597,13 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	}
 
 	opts := cloneOpts{
-		method: evergreen.CloneMethodOAuth,
-		branch: conf.ProjectRef.Branch,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		dir:    c.Directory,
-		token:  c.Token,
+		method:             evergreen.CloneMethodOAuth,
+		branch:             conf.ProjectRef.Branch,
+		owner:              conf.ProjectRef.Owner,
+		repo:               conf.ProjectRef.Repo,
+		dir:                c.Directory,
+		token:              c.Token,
+		mergeTestRequester: true,
 	}
 	s.Require().NoError(opts.setLocation())
 

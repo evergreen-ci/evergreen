@@ -76,17 +76,18 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method            string
-	location          string
-	owner             string
-	repo              string
-	branch            string
-	dir               string
-	token             string
-	cloneParams       string
-	recurseSubmodules bool
-	useVerbose        bool
-	cloneDepth        int
+	method             string
+	location           string
+	owner              string
+	repo               string
+	branch             string
+	dir                string
+	token              string
+	cloneParams        string
+	recurseSubmodules  bool
+	mergeTestRequester bool
+	useVerbose         bool
+	cloneDepth         int
 }
 
 func (opts cloneOpts) validate() error {
@@ -300,7 +301,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 
 	// if there's a PR checkout the ref containing the changes
 	if isGitHub(conf) {
-		var ref, localBranchName, remoteBranchName, commitToTest string
+		var ref, branchName, commitToTest string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			commitToTest = conf.GithubPatchData.MergeCommitSHA
 			// Fallback to agent route if merge commit is not available
@@ -313,26 +314,18 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 				}
 			}
 			ref = "merge"
-			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
-			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
-		} else if conf.Task.Requester == evergreen.GithubPRRequester {
+			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
+		} else {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
 			ref = "head"
 			commitToTest = conf.GithubPatchData.HeadHash
-			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
-		} else if conf.Task.Requester == evergreen.GithubMergeRequester {
-			ref = "head"
-			commitToTest = conf.GithubMergeData.HeadSHA
-			localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
-			// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-			remoteBranchName = conf.GithubMergeData.HeadBranch
+			branchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		}
 		if commitToTest != "" {
 			gitCommands = append(gitCommands, []string{
-				fmt.Sprintf(`git fetch origin "%s/%s:%s"`, remoteBranchName, ref, localBranchName),
-				fmt.Sprintf(`git checkout "%s"`, localBranchName),
+				fmt.Sprintf(`git fetch origin "pull/%d/%s:%s"`, conf.GithubPatchData.PRNumber, ref, branchName),
+				fmt.Sprintf(`git checkout "%s"`, branchName),
 				fmt.Sprintf("git reset --hard %s", commitToTest),
 			}...)
 		}
@@ -342,7 +335,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 			// If this git log fails, then we know the clone is too shallow so we unshallow before reset.
 			gitCommands = append(gitCommands, fmt.Sprintf("git log HEAD..%s || git fetch --unshallow", conf.Task.Revision))
 		}
-		if conf.Task.Requester != evergreen.MergeTestRequester {
+		if !opts.mergeTestRequester {
 			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 		}
 	}
@@ -437,14 +430,15 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		method:            projectMethod,
-		owner:             conf.ProjectRef.Owner,
-		repo:              conf.ProjectRef.Repo,
-		branch:            conf.ProjectRef.Branch,
-		dir:               c.Directory,
-		token:             projectToken,
-		cloneParams:       c.CloneParams,
-		recurseSubmodules: c.RecurseSubmodules,
+		method:             projectMethod,
+		owner:              conf.ProjectRef.Owner,
+		repo:               conf.ProjectRef.Repo,
+		branch:             conf.ProjectRef.Branch,
+		dir:                c.Directory,
+		token:              projectToken,
+		cloneParams:        c.CloneParams,
+		recurseSubmodules:  c.RecurseSubmodules,
+		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
 	cloneDepth := c.CloneDepth
 	if cloneDepth == 0 && c.ShallowClone {
@@ -1037,7 +1031,7 @@ func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModuleP
 }
 
 func isGitHub(conf *internal.TaskConfig) bool {
-	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
+	return conf.GithubPatchData.PRNumber != 0
 }
 
 type noopWriteCloser struct {

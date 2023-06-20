@@ -64,8 +64,8 @@ the PR to the merge queue.
 
 * [x] There is a new patch intent type in
 [model/patch](https://github.com/evergreen-ci/evergreen/blob/main/model/patch/github_merge_intent.go)
-* [x] The intent will be processed by the amboy [patch-intent-processor
+* [x] The intent will be procssed by the amboy [patch-intent-processor
 job](https://github.com/evergreen-ci/evergreen/blob/main/units/patch_intent.go).
-* [x] New clone logic in the agent will clone the merge group branch.
+* [ ] New clone logic in the agent will clone the merge group branch.
 * [x] Evergreen will post the result to the GitHub checks API.
 * [ ] A new UI element will allow users to opt into the GitHub merge queue.
