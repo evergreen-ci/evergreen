@@ -295,6 +295,9 @@ func getInstallationToken(ctx context.Context, legacyToken, owner, repo string, 
 		}))
 		return legacyToken
 	}
+	if token == "" {
+		return legacyToken
+	}
 
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(githubAppTokenAttribute, true))
 	return token
