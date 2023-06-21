@@ -306,6 +306,7 @@ func NewSettings(filename string) (*Settings, error) {
 
 // GetConfig retrieves the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
+// Should use Settings() to get the cached settings object.
 func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
 
 // Bootstrap config gets a config from the database defined in the environment.

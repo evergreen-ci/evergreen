@@ -88,7 +88,7 @@ func SetEnvironment(env Environment) {
 type Environment interface {
 	// Returns the cached version of the settings object.
 	// The settings object is not necessarily safe for concurrent access.
-	// GetConfig should be used to access the settings object from the db.
+	// Should use GetConfig() to access the settings object from the db.
 	Settings() *Settings
 	Context() (context.Context, context.CancelFunc)
 
