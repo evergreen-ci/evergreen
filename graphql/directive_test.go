@@ -164,6 +164,9 @@ func TestRequireDistroAccess(t *testing.T) {
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	require.EqualError(t, err, "input: distro not specified")
 
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
+	require.EqualError(t, err, "input: user 'testuser' does not have create distro permissions")
+
 	// superuser should be successful for create with no distro ID specified
 	require.NoError(t, usr.AddRole("superuser"))
 
