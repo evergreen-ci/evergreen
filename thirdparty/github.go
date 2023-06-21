@@ -260,6 +260,8 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 	}
 }
 
+// getGithubClient returns a client that provides the given token, retries requests,
+// caches responses, and creates a span for each request.
 func getGithubClient(token, caller string, config retryConfig) *github.Client {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
