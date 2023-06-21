@@ -1146,6 +1146,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 		}
 	case PermissionDistroSettings:
 		return []PermissionLevel{
+			DistroSettingsAdmin,
 			DistroSettingsEdit,
 			DistroSettingsView,
 			DistroSettingsNone,
