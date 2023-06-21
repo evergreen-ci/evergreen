@@ -1,0 +1,6 @@
+enum DistroSettingsAccess {
+  ADMIN
+  CREATE
+  EDIT
+  VIEW
+}

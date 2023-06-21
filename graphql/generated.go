@@ -73,6 +73,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	RequireDistroAccess       func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
 	RequireProjectAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
 	RequireProjectAdmin       func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectFieldAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -8265,7 +8266,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -8284,6 +8285,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/annotation.graphql", Input: sourceData("schema/types/annotation.graphql"), BuiltIn: false},
 	{Name: "schema/types/commit_queue.graphql", Input: sourceData("schema/types/commit_queue.graphql"), BuiltIn: false},
 	{Name: "schema/types/config.graphql", Input: sourceData("schema/types/config.graphql"), BuiltIn: false},
+	{Name: "schema/types/distro.graphql", Input: sourceData("schema/types/distro.graphql"), BuiltIn: false},
 	{Name: "schema/types/host.graphql", Input: sourceData("schema/types/host.graphql"), BuiltIn: false},
 	{Name: "schema/types/issue_link.graphql", Input: sourceData("schema/types/issue_link.graphql"), BuiltIn: false},
 	{Name: "schema/types/logkeeper.graphql", Input: sourceData("schema/types/logkeeper.graphql"), BuiltIn: false},
@@ -8312,6 +8314,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 DistroSettingsAccess
+	if tmp, ok := rawArgs["access"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+		arg0, err = ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["access"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -73659,6 +73676,16 @@ func (ec *executionContext) marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 	wg.Wait()
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx context.Context, v interface{}) (DistroSettingsAccess, error) {
+	var res DistroSettingsAccess
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx context.Context, sel ast.SelectionSet, v DistroSettingsAccess) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {

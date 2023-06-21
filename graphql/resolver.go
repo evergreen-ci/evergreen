@@ -31,6 +31,69 @@ func New(apiURL string) Config {
 			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
+	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
+		user := mustHaveUser(ctx)
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "distro not specified")
+		}
+		distroId, hasDistroId := args["distroId"].(string)
+		if !hasDistroId {
+			return nil, ResourceNotFound.Send(ctx, "Distro not specified")
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:     distroId,
+			ResourceType: evergreen.DistroResourceType,
+		}
+
+		if access == DistroSettingsAccessCreate {
+			opts.Permission = evergreen.PermissionDistroCreate
+			opts.RequiredLevel = evergreen.DistroCreate.Value
+		} else if access == DistroSettingsAccessAdmin {
+			opts.Permission = evergreen.PermissionDistroSettings
+			opts.RequiredLevel = evergreen.DistroSettingsAdmin.Value
+		} else if access == DistroSettingsAccessEdit {
+			opts.Permission = evergreen.PermissionDistroSettings
+			opts.RequiredLevel = evergreen.DistroSettingsEdit.Value
+		} else if access == DistroSettingsAccessView {
+			opts.Permission = evergreen.PermissionDistroSettings
+			opts.RequiredLevel = evergreen.DistroSettingsView.Value
+		} else {
+			return nil, Forbidden.Send(ctx, "Permission not specified")
+		}
+
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access settings for the distro '%s'", user.Username(), distroId))
+	}
+	c.Directives.RequireProjectFieldAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+		user := mustHaveUser(ctx)
+
+		projectRef, isProjectRef := obj.(*restModel.APIProjectRef)
+		if !isProjectRef {
+			return nil, InternalServerError.Send(ctx, "project not valid")
+		}
+
+		projectId := utility.FromStringPtr(projectRef.Id)
+		if projectId == "" {
+			return nil, ResourceNotFound.Send(ctx, "project not specified")
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsView.Value,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user does not have permission to access the field '%s' for project with ID '%s'", graphql.GetFieldContext(ctx).Path(), projectId))
+
+	}
 	c.Directives.RequireProjectAdmin = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 		// Allow if user is superuser.
 		user := mustHaveUser(ctx)
