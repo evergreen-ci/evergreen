@@ -1175,7 +1175,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string)
 		}
 
 		if v.Requester == evergreen.GithubMergeRequester {
-			expansions.Put("is_github_merge_queue", "true")
+			expansions.Put("is_commit_queue", "true")
 		}
 
 		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
