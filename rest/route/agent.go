@@ -365,7 +365,30 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
+	pRef, err := model.FindBranchProjectRef(t.Project)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
+	}
+	if pRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
+		})
+	}
+
+	appToken, err := h.settings.CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"ticket":  "EVG-19966",
+			"message": "error creating GitHub app token",
+			"caller":  "getExpansionsAndVarsHandler",
+			"owner":   pRef.Owner,
+			"repo":    pRef.Repo,
+			"task":    t.Id,
+		}))
+	}
+
+	e, err := model.PopulateExpansions(t, foundHost, oauthToken, appToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
 	}
@@ -388,7 +411,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	v, err := model.VersionFindOneId(t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
@@ -398,6 +421,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
+
 	for _, param := range v.Parameters {
 		// TODO (EVG-19010): do not need to set res.Vars once agents are
 		// deployed since res.Parameters will take higher priority.

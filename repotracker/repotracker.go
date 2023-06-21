@@ -486,7 +486,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 		Caller:    RunnerName,
 		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(input)
+	err := thirdparty.SendPendingStatusToGithub(input, "")
 	if err != nil {
 		catcher.Wrap(err, "failed to send version status to GitHub")
 	}
@@ -744,7 +744,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 			return nil, errors.Wrap(err, "error getting github token")
 		}
 
-		if !ref.AuthorizedForGitTag(ctx, metadata.GitTag.Pusher, token) {
+		if !ref.AuthorizedForGitTag(ctx, metadata.GitTag.Pusher, token, ref.Owner, ref.Repo) {
 			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
 				metadata.GitTag.Pusher, ref.Id)
 		}

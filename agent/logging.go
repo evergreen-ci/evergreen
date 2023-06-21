@@ -6,9 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
@@ -43,42 +41,32 @@ func init() {
 func getInc() int { return <-idSource }
 
 // GetSender configures the agent's local logging to a file.
-func (a *Agent) GetSender(ctx context.Context, prefix string) (send.Sender, error) {
-	var (
-		err     error
-		sender  send.Sender
-		senders []send.Sender
-	)
-
-	if os.Getenv(util.MarkerAgentPID) == "" { // this var is set if the agent is started via a command
-		if token := a.opts.SetupData.SplunkClientToken; token != "" {
-			info := send.SplunkConnectionInfo{
-				ServerURL: a.opts.SetupData.SplunkServerURL,
-				Token:     a.opts.SetupData.SplunkClientToken,
-				Channel:   a.opts.SetupData.SplunkChannel,
-			}
-			grip.Info("Configuring splunk sender.")
-			sender, err = send.NewSplunkLogger("evergreen.agent", info, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
-			if err != nil {
-				return nil, errors.Wrap(err, "creating Splunk logger")
-			}
-			senders = append(senders, sender)
+func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string) (send.Sender, error) {
+	var senders []send.Sender
+	if a.opts.SetupData.SplunkClientToken != "" && a.opts.SetupData.SplunkServerURL != "" && a.opts.SetupData.SplunkChannel != "" {
+		info := send.SplunkConnectionInfo{
+			ServerURL: a.opts.SetupData.SplunkServerURL,
+			Token:     a.opts.SetupData.SplunkClientToken,
+			Channel:   a.opts.SetupData.SplunkChannel,
 		}
-	} else {
-		grip.Notice("Agent started via command - not configuring external logger.")
+		grip.Info("Configuring splunk sender.")
+		sender, err := send.NewSplunkLogger("evergreen.agent", info, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
+		if err != nil {
+			return nil, errors.Wrap(err, "creating Splunk logger")
+		}
+		senders = append(senders, sender)
 	}
 
-	if prefix == "" {
-		// pass
-	} else if prefix == evergreen.LocalLoggingOverride || prefix == "--" || prefix == evergreen.StandardOutputLoggingOverride {
-		sender, err = send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
+	switch output {
+	case LogOutputStdout:
+		sender, err := send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return nil, errors.Wrap(err, "creating native console logger")
 		}
 
 		senders = append(senders, sender)
-	} else {
-		sender, err = send.NewFileLogger("evergreen.agent",
+	default:
+		sender, err := send.NewFileLogger("evergreen.agent",
 			fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc()), send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return nil, errors.Wrap(err, "creating file logger")

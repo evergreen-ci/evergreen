@@ -60,6 +60,7 @@ type Options struct {
 	PodSecret              string
 	StatusPort             int
 	LogPrefix              string
+	LogOutput              LogOutputType
 	LogkeeperURL           string
 	WorkingDirectory       string
 	HeartbeatInterval      time.Duration
@@ -78,14 +79,24 @@ const (
 	// HostMode indicates that the agent will run in a host.
 	HostMode Mode = "host"
 	// PodMode indicates that the agent will run in a pod's container.
-	PodMode      Mode = "pod"
-	MessageLimit      = 500
+	PodMode Mode = "pod"
+
+	MessageLimit = 500
 
 	taskTimeoutBlock = "task-timeout"
 	preBlock         = "pre"
 	postBlock        = "post"
 	endTaskBlock     = "end-task"
-	earlyTermBlock   = "early-termination"
+)
+
+// LogOutput represents the output locations for the agent's logs.
+type LogOutputType string
+
+const (
+	// LogOutputFile indicates that the agent will log to a file.
+	LogOutputFile LogOutputType = "file"
+	// LogOutputStdout indicates that the agent will log to standard output.
+	LogOutputStdout LogOutputType = "stdout"
 )
 
 type taskContext struct {
@@ -492,7 +503,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "making the logger producer")
 	}
 
-	sender, err := a.GetSender(ctx, a.opts.LogPrefix)
+	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix)
 	grip.Error(errors.Wrap(err, "getting sender"))
 	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
 
@@ -562,7 +573,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	})
 
 	defer a.killProcs(ctx, tc, false)
-	defer tskCancel()
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
