@@ -110,8 +110,8 @@ func init() {
 	memoryCacheTransport := httpcache.NewTransport(&cache.DBCache{})
 	memoryCacheTransport.Transport = otelTransport
 
-	// Wrap in a transport that overrides the cache-control header so we don't rely on max-age
-	// from GitHub's response to not ask if there's been a change.
+	// Wrap in a transport that overrides the cache-control header so we don't so we don't use Github's
+	// max-age, which would have prevented us from asking if there's been a change if we requested recently.
 	cachingTransport = &cacheControlTransport{base: memoryCacheTransport}
 }
 
