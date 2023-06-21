@@ -14,6 +14,6 @@ requireProjectFieldAccess is used to restrict view access for certain project fi
 directive @requireProjectFieldAccess on FIELD_DEFINITION
 
 """
-requireDistroACcess is used to restrict view, edit, admin, and create access for distros.
+requireDistroAccess is used to restrict view, edit, admin, and create access for distros.
 """
 directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION
