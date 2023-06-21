@@ -113,9 +113,7 @@ func init() {
 
 	// Wrap in a transport that overrides the cache-control header so we don't rely on max-age
 	// from GitHub's response to not ask if there's been a change.
-	maxAgeTransport := &cacheControlTransport{base: memoryCacheTransport}
-
-	cachingTransport = maxAgeTransport
+	cachingTransport = &cacheControlTransport{base: memoryCacheTransport}
 }
 
 func respFromCache(resp *http.Response) bool {
