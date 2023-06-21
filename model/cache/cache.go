@@ -28,36 +28,36 @@ var (
 	UpdatedKey  = bsonutil.MustHaveTag(cacheItem{}, "Updated")
 )
 
-// Get returns the []byte representation of a cached response and a bool
+// Get returns the []byte representation of a cached value and a bool
 // set to true if the value isn't empty.
-func (c *DBCache) Get(key string) (responseBytes []byte, ok bool) {
+func (c *DBCache) Get(key string) ([]byte, bool) {
 	item := cacheItem{}
 	err := db.FindOneQ(collection,
 		db.Query(bson.M{IDKey: key}),
 		&item,
 	)
-	if adb.ResultsNotFound(err) {
-		return nil, false
-	}
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":   "getting cached value",
-			"key":       key,
-			"operation": "Get",
-			"source":    "DBCache",
-		}))
+		if !adb.ResultsNotFound(err) {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "getting cached value",
+				"key":       key,
+				"operation": "Get",
+				"source":    "DBCache",
+			}))
+		}
+		return nil, false
 	}
 	return item.Contents, true
 }
 
-// Set stores a []byte against a key.
-func (c *DBCache) Set(key string, responseBytes []byte) {
+// Set stores valueBytes for key.
+func (c *DBCache) Set(key string, valueBytes []byte) {
 	_, err := db.Upsert(
 		collection,
 		bson.M{IDKey: key},
 		bson.M{
 			"$set": bson.M{
-				ContentsKey: responseBytes,
+				ContentsKey: valueBytes,
 				UpdatedKey:  time.Now(),
 			},
 		},
@@ -73,11 +73,12 @@ func (c *DBCache) Set(key string, responseBytes []byte) {
 
 // Delete removes the value associated with the key.
 func (c *DBCache) Delete(key string) {
-	err := db.Remove(collection, bson.M{IDKey: key})
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":   "deleting cached value",
-		"key":       key,
-		"operation": "Delete",
-		"source":    "DBCache",
-	}))
+	grip.Error(message.WrapError(
+		db.Remove(collection, bson.M{IDKey: key}),
+		message.Fields{
+			"message":   "deleting cached value",
+			"key":       key,
+			"operation": "Delete",
+			"source":    "DBCache",
+		}))
 }

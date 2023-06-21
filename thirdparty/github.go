@@ -91,13 +91,17 @@ type cacheControlTransport struct {
 	base http.RoundTripper
 }
 
+// RoundTrip sets the [max-age] Cache-Control directive before passing the request off
+// to the base transport.
+//
+// [max-age]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control#max-age_2
 func (t *cacheControlTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Cache-Control", "max-age=0")
 	return t.base.RoundTrip(req)
 }
 
 func init() {
-	// Base transport that actually sends a request over the wire.
+	// Base transport sends a request over the wire.
 	baseTransport := utility.DefaultTransport()
 
 	// Wrap in a transport that creates a new span for each request that goes over the wire.
@@ -259,7 +263,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 func getGithubClient(token, caller string, config retryConfig) *github.Client {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
-		"message": "called configureGithubClient",
+		"message": "called getGithubClient",
 		"caller":  caller,
 	})
 
