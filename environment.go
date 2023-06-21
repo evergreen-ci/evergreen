@@ -86,8 +86,9 @@ func SetEnvironment(env Environment) {
 // Environment provides application-level services (e.g. databases,
 // configuration, queues.
 type Environment interface {
-	// Returns the settings object. The settings object is not
-	// necessarily safe for concurrent access.
+	// Returns the cached version of the settings object.
+	// The settings object is not necessarily safe for concurrent access.
+	// GetConfig should be used to access the settings object from the db.
 	Settings() *Settings
 	Context() (context.Context, context.CancelFunc)
 
