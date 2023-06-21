@@ -13,6 +13,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	GithubMergeUser = "github_merge_queue"
 	ParentPatchUser = "parent_patch"
 
 	HostRunning       = "running"
@@ -911,6 +912,10 @@ func IsGitTagRequester(requester string) bool {
 
 func IsCommitQueueRequester(requester string) bool {
 	return requester == MergeTestRequester
+}
+
+func IsGithubMergeQueueRequester(requester string) bool {
+	return requester == GithubMergeRequester
 }
 
 func ShouldConsiderBatchtime(requester string) bool {

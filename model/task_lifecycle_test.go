@@ -6228,13 +6228,16 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 
 func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection))
-	b := build.Build{Id: "build0"}
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+	v := Version{Id: "v"}
+	b := build.Build{Id: "build0", Version: v.Id}
+	b2 := build.Build{Id: "build2", Version: v.Id, AllTasksBlocked: true}
 	tasks := []task.Task{
-		{Id: "t0", BuildId: b.Id},
-		{Id: "t1", BuildId: b.Id, Status: evergreen.TaskFailed},
+		{Id: "t0", BuildId: b.Id, Version: v.Id},
+		{Id: "t1", BuildId: b.Id, Version: v.Id, Status: evergreen.TaskFailed},
 		{
 			Id:      "t2",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6250,6 +6253,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t3",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6261,6 +6265,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t4",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6272,6 +6277,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t5",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6281,12 +6287,33 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 			},
 			Status: evergreen.TaskUndispatched,
 		},
+		{
+			Id:      "t6",
+			Version: v.Id,
+			BuildId: b2.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t0",
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t7",
+			Version: v.Id,
+			BuildId: b2.Id,
+			Status:  evergreen.TaskDispatched,
+		},
 	}
 
 	for _, t := range tasks {
 		assert.NoError(t.Insert())
 	}
+
+	assert.NoError(v.Insert())
 	assert.NoError(b.Insert())
+	assert.NoError(b2.Insert())
 
 	assert.NoError(UpdateUnblockedDependencies(&tasks[0]))
 
@@ -6308,6 +6335,14 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	dbTask5, err := task.FindOneId(tasks[5].Id)
 	assert.NoError(err)
 	assert.True(dbTask5.DependsOn[0].Unattainable)
+
+	// Unblocking a dependent task should unblock its build
+	dbTask6, err := task.FindOneId(tasks[6].Id)
+	assert.NoError(err)
+	assert.False(dbTask6.DependsOn[0].Unattainable)
+	dbBuild2, err := build.FindOneId(b2.Id)
+	assert.NoError(err)
+	assert.False(dbBuild2.AllTasksBlocked)
 }
 
 type TaskConnectorAbortTaskSuite struct {

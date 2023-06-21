@@ -31,6 +31,7 @@ type TaskConfig struct {
 	Redacted           map[string]bool
 	WorkDir            string
 	GithubPatchData    thirdparty.GithubPatch
+	GithubMergeData    thirdparty.GithubMergeGroup
 	Timeout            *Timeout
 	TaskSync           evergreen.S3Credentials
 	EC2Keys            []evergreen.EC2Key
@@ -96,6 +97,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
+		taskConfig.GithubMergeData = patchDoc.GithubMergeData
 	}
 
 	taskConfig.Timeout = &Timeout{}

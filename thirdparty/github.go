@@ -104,8 +104,11 @@ type GithubPatch struct {
 
 // GithubMergeGroup stores patch data for patches created from GitHub merge groups
 type GithubMergeGroup struct {
-	HeadRef string `bson:"head_ref"`
-	HeadSHA string `bson:"head_sha"`
+	Org        string `bson:"org"`
+	Repo       string `bson:"repo"`
+	BaseBranch string `bson:"base_branch"` // BaseBranch is what GitHub merges to
+	HeadBranch string `bson:"head_branch"` // HeadBranch is the merge group's gh-readonly-queue branch
+	HeadSHA    string `bson:"head_sha"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
@@ -424,7 +427,7 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
-func SendPendingStatusToGithub(input SendGithubStatusInput) error {
+func SendPendingStatusToGithub(input SendGithubStatusInput, urlBase string) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
@@ -437,13 +440,15 @@ func SendPendingStatusToGithub(input SendGithubStatusInput) error {
 		return nil
 	}
 	env := evergreen.GetEnvironment()
-	uiConfig := evergreen.UIConfig{}
-	if err = uiConfig.Get(env); err != nil {
-		return errors.Wrap(err, "retrieving UI config")
-	}
-	urlBase := uiConfig.Url
 	if urlBase == "" {
-		return errors.New("url base doesn't exist")
+		uiConfig := evergreen.UIConfig{}
+		if err = uiConfig.Get(env); err != nil {
+			return errors.Wrap(err, "retrieving UI config")
+		}
+		urlBase := uiConfig.Url
+		if urlBase == "" {
+			return errors.New("url base doesn't exist")
+		}
 	}
 	status := &message.GithubStatus{
 		Owner:       input.Owner,

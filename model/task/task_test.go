@@ -1575,8 +1575,7 @@ func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 					Unattainable: true,
 				},
 			},
-			UnattainableDependency: true,
-			Priority:               0,
+			Priority: 0,
 		},
 		{
 			Id:        "t1",
@@ -1592,8 +1591,7 @@ func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 					Unattainable: false,
 				},
 			},
-			UnattainableDependency: false,
-			Priority:               0,
+			Priority: 0,
 		},
 		{
 			Id:        "t2",
@@ -1606,8 +1604,7 @@ func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 					Unattainable: true,
 				},
 			},
-			UnattainableDependency: true,
-			OverrideDependencies:   true,
+			OverrideDependencies: true,
 		},
 	}
 	for _, task := range tasks {

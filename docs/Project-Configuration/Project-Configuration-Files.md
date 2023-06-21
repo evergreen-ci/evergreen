@@ -1389,6 +1389,20 @@ supported as a space-separated list. For example,
     variant: "A B C D"
 ```
 
+[Task/variant tags](#task-and-variant-tags) 
+can also be used to define dependencies.
+
+``` yaml
+- name: push
+  depends_on:
+  - name: test
+    variant: ".favorite"
+
+- name: push
+  depends_on:
+  - "!.favorite !.other" ## runs all tasks that don't match these tags
+```
+
 ### Ignoring Changes to Certain Files
 
 Some commits to your repository don't need to be tested. The obvious
