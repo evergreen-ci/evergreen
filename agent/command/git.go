@@ -507,11 +507,6 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			if attemptNum > 0 {
-				// If clone failed once with the cached merge SHA, do not use it again
-				opts.usePatchMergeCommitSha = false
-				logger.Task().Warning("git clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
-			}
 			if attemptNum > 2 {
 				opts.useVerbose = true // use verbose for the last 2 attempts
 				logger.Task().Error(message.Fields{
@@ -520,9 +515,15 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 					"attempt":      attemptNum,
 				})
 			}
-
+			if attemptNum > 0 {
+				// If clone failed once with the cached merge SHA, do not use it again
+				opts.usePatchMergeCommitSha = false
+			}
 			if err := c.fetch(ctx, comm, logger, conf, opts); err != nil {
 				attemptNum++
+				if attemptNum == 1 {
+					logger.Execution().Warning("git clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
+				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
 			return false, nil
