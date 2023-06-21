@@ -608,6 +608,14 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	return token.GetToken(), nil
 }
 
+func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
+		// TODO EVG-19966: Return error here
+		return "", errors.New(fmt.Sprintf("default for '%s/%s' not found", s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo))
+	}
+	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
+}
+
 func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, levelInfo send.LevelInfo, fallback send.Sender) (send.Sender, error) {
 	sender, err := send.NewSplunkLoggerWithClient("", s.Splunk.SplunkConnectionInfo, grip.GetSender().Level(), client)
 	if err != nil {

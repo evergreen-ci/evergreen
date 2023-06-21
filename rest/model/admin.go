@@ -879,11 +879,13 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 }
 
 type APIGithubAuthConfig struct {
+	AppId        int64     `json:"app_id"`
 	ClientId     *string   `json:"client_id"`
 	ClientSecret *string   `json:"client_secret"`
-	Users        []*string `json:"users"`
+	DefaultOwner *string   `json:"default_owner"`
+	DefaultRepo  *string   `json:"default_repo"`
 	Organization *string   `json:"organization"`
-	AppId        int64     `json:"app_id"`
+	Users        []*string `json:"users"`
 }
 
 func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
@@ -895,6 +897,8 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 		a.ClientId = utility.ToStringPtr(v.ClientId)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Organization = utility.ToStringPtr(v.Organization)
+		a.DefaultOwner = utility.ToStringPtr(v.DefaultOwner)
+		a.DefaultRepo = utility.ToStringPtr(v.DefaultRepo)
 		a.AppId = v.AppId
 		for _, u := range v.Users {
 			a.Users = append(a.Users, utility.ToStringPtr(u))
@@ -913,6 +917,8 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		ClientId:     utility.FromStringPtr(a.ClientId),
 		ClientSecret: utility.FromStringPtr(a.ClientSecret),
 		Organization: utility.FromStringPtr(a.Organization),
+		DefaultOwner: utility.FromStringPtr(a.DefaultOwner),
+		DefaultRepo:  utility.FromStringPtr(a.DefaultRepo),
 		AppId:        a.AppId,
 	}
 	for _, u := range a.Users {

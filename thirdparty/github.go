@@ -38,10 +38,6 @@ const (
 	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
-
-	// TODO EVG-20103: move this to admin settings
-	defaultOwner = "evergreen-ci"
-	defaultRepo  = "commit-queue-sandbox"
 )
 
 const (
@@ -267,8 +263,20 @@ func GetInstallationToken(ctx context.Context, owner, repo string, opts *github.
 	return token, nil
 }
 
-func getInstallationTokenWithoutOwnerRepo(ctx context.Context) (string, error) {
-	return GetInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return "", errors.Wrap(err, "getting evergreen settings")
+	}
+	token, err := settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, opts)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error creating default token",
+			"ticket":  "EVG-19966",
+		}))
+		return "", errors.Wrap(err, "creating default installation token")
+	}
+	return token, nil
 }
 
 // GetGithubCommits returns a slice of GithubCommit objects from
@@ -1078,7 +1086,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining
 func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
-	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
+	installationToken, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
 		ctx, httpClient, putClient := getGithubClient(ctx, installationToken, "CheckGithubAPILimit", retryConfig{retry: true}, nil)
 		defer putClient()
@@ -1119,7 +1127,7 @@ func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 
 // GetGithubUser fetches the github user with the given login name
 func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, error) {
-	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
+	installationToken, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
 		ctx, httpClient, putClient := getGithubClient(ctx, installationToken, "GetGithubUser", retryConfig{retry: true}, nil)
 		defer putClient()
@@ -1159,7 +1167,7 @@ func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, 
 // given organization. The user with the attached token must have
 // visibility into organization membership, including private members
 func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
-	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
+	installationToken, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
 		ctx, httpClient, putClient := getGithubClient(ctx, installationToken, "GithubUserInOrganization", retryConfig{retry: true}, nil)
 		defer putClient()
@@ -1204,7 +1212,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 // AppAuthorizedForOrg returns true if the given app name exists in the org's installation list,
 // and has permission to write to pull requests. Returns an error if the app name exists but doesn't have permission.
 func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
-	installationToken, err := getInstallationTokenWithoutOwnerRepo(ctx)
+	installationToken, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
 		ctx, httpClient, putClient := getGithubClient(ctx, installationToken, "AppAuthorizedForOrg", retryConfig{retry: true}, nil)
 		defer putClient()
