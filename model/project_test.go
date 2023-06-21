@@ -1747,9 +1747,9 @@ func TestLoggerMerge(t *testing.T) {
 
 	var config1 *LoggerConfig
 	config2 := &LoggerConfig{
-		Agent:  []LogOpts{{Type: LogkeeperLogSender}},
-		System: []LogOpts{{Type: LogkeeperLogSender}},
-		Task:   []LogOpts{{Type: LogkeeperLogSender}},
+		Agent:  []LogOpts{{Type: BuildloggerLogSender}},
+		System: []LogOpts{{Type: BuildloggerLogSender}},
+		Task:   []LogOpts{{Type: BuildloggerLogSender}},
 	}
 
 	assert.Nil(mergeAllLogs(config1, config1))

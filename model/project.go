@@ -694,8 +694,6 @@ func (c *LoggerConfig) IsValid() error {
 		catcher.Wrap(opts.IsValid(), "invalid system logger config")
 		if opts.Type == FileLogSender {
 			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
-		} else if opts.Type == LogkeeperLogSender {
-			catcher.New("logkeeper is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
@@ -736,7 +734,6 @@ func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
 const (
 	EvergreenLogSender   = "evergreen"
 	FileLogSender        = "file"
-	LogkeeperLogSender   = "logkeeper"
 	BuildloggerLogSender = "buildlogger"
 	SplunkLogSender      = "splunk"
 )
@@ -762,7 +759,6 @@ var ValidDefaultLoggers = []string{
 var ValidLogSenders = []string{
 	EvergreenLogSender,
 	FileLogSender,
-	LogkeeperLogSender,
 	SplunkLogSender,
 	BuildloggerLogSender,
 }
