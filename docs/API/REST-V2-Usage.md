@@ -1996,7 +1996,7 @@ provisioning, or provision failed).
 
 #### Endpoints
 
-`GET /project/<project_name>/versions/<commit_hash>/tasks`
+`GET /project/<project_name>/revisions/<commit_hash>/tasks`
 
 `POST /tasks/<task_id>/restart`
 
@@ -2005,7 +2005,7 @@ provisioning, or provision failed).
 Some Evergreen projects contain flaky tests or can endure spurious
 failures. To restart all of these tasks to gain better signal a user can
 fetch all of the tasks for a commit. Make a request to
-`GET /project/<project_name>/versions/<commit_hash>/tasks` to fetch the
+`GET /project/<project_name>/revisions/<commit_hash>/tasks` to fetch the
 tasks that ran and then loop over all of the returned tasks, calling
 `POST /tasks/<task_id>/restart` on each task which has failed.
 
