@@ -45,7 +45,7 @@ func setupPermissions(t *testing.T) {
 		ID:        "superuser_scope",
 		Name:      "superuser scope",
 		Type:      evergreen.SuperUserResourceType,
-		Resources: []string{"super_user", "distro-id"},
+		Resources: []string{"super_user"},
 	}
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
@@ -164,10 +164,9 @@ func TestRequireDistroAccess(t *testing.T) {
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	require.EqualError(t, err, "input: distro not specified")
 
-	// superuser should be successful for create
+	// superuser should be successful for create with no distro ID specified
 	require.NoError(t, usr.AddRole("superuser"))
 
-	obj = interface{}(map[string]interface{}{"distroId": "distro-id"})
 	res, err := config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
 	require.NoError(t, err)
 	require.Nil(t, res)

@@ -34,6 +34,20 @@ func New(apiURL string) Config {
 	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
 		user := mustHaveUser(ctx)
 
+		// If directive is checking for create permissions, no distro ID is required.
+		if access == DistroSettingsAccessCreate {
+			opts := gimlet.PermissionOpts{
+				Resource:      evergreen.SuperUserPermissionsID,
+				ResourceType:  evergreen.SuperUserResourceType,
+				Permission:    evergreen.PermissionDistroCreate,
+				RequiredLevel: evergreen.DistroCreate.Value,
+			}
+			if user.HasPermission(opts) {
+				return next(ctx)
+			}
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))
+		}
+
 		args, isStringMap := obj.(map[string]interface{})
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "distro not specified")
@@ -46,19 +60,14 @@ func New(apiURL string) Config {
 		opts := gimlet.PermissionOpts{
 			Resource:     distroId,
 			ResourceType: evergreen.DistroResourceType,
+			Permission:   evergreen.PermissionDistroSettings,
 		}
 
-		if access == DistroSettingsAccessCreate {
-			opts.Permission = evergreen.PermissionDistroCreate
-			opts.RequiredLevel = evergreen.DistroCreate.Value
-		} else if access == DistroSettingsAccessAdmin {
-			opts.Permission = evergreen.PermissionDistroSettings
+		if access == DistroSettingsAccessAdmin {
 			opts.RequiredLevel = evergreen.DistroSettingsAdmin.Value
 		} else if access == DistroSettingsAccessEdit {
-			opts.Permission = evergreen.PermissionDistroSettings
 			opts.RequiredLevel = evergreen.DistroSettingsEdit.Value
 		} else if access == DistroSettingsAccessView {
-			opts.Permission = evergreen.PermissionDistroSettings
 			opts.RequiredLevel = evergreen.DistroSettingsView.Value
 		} else {
 			return nil, Forbidden.Send(ctx, "Permission not specified")
