@@ -104,6 +104,21 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 	return zones, nil
 }
 
+// Distro is the resolver for the distro field.
+func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel.APIDistro, error) {
+	d, err := distro.FindOneId(distroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching distro '%s': %s", distroID, err.Error()))
+	}
+	if d == nil {
+		return nil, werrors.Errorf("unable to find distro '%s'", distroID)
+	}
+
+	apiDistro := restModel.APIDistro{}
+	apiDistro.BuildFromService(*d)
+	return &apiDistro, nil
+}
+
 // Distros is the resolver for the distros field.
 func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*restModel.APIDistro, error) {
 	apiDistros := []*restModel.APIDistro{}

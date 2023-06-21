@@ -1,17 +1,4 @@
 """
-Distro[] is the return value for the distros query.
-It models an environment configuration for a host.
-"""
-type Distro {
-  isVirtualWorkStation: Boolean!
-  name: String
-  user: String
-  userSpawnAllowed: Boolean
-  workDir: String
-}
-
-
-"""
 TaskQueueItem[] is the return value for the distroTaskQueue query.
 It contains information about any particular item on the task queue, such as the name of the task, the build variant of the task,
 and how long it's expected to take to finish running.
