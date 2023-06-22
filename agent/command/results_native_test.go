@@ -54,7 +54,7 @@ func TestAttachResults(t *testing.T) {
 			for _, projTask := range conf.Project.Tasks {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
-					pluginCmds, err := Render(command, conf.Project, "")
+					pluginCmds, err := Render(command, conf.Project, BlockInfo{})
 					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
@@ -108,7 +108,7 @@ func TestAttachRawResults(t *testing.T) {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
 
-					pluginCmds, err := Render(command, conf.Project, "")
+					pluginCmds, err := Render(command, conf.Project, BlockInfo{})
 					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)

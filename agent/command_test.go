@@ -103,20 +103,11 @@ func (s *CommandSuite) TestShellExec() {
 	s.NoError(err)
 
 	s.Require().NoError(s.tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundShellLogMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - SUCCESS." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished command 'shell.exec'") {
-			foundShellLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundShellLogMessage)
+
+	checkMockLogs(s.T(), s.mockCommunicator, taskID,
+		"Task completed - SUCCESS",
+		"Finished command 'shell.exec' in function 'foo' (step 1 of 1)",
+	)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal("success", detail.Status)
