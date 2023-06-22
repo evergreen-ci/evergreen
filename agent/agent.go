@@ -507,20 +507,16 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-// runTask runs a task. It returns true if the agent should exit.
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, err error) {
+// runTask returns true if the agent should exit, and separate an error if relevant
+func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	// we want to have separate context trees for tasks and loggers, so
 	// when a task is canceled by a context, it can log its clean up.
 	tskCtx, tskCancel := context.WithCancel(ctx)
 	defer tskCancel()
 
+	var err error
 	defer func() {
-		op := "running task"
-		pErr := recovery.HandlePanicWithError(recover(), nil, op)
-		if pErr == nil {
-			return
-		}
-		err = a.logPanic(tc.logger, pErr, err, op)
+		err = recovery.HandlePanicWithError(recover(), err, "running task")
 	}()
 
 	// If the heartbeat aborts the task immediately, we should report that
@@ -929,32 +925,4 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	}
 	// return true otherwise
 	return true
-}
-
-// logPanic logs and returns a panic error, along with the original error (if
-// any). If there was no panic error, this is a no-op.
-func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, op string) error {
-	if pErr == nil {
-		return nil
-	}
-
-	msg := message.Fields{
-		"message":   "programmatic error: agent panicked",
-		"operation": op,
-		"stack":     message.NewStack(2, "").Raw(),
-	}
-
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(originalErr)
-	catcher.Add(pErr)
-	grip.Alert(message.WrapError(catcher.Resolve(), msg))
-	if logger != nil && !logger.Closed() {
-		logMsg := message.Fields{
-			"message":   "programmatic error: Evergreen agent hit a runtime panic",
-			"operation": op,
-		}
-		logger.Execution().Error(logMsg)
-	}
-
-	return catcher.Resolve()
 }

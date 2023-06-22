@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
@@ -39,17 +40,25 @@ type runCommandsOptions struct {
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
 	options runCommandsOptions, block string) (err error) {
+	var cmds []command.Command
 	defer func() {
-		op := fmt.Sprintf("running commands for block '%s'", block)
-		pErr := recovery.HandlePanicWithError(recover(), nil, op)
-		if pErr == nil {
-			return
+		if pErr := recovery.HandlePanicWithError(recover(), nil, "running commands"); pErr != nil {
+			msg := message.Fields{
+				"message":   "programmatic error: task panicked while running commands",
+				"operation": "running commands",
+				"block":     block,
+				"stack":     message.NewStack(2, "").Raw(),
+			}
+			grip.Alert(message.WrapError(pErr, msg))
+			tc.logger.Execution().Error("programmatic error: Evergreen agent hit a runtime panic while running commands")
+			catcher := grip.NewBasicCatcher()
+			catcher.Add(pErr)
+			catcher.Add(err)
+			err = catcher.Resolve()
 		}
-		err = a.logPanic(tc.logger, pErr, err, op)
 	}()
 
 	for i, commandInfo := range commands {
-		var cmds []command.Command
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")
 		}
