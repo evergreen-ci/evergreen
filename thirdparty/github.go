@@ -84,7 +84,10 @@ const (
 	githubPRUnstable = "unstable"
 )
 
-var cachingTransport http.RoundTripper
+var (
+	cachingTransport  http.RoundTripper
+	missingTokenError = errors.New("missing installation token")
+)
 
 type cacheControlTransport struct {
 	base http.RoundTripper
@@ -298,7 +301,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "creating token")
 	}
 	if token == "" {
-		return "", errors.New("token is empty")
+		return "", missingTokenError
 	}
 
 	return token, nil
@@ -315,7 +318,7 @@ func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until
 	if err == nil {
 		return commits, nextPage, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get commits from GitHub",
 		"caller":  "GetGithubCommits",
@@ -395,7 +398,7 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 	if err == nil {
 		return content, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get a file from GitHub",
 		"caller":  "GetGithubFile",
@@ -587,7 +590,7 @@ func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*g
 	if err == nil {
 		return event, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get commit event from GitHub",
 		"caller":  "GetCommitEvent",
@@ -665,7 +668,7 @@ func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string,
 	if err == nil {
 		return diff, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get commit diff from GitHub",
 		"caller":  "GetCommitDiff",
@@ -723,7 +726,7 @@ func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*gi
 	if err == nil {
 		return event, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get branch event from GitHub",
 		"caller":  "GetBranchEvent",
@@ -917,7 +920,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag stri
 	if err == nil {
 		return sha, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get tagged commit from GitHub",
 		"caller":  "GetTaggedCommitFromGithub",
@@ -1032,7 +1035,7 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, token, o
 	if err == nil {
 		return inTeam
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get team membership from GitHub",
 		"caller":  "IsUserInGithubTeam",
@@ -1145,7 +1148,7 @@ func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 	if err == nil {
 		return limit, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get API limit from GitHub",
 		"caller":  "CheckGithubAPILimit",
@@ -1196,7 +1199,7 @@ func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, 
 	if err == nil {
 		return user, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get user from GitHub",
 		"caller":  "GetGithubUser",
@@ -1246,7 +1249,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 	if err == nil {
 		return inOrg, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to check user in org from GitHub",
 		"caller":  "GithubUserInOrganization",
@@ -1288,7 +1291,7 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 	if err == nil {
 		return authorized, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to check app in org from GitHub",
 		"caller":  "AppAuthorizedForOrg",
@@ -1404,7 +1407,7 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 	if err == nil {
 		return mergeBase, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR merge base from GitHub",
 		"caller":  "GetPullRequestMergeBase",
@@ -1502,7 +1505,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	if err == nil {
 		return pr, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR from GitHub",
 		"caller":  "GetGithubPullRequest",
@@ -1550,7 +1553,7 @@ func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch)
 	if err == nil {
 		return diff, summary, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR diff from GitHub",
 		"caller":  "GetGithubPullRequestDiff",
@@ -1732,7 +1735,7 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner, r
 	if err == nil {
 		return hook, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to create hook on GitHub",
 		"caller":  "CreateGithubHook",
@@ -1797,7 +1800,7 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	if err == nil {
 		return hook, nil
 	}
-	grip.Debug(message.WrapError(err, message.Fields{
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get webhook from GitHub",
 		"caller":  "GetExistingGithubHook",
