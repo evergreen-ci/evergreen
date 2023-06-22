@@ -304,8 +304,9 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig retrieves the Evergreen config document. If no document is
+// GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
+// Use Settings() to get the cached settings object.
 func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
 
 // Bootstrap config gets a config from the database defined in the environment.
@@ -595,7 +596,8 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	client := github.NewClient(httpClient)
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
-		return "", errors.Wrapf(err, "finding installation token for '%s/%s'", owner, repo)
+		// TODO EVG-19966: Return error here
+		return "", nil
 	}
 	if installationId == nil {
 		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))

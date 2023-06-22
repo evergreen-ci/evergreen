@@ -148,8 +148,8 @@ func (s *logSenderSuite) TestEvergreenLogger() {
 	}
 }
 
-func (s *logSenderSuite) TestMisconfiguredLogkeeper() {
-	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.LogkeeperLogSender}}, "", "")
+func (s *logSenderSuite) TestMisconfiguredSender() {
+	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.BuildloggerLogSender}}, "", "")
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.Error(err)
 	s.Nil(sender)

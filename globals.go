@@ -914,6 +914,10 @@ func IsCommitQueueRequester(requester string) bool {
 	return requester == MergeTestRequester
 }
 
+func IsGithubMergeQueueRequester(requester string) bool {
+	return requester == GithubMergeRequester
+}
+
 func ShouldConsiderBatchtime(requester string) bool {
 	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
@@ -1142,6 +1146,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 		}
 	case PermissionDistroSettings:
 		return []PermissionLevel{
+			DistroSettingsAdmin,
 			DistroSettingsEdit,
 			DistroSettingsView,
 			DistroSettingsNone,

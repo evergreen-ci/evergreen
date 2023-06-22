@@ -1444,8 +1444,6 @@ override this behavior at the project or command level by log type
     available on the task page. This option is not available to system
     logs for security reasons. The `log_directory` parameter may be
     specified to override the default storage directory for log files.
--   `logkeeper` - Output is sent to a Logkeeper instance. Links to the
-    logs will be available on the task page.
 -   `splunk` - Output is sent to Splunk. No links will be provided on
     the task page, but the logs can be searched using
     `metadata.context.task_id=<task_id>` as a Splunk query. Choosing

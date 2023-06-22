@@ -440,8 +440,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("true", expansions.Get("is_patch"))
-	assert.Equal("true", expansions.Get("is_github_merge_queue"))
-	assert.False(expansions.Exists("is_commit_queue"))
+	assert.Equal("true", expansions.Get("is_commit_queue"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
@@ -1747,9 +1746,9 @@ func TestLoggerMerge(t *testing.T) {
 
 	var config1 *LoggerConfig
 	config2 := &LoggerConfig{
-		Agent:  []LogOpts{{Type: LogkeeperLogSender}},
-		System: []LogOpts{{Type: LogkeeperLogSender}},
-		Task:   []LogOpts{{Type: LogkeeperLogSender}},
+		Agent:  []LogOpts{{Type: BuildloggerLogSender}},
+		System: []LogOpts{{Type: BuildloggerLogSender}},
+		Task:   []LogOpts{{Type: BuildloggerLogSender}},
 	}
 
 	assert.Nil(mergeAllLogs(config1, config1))

@@ -345,23 +345,6 @@ func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *Logge
 	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
 }
 
-func (c *Mock) GetLoggerMetadata() LoggerMetadata {
-	return LoggerMetadata{
-		Agent: []LogkeeperMetadata{{
-			Build: "build1",
-			Test:  "test1",
-		}},
-		System: []LogkeeperMetadata{{
-			Build: "build1",
-			Test:  "test2",
-		}},
-		Task: []LogkeeperMetadata{{
-			Build: "build1",
-			Test:  "test3",
-		}},
-	}
-}
-
 func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
 	if c.GetPatchFileShouldFail {
 		return "", errors.New("operation run in fail mode.")

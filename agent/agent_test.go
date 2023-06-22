@@ -297,7 +297,7 @@ func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
 	}
 }
 
-func (s *AgentSuite) TestCancelledRunningCommandsIsNonBlocking() {
+func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
 	cmd := model.PluginCommandConf{
@@ -307,10 +307,29 @@ func (s *AgentSuite) TestCancelledRunningCommandsIsNonBlocking() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, postBlock)
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.Require().Error(err)
+
 	s.True(utility.IsContextError(errors.Cause(err)))
 	s.Empty(s.getPanicLogs())
+}
+
+func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
+	tc := &taskContext{
+		logger: s.tc.logger,
+	}
+	cmd := model.PluginCommandConf{
+		Command: "shell.exec",
+		Params: map[string]interface{}{
+			"script": "echo hi",
+		},
+	}
+	cmds := []model.PluginCommandConf{cmd}
+	err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
+	s.NoError(s.tc.logger.Close())
+
+	s.Require().Error(err)
+	s.NotEmpty(s.getPanicLogs())
 }
 
 func (s *AgentSuite) TestPre() {
