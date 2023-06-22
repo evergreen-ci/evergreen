@@ -39,7 +39,7 @@ const (
 	refTags = "refs/tags/"
 
 	// This will be removed when EVG-19964 is ready.
-	disableMergeGroup = true
+	disableMergeGroup = false
 )
 
 // skipCILabels are a set of labels which will skip creating PR patch if part of the commit description or message.
