@@ -328,6 +328,7 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 }
 
 // NewRouter returns the root router for all APIServer endpoints.
+// These routes are deprecated; any new functionality should be added to REST v2
 func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	requireProject := gimlet.WrapperMiddleware(as.requireProject)
 	requireUser := gimlet.NewRequireAuthHandler()
