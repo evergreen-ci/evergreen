@@ -85,7 +85,9 @@ const (
 )
 
 var (
-	cachingTransport  http.RoundTripper
+	githubTransport http.RoundTripper
+	cacheTransport  *httpcache.Transport
+
 	missingTokenError = errors.New("missing installation token")
 )
 
@@ -110,12 +112,14 @@ func init() {
 	otelTransport := otelhttp.NewTransport(baseTransport)
 
 	// Wrap in a transport that caches responses to reduce the number of calls that count against our rate limit.
-	memoryCacheTransport := httpcache.NewTransport(&cache.DBCache{})
-	memoryCacheTransport.Transport = otelTransport
+	cacheTransport = &httpcache.Transport{
+		MarkCachedResponses: true,
+		Transport:           otelTransport,
+	}
 
 	// Wrap in a transport that overrides the cache-control header so we don't use Github's
 	// max-age, which would have prevented us from asking if there's been a change if we requested recently.
-	cachingTransport = &cacheControlTransport{base: memoryCacheTransport}
+	githubTransport = &cacheControlTransport{base: cacheTransport}
 }
 
 func respFromCache(resp *http.Response) bool {
@@ -269,6 +273,15 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 		"caller":  caller,
 	})
 
+	// If the Environment is not nil that means we're running in the application and we have a connection
+	// to the database. Otherwise we're running in the agent and we should use an in-memory cache.
+	// We could stop casing on this if we were to stop calling out to GitHub from the agent.
+	if evergreen.GetEnvironment() != nil {
+		cacheTransport.Cache = &cache.DBCache{}
+	} else {
+		cacheTransport.Cache = httpcache.NewMemoryCache()
+	}
+
 	client := utility.SetupOauth2CustomHTTPRetryableClient(
 		token,
 		githubShouldRetry(caller, config),
@@ -276,7 +289,7 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 			MaxAttempts: numGithubAttempts,
 			MinDelay:    githubRetryMinDelay,
 		}),
-		utility.DefaultHttpClient(cachingTransport),
+		utility.DefaultHttpClient(githubTransport),
 	)
 
 	return github.NewClient(client)
