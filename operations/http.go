@@ -278,28 +278,6 @@ func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, erro
 	return ref, nil
 }
 
-// GetProjectWorkstationConfig requests the project ref that includes the workstation config
-// from the API server for a given project ID.
-func (ac *legacyClient) GetProjectWithWorkstationConfig(projectId string) (*model.ProjectRef, error) {
-	resp, err := ac.get(fmt.Sprintf("/ref/%s/workstation", projectId), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, NewAuthError(resp)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-	ref := &model.ProjectRef{}
-	if err := utility.ReadJSON(resp.Body, ref); err != nil {
-		return nil, err
-	}
-	return ref, nil
-}
-
 // GetPatchedConfig takes in patch id and returns the patched project config.
 func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error) {
 	resp, err := ac.get(fmt.Sprintf("patches/%s/config", patchId), nil)

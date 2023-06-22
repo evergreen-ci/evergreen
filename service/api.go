@@ -144,40 +144,18 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 	}
 
 	limitedRef := &model.ProjectRef{
-		Id:     p.Id,
-		Owner:  p.Owner,
-		Repo:   p.Repo,
-		Branch: p.Branch,
-		CommitQueue: model.CommitQueueParams{
-			Message: p.CommitQueue.Message,
-			Enabled: p.CommitQueue.Enabled,
-		},
-	}
-
-	gimlet.WriteJSON(w, limitedRef)
-}
-
-// projectWithWorkstationConfig returns a limited project ref with the workstation config given the project identifier
-func (as *APIServer) projectWithWorkstationConfig(w http.ResponseWriter, r *http.Request) {
-	id := gimlet.GetVars(r)["projectId"]
-	p, err := model.FindMergedProjectRef(id, "", true)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if p == nil {
-		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
-		return
-	}
-
-	limitedRef := &model.ProjectRef{
 		Id:         p.Id,
 		Identifier: p.Identifier,
 		Owner:      p.Owner,
 		Repo:       p.Repo,
 		Branch:     p.Branch,
 		WorkstationConfig: model.WorkstationConfig{
+			GitClone:      p.WorkstationConfig.GitClone,
 			SetupCommands: p.WorkstationConfig.SetupCommands,
+		},
+		CommitQueue: model.CommitQueueParams{
+			Message: p.CommitQueue.Message,
+			Enabled: p.CommitQueue.Enabled,
 		},
 	}
 
@@ -362,7 +340,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Project lookup and validation routes
 	app.AddRoute("/ref/{projectId}").Wrap(requireUser).Handler(as.fetchLimitedProjectRef).Get()
-	app.AddRoute("/ref/{projectId}/workstation").Wrap(requireUser).Handler(as.projectWithWorkstationConfig).Get()
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
