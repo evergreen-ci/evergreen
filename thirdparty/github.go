@@ -950,32 +950,21 @@ func taggedCommit(ctx context.Context, token, owner, repo, tag string) (string, 
 		}
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
-	resp, err := githubClient.Client().Get(url)
+	ref, resp, err := githubClient.Git.GetRef(ctx, owner, repo, tag)
 	if resp != nil {
 		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp)))
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		if err != nil {
+			return "", parseGithubErrorResponse(resp)
+		}
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get tag information from GitHub")
-	}
-	if resp == nil {
-		return "", errors.New("invalid github response")
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", ResponseReadError{err.Error()}
-	}
-	tagResp := github.Tag{}
-	if err = json.Unmarshal(respBody, &tagResp); err != nil {
-		return "", APIUnmarshalError{string(respBody), err.Error()}
+		return "", errors.Wrapf(err, "error getting tag for ref '%s'", ref)
 	}
 
 	var sha string
-	tagSha := tagResp.GetObject().GetSHA()
-	switch tagResp.GetObject().GetType() {
+	tagSha := ref.GetObject().GetSHA()
+	switch ref.GetObject().GetType() {
 	case commitObjectType:
 		// lightweight tags are pointers to the commit itself
 		sha = tagSha
@@ -986,7 +975,7 @@ func taggedCommit(ctx context.Context, token, owner, repo, tag string) (string, 
 		}
 		sha = annotatedTag.GetObject().GetSHA()
 	default:
-		return "", errors.Errorf("unrecognized object type '%s'", tagResp.GetObject().GetType())
+		return "", errors.Errorf("unrecognized object type '%s'", ref.GetObject().GetType())
 	}
 
 	if tagSha == "" {
