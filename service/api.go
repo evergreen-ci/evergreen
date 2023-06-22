@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -143,18 +144,18 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	limitedRef := &model.ProjectRef{
-		Id:         p.Id,
-		Identifier: p.Identifier,
-		Owner:      p.Owner,
-		Repo:       p.Repo,
-		Branch:     p.Branch,
-		WorkstationConfig: model.WorkstationConfig{
-			GitClone:      p.WorkstationConfig.GitClone,
-			SetupCommands: p.WorkstationConfig.SetupCommands,
-		},
-		CommitQueue: model.CommitQueueParams{
-			Message: p.CommitQueue.Message,
+	wc := restModel.APIWorkstationConfig{}
+	wc.BuildFromService(p.WorkstationConfig)
+
+	limitedRef := restModel.APIProjectRef{
+		Id:                utility.ToStringPtr(p.Id),
+		Identifier:        utility.ToStringPtr(p.Identifier),
+		Owner:             utility.ToStringPtr(p.Owner),
+		Repo:              utility.ToStringPtr(p.Repo),
+		Branch:            utility.ToStringPtr(p.Branch),
+		WorkstationConfig: wc,
+		CommitQueue: restModel.APICommitQueueParams{
+			Message: utility.ToStringPtr(p.CommitQueue.Message),
 			Enabled: p.CommitQueue.Enabled,
 		},
 	}
