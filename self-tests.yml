@@ -501,9 +501,6 @@ tasks:
     name: test-model-commitqueue
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-cache
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

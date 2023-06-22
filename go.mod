@@ -24,7 +24,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
 	github.com/evergreen-ci/timber v0.0.0-20230413164224-05a3a6e11d78
-	github.com/evergreen-ci/utility v0.0.0-20230616220713-1332f9621270
+	github.com/evergreen-ci/utility v0.0.0-20230613214910-daa83783f97c
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -32,7 +32,6 @@ require (
 	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
-	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/jpillora/backoff v1.0.0
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
