@@ -899,8 +899,8 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	}
 
 	if h.opts.Start > 0 && (h.opts.RevisionStart > 0 || h.opts.RevisionEnd > 0) {
-		return errors.Errorf(`revision_start and revision_end cannot be combined with start. start is deprecated, use revision_start 
-	instead but keep in mind that it uses lte and not lt`)
+		return errors.Errorf(`revision_start and revision_end cannot be combined with start. 
+		start should only be used for pagination, which is not available with revision_start and revision_end`)
 	}
 
 	requester := params.Get("requester")
