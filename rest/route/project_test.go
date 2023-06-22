@@ -1011,7 +1011,7 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.Contains(string(respJson), `"version_id":"v4"`)
 	assert.NotContains(string(respJson), `"version_id":"v3"`)
 
-	body := []byte(`{"revision_end": 4, "revision_start": 1}`)
+	body := []byte(`{"revision_end": 1, "revision_start": 4}`)
 	url := "https://example.com/rest/v2/projects/something-else/versions"
 	req, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(body))
 	assert.NoError(err)
