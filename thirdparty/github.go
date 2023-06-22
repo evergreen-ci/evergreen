@@ -939,15 +939,14 @@ func taggedCommit(ctx context.Context, token, owner, repo, tag string) (string, 
 	))
 	defer span.End()
 
-	var newToken string
 	if token == "" {
 		var err error
-		newToken, err = getInstallationToken(ctx, owner, repo, nil)
+		token, err = getInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "getting installation token")
 		}
 	}
-	githubClient := getGithubClient(newToken, caller, retryConfig{retry: true})
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
 	resp, err := githubClient.Client().Get(url)
