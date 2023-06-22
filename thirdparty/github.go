@@ -123,7 +123,7 @@ func respFromCache(resp *http.Response) bool {
 	// fulfilled from the cache.
 	//
 	// [X-From-Cache]: https://pkg.go.dev/github.com/gregjones/httpcache#pkg-constants
-	return resp.Header.Get("X-From-Cache") != ""
+	return resp.Header.Get(httpcache.XFromCache) != ""
 }
 
 // IsUnblockedGithubStatus returns true if the status is in the list of unblocked statuses
