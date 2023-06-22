@@ -537,6 +537,8 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
 	Start          int    `json:"start"`
+	RevisionStart  int    `json:"revision_start"`
+	RevisionEnd    int    `json:"revision_end"`
 	Requester      string `json:"requester"`
 	Limit          int    `json:"limit"`
 	Skip           int    `json:"skip"`
@@ -544,7 +546,6 @@ type GetVersionsOptions struct {
 	IncludeTasks   bool   `json:"include_tasks"`
 	ByBuildVariant string `json:"by_build_variant"`
 	ByTask         string `json:"by_task"`
-	RevisionsAfter int    `json:"revisions_after"`
 }
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
@@ -566,12 +567,20 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
+	// start is deprecated but maintained for backwards compatibility
 	if opts.Start > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.Start}
 	}
 
-	if opts.RevisionsAfter > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$gte": opts.RevisionsAfter}
+	revisionFilter := bson.M{}
+	if opts.RevisionStart > 0 {
+		revisionFilter["$lte"] = opts.RevisionStart
+		match[VersionRevisionOrderNumberKey] = revisionFilter
+	}
+
+	if opts.RevisionEnd > 0 {
+		revisionFilter["$gte"] = opts.RevisionEnd
+		match[VersionRevisionOrderNumberKey] = revisionFilter
 	}
 
 	pipeline := []bson.M{{"$match": match}}

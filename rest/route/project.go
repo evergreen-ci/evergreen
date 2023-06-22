@@ -884,10 +884,23 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		if err != nil {
 			return errors.Wrap(err, "invalid start query parameter")
 		}
-		h.opts.StartAfter = startOrder
+		h.opts.Start = startOrder
 	}
-	if h.opts.StartAfter < 0 {
+	if h.opts.Start < 0 {
 		return errors.New("start must be a non-negative integer")
+	}
+
+	if h.opts.RevisionStart < 0 {
+		return errors.New("revision_start must be a non-negative integer")
+	}
+
+	if h.opts.RevisionEnd < 0 {
+		return errors.New("revision_end must be a non-negative integer")
+	}
+
+	if h.opts.Start > 0 && (h.opts.RevisionStart > 0 || h.opts.RevisionEnd > 0) {
+		return errors.Errorf(`revision_start and revision_end cannot be combined with start. start is deprecated, use revision_start 
+	instead but keep in mind that it uses lte and not lt`)
 	}
 
 	requester := params.Get("requester")
