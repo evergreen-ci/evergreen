@@ -890,17 +890,15 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		return errors.New("start must be a non-negative integer")
 	}
 
-	if h.opts.RevisionStart < 0 {
-		return errors.New("revision_start must be a non-negative integer")
+	if h.opts.RevisionStart < 0 || h.opts.RevisionEnd < 0 {
+		return errors.New("both revision_start and revision_end must be non-negative integers")
 	}
-
-	if h.opts.RevisionEnd < 0 {
-		return errors.New("revision_end must be a non-negative integer")
+	if h.opts.RevisionEnd > h.opts.RevisionStart {
+		return errors.New("revision_end must be less than or equal to revision_start")
 	}
 
 	if h.opts.Start > 0 && (h.opts.RevisionStart > 0 || h.opts.RevisionEnd > 0) {
-		return errors.Errorf(`revision_start and revision_end cannot be combined with start. 
-		start should only be used for pagination, which is not available with revision_start and revision_end`)
+		return errors.Errorf(`revision_start and revision_end cannot be combined with start. start is deprecated.`)
 	}
 
 	requester := params.Get("requester")
@@ -925,11 +923,15 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if len(versions) >= h.opts.Limit {
+		key := "start"
+		if h.opts.RevisionStart != 0 {
+			key = "revision_start"
+		}
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
-				KeyQueryParam:   "start",
+				KeyQueryParam:   key,
 				BaseURL:         h.url,
 				Key:             strconv.Itoa(versions[len(versions)-1].Order),
 				Limit:           h.opts.Limit,
