@@ -1840,11 +1840,16 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 	return res.Err()
 }
 
-func updateUnattainableDependency(taskID string, unattainableDependency bool) error {
-	return UpdateOne(
+func updateUnattainableDependency(taskID string) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	_, err := env.DB().Collection(Collection).UpdateOne(ctx,
 		bson.M{IdKey: taskID},
-		bson.M{"$set": bson.M{UnattainableDependencyKey: unattainableDependency}},
+		[]bson.M{{"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}}}},
 	)
+
+	return err
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.

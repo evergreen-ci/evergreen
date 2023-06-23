@@ -2212,7 +2212,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 // by iterating through the task's DependsOn.
 func (t *Task) RefreshUnattainableDependency() error {
 	t.UnattainableDependency = t.hasUnattainableDependency()
-	return updateUnattainableDependency(t.Id, t.UnattainableDependency)
+	return updateUnattainableDependency(t.Id)
 }
 
 func (t *Task) hasUnattainableDependency() bool {

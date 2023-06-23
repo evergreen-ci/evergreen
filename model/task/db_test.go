@@ -1720,6 +1720,26 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert.Len(unattainableTasks, 1)
 }
 
+func TestUpdateUnattainableDependency(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	task := Task{
+		Id: "t0",
+		DependsOn: []Dependency{
+			{TaskId: "t1", Unattainable: true},
+			{TaskId: "t2", Unattainable: false},
+		},
+	}
+	assert.NoError(t, task.Insert())
+
+	assert.NoError(t, updateUnattainableDependency("t0"))
+	dbTask, err := FindOneId("t0")
+	assert.NoError(t, err)
+	assert.True(t, dbTask.UnattainableDependency)
+}
+
 func TestCountNumExecutionsForInterval(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, OldCollection))
 
