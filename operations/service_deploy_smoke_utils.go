@@ -326,7 +326,7 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 			return nil
 		}
 		// Validate that setup_group only runs in first task
-		const firstTaskGroupTaskLog = "smoke test is running first task in the task group"
+		const firstTaskGroupTaskLog = "smoke test is running the first task in the task group"
 		const setupGroupLog = "smoke test is running the setup group"
 		if strings.Contains(page, firstTaskGroupTaskLog) {
 			if !strings.Contains(page, setupGroupLog) {
