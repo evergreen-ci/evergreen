@@ -529,6 +529,22 @@ func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
 	return nil
 }
 
+// UpdateMergeCommitSHA updates the merge commit SHA for the patch.
+func (p *Patch) UpdateMergeCommitSHA(sha string) error {
+	if p.GithubPatchData.MergeCommitSHA == sha {
+		return nil
+	}
+	shaKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchMergeCommitSHAKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				shaKey: sha,
+			},
+		},
+	)
+}
+
 func (p *Patch) FindModule(moduleName string) *ModulePatch {
 	for _, module := range p.Patches {
 		if module.ModuleName == moduleName {

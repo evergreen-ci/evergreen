@@ -24,7 +24,7 @@ type Command interface {
 	// Execute is called after ParseParams.
 	Execute(context.Context, client.Communicator, client.LoggerProducer, *internal.TaskConfig) error
 
-	// A string name for the command
+	// Name is the name of the command.
 	Name() string
 
 	// Type returns the command's type (e.g. system or test).
@@ -32,6 +32,10 @@ type Command interface {
 	// SetType sets the command's type (e.g. system or test).
 	SetType(string)
 
+	// DisplayName is the user-configurable display name for the command. It can
+	// be set by the user; otherwise, it defaults to displaying information
+	// about the command and other relevant context like the function and block
+	// it runs in.
 	DisplayName() string
 	SetDisplayName(string)
 

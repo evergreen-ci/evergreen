@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-06-02"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-06-21"
+	AgentVersion = "2023-06-24"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -607,6 +607,17 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationId.GetID())
 	}
 	return token.GetToken(), nil
+}
+
+// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
+// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
+// It will use the default owner/repo specified in the admin settings and error if it's not set.
+func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
+		// TODO EVG-19966: Return error here
+		return "", nil
+	}
+	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
 }
 
 func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, levelInfo send.LevelInfo, fallback send.Sender) (send.Sender, error) {

@@ -13,10 +13,10 @@
     "grunt-contrib-less": "^1.4.1",
     "grunt-contrib-watch": "^1.0.0",
     "jasmine": "^2.8.0",
-    "jsdom": "^13.0.0",
-    "karma": "^2.0.0",
+    "jsdom": "^21.1.2",
+    "karma": "^6.4.2",
     "karma-jasmine": "^1.1.1",
-    "karma-jsdom-launcher": "^6.1.4",
+    "karma-jsdom-launcher": "^14.0.0",
     "karma-junit-reporter": "^1.2.0"
   }
 }

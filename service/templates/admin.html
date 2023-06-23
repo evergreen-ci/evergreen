@@ -1151,6 +1151,14 @@ Admin Settings
 										<label>Github App Id</label>
 										<input type="number" ng-model="Settings.auth.github.app_id">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Default Owner</label>
+										<input type="text" ng-model="Settings.auth.github.default_owner">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Default Repo</label>
+										<input type="text" ng-model="Settings.auth.github.default_repo">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 							<md-card flex=50 id="multi" style="max-width:49%">

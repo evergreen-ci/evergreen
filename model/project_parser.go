@@ -1116,7 +1116,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					if old, ok := existing[t.Name]; ok {
 						if !reflect.DeepEqual(t, *old) {
 							evalErrs = append(evalErrs, errors.Errorf(
-								"conflicting definitions of added tasks '%s': %v != %v", t.Name, t, old))
+								"conflicting definitions of added tasks '%s': %#v != %#v", t.Name, t, old))
 						}
 					} else {
 						bv.Tasks = append(bv.Tasks, t)
@@ -1259,7 +1259,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(t, old) {
 					evalErrs = append(evalErrs, errors.Errorf(
-						"conflicting definitions of build variant tasks '%s': %v != %v", name, t, old))
+						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbvt.Name, t, old))
 					continue
 				}
 			}
@@ -1429,7 +1429,7 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 					// it's already in the new list, so we check to make sure the status definitions match.
 					if !reflect.DeepEqual(newDep, oldDep) {
 						evalErrs = append(evalErrs, errors.Errorf(
-							"conflicting definitions of dependency '%s': %v != %v", name, newDep, oldDep))
+							"conflicting definitions of dependency '%s': %#v != %#v", name, newDep, oldDep))
 						continue
 					}
 				}
