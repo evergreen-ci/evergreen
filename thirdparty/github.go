@@ -40,10 +40,6 @@ const (
 	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
-
-	// TODO EVG-20103: move this to admin settings
-	defaultOwner = "evergreen-ci"
-	defaultRepo  = "commit-queue-sandbox"
 )
 
 const (
@@ -175,9 +171,10 @@ type SendGithubStatusInput struct {
 
 var (
 	// BSON fields for GithubPatch
-	GithubPatchPRNumberKey  = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
-	GithubPatchBaseOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
-	GithubPatchBaseRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
+	GithubPatchPRNumberKey       = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
+	GithubPatchBaseOwnerKey      = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
+	GithubPatchBaseRepoKey       = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
+	GithubPatchMergeCommitSHAKey = bsonutil.MustHaveTag(GithubPatch{}, "MergeCommitSHA")
 )
 
 type retryConfig struct {
@@ -322,8 +319,25 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 	return token, nil
 }
 
-func getInstallationTokenWithoutOwnerRepo(ctx context.Context) (string, error) {
-	return getInstallationToken(ctx, defaultOwner, defaultRepo, nil)
+func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return "", errors.Wrap(err, "getting evergreen settings")
+	}
+	token, err := settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, opts)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error creating default token",
+			"ticket":  "EVG-19966",
+		}))
+		return "", errors.Wrap(err, "creating default installation token")
+	}
+	// TODO: (EVG-19966) Remove once CreateInstallationTokenWithDefaultOwnerRepo returns an error.
+	if token == "" {
+		return "", missingTokenError
+	}
+
+	return token, nil
 }
 
 // GetGithubCommits returns a slice of GithubCommit objects from
@@ -1178,7 +1192,7 @@ func apiLimit(ctx context.Context, token string) (int64, error) {
 
 	if token == "" {
 		var err error
-		token, err = getInstallationTokenWithoutOwnerRepo(ctx)
+		token, err = getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 		if err != nil {
 			return 0, errors.Wrap(err, "getting installation token")
 		}
@@ -1231,7 +1245,7 @@ func getUser(ctx context.Context, token, loginName string) (*github.User, error)
 
 	if token == "" {
 		var err error
-		token, err = getInstallationTokenWithoutOwnerRepo(ctx)
+		token, err = getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -1283,7 +1297,7 @@ func userInOrganization(ctx context.Context, token, requiredOrganization, userna
 
 	if token == "" {
 		var err error
-		token, err = getInstallationTokenWithoutOwnerRepo(ctx)
+		token, err = getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 		if err != nil {
 			return false, errors.Wrap(err, "getting installation token")
 		}
@@ -1326,7 +1340,7 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 
 	if token == "" {
 		var err error
-		token, err = getInstallationTokenWithoutOwnerRepo(ctx)
+		token, err = getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 		if err != nil {
 			return false, errors.Wrap(err, "getting installation token")
 		}
