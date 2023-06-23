@@ -1626,7 +1626,6 @@ type VersionResolver interface {
 
 	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
 
-	GitTags(ctx context.Context, obj *model.APIVersion) ([]*GitTag, error)
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
 
@@ -14897,7 +14896,7 @@ func (ec *executionContext) fieldContext_GeneralSubscription_triggerData(ctx con
 	return fc, nil
 }
 
-func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.CollectedField, obj *GitTag) (ret graphql.Marshaler) {
+func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.CollectedField, obj *model.APIGitTag) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GitTag_tag(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -14923,9 +14922,9 @@ func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GitTag_tag(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -14941,7 +14940,7 @@ func (ec *executionContext) fieldContext_GitTag_tag(ctx context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _GitTag_pusher(ctx context.Context, field graphql.CollectedField, obj *GitTag) (ret graphql.Marshaler) {
+func (ec *executionContext) _GitTag_pusher(ctx context.Context, field graphql.CollectedField, obj *model.APIGitTag) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GitTag_pusher(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -14967,9 +14966,9 @@ func (ec *executionContext) _GitTag_pusher(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GitTag_pusher(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -54569,7 +54568,7 @@ func (ec *executionContext) _Version_gitTags(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().GitTags(rctx, obj)
+		return obj.GitTags, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -54578,17 +54577,17 @@ func (ec *executionContext) _Version_gitTags(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*GitTag)
+	res := resTmp.([]model.APIGitTag)
 	fc.Result = res
-	return ec.marshalOGitTag2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGitTagᚄ(ctx, field.Selections, res)
+	return ec.marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTagᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Version_gitTags(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "tag":
@@ -64354,7 +64353,7 @@ func (ec *executionContext) _GeneralSubscription(ctx context.Context, sel ast.Se
 
 var gitTagImplementors = []string{"GitTag"}
 
-func (ec *executionContext) _GitTag(ctx context.Context, sel ast.SelectionSet, obj *GitTag) graphql.Marshaler {
+func (ec *executionContext) _GitTag(ctx context.Context, sel ast.SelectionSet, obj *model.APIGitTag) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, gitTagImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -72644,22 +72643,9 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
 
 		case "gitTags":
-			field := field
 
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Version_gitTags(ctx, field, obj)
-				return res
-			}
+			out.Values[i] = ec._Version_gitTags(ctx, field, obj)
 
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
 		case "isPatch":
 			field := field
 
@@ -74074,14 +74060,8 @@ func (ec *executionContext) marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergr
 	return ec._GeneralSubscription(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGitTag2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGitTag(ctx context.Context, sel ast.SelectionSet, v *GitTag) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GitTag(ctx, sel, v)
+func (ec *executionContext) marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTag(ctx context.Context, sel ast.SelectionSet, v model.APIGitTag) graphql.Marshaler {
+	return ec._GitTag(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNGithubProjectConflicts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, v model1.GithubProjectConflicts) graphql.Marshaler {
@@ -77637,7 +77617,7 @@ func (ec *executionContext) marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋeve
 	return ret
 }
 
-func (ec *executionContext) marshalOGitTag2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGitTagᚄ(ctx context.Context, sel ast.SelectionSet, v []*GitTag) graphql.Marshaler {
+func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTagᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIGitTag) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -77664,7 +77644,7 @@ func (ec *executionContext) marshalOGitTag2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGitTag2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGitTag(ctx, sel, v[i])
+			ret[i] = ec.marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTag(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

@@ -75,11 +75,6 @@ type ExternalLinkForMetadata struct {
 	DisplayName string `json:"displayName"`
 }
 
-type GitTag struct {
-	Tag    string `json:"tag"`
-	Pusher string `json:"pusher"`
-}
-
 type GroupedBuildVariant struct {
 	DisplayName string           `json:"displayName"`
 	Tasks       []*model.APITask `json:"tasks,omitempty"`

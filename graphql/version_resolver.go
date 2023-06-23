@@ -170,25 +170,6 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 	return externalLinks, nil
 }
 
-// GitTags is the resolver for the gitTags field.
-func (r *versionResolver) GitTags(ctx context.Context, obj *restModel.APIVersion) ([]*GitTag, error) {
-	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", *obj.Id, err.Error()))
-	}
-	if v == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", *obj.Id, "version not found"))
-	}
-	var gitTags []*GitTag
-	for _, tag := range v.GitTags {
-		gitTags = append(gitTags, &GitTag{
-			Tag:    tag.Tag,
-			Pusher: tag.Pusher,
-		})
-	}
-	return gitTags, nil
-}
-
 // IsPatch is the resolver for the isPatch field.
 func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(*obj.Requester), nil
