@@ -344,7 +344,7 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 			return errors.New("did not find setup_task in task logs")
 		}
 		const teardownTaskLog = "smoke test is running the teardown task"
-		if !strings.Contains(page, "teardown_task") {
+		if !strings.Contains(page, teardownTaskLog) {
 			return errors.New("did not find teardown_task in task logs")
 		}
 
