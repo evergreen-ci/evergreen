@@ -362,6 +362,11 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 		}
 	} else if mode == agent.PodMode {
 		// TODO (PM-2617) Add task groups to the container task smoke test once they are supported
+		// TODO (EVG-17658): this test is highly fragile and has a chance of
+		// breaking if you change any of the container task YAML setup (e.g.
+		// change any container-related configuration in agent.yml).
+		// testdata/smoke/parser_projects.json. EVG-17658 should address the
+		// issues with the smoke test.
 		const containerTaskLog = "smoke test is running the container task"
 		if !strings.Contains(page, containerTaskLog) {
 			return errors.Errorf("did not find expected container task log: '%s'", containerTaskLog)
