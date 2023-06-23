@@ -88,6 +88,7 @@ var (
 	githubTransport http.RoundTripper
 	cacheTransport  *httpcache.Transport
 
+	// TODO: (EVG-19966) Remove this error type.
 	missingTokenError = errors.New("missing installation token")
 )
 
@@ -313,6 +314,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		}))
 		return "", errors.Wrap(err, "creating token")
 	}
+	// TODO: (EVG-19966) Remove once CreateInstallationToken returns an error.
 	if token == "" {
 		return "", missingTokenError
 	}
@@ -331,6 +333,7 @@ func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until
 	if err == nil {
 		return commits, nextPage, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get commits from GitHub",
@@ -411,6 +414,7 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 	if err == nil {
 		return content, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get a file from GitHub",
@@ -603,6 +607,7 @@ func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*g
 	if err == nil {
 		return event, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get commit event from GitHub",
@@ -681,6 +686,7 @@ func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string,
 	if err == nil {
 		return diff, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get commit diff from GitHub",
@@ -739,6 +745,7 @@ func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*gi
 	if err == nil {
 		return event, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get branch event from GitHub",
@@ -933,6 +940,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag stri
 	if err == nil {
 		return sha, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get tagged commit from GitHub",
@@ -1037,6 +1045,7 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, token, o
 	if err == nil {
 		return inTeam
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get team membership from GitHub",
@@ -1150,6 +1159,7 @@ func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 	if err == nil {
 		return limit, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get API limit from GitHub",
@@ -1201,6 +1211,7 @@ func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, 
 	if err == nil {
 		return user, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get user from GitHub",
@@ -1251,6 +1262,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 	if err == nil {
 		return inOrg, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to check user in org from GitHub",
@@ -1293,6 +1305,7 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 	if err == nil {
 		return authorized, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to check app in org from GitHub",
@@ -1409,6 +1422,7 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 	if err == nil {
 		return mergeBase, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR merge base from GitHub",
@@ -1507,6 +1521,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	if err == nil {
 		return pr, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR from GitHub",
@@ -1555,6 +1570,7 @@ func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch)
 	if err == nil {
 		return diff, summary, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR diff from GitHub",
@@ -1737,6 +1753,7 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner, r
 	if err == nil {
 		return hook, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to create hook on GitHub",
@@ -1802,6 +1819,7 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	if err == nil {
 		return hook, nil
 	}
+	// TODO: (EVG-19966) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get webhook from GitHub",
