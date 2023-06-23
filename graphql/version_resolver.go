@@ -149,6 +149,46 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	return nil, nil
 }
 
+// ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
+func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
+	pRef, err := data.FindProjectById(*obj.Project, false, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project `%s`: %s", *obj.Project, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
+	}
+	var externalLinks []*ExternalLinkForMetadata
+	for _, link := range pRef.ExternalLinks {
+		// replace {version_id} with the actual version id
+		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
+		externalLinks = append(externalLinks, &ExternalLinkForMetadata{
+			URL:         formattedURL,
+			DisplayName: link.DisplayName,
+		})
+	}
+	return externalLinks, nil
+}
+
+// GitTags is the resolver for the gitTags field.
+func (r *versionResolver) GitTags(ctx context.Context, obj *restModel.APIVersion) ([]*GitTag, error) {
+	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", *obj.Id, err.Error()))
+	}
+	if v == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", *obj.Id, "version not found"))
+	}
+	var gitTags []*GitTag
+	for _, tag := range v.GitTags {
+		gitTags = append(gitTags, &GitTag{
+			Tag:    tag.Tag,
+			Pusher: tag.Pusher,
+		})
+	}
+	return gitTags, nil
+}
+
 // IsPatch is the resolver for the isPatch field.
 func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(*obj.Requester), nil
@@ -463,27 +503,6 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 		TimeTaken: &apiTimeTaken,
 		Makespan:  &apiMakespan,
 	}, nil
-}
-
-// ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
-func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
-	pRef, err := data.FindProjectById(*obj.Project, false, false)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project `%s`: %s", *obj.Project, err.Error()))
-	}
-	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
-	}
-	var externalLinks []*ExternalLinkForMetadata
-	for _, link := range pRef.ExternalLinks {
-		// replace {version_id} with the actual version id
-		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
-		externalLinks = append(externalLinks, &ExternalLinkForMetadata{
-			URL:         formattedURL,
-			DisplayName: link.DisplayName,
-		})
-	}
-	return externalLinks, nil
 }
 
 // Warnings is the resolver for the warnings field.
