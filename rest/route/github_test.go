@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -506,4 +508,32 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 
 		t.Run(testCase, test)
 	}
+}
+
+func TestPRDef(t *testing.T) {
+	assert.NoError(t, db.Clear(patch.Collection))
+	patchId := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	p := &patch.Patch{
+		Id:      patchId,
+		Project: "mci",
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber:               5,
+			RepeatPatchIdNextPatch: patchId.Hex(),
+		},
+	}
+	assert.NoError(t, p.Insert())
+	err := keepPRPatchDefinition(5)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOne(patch.ById(patchId))
+	assert.NoError(t, err)
+	assert.Equal(t, patchId.Hex(), p.GithubPatchData.RepeatPatchIdNextPatch)
+
+	err = resetPRPatchDefinition(5)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOne(patch.ById(patchId))
+	assert.NoError(t, err)
+	assert.Equal(t, "", p.GithubPatchData.RepeatPatchIdNextPatch)
+
 }
