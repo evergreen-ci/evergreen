@@ -131,7 +131,8 @@ func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, t)
 }
 
-// fetchLimitedProjectRef returns a limited project ref given the project identifier
+// fetchLimitedProjectRef returns a limited project ref given the project identifier.
+// No new information should be added to this route, instead a REST v2 route should be added.
 func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["projectId"]
 	p, err := model.FindMergedProjectRef(id, "", true)
