@@ -160,6 +160,20 @@ func (s *githubSuite) TestGetGithubCommitsUntil() {
 	s.Len(githubCommits, 2)
 }
 
+func (s *githubSuite) TestGetTaggedCommitFromGithub() {
+	s.Run("AnnotatedTag", func() {
+		commit, err := GetTaggedCommitFromGithub(s.ctx, s.token, "evergreen-ci", "spruce", "refs/tags/v3.0.97")
+		s.NoError(err)
+		s.Equal("89549e0939ecf5fc59ddd288d860b8a150e6346e", commit)
+	})
+
+	s.Run("LightweightTag", func() {
+		commit, err := GetTaggedCommitFromGithub(s.ctx, s.token, "evergreen-ci", "evergreen", "refs/tags/v3")
+		s.NoError(err)
+		s.Equal("f0dd0c11df68b975c7dab3d7d3ee675d27119736", commit)
+	})
+}
+
 func (s *githubSuite) TestGetBranchEvent() {
 	branch, err := GetBranchEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
