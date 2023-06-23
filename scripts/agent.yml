@@ -35,11 +35,11 @@ task_groups:
             set -o errexit
             echo "smoke test is running the teardown task"
     tasks:
-      - first_task_in_task_group
-      - second_task_in_task_group
-      - test
-      - third_task_in_task_group
-      - fourth_task_in_task_group
+      - smoke_test_first_task_in_task_group
+      - smoke_test_second_task_in_task_group
+      - smoke_test_commands
+      - smoke_test_third_task_in_task_group
+      - smoke_test_fourth_task_in_task_group
 
 tasks:
   - name: smoke_test_first_task_in_task_group
@@ -92,7 +92,7 @@ tasks:
         params:
           files:
             - agent/command/testdata/generated.json
-  - name: test
+  - name: smoke_test_commands
     commands:
       - command: git.get_project
         params:
@@ -234,13 +234,13 @@ buildvariants:
       - localhost
     tasks:
       - name: my_group
-      - name: generate_task
+      - name: smoke_test_generate_task
   - name: pod_bv
     display_name: pod_bv
     run_on:
       - container
     tasks:
-      - name: container_task
+      - name: smoke_test_container_task
 
 # TODO (EVG-17658): Refactor smoke tests to allow for faking agent creation
 # The following configuration is currently unused since the container task
