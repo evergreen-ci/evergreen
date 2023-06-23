@@ -1202,18 +1202,23 @@ func validateCommands(section string, project *model.Project,
 	commands []model.PluginCommandConf) ValidationErrors {
 	errs := ValidationErrors{}
 
-	for _, cmd := range commands {
+	for i, cmd := range commands {
 		commandName := fmt.Sprintf("'%s' command", cmd.Command)
-		_, err := command.Render(cmd, project, "")
+		if cmd.Function != "" {
+			commandName = fmt.Sprintf("'%s' function", cmd.Function)
+		}
+		blockInfo := command.BlockInfo{
+			Block:     "",
+			CmdNum:    i + 1,
+			TotalCmds: len(commands),
+		}
+		_, err := command.Render(cmd, project, blockInfo)
 		if err != nil {
-			if cmd.Function != "" {
-				commandName = fmt.Sprintf("'%s' function", cmd.Function)
-			}
 			errs = append(errs, ValidationError{Message: fmt.Sprintf("%s section in %s: %s", section, commandName, err)})
 		}
 		if cmd.Type != "" {
 			if !utility.StringSliceContains(evergreen.ValidCommandTypes, cmd.Type) {
-				msg := fmt.Sprintf("%s section in '%s': invalid command type: '%s'", section, commandName, cmd.Type)
+				msg := fmt.Sprintf("%s section in %s: invalid command type: '%s'", section, commandName, cmd.Type)
 				errs = append(errs, ValidationError{Message: msg})
 			}
 		}

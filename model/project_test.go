@@ -440,8 +440,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("true", expansions.Get("is_patch"))
-	assert.Equal("true", expansions.Get("is_github_merge_queue"))
-	assert.False(expansions.Exists("is_commit_queue"))
+	assert.Equal("true", expansions.Get("is_commit_queue"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{

@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-06-02"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-06-22"
+	AgentVersion = "2023-06-24"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -304,8 +304,9 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig retrieves the Evergreen config document. If no document is
+// GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
+// Use Settings() to get the cached settings object.
 func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
 
 // Bootstrap config gets a config from the database defined in the environment.

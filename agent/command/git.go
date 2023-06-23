@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	GitFetchProjectRetries = 5
+	gitFetchProjectRetries = 5
 	defaultCommitterName   = "Evergreen Agent"
 	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
 	shallowCloneDepth      = 100
@@ -511,7 +511,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 				opts.useVerbose = true // use verbose for the last 2 attempts
 				logger.Task().Error(message.Fields{
 					"message":      "running git clone with verbose output",
-					"num_attempts": GitFetchProjectRetries,
+					"num_attempts": gitFetchProjectRetries,
 					"attempt":      attemptNum,
 				})
 			}
@@ -528,7 +528,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 			}
 			return false, nil
 		}, utility.RetryOptions{
-			MaxAttempts: GitFetchProjectRetries,
+			MaxAttempts: gitFetchProjectRetries,
 			MinDelay:    fetchRetryMinDelay,
 			MaxDelay:    fetchRetryMaxDelay,
 		})
@@ -537,7 +537,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 			"operation":            "git.get_project",
 			"message":              "cloning failed",
 			"num_attempts":         attemptNum,
-			"num_attempts_allowed": GitFetchProjectRetries,
+			"num_attempts_allowed": gitFetchProjectRetries,
 			"owner":                conf.ProjectRef.Owner,
 			"repo":                 conf.ProjectRef.Repo,
 			"branch":               conf.ProjectRef.Branch,

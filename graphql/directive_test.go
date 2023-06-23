@@ -50,6 +50,25 @@ func setupPermissions(t *testing.T) {
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
+	superUserDistroRole := gimlet.Role{
+		ID:    "superuser_distro_access",
+		Name:  "admin access",
+		Scope: evergreen.AllDistrosScope,
+		Permissions: map[string]int{
+			"distro_settings": 30,
+			"distro_hosts":    20,
+		},
+	}
+	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
+
+	superUserDistroScope := gimlet.Scope{
+		ID:        "all_distros",
+		Name:      "all distros",
+		Type:      evergreen.DistroResourceType,
+		Resources: []string{"distro-id"},
+	}
+	require.NoError(t, roleManager.AddScope(superUserDistroScope))
+
 	projectAdminRole := gimlet.Role{
 		ID:          "admin_project",
 		Scope:       "project_scope",
@@ -74,6 +93,181 @@ func setupPermissions(t *testing.T) {
 	}
 	err = roleManager.AddScope(projectScope)
 	require.NoError(t, err)
+
+	distroAdminRole := gimlet.Role{
+		ID:          "admin_distro-id",
+		Scope:       "distro_distro-id",
+		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsAdmin.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(distroAdminRole))
+
+	distroEditRole := gimlet.Role{
+		ID:          "edit_distro-id",
+		Scope:       "distro_distro-id",
+		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsEdit.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(distroEditRole))
+
+	distroViewRole := gimlet.Role{
+		ID:          "view_distro-id",
+		Scope:       "distro_distro-id",
+		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsView.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(distroViewRole))
+
+	distroScope := gimlet.Scope{
+		ID:        "distro_distro-id",
+		Name:      "distro-id",
+		Type:      evergreen.DistroResourceType,
+		Resources: []string{"distro-id"},
+	}
+	require.NoError(t, roleManager.AddScope(distroScope))
+}
+
+func TestRequireDistroAccess(t *testing.T) {
+	setupPermissions(t)
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+	dbUser := &user.DBUser{
+		Id: apiUser,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+		},
+	}
+	require.NoError(t, dbUser.Insert())
+
+	const email = "testuser@mongodb.com"
+	const accessToken = "access_token"
+	const refreshToken = "refresh_token"
+	config := New("/graphql")
+	require.NotNil(t, config)
+	ctx := context.Background()
+	obj := interface{}(nil)
+
+	// callCount keeps track of how many times the function is called
+	callCount := 0
+	next := func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		callCount++
+		return nil, nil
+	}
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
+	// Fails when distro is not specified
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.EqualError(t, err, "input: distro not specified")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
+	require.EqualError(t, err, "input: user 'testuser' does not have create distro permissions")
+
+	// superuser should be successful for create with no distro ID specified
+	require.NoError(t, usr.AddRole("superuser"))
+
+	res, err := config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
+
+	require.NoError(t, usr.RemoveRole("superuser"))
+
+	// superuser_distro_access is successful for admin, edit, view
+	require.NoError(t, usr.AddRole("superuser_distro_access"))
+
+	obj = interface{}(map[string]interface{}{"distroId": "distro-id"})
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 2, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 3, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 4, callCount)
+
+	require.NoError(t, usr.RemoveRole("superuser_distro_access"))
+
+	// admin access is successful for admin, edit, view
+	require.NoError(t, usr.AddRole("admin_distro-id"))
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 5, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 6, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 7, callCount)
+
+	require.NoError(t, usr.RemoveRole("admin_distro-id"))
+
+	// edit access fails for admin, is successful for edit & view
+	require.NoError(t, usr.AddRole("edit_distro-id"))
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.Nil(t, res)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	require.Equal(t, 7, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 8, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 9, callCount)
+
+	require.NoError(t, usr.RemoveRole("edit_distro-id"))
+
+	// view access fails for admin & edit, is successful for view
+	require.NoError(t, usr.AddRole("view_distro-id"))
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.Equal(t, 9, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.Equal(t, 9, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 10, callCount)
+
+	require.NoError(t, usr.RemoveRole("view_distro-id"))
+
+	// no access fails all query attempts
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.Equal(t, 10, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.Equal(t, 10, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.Equal(t, 10, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
 }
 
 func TestRequireProjectAdmin(t *testing.T) {
