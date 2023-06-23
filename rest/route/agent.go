@@ -152,6 +152,18 @@ func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Req
 }
 
 func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
+	token, err := h.settings.GetGithubOauthToken()
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
+	}
+	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+	resp := apimodels.PullRequestInfo{
+		Mergeable:      pr.Mergeable,
+		MergeCommitSHA: pr.GetMergeCommitSHA(),
+	}
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting task '%s'", h.taskID))
@@ -171,18 +183,6 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch for task '%s' not found", h.taskID),
 		})
-	}
-	token, err := h.settings.GetGithubOauthToken()
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
-	}
-	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(err)
-	}
-	resp := apimodels.PullRequestInfo{
-		Mergeable:      pr.Mergeable,
-		MergeCommitSHA: pr.GetMergeCommitSHA(),
 	}
 	if err = p.UpdateMergeCommitSHA(pr.GetMergeCommitSHA()); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating merge commit SHA for patch '%s'", p.Id.Hex()))
