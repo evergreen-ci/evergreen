@@ -312,7 +312,8 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 	// Note that these checks have a direct dependency on the task configuration
 	// in the smoke test's project YAML (agent.yml).
 	if mode == agent.HostMode {
-		if strings.Contains(page, "generate_task") {
+		const generatorTaskName = "smoke_test_generate_task"
+		if strings.Contains(page, generatorTaskName) {
 			if !strings.Contains(page, "Finished command 'generate.tasks'") {
 				return errors.New("did not find expected log in generate.tasks command")
 			}
@@ -325,38 +326,45 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 			return nil
 		}
 		// Validate that setup_group only runs in first task
-		if strings.Contains(page, "first") {
-			if !strings.Contains(page, "setup_group") {
+		const firstTaskGroupTaskLog = "smoke test is running first task in the task group"
+		const setupGroupLog = "smoke test is running the setup group"
+		if strings.Contains(page, firstTaskGroupTaskLog) {
+			if !strings.Contains(page, setupGroupLog) {
 				return errors.New("did not find setup_group in task logs for first task")
 			}
 		} else {
-			if strings.Contains(page, "setup_group") {
+			if strings.Contains(page, setupGroupLog) {
 				return errors.New("setup_group should only run in first task")
 			}
 		}
 
 		// Validate that setup_task and teardown_task run for all tasks
-		if !strings.Contains(page, "setup_task") {
+		const setupTaskLog = "smoke test is running the setup task"
+		if !strings.Contains(page, setupTaskLog) {
 			return errors.New("did not find setup_task in task logs")
 		}
-		if !strings.Contains(page, "teardown_task") {
+		const teardownTaskLog = "smoke test is running the teardown task"
+		if !strings.Contains(page, teardownTaskLog) {
 			return errors.New("did not find teardown_task in task logs")
 		}
 
 		// Validate that teardown_group only runs in last task
-		if strings.Contains(page, "fourth") {
-			if !strings.Contains(page, "teardown_group") {
-				return errors.New("did not find teardown_group in task logs for last (fourth) task")
+		const lastTaskGroupTaskLog = "smoke test is running the fourth task in the task group"
+		const teardownGroupLog = "smoke test is running the teardown group"
+		if strings.Contains(page, lastTaskGroupTaskLog) {
+			if !strings.Contains(page, teardownGroupLog) {
+				return errors.New("did not find teardown_group in task logs for last task in the task group")
 			}
 		} else {
-			if strings.Contains(page, "teardown_group") {
-				return errors.New("teardown_group should only run in last (fourth) task")
+			if strings.Contains(page, teardownGroupLog) {
+				return errors.New("teardown_group should only run in last task in the task group")
 			}
 		}
 	} else if mode == agent.PodMode {
 		// TODO (PM-2617) Add task groups to the container task smoke test once they are supported
-		if !strings.Contains(page, "container task") {
-			return errors.New("did not find container task in logs")
+		const containerTaskLog = "smoke test is running the container task"
+		if !strings.Contains(page, containerTaskLog) {
+			return errors.Errorf("did not find expected container task log: '%s'", containerTaskLog)
 		}
 	}
 
