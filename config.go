@@ -609,7 +609,7 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 }
 
 // CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
-// the owner/repo that we are calling the Github function with. (ie checking rate limit)
+// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
 // It will use the default owner/repo specified in the admin settings and error if it's not set.
 func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
