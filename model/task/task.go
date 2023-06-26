@@ -1658,8 +1658,8 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 		for _, t := range tasks {
 			taskIds = append(taskIds, t.Id)
 		}
-		grip.Error(message.Fields{
-			"error":          recovery.HandlePanicWithError(recover(), nil, "problem adding edge"),
+		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
+		grip.Error(message.WrapError(panicErr, message.Fields{
 			"function":       "topologicalSort",
 			"from_task":      fromTask,
 			"to_task":        toTask,
