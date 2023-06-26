@@ -2017,6 +2017,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			TimeTakenKey:                   0,
 			LastHeartbeatKey:               utility.ZeroTime,
 			ContainerAllocationAttemptsKey: 0,
+			UnattainableDependencyKey:      bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 		},
 		"$unset": bson.M{
 			DetailsKey:                 "",
@@ -2197,10 +2198,6 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
 	}
 
-	if err := t.RefreshUnattainableDependency(); err != nil {
-		return errors.Wrapf(err, "caching unattainable dependency for task '%s'", t.Id)
-	}
-
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
 	if !wasBlocked && unattainable && !t.OverrideDependencies {
 		event.LogTaskBlocked(t.Id, t.Execution)
@@ -2211,17 +2208,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 // RefreshUnattainableDependency refreshes the contents of the task's UnattainableDependency field
 // by iterating through the task's DependsOn.
 func (t *Task) RefreshUnattainableDependency() error {
-	t.UnattainableDependency = t.hasUnattainableDependency()
 	return updateUnattainableDependency(t.Id)
-}
-
-func (t *Task) hasUnattainableDependency() bool {
-	for _, dependency := range t.DependsOn {
-		if dependency.Unattainable {
-			return true
-		}
-	}
-	return false
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
