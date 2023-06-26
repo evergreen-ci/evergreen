@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -1664,7 +1663,6 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 			"from_task":      fromTask,
 			"to_task":        toTask,
 			"original_tasks": taskIds,
-			"stack":          string(debug.Stack()),
 		}))
 	}()
 	depGraph := simple.NewDirectedGraph()
