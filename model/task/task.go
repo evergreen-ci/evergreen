@@ -1665,7 +1665,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 			"to_task":        toTask,
 			"original_tasks": taskIds,
 			"stack":          string(debug.Stack()),
-		})
+		}))
 	}()
 	depGraph := simple.NewDirectedGraph()
 	taskNodeMap := make(map[string]graph.Node)
