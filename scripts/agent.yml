@@ -76,7 +76,7 @@ tasks:
             echo "smoke test is running the fourth task in the task group"
   # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
   # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
-  - name: container_task
+  - name: container-task
     commands:
       - command: shell.exec
         params:
