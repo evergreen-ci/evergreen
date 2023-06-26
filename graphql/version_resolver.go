@@ -91,7 +91,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 		IncludeBuildVariantDisplayName: true,
 		IncludeNeverActivatedTasks:     !obj.IsPatchRequester(),
 	}
-	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(obj.Id), opts)
+	stats, err := task.GetGroupedTaskStatsByVersion(ctx, utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
@@ -133,7 +133,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching a child patch: %s", err.Error()))
 				}
 				if p == nil {
-					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find child patch %s", cp))
 				}
 				if p.Version != "" {
 					// only return the error if the version is activated (and we therefore expect it to be there)
@@ -350,7 +350,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
 	}
-	stats, err := task.GetTaskStatsByVersion(*obj.Id, opts)
+	stats, err := task.GetTaskStatsByVersion(ctx, *obj.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
 	}

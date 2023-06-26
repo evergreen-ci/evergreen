@@ -1387,8 +1387,9 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 
 	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
 
+		ctx := context.TODO()
 		opts := GetTasksByVersionOptions{}
-		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(variants))
 		expectedValues := []*GroupedTaskStatusCount{
@@ -1430,7 +1431,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 			Variants: []string{"bv1"},
 		}
 
-		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(variants))
 		expectedValues := []*GroupedTaskStatusCount{
