@@ -1820,40 +1820,41 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+func (t *Task) updateAllMatchingDependenciesForTask(dependencyId string, unattainable bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
 
-	_, err := env.DB().Collection(Collection).UpdateOne(ctx,
+	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
-			IdKey: taskId,
+			IdKey: t.Id,
 		},
-		bson.M{
-			"$set": bson.M{
-				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable,
-				UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+		[]bson.M{
+			{
+				"$set": bson.M{DependsOnKey: bson.M{
+					"$map": bson.M{
+						"input": "$" + DependsOnKey,
+						"in": bson.M{
+							"$cond": bson.M{
+								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$this", DependencyTaskIdKey), dependencyId}},
+								"then": bson.M{"$mergeObjects": bson.A{"$$this", bson.M{DependencyUnattainableKey: unattainable}}},
+								"else": "$$this",
+							},
+						},
+					}},
+				},
+			},
+			{
+				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
-			bson.M{
-				bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId,
-			},
-		}}),
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
-	return err
-}
+	if res.Err() != nil {
+		return errors.Wrap(res.Err(), "updating matching dependencies")
+	}
 
-func updateUnattainableDependency(taskID string) error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	_, err := env.DB().Collection(Collection).UpdateOne(ctx,
-		bson.M{IdKey: taskID},
-		[]bson.M{{"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}}}},
-	)
-
-	return err
+	return res.Decode(t)
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
@@ -2744,6 +2745,8 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
 				ActivatedTimeKey: activationTime,
+				// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 			},
 		})
 	if err != nil {

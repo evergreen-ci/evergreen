@@ -1632,6 +1632,8 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 			DeactivatedForDependencyKey: false,
 			ActivatedByKey:              caller,
 			ActivatedTimeKey:            time.Now(),
+			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 		}},
 	)
 	if err != nil {
@@ -2017,7 +2019,8 @@ func resetTaskUpdate(t *Task) bson.M {
 			TimeTakenKey:                   0,
 			LastHeartbeatKey:               utility.ZeroTime,
 			ContainerAllocationAttemptsKey: 0,
-			UnattainableDependencyKey:      bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 		},
 		"$unset": bson.M{
 			DetailsKey:                 "",
@@ -2187,14 +2190,7 @@ func (t *Task) MarkUnscheduled() error {
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
 	wasBlocked := t.Blocked()
-	// Check all dependencies in case of erroneous duplicate
-	for i := range t.DependsOn {
-		if t.DependsOn[i].TaskId == dependencyId {
-			t.DependsOn[i].Unattainable = unattainable
-		}
-	}
-
-	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
+	if err := t.updateAllMatchingDependenciesForTask(dependencyId, unattainable); err != nil {
 		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
 	}
 
@@ -2203,12 +2199,6 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		event.LogTaskBlocked(t.Id, t.Execution)
 	}
 	return nil
-}
-
-// RefreshUnattainableDependency refreshes the contents of the task's UnattainableDependency field
-// by iterating through the task's DependsOn.
-func (t *Task) RefreshUnattainableDependency() error {
-	return updateUnattainableDependency(t.Id)
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
@@ -2932,7 +2922,13 @@ func (t *Task) Blocked() bool {
 	if t.OverrideDependencies {
 		return false
 	}
-	return t.hasUnattainableDependency()
+
+	for _, dependency := range t.DependsOn {
+		if dependency.Unattainable {
+			return true
+		}
+	}
+	return false
 }
 
 // isUnscheduled returns true if a task is unscheduled and will not run
