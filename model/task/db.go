@@ -2269,7 +2269,12 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 	}
 
 	taskStats := []taskStatsForQueryResult{}
-	if err := Aggregate(pipeline, &taskStats); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	if err := cursor.All(ctx, &taskStats); err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	result := TaskStats{}
