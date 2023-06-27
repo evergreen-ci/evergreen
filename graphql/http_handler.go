@@ -38,6 +38,17 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
 
+		if queryPath == nil {
+			grip.Error(message.Fields{
+				"path":    "/graphql/query",
+				"message": "graphql operation is null",
+				"error":   err,
+				"stack":   string(debug.Stack()),
+				"request": gimlet.GetRequestID(ctx),
+			})
+			return nil
+		}
+
 		grip.Critical(message.Fields{
 			"path":    "/graphql/query",
 			"message": "unhandled panic",
