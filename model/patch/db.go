@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -144,7 +145,7 @@ type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	IncludeHidden      bool
 }
 
-func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
+func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
 	if opts.OnlyCommitQueue != nil && opts.IncludeCommitQueue != nil {
 		return nil, 0, errors.New("can't both include commit queue patches and also set only including commit queue patches")
 	}
@@ -205,8 +206,6 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 
 	results := []Patch{}
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, paginatePipeline)
 	if err != nil {
 		return nil, 0, err

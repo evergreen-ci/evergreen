@@ -1319,15 +1319,16 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Status:    evergreen.TaskFailed,
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}
-	stats, err := GetTaskStatsByVersion("v1", opts)
+	stats, err := GetTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(stats.Counts))
 	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(Collection, t3, t4, t5, t6))
-	stats, err = GetTaskStatsByVersion("v1", opts)
+	stats, err = GetTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Nil(t, stats.ETA)
 }
@@ -1387,8 +1388,9 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 
 	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
 
+		ctx := context.TODO()
 		opts := GetTasksByVersionOptions{}
-		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(variants))
 		expectedValues := []*GroupedTaskStatusCount{
@@ -1429,8 +1431,8 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		opts := GetTasksByVersionOptions{
 			Variants: []string{"bv1"},
 		}
-
-		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		ctx := context.TODO()
+		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(variants))
 		expectedValues := []*GroupedTaskStatusCount{

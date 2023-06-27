@@ -25,7 +25,7 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		IncludeCommitQueue: patchesInput.IncludeCommitQueue,
 		IncludeHidden:      false,
 	}
-	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(opts)
+	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patches for user %s: %s", utility.FromStringPtr(obj.UserID), err.Error()))
 	}
