@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
@@ -98,7 +97,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			distroIDsFound = append(distroIDsFound, d.Id)
 		}
 		missingDistroIDs := utility.GetSetDifference(distroIDsToFind, distroIDsFound)
-		hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
+		hosts, err := host.FindWithContext(ctx, host.ByDistroIDs(missingDistroIDs...))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding hosts in missing distros: %s", strings.Join(missingDistroIDs, ", ")))
 			return

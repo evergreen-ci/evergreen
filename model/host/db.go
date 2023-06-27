@@ -885,6 +885,19 @@ func Find(query db.Q) ([]Host, error) {
 	return hosts, errors.WithStack(db.FindAllQ(Collection, query, &hosts))
 }
 
+func FindWithContext(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Host, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding hosts")
+	}
+	var hosts []Host
+	if err = cur.Decode(&hosts); err != nil {
+		return nil, errors.Wrap(err, "decoding hosts")
+	}
+
+	return hosts, nil
+}
+
 // Count returns the number of hosts that satisfy the given query.
 func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
