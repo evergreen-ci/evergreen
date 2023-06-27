@@ -318,7 +318,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	err = usr.RemoveRole("superuser")
 	require.NoError(t, err)
 
-	// Should fail if the operation context is missing
+	// Should error if the operation context is missing
 	obj = map[string]interface{}{
 		"project": map[string]interface{}{},
 	}
