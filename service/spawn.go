@@ -21,6 +21,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -193,7 +195,12 @@ func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Requ
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := distro.Find(distro.BySpawnAllowed().WithFields(distro.IdKey, distro.IsVirtualWorkstationKey, distro.IsClusterKey, distro.ProviderSettingsListKey))
+	distros, err := distro.FindWithContext(r.Context(), distro.BySpawnAllowed(), options.Find().SetProjection(bson.M{
+		distro.IdKey:                   1,
+		distro.IsVirtualWorkstationKey: 1,
+		distro.IsClusterKey:            1,
+		distro.ProviderSettingsListKey: 1,
+	}))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading distros"))
 		return

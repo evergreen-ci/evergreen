@@ -412,7 +412,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsHostsPlanning(config.ContainerPools.Pools))
+		distros, err := distro.FindWithContext(ctx, distro.ByNeedsHostsPlanning(config.ContainerPools.Pools))
 		if err != nil {
 			return errors.Wrap(err, "finding distros that need planning")
 		}
@@ -457,7 +457,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Wrap(err, "finding task queue generation runtime")
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		distros, err := distro.FindWithContext(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
 		catcher.Wrap(err, "finding distros that need planning")
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -528,7 +528,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		distros, err := distro.FindWithContext(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
 		catcher.Add(err)
 
 		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
@@ -578,7 +578,7 @@ func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		distros, err := distro.FindWithContext(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
 		catcher.Wrap(err, "getting distros that need planning")
 
 		ts := utility.RoundPartOfMinute(0)

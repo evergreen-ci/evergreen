@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -13,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TaskFinder func(distro.Distro) ([]task.Task, error)
+type TaskFinder func(context.Context, distro.Distro) ([]task.Task, error)
 
 func GetTaskFinder(version string) TaskFinder {
 	switch version {
@@ -30,15 +31,15 @@ func GetTaskFinder(version string) TaskFinder {
 	}
 }
 
-func RunnableTasksPipeline(d distro.Distro) ([]task.Task, error) {
-	return task.FindHostRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
+func RunnableTasksPipeline(ctx context.Context, d distro.Distro) ([]task.Task, error) {
+	return task.FindHostRunnable(ctx, d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
 // instead of using $graphLookup
-func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
+func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.FindHostSchedulable(d.Id)
+	undispatchedTasks, err := task.FindHostSchedulable(ctx, d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +127,8 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 	return runnableTasks, nil
 }
 
-func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindHostSchedulable(d.Id)
+func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindHostSchedulable(ctx, d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -235,8 +236,8 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 	return runnabletasks, nil
 }
 
-func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindHostSchedulable(d.Id)
+func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindHostSchedulable(ctx, d.Id)
 	if err != nil {
 		return nil, err
 	}

@@ -72,7 +72,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	}
 
 	startAt := time.Now()
-	tasks, err := task.FindHostSchedulableForAlias(j.DistroID)
+	tasks, err := task.FindHostSchedulableForAlias(ctx, j.DistroID)
 	j.AddError(errors.Wrapf(err, "finding tasks schedulable for secondary distro '%s'", j.DistroID))
 	if tasks == nil {
 		return

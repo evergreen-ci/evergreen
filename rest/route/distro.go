@@ -801,7 +801,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 			continue
 		}
 		var distros []distro.Distro
-		distros, err = distro.Find(distro.ByIds(distroIDs))
+		distros, err = distro.FindWithContext(ctx, distro.ByIds(distroIDs))
 		if err != nil {
 			catcher.Wrapf(err, "finding distros '%s' for host '%s'", host.Distro.Id, host.Id)
 			continue

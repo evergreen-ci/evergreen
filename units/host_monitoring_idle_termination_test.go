@@ -567,7 +567,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	for _, info := range distroHosts {
 		distroIDsToFind = append(distroIDsToFind, info.DistroID)
 	}
-	distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
+	distrosFound, err := distro.FindWithContext(ctx, distro.ByIds(distroIDsToFind))
 	assert.NoError(err)
 	distrosMap := make(map[string]distro.Distro, len(distrosFound))
 	for i := range distrosFound {

@@ -27,7 +27,7 @@ type spawnResponse struct {
 }
 
 func (as *APIServer) listDistros(w http.ResponseWriter, r *http.Request) {
-	distros, err := distro.Find(distro.BySpawnAllowed())
+	distros, err := distro.FindWithContext(r.Context(), distro.BySpawnAllowed())
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

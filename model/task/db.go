@@ -985,12 +985,12 @@ func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filter
 // FindHostRunnable finds all host tasks that can be scheduled for a distro with
 // an additional consideration for whether the task's dependencies are met. If
 // removeDeps is true, tasks with unmet dependencies are excluded.
-func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
+func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]Task, error) {
 	match := schedulableHostTasksQuery()
 	var d distro.Distro
 	var err error
 	if distroID != "" {
-		foundDistro, err := distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		foundDistro, err := distro.FindOneWithContext(ctx, distro.ById(distroID), options.FindOne().SetProjection(bson.M{distro.ValidProjectsKey: 1}))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}
@@ -999,7 +999,7 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		}
 	}
 
-	if err = addApplicableDistroFilter(distroID, DistroIdKey, match); err != nil {
+	if err = addApplicableDistroFilter(ctx, distroID, DistroIdKey, match); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

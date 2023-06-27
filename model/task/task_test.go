@@ -1245,6 +1245,10 @@ func TestBulkInsert(t *testing.T) {
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
@@ -1267,7 +1271,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("")
+	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "")
 	assert.NoError(err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
@@ -1382,6 +1386,9 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
@@ -1401,7 +1408,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1410,6 +1417,9 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
@@ -1430,7 +1440,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
