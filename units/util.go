@@ -46,7 +46,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return nil
 	}
 
-	err := h.DisablePoisonedHost(reason)
+	err := h.DisablePoisonedHost(ctx, reason)
 	if err != nil {
 		return errors.Wrap(err, "disabling poisoned host")
 	}

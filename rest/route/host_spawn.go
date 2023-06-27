@@ -967,7 +967,7 @@ func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 
 	} else if host.Status == evergreen.HostUninitialized {
-		if err := host.SetStatus(evergreen.HostTerminated, u.Id, fmt.Sprintf("changed by %s from API", u.Id)); err != nil {
+		if err := host.SetStatus(ctx, evergreen.HostTerminated, u.Id, fmt.Sprintf("changed by %s from API", u.Id)); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),

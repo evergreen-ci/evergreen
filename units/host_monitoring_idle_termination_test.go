@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -468,6 +469,11 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 		assert.NoError(db.DropCollections(host.Collection, distro.Collection))
 	}()
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	env := mock.Environment{}
+	assert.NoError(env.Configure(ctx))
+
 	require.NoError(t, db.EnsureIndex(host.Collection, mongo.IndexModel{
 		Keys: host.StartedByStatusIndex,
 	}))
@@ -553,7 +559,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.NoError(host5.Insert())
 	assert.NoError(host6.Insert())
 
-	distroHosts, err := host.IdleEphemeralGroupedByDistroID()
+	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, &env)
 	assert.NoError(err)
 	assert.Equal(2, len(distroHosts))
 

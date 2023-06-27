@@ -807,7 +807,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	defer m.client.Close()
 
 	if !IsEC2InstanceID(h.Id) {
-		return errors.Wrap(h.Terminate(user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
+		return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
@@ -865,7 +865,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}
 	}
 
-	return errors.Wrap(h.Terminate(user, reason), "terminating host in DB")
+	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating host in DB")
 }
 
 // StopInstance stops a running EC2 instance.
@@ -893,7 +893,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		status := ec2StatusToEvergreenStatus(instance.CurrentState.Name)
 		switch status {
 		case StatusStopping:
-			grip.Error(message.WrapError(h.SetStopping(user), message.Fields{
+			grip.Error(message.WrapError(h.SetStopping(ctx, user), message.Fields{
 				"message": "could not mark host as stopping, continuing to poll instance status anyways",
 				"host_id": h.Id,
 				"user":    user,
@@ -1001,7 +1001,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		"distro":        h.Distro.Id,
 	})
 
-	return errors.Wrap(h.SetRunning(user), "failed to mark instance as running in DB")
+	return errors.Wrap(h.SetRunning(ctx, user), "failed to mark instance as running in DB")
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {

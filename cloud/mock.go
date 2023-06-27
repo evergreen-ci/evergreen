@@ -263,7 +263,7 @@ func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, us
 	instance.Status = StatusTerminated
 	m.Instances[host.Id] = instance
 
-	return errors.WithStack(host.Terminate(user, reason))
+	return errors.WithStack(host.Terminate(ctx, user, reason))
 }
 
 func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
@@ -298,7 +298,7 @@ func (m *mockManager) StartInstance(ctx context.Context, host *host.Host, user s
 	instance.Status = StatusRunning
 	m.Instances[host.Id] = instance
 
-	return errors.WithStack(host.SetRunning(user))
+	return errors.WithStack(host.SetRunning(ctx, user))
 }
 
 func (m *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {

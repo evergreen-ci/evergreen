@@ -102,7 +102,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = scheduler.UpdateStaticDistro(*distro); err != nil {
+	if err = scheduler.UpdateStaticDistro(ctx, *distro); err != nil {
 		j.AddError(errors.Wrapf(err, "updating static host in distro '%s'", j.DistroID))
 		return
 	}

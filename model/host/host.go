@@ -507,7 +507,7 @@ func IsIntentHostId(id string) bool {
 
 // SetStatus updates a host's status on behalf of the given user.
 // Clears last running task for hosts that are being moved to running, since this information is likely outdated.
-func (h *Host) SetStatus(newStatus, user, logs string) error {
+func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) error {
 	var unset bson.M
 	if newStatus == evergreen.HostRunning {
 		unset = bson.M{
@@ -519,12 +519,12 @@ func (h *Host) SetStatus(newStatus, user, logs string) error {
 			LTCProjectKey: 1,
 		}
 	}
-	return h.setStatusAndFields(newStatus, nil, nil, unset, user, logs)
+	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
 }
 
 // setStatusAndFields sets the status as well as any of the other given fields.
 // Accepts fields to query in addition to host status.
-func (h *Host) setStatusAndFields(newStatus string, query, setFields, unsetFields bson.M, user, logs string) error {
+func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, setFields, unsetFields bson.M, user, logs string) error {
 	if h.Status == newStatus {
 		return nil
 	}
@@ -556,7 +556,8 @@ func (h *Host) setStatusAndFields(newStatus string, query, setFields, unsetField
 		update["$unset"] = unsetFields
 	}
 
-	if err := UpdateOne(
+	if err := UpdateOneWithContext(
+		ctx,
 		query,
 		update,
 	); err != nil {
@@ -637,7 +638,7 @@ func (h *Host) SetProvisioning() error {
 
 // SetDecommissioned sets the host as decommissioned. If checkTaskGroup is set,
 // we only update the host if it hasn't started running a task group.
-func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) error {
+func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGroup bool, logs string) error {
 	query := bson.M{}
 	if checkTaskGroup {
 		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
@@ -651,7 +652,7 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 		catcher := grip.NewBasicCatcher()
 		failedContainerIds := []string{}
 		for _, c := range containers {
-			err = c.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, user, "parent is being decommissioned")
+			err = c.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, "parent is being decommissioned")
 			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
 				catcher.Add(err)
 				failedContainerIds = append(failedContainerIds, c.Id)
@@ -662,7 +663,7 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 			"host_ids": failedContainerIds,
 		}))
 	}
-	err := h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, user, logs)
+	err := h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, logs)
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
 	if err != nil && checkTaskGroup && adb.ResultsNotFound(err) {
@@ -671,16 +672,16 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 	return err
 }
 
-func (h *Host) SetRunning(user string) error {
-	return h.SetStatus(evergreen.HostRunning, user, "")
+func (h *Host) SetRunning(ctx context.Context, user string) error {
+	return h.SetStatus(ctx, evergreen.HostRunning, user, "")
 }
 
-func (h *Host) SetTerminated(user, reason string) error {
-	return h.SetStatus(evergreen.HostTerminated, user, reason)
+func (h *Host) SetTerminated(ctx context.Context, user, reason string) error {
+	return h.SetStatus(ctx, evergreen.HostTerminated, user, reason)
 }
 
-func (h *Host) SetStopping(user string) error {
-	return h.SetStatus(evergreen.HostStopping, user, "")
+func (h *Host) SetStopping(ctx context.Context, user string) error {
+	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }
 
 func (h *Host) SetStopped(user string) error {
@@ -735,8 +736,8 @@ func (h *Host) SetUnprovisioned() error {
 	return nil
 }
 
-func (h *Host) SetQuarantined(user string, logs string) error {
-	return h.SetStatus(evergreen.HostQuarantined, user, logs)
+func (h *Host) SetQuarantined(ctx context.Context, user string, logs string) error {
+	return h.SetStatus(ctx, evergreen.HostQuarantined, user, logs)
 }
 
 // CreateSecret generates a host secret and updates the host both locally
@@ -922,9 +923,9 @@ func (h *Host) ResetLastCommunicated() error {
 
 // Terminate marks a host as terminated, sets the termination time, and unsets
 // the host volumes.
-func (h *Host) Terminate(user, reason string) error {
+func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	terminatedAt := time.Now()
-	if err := h.setStatusAndFields(evergreen.HostTerminated, nil, bson.M{
+	if err := h.setStatusAndFields(ctx, evergreen.HostTerminated, nil, bson.M{
 		TerminationTimeKey: terminatedAt,
 		VolumesKey:         nil,
 	}, nil, user, reason); err != nil {
@@ -1807,9 +1808,9 @@ func DecommissionHostsWithDistroId(distroId string) error {
 	return err
 }
 
-func (h *Host) DisablePoisonedHost(logs string) error {
+func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
 	if h.Provider == evergreen.ProviderNameStatic {
-		if err := h.SetQuarantined(evergreen.User, logs); err != nil {
+		if err := h.SetQuarantined(ctx, evergreen.User, logs); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -1824,7 +1825,7 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(evergreen.User, false, logs))
+	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, false, logs))
 }
 
 func (h *Host) SetExtId() error {

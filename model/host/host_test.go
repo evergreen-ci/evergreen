@@ -250,6 +250,8 @@ func TestMonitorHosts(t *testing.T) {
 }
 
 func TestUpdatingHostStatus(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
 	Convey("With a host", t, func() {
 		require.NoError(t, db.Clear(Collection))
@@ -265,7 +267,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 		Convey("setting the host's status should update both the in-memory"+
 			" and database versions of the host", func() {
 
-			So(host.SetStatus(evergreen.HostRunning, evergreen.User, ""), ShouldBeNil)
+			So(host.SetStatus(ctx, evergreen.HostRunning, evergreen.User, ""), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
 			host, err = FindOne(ById(host.Id))
@@ -276,8 +278,8 @@ func TestUpdatingHostStatus(t *testing.T) {
 		Convey("if the host is terminated, the status update should fail"+
 			" with an error", func() {
 
-			So(host.SetStatus(evergreen.HostTerminated, evergreen.User, ""), ShouldBeNil)
-			So(host.SetStatus(evergreen.HostRunning, evergreen.User, ""), ShouldNotBeNil)
+			So(host.SetStatus(ctx, evergreen.HostTerminated, evergreen.User, ""), ShouldBeNil)
+			So(host.SetStatus(ctx, evergreen.HostRunning, evergreen.User, ""), ShouldNotBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 
 			host, err = FindOne(ById(host.Id))
@@ -288,12 +290,15 @@ func TestUpdatingHostStatus(t *testing.T) {
 }
 
 func TestSetStatusAndFields(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
-			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, nil, nil, nil, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(ctx, evergreen.HostDecommissioned, nil, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			assert.NoError(t, err)
@@ -304,7 +309,7 @@ func TestSetStatusAndFields(t *testing.T) {
 
 			currentStatus := h.Status
 			newDisplayName := "new-display-name"
-			require.NoError(t, h.setStatusAndFields(currentStatus, nil, bson.M{DisplayNameKey: newDisplayName}, nil, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(ctx, currentStatus, nil, bson.M{DisplayNameKey: newDisplayName}, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -315,7 +320,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		"UpdatesOnlyStatus": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 			newStatus := evergreen.HostQuarantined
-			require.NoError(t, h.setStatusAndFields(newStatus, nil, nil, nil, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(ctx, newStatus, nil, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -327,7 +332,7 @@ func TestSetStatusAndFields(t *testing.T) {
 
 			newStatus := evergreen.HostQuarantined
 			newDisplayName := "new-display-name"
-			require.NoError(t, h.setStatusAndFields(newStatus, nil, bson.M{DisplayNameKey: newDisplayName}, nil, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(ctx, newStatus, nil, bson.M{DisplayNameKey: newDisplayName}, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -341,7 +346,7 @@ func TestSetStatusAndFields(t *testing.T) {
 			assert.NoError(t, h.Insert())
 
 			newStatus := evergreen.HostQuarantined
-			assert.NoError(t, h.setStatusAndFields(newStatus, nil, nil, bson.M{LTCTaskKey: 1}, evergreen.User, ""))
+			assert.NoError(t, h.setStatusAndFields(ctx, newStatus, nil, nil, bson.M{LTCTaskKey: 1}, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			assert.NoError(t, err)
@@ -354,7 +359,7 @@ func TestSetStatusAndFields(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.setStatusAndFields(evergreen.HostRunning, nil, nil, nil, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -367,7 +372,7 @@ func TestSetStatusAndFields(t *testing.T) {
 			query := bson.M{
 				RunningTaskGroupKey: bson.M{"$eq": ""},
 			}
-			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -387,6 +392,9 @@ func TestSetStatusAndFields(t *testing.T) {
 }
 
 func TestDecommissionHost(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
 		Id:               "myHost",
@@ -395,7 +403,7 @@ func TestDecommissionHost(t *testing.T) {
 	}
 	assert.NoError(t, h.Insert())
 
-	assert.NoError(t, h.SetDecommissioned("user", true, "because I said so"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "because I said so"))
 
 	// Updating shouldn't work because we checked task group.
 	hostFromDb, err := FindOneId(h.Id)
@@ -404,7 +412,7 @@ func TestDecommissionHost(t *testing.T) {
 	assert.NotEqual(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
 
-	assert.NoError(t, h.SetDecommissioned("user", false, "counting to three"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", false, "counting to three"))
 
 	// Updating should work because we ignored task group.
 	hostFromDb, err = FindOneId(h.Id)
@@ -438,6 +446,8 @@ func TestSetStopped(t *testing.T) {
 }
 
 func TestSetHostTerminated(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
 	Convey("With a host", t, func() {
 
@@ -455,7 +465,7 @@ func TestSetHostTerminated(t *testing.T) {
 			" termination time in both the in-memory and database copies of"+
 			" the host", func() {
 
-			So(host.Terminate(evergreen.User, ""), ShouldBeNil)
+			So(host.Terminate(ctx, evergreen.User, ""), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
@@ -1930,6 +1940,12 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	env := mock.Environment{}
+	assert.NoError(env.Configure(ctx))
+
 	setupIdleHostQueryIndex(t)
 
 	defer func() {
@@ -2077,7 +2093,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	require.NoError(host9.Insert())
 	require.NoError(host10.Insert())
 
-	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroID()
+	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroID(ctx, &env)
 	assert.NoError(err)
 	assert.Len(idleHostsByDistroID, 3)
 
@@ -5264,9 +5280,12 @@ func (s *FindHostsSuite) TestLimit() {
 }
 
 func (s *FindHostsSuite) TestSetHostStatus() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	h, err := FindOneId("host1")
 	s.NoError(err)
-	s.NoError(h.SetStatus(evergreen.HostTerminated, evergreen.User, fmt.Sprintf("changed by %s from API", evergreen.User)))
+	s.NoError(h.SetStatus(ctx, evergreen.HostTerminated, evergreen.User, fmt.Sprintf("changed by %s from API", evergreen.User)))
 
 	for i := 1; i < 5; i++ {
 		h, err := FindOneId(fmt.Sprintf("host%d", i))

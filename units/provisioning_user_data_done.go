@@ -128,7 +128,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				"job":     j.ID(),
 			}))
 			j.AddError(err)
-			j.AddError(j.host.SetStatus(evergreen.HostProvisionFailed, evergreen.User, "decommissioning host after failing to mount volume"))
+			j.AddError(j.host.SetStatus(ctx, evergreen.HostProvisionFailed, evergreen.User, "decommissioning host after failing to mount volume"))
 
 			terminateJob := NewHostTerminationJob(j.env, j.host, HostTerminationOptions{
 				TerminateIfBusy:   true,

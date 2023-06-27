@@ -19,6 +19,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -165,8 +166,7 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 // IdleEphemeralGroupedByDistroId groups and collates the following by distro.Id:
 // - []host.Host of ephemeral hosts without containers which having no running task, ordered by {host.CreationTime: 1}
 // - the total number of ephemeral hosts that are capable of running tasks
-func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
-	var idlehostsByDistroID []IdleHostsByDistroID
+func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environment) ([]IdleHostsByDistroID, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	pipeline := []bson.M{
 		{
@@ -205,8 +205,13 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 		},
 	}
 
-	if err := db.AggregateWithHint(Collection, pipeline, StartedByStatusIndex, &idlehostsByDistroID); err != nil {
+	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(StartedByStatusIndex))
+	if err != nil {
 		return nil, errors.Wrap(err, "grouping idle hosts by distro ID")
+	}
+	var idlehostsByDistroID []IdleHostsByDistroID
+	if err = cur.All(ctx, &idlehostsByDistroID); err != nil {
+		return nil, errors.Wrap(err, "reading grouped idle hosts by distro ID")
 	}
 
 	return idlehostsByDistroID, nil
@@ -892,6 +897,19 @@ func UpdateOne(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
+}
+
+// UpdateOneWithContext updates one host.
+func UpdateOneWithContext(ctx context.Context, query interface{}, update interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	return nil
 }
 
 // UpdateAll updates all hosts.

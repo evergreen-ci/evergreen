@@ -127,7 +127,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	return nil
 }
 
-func UpdateStaticDistro(d distro.Distro) error {
+func UpdateStaticDistro(ctx context.Context, d distro.Distro) error {
 	if d.Provider != evergreen.ProviderNameStatic {
 		return nil
 	}
@@ -140,7 +140,7 @@ func UpdateStaticDistro(d distro.Distro) error {
 	if d.Id == "" && len(d.Aliases) == 0 {
 		return nil
 	}
-	return host.MarkInactiveStaticHosts(hosts, &d)
+	return host.MarkInactiveStaticHosts(ctx, hosts, &d)
 }
 
 func doStaticHostUpdate(d distro.Distro) ([]string, error) {

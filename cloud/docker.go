@@ -164,7 +164,7 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 	})
 
 	// Set the host status as terminated and update its termination time
-	return h.Terminate(user, reason)
+	return h.Terminate(ctx, user, reason)
 }
 
 func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {

@@ -219,7 +219,7 @@ func TestHostNextTask(t *testing.T) {
 				"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					intentHost, err := host.FindOneId("intentHost")
 					require.NoError(t, err)
-					require.NoError(t, intentHost.SetStatus(evergreen.HostBuildingFailed, evergreen.User, ""))
+					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostBuildingFailed, evergreen.User, ""))
 
 					instanceID := generateFakeEC2InstanceID()
 					rh.host = intentHost
@@ -249,7 +249,7 @@ func TestHostNextTask(t *testing.T) {
 				"ConvertsTerminatedHostIntoDecommissionedRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					intentHost, err := host.FindOneId("intentHost")
 					require.NoError(t, err)
-					require.NoError(t, intentHost.SetStatus(evergreen.HostTerminated, evergreen.User, ""))
+					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostTerminated, evergreen.User, ""))
 
 					instanceID := generateFakeEC2InstanceID()
 					rh.host = intentHost
@@ -315,7 +315,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, nonLegacyHost.Insert())
 
 			for _, status = range []string{evergreen.HostQuarantined, evergreen.HostDecommissioned, evergreen.HostTerminated} {
-				require.NoError(t, nonLegacyHost.SetStatus(status, evergreen.User, ""))
+				require.NoError(t, nonLegacyHost.SetStatus(ctx, status, evergreen.User, ""))
 				rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 				rh.host = &nonLegacyHost
 				resp := rh.Run(ctx)

@@ -31,7 +31,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			assert.Equal(t, h.Id, readyJob.HostID)
 		},
 		"RunNoopsIfHostNotProvisioning": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			require.NoError(t, h.SetRunning(evergreen.User))
+			require.NoError(t, h.SetRunning(ctx, evergreen.User))
 
 			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			j.Run(ctx)

@@ -169,7 +169,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 			continue
 		}
 		// Decommission the host to prevent this job from checking it again.
-		catcher.Wrap(h.SetDecommissioned(evergreen.User, false, "cloud host has no status"), "setting nonexistent host to decommissioned in preparation for termination")
+		catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, "cloud host has no status"), "setting nonexistent host to decommissioned in preparation for termination")
 
 		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
 			TerminateIfBusy:   true,
@@ -203,7 +203,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(handleTerminatedHostSpawnedByTask(&h), "handling host.create host that was terminating before it was running")
-		catcher.Wrap(h.SetDecommissioned(evergreen.User, false, fmt.Sprintf("host status is '%s'", cloudStatus.String())), "decommissioning host")
+		catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, fmt.Sprintf("host status is '%s'", cloudStatus.String())), "decommissioning host")
 		terminationJob := NewHostTerminationJob(j.env, &h, HostTerminationOptions{
 			TerminateIfBusy:          true,
 			TerminationReason:        "instance was found in stopped state",

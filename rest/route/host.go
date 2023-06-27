@@ -78,7 +78,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		case evergreen.HostTerminated:
 			err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API"))
 		default:
-			err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
+			err = foundHost.SetStatus(ctx, status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)

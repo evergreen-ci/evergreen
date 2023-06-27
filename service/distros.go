@@ -279,7 +279,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = host.MarkInactiveStaticHosts([]string{}, d); err != nil {
+	if err = host.MarkInactiveStaticHosts(r.Context(), []string{}, d); err != nil {
 		message := fmt.Sprintf("error removing hosts for distro '%s': %s", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)

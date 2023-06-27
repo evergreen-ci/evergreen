@@ -156,7 +156,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		// If the host never successfully started, this means the host is an
 		// intent host, and should be marked terminated, and not in the cloud
 		// provider.
-		if err := j.host.Terminate(evergreen.User, j.TerminationReason); err != nil {
+		if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
 			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
 		}
 		return
@@ -222,7 +222,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
 	if prevStatus != evergreen.HostTerminated {
-		if err = j.host.SetDecommissioned(evergreen.User, false, "host will be terminated shortly, preventing task dispatch"); err != nil {
+		if err = j.host.SetDecommissioned(ctx, evergreen.User, false, "host will be terminated shortly, preventing task dispatch"); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
@@ -273,7 +273,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}
 		}
 		if parent == nil || parent.Status == evergreen.HostTerminated {
-			if err = j.host.Terminate(evergreen.User, "parent was already terminated"); err != nil {
+			if err = j.host.Terminate(ctx, evergreen.User, "parent was already terminated"); err != nil {
 				j.AddError(errors.Wrapf(err, "terminating container '%s' in DB", j.host.Id))
 			}
 			return
@@ -343,7 +343,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 // host and only mark the host as terminated in the DB .
 func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, oldStatus string) error {
 	if j.SkipCloudHostTermination {
-		return errors.Wrap(j.host.Terminate(evergreen.User, j.TerminationReason), "marking DB host terminated")
+		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking DB host terminated")
 	}
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
@@ -360,12 +360,12 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(errors.Wrap(err, "getting cloud host instance status"))
 		if !utility.StringSliceContains(evergreen.UpHostStatus, oldStatus) {
-			catcher.Wrap(j.host.Terminate(evergreen.User, j.TerminationReason), "marking host as terminated")
+			catcher.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking host as terminated")
 		}
 		return catcher.Resolve()
 	}
 	if cloudStatus == cloud.StatusNonExistent {
-		return errors.Wrap(j.host.Terminate(evergreen.User, j.TerminationReason), "marking nonexistent host as terminated")
+		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking nonexistent host as terminated")
 	}
 
 	if cloudStatus == cloud.StatusTerminated {
@@ -379,7 +379,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 		})
 		catcher := grip.NewBasicCatcher()
 		catcher.New("host is already terminated in the cloud")
-		catcher.Wrap(j.host.Terminate(evergreen.User, "cloud provider indicated that host was already terminated"), "marking host as terminated")
+		catcher.Wrap(j.host.Terminate(ctx, evergreen.User, "cloud provider indicated that host was already terminated"), "marking host as terminated")
 		return catcher.Resolve()
 	}
 

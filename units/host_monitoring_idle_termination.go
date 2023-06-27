@@ -76,7 +76,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	}
 
 	// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
-	distroHosts, err := host.IdleEphemeralGroupedByDistroID()
+	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, j.env)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding idle ephemeral hosts grouped by distro ID"))
 		return
@@ -104,7 +104,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			return
 		}
 		for _, h := range hosts {
-			j.AddError(errors.Wrapf(h.SetDecommissioned(evergreen.User, false, "host's distro not found"), "could not set host '%s' as decommissioned", h.Id))
+			j.AddError(errors.Wrapf(h.SetDecommissioned(ctx, evergreen.User, false, "host's distro not found"), "could not set host '%s' as decommissioned", h.Id))
 		}
 
 		if j.HasErrors() {

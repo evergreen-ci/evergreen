@@ -119,7 +119,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), http.StatusOK, nil
 	}
 
-	err := h.SetStatus(newStatus, u.Id, notes)
+	err := h.SetStatus(ctx, newStatus, u.Id, notes)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 	}

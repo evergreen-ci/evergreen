@@ -255,7 +255,7 @@ func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
-	err = data.DeleteDistroById(h.distroID)
+	err = data.DeleteDistroById(ctx, h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting distro '%s'", h.distroID))
 	}

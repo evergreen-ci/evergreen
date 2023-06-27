@@ -1,7 +1,9 @@
 package host
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -12,6 +14,8 @@ import (
 )
 
 func TestDecommissionInactiveStaticHosts(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
 	Convey("When decommissioning unused static hosts", t, func() {
 
@@ -62,7 +66,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			So(inactiveUnknownTypeOne.Insert(), ShouldBeNil)
 
 			activeStaticHosts := []string{"activeStaticOne", "activeStaticTwo"}
-			So(MarkInactiveStaticHosts(activeStaticHosts, nil), ShouldBeNil)
+			So(MarkInactiveStaticHosts(ctx, activeStaticHosts, nil), ShouldBeNil)
 
 			found, err := Find(IsTerminated)
 			So(err, ShouldBeNil)
@@ -74,6 +78,9 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 }
 
 func TestTerminateStaticHostsForDistro(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
 		{
@@ -123,18 +130,21 @@ func TestTerminateStaticHostsForDistro(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, found, 0)
 	d := &distro.Distro{Id: "d1"}
-	assert.NoError(t, MarkInactiveStaticHosts([]string{}, d))
+	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{}, d))
 	found, err = Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 	d2 := &distro.Distro{Id: "d2"}
-	assert.NoError(t, MarkInactiveStaticHosts([]string{}, d2))
+	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{}, d2))
 	found, err = Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 4)
 }
 
 func TestTerminateStaticHostsForDistroAliases(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
 		{
@@ -178,7 +188,7 @@ func TestTerminateStaticHostsForDistroAliases(t *testing.T) {
 		Id:      "d1",
 		Aliases: []string{"dAlias"},
 	}
-	assert.NoError(t, MarkInactiveStaticHosts([]string{"h1"}, d))
+	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{"h1"}, d))
 	found, err := Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)

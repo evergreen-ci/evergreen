@@ -256,7 +256,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 	// The host is going to imminently stop work anyways. Decommissioning
 	// ensures that even if the external state check does not terminate the
 	// host, the host is eventually picked up for termination.
-	if err := h.SetDecommissioned(evergreen.User, false, "SNS notification indicates host is terminated"); err != nil {
+	if err := h.SetDecommissioned(ctx, evergreen.User, false, "SNS notification indicates host is terminated"); err != nil {
 		return errors.Wrap(err, "decommissioning host")
 	}
 
@@ -320,7 +320,7 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 	// The host is going to imminently stop work anyways. Decommissioning
 	// ensures that even if the external state check does not terminate the
 	// host, the host is eventually picked up for termination.
-	if err := h.SetDecommissioned(evergreen.User, false, "SNS notification indicates host is stopped"); err != nil {
+	if err := h.SetDecommissioned(ctx, evergreen.User, false, "SNS notification indicates host is stopped"); err != nil {
 		return errors.Wrap(err, "decommissioning host")
 	}
 

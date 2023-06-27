@@ -201,7 +201,7 @@ func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, use
 	}
 
 	// Set the host status as terminated and update its termination time
-	return host.Terminate(user, reason)
+	return host.Terminate(ctx, user, reason)
 }
 
 func (m *gceManager) StopInstance(ctx context.Context, host *host.Host, user string) error {

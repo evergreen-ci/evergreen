@@ -157,7 +157,7 @@ func (m *vsphereManager) TerminateInstance(ctx context.Context, host *host.Host,
 	}
 
 	// Set the host status as terminated and update its termination time
-	if err := host.Terminate(user, reason); err != nil {
+	if err := host.Terminate(ctx, user, reason); err != nil {
 		return errors.Wrapf(err, "could not terminate host %s in db", host.Id)
 	}
 

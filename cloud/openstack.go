@@ -169,7 +169,7 @@ func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Hos
 	}
 
 	// Set the host status as terminated and update its termination time
-	return errors.WithStack(host.Terminate(user, reason))
+	return errors.WithStack(host.Terminate(ctx, user, reason))
 }
 
 func (m *openStackManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
