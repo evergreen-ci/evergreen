@@ -891,7 +891,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	}
 
 	if h.opts.RevisionEnd < 0 {
-		return errors.New("revision_end must be non-negative integers")
+		return errors.New("revision_end must be a non-negative integer")
 	}
 
 	requester := params.Get("requester")
