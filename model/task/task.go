@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1650,6 +1652,21 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 }
 
 func topologicalSort(tasks []Task) ([]Task, error) {
+	var fromTask, toTask string
+	defer func() {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.Id)
+		}
+		grip.Error(message.Fields{
+			"error":          recovery.HandlePanicWithError(recover(), nil, "problem adding edge"),
+			"function":       "topologicalSort",
+			"from_task":      fromTask,
+			"to_task":        toTask,
+			"original_tasks": taskIds,
+			"stack":          string(debug.Stack()),
+		})
+	}()
 	depGraph := simple.NewDirectedGraph()
 	taskNodeMap := make(map[string]graph.Node)
 	nodeTaskMap := make(map[int64]Task)
@@ -1663,10 +1680,12 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 
 	for _, task := range tasks {
 		for _, dep := range task.DependsOn {
-			if toNode, ok := taskNodeMap[dep.TaskId]; ok {
+			fromTask = dep.TaskId
+			if toNode, ok := taskNodeMap[fromTask]; ok {
+				toTask = task.Id
 				edge := simple.Edge{
 					F: simple.Node(toNode.ID()),
-					T: simple.Node(taskNodeMap[task.Id].ID()),
+					T: simple.Node(taskNodeMap[toTask].ID()),
 				}
 				depGraph.SetEdge(edge)
 			}

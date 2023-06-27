@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	GitFetchProjectRetries = 5
+	gitFetchProjectRetries = 5
 	defaultCommitterName   = "Evergreen Agent"
 	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
 	shallowCloneDepth      = 100
@@ -76,17 +76,18 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method            string
-	location          string
-	owner             string
-	repo              string
-	branch            string
-	dir               string
-	token             string
-	cloneParams       string
-	recurseSubmodules bool
-	useVerbose        bool
-	cloneDepth        int
+	method                 string
+	location               string
+	owner                  string
+	repo                   string
+	branch                 string
+	dir                    string
+	token                  string
+	cloneParams            string
+	recurseSubmodules      bool
+	useVerbose             bool
+	usePatchMergeCommitSha bool
+	cloneDepth             int
 }
 
 func (opts cloneOpts) validate() error {
@@ -302,13 +303,19 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 	if isGitHub(conf) {
 		var ref, localBranchName, remoteBranchName, commitToTest string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
-			// Proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
-			// will make it check.
-			commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
-			if err != nil {
-				commitToTest = conf.GithubPatchData.HeadHash
-				logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
-				logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
+			// If opts indicates this is the first attempt (of five), start by trying the patch's
+			// cached MergeCommitSHA from when it was created and skip the agent route.
+			if opts.usePatchMergeCommitSha {
+				commitToTest = conf.GithubPatchData.MergeCommitSHA
+			}
+			if commitToTest == "" {
+				// Proceed if github has confirmed this pr is mergeable.
+				commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
+				if err != nil {
+					commitToTest = conf.GithubPatchData.HeadHash
+					logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
+					logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
+				}
 			}
 			ref = "merge"
 			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
@@ -435,14 +442,15 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		method:            projectMethod,
-		owner:             conf.ProjectRef.Owner,
-		repo:              conf.ProjectRef.Repo,
-		branch:            conf.ProjectRef.Branch,
-		dir:               c.Directory,
-		token:             projectToken,
-		cloneParams:       c.CloneParams,
-		recurseSubmodules: c.RecurseSubmodules,
+		method:                 projectMethod,
+		owner:                  conf.ProjectRef.Owner,
+		repo:                   conf.ProjectRef.Repo,
+		branch:                 conf.ProjectRef.Branch,
+		dir:                    c.Directory,
+		token:                  projectToken,
+		cloneParams:            c.CloneParams,
+		recurseSubmodules:      c.RecurseSubmodules,
+		usePatchMergeCommitSha: true,
 	}
 	cloneDepth := c.CloneDepth
 	if cloneDepth == 0 && c.ShallowClone {
@@ -503,18 +511,24 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 				opts.useVerbose = true // use verbose for the last 2 attempts
 				logger.Task().Error(message.Fields{
 					"message":      "running git clone with verbose output",
-					"num_attempts": GitFetchProjectRetries,
+					"num_attempts": gitFetchProjectRetries,
 					"attempt":      attemptNum,
 				})
 			}
-
+			if attemptNum > 0 {
+				// If clone failed once with the cached merge SHA, do not use it again
+				opts.usePatchMergeCommitSha = false
+			}
 			if err := c.fetch(ctx, comm, logger, conf, opts); err != nil {
 				attemptNum++
+				if attemptNum == 1 {
+					logger.Execution().Warning("git clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
+				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
 			return false, nil
 		}, utility.RetryOptions{
-			MaxAttempts: GitFetchProjectRetries,
+			MaxAttempts: gitFetchProjectRetries,
 			MinDelay:    fetchRetryMinDelay,
 			MaxDelay:    fetchRetryMaxDelay,
 		})
@@ -523,7 +537,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 			"operation":            "git.get_project",
 			"message":              "cloning failed",
 			"num_attempts":         attemptNum,
-			"num_attempts_allowed": GitFetchProjectRetries,
+			"num_attempts_allowed": gitFetchProjectRetries,
 			"owner":                conf.ProjectRef.Owner,
 			"repo":                 conf.ProjectRef.Repo,
 			"branch":               conf.ProjectRef.Branch,

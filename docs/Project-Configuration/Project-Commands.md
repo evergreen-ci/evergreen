@@ -218,7 +218,7 @@ Parameters:
 
 `expansions.write` writes the task's expansions to a file
 
-`global_github_oauth_token`, `AWS_ACCESS_KEY_ID`,
+`global_github_oauth_token`, `github_app_token`, `AWS_ACCESS_KEY_ID`,
 `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` are always redacted for
 security reasons
 
