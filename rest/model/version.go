@@ -31,6 +31,12 @@ type APIVersion struct {
 	Errors             []*string      `json:"errors"`
 	Activated          *bool          `json:"activated"`
 	Aborted            *bool          `json:"aborted"`
+	GitTags            []APIGitTag    `json:"git_tags"`
+}
+
+type APIGitTag struct {
+	Tag    *string `json:"tag"`
+	Pusher *string `json:"pusher"`
 }
 
 type buildDetail struct {
@@ -78,6 +84,14 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 			Value: utility.ToStringPtr(param.Value),
 		})
 	}
+
+	for _, gt := range v.GitTags {
+		apiVersion.GitTags = append(apiVersion.GitTags, APIGitTag{
+			Pusher: utility.ToStringPtr(gt.Pusher),
+			Tag:    utility.ToStringPtr(gt.Tag),
+		})
+	}
+
 	if v.Identifier != "" {
 		identifier, err := model.GetIdentifierForProject(v.Identifier)
 		if err == nil {

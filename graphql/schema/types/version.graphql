@@ -48,7 +48,9 @@ type Version {
   childVersions: [Version]
   createTime: Time!
   errors: [String!]!
+  externalLinksForMetadata: [ExternalLinkForMetadata!]!
   finishTime: Time
+  gitTags: [GitTag!]
   isPatch: Boolean!
   manifest: Manifest
   message: String!
@@ -70,7 +72,6 @@ type Version {
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
-  externalLinksForMetadata: [ExternalLinkForMetadata!]!
   warnings: [String!]!
 }
 
@@ -131,4 +132,9 @@ type UpstreamProject {
 type ExternalLinkForMetadata {
   url: String!
   displayName: String!
+}
+
+type GitTag {
+  tag: String!
+  pusher: String!
 }
