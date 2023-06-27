@@ -567,14 +567,9 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
-	// start is deprecated but maintained for backwards compatibility
-	if opts.Start > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.Start}
-	}
-
 	revisionFilter := bson.M{}
-	if opts.RevisionStart > 0 {
-		revisionFilter["$lte"] = opts.RevisionStart
+	if opts.Start > 0 {
+		revisionFilter["$lt"] = opts.Start
 		match[VersionRevisionOrderNumberKey] = revisionFilter
 	}
 
