@@ -1011,7 +1011,7 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.Contains(string(respJson), `"version_id":"v4"`)
 	assert.NotContains(string(respJson), `"version_id":"v3"`)
 
-	body := []byte(`{"revision_end": 1, "revision_start": 4}`)
+	body := []byte(`{"revision_end": 1, "start": 4}`)
 	url := "https://example.com/rest/v2/projects/something-else/versions"
 	req, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(body))
 	assert.NoError(err)
@@ -1020,16 +1020,6 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.NoError(err)
 	assert.Contains(string(respJson), `"version_id":"v4"`)
 	assert.Contains(string(respJson), `"version_id":"v1"`)
-
-	body = []byte(`{"revision_end": 4}`)
-	start := "1"
-	url = url + "?start=" + start
-	req, err = http.NewRequest(http.MethodGet, url, bytes.NewReader(body))
-	assert.NoError(err)
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
-	err = h.Parse(ctx, req)
-	assert.Error(err)
-	assert.Contains(err.Error(), "revision_start and revision_end cannot be combined with start.")
 }
 
 func TestDeleteProject(t *testing.T) {

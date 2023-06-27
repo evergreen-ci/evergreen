@@ -537,7 +537,6 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
 	Start          int    `json:"start"`
-	RevisionStart  int    `json:"revision_start"`
 	RevisionEnd    int    `json:"revision_end"`
 	Requester      string `json:"requester"`
 	Limit          int    `json:"limit"`
