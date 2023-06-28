@@ -536,11 +536,11 @@ func (d *Distro) GetPoolSize() int {
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
-func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+func ValidateContainerPoolDistros(ctx context.Context, s *evergreen.Settings) error {
 	catcher := grip.NewSimpleCatcher()
 
 	for _, pool := range s.ContainerPools.Pools {
-		d, err := FindOneId(pool.Distro)
+		d, err := FindOneId(ctx, pool.Distro)
 		if err != nil {
 			catcher.Add(fmt.Errorf("error finding distro for container pool '%s'", pool.Id))
 		}

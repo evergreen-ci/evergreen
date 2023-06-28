@@ -89,8 +89,8 @@ func FindOne(query db.Q) (*Distro, error) {
 }
 
 // FindOneId returns one Distro by Id.
-func FindOneId(id string) (*Distro, error) {
-	return FindOne(db.Query(ById(id)))
+func FindOneId(ctx context.Context, id string) (*Distro, error) {
+	return FindOneWithContext(ctx, ById(id))
 }
 
 func FindOneWithContext(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
@@ -186,8 +186,8 @@ func ByIds(ids []string) bson.M {
 	return bson.M{IdKey: bson.M{"$in": ids}}
 }
 
-func FindByIdWithDefaultSettings(id string) (*Distro, error) {
-	d, err := FindOneId(id)
+func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error) {
+	d, err := FindOneId(ctx, id)
 	if err != nil {
 		return d, errors.WithStack(err)
 	}

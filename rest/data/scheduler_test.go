@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +13,9 @@ import (
 )
 
 func TestCompareTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(distro.Collection, task.Collection, model.VersionCollection))
 	distroId := "d"
 	t1 := task.Task{
@@ -63,18 +67,18 @@ func TestCompareTasks(t *testing.T) {
 	}
 	assert.NoError(t, cqVersion.Insert())
 
-	order, logic, err := CompareTasks([]string{"t1", "t2"}, true)
+	order, logic, err := CompareTasks(ctx, []string{"t1", "t2"}, true)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"t2", "t1"}, order)
 	assert.Equal(t, "task priority: higher is first", logic[t1.Id][t2.Id])
 
-	order, logic, err = CompareTasks([]string{"t1", "t2", "t3"}, true)
+	order, logic, err = CompareTasks(ctx, []string{"t1", "t2", "t3"}, true)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"t3", "t2", "t1"}, order)
 	assert.Equal(t, "task generator: higher task is a generator", logic[t2.Id][t3.Id])
 	assert.Equal(t, "task priority: higher is first", logic[t1.Id][t2.Id])
 
-	order, logic, err = CompareTasks([]string{"t1", "t2", "t3", "cqt1"}, true)
+	order, logic, err = CompareTasks(ctx, []string{"t1", "t2", "t3", "cqt1"}, true)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"cqt1", "t3", "t2", "t1"}, order)
 	//TODO: change the assertion below once tracing for the zippering logic is implemented

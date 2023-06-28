@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -16,9 +17,9 @@ import (
 )
 
 type TaskQueueItemDispatcher interface {
-	FindNextTask(string, TaskSpec, time.Time) (*TaskQueueItem, error)
-	Refresh(string) error
-	RefreshFindNextTask(string, TaskSpec, time.Time) (*TaskQueueItem, error)
+	FindNextTask(context.Context, string, TaskSpec, time.Time) (*TaskQueueItem, error)
+	Refresh(context.Context, string) error
+	RefreshFindNextTask(context.Context, string, TaskSpec, time.Time) (*TaskQueueItem, error)
 }
 
 type CachedDispatcher interface {
@@ -50,16 +51,16 @@ func NewTaskDispatchAliasService(ttl time.Duration) TaskQueueItemDispatcher {
 	}
 }
 
-func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
-	distroDispatchService, err := s.ensureQueue(distroID)
+func (s *taskDispatchService) FindNextTask(ctx context.Context, distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
+	distroDispatchService, err := s.ensureQueue(ctx, distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return distroDispatchService.FindNextTask(spec, amiUpdatedTime), nil
 }
 
-func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
-	distroDispatchService, err := s.ensureQueue(distroID)
+func (s *taskDispatchService) RefreshFindNextTask(ctx context.Context, distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
+	distroDispatchService, err := s.ensureQueue(ctx, distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -71,8 +72,8 @@ func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec
 	return distroDispatchService.FindNextTask(spec, amiUpdatedTime), nil
 }
 
-func (s *taskDispatchService) Refresh(distroID string) error {
-	distroDispatchService, err := s.ensureQueue(distroID)
+func (s *taskDispatchService) Refresh(ctx context.Context, distroID string) error {
+	distroDispatchService, err := s.ensureQueue(ctx, distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -84,9 +85,9 @@ func (s *taskDispatchService) Refresh(distroID string) error {
 	return nil
 }
 
-func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, error) {
+func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) (CachedDispatcher, error) {
 	d := distro.Distro{}
-	foundDistro, err := distro.FindOneId(distroID)
+	foundDistro, err := distro.FindOneId(ctx, distroID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 	}

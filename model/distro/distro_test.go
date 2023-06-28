@@ -23,6 +23,9 @@ import (
 )
 
 func TestFindDistroById(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
@@ -37,7 +40,7 @@ func TestFindDistroById(t *testing.T) {
 		Id: id,
 	}
 	assert.Nil(d.Insert())
-	found, err := FindOneId(id)
+	found, err := FindOneId(ctx, id)
 	assert.NoError(err)
 	assert.Equal(found.Id, id, "The _ids should match")
 	assert.NotEqual(found.Id, -1, "The _ids should not match")
@@ -171,6 +174,9 @@ func TestGetDefaultAMI(t *testing.T) {
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
 
@@ -206,7 +212,7 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 		},
 	}
 
-	err := ValidateContainerPoolDistros(testSettings)
+	err := ValidateContainerPoolDistros(ctx, testSettings)
 	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
 	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }

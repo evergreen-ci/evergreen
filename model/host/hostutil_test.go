@@ -1220,7 +1220,7 @@ func TestMarkUserDataProvisioningDoneCommand(t *testing.T) {
 }
 
 func TestSetUserDataHostProvisioned(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){

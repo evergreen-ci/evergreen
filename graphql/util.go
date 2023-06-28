@@ -868,7 +868,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			return nil, err
 		}
 	}
-	dist, err := distro.FindOneId(spawnHostInput.DistroID)
+	dist, err := distro.FindOneId(ctx, spawnHostInput.DistroID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
 	}

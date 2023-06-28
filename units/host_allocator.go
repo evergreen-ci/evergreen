@@ -88,7 +88,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	distro, err := distro.FindByIdWithDefaultSettings(j.DistroID)
+	distro, err := distro.FindByIdWithDefaultSettings(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroID))
 		return

@@ -826,7 +826,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	// Verify that all the concrete distros that this request is accessing
 	// exist.
 	for _, resolvedDistroID := range distroIDs {
-		d, err := distro.FindOneId(resolvedDistroID)
+		d, err := distro.FindOneId(r.Context(), resolvedDistroID)
 		if err != nil {
 			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
 		}

@@ -29,7 +29,7 @@ type Configuration struct {
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
 	schedulerInstanceID := utility.RandomString()
 
-	distro, err := distro.FindOneId(conf.DistroID)
+	distro, err := distro.FindOneId(ctx, conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}

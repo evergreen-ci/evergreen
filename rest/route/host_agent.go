@@ -422,7 +422,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 	}
 
-	d, err := distro.FindOneId(currentHost.Distro.Id)
+	d, err := distro.FindOneId(ctx, currentHost.Distro.Id)
 	if err != nil || d == nil {
 		// Should we bailout if there is a database error leaving us unsure if the distro document actually exists?
 		m := "database error while retrieving distro document;"
@@ -472,7 +472,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		var queueItem *model.TaskQueueItem
 		switch d.DispatcherSettings.Version {
 		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
-			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec, amiUpdatedTime)
+			queueItem, err = dispatcher.RefreshFindNextTask(ctx, d.Id, spec, amiUpdatedTime)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}

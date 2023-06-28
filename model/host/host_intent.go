@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -132,7 +133,7 @@ func generateParentCreateOptions(parentDistro distro.Distro, pool *evergreen.Con
 	return options
 }
 
-func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, newContainersNeeded int, hostOptions CreateOptions) ([]Host, []Host, error) {
+func MakeContainersAndParents(ctx context.Context, d distro.Distro, pool *evergreen.ContainerPool, newContainersNeeded int, hostOptions CreateOptions) ([]Host, []Host, error) {
 	// get the parents that are running and split into ones that already have a container from this distro
 	currentHosts, err := GetContainersOnParents(d)
 	if err != nil {
@@ -159,11 +160,11 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	}
 
 	// create new parents and add containers to them
-	numNewParents, _, err := getNumNewParentsAndHostsToSpawn(pool, containersLeftToCreate, false)
+	numNewParents, _, err := getNumNewParentsAndHostsToSpawn(ctx, pool, containersLeftToCreate, false)
 	if err != nil {
 		return nil, nil, err
 	}
-	parentDistro, err := distro.FindByIdWithDefaultSettings(pool.Distro)
+	parentDistro, err := distro.FindByIdWithDefaultSettings(ctx, pool.Distro)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding distro")
 	}

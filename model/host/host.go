@@ -2368,7 +2368,7 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	return containersOnParents, nil
 }
 
-func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
+func getNumNewParentsAndHostsToSpawn(ctx context.Context, pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
 	existingParents, err := findUphostParentsByContainerPool(pool.Id)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "finding container parents that are up")
@@ -2393,7 +2393,7 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 		return 0, 0, nil
 	}
 	// get parent distro from pool
-	parentDistro, err := distro.FindOneId(pool.Distro)
+	parentDistro, err := distro.FindOneId(ctx, pool.Distro)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "finding container parent's distro")
 	}

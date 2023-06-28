@@ -3,7 +3,6 @@ package data
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -21,7 +20,7 @@ func TestDeleteDistroById(t *testing.T) {
 		assert.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	d := distro.Distro{
@@ -37,7 +36,7 @@ func TestDeleteDistroById(t *testing.T) {
 
 	require.NoError(t, DeleteDistroById(ctx, d.Id))
 
-	dbDistro, err := distro.FindOneId(d.Id)
+	dbDistro, err := distro.FindOneId(ctx, d.Id)
 	assert.NoError(t, err)
 	assert.Nil(t, dbDistro)
 

@@ -249,7 +249,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting Docker options from distro '%s'", d.Id)
 		}
-		newContainers, newParents, err := host.MakeContainersAndParents(d, pool, newHostsNeeded, *hostOptions)
+		newContainers, newParents, err := host.MakeContainersAndParents(ctx, d, pool, newHostsNeeded, *hostOptions)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating container intents for distro '%s'", d.Id)
 		}

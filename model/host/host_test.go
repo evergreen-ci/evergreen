@@ -250,7 +250,7 @@ func TestMonitorHosts(t *testing.T) {
 }
 
 func TestUpdatingHostStatus(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	Convey("With a host", t, func() {
@@ -290,7 +290,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 }
 
 func TestSetStatusAndFields(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	defer func() {
@@ -392,7 +392,7 @@ func TestSetStatusAndFields(t *testing.T) {
 }
 
 func TestDecommissionHost(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	assert.NoError(t, db.ClearCollections(Collection))
@@ -446,7 +446,7 @@ func TestSetStopped(t *testing.T) {
 }
 
 func TestSetHostTerminated(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	Convey("With a host", t, func() {
@@ -1941,7 +1941,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx))
@@ -4037,6 +4037,9 @@ func TestFindNoAvailableParent(t *testing.T) {
 }
 
 func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
@@ -4077,18 +4080,21 @@ func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 	assert.NoError(host2.Insert())
 	assert.NoError(host3.Insert())
 
-	parents, hosts, err := getNumNewParentsAndHostsToSpawn(pool, 3, false)
+	parents, hosts, err := getNumNewParentsAndHostsToSpawn(ctx, pool, 3, false)
 	assert.NoError(err)
 	assert.Equal(1, parents) // need two parents, but can only spawn 1
 	assert.Equal(2, hosts)
 
-	parents, hosts, err = getNumNewParentsAndHostsToSpawn(pool, 3, true)
+	parents, hosts, err = getNumNewParentsAndHostsToSpawn(ctx, pool, 3, true)
 	assert.NoError(err)
 	assert.Equal(2, parents)
 	assert.Equal(3, hosts)
 }
 
 func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
@@ -4121,12 +4127,12 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 	assert.NoError(host1.Insert())
 	assert.NoError(container.Insert())
 
-	parents, hosts, err := getNumNewParentsAndHostsToSpawn(pool, 4, false)
+	parents, hosts, err := getNumNewParentsAndHostsToSpawn(ctx, pool, 4, false)
 	assert.NoError(err)
 	assert.Equal(1, parents) // need two parents, but can only spawn 1
 	assert.Equal(3, hosts)   // should consider the uninitialized container as taking up capacity
 
-	parents, hosts, err = getNumNewParentsAndHostsToSpawn(pool, 4, true)
+	parents, hosts, err = getNumNewParentsAndHostsToSpawn(ctx, pool, 4, true)
 	assert.NoError(err)
 	assert.Equal(2, parents)
 	assert.Equal(4, hosts)
@@ -5280,7 +5286,7 @@ func (s *FindHostsSuite) TestLimit() {
 }
 
 func (s *FindHostsSuite) TestSetHostStatus() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	h, err := FindOneId("host1")

@@ -113,7 +113,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oldDistro, err := distro.FindOneId(id)
+	oldDistro, err := distro.FindOneId(r.Context(), id)
 	if err != nil {
 		message := fmt.Sprintf("error finding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -264,7 +264,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	d, err := distro.FindOneId(id)
+	d, err := distro.FindOneId(r.Context(), id)
 	if err != nil {
 		message := fmt.Sprintf("error finding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -307,7 +307,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	d, err := distro.FindOneId(id)
+	d, err := distro.FindOneId(r.Context(), id)
 	if err != nil {
 		message := fmt.Sprintf("error fetching distro '%v': %v", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))

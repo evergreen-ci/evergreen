@@ -469,7 +469,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 		assert.NoError(db.DropCollections(host.Collection, distro.Collection))
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx))

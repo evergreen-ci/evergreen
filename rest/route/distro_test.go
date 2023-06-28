@@ -386,7 +386,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	distroFromDB, err := distro.FindOneId("d1")
+	distroFromDB, err := distro.FindOneId(ctx, "d1")
 	assert.NoError(t, err)
 	assert.NotNil(t, distroFromDB)
 	assert.Len(t, distroFromDB.ProviderSettingsList, 2)

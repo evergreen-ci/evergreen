@@ -3,7 +3,6 @@ package host
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestDecommissionInactiveStaticHosts(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	Convey("When decommissioning unused static hosts", t, func() {
@@ -78,7 +77,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 }
 
 func TestTerminateStaticHostsForDistro(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(Collection))
@@ -142,7 +141,7 @@ func TestTerminateStaticHostsForDistro(t *testing.T) {
 }
 
 func TestTerminateStaticHostsForDistroAliases(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(Collection))

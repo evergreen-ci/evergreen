@@ -57,7 +57,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "finding container parents in distro '%s'", j.DistroId))
 		return
 	}
-	parentDistro, err := distro.FindOneId(j.DistroId)
+	parentDistro, err := distro.FindOneId(ctx, j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroId))
 		return

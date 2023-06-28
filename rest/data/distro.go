@@ -42,7 +42,7 @@ func UpdateDistro(old, new *distro.Distro) error {
 
 // DeleteDistroById removes a given distro from the database based on its id.
 func DeleteDistroById(ctx context.Context, distroId string) error {
-	d, err := distro.FindOneId(distroId)
+	d, err := distro.FindOneId(ctx, distroId)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

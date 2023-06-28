@@ -78,7 +78,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
-	d, err := distro.FindOneId(j.DistroID)
+	d, err := distro.FindOneId(ctx, j.DistroID)
 	j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroID))
 	if d == nil {
 		return

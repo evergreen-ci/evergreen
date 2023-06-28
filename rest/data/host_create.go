@@ -270,7 +270,7 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 	var d *distro.Distro
 	var err error
 
-	d, err = distro.FindOneId(createHost.Distro)
+	d, err = distro.FindOneId(ctx, createHost.Distro)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
 	}
@@ -318,7 +318,7 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 	if containerPool == nil {
 		return nil, errors.Errorf("distro '%s' doesn't have a container pool", d.Id)
 	}
-	containerIntents, parentIntents, err := host.MakeContainersAndParents(*d, containerPool, 1, *options)
+	containerIntents, parentIntents, err := host.MakeContainersAndParents(ctx, *d, containerPool, 1, *options)
 	if err != nil {
 		return nil, errors.Wrap(err, "generating container and parent intent hosts")
 	}
@@ -358,7 +358,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		if len(distroIDs) == 0 {
 			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
 		}
-		foundDistro, err := distro.FindOneId(distroIDs[0])
+		foundDistro, err := distro.FindOneId(ctx, distroIDs[0])
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}
