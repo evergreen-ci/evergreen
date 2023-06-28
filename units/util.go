@@ -55,7 +55,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "enqueueing decohost notify job")
 	}
 
-	return model.ClearAndResetStrandedHostTask(env.Settings(), h)
+	return model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

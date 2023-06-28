@@ -1269,14 +1269,14 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Description: evergreen.TaskDescriptionAborted,
 		}
 	}
-	err = model.MarkEnd(h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
+	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	if evergreen.IsCommitQueueRequester(t.Requester) {
-		if err = model.HandleEndTaskForCommitQueueTask(t, h.details.Status); err != nil {
+		if err = model.HandleEndTaskForCommitQueueTask(ctx, t, h.details.Status); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}

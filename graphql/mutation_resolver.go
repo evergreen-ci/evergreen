@@ -918,7 +918,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	user := gimlet.GetUser(ctx).DisplayName()
-	err = model.AbortTask(taskID, user)
+	err = model.AbortTask(ctx, taskID, user)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
@@ -960,7 +960,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
 	}
-	if err := model.ResetTaskOrDisplayTask(evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
+	if err := model.ResetTaskOrDisplayTask(ctx, evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task '%s': %s", taskID, err.Error()))
 	}
 	t, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
@@ -1007,7 +1007,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
 		}
 	}
-	if err = model.SetTaskPriority(*t, int64(priority), authUser.Username()); err != nil {
+	if err = model.SetTaskPriority(ctx, *t, int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
 
@@ -1174,7 +1174,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 // RemoveItemFromCommitQueue is the resolver for the removeItemFromCommitQueue field.
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
 	username := gimlet.GetUser(ctx).DisplayName()
-	result, err := data.FindAndRemoveCommitQueueItem(commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
+	result, err := data.FindAndRemoveCommitQueueItem(ctx, commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))

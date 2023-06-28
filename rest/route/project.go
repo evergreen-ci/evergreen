@@ -1017,7 +1017,7 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 	for _, v := range versions {
 		versionIds = append(versionIds, v.Id)
 	}
-	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
+	if err = dbModel.SetVersionsPriority(ctx, versionIds, priority, user.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
 	}
 	return gimlet.NewJSONResponse(struct{}{})

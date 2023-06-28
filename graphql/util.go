@@ -89,7 +89,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
 		}
 	}
-	if err = model.SetActiveState(usr.Username(), isActive, tasks...); err != nil {
+	if err = model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
@@ -419,7 +419,7 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
 	}
 	user := mustHaveUser(ctx)
-	httpStatus, err := model.ModifyVersion(*v, *user, modification)
+	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}

@@ -104,7 +104,7 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
-	err = activateExistingInactiveTasks(creationInfo, existingBuilds)
+	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds)
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
@@ -888,7 +888,7 @@ func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 // affected. This function makes one exception for commit queue items so that if
 // the item is currently running the merge task, then that patch is not aborted
 // and is allowed to finish.
-func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
+func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
 		return errors.Wrap(err, "fetching initial patch")
@@ -921,7 +921,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				// already ongoing, so it's better to just let it complete.
 				continue
 			}
-			catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
+			catcher.Add(DequeueAndRestartForTask(ctx, nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
 		} else {
 			err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
 			msg := message.Fields{

@@ -45,9 +45,9 @@ func NewTasksRestartJob(opts model.RestartOptions) amboy.Job {
 	return job
 }
 
-func (j *restartTasksJob) Run(_ context.Context) {
+func (j *restartTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-	results, err := model.RestartFailedTasks(j.Opts)
+	results, err := model.RestartFailedTasks(ctx, j.Opts)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "restarting failed tasks"))
 		return

@@ -95,7 +95,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.populate(); err != nil {
+	if err := j.populate(ctx); err != nil {
 		j.AddRetryableError(errors.Wrap(err, "populating job"))
 		return
 	}
@@ -103,7 +103,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 	if j.task.RemainingContainerAllocationAttempts() == 0 {
 		// A task that has used up all of its container allocation attempts
 		// should not try to allocate again.
-		if err := model.MarkUnallocatableContainerTasksSystemFailed(j.env.Settings(), []string{j.TaskID}); err != nil {
+		if err := model.MarkUnallocatableContainerTasksSystemFailed(ctx, j.env.Settings(), []string{j.TaskID}); err != nil {
 			j.AddRetryableError(errors.Wrap(err, "marking unallocatable container task as system-failed"))
 		}
 
@@ -198,14 +198,14 @@ func (j *podAllocatorJob) systemCanAllocate() (canAllocate bool, err error) {
 	return true, nil
 }
 
-func (j *podAllocatorJob) populate() error {
+func (j *podAllocatorJob) populate(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	// Use the latest service flags instead of those cached in the environment.
 	settings := *j.env.Settings()
-	if err := settings.ServiceFlags.Get(j.env); err != nil {
+	if err := settings.ServiceFlags.Get(ctx); err != nil {
 		return errors.Wrap(err, "getting service flags")
 	}
 	j.settings = settings

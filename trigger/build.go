@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -45,9 +46,9 @@ func makeBuildTriggers() eventHandler {
 	return t
 }
 
-func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *buildTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var err error
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 

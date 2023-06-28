@@ -797,7 +797,7 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 		hostInitSettings := env.Settings().HostInit
-		if err = hostInitSettings.Get(env); err != nil {
+		if err = hostInitSettings.Get(ctx); err != nil {
 			hostInitSettings = env.Settings().HostInit
 		}
 

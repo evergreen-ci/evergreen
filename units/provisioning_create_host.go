@@ -105,7 +105,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(j.env), "refreshing hostinit settings"))
+	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(ctx), "refreshing hostinit settings"))
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)

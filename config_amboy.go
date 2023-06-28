@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"regexp"
 	"time"
 
@@ -86,12 +87,8 @@ var (
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
 
-func (c *AmboyConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *AmboyConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	grip.Info(res.Err())
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -107,13 +104,8 @@ func (c *AmboyConfig) Get(env Environment) error {
 	return nil
 }
 
-func (c *AmboyConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+func (c *AmboyConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			amboyNameKey:                                  c.Name,
 			amboySingleNameKey:                            c.SingleName,

@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -21,12 +23,8 @@ type NotifyConfig struct {
 
 func (c *NotifyConfig) SectionId() string { return "notify" }
 
-func (c *NotifyConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *NotifyConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = NotifyConfig{}
@@ -43,13 +41,8 @@ func (c *NotifyConfig) Get(env Environment) error {
 	return nil
 }
 
-func (c *NotifyConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.ReplaceOne(ctx, byId(c.SectionId()), c, options.Replace().SetUpsert(true))
+func (c *NotifyConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).ReplaceOne(ctx, byId(c.SectionId()), c, options.Replace().SetUpsert(true))
 	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
 }
 
@@ -77,12 +70,8 @@ type AlertsConfig struct {
 
 func (c *AlertsConfig) SectionId() string { return "alerts" }
 
-func (c *AlertsConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *AlertsConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = AlertsConfig{}
@@ -98,13 +87,8 @@ func (c *AlertsConfig) Get(env Environment) error {
 	return nil
 }
 
-func (c *AlertsConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+func (c *AlertsConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"smtp": c.SMTP,
 		},

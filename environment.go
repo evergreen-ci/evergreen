@@ -195,7 +195,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 		e.dbName = db.DB
 	}
 
-	if err := e.initSettings(confPath); err != nil {
+	if err := e.initSettings(ctx, confPath); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -263,7 +263,7 @@ type closerOp struct {
 	closerFn   func(context.Context) error
 }
 
-func (e *envState) initSettings(path string) error {
+func (e *envState) initSettings(ctx context.Context, path string) error {
 	// read configuration from either the file or DB and validate
 	// if the file path is blank, the DB session must be configured already
 
@@ -277,7 +277,7 @@ func (e *envState) initSettings(path string) error {
 				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
-			e.settings, err = BootstrapConfig(e)
+			e.settings, err = BootstrapConfig(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting config settings from DB")
 			}

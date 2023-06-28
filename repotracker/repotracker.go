@@ -353,7 +353,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 		if ref.IsGithubChecksEnabled() {
-			if err = addGithubCheckSubscriptions(v); err != nil {
+			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":            "error adding github check subscriptions",
 					"runner":             RunnerName,
@@ -461,7 +461,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 }
 
 // addGithubCheckSubscriptions adds subscriptions to send the status of the version to Github.
-func addGithubCheckSubscriptions(v *model.Version) error {
+func addGithubCheckSubscriptions(ctx context.Context, v *model.Version) error {
 	catcher := grip.NewBasicCatcher()
 	ghSub := event.NewGithubCheckAPISubscriber(event.GithubCheckSubscriber{
 		Owner: v.Owner,
@@ -486,7 +486,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 		Caller:    RunnerName,
 		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(input, "")
+	err := thirdparty.SendPendingStatusToGithub(ctx, input, "")
 	if err != nil {
 		catcher.Wrap(err, "failed to send version status to GitHub")
 	}

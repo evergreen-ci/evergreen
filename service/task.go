@@ -688,7 +688,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case evergreen.RestartAction:
-		if err = model.TryResetTask(uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
+		if err = model.TryResetTask(ctx, uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -701,7 +701,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case evergreen.AbortAction:
-		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
+		if err = model.AbortTask(ctx, projCtx.Task.Id, authName); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -720,7 +720,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
 			return
 		}
-		if err = model.SetActiveState(authUser.Username(), active, *projCtx.Task); err != nil {
+		if err = model.SetActiveState(r.Context(), authUser.Username(), active, *projCtx.Task); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return
@@ -747,7 +747,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if err = model.SetTaskPriority(*projCtx.Task, priority, authUser.Username()); err != nil {
+		if err = model.SetTaskPriority(r.Context(), *projCtx.Task, priority, authUser.Username()); err != nil {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}

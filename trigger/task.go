@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -135,11 +136,12 @@ func getShouldExecuteError(t, previousTask *task.Task) message.Fields {
 }
 
 type taskTriggers struct {
-	event    *event.EventLogEntry
-	data     *event.TaskEventData
-	task     *task.Task
-	owner    string
-	uiConfig evergreen.UIConfig
+	event        *event.EventLogEntry
+	data         *event.TaskEventData
+	task         *task.Task
+	owner        string
+	uiConfig     evergreen.UIConfig
+	jiraMappings *evergreen.JIRANotificationsConfig
 
 	oldTestResults map[string]*testresult.TestResult
 
@@ -153,7 +155,7 @@ func (t *taskTriggers) Process(sub *event.Subscription) (*notification.Notificat
 	return t.base.Process(sub)
 }
 
-func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var ok bool
 	t.data, ok = e.Data.(*event.TaskEventData)
 	if !ok {
@@ -161,7 +163,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 
 	var err error
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 
@@ -186,7 +188,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 
 	t.event = e
 
-	return nil
+	return t.jiraMappings.Get(ctx)
 }
 
 func (t *taskTriggers) Attributes() event.Attributes {
@@ -894,10 +896,10 @@ func matchingFailureType(requested, actual string) bool {
 }
 
 func (j *taskTriggers) makeJIRATaskPayload(subID, project, testNames string) (*message.JiraIssue, error) {
-	return JIRATaskPayload(subID, project, j.uiConfig.Url, j.event.ID, testNames, j.task)
+	return JIRATaskPayload(subID, project, j.uiConfig.Url, j.event.ID, testNames, j.jiraMappings, j.task)
 }
 
-func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.Task) (*message.JiraIssue, error) {
+func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, mappings *evergreen.JIRANotificationsConfig, t *task.Task) (*message.JiraIssue, error) {
 	buildDoc, err := build.FindOne(build.ById(t.BuildId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding build '%s' while building Jira task payload", t.BuildId)
@@ -959,12 +961,8 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 
 	builder := jiraBuilder{
 		project:  strings.ToUpper(project),
-		mappings: &evergreen.JIRANotificationsConfig{},
+		mappings: mappings,
 		data:     data,
-	}
-
-	if err = builder.mappings.Get(evergreen.GetEnvironment()); err != nil {
-		return nil, errors.Wrap(err, "fetching Jira custom field mappings while building Jira task payload")
 	}
 
 	return builder.build()

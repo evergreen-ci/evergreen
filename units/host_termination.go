@@ -188,7 +188,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host))
 		} else {
 			return
 		}
@@ -213,7 +213,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				if tasks[len(tasks)-1].Id != lastTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
 					// because later tasks in the group need to run on the same host as the earlier ones.
-					j.AddError(errors.Wrapf(model.TryResetTask(j.env.Settings(), lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
+					j.AddError(errors.Wrapf(model.TryResetTask(ctx, j.env.Settings(), lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
 				}
 			}
 		}
@@ -256,7 +256,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
 		} else {
 			return
 		}

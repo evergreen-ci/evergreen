@@ -83,13 +83,13 @@ func (j *githubStatusRefreshJob) shouldUpdate() (bool, error) {
 	return true, nil
 }
 
-func (j *githubStatusRefreshJob) fetch() error {
+func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 	uiConfig := evergreen.UIConfig{}
 	var err error
-	if err := uiConfig.Get(j.env); err != nil {
+	if err := uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "retrieving UI config")
 	}
 	j.urlBase = uiConfig.Url
@@ -234,7 +234,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	if !shouldUpdate {
 		return
 	}
-	if err = j.fetch(); err != nil {
+	if err = j.fetch(ctx); err != nil {
 		j.AddError(err)
 		return
 	}

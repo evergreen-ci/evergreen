@@ -103,7 +103,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	startTime := time.Now()
 	catcher := grip.NewSimpleCatcher()
 
-	n, err := j.processEventTriggers(e)
+	n, err := j.processEventTriggers(ctx, e)
 	catcher.Add(err)
 	catcher.Add(e.MarkProcessed())
 
@@ -141,7 +141,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	return catcher.Resolve()
 }
 
-func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []notification.Notification, err error) {
+func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.EventLogEntry) (n []notification.Notification, err error) {
 	if e == nil {
 		return nil, errors.New("cannot process event triggers for nil event")
 	}
@@ -162,7 +162,7 @@ func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []not
 	}()
 
 	startDebug := time.Now()
-	n, err = trigger.NotificationsFromEvent(e)
+	n, err = trigger.NotificationsFromEvent(ctx, e)
 	grip.Info(message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,

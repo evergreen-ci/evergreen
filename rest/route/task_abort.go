@@ -30,7 +30,7 @@ func (t *taskAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	err := serviceModel.AbortTask(t.taskId, MustHaveUser(ctx).Id)
+	err := serviceModel.AbortTask(ctx, t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting task '%s'", t.taskId))
 	}

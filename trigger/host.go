@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"text/template"
 	"time"
@@ -36,7 +37,7 @@ type hostBase struct {
 	base
 }
 
-func (t *hostBase) Fetch(e *event.EventLogEntry) error {
+func (t *hostBase) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var ok bool
 	var err error
 	t.data, ok = e.Data.(*event.HostEventData)
@@ -52,7 +53,7 @@ func (t *hostBase) Fetch(e *event.EventLogEntry) error {
 		return errors.Errorf("host '%s' not found", e.ResourceId)
 	}
 
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 
@@ -91,8 +92,8 @@ type hostTriggers struct {
 	hostBase
 }
 
-func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
-	err := t.hostBase.Fetch(e)
+func (t *hostTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
+	err := t.hostBase.Fetch(ctx, e)
 	if err != nil {
 		return errors.Wrap(err, "fetching host data")
 	}

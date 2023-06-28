@@ -179,13 +179,13 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				})
 			}
 		}
-		if err := dbModel.SetTaskPriority(*tep.task, priority, tep.user.Username()); err != nil {
+		if err := dbModel.SetTaskPriority(ctx, *tep.task, priority, tep.user.Username()); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting priority for task '%s'", tep.task.Id))
 		}
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
-		if err := dbModel.SetActiveStateById(tep.task.Id, tep.user.Username(), activated); err != nil {
+		if err := dbModel.SetActiveStateById(ctx, tep.task.Id, tep.user.Username(), activated); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting activation state for task '%s'", tep.task.Id))
 		}
 	}

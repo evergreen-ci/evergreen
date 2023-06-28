@@ -80,7 +80,7 @@ func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(resp)
 	}
 
-	resp, err := data.RestartFailedTasks(h.queue, opts)
+	resp, err := data.RestartFailedTasks(ctx, h.queue, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "restarting failed tasks"))
 	}
