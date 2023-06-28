@@ -284,7 +284,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
-	if err = distro.Remove(id); err != nil {
+	if err = distro.Remove(r.Context(), id); err != nil {
 		message := fmt.Sprintf("error removing distro '%v': %v", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)

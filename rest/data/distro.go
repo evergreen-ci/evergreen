@@ -60,7 +60,7 @@ func DeleteDistroById(ctx context.Context, distroId string) error {
 			Message:    errors.Wrapf(err, "terminating inactive static hosts in distro '%s'", distroId).Error(),
 		}
 	}
-	if err = distro.Remove(distroId); err != nil {
+	if err = distro.Remove(ctx, distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "deleting distro '%s'", distroId).Error(),

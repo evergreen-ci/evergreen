@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -132,8 +131,13 @@ func (d *Distro) Update(ctx context.Context) error {
 }
 
 // Remove removes one distro.
-func Remove(id string) error {
-	return db.Remove(Collection, bson.M{IdKey: id})
+func Remove(ctx context.Context, ID string) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: ID})
+	if err != nil {
+		return errors.Wrapf(err, "deleting distro ID '%s'", ID)
+	}
+
+	return nil
 }
 
 // ById returns a query that contains an Id selector on the string, id.
