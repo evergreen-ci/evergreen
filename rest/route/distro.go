@@ -107,7 +107,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	d.Setup = h.Setup
-	if err = data.UpdateDistro(d, d); err != nil {
+	if err = data.UpdateDistro(ctx, d, d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
 
@@ -194,7 +194,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			return respErr
 		}
 
-		if err = data.UpdateDistro(original, newDistro); err != nil {
+		if err = data.UpdateDistro(ctx, original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating existing distro '%s'", h.distroID))
 		}
 		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
@@ -328,7 +328,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return respErr
 	}
 
-	if err = data.UpdateDistro(old, d); err != nil {
+	if err = data.UpdateDistro(ctx, old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
 	event.LogDistroModified(h.distroID, user.Username(), d.NewDistroData())
@@ -558,7 +558,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	modifiedIDs := []string{}
 	for _, d := range modifiedDistros {
 		if !h.dryRun {
-			if err = d.Update(); err != nil {
+			if err = d.Update(ctx); err != nil {
 				catcher.Wrapf(err, "updating distro '%s'", d.Id)
 				continue
 			}

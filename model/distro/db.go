@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -117,8 +118,16 @@ func (d *Distro) Insert() error {
 }
 
 // Update updates one distro.
-func (d *Distro) Update() error {
-	return db.UpdateId(Collection, d.Id, d)
+func (d *Distro) Update(ctx context.Context) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateByID(ctx, d.Id, d)
+	if err != nil {
+		return errors.Wrapf(err, "updating distro ID '%s'", d.Id)
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	return nil
 }
 
 // Remove removes one distro.
@@ -152,8 +161,8 @@ func ByNeedsPlanning(containerPools []evergreen.ContainerPool) bson.M {
 			"$nin": poolDistros,
 		},
 		"$or": []bson.M{
-			bson.M{DisabledKey: bson.M{"$exists": false}},
-			bson.M{ProviderKey: evergreen.HostTypeStatic},
+			{DisabledKey: bson.M{"$exists": false}},
+			{ProviderKey: evergreen.HostTypeStatic},
 		}}
 }
 

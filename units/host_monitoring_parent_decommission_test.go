@@ -15,6 +15,9 @@ import (
 )
 
 func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	mockCloud := cloud.GetMockProvider()
@@ -62,7 +65,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 
 	// Running the job should not drop parents below min hosts
 	j := NewParentDecommissionJob("two", d2.Id, 3)
-	j.Run(context.Background())
+	j.Run(ctx)
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
@@ -72,8 +75,8 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 
 	// Setting min hosts lower should make host2 get decommissioned
 	d2.HostAllocatorSettings.MinimumHosts = 1
-	assert.NoError(d2.Update())
-	j.Run(context.Background())
+	assert.NoError(d2.Update(ctx))
+	j.Run(ctx)
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)

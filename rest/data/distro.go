@@ -14,7 +14,7 @@ import (
 )
 
 // UpdateDistro updates the given distro.Distro.
-func UpdateDistro(old, new *distro.Distro) error {
+func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 	if old.Id != new.Id {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -30,8 +30,7 @@ func UpdateDistro(old, new *distro.Distro) error {
 			}
 		}
 	}
-	err := new.Update()
-	if err != nil {
+	if err := new.Update(ctx); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "updating distro '%s'", new.Id).Error(),
