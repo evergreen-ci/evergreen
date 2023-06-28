@@ -162,7 +162,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 
 	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
 	if idleThreshold == 0 {
-		conf, err := evergreen.GetConfig()
+		conf, err := evergreen.GetConfigContext(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting evergreen configuration")
 		}
