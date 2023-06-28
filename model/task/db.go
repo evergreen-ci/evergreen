@@ -1851,7 +1851,7 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 				},
 			},
 			{
-				// Cache whether any dependencies are unattinable.
+				// Cache whether any dependencies are unattainable.
 				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
 			},
 		},
