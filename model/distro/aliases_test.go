@@ -63,8 +63,8 @@ func TestDistroAliases(t *testing.T) {
 				assert.NotNil(t, lt)
 			})
 			t.Run("Simple", func(t *testing.T) {
-				require.NoError(t, (&Distro{Id: "one", Aliases: []string{"foo", "bar"}}).Insert())
-				require.NoError(t, (&Distro{Id: "two", Aliases: []string{"baz", "bar"}}).Insert())
+				require.NoError(t, (&Distro{Id: "one", Aliases: []string{"foo", "bar"}}).Insert(ctx))
+				require.NoError(t, (&Distro{Id: "two", Aliases: []string{"baz", "bar"}}).Insert(ctx))
 				lt, err := NewDistroAliasesLookupTable(ctx)
 				require.NoError(t, err)
 				require.NotNil(t, lt)

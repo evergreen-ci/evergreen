@@ -1406,7 +1406,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	d := distro.Distro{
 		Id: "d0",
 	}
-	require.NoError(t, d.Insert())
+	require.NoError(t, d.Insert(ctx))
 
 	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
@@ -1438,7 +1438,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 		Id:      "d0",
 		Aliases: []string{"d0.0", "d0.1"},
 	}
-	require.NoError(t, d.Insert())
+	require.NoError(t, d.Insert(ctx))
 
 	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)

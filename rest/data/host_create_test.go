@@ -114,7 +114,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 		Id:                   "distro",
 		ProviderSettingsList: settingsList,
 	}
-	assert.NoError(t, d.Insert())
+	assert.NoError(t, d.Insert(ctx))
 	p := model.ProjectRef{
 		Id: "p",
 	}
@@ -471,7 +471,7 @@ buildvariants:
 			MaximumHosts: 3,
 		},
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 
@@ -501,7 +501,7 @@ buildvariants:
 		Provider:      evergreen.ProviderNameDockerMock,
 		ContainerPool: pool.Id,
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	p := model.ProjectRef{
 		Id: "p",

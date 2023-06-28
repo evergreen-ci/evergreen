@@ -3888,6 +3888,9 @@ func TestNumNewParentsNeeded2(t *testing.T) {
 }
 
 func TestFindAvailableParent(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
@@ -3950,7 +3953,7 @@ func TestFindAvailableParent(t *testing.T) {
 		BuildVariant: "bv1",
 		StartTime:    time.Now(),
 	}
-	assert.NoError(d.Insert())
+	assert.NoError(d.Insert(ctx))
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
 	assert.NoError(host3.Insert())
@@ -3965,6 +3968,9 @@ func TestFindAvailableParent(t *testing.T) {
 }
 
 func TestFindNoAvailableParent(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
@@ -4023,7 +4029,7 @@ func TestFindNoAvailableParent(t *testing.T) {
 		}, BuildVariant: "bv1",
 		StartTime: time.Now(),
 	}
-	assert.NoError(d.Insert())
+	assert.NoError(d.Insert(ctx))
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
 	assert.NoError(host3.Insert())
@@ -4075,7 +4081,7 @@ func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 		ParentID:    "host1",
 		RunningTask: "task1",
 	}
-	assert.NoError(d.Insert())
+	assert.NoError(d.Insert(ctx))
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
 	assert.NoError(host3.Insert())
@@ -4123,7 +4129,7 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 		ParentID:    "host1",
 		RunningTask: "task1",
 	}
-	assert.NoError(d.Insert())
+	assert.NoError(d.Insert(ctx))
 	assert.NoError(host1.Insert())
 	assert.NoError(container.Insert())
 

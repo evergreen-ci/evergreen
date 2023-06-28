@@ -58,7 +58,7 @@ func clearAll(t *testing.T) {
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
 // and creates a patch from the test path given. The patch is not inserted.
-func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
+func resetPatchSetup(ctx context.Context, t *testing.T, testPath string) *patch.Patch {
 	clearAll(t)
 	projectRef := &ProjectRef{
 		Id:         patchedProject,
@@ -70,7 +70,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	// insert distros to be used
 	distros := []distro.Distro{{Id: "d1"}, {Id: "d2"}}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
@@ -116,7 +116,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	return configPatch
 }
 
-func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
+func resetProjectlessPatchSetup(ctx context.Context, t *testing.T) *patch.Patch {
 	clearAll(t)
 	projectRef := &ProjectRef{
 		Id:         patchedProject,
@@ -128,7 +128,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 	// insert distros to be used
 	distros := []distro.Distro{{Id: "d1"}, {Id: "d2"}}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
@@ -202,7 +202,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
-				configPatch := resetPatchSetup(t, configFilePath)
+				configPatch := resetPatchSetup(ctx, t, configFilePath)
 				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
@@ -217,7 +217,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				})
 
 				Convey("Calling GetPatchedProject with a created but unfinalized patch", func() {
-					configPatch := resetPatchSetup(t, configFilePath)
+					configPatch := resetPatchSetup(ctx, t, configFilePath)
 
 					// Simulate what patch creation does.
 					patchConfig.PatchedParserProject.Id = configPatch.Id.Hex()
@@ -242,7 +242,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				})
 
 				Convey("Calling GetPatchedProject with a created but unfinalized patch using deprecated patched parser project", func() {
-					configPatch := resetPatchSetup(t, configFilePath)
+					configPatch := resetPatchSetup(ctx, t, configFilePath)
 
 					// Simulate what patch creation does for old patches.
 					configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
@@ -268,7 +268,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
-				configPatch := resetProjectlessPatchSetup(t)
+				configPatch := resetProjectlessPatchSetup(ctx, t)
 				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
@@ -282,7 +282,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 			})
 
 			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
-				configPatch := resetProjectlessPatchSetup(t)
+				configPatch := resetProjectlessPatchSetup(ctx, t)
 
 				patchFileID := primitive.NewObjectID()
 				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
@@ -454,7 +454,7 @@ modules:
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p := resetPatchSetup(t, configFilePath)
+			p := resetPatchSetup(ctx, t, configFilePath)
 
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
 			require.NoError(t, err)

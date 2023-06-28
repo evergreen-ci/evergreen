@@ -59,7 +59,7 @@ func TestMakeHost(t *testing.T) {
 			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 		)},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	sampleTask := &task.Task{
 		Id: "task-id",
@@ -294,7 +294,7 @@ func TestHostCreateDocker(t *testing.T) {
 		},
 		ContainerPool: pool.Id,
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	parentHost := &host.Host{
 		Id:                    "host1",
@@ -308,7 +308,7 @@ func TestHostCreateDocker(t *testing.T) {
 	require.NoError(parentHost.Insert())
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	sampleTask := &task.Task{
 		Id: handler.taskID,
@@ -367,7 +367,7 @@ func TestGetDockerLogs(t *testing.T) {
 		},
 		ContainerPool: pool.Id,
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	parentHost := &host.Host{
 		Id:                    "host1",
@@ -381,7 +381,7 @@ func TestGetDockerLogs(t *testing.T) {
 	require.NoError(parentHost.Insert())
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	myTask := task.Task{
 		Id:      "task-id",
@@ -481,7 +481,7 @@ func TestGetDockerStatus(t *testing.T) {
 		},
 		ContainerPool: pool.Id,
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	parentHost := &host.Host{
 		Id:                    "host1",
@@ -495,7 +495,7 @@ func TestGetDockerStatus(t *testing.T) {
 	require.NoError(parentHost.Insert())
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	myTask := task.Task{
 		Id:      "task-id",

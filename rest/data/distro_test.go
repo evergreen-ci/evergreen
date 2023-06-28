@@ -26,7 +26,7 @@ func TestDeleteDistroById(t *testing.T) {
 	d := distro.Distro{
 		Id: "distro",
 	}
-	require.NoError(t, d.Insert())
+	require.NoError(t, d.Insert(ctx))
 
 	queue := model.TaskQueue{
 		Distro: d.Id,

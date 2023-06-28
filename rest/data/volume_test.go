@@ -21,6 +21,9 @@ import (
 )
 
 func TestMigrateVolume(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser){
 		"StartsJob": func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser) {
 			require.NoError(t, h.Insert())
@@ -52,7 +55,7 @@ func TestMigrateVolume(t *testing.T) {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", evergreen.DefaultEC2Region))},
 			}
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(ctx))
 			testUser := &user.DBUser{
 				Id:     "u",
 				APIKey: "testApiKey",

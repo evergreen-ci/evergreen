@@ -915,7 +915,7 @@ func TestEventLogPermission(t *testing.T) {
 	distro1 := distro.Distro{
 		Id: "distro1",
 	}
-	assert.NoError(distro1.Insert())
+	assert.NoError(distro1.Insert(ctx))
 	permissionMiddleware := EventLogPermissionsMiddleware{}
 	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)

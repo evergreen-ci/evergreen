@@ -149,7 +149,7 @@ func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
 	s.Require().NoError(db.Clear(distro.Collection))
 	s.distro.ValidProjects = []string{"exists"}
 	s.insertTasks()
-	s.Require().NoError(s.distro.Insert())
+	s.Require().NoError(s.distro.Insert(s.ctx))
 	runnableTasks, err = s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 5)

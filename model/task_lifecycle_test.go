@@ -2202,7 +2202,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 					Version: evergreen.PlannerVersionTunable,
 				},
 			}
-			assert.NoError(d.Insert())
+			assert.NoError(d.Insert(ctx))
 
 			test(t)
 		})
@@ -2503,7 +2503,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 			Version: evergreen.PlannerVersionLegacy,
 		},
 	}
-	assert.NoError(d.Insert())
+	assert.NoError(d.Insert(ctx))
 
 	settings := &evergreen.Settings{
 		CommitQueue: evergreen.CommitQueueConfig{
@@ -5749,7 +5749,7 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 	d := distro.Distro{
 		Id: "distro",
 	}
-	require.NoError(t, d.Insert())
+	require.NoError(t, d.Insert(ctx))
 	v := Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,
@@ -5830,7 +5830,7 @@ tasks:
 	d := distro.Distro{
 		Id: "distro",
 	}
-	require.NoError(t, d.Insert())
+	require.NoError(t, d.Insert(ctx))
 	v := Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,

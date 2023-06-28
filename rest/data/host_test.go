@@ -173,7 +173,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		Provider:             evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", evergreen.DefaultEC2Region))},
 	}
-	s.NoError(d.Insert())
+	s.NoError(d.Insert(ctx))
 	testUser := &user.DBUser{
 		Id:     testUserID,
 		APIKey: testUserAPIKey,

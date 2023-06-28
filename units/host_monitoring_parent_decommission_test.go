@@ -26,7 +26,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
 
 	d2 := distro.Distro{Id: "d2", HostAllocatorSettings: distro.HostAllocatorSettings{MinimumHosts: 2}}
-	assert.NoError(d2.Insert())
+	assert.NoError(d2.Insert(ctx))
 
 	now := time.Now()
 	startTimeOld := now.Add(-1 * time.Hour)

@@ -2249,6 +2249,9 @@ tasks:
 }
 
 func TestCheckProjectWarnings(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When validating a project's semantics", t, func() {
 		Convey("if the project passes all of the validation funcs, no errors"+
 			" should be returned", func() {
@@ -2258,7 +2261,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 			}
 
 			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
+				So(d.Insert(ctx), ShouldBeNil)
 			}
 
 			projectRef := &model.ProjectRef{
@@ -2756,11 +2759,14 @@ task_groups:
 }
 
 func TestTaskNotInTaskGroupDependsOnTaskInTaskGroup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 exec_timeout_secs: 100
 tasks:
@@ -2799,7 +2805,6 @@ buildvariants:
   - name: example_task_group
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
@@ -2817,11 +2822,14 @@ buildvariants:
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 tasks:
 - name: one
@@ -2857,7 +2865,6 @@ buildvariants:
     - two
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
@@ -3065,11 +3072,14 @@ tasks:
 }
 
 func TestCheckProjectConfigurationIsValid(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 tasks:
 - name: one
@@ -3099,7 +3109,6 @@ buildvariants:
   - name: two
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotEmpty(proj)
@@ -3142,17 +3151,17 @@ func TestGetDistrosForProject(t *testing.T) {
 		Aliases:       []string{"distro1-alias", "distro1and2-alias"},
 		ValidProjects: []string{"project1", "project2"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	d = distro.Distro{
 		Id:      "distro2",
 		Aliases: []string{"distro2-alias", "distro1and2-alias"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	d = distro.Distro{
 		Id:            "distro3",
 		ValidProjects: []string{"project5"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	ids, aliases, err := getDistros(ctx)
 	require.NoError(err)

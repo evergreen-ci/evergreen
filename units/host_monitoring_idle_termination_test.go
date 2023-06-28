@@ -74,7 +74,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				AcceptableHostIdleTime: 4 * time.Minute,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 		// insert a host that is currently running a task - but whose
 		// creation time would otherwise indicate it has been idle a while
 		host1 := host.Host{
@@ -105,7 +105,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				AcceptableHostIdleTime: 4 * time.Minute,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		host1 := host.Host{
 			Id:                    "h1",
@@ -135,7 +135,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				AcceptableHostIdleTime: 4 * time.Minute,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		host1 := host.Host{
 			Id:                    "h1",
@@ -182,7 +182,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Communication: distro.CommunicationMethodLegacySSH,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		host1 := host.Host{
 			Id:                    "h1",
@@ -216,7 +216,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Communication: distro.CommunicationMethodSSH,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		host1 := host.Host{
 			Id:                    "h1",
@@ -250,7 +250,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Communication: distro.CommunicationMethodSSH,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		host1 := host.Host{
 			Id:                    "host1",
@@ -298,8 +298,8 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 				MinimumHosts: 1,
 			},
 		}
-		require.NoError(t, distro1.Insert())
-		require.NoError(t, distro2.Insert())
+		require.NoError(t, distro1.Insert(ctx))
+		require.NoError(t, distro2.Insert(ctx))
 
 		host1 := host.Host{
 			Id:           "h1",
@@ -387,7 +387,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 				MinimumHosts: 2,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		host1 := host.Host{
 			Id:           "h1",
@@ -424,7 +424,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 				MinimumHosts: 2,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		host1 := host.Host{
 			Id:           "h1",
@@ -493,8 +493,8 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 			MinimumHosts: 0,
 		},
 	}
-	assert.NoError(distro1.Insert())
-	assert.NoError(distro2.Insert())
+	assert.NoError(distro1.Insert(ctx))
+	assert.NoError(distro2.Insert(ctx))
 
 	host1 := &host.Host{
 		Id:            "host1",

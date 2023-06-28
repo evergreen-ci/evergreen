@@ -387,7 +387,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = d.Add(u); err != nil {
+	if err = d.Add(r.Context(), u); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error adding distro",
 		}))

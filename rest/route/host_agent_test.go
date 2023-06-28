@@ -847,7 +847,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			Id:                 distroID,
 			DispatcherSettings: settings,
 		}
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 
 		taskGroupInfo := model.TaskGroupInfo{
 			Name:  "",
@@ -1196,7 +1196,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			Id:                 "testDistro",
 			DispatcherSettings: settings,
 		}
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 
 		taskGroupInfo := model.TaskGroupInfo{
 			Name:  "",

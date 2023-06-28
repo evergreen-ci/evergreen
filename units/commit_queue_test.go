@@ -287,7 +287,7 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.NoError(config.CommitQueue.Set(ctx))
 	s.NoError((&distro.Distro{
 		Id: config.CommitQueue.MergeTaskDistro,
-	}).Insert())
+	}).Insert(s.ctx))
 
 	project := &model.Project{}
 	patchDoc := &patch.Patch{}

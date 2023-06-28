@@ -27,7 +27,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions){
 		"VolumeMigratesToNewHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 
@@ -82,7 +82,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			// Unsetting the Provider will cause the initial host to fail to stop
 			d.Provider = ""
 			h.Distro.Provider = ""
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 
@@ -125,7 +125,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 		"NewHostFailsToStart": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			// Invalid public key will prevent new host from spinning up
 			spawnOptions.PublicKey = ""
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 
@@ -169,7 +169,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			// The host document still has its HomeVolumeID set to the volume that was attached while it was running.
 			h.Status = evergreen.HostTerminated
 			v.Host = ""
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 
@@ -198,7 +198,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, foundHosts[0].HomeVolumeID, v.ID)
 		},
 		"NonexistentVolumeFailsGracefully": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 

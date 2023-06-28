@@ -55,7 +55,7 @@ func TestHostPostHandler(t *testing.T) {
 		Provider:             evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{doc},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	assert.NoError(err)
 	h := &hostPostHandler{
 		env: env,
