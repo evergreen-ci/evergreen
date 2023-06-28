@@ -870,9 +870,9 @@ func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
 }
 
 func AllDistros(ctx context.Context) ([]Distro, error) {
-	return FindWithContext(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}))
+	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}))
 }
 
 func AllDistroIDs(ctx context.Context) ([]Distro, error) {
-	return FindWithContext(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
+	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
 }

@@ -109,7 +109,7 @@ func FindOneWithContext(ctx context.Context, query bson.M, options ...*options.F
 	return d, nil
 }
 
-func FindWithContext(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Distro, error) {
+func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Distro, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding distros")

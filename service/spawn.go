@@ -195,7 +195,7 @@ func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Requ
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := distro.FindWithContext(r.Context(), distro.BySpawnAllowed(), options.Find().SetProjection(bson.M{
+	distros, err := distro.Find(r.Context(), distro.BySpawnAllowed(), options.Find().SetProjection(bson.M{
 		distro.IdKey:                   1,
 		distro.IsVirtualWorkstationKey: 1,
 		distro.IsClusterKey:            1,

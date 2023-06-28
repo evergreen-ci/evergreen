@@ -85,7 +85,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	for _, info := range distroHosts {
 		distroIDsToFind = append(distroIDsToFind, info.DistroID)
 	}
-	distrosFound, err := distro.FindWithContext(ctx, distro.ByIds(distroIDsToFind))
+	distrosFound, err := distro.Find(ctx, distro.ByIds(distroIDsToFind))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding distros"))
 		return
