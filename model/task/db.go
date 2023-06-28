@@ -1826,7 +1826,7 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 	defer cancel()
 
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
-	// whether any of the depedencies are blocked. Combining both these updates in a single update operation makes it
+	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
 	// impervious to races because updates to single documents are atomic.
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
