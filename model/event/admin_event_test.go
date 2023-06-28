@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -131,13 +132,16 @@ func (s *AdminEventSuite) TestNoChanges() {
 }
 
 func (s *AdminEventSuite) TestReverting() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	before := evergreen.SchedulerConfig{
 		TaskFinder: "legacy",
 	}
 	after := evergreen.SchedulerConfig{
 		TaskFinder: "alternate",
 	}
-	s.NoError(after.Set())
+	s.NoError(after.Set(ctx))
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
@@ -154,16 +158,19 @@ func (s *AdminEventSuite) TestReverting() {
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
 	s.Equal(after, settings.Scheduler)
-	s.NoError(RevertConfig(guid, "me"))
+	s.NoError(RevertConfig(ctx, guid, "me"))
 	settings, err = evergreen.GetConfig()
 	s.NoError(err)
 	s.Equal(before, settings.Scheduler)
 
 	// check that reverting a nonexistent guid errors
-	s.Error(RevertConfig("abcd", "me"))
+	s.Error(RevertConfig(ctx, "abcd", "me"))
 }
 
 func (s *AdminEventSuite) TestRevertingRoot() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// this verifies that reverting the root document does not revert other sections
 	before := evergreen.Settings{
 		Banner:      "before_banner",
@@ -195,7 +202,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	s.Equal(after.Banner, settings.Banner)
 	s.Equal(after.Credentials, settings.Credentials)
 	s.Equal(after.Ui, settings.Ui)
-	s.NoError(RevertConfig(guid, "me"))
+	s.NoError(RevertConfig(ctx, guid, "me"))
 	settings, err = evergreen.GetConfig()
 	s.NoError(err)
 	s.Equal(before.Banner, settings.Banner)

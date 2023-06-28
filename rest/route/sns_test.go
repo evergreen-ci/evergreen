@@ -211,12 +211,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			originalFlags, err := evergreen.GetServiceFlags()
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = false
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			// Set up the fake ECS testing service and the route's ECS client so
 			// that it tests cleaning up the pod in the fake service rather than
@@ -261,12 +261,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			originalFlags, err := evergreen.GetServiceFlags()
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = false
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			// Set up the fake ECS testing service and the route's ECS client so
 			// that it tests cleaning up the pod in the fake service rather than
@@ -304,12 +304,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			originalFlags, err := evergreen.GetServiceFlags()
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = false
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			// Set up the fake ECS testing service and the route's ECS client so
 			// that it tests cleaning up the pod in the fake service rather than
@@ -353,12 +353,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			originalFlags, err := evergreen.GetServiceFlags()
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = true
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			const (
 				clusterID     = "ecs-cluster"

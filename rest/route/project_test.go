@@ -83,7 +83,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		TotalProjectLimit: 1,
 		RepoProjectLimit:  1,
 	}
-	s.NoError(projectSetting.Set())
+	s.NoError(projectSetting.Set(ctx))
 	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)
 	projectAdminRole := gimlet.Role{
 		ID:    "dimoxinil",

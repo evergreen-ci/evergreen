@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -49,9 +50,12 @@ func (s *spawnHostTriggersSuite) SetupTest() {
 }
 
 func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.e.EventType = event.EventHostProvisioned
 	s.NoError(s.h.Insert())
-	s.NoError(s.tProvisioning.Fetch(&s.e))
+	s.NoError(s.tProvisioning.Fetch(ctx, &s.e))
 
 	sub := event.Subscription{
 		Trigger:    event.TriggerOutcome,
@@ -93,10 +97,13 @@ func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 }
 
 func (s *spawnHostTriggersSuite) TestFailedSpawn() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.e.EventType = event.EventHostProvisioned
 	s.NoError(s.h.Insert())
 	s.e.EventType = event.EventHostProvisionError
-	s.NoError(s.tProvisioning.Fetch(&s.e))
+	s.NoError(s.tProvisioning.Fetch(ctx, &s.e))
 
 	sub := event.Subscription{
 		Trigger:    event.TriggerOutcome,
@@ -138,9 +145,12 @@ func (s *spawnHostTriggersSuite) TestFailedSpawn() {
 }
 
 func (s *spawnHostTriggersSuite) TestSpawnHostStateChange() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.e.EventType = event.EventHostStarted
 	s.NoError(s.h.Insert())
-	s.NoError(s.tStateChange.Fetch(&s.e))
+	s.NoError(s.tStateChange.Fetch(ctx, &s.e))
 
 	sub := event.Subscription{
 		Trigger:    event.TriggerOutcome,

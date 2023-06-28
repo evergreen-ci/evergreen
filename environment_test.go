@@ -120,8 +120,11 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.env.settings = &Settings{}
-	err := s.env.initSettings("")
+	err := s.env.initSettings(ctx, "")
 	s.Error(err)
 	s.Contains(err.Error(), "validating settings")
 }

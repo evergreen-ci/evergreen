@@ -160,6 +160,9 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 }
 
 func TestSetPriority(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
 	patches := []*patch.Patch{
 		{Id: patch.NewId("aabbccddeeff001122334455"), Version: "aabbccddeeff001122334455"},
@@ -178,7 +181,7 @@ func TestSetPriority(t *testing.T) {
 	for _, p := range patches {
 		assert.NoError(t, p.Insert())
 	}
-	err := SetVersionsPriority([]string{"aabbccddeeff001122334455"}, 7, "")
+	err := SetVersionsPriority(ctx, []string{"aabbccddeeff001122334455"}, 7, "")
 	assert.NoError(t, err)
 	foundTask, err := task.FindOneId("t1")
 	assert.NoError(t, err)
@@ -1015,6 +1018,9 @@ func TestAddDisplayTasksToPatchReq(t *testing.T) {
 }
 
 func TestAbortPatchesWithGithubPatchData(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection, task.Collection, VersionCollection))
 	}()
@@ -1023,7 +1029,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -1035,7 +1041,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -1058,7 +1064,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			}
 			require.NoError(t, commitqueue.InsertQueue(&cq))
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
 			require.NoError(t, err)
@@ -1081,7 +1087,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			}
 			require.NoError(t, commitqueue.InsertQueue(&cq))
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
 			require.NoError(t, err)

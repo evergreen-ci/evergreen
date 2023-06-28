@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -107,6 +108,9 @@ func TestGenerateGceName(t *testing.T) {
 }
 
 func TestIsParent(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
 	assert.NoError(db.Clear(evergreen.ConfigCollection))
@@ -120,7 +124,7 @@ func TestIsParent(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(conf.Set())
+	assert.NoError(conf.Set(ctx))
 
 	settings, err := evergreen.GetConfig()
 	assert.NoError(err)

@@ -28,6 +28,9 @@ import (
 )
 
 func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
 	proj := model.ProjectRef{
@@ -78,7 +81,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 			Status: evergreen.TaskFailed,
 		},
 	}
-	n, err := NotificationsFromEvent(&e)
+	n, err := NotificationsFromEvent(ctx, &e)
 	assert.NoError(err)
 	assert.Len(n, 1)
 
@@ -120,7 +123,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 			Status: evergreen.TaskFailed,
 		},
 	}
-	n, err = NotificationsFromEvent(&e)
+	n, err = NotificationsFromEvent(ctx, &e)
 	assert.NoError(err)
 	grip.Error(err)
 	assert.Len(n, 1)
@@ -139,6 +142,8 @@ type taskSuite struct {
 	build      build.Build
 	projectRef model.ProjectRef
 	subs       []event.Subscription
+	ctx        context.Context
+	cancel     context.CancelFunc
 
 	t *taskTriggers
 
@@ -169,8 +174,7 @@ func (s *taskSuite) TearDownSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.Require().NoError(db.ClearCollections(
 		event.EventCollection,
@@ -183,7 +187,7 @@ func (s *taskSuite) SetupTest() {
 		build.Collection,
 		model.ProjectRefCollection,
 	))
-	s.Require().NoError(testresult.ClearLocal(ctx, s.env))
+	s.Require().NoError(testresult.ClearLocal(s.ctx, s.env))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -322,13 +326,17 @@ func (s *taskSuite) SetupTest() {
 	ui := &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	s.NoError(ui.Set())
+	s.NoError(ui.Set(s.ctx))
 
 	s.t = makeTaskTriggers().(*taskTriggers)
 	s.t.event = &s.event
 	s.t.data = s.data
 	s.t.task = &s.task
 	s.t.uiConfig = *ui
+}
+
+func (s *taskSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *taskSuite) TestTriggerEvent() {
@@ -370,7 +378,7 @@ func (s *taskSuite) TestTriggerEvent() {
 
 	s.data.Status = evergreen.TaskFailed
 	s.event.Data = s.data
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 1)
 }
@@ -397,13 +405,13 @@ func (s *taskSuite) TestGithubPREvent() {
 
 	s.data.Status = evergreen.TaskFailed
 	s.event.Data = s.data
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 1)
 }
 
 func (s *taskSuite) TestAllTriggers() {
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 
@@ -411,7 +419,7 @@ func (s *taskSuite) TestAllTriggers() {
 	s.data.Status = evergreen.TaskSucceeded
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 3)
 
@@ -419,19 +427,19 @@ func (s *taskSuite) TestAllTriggers() {
 	s.data.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 5)
 
 	s.task.DisplayOnly = true
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 4)
 }
 
 func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.NotEmpty(n)
 
@@ -441,7 +449,7 @@ func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
 	// works even if the task is archived
 	s.NoError(s.task.Archive())
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Empty(n)
 }
@@ -453,7 +461,7 @@ func (s *taskSuite) TestExecutionTask() {
 		ExecutionTasks: []string{s.task.Id},
 	}
 	s.NoError(t.Insert())
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 0)
 }
@@ -1072,7 +1080,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		EventType:    event.TaskFinished,
 		Data:         &event.TaskEventData{},
 	}
-	n, err := NotificationsFromEvent(&willNotify)
+	n, err := NotificationsFromEvent(s.ctx, &willNotify)
 	s.NoError(err)
 	s.Len(n, 1)
 	payload := n[0].Payload.(*message.Email)
@@ -1083,7 +1091,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		EventType:    event.TaskFinished,
 		Data:         &event.TaskEventData{},
 	}
-	n, err = NotificationsFromEvent(&wontNotify)
+	n, err = NotificationsFromEvent(s.ctx, &wontNotify)
 	s.NoError(err)
 	s.Len(n, 0)
 }
@@ -1096,7 +1104,7 @@ func (s *taskSuite) makeTaskTriggers(id string, execution int) *taskTriggers {
 			Execution: execution,
 		},
 	}
-	s.Require().NoError(t.Fetch(&e))
+	s.Require().NoError(t.Fetch(s.ctx, &e))
 	return t.(*taskTriggers)
 }
 
@@ -1245,7 +1253,7 @@ func (s *taskSuite) TestProjectTrigger() {
 	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
 	s.NoError(lastGreen.Insert())
 
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 }

@@ -24,7 +24,9 @@ type githubStatusRefreshSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
 
+	ctx    context.Context
 	cancel context.CancelFunc
+
 	suite.Suite
 }
 
@@ -33,17 +35,16 @@ func TestGithubStatusRefresh(t *testing.T) {
 }
 
 func (s *githubStatusRefreshSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
 	uiConfig := evergreen.UIConfig{}
 	uiConfig.Url = "https://example.com"
-	s.Require().NoError(uiConfig.Set())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
+	s.Require().NoError(uiConfig.Set(s.ctx))
 
 	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(ctx))
+	s.Require().NoError(s.env.Configure(s.ctx))
 
 	pRef := model.ProjectRef{
 		Id:         "myChildProject",
@@ -113,7 +114,7 @@ func (s *githubStatusRefreshSuite) TestFetch() {
 	s.Require().NotNil(job.patch)
 	job.env = s.env
 
-	s.NoError(job.fetch())
+	s.NoError(job.fetch(s.ctx))
 	s.NotEmpty(job.urlBase)
 	s.Len(job.builds, 1)
 	s.Len(job.childPatches, 1)

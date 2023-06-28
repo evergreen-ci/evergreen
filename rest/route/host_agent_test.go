@@ -78,10 +78,10 @@ func TestHostNextTask(t *testing.T) {
 	originalServiceFlags, err := evergreen.GetServiceFlags()
 	require.NoError(t, err)
 	defer func() {
-		assert.NoError(t, originalServiceFlags.Set())
+		assert.NoError(t, originalServiceFlags.Set(ctx))
 	}()
 	newServiceFlags := *originalServiceFlags
-	require.NoError(t, newServiceFlags.Set())
+	require.NoError(t, newServiceFlags.Set(ctx))
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentNextTask){
 		"ShouldSucceedAndSetAgentStartTime": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
@@ -518,11 +518,11 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, err)
 			defer func() {
 				// Reset to original service flags.
-				assert.NoError(t, originalServiceFlags.Set())
+				assert.NoError(t, originalServiceFlags.Set(ctx))
 			}()
 			newServiceFlags := *originalServiceFlags
 			newServiceFlags.TaskDispatchDisabled = true
-			require.NoError(t, newServiceFlags.Set())
+			require.NoError(t, newServiceFlags.Set(ctx))
 			resp := rh.Run(ctx)
 			assert.NotNil(t, resp)
 			assert.Equal(t, resp.Status(), http.StatusOK)
@@ -1466,6 +1466,9 @@ func TestCheckHostHealth(t *testing.T) {
 }
 
 func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	p1 := mgobson.NewObjectId().Hex()
 	p2 := mgobson.NewObjectId().Hex()
 	p3 := mgobson.NewObjectId().Hex()
@@ -1505,7 +1508,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// should dequeue task B and restart task C
-			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(ctx, &taskA, evergreen.TaskSucceeded))
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
@@ -1536,7 +1539,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// should just restart taskC now that we know for certain taskA is the problem
-			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(ctx, &taskA, evergreen.TaskSucceeded))
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
@@ -1569,7 +1572,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// shouldn't do anything since TaskB could be the problem
-			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(ctx, &taskA, evergreen.TaskSucceeded))
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
@@ -1601,7 +1604,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskA.Insert())
 
 			// shouldn't do anything since taskB isn't scheduled
-			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(ctx, &taskA, evergreen.TaskSucceeded))
 
 			cqFromDb, err := commitqueue.FindOneId(cq.ProjectID)
 			assert.NoError(t, err)
@@ -1620,7 +1623,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// Shouldn't do anything since TaskB could be the problem.
-			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskB, evergreen.TaskFailed))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(ctx, &taskB, evergreen.TaskFailed))
 
 			// no tasks restarted
 			taskBFromDb, err := task.FindOneId("taskB")
