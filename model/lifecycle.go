@@ -1665,7 +1665,7 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	if creationInfo.Version.BuildIds == nil {
 		return nil, nil
 	}
-	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
 		return nil, err
 	}

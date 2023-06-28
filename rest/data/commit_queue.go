@@ -53,7 +53,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 		return nil, err
 	}
 
-	errs := validator.CheckProjectErrors(proj, false)
+	errs := validator.CheckProjectErrors(ctx, proj, false)
 	isConfigDefined := len(patchDoc.PatchedProjectConfig) > 0
 	errs = append(errs, validator.CheckProjectSettings(settings, proj, &projectRef, isConfigDefined)...)
 	errs = append(errs, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)

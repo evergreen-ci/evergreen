@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Distro struct {
@@ -865,4 +867,12 @@ func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
 		evergreen.BuildRevision,
 		d.ExecutableSubPath(),
 	}, "/")
+}
+
+func AllDistros(ctx context.Context) ([]Distro, error) {
+	return FindWithContext(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}))
+}
+
+func AllDistroIDs(ctx context.Context) ([]Distro, error) {
+	return FindWithContext(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
 }

@@ -483,7 +483,7 @@ func (h *modifyDistrosSettingsHandler) Parse(ctx context.Context, r *http.Reques
 
 func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	allDistros, err := distro.Find(distro.All)
+	allDistros, err := distro.AllDistros(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding all distros"))
 	}
@@ -606,7 +606,7 @@ func (h *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
-	distros, err := distro.Find(distro.All)
+	distros, err := distro.AllDistros(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding all distros"))
 	}
@@ -779,7 +779,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for distro '%s'", h.distro))
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable()
+	dat, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting distro lookup table"))
 	}

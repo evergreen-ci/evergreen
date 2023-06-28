@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -183,16 +184,16 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 }
 
 // getDistros creates a slice of all distro IDs and aliases.
-func getDistros() (ids []string, aliases []string, err error) {
-	return getDistrosForProject("")
+func getDistros(ctx context.Context) (ids []string, aliases []string, err error) {
+	return getDistrosForProject(ctx, "")
 }
 
 // getDistrosForProject creates a slice of all valid distro IDs and a slice of
 // all valid aliases for a project. If projectID is empty, it returns all distro
 // IDs and all aliases.
-func getDistrosForProject(projectID string) (ids []string, aliases []string, err error) {
+func getDistrosForProject(ctx context.Context, projectID string) (ids []string, aliases []string, err error) {
 	// create a slice of all known distros
-	distros, err := distro.Find(distro.All)
+	distros, err := distro.AllDistros(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -233,7 +234,7 @@ func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) Va
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErrors {
+func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong bool) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectErrorValidator := range projectErrorValidators {
 		validationErrs = append(validationErrs,
@@ -245,7 +246,7 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
-	distroIDs, distroAliases, err := getDistrosForProject(project.Identifier)
+	distroIDs, distroAliases, err := getDistrosForProject(ctx, project.Identifier)
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
@@ -299,9 +300,9 @@ func CheckProjectSettings(settings *evergreen.Settings, p *model.Project, ref *m
 }
 
 // checks if the project configuration has errors
-func CheckProjectConfigurationIsValid(settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
+func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
-	projectErrors := CheckProjectErrors(project, false)
+	projectErrors := CheckProjectErrors(ctx, project, false)
 	if len(projectErrors) != 0 {
 		if errs := projectErrors.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors: %s", ValidationErrorsToString(errs))

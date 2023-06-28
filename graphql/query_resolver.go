@@ -116,7 +116,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		}
 		distros = d
 	} else {
-		d, err := distro.FindAll()
+		d, err := distro.AllDistros(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching distros: %s", err.Error()))
 		}

@@ -55,8 +55,8 @@ func (ps byPoolSize) Less(i, j int) bool {
 
 type AliasLookupTable map[string][]string
 
-func NewDistroAliasesLookupTable() (AliasLookupTable, error) {
-	all, err := FindAll()
+func NewDistroAliasesLookupTable(ctx context.Context) (AliasLookupTable, error) {
+	all, err := AllDistros(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all distros")
 	}

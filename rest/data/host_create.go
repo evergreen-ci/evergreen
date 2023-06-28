@@ -350,7 +350,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	var err error
 	if distroID := createHost.Distro; distroID != "" {
 		var dat distro.AliasLookupTable
-		dat, err = distro.NewDistroAliasesLookupTable()
+		dat, err = distro.NewDistroAliasesLookupTable(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting distro lookup table")
 		}

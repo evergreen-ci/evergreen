@@ -44,6 +44,9 @@ func TestFindDistroById(t *testing.T) {
 }
 
 func TestFindAllDistros(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
@@ -60,7 +63,7 @@ func TestFindAllDistros(t *testing.T) {
 		assert.Nil(d.Insert())
 	}
 
-	found, err := Find(All)
+	found, err := AllDistros(ctx)
 	assert.NoError(err)
 	assert.Len(found, numDistros)
 }

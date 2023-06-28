@@ -78,9 +78,6 @@ var (
 
 const Collection = "distro"
 
-// All is a query that returns all distros.
-var All = db.Query(nil).Sort([]string{IdKey})
-
 // FindOne gets one Distro for the given query.
 func FindOne(query db.Q) (*Distro, error) {
 	d := &Distro{}
@@ -112,13 +109,6 @@ func FindOneWithContext(ctx context.Context, query bson.M, options ...*options.F
 	return d, nil
 }
 
-// Find gets every Distro matching the given query.
-func Find(query db.Q) ([]Distro, error) {
-	distros := []Distro{}
-	err := db.FindAllQ(Collection, query, &distros)
-	return distros, err
-}
-
 func FindWithContext(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Distro, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
 	if err != nil {
@@ -130,10 +120,6 @@ func FindWithContext(ctx context.Context, query bson.M, options ...*options.Find
 	}
 
 	return distros, nil
-}
-
-func FindAll() ([]Distro, error) {
-	return Find(db.Query(nil))
 }
 
 // Insert writes the distro to the database.

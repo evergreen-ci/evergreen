@@ -257,7 +257,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = append(errs, validationErr)
 	}
 
-	errs = append(errs, validator.CheckProjectErrors(project, input.IncludeLong)...)
+	errs = append(errs, validator.CheckProjectErrors(r.Context(), project, input.IncludeLong)...)
 	if projectConfig != nil {
 		errs = append(errs, validator.CheckProjectConfigErrors(projectConfig)...)
 	}

@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +36,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	distros, err := distro.Find(distro.All.Project(bson.M{"_id": 1}))
+	distros, err := distro.AllDistroIDs(r.Context())
 	if err != nil {
 		message := fmt.Sprintf("error fetching distro ids: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))

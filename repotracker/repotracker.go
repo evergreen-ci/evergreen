@@ -623,7 +623,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	settings := evergreen.GetEnvironment().Settings()
 	// validate the project
 	isConfigDefined := projectInfo.Config != nil
-	verrs := validator.CheckProjectErrors(projectInfo.Project, true)
+	verrs := validator.CheckProjectErrors(ctx, projectInfo.Project, true)
 	verrs = append(verrs, validator.CheckProjectSettings(settings, projectInfo.Project, projectInfo.Ref, isConfigDefined)...)
 	verrs = append(verrs, validator.CheckProjectConfigErrors(projectInfo.Config)...)
 	verrs = append(verrs, validator.CheckProjectWarnings(projectInfo.Project)...)
@@ -793,7 +793,7 @@ func verifyOrderNum(revOrderNum int, projectId, revision string) error {
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
 func createVersionItems(ctx context.Context, v *model.Version, metadata model.VersionMetadata, projectInfo *model.ProjectInfo, aliases model.ProjectAliases) error {
-	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}

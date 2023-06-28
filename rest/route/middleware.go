@@ -815,7 +815,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable()
+	dat, err := distro.NewDistroAliasesLookupTable(r.Context())
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
 	}

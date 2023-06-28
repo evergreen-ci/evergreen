@@ -513,7 +513,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		config.Id = p.Id.Hex()
 	}
 
-	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving distro alias table for patch")
 	}

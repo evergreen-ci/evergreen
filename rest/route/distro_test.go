@@ -796,7 +796,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	allDistros, err := distro.Find(distro.All)
+	allDistros, err := distro.AllDistros(ctx)
 	s.NoError(err)
 	distro1 := allDistros[0]
 	s.Len(distro1.ProviderSettingsList, 1)
