@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -59,6 +60,10 @@ type githubMergeIntent struct {
 
 // NewGithubIntent creates an Intent from a google/go-github MergeGroup.
 func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeGroupEvent) (Intent, error) {
+	grip.Info(message.Fields{
+		"message": "debugging, please remove this message",
+		"info":    "got to beginning of NewGithubMergeIntent",
+	})
 	catcher := grip.NewBasicCatcher()
 	if msgDeliveryID == "" {
 		catcher.Add(errors.New("message ID cannot be empty"))
@@ -81,6 +86,11 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
+
+	grip.Info(message.Fields{
+		"message": "debugging, please remove this message",
+		"info":    "got to end of NewGithubMergeIntent",
+	})
 	return &githubMergeIntent{
 		DocumentID: msgDeliveryID,
 		MsgID:      msgDeliveryID,
