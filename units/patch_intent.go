@@ -533,6 +533,9 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 		if err != nil {
 			return err
 		}
+		if j.IntentType == patch.GithubIntentType {
+			patchDoc.GithubPatchData.RepeatPatchIdNextPatch = reusePatchId
+		}
 	}
 
 	// Verify that all variants exists
