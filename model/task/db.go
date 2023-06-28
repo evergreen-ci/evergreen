@@ -1820,31 +1820,38 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-func (t *Task) updateAllMatchingDependenciesForTask(dependencyId string, unattainable bool) error {
+func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattainable bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
 
+	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
+	// whether any of the depedencies are blocked. Combining both these updates in a single update operation makes it
+	// impervious to races because updates to single documents are atomic.
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
 		[]bson.M{
 			{
+				// Iterate over the DependsOn array and set unattainable for dependencies that
+				// match the dependencyID. Leave other dependencies untouched.
 				"$set": bson.M{DependsOnKey: bson.M{
 					"$map": bson.M{
 						"input": "$" + DependsOnKey,
+						"as":    "dependency",
 						"in": bson.M{
 							"$cond": bson.M{
-								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$this", DependencyTaskIdKey), dependencyId}},
-								"then": bson.M{"$mergeObjects": bson.A{"$$this", bson.M{DependencyUnattainableKey: unattainable}}},
-								"else": "$$this",
+								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
+								"else": "$$dependency",
 							},
 						},
 					}},
 				},
 			},
 			{
+				// Cache whether any dependencies are unattinable.
 				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
 			},
 		},
