@@ -368,7 +368,7 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetReadPreference(readpref.Primary()).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
 	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
 		opts.SetAuth(options.Credential{
