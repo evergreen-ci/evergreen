@@ -91,6 +91,18 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 		"message": "debugging, please remove this message",
 		"info":    "got to end of NewGithubMergeIntent",
 	})
+	grip.Info(message.Fields{
+		"message":    "debugging, please remove this message",
+		"info":       "creating new githubMergeIntent",
+		"DocumentID": msgDeliveryID,
+		"MsgID":      msgDeliveryID,
+		"IntentType": GithubMergeIntentType,
+		"Org":        mg.GetOrg().GetName(),
+		"Repo":       mg.GetRepo().GetName(),
+		"HeadRef":    mg.GetMergeGroup().GetHeadRef(),
+		"HeadSHA":    mg.GetMergeGroup().GetHeadSHA(),
+		"CalledBy":   caller,
+	})
 	return &githubMergeIntent{
 		DocumentID: msgDeliveryID,
 		MsgID:      msgDeliveryID,
