@@ -12,7 +12,7 @@ import (
 )
 
 func FindApplicableDistroIDs(ctx context.Context, id string) ([]string, error) {
-	d, err := FindOneWithContext(ctx, ById(id), options.FindOne().SetProjection(bson.M{AliasesKey: 1}))
+	d, err := FindOne(ctx, ById(id), options.FindOne().SetProjection(bson.M{AliasesKey: 1}))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

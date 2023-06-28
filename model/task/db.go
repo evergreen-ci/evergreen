@@ -990,7 +990,7 @@ func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]
 	var d distro.Distro
 	var err error
 	if distroID != "" {
-		foundDistro, err := distro.FindOneWithContext(ctx, distro.ById(distroID), options.FindOne().SetProjection(bson.M{distro.ValidProjectsKey: 1}))
+		foundDistro, err := distro.FindOne(ctx, distro.ById(distroID), options.FindOne().SetProjection(bson.M{distro.ValidProjectsKey: 1}))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}

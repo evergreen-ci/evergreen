@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -78,22 +77,12 @@ var (
 
 const Collection = "distro"
 
-// FindOne gets one Distro for the given query.
-func FindOne(query db.Q) (*Distro, error) {
-	d := &Distro{}
-	err := db.FindOneQ(Collection, query, d)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return d, err
-}
-
 // FindOneId returns one Distro by Id.
 func FindOneId(ctx context.Context, id string) (*Distro, error) {
-	return FindOneWithContext(ctx, ById(id))
+	return FindOne(ctx, ById(id))
 }
 
-func FindOneWithContext(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
+func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
 	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
 	if err := res.Err(); err != nil {
 		return nil, errors.Wrap(res.Err(), "finding distro")
