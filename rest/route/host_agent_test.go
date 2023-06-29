@@ -96,12 +96,12 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, nextTask)
 			assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
-			dbHost, err := host.FindOneId("h1")
+			dbHost, err := host.FindOneId(ctx, "h1")
 			require.NoError(t, err)
 			assert.False(t, utility.IsZeroTime(dbHost.AgentStartTime))
 		},
 		"ShouldExitWithOutOfDateRevisionAndTaskGroup": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
-			sampleHost, err := host.FindOneId("h1")
+			sampleHost, err := host.FindOneId(ctx, "h1")
 			require.NoError(t, err)
 			require.NoError(t, sampleHost.SetAgentRevision("out-of-date-string"))
 			defer func() {
@@ -118,7 +118,7 @@ func TestHostNextTask(t *testing.T) {
 		"NonLegacyHostThatNeedsReprovision": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
 				"ShouldPrepareToReprovision": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					h, err := host.FindOneId("id")
+					h, err := host.FindOneId(ctx, "id")
 					require.NoError(t, err)
 
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
@@ -129,7 +129,7 @@ func TestHostNextTask(t *testing.T) {
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.True(t, taskResp.ShouldExit)
-					dbHost, err := host.FindOneId(h.Id)
+					dbHost, err := host.FindOneId(ctx, h.Id)
 					require.NoError(t, err)
 					assert.Equal(t, dbHost.NeedsReprovision, host.ReprovisionToNew)
 					assert.Equal(t, dbHost.Status, evergreen.HostProvisioning)
@@ -139,7 +139,7 @@ func TestHostNextTask(t *testing.T) {
 					assert.True(t, utility.IsZeroTime(dbHost.AgentStartTime))
 				},
 				"DoesntReprovisionIfNotNeeded": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					h, err := host.FindOneId("id")
+					h, err := host.FindOneId(ctx, "id")
 					require.NoError(t, err)
 					require.NoError(t, host.UpdateOne(bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}))
 					h.NeedsReprovision = ""
@@ -151,7 +151,7 @@ func TestHostNextTask(t *testing.T) {
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
-					dbHost, err := host.FindOneId(h.Id)
+					dbHost, err := host.FindOneId(ctx, h.Id)
 					require.NoError(t, err)
 					assert.Empty(t, dbHost.NeedsReprovision)
 					assert.Equal(t, dbHost.Status, evergreen.HostRunning)
@@ -189,7 +189,7 @@ func TestHostNextTask(t *testing.T) {
 		"IntentHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
 				"ConvertsBuildingIntentHostToStartingRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					intentHost, err := host.FindOneId("intentHost")
+					intentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
 					instanceID := generateFakeEC2InstanceID()
 
@@ -207,17 +207,17 @@ func TestHostNextTask(t *testing.T) {
 					assert.False(t, taskResp.ShouldExit)
 					assert.Empty(t, taskResp.TaskId)
 
-					dbIntentHost, err := host.FindOneId(intentHost.Id)
+					dbIntentHost, err := host.FindOneId(ctx, intentHost.Id)
 					require.NoError(t, err)
 					assert.NotNil(t, dbIntentHost)
 
-					realHost, err := host.FindOneId(instanceID)
+					realHost, err := host.FindOneId(ctx, instanceID)
 					require.NoError(t, err)
 					assert.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostStarting)
 				},
 				"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					intentHost, err := host.FindOneId("intentHost")
+					intentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
 					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostBuildingFailed, evergreen.User, ""))
 
@@ -237,17 +237,17 @@ func TestHostNextTask(t *testing.T) {
 					assert.True(t, taskResp.ShouldExit)
 					assert.Empty(t, taskResp.TaskId)
 
-					dbIntentHost, err := host.FindOneId("intentHost")
+					dbIntentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
 					assert.Nil(t, dbIntentHost)
 
-					realHost, err := host.FindOneId(instanceID)
+					realHost, err := host.FindOneId(ctx, instanceID)
 					require.NoError(t, err)
 					assert.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostDecommissioned)
 				},
 				"ConvertsTerminatedHostIntoDecommissionedRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					intentHost, err := host.FindOneId("intentHost")
+					intentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
 					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostTerminated, evergreen.User, ""))
 
@@ -266,11 +266,11 @@ func TestHostNextTask(t *testing.T) {
 					assert.True(t, taskResp.ShouldExit)
 					assert.Empty(t, taskResp.TaskId)
 
-					dbIntentHost, err := host.FindOneId("intentHost")
+					dbIntentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
 					assert.Nil(t, dbIntentHost)
 
-					realHost, err := host.FindOneId(instanceID)
+					realHost, err := host.FindOneId(ctx, instanceID)
 					require.NoError(t, err)
 					assert.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostDecommissioned)
@@ -325,7 +325,7 @@ func TestHostNextTask(t *testing.T) {
 				require.True(t, ok, resp.Data())
 				assert.True(t, taskResp.ShouldExit)
 				assert.Empty(t, taskResp.TaskId)
-				dbHost, err := host.FindOneId(nonLegacyHost.Id)
+				dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 				require.NoError(t, err)
 				assert.Equal(t, dbHost.Status, status)
 			}
@@ -333,7 +333,7 @@ func TestHostNextTask(t *testing.T) {
 		"NonLegacyHostWithOldAgentRevision": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
 				"ShouldMarkRunningWhenProvisionedByAppServer": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					nonLegacyHost, err := host.FindOneId("nonLegacyHost")
+					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
 					require.NoError(t, nonLegacyHost.SetProvisionedNotRunning())
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
@@ -342,16 +342,16 @@ func TestHostNextTask(t *testing.T) {
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
-					dbHost, err := host.FindOneId(nonLegacyHost.Id)
+					dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 					require.NoError(t, err)
 					assert.Equal(t, dbHost.Status, evergreen.HostRunning)
 				},
 				"ShouldGetNextTaskWhenProvisioning": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					nonLegacyHost, err := host.FindOneId("nonLegacyHost")
+					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
 					// setup host
 					require.NoError(t, db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}))
-					dbHost, err := host.FindOneId(nonLegacyHost.Id)
+					dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 					require.NoError(t, err)
 					assert.Equal(t, dbHost.Status, evergreen.HostStarting)
 
@@ -364,7 +364,7 @@ func TestHostNextTask(t *testing.T) {
 					assert.Equal(t, taskResp.Build, buildID)
 				},
 				"LatestAgentRevisionInNextTaskDetails": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					nonLegacyHost, err := host.FindOneId("nonLegacyHost")
+					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
 					rh.host = nonLegacyHost
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
@@ -375,7 +375,7 @@ func TestHostNextTask(t *testing.T) {
 					assert.False(t, taskResp.ShouldExit)
 				},
 				"OutdatedAgentRevisionInNextTaskDetails": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					nonLegacyHost, err := host.FindOneId("nonLegacyHost")
+					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
 					rh.host = nonLegacyHost
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: "out-of-date"}
@@ -416,7 +416,7 @@ func TestHostNextTask(t *testing.T) {
 		"WithHostThatAlreadyHasRunningTask": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
 				"GettingNextTaskShouldReturnExistingTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					h2, err := host.FindOneId("anotherHost")
+					h2, err := host.FindOneId(ctx, "anotherHost")
 					require.NoError(t, err)
 					rh.host = h2
 					resp := rh.Run(ctx)
@@ -483,7 +483,7 @@ func TestHostNextTask(t *testing.T) {
 					assert.Equal(t, resp.Status(), http.StatusOK)
 					taskResp = resp.Data().(apimodels.NextTaskResponse)
 					assert.Equal(t, taskResp.TaskId, "")
-					h, err := host.FindOne(host.ById(h3.Id))
+					h, err := host.FindOne(ctx, host.ById(h3.Id))
 					require.NoError(t, err)
 					assert.Equal(t, h.RunningTask, "")
 				},
@@ -608,7 +608,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			require.Equal(t, resp.Status(), http.StatusOK)
 			require.NotNil(t, resp)
 
-			h, err := host.FindOneId(hostId)
+			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			assert.Equal(t, 1, h.TaskCount)
 		},
@@ -622,7 +622,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			require.Equal(t, resp.Status(), http.StatusOK)
 			taskResp := apimodels.EndTaskResponse{}
 			require.False(t, taskResp.ShouldExit)
-			h, err := host.FindOne(host.ById(hostId))
+			h, err := host.FindOne(ctx, host.ById(hostId))
 			require.NoError(t, err)
 			require.Equal(t, h.RunningTask, "")
 
@@ -646,7 +646,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			taskResp := apimodels.EndTaskResponse{}
 			require.False(t, taskResp.ShouldExit)
 
-			h, err := host.FindOne(host.ById(hostId))
+			h, err := host.FindOne(ctx, host.ById(hostId))
 			require.NoError(t, err)
 			require.Equal(t, h.RunningTask, "")
 
@@ -911,7 +911,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(err, ShouldBeNil)
 			So(currentTq.Length(), ShouldEqual, 1)
 
-			h, err := host.FindOne(host.ById(theHostWhoCanBoastTheMostRoast.Id))
+			h, err := host.FindOne(ctx, host.ById(theHostWhoCanBoastTheMostRoast.Id))
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, "task1")
 
@@ -1040,7 +1040,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				So(shouldTeardown, ShouldBeFalse)
 				So(t, ShouldNotBeNil)
 				So(t.Id, ShouldEqual, t2.Id)
-				h, err := host.FindOne(host.ById(h2.Id))
+				h, err := host.FindOne(ctx, host.ById(h2.Id))
 				So(err, ShouldBeNil)
 				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
@@ -1103,7 +1103,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			// task 3 should not be dispatched, because it's already running on max
 			// hosts, instead it should be task 4
 			So(t.Id, ShouldEqual, task4.Id)
-			h, err := host.FindOne(host.ById(host2.Id))
+			h, err := host.FindOne(ctx, host.ById(host2.Id))
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, task4.Id)
 		})
@@ -1167,7 +1167,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			// task 3 should not be dispatched, because it has a later task group
 			// order number than what's currently assigned to host1. Instead it should be task4.
 			So(t.Id, ShouldEqual, task4.Id)
-			h, err := host.FindOne(host.ById(host2.Id))
+			h, err := host.FindOne(ctx, host.ById(host2.Id))
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, task4.Id)
 		})
@@ -1261,7 +1261,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			So(err, ShouldBeNil)
 			So(currentTq.Length(), ShouldEqual, 1)
 
-			h, err := host.FindOne(host.ById(theHostWhoCanBoastTheMostRoast.Id))
+			h, err := host.FindOne(ctx, host.ById(theHostWhoCanBoastTheMostRoast.Id))
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, "task1")
 		})
@@ -1372,7 +1372,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				So(shouldTeardown, ShouldBeFalse)
 				So(t, ShouldNotBeNil)
 				So(t.Id, ShouldEqual, t2.Id)
-				h, err := host.FindOne(host.ById(h2.Id))
+				h, err := host.FindOne(ctx, host.ById(h2.Id))
 				So(err, ShouldBeNil)
 				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
@@ -1435,7 +1435,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			// task 3 should not be dispatched, because it's already running on max
 			// hosts, instead it should be task 4
 			So(t.Id, ShouldEqual, task4.Id)
-			h, err := host.FindOne(host.ById(host2.Id))
+			h, err := host.FindOne(ctx, host.ById(host2.Id))
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, task4.Id)
 		})

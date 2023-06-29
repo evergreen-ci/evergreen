@@ -97,7 +97,7 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal(true, ec2Settings.IsVpc)
 
 	// test roundtripping
-	h, err = host.FindOneByIdOrTag(h.Id)
+	h, err = host.FindOneByIdOrTag(ctx, h.Id)
 	assert.NoError(err)
 	require.NotNil(h)
 	ec2Settings2 := &cloud.EC2ProviderSettings{}

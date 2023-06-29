@@ -69,7 +69,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
-	h2, err := host.FindOne(host.ById("host2"))
+	h2, err := host.FindOne(ctx, host.ById("host2"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostRunning, h2.Status)
 
@@ -81,19 +81,19 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	h1, err := host.FindOne(host.ById("host1"))
+	h1, err := host.FindOne(ctx, host.ById("host1"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostRunning, h1.Status)
 
-	h2, err = host.FindOne(host.ById("host2"))
+	h2, err = host.FindOne(ctx, host.ById("host2"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostDecommissioned, h2.Status)
 
-	h3, err := host.FindOne(host.ById("host3"))
+	h3, err := host.FindOne(ctx, host.ById("host3"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostRunning, h3.Status)
 
-	h4, err := host.FindOne(host.ById("host4"))
+	h4, err := host.FindOne(ctx, host.ById("host4"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostTerminated, h4.Status)
 }

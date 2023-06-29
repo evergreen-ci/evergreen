@@ -137,7 +137,7 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	assert.NoError(t, spawnHost.Insert())
 
 	checkStatus := func(t *testing.T, hostID, status string) {
-		dbHost, err := host.FindOneId(hostID)
+		dbHost, err := host.FindOneId(ctx, hostID)
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 		assert.Equal(t, status, dbHost.Status)

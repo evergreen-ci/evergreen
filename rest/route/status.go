@@ -92,7 +92,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 		response := make([]model.APITask, len(tasks))
 		for i, t := range tasks {
 			taskModel := model.APITask{}
-			err = taskModel.BuildFromService(&t, &model.APITaskArgs{
+			err = taskModel.BuildFromService(ctx, &t, &model.APITaskArgs{
 				IncludeProjectIdentifier: true,
 				IncludeAMI:               true,
 			})

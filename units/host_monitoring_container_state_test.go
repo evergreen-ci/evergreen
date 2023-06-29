@@ -53,15 +53,15 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	container1, err := host.FindOne(host.ById("container-1"))
+	container1, err := host.FindOne(ctx, host.ById("container-1"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostRunning, container1.Status)
 
-	container2, err := host.FindOne(host.ById("container-2"))
+	container2, err := host.FindOne(ctx, host.ById("container-2"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostTerminated, container2.Status)
 
-	container3, err := host.FindOne(host.ById("container-3"))
+	container3, err := host.FindOne(ctx, host.ById("container-3"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostUninitialized, container3.Status)
 }

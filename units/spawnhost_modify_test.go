@@ -39,6 +39,9 @@ func checkSpawnHostModificationEvent(t *testing.T, hostID, expectedEvent string,
 }
 
 func TestSpawnhostModifyJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
 	mock := cloud.GetMockProvider()
 	h := host.Host{

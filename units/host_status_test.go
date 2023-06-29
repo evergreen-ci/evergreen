@@ -154,7 +154,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.False(t, dbHost.Provisioned)
@@ -172,7 +172,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
@@ -184,7 +184,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -197,7 +197,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 
 			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -215,7 +215,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 
 			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)

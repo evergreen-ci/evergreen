@@ -53,7 +53,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))
 			assert.Equal(t, expectedCmd, info.Options.Args)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},

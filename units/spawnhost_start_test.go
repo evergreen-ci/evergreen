@@ -15,6 +15,9 @@ import (
 )
 
 func TestSpawnhostStartJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
 	mock := cloud.GetMockProvider()
 	t.Run("NewSpawnhostStartJobHostNotStopped", func(t *testing.T) {
@@ -56,7 +59,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 		assert.NoError(t, j.Error())
 		assert.True(t, j.Status().Completed)
 
-		startedHost, err := host.FindOneId(h.Id)
+		startedHost, err := host.FindOneId(ctx, h.Id)
 		assert.NoError(t, err)
 		assert.Equal(t, evergreen.HostRunning, startedHost.Status)
 

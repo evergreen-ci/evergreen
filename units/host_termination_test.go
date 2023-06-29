@@ -53,7 +53,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -79,7 +79,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -102,7 +102,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
@@ -153,7 +153,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.NotEqual(t, evergreen.HostRunning, dbHost.Status)
@@ -172,7 +172,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -191,7 +191,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -210,7 +210,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -228,7 +228,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)

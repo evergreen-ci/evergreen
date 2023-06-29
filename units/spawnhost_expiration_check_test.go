@@ -18,6 +18,9 @@ import (
 )
 
 func TestSpawnhostExpirationCheckJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := testutil.TestConfig()
 	assert.NoError(t, evergreen.UpdateConfig(config))
 	assert.NoError(t, db.ClearCollections(host.Collection))
@@ -49,7 +52,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 	assert.NoError(t, j.Error())
 	assert.True(t, j.Status().Completed)
 
-	found, err := host.FindOneId(h.Id)
+	found, err := host.FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	require.NotNil(t, found)
 	assert.True(t, found.ExpirationTime.Sub(h.ExpirationTime) > 0)

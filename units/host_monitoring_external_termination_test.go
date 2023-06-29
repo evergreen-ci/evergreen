@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestHostMonitoringCheckJob(t *testing.T) {
@@ -59,7 +60,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 
 	require.True(amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
-	dbHost, err := host.FindOneId(h.Id)
+	dbHost, err := host.FindOneId(ctx, h.Id)
 	require.NoError(err)
 	require.NotZero(t, dbHost)
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
@@ -120,7 +121,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 
 				require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
-				dbHost, err := host.FindOneId(h.Id)
+				dbHost, err := host.FindOneId(ctx, h.Id)
 				require.NoError(t, err)
 				require.NotZero(t, dbHost)
 
@@ -150,7 +151,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 
 		require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
-		dbHost, err := host.FindOneId(h.Id)
+		dbHost, err := host.FindOneId(ctx, h.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 
@@ -178,7 +179,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -197,7 +198,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.Error(t, err)
 			assert.False(t, terminated)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
@@ -214,7 +215,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.False(t, terminated)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
@@ -231,7 +232,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.Error(t, err)
 			assert.False(t, terminated)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
@@ -269,6 +270,9 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 }
 
 func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 	}()
@@ -376,7 +380,7 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 
 			assert.NoError(t, handleTerminatedHostSpawnedByTask(testCase.h))
 
-			intent, err := host.FindOne(db.Query(nil))
+			intent, err := host.FindOne(ctx, bson.M{})
 			require.NoError(t, err)
 			if testCase.newIntentCreated {
 				require.NotNil(t, intent)

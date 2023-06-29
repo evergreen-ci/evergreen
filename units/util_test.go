@@ -59,13 +59,13 @@ func TestHandlePoisonedHost(t *testing.T) {
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, container1, ""))
 
-			parent, err := host.FindOneId(parent.Id)
+			parent, err := host.FindOneId(ctx, parent.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, parent.Status)
-			container1, err = host.FindOneId(container1.Id)
+			container1, err = host.FindOneId(ctx, container1.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, container1.Status)
-			container2, err = host.FindOneId(container2.Id)
+			container2, err = host.FindOneId(ctx, container2.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, container2.Status)
 
@@ -97,7 +97,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			require.NoError(t, hostRunningTask.Insert())
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, hostRunningTask, ""))
-			hostRunningTask, err := host.FindOneId(hostRunningTask.Id)
+			hostRunningTask, err := host.FindOneId(ctx, hostRunningTask.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, hostRunningTask.Status)
 
@@ -114,7 +114,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			require.NoError(t, static.Insert())
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, static, ""))
-			static, err := host.FindOneId(static.Id)
+			static, err := host.FindOneId(ctx, static.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, static.Status)
 		},
@@ -126,7 +126,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			require.NoError(t, decommissioned.Insert())
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, decommissioned, ""))
-			decommissioned, err := host.FindOneId(decommissioned.Id)
+			decommissioned, err := host.FindOneId(ctx, decommissioned.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, decommissioned.Status)
 		},
@@ -138,7 +138,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			require.NoError(t, terminated.Insert())
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, terminated, ""))
-			terminated, err := host.FindOneId(terminated.Id)
+			terminated, err := host.FindOneId(ctx, terminated.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, terminated.Status)
 		},

@@ -57,7 +57,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.NotEqual(t, volume.Host, h.Id)
 			assert.False(t, volume.Migrating)
 
-			initialHost, err := host.FindOneId(h.Id)
+			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, initialHost.Status, evergreen.HostStopped)
 			assert.Equal(t, initialHost.HomeVolumeID, "")
@@ -111,7 +111,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.False(t, volume.Migrating)
 
 			// And that host is still running
-			initialHost, err := host.FindOneId(h.Id)
+			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, initialHost.Status, evergreen.HostRunning)
 			assert.Equal(t, initialHost.HomeVolumeID, volume.ID)
@@ -155,7 +155,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, volume.Host, "")
 			assert.False(t, volume.Migrating)
 
-			initialHost, err := host.FindOneId(h.Id)
+			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, initialHost.Status, evergreen.HostStopped)
 			assert.Equal(t, initialHost.HomeVolumeID, "")
@@ -187,7 +187,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.NotEqual(t, volume.Host, h.Id)
 			assert.False(t, volume.Migrating)
 
-			initialHost, err := host.FindOneId(h.Id)
+			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, initialHost.Status, evergreen.HostTerminated)
 			assert.Equal(t, initialHost.HomeVolumeID, "v0")

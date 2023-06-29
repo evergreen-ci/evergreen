@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -188,6 +189,9 @@ func makeStaticHostProviderSettings(t *testing.T, names ...string) *birch.Docume
 }
 
 func TestDoStaticHostUpdate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	legacyHost := func() *host.Host {
 		return &host.Host{
 			Id:   "host1",
@@ -228,12 +232,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				User:                 user,
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, name, hosts[0])
 
-			dbHost, err := host.FindOneId(name)
+			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
 			assert.Equal(t, user, dbHost.User)
 			assert.Equal(t, evergreen.User, dbHost.StartedBy)
@@ -255,12 +259,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, name, hosts[0])
 
-			dbHost, err := host.FindOneId(name)
+			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
 			assert.Equal(t, dbHost.Status, evergreen.HostRunning)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -278,12 +282,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, name, hosts[0])
 
-			dbHost, err := host.FindOneId(name)
+			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
 			assert.Equal(t, dbHost.Status, evergreen.HostProvisioning)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -301,12 +305,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodLegacySSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -324,12 +328,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodSSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -347,12 +351,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodLegacySSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
@@ -371,12 +375,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -396,12 +400,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -421,12 +425,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -446,12 +450,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -471,12 +475,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
@@ -496,12 +500,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -521,12 +525,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -546,12 +550,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -571,12 +575,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
@@ -595,12 +599,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodLegacySSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -619,12 +623,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodSSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)

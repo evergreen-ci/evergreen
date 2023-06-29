@@ -64,7 +64,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOneId(hostID)
+			dbHost, err := host.FindOneId(ctx, hostID)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status, "host should still be running")
@@ -246,7 +246,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			require.True(t, amboy.WaitInterval(ctx, j.env.RemoteQueue(), 100*time.Millisecond))
 
-			dbHost, err := host.FindOneId(hostID)
+			dbHost, err := host.FindOneId(ctx, hostID)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status, "externally terminated host should be terminated")

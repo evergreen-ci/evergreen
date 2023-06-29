@@ -963,6 +963,9 @@ func TestBuildLocalJasperClientRequest(t *testing.T) {
 }
 
 func TestStartAgentMonitorRequest(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -992,7 +995,7 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, h.Secret)
-	dbHost, err := FindOneId(h.Id)
+	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
 	assert.Equal(t, h.Secret, dbHost.Secret)
 
@@ -1228,7 +1231,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			require.NoError(t, h.SetUserDataHostProvisioned())
 			assert.Equal(t, evergreen.HostRunning, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
@@ -1240,7 +1243,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			require.NoError(t, h.SetUserDataHostProvisioned())
 			assert.Equal(t, evergreen.HostStarting, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 		},
@@ -1250,7 +1253,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			require.NoError(t, h.SetUserDataHostProvisioned())
 			assert.Equal(t, evergreen.HostStarting, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 		},
@@ -1260,7 +1263,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			require.NoError(t, h.SetUserDataHostProvisioned())
 			assert.Equal(t, evergreen.HostDecommissioned, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status)
 		},
@@ -1285,6 +1288,9 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 }
 
 func TestCreateServicePassword(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -1296,7 +1302,7 @@ func TestCreateServicePassword(t *testing.T) {
 	require.NoError(t, h.CreateServicePassword())
 	assert.True(t, ValidateRDPPassword(h.ServicePassword))
 	assert.NotEmpty(t, h.ServicePassword)
-	dbHost, err := FindOneId(h.Id)
+	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
 	assert.Equal(t, h.ServicePassword, dbHost.ServicePassword)
 }

@@ -302,6 +302,9 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	numTasks := 300
 	projectId := "project_1"
 	projectName := "project_identifier"
@@ -349,7 +352,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(ctx, serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -391,7 +394,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{
+					err := nextModelTask.BuildFromService(ctx, serviceTask, &model.APITaskArgs{
 						LogURL:                   "http://evergreen.example.net",
 						ParsleyLogURL:            "http://parsley.example.net",
 						IncludeProjectIdentifier: true,
@@ -438,7 +441,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(ctx, serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -481,7 +484,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(ctx, serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -555,6 +558,9 @@ func TestTaskByProjectHandlerParse(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
@@ -599,7 +605,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{
+					err := nextModelTask.BuildFromService(ctx, serviceModel, &model.APITaskArgs{
 						LogURL:                   "http://evergreen.example.net",
 						ParsleyLogURL:            "http://parsley.example.net",
 						IncludeProjectIdentifier: true})
@@ -643,7 +649,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{
+					err := nextModelTask.BuildFromService(ctx, serviceModel, &model.APITaskArgs{
 						LogURL:                   "http://evergreen.example.net",
 						ParsleyLogURL:            "http://parsley.example.net",
 						IncludeProjectIdentifier: true})
@@ -687,7 +693,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{
+					err := nextModelTask.BuildFromService(ctx, serviceModel, &model.APITaskArgs{
 						LogURL:                   "http://evergreen.example.net",
 						ParsleyLogURL:            "http://parsley.example.net",
 						IncludeProjectIdentifier: true,
@@ -731,7 +737,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{
+					err := nextModelTask.BuildFromService(ctx, serviceModel, &model.APITaskArgs{
 						LogURL:                   "http://evergreen.example.net",
 						ParsleyLogURL:            "http://parsley.example.net",
 						IncludeProjectIdentifier: true})
@@ -766,13 +772,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					Id: "0build0",
 				}
 				nextModelTask := &model.APITask{}
-				err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{
+				err := nextModelTask.BuildFromService(ctx, serviceModel, &model.APITaskArgs{
 					LogURL:                   "http://evergreen.example.net",
 					ParsleyLogURL:            "http://parsley.example.net",
 					IncludeProjectIdentifier: true,
 				})
 				So(err, ShouldBeNil)
-				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks, "http://evergreen.example.net", "http://parsley.example.net")
+				err = nextModelTask.BuildPreviousExecutions(ctx, cachedOldTasks, "http://evergreen.example.net", "http://parsley.example.net")
 				So(err, ShouldBeNil)
 				expectedTasks = append(expectedTasks, nextModelTask)
 				expectedPages := &gimlet.ResponsePages{

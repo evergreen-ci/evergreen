@@ -101,7 +101,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+		err = apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: url,
 		})
 		if err != nil {
@@ -304,7 +304,7 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 // getAPITaskFromTask builds an APITask from the given task
 func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromService(&task, &restModel.APITaskArgs{
+	err := apiTask.BuildFromService(ctx, &task, &restModel.APITaskArgs{
 		LogURL: url,
 	})
 	if err != nil {
@@ -360,7 +360,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+		err := apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: logURL,
 		})
 		if err != nil {
