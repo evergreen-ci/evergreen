@@ -42,9 +42,9 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(t.Id, t.Execution)
+	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(ctx, t.Id, t.Execution)
 	catcher.Add(err)
-	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(t.BuildId)
+	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(ctx, t.BuildId)
 	catcher.Add(err)
 	if catcher.HasErrors() {
 		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: catcher.String()}

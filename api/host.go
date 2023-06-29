@@ -43,12 +43,12 @@ var (
 	}
 )
 
-func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Host, map[string]gimlet.Permissions, int, error) {
+func GetHostsAndUserPermissions(ctx context.Context, user *user.DBUser, hostIds []string) ([]host.Host, map[string]gimlet.Permissions, int, error) {
 	if len(hostIds) == 0 {
 		return nil, nil, http.StatusBadRequest, errors.New("hostIds cannot be empty")
 	}
 
-	hosts, err := host.Find(host.ByIds(hostIds))
+	hosts, err := host.FindWithContext(ctx, host.ByIds(hostIds))
 	if err != nil {
 		return nil, nil, http.StatusInternalServerError, errors.New("Error getting hosts to update")
 	}

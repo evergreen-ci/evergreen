@@ -106,7 +106,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	start, err := dbModel.GetEstimatedStartTime(*foundTask)
+	start, err := dbModel.GetEstimatedStartTime(ctx, *foundTask)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting estimated start time for task '%s'", tgh.taskID))
 	}

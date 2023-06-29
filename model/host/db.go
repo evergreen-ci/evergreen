@@ -124,24 +124,22 @@ var All = db.Query(struct{}{})
 
 // ByUserWithRunningStatus produces a query that returns all
 // running hosts for the given user id.
-func ByUserWithRunningStatus(user string) db.Q {
-	return db.Query(
-		bson.M{
-			StartedByKey: user,
-			StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
-		})
+func ByUserWithRunningStatus(user string) bson.M {
+	return bson.M{
+		StartedByKey: user,
+		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
+	}
 }
 
 // ByUserRecentlyTerminated produces a query that returns all
 // terminated hosts whose TerminationTimeKey is after the given
 // timestamp.
-func ByUserRecentlyTerminated(user string, timestamp time.Time) db.Q {
-	return db.Query(
-		bson.M{
-			StartedByKey:       user,
-			StatusKey:          evergreen.HostTerminated,
-			TerminationTimeKey: bson.M{"$gt": timestamp},
-		})
+func ByUserRecentlyTerminated(user string, timestamp time.Time) bson.M {
+	return bson.M{
+		StartedByKey:       user,
+		StatusKey:          evergreen.HostTerminated,
+		TerminationTimeKey: bson.M{"$gt": timestamp},
+	}
 }
 
 // IsLive is a query that returns all working hosts started by Evergreen
@@ -154,13 +152,11 @@ func IsLive() bson.M {
 
 // ByUserWithUnterminatedStatus produces a query that returns all running hosts
 // for the given user id.
-func ByUserWithUnterminatedStatus(user string) db.Q {
-	return db.Query(
-		bson.M{
-			StartedByKey: user,
-			StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
-		},
-	)
+func ByUserWithUnterminatedStatus(user string) bson.M {
+	return bson.M{
+		StartedByKey: user,
+		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
+	}
 }
 
 // IdleEphemeralGroupedByDistroId groups and collates the following by distro.Id:
@@ -272,9 +268,9 @@ func CountIdleStartedTaskHosts() (int, error) {
 }
 
 // IdleHostsWithDistroID, given a distroID, returns a slice of all idle hosts in that distro
-func IdleHostsWithDistroID(distroID string) ([]Host, error) {
+func IdleHostsWithDistroID(ctx context.Context, distroID string) ([]Host, error) {
 	q := idleHostsQuery(distroID)
-	idleHosts, err := Find(db.Query(q))
+	idleHosts, err := FindWithContext(ctx, q)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding idle hosts")
 	}
@@ -284,7 +280,7 @@ func IdleHostsWithDistroID(distroID string) ([]Host, error) {
 // AllActiveHosts produces a HostGroup for all hosts with UpHost
 // status as well as quarantined hosts. These do not count spawn
 // hosts.
-func AllActiveHosts(distroID string) (HostGroup, error) {
+func AllActiveHosts(ctx context.Context, distroID string) (HostGroup, error) {
 	q := bson.M{
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": append(evergreen.UpHostStatus, evergreen.HostQuarantined)},
@@ -294,7 +290,7 @@ func AllActiveHosts(distroID string) (HostGroup, error) {
 		q[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
 	}
 
-	activeHosts, err := Find(db.Query(q))
+	activeHosts, err := FindWithContext(ctx, q)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding active hosts")
 	}
@@ -302,10 +298,10 @@ func AllActiveHosts(distroID string) (HostGroup, error) {
 }
 
 // AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
-func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
+func AllHostsSpawnedByTasksToTerminate(ctx context.Context) ([]Host, error) {
 	catcher := grip.NewBasicCatcher()
 	var hosts []Host
-	timedOutHosts, err := allHostsSpawnedByTasksTimedOut()
+	timedOutHosts, err := allHostsSpawnedByTasksTimedOut(ctx)
 	hosts = append(hosts, timedOutHosts...)
 	catcher.Wrap(err, "finding hosts that have hit their timeout")
 
@@ -324,13 +320,13 @@ func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 }
 
 // allHostsSpawnedByTasksTimedOut finds hosts spawned by tasks that should be terminated because they are past their timeout.
-func allHostsSpawnedByTasksTimedOut() ([]Host, error) {
-	query := db.Query(bson.M{
+func allHostsSpawnedByTasksTimedOut(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		StatusKey: evergreen.HostRunning,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTimeoutKey):       bson.M{"$lte": time.Now()},
-	})
-	return Find(query)
+	}
+	return FindWithContext(ctx, query)
 }
 
 // allHostsSpawnedByFinishedTasks finds hosts spawned by tasks that should be terminated because their tasks have finished.
@@ -402,28 +398,26 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-func ByTaskSpec(group, buildVariant, project, version string) db.Q {
-	return db.Query(
-		bson.M{
-			StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning}},
-			"$or": []bson.M{
-				{
-					RunningTaskKey:             bson.M{"$exists": "true"},
-					RunningTaskGroupKey:        group,
-					RunningTaskBuildVariantKey: buildVariant,
-					RunningTaskProjectKey:      project,
-					RunningTaskVersionKey:      version,
-				},
-				{
-					LTCTaskKey:    bson.M{"$exists": "true"},
-					LTCGroupKey:   group,
-					LTCBVKey:      buildVariant,
-					LTCProjectKey: project,
-					LTCVersionKey: version,
-				},
+func ByTaskSpec(group, buildVariant, project, version string) bson.M {
+	return bson.M{
+		StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning}},
+		"$or": []bson.M{
+			{
+				RunningTaskKey:             bson.M{"$exists": "true"},
+				RunningTaskGroupKey:        group,
+				RunningTaskBuildVariantKey: buildVariant,
+				RunningTaskProjectKey:      project,
+				RunningTaskVersionKey:      version,
+			},
+			{
+				LTCTaskKey:    bson.M{"$exists": "true"},
+				LTCGroupKey:   group,
+				LTCBVKey:      buildVariant,
+				LTCProjectKey: project,
+				LTCVersionKey: version,
 			},
 		},
-	)
+	}
 }
 
 // NumHostsByTaskSpec returns the number of running hosts that are running a task with
@@ -445,13 +439,16 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 // MinTaskGroupOrderRunningByTaskSpec returns the smallest task group order number for tasks with the
 // given group, buildvariant, project, and version that are running on hosts.
 // Returns 0 in the case of missing task group order numbers or no hosts.
-func MinTaskGroupOrderRunningByTaskSpec(group, buildVariant, project, version string) (int, error) {
+func MinTaskGroupOrderRunningByTaskSpec(ctx context.Context, group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
 		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', build variant is '%s', "+
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
-	hosts, err := Find(ByTaskSpec(group, buildVariant, project, version).WithFields(RunningTaskGroupOrderKey).Sort([]string{RunningTaskGroupOrderKey}))
+	hosts, err := FindWithContext(ctx,
+		ByTaskSpec(group, buildVariant, project, version),
+		options.Find().SetProjection(bson.M{RunningTaskGroupOrderKey: 1}).SetSort(bson.M{RunningTaskGroupOrderKey: 1}),
+	)
 	if err != nil {
 		return 0, errors.Wrap(err, "finding hosts by task spec with running task group order")
 	}
@@ -464,24 +461,22 @@ func MinTaskGroupOrderRunningByTaskSpec(group, buildVariant, project, version st
 }
 
 // IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.
-var IsUninitialized = db.Query(
-	bson.M{StatusKey: evergreen.HostUninitialized},
-)
+var IsUninitialized = bson.M{StatusKey: evergreen.HostUninitialized}
 
 // FindByProvisioning finds all hosts that are not yet provisioned by the app
 // server.
-func FindByProvisioning() ([]Host, error) {
-	return Find(db.Query(bson.M{
+func FindByProvisioning(ctx context.Context) ([]Host, error) {
+	return FindWithContext(ctx, bson.M{
 		StatusKey:           evergreen.HostProvisioning,
 		NeedsReprovisionKey: bson.M{"$exists": false},
 		ProvisionedKey:      false,
-	}))
+	})
 }
 
 // FindByShouldConvertProvisioning finds all hosts that are ready and waiting to
 // convert their provisioning type.
-func FindByShouldConvertProvisioning() ([]Host, error) {
-	return Find(db.Query(bson.M{
+func FindByShouldConvertProvisioning(ctx context.Context) ([]Host, error) {
+	return FindWithContext(ctx, bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
 		StartedByKey:        evergreen.User,
 		RunningTaskKey:      bson.M{"$exists": false},
@@ -492,14 +487,14 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 			{NeedsNewAgentKey: true},
 			{NeedsNewAgentMonitorKey: true},
 		},
-	}))
+	})
 }
 
 // FindByNeedsToRestartJasper finds all hosts that are ready and waiting to
 // restart their Jasper service.
-func FindByNeedsToRestartJasper() ([]Host, error) {
+func FindByNeedsToRestartJasper(ctx context.Context) ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	return Find(db.Query(bson.M{
+	return FindWithContext(ctx, bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
 		bootstrapKey:        bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 		RunningTaskKey:      bson.M{"$exists": false},
@@ -513,26 +508,23 @@ func FindByNeedsToRestartJasper() ([]Host, error) {
 			}},
 			{NeedsNewAgentMonitorKey: true},
 		},
-	}))
+	})
 }
 
 // IsRunningTask is a query that returns all running hosts with a running task
-var IsRunningTask = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": true},
-		StatusKey: bson.M{
-			"$ne": evergreen.HostTerminated,
-		},
+var IsRunningTask = bson.M{
+	RunningTaskKey: bson.M{"$exists": true},
+	StatusKey: bson.M{
+		"$ne": evergreen.HostTerminated,
 	},
-)
+}
 
 // IsTerminated is a query that returns all hosts that are terminated
 // (and not running a task).
-var IsTerminated = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostTerminated},
-)
+var IsTerminated = bson.M{
+	RunningTaskKey: bson.M{"$exists": false},
+	StatusKey:      evergreen.HostTerminated,
+}
 
 // ByDistroIDs produces a query that returns all up hosts of the given distros.
 func ByDistroIDs(distroIDs ...string) bson.M {
@@ -545,19 +537,19 @@ func ByDistroIDs(distroIDs ...string) bson.M {
 }
 
 // ById produces a query that returns a host with the given id.
-func ById(id string) db.Q {
-	return db.Query(bson.D{{Key: IdKey, Value: id}})
+func ById(id string) bson.M {
+	return bson.M{IdKey: id}
 }
 
 // ByIPAndRunning produces a query that returns a running host with the given ip address.
-func ByIPAndRunning(ip string) db.Q {
-	return db.Query(bson.M{
+func ByIPAndRunning(ip string) bson.M {
+	return bson.M{
 		"$or": []bson.M{
 			{IPKey: ip},
 			{IPv4Key: ip},
 		},
 		StatusKey: evergreen.HostRunning,
-	})
+	}
 }
 
 // ByDistroIDOrAliasesRunning returns a query that returns all hosts with
@@ -575,18 +567,8 @@ func ByDistroIDsOrAliasesRunning(distroNames ...string) bson.M {
 }
 
 // ByIds produces a query that returns all hosts in the given list of ids.
-func ByIds(ids []string) db.Q {
-	return db.Query(bson.D{
-		{
-			Key: IdKey,
-			Value: bson.D{
-				{
-					Key:   "$in",
-					Value: ids,
-				},
-			},
-		},
-	})
+func ByIds(ids []string) bson.M {
+	return bson.M{IdKey: bson.M{"$in": ids}}
 }
 
 // FindByJasperCredentialsID finds a host with the given Jasper credentials ID.
@@ -611,9 +593,9 @@ var IsIdle = db.Query(
 // ByNotMonitoredSince produces a query that returns all hosts whose
 // last reachability check was before the specified threshold,
 // filtering out user-spawned hosts and hosts currently running tasks.
-func ByNotMonitoredSince(threshold time.Time) db.Q {
+func ByNotMonitoredSince(threshold time.Time) bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	return db.Query(bson.M{
+	return bson.M{
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": false}},
 			{StartedByKey: evergreen.User},
@@ -635,19 +617,19 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 				}},
 			}},
 		},
-	})
+	}
 }
 
 // ByExpiringBetween produces a query that returns any host not running tasks
 // that will expire between the specified times.
-func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
-	return db.Query(bson.M{
+func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) bson.M {
+	return bson.M{
 		StartedByKey: bson.M{"$ne": evergreen.User},
 		StatusKey: bson.M{
 			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 		},
 		ExpirationTimeKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
-	})
+	}
 }
 
 // NeedsAgentDeploy finds hosts which need the agent to be deployed because
@@ -709,9 +691,9 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 
 // ShouldDeployAgent returns legacy hosts with NeedsNewAgent set to true and are
 // in a state in which they can deploy agents.
-func ShouldDeployAgent() db.Q {
+func ShouldDeployAgent() bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	return db.Query(bson.M{
+	return bson.M{
 		bootstrapKey:        distro.BootstrapMethodLegacySSH,
 		StatusKey:           evergreen.HostRunning,
 		StartedByKey:        evergreen.User,
@@ -720,14 +702,14 @@ func ShouldDeployAgent() db.Q {
 		RunningTaskKey:      bson.M{"$exists": false},
 		NeedsNewAgentKey:    true,
 		NeedsReprovisionKey: bson.M{"$exists": false},
-	})
+	}
 }
 
 // ShouldDeployAgentMonitor returns running hosts that need a new agent
 // monitor.
-func ShouldDeployAgentMonitor() db.Q {
+func ShouldDeployAgentMonitor() bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	return db.Query(bson.M{
+	return bson.M{
 		bootstrapKey:            bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 		StatusKey:               evergreen.HostRunning,
 		StartedByKey:            evergreen.User,
@@ -736,23 +718,23 @@ func ShouldDeployAgentMonitor() db.Q {
 		RunningTaskKey:          bson.M{"$exists": false},
 		NeedsNewAgentMonitorKey: true,
 		NeedsReprovisionKey:     bson.M{"$exists": false},
-	})
+	}
 }
 
 // FindUserDataSpawnHostsProvisioning finds all spawn hosts that have been
 // provisioned by the app server but are still being provisioned by user data.
-func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
+func FindUserDataSpawnHostsProvisioning(ctx context.Context) ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	provisioningCutoff := time.Now().Add(-30 * time.Minute)
 
-	hosts, err := Find(db.Query(bson.M{
+	hosts, err := FindWithContext(ctx, bson.M{
 		StatusKey:      evergreen.HostStarting,
 		ProvisionedKey: true,
 		// Ignore hosts that have failed to provision within the cutoff.
 		ProvisionTimeKey: bson.M{"$gte": provisioningCutoff},
 		StartedByKey:     bson.M{"$ne": evergreen.User},
 		bootstrapKey:     distro.BootstrapMethodUserData,
-	}))
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "finding user data spawn hosts that are still provisioning themselves")
 	}
@@ -944,7 +926,7 @@ func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
-func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, error) {
+func GetHostsByFromIDWithStatus(ctx context.Context, id, status, user string, limit int) ([]Host, error) {
 	var statusMatch interface{}
 	if status != "" {
 		statusMatch = status
@@ -961,8 +943,7 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 		filter[StartedByKey] = user
 	}
 
-	var query db.Q
-	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
+	hosts, err := FindWithContext(ctx, filter, options.Find().SetSort(bson.M{IdKey: 1}).SetLimit(int64(limit)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts with an ID of '%s' or greater, status '%s', and user '%s'", id, status, user)
 	}
@@ -980,7 +961,7 @@ type HostsInRangeParams struct {
 }
 
 // FindHostsInRange is a method to find a filtered list of hosts
-func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
+func FindHostsInRange(ctx context.Context, params HostsInRangeParams) ([]Host, error) {
 	var statusMatch interface{}
 	if params.Status != "" {
 		statusMatch = params.Status
@@ -1012,7 +993,7 @@ func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	if params.Region != "" {
 		filter[bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsRegionKey)] = params.Region
 	}
-	hosts, err := Find(db.Query(filter))
+	hosts, err := FindWithContext(ctx, filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding hosts by filters")
 	}
@@ -1238,7 +1219,7 @@ var (
 	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
 )
 
-func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
+func StartingHostsByClient(ctx context.Context, limit int) (map[ClientOptions][]Host, error) {
 	if limit <= 0 {
 		limit = 500
 	}
@@ -1283,9 +1264,12 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 			},
 		},
 	}
-
-	if err := db.Aggregate(Collection, pipeline, &results); err != nil {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating starting hosts by client options")
+	}
+	if err = cur.Decode(&results); err != nil {
+		return nil, errors.Wrap(err, "decoding starting hosts by client options")
 	}
 
 	optionsMap := make(map[ClientOptions][]Host)

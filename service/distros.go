@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -183,7 +182,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if shouldDeco || shouldRestartJasper || shouldReprovisionToNew {
-		hosts, err := host.Find(db.Query(host.ByDistroIDs(newDistro.Id)))
+		hosts, err := host.FindWithContext(r.Context(), host.ByDistroIDs(newDistro.Id))
 		if err != nil {
 			message := fmt.Sprintf("error finding hosts: %s", err.Error())
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))

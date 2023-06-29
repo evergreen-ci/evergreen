@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
+func FindHostsInRange(ctx context.Context, apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
 	params := host.HostsInRangeParams{
 		CreatedBefore: apiParams.CreatedBefore,
 		CreatedAfter:  apiParams.CreatedAfter,
@@ -30,7 +30,7 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 		User:          username,
 	}
 
-	hostRes, err := host.FindHostsInRange(params)
+	hostRes, err := host.FindHostsInRange(ctx, params)
 	if err != nil {
 		return nil, err
 	}

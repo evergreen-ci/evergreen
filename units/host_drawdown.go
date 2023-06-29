@@ -81,7 +81,7 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "counting running hosts in distro '%s'", j.DrawdownInfo.DistroID))
 		return
 	}
-	idleHosts, err := host.IdleHostsWithDistroID(j.DrawdownInfo.DistroID)
+	idleHosts, err := host.IdleHostsWithDistroID(ctx, j.DrawdownInfo.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding idle hosts in distro '%s'", j.DrawdownInfo.DistroID))
 		return

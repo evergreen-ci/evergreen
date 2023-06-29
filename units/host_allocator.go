@@ -133,7 +133,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// host-allocation phase
 	////////////////////////
 
-	existingHosts, err := host.AllActiveHosts(j.DistroID)
+	existingHosts, err := host.AllActiveHosts(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding active hosts"))
 		return

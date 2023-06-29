@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -22,6 +21,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestListHostsForTask(t *testing.T) {
@@ -178,7 +178,7 @@ buildvariants:
 		assert.NoError(t, pp.Insert())
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -247,7 +247,7 @@ buildvariants:
 
 		err = CreateHostsFromTask(ctx, env, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -320,7 +320,7 @@ buildvariants:
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t3, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -388,7 +388,7 @@ buildvariants:
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t4, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -514,7 +514,7 @@ buildvariants:
 
 	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 
-	createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+	createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
 	assert.NoError(err)
 	require.Len(createdHosts, 1)
 	h := createdHosts[0]

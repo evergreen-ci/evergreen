@@ -1,12 +1,12 @@
 package model
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -96,7 +96,7 @@ func (s *estimatedTimeSimulator) dispatchNextTask() {
 }
 
 // GetEstimatedStartTime returns the estimated start time for a task
-func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
+func GetEstimatedStartTime(ctx context.Context, t task.Task) (time.Duration, error) {
 	queue, err := LoadTaskQueue(t.DistroId)
 	if err != nil {
 		return -1, errors.Wrap(err, "retrieving task queue")
@@ -114,7 +114,7 @@ func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
 	if queuePos == -1 {
 		return -1, nil
 	}
-	hosts, err := host.Find(db.Query(host.ByDistroIDs(t.DistroId)))
+	hosts, err := host.FindWithContext(ctx, host.ByDistroIDs(t.DistroId))
 	if err != nil {
 		return -1, errors.Wrapf(err, "retrieving hosts from distro '%s'", t.DistroId)
 	}

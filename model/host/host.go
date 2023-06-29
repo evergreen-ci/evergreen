@@ -644,7 +644,7 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGrou
 		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
 	}
 	if h.HasContainers {
-		containers, err := h.GetContainers()
+		containers, err := h.GetContainers(ctx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting containers",
 			"host_id": h.Id,
@@ -1863,7 +1863,7 @@ func (h *Host) AddSSHKeyName(name string) error {
 	return nil
 }
 
-func FindHostsToTerminate() ([]Host, error) {
+func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 	// unreachableCutoff is the threshold to wait for an decommissioned host to
 	// become marked as reachable again before giving up and terminating it.
 	const unreachableCutoff = 5 * time.Minute
@@ -1941,7 +1941,7 @@ func FindHostsToTerminate() ([]Host, error) {
 
 	// In some cases, the query planner will choose a very slow plan for this
 	// query. The hint guarantees that the query will use the host status index.
-	hosts, err := Find(db.Query(query).Hint(StatusIndex))
+	hosts, err := FindWithContext(ctx, query, options.Find().SetHint(StatusIndex))
 
 	if adb.ResultsNotFound(err) {
 		return []Host{}, nil
@@ -1988,12 +1988,12 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 }
 
 // FindAllRunningContainers finds all the containers that are currently running
-func FindAllRunningContainers() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningContainers(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		ParentIDKey: bson.M{"$exists": true},
 		StatusKey:   evergreen.HostRunning,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := FindWithContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running containers")
 	}
@@ -2002,12 +2002,12 @@ func FindAllRunningContainers() ([]Host, error) {
 }
 
 // FindAllRunningParents finds all running hosts that have child containers
-func FindAllRunningParents() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningParents(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := FindWithContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running parents")
 	}
@@ -2017,12 +2017,12 @@ func FindAllRunningParents() ([]Host, error) {
 
 // FindAllRunningParentsOrdered finds all running hosts with child containers,
 // sorted in order of soonest  to latest LastContainerFinishTime
-func FindAllRunningParentsOrdered() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningParentsOrdered(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	hosts, err := Find(query)
+	}
+	hosts, err := FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding ordered running parents")
 	}
@@ -2032,26 +2032,26 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 
 // FindAllRunningParentsByDistroID finds all running hosts of a given distro ID
 // with child containers.
-func FindAllRunningParentsByDistroID(distroID string) ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningParentsByDistroID(ctx context.Context, distroID string) ([]Host, error) {
+	query := bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
 		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroID,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
+	}
+	return FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 // GetContainers finds all the containers belonging to this host
 // errors if this host is not a parent
-func (h *Host) GetContainers() ([]Host, error) {
+func (h *Host) GetContainers(ctx context.Context) ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("host is not a container parent")
 	}
-	query := db.Query(bson.M{"$or": []bson.M{
+	query := bson.M{"$or": []bson.M{
 		{ParentIDKey: h.Id},
 		{ParentIDKey: h.Tag},
-	}})
-	hosts, err := Find(query)
+	}}
+	hosts, err := FindWithContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding containers")
 	}
@@ -2059,19 +2059,19 @@ func (h *Host) GetContainers() ([]Host, error) {
 	return hosts, nil
 }
 
-func (h *Host) GetActiveContainers() ([]Host, error) {
+func (h *Host) GetActiveContainers(ctx context.Context) ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("host is not a container parent")
 	}
-	query := db.Query(bson.M{
+	query := bson.M{
 		StatusKey: bson.M{
 			"$in": evergreen.UpHostStatus,
 		},
 		"$or": []bson.M{
 			{ParentIDKey: h.Id},
 			{ParentIDKey: h.Tag},
-		}})
-	hosts, err := Find(query)
+		}}
+	hosts, err := FindWithContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding containers")
 	}
@@ -2205,12 +2205,12 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 
 // FindAllHostsSpawnedByTasks finds all running hosts spawned by the
 // `host.create` command.
-func FindAllHostsSpawnedByTasks() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllHostsSpawnedByTasks(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		StatusKey: evergreen.HostRunning,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := FindWithContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding hosts spawned by tasks")
 	}
@@ -2218,15 +2218,15 @@ func FindAllHostsSpawnedByTasks() ([]Host, error) {
 }
 
 // FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
-func FindHostsSpawnedByTask(taskID string, execution int) ([]Host, error) {
+func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int) ([]Host, error) {
 	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
 	taskExecutionNumberKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskExecutionNumberKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		StatusKey:              evergreen.HostRunning,
 		taskIDKey:              taskID,
 		taskExecutionNumberKey: execution,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := FindWithContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts spawned by task '%s' for execution %d", taskID, execution)
 	}
@@ -2234,13 +2234,13 @@ func FindHostsSpawnedByTask(taskID string, execution int) ([]Host, error) {
 }
 
 // FindHostsSpawnedByBuild finds hosts spawned by the `createhost` command scoped to a given build.
-func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
+func FindHostsSpawnedByBuild(ctx context.Context, buildID string) ([]Host, error) {
 	buildIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		StatusKey:  evergreen.HostRunning,
 		buildIDKey: buildID,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := FindWithContext(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts spawned by build '%s'", buildID)
 	}
@@ -2249,18 +2249,13 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 
 // FindTerminatedHostsRunningTasks finds all hosts that were running tasks when
 // they were terminated.
-func FindTerminatedHostsRunningTasks() ([]Host, error) {
-	hosts, err := Find(db.Query(bson.M{
+func FindTerminatedHostsRunningTasks(ctx context.Context) ([]Host, error) {
+	hosts, err := FindWithContext(ctx, bson.M{
 		StatusKey: evergreen.HostTerminated,
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": true}},
 			{RunningTaskKey: bson.M{"$ne": ""}}},
-	}))
-
-	if adb.ResultsNotFound(err) {
-		err = nil
-	}
-
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "finding terminated hosts that have a running task")
 	}
@@ -2279,13 +2274,13 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 }
 
 // FindUphostContainersOnParents returns the containers that are children of the given hosts
-func (hosts HostGroup) FindUphostContainersOnParents() ([]Host, error) {
+func (hosts HostGroup) FindUphostContainersOnParents(ctx context.Context) ([]Host, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(mgobson.M{
-		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: mgobson.M{"$in": ids},
-	})
-	return Find(query)
+	query := bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		ParentIDKey: bson.M{"$in": ids},
+	}
+	return FindWithContext(ctx, query)
 }
 
 // GetHostIds returns a slice of host IDs for the given group of hosts
@@ -2344,8 +2339,8 @@ func (hosts HostGroup) Uphosts() HostGroup {
 // getNumContainersOnParents returns a slice of running parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
-func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
-	allParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
+func GetContainersOnParents(ctx context.Context, d distro.Distro) ([]ContainersOnParents, error) {
+	allParents, err := findAllRunningParentsByContainerPool(ctx, d.ContainerPool)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding running container parents in container pool '%s'", d.ContainerPool)
 	}
@@ -2354,7 +2349,7 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	// parents come in sorted order from soonest to latest expected finish time
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
-		currentContainers, err := parent.GetActiveContainers()
+		currentContainers, err := parent.GetActiveContainers(ctx)
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "finding active containers for container parent '%s'", parent.Id)
 		}
@@ -2369,13 +2364,13 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 }
 
 func getNumNewParentsAndHostsToSpawn(ctx context.Context, pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
-	existingParents, err := findUphostParentsByContainerPool(pool.Id)
+	existingParents, err := findUphostParentsByContainerPool(ctx, pool.Id)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "finding container parents that are up")
 	}
 
 	// find all child containers running on those parents
-	existingContainers, err := HostGroup(existingParents).FindUphostContainersOnParents()
+	existingContainers, err := HostGroup(existingParents).FindUphostContainersOnParents(ctx)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "finding containers that are up")
 	}
@@ -2464,25 +2459,25 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 
 // findAllRunningParentsByContainerPool returns a slice of hosts that are
 // parents of the container pool specified by the given ID.
-func findAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
+func findAllRunningParentsByContainerPool(ctx context.Context, poolId string) ([]Host, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		HasContainersKey:    true,
 		StatusKey:           evergreen.HostRunning,
 		hostContainerPoolId: poolId,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
+	}
+	return FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 // findUphostParents returns the container parent hosts that are up.
-func findUphostParentsByContainerPool(poolId string) ([]Host, error) {
+func findUphostParentsByContainerPool(ctx context.Context, poolId string) ([]Host, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		HasContainersKey:    true,
 		StatusKey:           bson.M{"$in": evergreen.UpHostStatus},
 		hostContainerPoolId: poolId,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
+	}
+	return FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 func InsertMany(hosts []Host) error {
@@ -2714,15 +2709,15 @@ func CountSpawnhostsWithNoExpirationByUser(user string) (int, error) {
 
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
 // expire but have their expiration time within the next day and are still up.
-func FindSpawnhostsWithNoExpirationToExtend() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindSpawnhostsWithNoExpirationToExtend(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		UserHostKey:       true,
 		NoExpirationKey:   true,
 		StatusKey:         bson.M{"$in": evergreen.UpHostStatus},
 		ExpirationTimeKey: bson.M{"$lte": time.Now().Add(24 * time.Hour)},
-	})
+	}
 
-	return Find(query)
+	return FindWithContext(ctx, query)
 }
 
 func makeExpireOnTag(expireOn string) Tag {
@@ -2867,7 +2862,7 @@ func FindLatestTerminatedHostWithHomeVolume(homeVolumeID string, startedBy strin
 
 // FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
 // set of SSH keys as those in the global settings.
-func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+func FindStaticNeedsNewSSHKeys(ctx context.Context, settings *evergreen.Settings) ([]Host, error) {
 	if len(settings.SSHKeyPairs) == 0 {
 		return nil, nil
 	}
@@ -2877,11 +2872,11 @@ func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
 		names = append(names, pair.Name)
 	}
 
-	return Find(db.Query(bson.M{
+	return FindWithContext(ctx, bson.M{
 		StatusKey:      evergreen.HostRunning,
 		ProviderKey:    evergreen.ProviderNameStatic,
 		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
-	}))
+	})
 }
 
 func (h *Host) IsSubjectToHostCreationThrottle() bool {

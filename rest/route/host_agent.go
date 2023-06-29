@@ -617,7 +617,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			// hosts are running tasks in the task group. Only check the number
 			// of hosts running this task group if the task group is new to the
 			// host.
-			if err := checkHostTaskGroupAfterDispatch(currentHost, nextTask); err != nil {
+			if err := checkHostTaskGroupAfterDispatch(ctx, currentHost, nextTask); err != nil {
 				grip.Debug(message.Fields{
 					"message":              "failed dispatch task group check due to race, not dispatching",
 					"task_distro_id":       nextTask.DistroId,
@@ -681,13 +681,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 // number of hosts running this task group does not exceed the max after
 // assigning the task to the host. If it exceeds the max host limit, this will
 // return true to indicate that the host should not run this task.
-func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
+func checkHostTaskGroupAfterDispatch(ctx context.Context, h *host.Host, t *task.Task) error {
 	var minTaskGroupOrderNum int
 	if t.IsPartOfSingleHostTaskGroup() {
 		var err error
 		// Regardless of how many hosts are running tasks, if this host is
 		// running the earliest task in the task group we should continue.
-		minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+		minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(ctx, t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
 			return errors.Wrap(err, "getting min task group order")
 		}
@@ -1086,7 +1086,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if isTaskGroupNewToHost(h, t) {
-		if err := checkHostTaskGroupAfterDispatch(h, t); err != nil {
+		if err := checkHostTaskGroupAfterDispatch(ctx, h, t); err != nil {
 			if err := undoHostTaskDispatchAtomically(ctx, env, h, t); err != nil {
 				grip.Error(message.WrapError(err, getMessage("could not undo dispatch after task group check failed")))
 				return gimlet.MakeJSONInternalErrorResponder(err)

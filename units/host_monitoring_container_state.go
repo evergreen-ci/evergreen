@@ -83,7 +83,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	}
 
 	// get containers on parent
-	containersFromDB, err := j.host.GetContainers()
+	containersFromDB, err := j.host.GetContainers(ctx)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding containers on parent host '%s'", j.HostID))
 		return

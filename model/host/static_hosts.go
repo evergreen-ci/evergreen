@@ -4,10 +4,8 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -37,10 +35,7 @@ func MarkInactiveStaticHosts(ctx context.Context, activeStaticHosts []string, d 
 		}
 	}
 
-	toTerminate, err := Find(db.Query(query))
-	if adb.ResultsNotFound(err) {
-		return nil
-	}
+	toTerminate, err := FindWithContext(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "getting inactive static hosts for termination")
 	}

@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -706,7 +705,7 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 // Run enqueues a job to run a script on all selected hosts that are not down
 // for the given given distro ID.
 func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
+	hosts, err := host.FindWithContext(ctx, host.ByDistroIDsOrAliasesRunning(h.distro))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for the distro '%s'", h.distro))
 	}
@@ -774,7 +773,7 @@ func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request
 // Run enqueues a job to run a script on all hosts that are not down for the
 // given given distro ID.
 func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
+	hosts, err := host.FindWithContext(ctx, (host.ByDistroIDsOrAliasesRunning(h.distro)))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for distro '%s'", h.distro))
 	}

@@ -72,7 +72,7 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
-	startingHostsByClient, err := host.StartingHostsByClient(settings.HostInit.CloudStatusBatchSize)
+	startingHostsByClient, err := host.StartingHostsByClient(ctx, settings.HostInit.CloudStatusBatchSize)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting starting hosts"))
 		return

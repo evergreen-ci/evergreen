@@ -337,7 +337,7 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *obj.Id))
 	}
-	start, err := model.GetEstimatedStartTime(*t)
+	start, err := model.GetEstimatedStartTime(ctx, *t)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
 	}

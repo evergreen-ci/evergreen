@@ -57,7 +57,7 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 }
 
 func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.Context) error {
-	hosts, err := host.FindTerminatedHostsRunningTasks()
+	hosts, err := host.FindTerminatedHostsRunningTasks(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding already-terminated hosts running tasks")
 	}

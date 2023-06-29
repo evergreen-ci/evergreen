@@ -65,7 +65,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.False(t, initialHost.NoExpiration)
 			assert.WithinDuration(t, initialHost.ExpirationTime, time.Now(), (time.Hour*24)+time.Second)
 
-			foundHosts, err := host.Find(host.IsUninitialized)
+			foundHosts, err := host.FindWithContext(ctx, host.IsUninitialized)
 			assert.NoError(t, err)
 			assert.Len(t, foundHosts, 1)
 			assert.Equal(t, foundHosts[0].HomeVolumeID, v.ID)
@@ -192,7 +192,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, initialHost.Status, evergreen.HostTerminated)
 			assert.Equal(t, initialHost.HomeVolumeID, "v0")
 
-			foundHosts, err := host.Find(host.IsUninitialized)
+			foundHosts, err := host.FindWithContext(ctx, host.IsUninitialized)
 			assert.NoError(t, err)
 			assert.Len(t, foundHosts, 1)
 			assert.Equal(t, foundHosts[0].HomeVolumeID, v.ID)

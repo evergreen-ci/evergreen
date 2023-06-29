@@ -188,7 +188,7 @@ func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := host.GetHostsByFromIDWithStatus(hgh.key, hgh.status, hgh.user, hgh.limit+1)
+	hosts, err := host.GetHostsByFromIDWithStatus(ctx, hgh.key, hgh.status, hgh.user, hgh.limit+1)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding hosts with filters"))
 	}
@@ -352,7 +352,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	opts := model.APIHostParams{
 		UserSpawned: true,
 	}
-	hosts, err := data.FindHostsInRange(opts, ch.user)
+	hosts, err := data.FindHostsInRange(ctx, opts, ch.user)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting user hosts from options"))
 	}
@@ -474,7 +474,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 		username = dbUser.Username()
 	}
 
-	hosts, err := data.FindHostsInRange(h.params, username)
+	hosts, err := data.FindHostsInRange(ctx, h.params, username)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding hosts matching parameters"))
 	}

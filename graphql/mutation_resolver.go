@@ -127,7 +127,7 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(ctx, user, hostIds)
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -144,7 +144,7 @@ func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []strin
 func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(ctx, user, hostIds)
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -161,7 +161,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
 	user := mustHaveUser(ctx)
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(ctx, user, hostIds)
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}

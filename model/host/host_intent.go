@@ -135,7 +135,7 @@ func generateParentCreateOptions(parentDistro distro.Distro, pool *evergreen.Con
 
 func MakeContainersAndParents(ctx context.Context, d distro.Distro, pool *evergreen.ContainerPool, newContainersNeeded int, hostOptions CreateOptions) ([]Host, []Host, error) {
 	// get the parents that are running and split into ones that already have a container from this distro
-	currentHosts, err := GetContainersOnParents(d)
+	currentHosts, err := GetContainersOnParents(ctx, d)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting containers on parents for distro '%s'", d.Id)
 	}

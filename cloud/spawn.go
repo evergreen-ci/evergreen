@@ -59,7 +59,7 @@ func (so *SpawnOptions) validate(ctx context.Context, settings *evergreen.Settin
 	}
 
 	// if the user already has too many active spawned hosts, deny the request
-	activeSpawnedHosts, err := host.Find(host.ByUserWithRunningStatus(so.UserName))
+	activeSpawnedHosts, err := host.FindWithContext(ctx, host.ByUserWithRunningStatus(so.UserName))
 	if err != nil {
 		return errors.Wrap(err, "finding user's current hosts")
 	}

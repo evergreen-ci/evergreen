@@ -24,7 +24,7 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 			return errors.Wrapf(err, "finding parent host for container '%s'", h.Id)
 		}
 		if parent != nil {
-			containers, err := parent.GetActiveContainers()
+			containers, err := parent.GetActiveContainers(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "getting containers under parent container '%s'", h.ParentID)
 			}

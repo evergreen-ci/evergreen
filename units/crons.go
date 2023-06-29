@@ -76,7 +76,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		threshold := time.Now().Add(-reachabilityCheckInterval)
-		hosts, err := host.Find(host.ByNotMonitoredSince(threshold))
+		hosts, err := host.FindWithContext(ctx, host.ByNotMonitoredSince(threshold))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -236,7 +236,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		}
 
 		catcher := grip.NewBasicCatcher()
-		hosts, err := host.FindHostsToTerminate()
+		hosts, err := host.FindHostsToTerminate(ctx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "populate host termination jobs",
 			"cron":      HostTerminationJobName,
@@ -258,7 +258,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 			})), "enqueueing termination job for host '%s'", h.Id)
 		}
 
-		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
+		hosts, err = host.AllHostsSpawnedByTasksToTerminate(ctx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "populate hosts spawned by tasks termination jobs",
 			"cron":      HostTerminationJobName,
@@ -329,7 +329,7 @@ func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation 
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 
-		parents, err := host.FindAllRunningParents()
+		parents, err := host.FindAllRunningParents(ctx)
 		if err != nil {
 			return errors.Wrap(err, "Error finding parent hosts")
 		}
@@ -348,7 +348,7 @@ func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 
-		parents, err := host.FindAllRunningParents()
+		parents, err := host.FindAllRunningParents(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding all parent hosts")
 		}
@@ -633,7 +633,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.Find(host.ShouldDeployAgent())
+		hosts, err := host.FindWithContext(ctx, host.ShouldDeployAgent())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
@@ -695,7 +695,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.Find(host.ShouldDeployAgentMonitor())
+		hosts, err := host.FindWithContext(ctx, host.ShouldDeployAgentMonitor())
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",
@@ -760,7 +760,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			return nil
 		}
 
-		hosts, err := host.Find(host.IsUninitialized)
+		hosts, err := host.FindWithContext(ctx, host.IsUninitialized)
 		if err != nil {
 			return errors.Wrap(err, "finding uninitialized hosts")
 		}
@@ -801,7 +801,7 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			hostInitSettings = env.Settings().HostInit
 		}
 
-		hosts, err := host.FindByProvisioning()
+		hosts, err := host.FindByProvisioning(ctx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background host provisioning",
 			"cron":      setupHostJobName,
@@ -875,7 +875,7 @@ func PopulateHostRestartJasperJobs(env evergreen.Environment) amboy.QueueOperati
 			return nil
 		}
 
-		hosts, err := host.FindByNeedsToRestartJasper()
+		hosts, err := host.FindByNeedsToRestartJasper(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "Jasper service restart",
@@ -912,7 +912,7 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 			return nil
 		}
 
-		hosts, err := host.FindByShouldConvertProvisioning()
+		hosts, err := host.FindByShouldConvertProvisioning(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "reprovisioning hosts",
@@ -1019,7 +1019,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 
 func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		hosts, err := host.FindSpawnhostsWithNoExpirationToExtend()
+		hosts, err := host.FindSpawnhostsWithNoExpirationToExtend(ctx)
 		if err != nil {
 			return err
 		}
@@ -1136,7 +1136,7 @@ func PopulatePeriodicBuilds() amboy.QueueOperation {
 // provisioning with user data is done running its user data script yet.
 func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		hosts, err := host.FindUserDataSpawnHostsProvisioning()
+		hosts, err := host.FindUserDataSpawnHostsProvisioning(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding user data spawn hosts that are still provisioning")
 		}
@@ -1173,7 +1173,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// Enqueue jobs to update authorized keys on static hosts.
-		hosts, err := host.FindStaticNeedsNewSSHKeys(settings)
+		hosts, err := host.FindStaticNeedsNewSSHKeys(ctx, settings)
 		if err != nil {
 			catcher.Wrap(err, "finding static hosts that need to update their SSH keys")
 			return catcher.Resolve()

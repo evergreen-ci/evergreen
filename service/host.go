@@ -81,7 +81,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 
 	var containers []host.Host
 	if h.HasContainers {
-		containers, err = h.GetContainers()
+		containers, err = h.GetContainers(r.Context())
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -228,7 +228,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, opts.HostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(r.Context(), user, opts.HostIds)
 	if err != nil {
 		http.Error(w, err.Error(), httpStatus)
 		return

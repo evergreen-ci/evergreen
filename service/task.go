@@ -293,7 +293,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		uiTask.MinQueuePos = 0
 	}
 	if uiTask.Status == evergreen.TaskUndispatched {
-		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(*projCtx.Task)
+		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(ctx, *projCtx.Task)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

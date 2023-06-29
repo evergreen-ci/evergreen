@@ -26,6 +26,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestMakeHost(t *testing.T) {
@@ -333,7 +334,7 @@ func TestHostCreateDocker(t *testing.T) {
 
 	assert.Equal(200, handler.Run(context.Background()).Status())
 
-	hosts, err := host.Find(db.Q{})
+	hosts, err := host.FindWithContext(ctx, bson.M{})
 	assert.NoError(err)
 	require.Len(hosts, 3)
 	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)
