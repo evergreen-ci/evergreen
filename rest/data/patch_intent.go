@@ -67,11 +67,14 @@ func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 }
 
 func AddGithubMergeIntent(intent patch.Intent, queue amboy.Queue) error {
-	grip.Info(message.Fields{
-		"message": "debugging, please remove this message",
-		"info":    "got to AddGithubMergeIntent",
-	})
 	patchDoc := intent.NewPatch()
+	grip.Info(message.Fields{
+		"message":                    "debugging, please remove this message",
+		"info":                       "got to AddGithubMergeIntent",
+		"GitHubMergeData.Org":        patchDoc.GithubMergeData.Org,
+		"GitHubMergeData.Repo":       patchDoc.GithubMergeData.Repo,
+		"GitHubMergeData.BaseBranch": patchDoc.GithubMergeData.BaseBranch,
+	})
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
