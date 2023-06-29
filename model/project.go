@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"reflect"
 	"regexp"
 	"sort"
@@ -421,7 +422,10 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	}
 	projectModules := map[string]manifest.Module{}
 	for _, module := range *l {
-		owner, repo := module.GetRepoOwnerAndName()
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return false
+		}
 		projectModules[module.Name] = manifest.Module{
 			Branch: module.Branch,
 			Repo:   repo,
@@ -1236,19 +1240,6 @@ func (p PluginCommandConf) GetType(prj *Project) string {
 		return prj.CommandType
 	}
 	return DefaultCommandType
-}
-
-// GetRepoOwnerAndName returns the owner and repo name (in that order) of a module
-func (m *Module) GetRepoOwnerAndName() (string, string) {
-	parts := strings.Split(m.Repo, ":")
-	basename := parts[len(parts)-1]
-	ownerAndName := strings.TrimSuffix(basename, ".git")
-	ownersplit := strings.Split(ownerAndName, "/")
-	if len(ownersplit) != 2 {
-		return "", ""
-	} else {
-		return ownersplit[0], ownersplit[1]
-	}
 }
 
 // FindTaskGroup returns a specific task group from a project
