@@ -110,7 +110,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	if j.host.HasContainers && !j.TerminateIfBusy {
 		var idle bool
-		idle, err = j.host.IsIdleParent()
+		idle, err = j.host.IsIdleParent(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "checking if host is an idle parent",

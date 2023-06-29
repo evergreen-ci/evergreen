@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -100,6 +101,9 @@ func TestDequeueTask(t *testing.T) {
 }
 
 func TestFindTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	q := &TaskQueue{
@@ -116,33 +120,36 @@ func TestFindTask(t *testing.T) {
 	}
 
 	// ensure that it's always the first task if the group name isn't specified
-	item, _ := q.FindNextTask(TaskSpec{})
+	item, _ := q.FindNextTask(ctx, TaskSpec{})
 	assert.Equal("one", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{BuildVariant: "a"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{BuildVariant: "a"})
 	assert.Equal("one", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{Project: "a"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{Project: "a"})
 	assert.Equal("one", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{Version: "b"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{Version: "b"})
 	assert.Equal("one", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{BuildVariant: "a", Project: "a"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{BuildVariant: "a", Project: "a"})
 	assert.Equal("one", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{BuildVariant: "a", Version: "b"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{BuildVariant: "a", Version: "b"})
 	assert.Equal("one", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{Project: "a", Version: "b"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{Project: "a", Version: "b"})
 	assert.Equal("one", item.Id)
 
 	// ensure that we can get the task groups that we expect
-	item, _ = q.FindNextTask(TaskSpec{Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"})
 	assert.Equal("five", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{Group: "foo", Project: "a", Version: "b", BuildVariant: "a"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{Group: "foo", Project: "a", Version: "b", BuildVariant: "a"})
 	assert.Equal("one", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"})
 	assert.Equal("six", item.Id)
-	item, _ = q.FindNextTask(TaskSpec{Group: "bar", Project: "a", Version: "b", BuildVariant: "a"})
+	item, _ = q.FindNextTask(ctx, TaskSpec{Group: "bar", Project: "a", Version: "b", BuildVariant: "a"})
 	assert.Equal("two", item.Id)
 }
 
 func TestFindNextTaskEmptySpec(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -194,7 +201,7 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 			TaskQueueItem{Id: "first_item"},
 		},
 	}
-	next, _ := queue.FindNextTask(TaskSpec{})
+	next, _ := queue.FindNextTask(ctx, TaskSpec{})
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
 
@@ -211,13 +218,13 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 			},
 		},
 	}
-	next, _ = queue.FindNextTask(TaskSpec{})
+	next, _ = queue.FindNextTask(ctx, TaskSpec{})
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
 
 	// Don't return a task if it's running on more than maxhosts
 	queue.Queue[0].GroupMaxHosts = 1
-	next, _ = queue.FindNextTask(TaskSpec{})
+	next, _ = queue.FindNextTask(ctx, TaskSpec{})
 	assert.Nil(next)
 
 	// Check that all four fields must match to be in task group.
@@ -227,37 +234,40 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 	//
 	// All four match:
 	queue.Queue[0].GroupMaxHosts = 1
-	next, _ = queue.FindNextTask(TaskSpec{})
+	next, _ = queue.FindNextTask(ctx, TaskSpec{})
 	assert.Nil(next)
 	// Group does not match.
 	tmp := queue.Queue[0].Group
 	queue.Queue[0].Group = "foo"
-	next, _ = queue.FindNextTask(TaskSpec{})
+	next, _ = queue.FindNextTask(ctx, TaskSpec{})
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
 	queue.Queue[0].Group = tmp
 	// BuildVariant does not match.
 	tmp = queue.Queue[0].BuildVariant
 	queue.Queue[0].BuildVariant = "foo"
-	next, _ = queue.FindNextTask(TaskSpec{})
+	next, _ = queue.FindNextTask(ctx, TaskSpec{})
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
 	queue.Queue[0].BuildVariant = tmp
 	// Version does not match.
 	tmp = queue.Queue[0].Version
 	queue.Queue[0].Version = "foo"
-	next, _ = queue.FindNextTask(TaskSpec{})
+	next, _ = queue.FindNextTask(ctx, TaskSpec{})
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
 	queue.Queue[0].Version = tmp
 	// Project does not match.
 	queue.Queue[0].Project = "foo"
-	next, _ = queue.FindNextTask(TaskSpec{})
+	next, _ = queue.FindNextTask(ctx, TaskSpec{})
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
 }
 
 func TestFindNextTaskWithLastTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -315,7 +325,7 @@ func TestFindNextTaskWithLastTask(t *testing.T) {
 			},
 		},
 	}
-	next, _ := queue.FindNextTask(TaskSpec{})
+	next, _ := queue.FindNextTask(ctx, TaskSpec{})
 	assert.Nil(next)
 }
 

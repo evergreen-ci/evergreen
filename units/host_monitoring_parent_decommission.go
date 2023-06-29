@@ -75,7 +75,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			return
 		}
 		// Decommission parent if its containers aren't running anymore
-		idle, err := h.IsIdleParent()
+		idle, err := h.IsIdleParent(ctx)
 		if err != nil {
 			j.AddError(err)
 			continue

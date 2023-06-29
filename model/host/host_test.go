@@ -37,16 +37,14 @@ func init() {
 
 // IsActive is a query that returns all Evergreen hosts that are working or
 // capable of being assigned work to do.
-var IsActive = db.Query(
-	bson.M{
-		StartedByKey: evergreen.User,
-		StatusKey: bson.M{
-			"$nin": []string{
-				evergreen.HostTerminated, evergreen.HostDecommissioned,
-			},
+var IsActive = bson.M{
+	StartedByKey: evergreen.User,
+	StatusKey: bson.M{
+		"$nin": []string{
+			evergreen.HostTerminated, evergreen.HostDecommissioned,
 		},
 	},
-)
+}
 
 func hostIdInSlice(hosts []Host, id string) bool {
 	for _, host := range hosts {
@@ -790,6 +788,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 }
 
 func TestHostClearRunningAndSetLastTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("With a host", t, func() {
 
@@ -809,10 +809,10 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 
 		Convey("host statistics should properly count this host as active"+
 			" but not idle", func() {
-			count, err = Count(IsActive)
+			count, err = Count(ctx, IsActive)
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 1)
-			count, err = Count(IsIdle)
+			count, err = Count(ctx, IsIdle)
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 0)
 		})
@@ -832,12 +832,12 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 			So(host.LastTask, ShouldEqual, "prevTask")
 
 			Convey("the count of idle hosts should go up", func() {
-				count, err := Count(IsIdle)
+				count, err := Count(ctx, IsIdle)
 				So(err, ShouldBeNil)
 				So(count, ShouldEqual, 1)
 
 				Convey("but the active host count should remain the same", func() {
-					count, err = Count(IsActive)
+					count, err = Count(ctx, IsActive)
 					So(err, ShouldBeNil)
 					So(count, ShouldEqual, 1)
 				})
@@ -3735,7 +3735,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	assert.Contains(ids, "host7")
 	assert.Contains(ids, "host8")
 
-	totalHosts, err := Count(All)
+	totalHosts, err := Count(ctx, All)
 	require.NoError(err)
 	assert.Equal(totalHosts, len(distro1Hosts)+len(distro2Hosts))
 }

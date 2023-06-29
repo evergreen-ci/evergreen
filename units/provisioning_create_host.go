@@ -136,7 +136,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	if j.host.IsSubjectToHostCreationThrottle() {
 		var numHosts int
-		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
+		numHosts, err = host.CountRunningHosts(ctx, j.host.Distro.Id)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "counting existing host pool size for distro '%s'", j.host.Distro.Id))
 			return
@@ -157,7 +157,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 		}
 
-		allRunningDynamicHosts, err := host.CountAllRunningDynamicHosts()
+		allRunningDynamicHosts, err := host.CountAllRunningDynamicHosts(ctx)
 		j.AddError(err)
 		lowHostNumException := false
 		if numHosts < 10 {
@@ -197,7 +197,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 
-		if j.selfThrottle() {
+		if j.selfThrottle(ctx) {
 			grip.Debug(message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.RetryInfo().CurrentAttempt,
@@ -222,7 +222,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	j.AddRetryableError(j.createHost(ctx))
 }
 
-func (j *createHostJob) selfThrottle() bool {
+func (j *createHostJob) selfThrottle(ctx context.Context) bool {
 	var (
 		numProv            int
 		runningHosts       int
@@ -230,19 +230,19 @@ func (j *createHostJob) selfThrottle() bool {
 		err                error
 	)
 
-	numProv, err = host.CountIdleStartedTaskHosts()
+	numProv, err = host.CountIdleStartedTaskHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting pending host pool size"))
 		return true
 	}
 
-	distroRunningHosts, err = host.CountRunningHosts(j.host.Distro.Id)
+	distroRunningHosts, err = host.CountRunningHosts(ctx, j.host.Distro.Id)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "counting host pool size for distro '%s'", j.host.Distro.Id))
 		return true
 	}
 
-	runningHosts, err = host.CountAllRunningDynamicHosts()
+	runningHosts, err = host.CountAllRunningDynamicHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting size of entire host pool"))
 		return true

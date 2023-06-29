@@ -24,7 +24,7 @@ type TaskQueueItemDispatcher interface {
 
 type CachedDispatcher interface {
 	Refresh() error
-	FindNextTask(TaskSpec, time.Time) *TaskQueueItem
+	FindNextTask(context.Context, TaskSpec, time.Time) *TaskQueueItem
 	Type() string
 	CreatedAt() time.Time
 }
@@ -56,7 +56,7 @@ func (s *taskDispatchService) FindNextTask(ctx context.Context, distroID string,
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return distroDispatchService.FindNextTask(spec, amiUpdatedTime), nil
+	return distroDispatchService.FindNextTask(ctx, spec, amiUpdatedTime), nil
 }
 
 func (s *taskDispatchService) RefreshFindNextTask(ctx context.Context, distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
@@ -69,7 +69,7 @@ func (s *taskDispatchService) RefreshFindNextTask(ctx context.Context, distroID 
 		return nil, errors.WithStack(err)
 	}
 
-	return distroDispatchService.FindNextTask(spec, amiUpdatedTime), nil
+	return distroDispatchService.FindNextTask(ctx, spec, amiUpdatedTime), nil
 }
 
 func (s *taskDispatchService) Refresh(ctx context.Context, distroID string) error {
@@ -277,7 +277,7 @@ func (d *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec, _ time.Time) *TaskQueueItem {
+func (d *basicCachedDispatcherImpl) FindNextTask(ctx context.Context, spec TaskSpec, _ time.Time) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -380,7 +380,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec, _ time.Time) *Ta
 		}
 
 		if unit.runningHosts < unit.maxHosts {
-			numHosts, err = host.NumHostsByTaskSpec(unit.group, unit.variant, unit.project, unit.version)
+			numHosts, err = host.NumHostsByTaskSpec(ctx, unit.group, unit.variant, unit.project, unit.version)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher":                    SchedulableUnitDispatcher,

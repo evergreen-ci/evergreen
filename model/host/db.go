@@ -120,7 +120,7 @@ var (
 // === Queries ===
 
 // All is a query that returns all hosts
-var All = db.Query(struct{}{})
+var All = bson.M{}
 
 // ByUserWithRunningStatus produces a query that returns all
 // running hosts for the given user id.
@@ -248,22 +248,22 @@ func idleHostsQuery(distroID string) bson.M {
 	return query
 }
 
-func CountRunningHosts(distroID string) (int, error) {
-	num, err := Count(db.Query(runningHostsQuery(distroID)))
+func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
+	num, err := Count(ctx, runningHostsQuery(distroID))
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
-func CountAllRunningDynamicHosts() (int, error) {
+func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
 	query := IsLive()
 	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}
-	num, err := Count(db.Query(query))
+	num, err := Count(ctx, query)
 	return num, errors.Wrap(err, "counting running dynamic hosts")
 }
 
 // CountIdleStartedTaskHosts returns the count of task hosts that are starting
 // and not currently running a task.
-func CountIdleStartedTaskHosts() (int, error) {
-	num, err := Count(db.Query(idleStartedTaskHostsQuery("")))
+func CountIdleStartedTaskHosts(ctx context.Context) (int, error) {
+	num, err := Count(ctx, idleStartedTaskHostsQuery(""))
 	return num, errors.Wrap(err, "counting starting hosts")
 }
 
@@ -422,13 +422,13 @@ func ByTaskSpec(group, buildVariant, project, version string) bson.M {
 
 // NumHostsByTaskSpec returns the number of running hosts that are running a task with
 // the given group, buildvariant, project, and version.
-func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
+func NumHostsByTaskSpec(ctx context.Context, group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
 		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', build variant is '%s', "+
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
-	numHosts, err := Count(ByTaskSpec(group, buildVariant, project, version))
+	numHosts, err := Count(ctx, ByTaskSpec(group, buildVariant, project, version))
 	if err != nil {
 		return 0, errors.Wrap(err, "counting hosts by task spec")
 	}
@@ -582,13 +582,11 @@ func FindOneByJasperCredentialsID(id string) (*Host, error) {
 }
 
 // IsIdle is a query that returns all running Evergreen hosts with no task.
-var IsIdle = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostRunning,
-		StartedByKey:   evergreen.User,
-	},
-)
+var IsIdle = bson.M{
+	RunningTaskKey: bson.M{"$exists": false},
+	StatusKey:      evergreen.HostRunning,
+	StartedByKey:   evergreen.User,
+}
 
 // ByNotMonitoredSince produces a query that returns all hosts whose
 // last reachability check was before the specified threshold,
@@ -875,8 +873,9 @@ func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func Count(query db.Q) (int, error) {
-	return db.CountQ(Collection, query)
+func Count(ctx context.Context, query bson.M) (int, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query)
+	return int(res), errors.Wrap(err, "getting host count")
 }
 
 // UpdateOne updates one host.

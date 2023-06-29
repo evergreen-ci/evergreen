@@ -2100,7 +2100,7 @@ func (h *Host) GetParent() (*Host, error) {
 }
 
 // IsIdleParent determines whether a host has only inactive containers
-func (h *Host) IsIdleParent() (bool, error) {
+func (h *Host) IsIdleParent(ctx context.Context) (bool, error) {
 	const idleTimeCutoff = 20 * time.Minute
 	if !h.HasContainers {
 		return false, nil
@@ -2109,11 +2109,11 @@ func (h *Host) IsIdleParent() (bool, error) {
 	if h.IdleTime() < idleTimeCutoff {
 		return false, nil
 	}
-	query := db.Query(bson.M{
+	query := bson.M{
 		ParentIDKey: h.Id,
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-	})
-	num, err := Count(query)
+	}
+	num, err := Count(ctx, query)
 	if err != nil {
 		return false, errors.Wrap(err, "counting non-terminated containers")
 	}
@@ -2264,13 +2264,13 @@ func FindTerminatedHostsRunningTasks(ctx context.Context) ([]Host, error) {
 }
 
 // CountContainersOnParents counts how many containers are children of the given group of hosts
-func (hosts HostGroup) CountContainersOnParents() (int, error) {
+func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(mgobson.M{
-		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: mgobson.M{"$in": ids},
-	})
-	return Count(query)
+	query := bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		ParentIDKey: bson.M{"$in": ids},
+	}
+	return Count(ctx, query)
 }
 
 // FindUphostContainersOnParents returns the containers that are children of the given hosts
@@ -2493,16 +2493,16 @@ func InsertMany(hosts []Host) error {
 // CountContainersRunningAtTime counts how many containers were running on the
 // given parent host at the specified time, using the host StartTime and
 // TerminationTime fields.
-func (h *Host) CountContainersRunningAtTime(timestamp time.Time) (int, error) {
-	query := db.Query(bson.M{
+func (h *Host) CountContainersRunningAtTime(ctx context.Context, timestamp time.Time) (int, error) {
+	query := bson.M{
 		ParentIDKey:  h.Id,
 		StartTimeKey: bson.M{"$lt": timestamp},
 		"$or": []bson.M{
 			{TerminationTimeKey: bson.M{"$gt": timestamp}},
 			{TerminationTimeKey: time.Time{}},
 		},
-	})
-	return Count(query)
+	}
+	return Count(ctx, query)
 }
 
 func (h *Host) addTag(new Tag, hasPermissions bool) {
@@ -2698,13 +2698,13 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 
 // CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated
 // with a given users that are considered up and should never expire.
-func CountSpawnhostsWithNoExpirationByUser(user string) (int, error) {
-	query := db.Query(bson.M{
+func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (int, error) {
+	query := bson.M{
 		StartedByKey:    user,
 		NoExpirationKey: true,
 		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
-	})
-	return Count(query)
+	}
+	return Count(ctx, query)
 }
 
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never

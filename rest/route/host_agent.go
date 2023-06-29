@@ -477,7 +477,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			queueItem, _ = taskQueue.FindNextTask(spec)
+			queueItem, _ = taskQueue.FindNextTask(ctx, spec)
 		}
 
 		if queueItem == nil {
@@ -720,7 +720,7 @@ func checkHostTaskGroupAfterDispatch(ctx context.Context, h *host.Host, t *task.
 	// For multiple-host task groups and single-host task groups without order
 	// cached in the host, check that max hosts is respected.
 	if minTaskGroupOrderNum == 0 {
-		numHosts, err := host.NumHostsByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+		numHosts, err := host.NumHostsByTaskSpec(ctx, t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
 			return errors.Wrap(err, "getting number of hosts running task group")
 		}

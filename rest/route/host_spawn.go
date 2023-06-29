@@ -55,7 +55,7 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	if hph.options.NoExpiration {
-		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.env.Settings().Spawnhost.UnexpirableHostsPerUser); err != nil {
+		if err := CheckUnexpirableHostLimitExceeded(ctx, user.Id, hph.env.Settings().Spawnhost.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking expirable host limit"))
 		}
 	}
@@ -129,7 +129,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if h.options.NoExpiration != nil && *h.options.NoExpiration {
 		catcher.AddWhen(h.options.AddHours != 0, errors.New("can't specify no expiration and new expiration"))
-		catcher.Add(CheckUnexpirableHostLimitExceeded(user.Id, h.env.Settings().Spawnhost.UnexpirableHostsPerUser))
+		catcher.Add(CheckUnexpirableHostLimitExceeded(ctx, user.Id, h.env.Settings().Spawnhost.UnexpirableHostsPerUser))
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid host modify request"))
@@ -188,8 +188,8 @@ func checkInstanceTypeHostStopped(h *host.Host) error {
 	return nil
 }
 
-func CheckUnexpirableHostLimitExceeded(userId string, maxHosts int) error {
-	count, err := host.CountSpawnhostsWithNoExpirationByUser(userId)
+func CheckUnexpirableHostLimitExceeded(ctx context.Context, userId string, maxHosts int) error {
+	count, err := host.CountSpawnhostsWithNoExpirationByUser(ctx, userId)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
