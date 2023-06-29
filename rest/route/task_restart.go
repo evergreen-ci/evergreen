@@ -86,7 +86,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(refreshedTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
+	err = taskModel.BuildFromService(ctx, refreshedTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", trh.taskId))
 	}

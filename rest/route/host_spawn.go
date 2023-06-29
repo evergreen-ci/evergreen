@@ -108,7 +108,7 @@ func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	foundHost, err := data.FindHostByIdWithOwner(h.hostID, user)
+	foundHost, err := data.FindHostByIdWithOwner(ctx, h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user.Id))
 	}
@@ -266,7 +266,7 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	host, err := data.FindHostByIdWithOwner(h.hostID, user)
+	host, err := data.FindHostByIdWithOwner(ctx, h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user.Id))
 	}
@@ -336,7 +336,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	host, err := data.FindHostByIdWithOwner(h.hostID, user)
+	host, err := data.FindHostByIdWithOwner(ctx, h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user.Id))
 	}
@@ -406,7 +406,7 @@ func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	targetHost, err := data.FindHostByIdWithOwner(h.hostID, user)
+	targetHost, err := data.FindHostByIdWithOwner(ctx, h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting host '%s' with owner '%s'", h.hostID, user.Id))
 	}
@@ -421,7 +421,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Check whether attachment already attached to a host
-	attachedHost, err := host.FindHostWithVolume(h.attachment.VolumeID)
+	attachedHost, err := host.FindHostWithVolume(ctx, h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking whether attachment '%s' is already attached to host", h.attachment.VolumeID))
 	}
@@ -506,7 +506,7 @@ func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	targetHost, err := data.FindHostByIdWithOwner(h.hostID, user)
+	targetHost, err := data.FindHostByIdWithOwner(ctx, h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user.Id))
 	}
@@ -676,7 +676,7 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	attachedHost, err := host.FindHostWithVolume(h.VolumeID)
+	attachedHost, err := host.FindHostWithVolume(ctx, h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host with volume '%s'", h.VolumeID))
 	}
@@ -854,7 +854,7 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 
 		// if the volume is attached to a host, also return the host ID and volume device name
 		if v.Host != "" {
-			h, err := host.FindOneId(v.Host)
+			h, err := host.FindOneId(ctx, v.Host)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' associated with volume '%s'", v.Host, v.ID))
 			}
@@ -910,7 +910,7 @@ func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
 	volumeDoc.BuildFromService(*v)
 	// if the volume is attached to a host, also return the host ID and volume device name
 	if v.Host != "" {
-		attachedHost, err := host.FindOneId(v.Host)
+		attachedHost, err := host.FindOneId(ctx, v.Host)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' for attached volume", v.Host))
 		}
@@ -955,7 +955,7 @@ func (h *hostTerminateHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	host, err := data.FindHostByIdWithOwner(h.hostID, u)
+	host, err := data.FindHostByIdWithOwner(ctx, h.hostID, u)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with user '%s'", h.hostID, u.Id))
 	}
@@ -1037,7 +1037,7 @@ func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Reques
 
 func (h *hostChangeRDPPasswordHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	host, err := data.FindHostByIdWithOwner(h.hostID, u)
+	host, err := data.FindHostByIdWithOwner(ctx, h.hostID, u)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with user '%s'", h.hostID, u.Id))
 	}
@@ -1100,7 +1100,7 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 
 func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	host, err := data.FindHostByIdWithOwner(h.hostID, u)
+	host, err := data.FindHostByIdWithOwner(ctx, h.hostID, u)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with user '%s'", h.hostID, u.Id))
 	}
@@ -1158,7 +1158,7 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	response := gimlet.NewResponseBuilder()
 	for _, hostID := range hs.hostIDs {
-		h, err := data.FindHostByIdWithOwner(hostID, u)
+		h, err := data.FindHostByIdWithOwner(ctx, hostID, u)
 		if err != nil {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
@@ -1248,7 +1248,7 @@ func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	response := gimlet.NewResponseBuilder()
 	for _, process := range h.hostProcesses {
-		host, err := data.FindHostByIdWithOwner(process.HostID, u)
+		host, err := data.FindHostByIdWithOwner(ctx, process.HostID, u)
 		if err != nil {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   process.HostID,

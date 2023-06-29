@@ -79,7 +79,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    "cannot generate host provisioning script without a host ID",
 		}
 	}
-	h, err := host.FindOneByIdOrTag(hostID)
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -120,8 +120,8 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 // started by the given user. If the given user is a super-user,
 // the host will also be returned regardless of who the host was
 // started by
-func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	hostById, err := host.FindOneId(hostID)
+func FindHostByIdWithOwner(ctx context.Context, hostID string, user gimlet.User) (*host.Host, error) {
+	hostById, err := host.FindOneId(ctx, hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

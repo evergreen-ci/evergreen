@@ -89,7 +89,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
 	instanceId := gimlet.GetVars(r)["instance_id"]
 
-	h, err := host.FindOne(host.ById(instanceId))
+	h, err := host.FindOne(r.Context(), host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -120,7 +120,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	instanceId := gimlet.GetVars(r)["instance_id"]
 	hostAction := r.FormValue("action")
 
-	h, err := host.FindOne(host.ById(instanceId))
+	h, err := host.FindOne(r.Context(), host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

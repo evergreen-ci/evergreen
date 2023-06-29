@@ -42,7 +42,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	}
 
 	// get parent of host
-	parentHost, err := h.GetParent()
+	parentHost, err := h.GetParent(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding parent of host '%s'", h.Id)
 	}
@@ -101,7 +101,7 @@ func (m *dockerManager) ModifyHost(context.Context, *host.Host, host.HostModifyO
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	// get parent of container host
-	parent, err := h.GetParent()
+	parent, err := h.GetParent(ctx)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "retrieving parent of host '%s'", h.Id)
 	}
@@ -149,7 +149,7 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
 
-	parent, err := h.GetParent()
+	parent, err := h.GetParent(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "retrieving parent for host '%s'", h.Id)
 	}

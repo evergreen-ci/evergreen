@@ -313,7 +313,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Task.HostId != "" {
 		uiTask.HostDNS = projCtx.Task.HostId
 		uiTask.HostId = projCtx.Task.HostId
-		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
+		taskHost, err = host.FindOne(ctx, host.ById(projCtx.Task.HostId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -323,7 +323,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			// ensure that the ability to spawn is updated from the existing distro
 			taskHost.Distro.SpawnAllowed = false
 			var d *distro.Distro
-			d, err = distro.FindOneId(r.Context(), taskHost.Distro.Id)
+			d, err = distro.FindOneId(ctx, taskHost.Distro.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

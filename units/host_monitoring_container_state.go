@@ -65,7 +65,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 
 	var err error
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		j.AddError(err)
 		if j.host == nil {
 			j.AddError(errors.Errorf("host '%s' not found", j.HostID))

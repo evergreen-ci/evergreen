@@ -2081,11 +2081,11 @@ func (h *Host) GetActiveContainers(ctx context.Context) ([]Host, error) {
 
 // GetParent finds the parent of this container
 // errors if host is not a container or if parent cannot be found
-func (h *Host) GetParent() (*Host, error) {
+func (h *Host) GetParent(ctx context.Context) (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("host does not have a parent")
 	}
-	host, err := FindOneByIdOrTag(h.ParentID)
+	host, err := FindOneByIdOrTag(ctx, h.ParentID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding container parent")
 	}
@@ -2822,42 +2822,36 @@ func (h *Host) HostVolumeDeviceNames() []string {
 
 // FindHostWithVolume finds the host associated with the
 // specified volume ID.
-func FindHostWithVolume(volumeID string) (*Host, error) {
-	q := db.Query(
-		bson.M{
-			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-			UserHostKey: true,
-			bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
-		},
-	)
-	return FindOne(q)
+func FindHostWithVolume(ctx context.Context, volumeID string) (*Host, error) {
+	q := bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		UserHostKey: true,
+		bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
+	}
+	return FindOne(ctx, q)
 }
 
 // FindUpHostWithHomeVolume finds the up host associated with the
 // specified home volume ID.
-func FindUpHostWithHomeVolume(homeVolumeID string) (*Host, error) {
-	q := db.Query(
-		bson.M{
-			StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
-			UserHostKey:     true,
-			HomeVolumeIDKey: homeVolumeID,
-		},
-	)
-	return FindOne(q)
+func FindUpHostWithHomeVolume(ctx context.Context, homeVolumeID string) (*Host, error) {
+	q := bson.M{
+		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
+		UserHostKey:     true,
+		HomeVolumeIDKey: homeVolumeID,
+	}
+	return FindOne(ctx, q)
 }
 
 // FindLatestTerminatedHostWithHomeVolume finds the user's most recently terminated host
 // associated with the specified home volume ID.
-func FindLatestTerminatedHostWithHomeVolume(homeVolumeID string, startedBy string) (*Host, error) {
-	q := db.Query(
-		bson.M{
-			StatusKey:       evergreen.HostTerminated,
-			StartedByKey:    startedBy,
-			UserHostKey:     true,
-			HomeVolumeIDKey: homeVolumeID,
-		},
-	).Sort([]string{"-" + TerminationTimeKey})
-	return FindOne(q)
+func FindLatestTerminatedHostWithHomeVolume(ctx context.Context, homeVolumeID string, startedBy string) (*Host, error) {
+	q := bson.M{
+		StatusKey:       evergreen.HostTerminated,
+		StartedByKey:    startedBy,
+		UserHostKey:     true,
+		HomeVolumeIDKey: homeVolumeID,
+	}
+	return FindOne(ctx, q, options.FindOne().SetSort(bson.M{TerminationTimeKey: -1}))
 }
 
 // FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same

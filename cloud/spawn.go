@@ -129,7 +129,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	}
 	if so.HomeVolumeID != "" {
 		var volume *host.Volume
-		volume, err = host.ValidateVolumeCanBeAttached(so.HomeVolumeID)
+		volume, err = host.ValidateVolumeCanBeAttached(ctx, so.HomeVolumeID)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

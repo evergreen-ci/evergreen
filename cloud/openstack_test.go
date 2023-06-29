@@ -143,7 +143,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 	_, err = myHost.Upsert()
 	s.NoError(err)
 
-	dbHost, err := host.FindOne(host.ById(myHost.Id))
+	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))
 	s.NotNil(dbHost)
 	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
@@ -152,7 +152,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.NoError(err)
 
-	dbHost, err = host.FindOne(host.ById(myHost.Id))
+	dbHost, err = host.FindOne(ctx, host.ById(myHost.Id))
 	s.Equal(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 

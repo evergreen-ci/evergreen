@@ -19,7 +19,7 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 	}
 	catcher := grip.NewBasicCatcher()
 	if h.ParentID != "" {
-		parent, err := host.FindOneId(h.ParentID)
+		parent, err := host.FindOneId(ctx, h.ParentID)
 		if err != nil {
 			return errors.Wrapf(err, "finding parent host for container '%s'", h.Id)
 		}

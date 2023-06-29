@@ -54,7 +54,7 @@ func (j *lastContainerFinishTimeJob) Run(ctx context.Context) {
 
 	// update last container finish time for each host with containers
 	for _, time := range times {
-		h, err := host.FindOneByIdOrTag(time.Id)
+		h, err := host.FindOneByIdOrTag(ctx, time.Id)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", time.Id))
 			continue

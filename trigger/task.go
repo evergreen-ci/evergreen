@@ -142,6 +142,8 @@ type taskTriggers struct {
 	owner        string
 	uiConfig     evergreen.UIConfig
 	jiraMappings *evergreen.JIRANotificationsConfig
+	host         *host.Host
+	apiTask      *restModel.APITask
 
 	oldTestResults map[string]*testresult.TestResult
 
@@ -186,6 +188,17 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 	}
 	t.owner = author
 
+	if t.task.HostId != "" {
+		t.host, err = host.FindOneId(ctx, t.task.HostId)
+		if err != nil {
+			return errors.Wrapf(err, "finding host '%s'", t.task.HostId)
+		}
+	}
+
+	if err := t.apiTask.BuildFromService(ctx, t.task, &restModel.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true}); err != nil {
+		return errors.Wrap(err, "building API task model")
+	}
+
 	t.event = e
 
 	return t.jiraMappings.Get(ctx)
@@ -217,11 +230,6 @@ func (t *taskTriggers) Attributes() event.Attributes {
 }
 
 func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
-	api := restModel.APITask{}
-	if err := api.BuildFromService(t.task, &restModel.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true}); err != nil {
-		return nil, errors.Wrap(err, "building JSON model")
-	}
-
 	buildDoc, err := build.FindOne(build.ById(t.task.BuildId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding build '%s' while building email payload", t.task.BuildId)
@@ -253,7 +261,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 		Project:         projectRef.Identifier,
 		URL:             taskLink(t.uiConfig.Url, t.task.Id, t.task.Execution),
 		PastTenseStatus: status,
-		apiModel:        &api,
+		apiModel:        t.apiTask,
 		Task:            t.task,
 		ProjectRef:      projectRef,
 		Build:           buildDoc,
@@ -896,72 +904,84 @@ func matchingFailureType(requested, actual string) bool {
 }
 
 func (j *taskTriggers) makeJIRATaskPayload(subID, project, testNames string) (*message.JiraIssue, error) {
-	return JIRATaskPayload(subID, project, j.uiConfig.Url, j.event.ID, testNames, j.jiraMappings, j.task)
+	return JIRATaskPayload(JiraIssueParameters{
+		SubID:     subID,
+		Project:   project,
+		UiURL:     j.uiConfig.Url,
+		EventID:   j.event.ID,
+		TestNames: testNames,
+		Mappings:  j.jiraMappings,
+		Task:      j.task,
+		Host:      j.host,
+	})
 }
 
-func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, mappings *evergreen.JIRANotificationsConfig, t *task.Task) (*message.JiraIssue, error) {
-	buildDoc, err := build.FindOne(build.ById(t.BuildId))
+type JiraIssueParameters struct {
+	SubID     string
+	Project   string
+	UiURL     string
+	EventID   string
+	TestNames string
+	Mappings  *evergreen.JIRANotificationsConfig
+	Task      *task.Task
+	Host      *host.Host
+}
+
+func JIRATaskPayload(params JiraIssueParameters) (*message.JiraIssue, error) {
+	buildDoc, err := build.FindOne(build.ById(params.Task.BuildId))
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding build '%s' while building Jira task payload", t.BuildId)
+		return nil, errors.Wrapf(err, "finding build '%s' while building Jira task payload", params.Task.BuildId)
 	}
 	if buildDoc == nil {
-		return nil, errors.Errorf("build '%s' not found while building Jira task payload", t.BuildId)
-	}
-
-	var hostDoc *host.Host
-	if t.HostId != "" {
-		hostDoc, err = host.FindOneId(t.HostId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding host '%s' while building Jira task payload", t.HostId)
-		}
+		return nil, errors.Errorf("build '%s' not found while building Jira task payload", params.Task.BuildId)
 	}
 
 	var podDoc *pod.Pod
-	if t.PodID != "" {
-		podDoc, err = pod.FindOneByID(t.PodID)
+	if params.Task.PodID != "" {
+		podDoc, err = pod.FindOneByID(params.Task.PodID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", t.PodID)
+			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", params.Task.PodID)
 		}
 	}
 
-	versionDoc, err := model.VersionFindOneId(t.Version)
+	versionDoc, err := model.VersionFindOneId(params.Task.Version)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding version '%s' while building Jira task payload", t.Version)
+		return nil, errors.Wrapf(err, "finding version '%s' while building Jira task payload", params.Task.Version)
 	}
 	if versionDoc == nil {
-		return nil, errors.Errorf("version '%s' not found while building Jira task payload", t.Version)
+		return nil, errors.Errorf("version '%s' not found while building Jira task payload", params.Task.Version)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	projectRef, err := model.FindMergedProjectRef(params.Task.Project, params.Task.Version, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building Jira task payload", t.Version, t.Version)
+		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building Jira task payload", params.Task.Version, params.Task.Version)
 	}
 	if projectRef == nil {
-		return nil, errors.Errorf("project ref '%s' for version '%s' not found", t.Project, t.Version)
+		return nil, errors.Errorf("project ref '%s' for version '%s' not found", params.Task.Project, params.Task.Version)
 	}
 
 	data := jiraTemplateData{
-		UIRoot:          uiUrl,
-		SubscriptionID:  subID,
-		EventID:         eventID,
-		Task:            t,
+		UIRoot:          params.UiURL,
+		SubscriptionID:  params.SubID,
+		EventID:         params.EventID,
+		Task:            params.Task,
 		Version:         versionDoc,
 		Project:         projectRef,
 		Build:           buildDoc,
-		Host:            hostDoc,
+		Host:            params.Host,
 		Pod:             podDoc,
-		TaskDisplayName: t.DisplayName,
+		TaskDisplayName: params.Task.DisplayName,
 	}
-	if t.IsPartOfDisplay() {
-		dt, _ := t.GetDisplayTask()
+	if params.Task.IsPartOfDisplay() {
+		dt, _ := params.Task.GetDisplayTask()
 		if dt != nil {
 			data.TaskDisplayName = dt.DisplayName
 		}
 	}
 
 	builder := jiraBuilder{
-		project:  strings.ToUpper(project),
-		mappings: mappings,
+		project:  strings.ToUpper(params.Project),
+		mappings: params.Mappings,
 		data:     data,
 	}
 

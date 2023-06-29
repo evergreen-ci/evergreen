@@ -87,7 +87,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return

@@ -816,17 +816,25 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 // === DB Logic ===
 
 // FindOne gets one Host for the given query.
-func FindOne(query db.Q) (*Host, error) {
-	host := &Host{}
-	err := db.FindOneQ(Collection, query, host)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
+func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Host, error) {
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
+	if err := res.Err(); err != nil {
+		if adb.ResultsNotFound(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "finding host")
 	}
-	return host, err
+
+	host := &Host{}
+	if err := res.Decode(host); err != nil {
+		return nil, errors.Wrap(err, "decoding host")
+	}
+
+	return host, nil
 }
 
-func FindOneId(id string) (*Host, error) {
-	return FindOne(ById(id))
+func FindOneId(ctx context.Context, id string) (*Host, error) {
+	return FindOne(ctx, ById(id))
 }
 
 // FindOneByTaskIdAndExecution returns a single host with the given running task ID and execution.
@@ -845,14 +853,14 @@ func FindOneByTaskIdAndExecution(id string, execution int) (*Host, error) {
 
 // FindOneByIdOrTag finds a host where the given id is stored in either the _id or tag field.
 // (The tag field is used for the id from the host's original intent host.)
-func FindOneByIdOrTag(id string) (*Host, error) {
-	query := db.Query(bson.M{
+func FindOneByIdOrTag(ctx context.Context, id string) (*Host, error) {
+	query := bson.M{
 		"$or": []bson.M{
 			{TagKey: id},
 			{IdKey: id},
 		},
-	})
-	host, err := FindOne(query)
+	}
+	host, err := FindOne(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding host with ID or tag '%s'", id)
 	}
@@ -1177,8 +1185,8 @@ func FindOneVolume(query interface{}) (*Volume, error) {
 	return v, err
 }
 
-func FindDistroForHost(hostID string) (string, error) {
-	h, err := FindOne(ById(hostID))
+func FindDistroForHost(ctx context.Context, hostID string) (string, error) {
+	h, err := FindOne(ctx, ById(hostID))
 	if err != nil {
 		return "", err
 	}

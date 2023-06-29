@@ -166,7 +166,7 @@ func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Request) {
 	hostId := r.FormValue("host_id")
-	h, err := host.FindOneByIdOrTag(hostId)
+	h, err := host.FindOneByIdOrTag(r.Context(), hostId)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "Error finding host '%s'", hostId))
@@ -342,7 +342,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hostId := utility.FromStringPtr(updateParams.HostID)
-	h, err := host.FindOne(host.ById(hostId))
+	h, err := host.FindOne(ctx, host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
 		return
@@ -424,7 +424,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 				return
 			}
-			if err = route.CheckUnexpirableHostLimitExceeded(u.Id, settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
+			if err = route.CheckUnexpirableHostLimitExceeded(ctx, u.Id, settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return

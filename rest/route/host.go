@@ -70,7 +70,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 
 	resp := gimlet.NewResponseBuilder()
 	for id, status := range h.HostToStatus {
-		foundHost, err := data.FindHostByIdWithOwner(id, user)
+		foundHost, err := data.FindHostByIdWithOwner(ctx, id, user)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
 		}
@@ -120,7 +120,7 @@ func (h *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 // Execute calls the data FindHostById function and returns the host
 // from the provider.
 func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundHost, err := host.FindOneId(h.hostID)
+	foundHost, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s'", h.hostID))
 	}
@@ -570,7 +570,7 @@ func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOneId(h.hostID)
+	host, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
 	}
@@ -618,7 +618,7 @@ func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOne(host.ByIPAndRunning(h.IP))
+	host, err := host.FindOne(ctx, host.ByIPAndRunning(h.IP))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host with IP '%s'", h.IP))
 	}

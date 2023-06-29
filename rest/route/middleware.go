@@ -270,7 +270,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	h, err := host.FindOneId(hostID)
+	h, err := host.FindOneId(r.Context(), hostID)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -804,7 +804,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 
 	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
 	if distroID == "" && hostID != "" {
-		distroID, err = host.FindDistroForHost(hostID)
+		distroID, err = host.FindDistroForHost(r.Context(), hostID)
 		if err != nil {
 			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
 		}

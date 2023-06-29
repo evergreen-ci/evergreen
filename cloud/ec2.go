@@ -665,7 +665,7 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		catcher.Add(h.SetDisplayName(opts.NewName))
 	}
 	if opts.AttachVolume != "" {
-		volume, err := host.ValidateVolumeCanBeAttached(opts.AttachVolume)
+		volume, err := host.ValidateVolumeCanBeAttached(ctx, opts.AttachVolume)
 		if err != nil {
 			catcher.Add(err)
 			return catcher.Resolve()

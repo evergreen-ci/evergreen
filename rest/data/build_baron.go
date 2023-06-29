@@ -108,7 +108,12 @@ func makeNotification(ctx context.Context, settings *evergreen.Settings, project
 	if err := mappings.Get(ctx); err != nil {
 		return nil, errors.Wrap(err, "getting Jira mappings")
 	}
-	payload, err := trigger.JIRATaskPayload("", project, settings.Ui.Url, "", "", mappings, t)
+	payload, err := trigger.JIRATaskPayload(trigger.JiraIssueParameters{
+		Project:  project,
+		UiURL:    settings.Ui.Url,
+		Mappings: mappings,
+		Task:     t,
+	})
 	if err != nil {
 		return nil, err
 	}

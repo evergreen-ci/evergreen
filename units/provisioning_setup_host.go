@@ -85,7 +85,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
@@ -639,7 +639,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 
 		var volume *host.Volume
 		if h.HomeVolumeID != "" {
-			volume, err = host.ValidateVolumeCanBeAttached(h.HomeVolumeID)
+			volume, err = host.ValidateVolumeCanBeAttached(ctx, h.HomeVolumeID)
 			if err != nil {
 				return err
 			}

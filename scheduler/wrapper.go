@@ -132,7 +132,7 @@ func UpdateStaticDistro(ctx context.Context, d distro.Distro) error {
 		return nil
 	}
 
-	hosts, err := doStaticHostUpdate(d)
+	hosts, err := doStaticHostUpdate(ctx, d)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -143,7 +143,7 @@ func UpdateStaticDistro(ctx context.Context, d distro.Distro) error {
 	return host.MarkInactiveStaticHosts(ctx, hosts, &d)
 }
 
-func doStaticHostUpdate(d distro.Distro) ([]string, error) {
+func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) {
 	settings := &cloud.StaticSettings{}
 	if err := settings.FromDistroSettings(d, ""); err != nil {
 		return nil, errors.Wrapf(err, "invalid static settings for '%s'", d.Id)
@@ -151,7 +151,7 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 
 	staticHosts := []string{}
 	for _, h := range settings.Hosts {
-		dbHost, err := host.FindOneId(h.Name)
+		dbHost, err := host.FindOneId(ctx, h.Name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
 		}

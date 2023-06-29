@@ -59,7 +59,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 
 // Ami is the resolver for the ami field.
 func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	err := obj.GetAMI()
+	err := obj.GetAMI(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -495,7 +495,7 @@ func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.API
 
 // SpawnHostLink is the resolver for the spawnHostLink field.
 func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	host, err := host.FindOne(host.ById(*obj.HostId))
+	host, err := host.FindOne(ctx, host.ById(*obj.HostId))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *obj.Id))
 	}

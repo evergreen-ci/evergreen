@@ -121,7 +121,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	_, err = myHost.Upsert()
 	s.NoError(err)
 
-	dbHost, err := host.FindOne(host.ById(myHost.Id))
+	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))
 	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 
@@ -129,7 +129,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.NoError(err)
 
-	dbHost, err = host.FindOne(host.ById(myHost.Id))
+	dbHost, err = host.FindOne(ctx, host.ById(myHost.Id))
 	s.Equal(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 
@@ -266,7 +266,7 @@ func (s *DockerSuite) TestGetContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -284,7 +284,7 @@ func (s *DockerSuite) TestRemoveOldestImage() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -301,7 +301,7 @@ func (s *DockerSuite) TestGetContainerImage() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -318,7 +318,7 @@ func (s *DockerSuite) TestGetContainerImageNoBuild() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -335,7 +335,7 @@ func (s *DockerSuite) TestGetContainerImageFailedDownload() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -353,7 +353,7 @@ func (s *DockerSuite) TestGetContainerImageFailedBuild() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 

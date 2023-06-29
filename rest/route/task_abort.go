@@ -47,7 +47,7 @@ func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	taskModel := &model.APITask{}
 
-	if err = taskModel.BuildFromService(foundTask, &model.APITaskArgs{
+	if err = taskModel.BuildFromService(ctx, foundTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 	}); err != nil {

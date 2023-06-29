@@ -160,7 +160,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 	})
 	catcher := grip.NewBasicCatcher()
 	for _, hostID := range instanceIDs {
-		h, err := host.FindOneId(hostID)
+		h, err := host.FindOneId(ctx, hostID)
 		if err != nil {
 			catcher.Wrapf(err, "finding host '%s'", h.Id)
 			continue

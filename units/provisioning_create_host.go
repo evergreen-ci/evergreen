@@ -108,7 +108,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(ctx), "refreshing hostinit settings"))
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(err)
 			return
@@ -352,7 +352,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 }
 
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
-	parent, err := j.host.GetParent()
+	parent, err := j.host.GetParent(ctx)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting parent host for container '%s'", j.host.Id)
 	}
@@ -469,7 +469,7 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 	// In the case of the agent asking for a task before this succeeds,
 	// check to see if the instance ID exists in the DB. If so,
 	// the host has already been swapped successfully.
-	checkHost, _ := host.FindOneId(j.host.Id)
+	checkHost, _ := host.FindOneId(ctx, j.host.Id)
 	if checkHost != nil {
 		return false, nil
 	}

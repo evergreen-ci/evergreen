@@ -644,7 +644,7 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*restModel.APIHost, error) {
 	var v *host.Volume
 	usr := mustHaveUser(ctx)
-	h, err := host.FindOneByIdOrTag(spawnHost.HostID)
+	h, err := host.FindOneByIdOrTag(ctx, spawnHost.HostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
@@ -821,7 +821,7 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 
 // UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
 func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
-	h, err := host.FindOneByIdOrTag(hostID)
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}

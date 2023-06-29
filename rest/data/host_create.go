@@ -54,7 +54,7 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	hosts = append(hosts, hostsSpawnedByTask...)
 	for idx, h := range hosts {
 		if h.IsContainer() {
-			p, err := h.GetParent()
+			p, err := h.GetParent(ctx)
 			if err != nil {
 				return nil, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
@@ -169,7 +169,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading project")
 	}
-	h, err := host.FindOne(host.ById(t.HostId))
+	h, err := host.FindOne(ctx, host.ById(t.HostId))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding host running task")
 	}

@@ -169,7 +169,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 		return errors.Wrapf(model.FixStaleTask(ctx, j.env.Settings(), j.task), "resetting stale task '%s'", j.task.Id)
 	}
 
-	host, err := host.FindOne(host.ById(j.task.HostId))
+	host, err := host.FindOne(ctx, host.ById(j.task.HostId))
 	if err != nil {
 		return errors.Wrapf(err, "finding host '%s' for task '%s'", j.task.HostId, j.task.Id)
 	}

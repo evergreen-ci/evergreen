@@ -81,7 +81,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
@@ -233,7 +233,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	j.host, err = host.FindOneId(j.HostID)
+	j.host, err = host.FindOneId(ctx, j.HostID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 		return
@@ -265,7 +265,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// terminate containers in DB if parent already terminated
 	if j.host.ParentID != "" {
 		var parent *host.Host
-		parent, err = j.host.GetParent()
+		parent, err = j.host.GetParent(ctx)
 		if err != nil {
 			if err.Error() != host.ErrorParentNotFound {
 				j.AddError(errors.Wrapf(err, "finding parent for container '%s'", j.host.Id))

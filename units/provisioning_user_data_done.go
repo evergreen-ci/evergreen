@@ -89,7 +89,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if err := j.populateIfUnset(); err != nil {
+	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -171,9 +171,9 @@ func (j *userDataDoneJob) finishJob() {
 	}
 }
 
-func (j *userDataDoneJob) populateIfUnset() error {
+func (j *userDataDoneJob) populateIfUnset(ctx context.Context) error {
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}

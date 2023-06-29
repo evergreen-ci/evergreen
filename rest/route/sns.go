@@ -200,7 +200,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 }
 
 func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 			instanceType = stringVal
 		}
 	}
-	existingHostCount, err := host.CountRunningHosts(h.Distro.Id)
+	existingHostCount, err := host.CountRunningHosts(ctx, h.Distro.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":               "database error counting running hosts by distro_id",
@@ -240,7 +240,7 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 }
 
 func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 }
 
 func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventTimestamp string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -295,7 +295,7 @@ func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventT
 // stopped. Agent hosts that are stopped externally are treated the same as an
 // externally-terminated host.
 func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}

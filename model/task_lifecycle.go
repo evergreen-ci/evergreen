@@ -676,7 +676,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return errors.Wrap(err, "updating build/version status")
 	}
 
-	if err = logTaskEndStats(t); err != nil {
+	if err = logTaskEndStats(ctx, t); err != nil {
 		return errors.Wrap(err, "logging task end stats")
 	}
 
@@ -690,7 +690,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 // logTaskEndStats logs information a task after it
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
-func logTaskEndStats(t *task.Task) error {
+func logTaskEndStats(ctx context.Context, t *task.Task) error {
 	msg := message.Fields{
 		"abort":                t.Aborted,
 		"activated_by":         t.ActivatedBy,
@@ -726,7 +726,7 @@ func logTaskEndStats(t *task.Task) error {
 
 	isHostMode := t.IsHostTask()
 	if isHostMode {
-		taskHost, err := host.FindOneId(t.HostId)
+		taskHost, err := host.FindOneId(ctx, t.HostId)
 		if err != nil {
 			return err
 		}
@@ -2057,7 +2057,7 @@ func resetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t 
 	if err := t.MarkSystemFailed(description); err != nil {
 		return errors.Wrap(err, "marking task as system failed")
 	}
-	if err := logTaskEndStats(t); err != nil {
+	if err := logTaskEndStats(ctx, t); err != nil {
 		return errors.Wrap(err, "logging task end stats")
 	}
 

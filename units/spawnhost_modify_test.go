@@ -86,7 +86,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 	assert.NoError(t, j.Error())
 	assert.True(t, j.Status().Completed)
 
-	modifiedHost, err := host.FindOneId(h.Id)
+	modifiedHost, err := host.FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, []host.Tag{host.Tag{Key: "key2", Value: "value2", CanBeModified: true}}, modifiedHost.InstanceTags)
 	assert.Equal(t, "instance-type-2", modifiedHost.InstanceType)

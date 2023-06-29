@@ -75,7 +75,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	var err error
 	if j.parent == nil {
-		j.parent, err = host.FindOneByIdOrTag(j.ParentID)
+		j.parent, err = host.FindOneByIdOrTag(ctx, j.ParentID)
 		j.AddError(err)
 		if j.parent == nil {
 			j.AddError(errors.Errorf("parent '%s' not found", j.ParentID))

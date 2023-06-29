@@ -88,7 +88,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.populateIfUnset(); err != nil {
+	if err = j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -360,9 +360,9 @@ func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 }
 
 // populateIfUnset populates the unset job fields.
-func (j *agentMonitorDeployJob) populateIfUnset() error {
+func (j *agentMonitorDeployJob) populateIfUnset(ctx context.Context) error {
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}

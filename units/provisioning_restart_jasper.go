@@ -190,7 +190,7 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 // populateIfUnset populates the unset job fields.
 func (j *restartJasperJob) populateIfUnset(ctx context.Context) error {
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}
