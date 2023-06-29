@@ -1115,22 +1115,17 @@ func (h *Host) SetVolumes(volumes []VolumeAttachment) error {
 	return nil
 }
 
-func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
-	_, err := db.FindAndModify(Collection,
+func (h *Host) AddVolumeToHost(ctx context.Context, newVolume *VolumeAttachment) error {
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndUpdate(ctx,
+		bson.M{IdKey: h.Id},
 		bson.M{
-			IdKey: h.Id,
-		}, nil,
-		adb.Change{
-			Update: bson.M{
-				"$push": bson.M{
-					VolumesKey: newVolume,
-				},
+			"$push": bson.M{
+				VolumesKey: newVolume,
 			},
-			ReturnNew: true,
 		},
-		&h,
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
-	if err != nil {
+	if err := res.Err(); err != nil {
 		return errors.Wrap(err, "finding host and adding volume")
 	}
 
@@ -1145,22 +1140,17 @@ func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
 	return nil
 }
 
-func (h *Host) RemoveVolumeFromHost(volumeId string) error {
-	_, err := db.FindAndModify(Collection,
+func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error {
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndUpdate(ctx,
+		bson.M{IdKey: h.Id},
 		bson.M{
-			IdKey: h.Id,
-		}, nil,
-		adb.Change{
-			Update: bson.M{
-				"$pull": bson.M{
-					VolumesKey: bson.M{VolumeAttachmentIDKey: volumeId},
-				},
+			"$pull": bson.M{
+				VolumesKey: bson.M{VolumeAttachmentIDKey: volumeId},
 			},
-			ReturnNew: true,
 		},
-		&h,
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
-	if err != nil {
+	if err := res.Err(); err != nil {
 		return errors.Wrap(err, "finding host and removing volume")
 	}
 
