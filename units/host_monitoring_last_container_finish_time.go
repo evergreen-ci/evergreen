@@ -61,6 +61,6 @@ func (j *lastContainerFinishTimeJob) Run(ctx context.Context) {
 		} else if h == nil {
 			continue
 		}
-		j.AddError(errors.Wrapf(h.UpdateLastContainerFinishTime(time.FinishTime), "updating last container finish time for container parent '%s'", h.Id))
+		j.AddError(errors.Wrapf(h.UpdateLastContainerFinishTime(ctx, time.FinishTime), "updating last container finish time for container parent '%s'", h.Id))
 	}
 }

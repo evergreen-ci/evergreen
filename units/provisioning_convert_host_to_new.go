@@ -86,7 +86,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 			// Static hosts should be quarantined if they've run out of attempts
 			// to reprovision.
 			if j.RetryInfo().GetRemainingAttempts() == 0 && j.host.Provider == evergreen.ProviderNameStatic {
-				if err := j.host.SetStatusAtomically(evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"); err != nil {
+				if err := j.host.SetStatusAtomically(ctx, evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"); err != nil {
 					j.AddError(errors.Wrap(err, "quarantining static host that could not reprovision"))
 				}
 			}
@@ -109,7 +109,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.UpdateLastCommunicated(); err != nil {
+	if err := j.host.UpdateLastCommunicated(ctx); err != nil {
 		j.AddError(errors.Wrapf(err, "updating last communication time for host '%s'", j.host.Id))
 	}
 
@@ -124,7 +124,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.MarkAsReprovisioned(); err != nil {
+	if err := j.host.MarkAsReprovisioned(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}

@@ -457,7 +457,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		if err = h.SetExpirationTime(futureExpiration); err != nil {
+		if err = h.SetExpirationTime(ctx, futureExpiration); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration time"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
@@ -502,7 +502,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, "Successfully updated host tags.")
 		return
 	case HostRename:
-		if err = h.SetDisplayName(utility.FromStringPtr(updateParams.NewName)); err != nil {
+		if err = h.SetDisplayName(ctx, utility.FromStringPtr(updateParams.NewName)); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating display name"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem renaming spawn host"))
 			return

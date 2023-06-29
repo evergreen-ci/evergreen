@@ -371,7 +371,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, h := range hosts {
 		if h.NoExpiration {
 			if !ch.dryRun {
-				catcher.Wrapf(h.MarkShouldExpire(""), "marking host '%s' expirable", h.Id)
+				catcher.Wrapf(h.MarkShouldExpire(ctx, ""), "marking host '%s' expirable", h.Id)
 			}
 			toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
 		}

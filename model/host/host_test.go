@@ -444,7 +444,7 @@ func TestSetStopped(t *testing.T) {
 
 	require.NoError(t, h.Insert())
 
-	assert.NoError(t, h.SetStopped(""))
+	assert.NoError(t, h.SetStopped(ctx, ""))
 	assert.Equal(t, evergreen.HostStopped, h.Status)
 	assert.Empty(t, h.Host)
 	assert.True(t, utility.IsZeroTime(h.StartTime))
@@ -509,14 +509,14 @@ func TestHostSetDNSName(t *testing.T) {
 		Convey("setting the hostname should update both the in-memory and"+
 			" database copies of the host", func() {
 
-			So(host.SetDNSName("hostname"), ShouldBeNil)
+			So(host.SetDNSName(ctx, "hostname"), ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 			host, err = FindOne(ctx, ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 
 			// if the host is already updated, no new updates should work
-			So(host.SetDNSName("hostname2"), ShouldBeNil)
+			So(host.SetDNSName(ctx, "hostname2"), ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 
 			host, err = FindOne(ctx, ById(host.Id))
@@ -543,14 +543,14 @@ func TestHostSetIPv6Address(t *testing.T) {
 	ipv6Address := "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
 	ipv6Address2 := "aaaa:1f18:459c:2d00:cfe4:843b:1d60:9999"
 
-	assert.NoError(host.SetIPv6Address(ipv6Address))
+	assert.NoError(host.SetIPv6Address(ctx, ipv6Address))
 	assert.Equal(host.IP, ipv6Address)
 	host, err := FindOne(ctx, ById(host.Id))
 	assert.NoError(err)
 	assert.Equal(host.IP, ipv6Address)
 
 	// if the host is already updated, new updates should work
-	assert.NoError(host.SetIPv6Address(ipv6Address2))
+	assert.NoError(host.SetIPv6Address(ctx, ipv6Address2))
 	assert.Equal(host.IP, ipv6Address2)
 
 	host, err = FindOne(ctx, ById(host.Id))
@@ -590,7 +590,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 			" and provisioning fields in both the in-memory and"+
 			" database copies of the host", func() {
 
-			So(host.MarkAsProvisioned(), ShouldBeNil)
+			So(host.MarkAsProvisioned(ctx), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
@@ -599,7 +599,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
-			So(host2.MarkAsProvisioned().Error(), ShouldContainSubstring, "not found")
+			So(host2.MarkAsProvisioned(ctx).Error(), ShouldContainSubstring, "not found")
 			So(host2.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host2.Provisioned, ShouldEqual, false)
 		})
@@ -607,12 +607,15 @@ func TestMarkAsProvisioned(t *testing.T) {
 }
 
 func TestMarkAsReprovisioning(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"ConvertToLegacyNeedsAgent": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.MarkAsReprovisioning())
+			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
@@ -623,7 +626,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			h.NeedsReprovision = ReprovisionToNew
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.MarkAsReprovisioning())
+			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
@@ -634,7 +637,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			h.NeedsReprovision = ReprovisionRestartJasper
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.MarkAsReprovisioning())
+			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
@@ -646,7 +649,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			h.StartedBy = "user"
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.MarkAsReprovisioning())
+			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
@@ -657,7 +660,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.MarkAsReprovisioning())
+			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgentMonitor)
@@ -666,7 +669,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 		"FailsWithHostInBadStatus": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
-			assert.Error(t, h.MarkAsReprovisioning())
+			assert.Error(t, h.MarkAsReprovisioning(ctx))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -699,7 +702,7 @@ func TestHostCreateSecret(t *testing.T) {
 
 		Convey("creating a secret", func() {
 			So(host.Secret, ShouldEqual, "")
-			So(host.CreateSecret(), ShouldBeNil)
+			So(host.CreateSecret(ctx), ShouldBeNil)
 
 			Convey("should update the host in memory", func() {
 				So(host.Secret, ShouldNotEqual, "")
@@ -729,7 +732,7 @@ func TestHostSetBillingStartTime(t *testing.T) {
 	require.NoError(t, h.Insert())
 
 	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	require.NoError(t, h.SetBillingStartTime(now))
+	require.NoError(t, h.SetBillingStartTime(ctx, now))
 	assert.True(t, now.Equal(h.BillingStartTime))
 
 	dbHost, err := FindOneId(ctx, h.Id)
@@ -752,7 +755,7 @@ func TestHostSetAgentStartTime(t *testing.T) {
 	require.NoError(t, h.Insert())
 
 	now := time.Now()
-	require.NoError(t, h.SetAgentStartTime())
+	require.NoError(t, h.SetAgentStartTime(ctx))
 	assert.True(t, now.Sub(h.AgentStartTime) < time.Second)
 
 	dbHost, err := FindOneId(ctx, h.Id)
@@ -793,7 +796,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 			// now update the expiration time
 			newExpirationTime := time.Now()
-			So(memHost.SetExpirationTime(newExpirationTime), ShouldBeNil)
+			So(memHost.SetExpirationTime(ctx, newExpirationTime), ShouldBeNil)
 
 			dbHost, err = FindOne(ctx, ById(memHost.Id))
 
@@ -843,7 +846,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 			" and task dispatch time fields from both the in-memory and"+
 			" database copies of the host", func() {
 
-			So(host.ClearRunningAndSetLastTask(&task.Task{Id: "prevTask"}), ShouldBeNil)
+			So(host.ClearRunningAndSetLastTask(ctx, &task.Task{Id: "prevTask"}), ShouldBeNil)
 			So(host.RunningTask, ShouldEqual, "")
 			So(host.LastTask, ShouldEqual, "prevTask")
 
@@ -958,7 +961,8 @@ func TestUpsert(t *testing.T) {
 				So(host.Status, ShouldEqual, evergreen.HostRunning)
 				So(host.Host, ShouldEqual, "host")
 
-				err = UpdateOne(
+				err = UpdateOneWithContext(
+					ctx,
 					bson.M{
 						IdKey: host.Id,
 					},
@@ -1079,7 +1083,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
 			Convey("after unsetting the host's lct", func() {
-				err := UpdateOne(bson.M{IdKey: h.Id},
+				err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
 					bson.M{
 						"$unset": bson.M{LastCommunicationTimeKey: 0},
 					})
@@ -1130,7 +1134,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 			Convey("after resetting the LCT", func() {
-				So(anotherHost.ResetLastCommunicated(), ShouldBeNil)
+				So(anotherHost.ResetLastCommunicated(ctx), ShouldBeNil)
 				So(anotherHost.LastCommunicationTime, ShouldResemble, time.Unix(0, 0))
 				h, err := Find(ctx, NeedsAgentDeploy(now))
 				So(err, ShouldBeNil)
@@ -1214,11 +1218,14 @@ func TestFindNeedsNewAgent(t *testing.T) {
 }
 
 func TestSetNeedsToRestartJasper(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsToRestartJasper(evergreen.User))
+			require.NoError(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionRestartJasper, h.NeedsReprovision)
@@ -1227,31 +1234,31 @@ func TestSetNeedsToRestartJasper(t *testing.T) {
 			h.NeedsReprovision = ReprovisionRestartJasper
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsToRestartJasper(evergreen.User))
+			require.NoError(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionRestartJasper, h.NeedsReprovision)
 		},
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
-			assert.Error(t, h.SetNeedsToRestartJasper(evergreen.User))
+			assert.Error(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsToRestartJasper(evergreen.User))
+			assert.Error(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 		},
 		"FailsIfAlreadyNeedsOtherReprovisioning": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsToRestartJasper(evergreen.User))
+			assert.Error(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 		},
 		"NoopsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
 			require.NoError(t, h.Insert())
-			require.NoError(t, h.SetNeedsToRestartJasper(evergreen.User))
+			require.NoError(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 
 			assert.True(t, h.Provisioned)
 			assert.Equal(t, ReprovisionNone, h.NeedsReprovision)
@@ -1279,11 +1286,14 @@ func TestSetNeedsToRestartJasper(t *testing.T) {
 }
 
 func TestSetNeedsReprovisionToNew(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			require.NoError(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionToNew, h.NeedsReprovision)
@@ -1292,32 +1302,32 @@ func TestSetNeedsReprovisionToNew(t *testing.T) {
 			h.NeedsReprovision = ReprovisionToNew
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			require.NoError(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionToNew, h.NeedsReprovision)
 		},
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
-			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			assert.Error(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			assert.Error(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 		},
 		"FailsIfAlreadyNeedsReprovisioningToLegacy": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			assert.Error(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 		},
 		"NoopsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			require.NoError(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 
 			assert.Equal(t, evergreen.HostRunning, h.Status)
 			assert.True(t, h.Provisioned)
@@ -4361,7 +4371,7 @@ func TestSetTags(t *testing.T) {
 	h.InstanceTags = []Tag{
 		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}
-	assert.NoError(t, h.SetTags())
+	assert.NoError(t, h.SetTags(ctx))
 	foundHost, err := FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, h.InstanceTags, foundHost.InstanceTags)
@@ -4426,7 +4436,7 @@ func TestSetInstanceType(t *testing.T) {
 	}
 	assert.NoError(t, h.Insert())
 	newInstanceType := "new-instance-type"
-	assert.NoError(t, h.SetInstanceType(newInstanceType))
+	assert.NoError(t, h.SetInstanceType(ctx, newInstanceType))
 	foundHost, err := FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, newInstanceType, foundHost.InstanceType)
@@ -4646,7 +4656,7 @@ func TestAddVolumeToHost(t *testing.T) {
 		VolumeID:   "volume-2",
 		DeviceName: "device-2",
 	}
-	assert.NoError(t, h.AddVolumeToHost(newAttachment))
+	assert.NoError(t, h.AddVolumeToHost(ctx, newAttachment))
 	assert.Equal(t, []VolumeAttachment{
 		{
 			VolumeID:   "volume-1",
@@ -4687,7 +4697,7 @@ func TestUnsetHomeVolume(t *testing.T) {
 		},
 	}
 	assert.NoError(t, h.Insert())
-	assert.NoError(t, h.UnsetHomeVolume())
+	assert.NoError(t, h.UnsetHomeVolume(ctx))
 	assert.Equal(t, "", h.HomeVolumeID)
 	assert.Equal(t, []VolumeAttachment{
 		{
@@ -4725,7 +4735,7 @@ func TestRemoveVolumeFromHost(t *testing.T) {
 		},
 	}
 	assert.NoError(t, h.Insert())
-	assert.NoError(t, h.RemoveVolumeFromHost("volume-2"))
+	assert.NoError(t, h.RemoveVolumeFromHost(ctx, "volume-2"))
 	assert.Equal(t, []VolumeAttachment{
 		{
 			VolumeID:   "volume-1",
@@ -5046,18 +5056,18 @@ func TestSetNewSSHKeys(t *testing.T) {
 	h := &Host{
 		Id: "foo",
 	}
-	assert.Error(t, h.AddSSHKeyName("foo"))
+	assert.Error(t, h.AddSSHKeyName(ctx, "foo"))
 	assert.Empty(t, h.SSHKeyNames)
 
 	require.NoError(t, h.Insert())
-	require.NoError(t, h.AddSSHKeyName("foo"))
+	require.NoError(t, h.AddSSHKeyName(ctx, "foo"))
 	assert.Equal(t, []string{"foo"}, h.SSHKeyNames)
 
 	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"foo"}, dbHost.SSHKeyNames)
 
-	require.NoError(t, h.AddSSHKeyName("bar"))
+	require.NoError(t, h.AddSSHKeyName(ctx, "bar"))
 	assert.Subset(t, []string{"foo", "bar"}, h.SSHKeyNames)
 	assert.Subset(t, h.SSHKeyNames, []string{"foo", "bar"})
 
@@ -5093,7 +5103,7 @@ func TestUpdateCachedDistroProviderSettings(t *testing.T) {
 			birch.EC.String("region", evergreen.DefaultEC2Region),
 		),
 	}
-	assert.NoError(t, h.UpdateCachedDistroProviderSettings(newProviderSettings))
+	assert.NoError(t, h.UpdateCachedDistroProviderSettings(ctx, newProviderSettings))
 
 	// updated in memory
 	assert.Equal(t, "new_subnet", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
@@ -5510,7 +5520,7 @@ func (s *FindHostsSuite) TestExtendHostExpiration() {
 	h, err := FindOneId(ctx, "host1")
 	s.NoError(err)
 	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
-	s.NoError(h.SetExpirationTime(expectedTime))
+	s.NoError(h.SetExpirationTime(ctx, expectedTime))
 
 	hCheck, err := FindOneId(ctx, "host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)

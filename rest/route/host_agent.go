@@ -92,9 +92,9 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	begin := time.Now()
 
-	setAgentFirstContactTime(h.host)
+	setAgentFirstContactTime(ctx, h.host)
 
-	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(), message.Fields{
+	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(ctx), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
 		"host_id":      h.host.Id,
 		"distro":       h.host.Distro.Id,
@@ -159,7 +159,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
-	nextTaskResponse, err = handleOldAgentRevision(nextTaskResponse, h.details, h.host)
+	nextTaskResponse, err = handleOldAgentRevision(ctx, nextTaskResponse, h.details, h.host)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -263,7 +263,7 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 			return true, errors.Wrap(err, "stopping agent monitor")
 		}
 
-		if err := params.host.SetNeedsAgentDeploy(true); err != nil {
+		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
 
@@ -914,7 +914,7 @@ func getDetails(h *host.Host, r *http.Request) (*apimodels.GetNextTaskDetails, e
 	details := &apimodels.GetNextTaskDetails{}
 	if err := utility.ReadJSON(r.Body, details); err != nil {
 		if isOldAgent {
-			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
+			if innerErr := h.SetNeedsNewAgent(r.Context(), true); innerErr != nil {
 				grip.Error(message.WrapError(innerErr, message.Fields{
 					"host_id":       h.Id,
 					"operation":     "next_task",
@@ -944,7 +944,7 @@ func getDetails(h *host.Host, r *http.Request) (*apimodels.GetNextTaskDetails, e
 
 // prepareForReprovision readies a host for reprovisioning.
 func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *host.Host) error {
-	if err := h.MarkAsReprovisioning(); err != nil {
+	if err := h.MarkAsReprovisioning(ctx); err != nil {
 		return errors.Wrap(err, "marking host as ready for reprovisioning")
 	}
 
@@ -960,12 +960,12 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *ho
 	return nil
 }
 
-func setAgentFirstContactTime(h *host.Host) {
+func setAgentFirstContactTime(ctx context.Context, h *host.Host) {
 	if !h.AgentStartTime.IsZero() {
 		return
 	}
 
-	if err := h.SetAgentStartTime(); err != nil {
+	if err := h.SetAgentStartTime(ctx); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not set host's agent start time for first contact",
 			"host_id": h.Id,
@@ -985,7 +985,7 @@ func setAgentFirstContactTime(h *host.Host) {
 	})
 }
 
-func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimodels.GetNextTaskDetails, h *host.Host) (apimodels.NextTaskResponse, error) {
+func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResponse, details *apimodels.GetNextTaskDetails, h *host.Host) (apimodels.NextTaskResponse, error) {
 	if !agentRevisionIsOld(h) {
 		return response, nil
 	}
@@ -994,7 +994,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	// running an agent on the current revision, but the database host has
 	// yet to be updated.
 	if !h.Distro.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
-		err := h.SetAgentRevision(details.AgentRevision)
+		err := h.SetAgentRevision(ctx, details.AgentRevision)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":        "problem updating host agent revision",
@@ -1023,7 +1023,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	}
 
 	if details.TaskGroup == "" {
-		if err := h.SetNeedsNewAgent(true); err != nil {
+		if err := h.SetNeedsNewAgent(ctx, true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":        h.Id,
 				"operation":      "NextTask",
@@ -1036,7 +1036,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 			return apimodels.NextTaskResponse{}, err
 
 		}
-		if err := h.ClearRunningTask(); err != nil {
+		if err := h.ClearRunningTask(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":        h.Id,
 				"operation":      "next_task",
@@ -1077,7 +1077,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 	if t == nil {
 		grip.Notice(getMessage("clearing host's running task because it does not exist"))
-		if err := h.ClearRunningTask(); err != nil {
+		if err := h.ClearRunningTask(ctx); err != nil {
 			grip.Error(message.WrapError(err, getMessage("could not clear host's nonexistent running task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
@@ -1111,7 +1111,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	// The task is inactive, so the host's running task should be unset so it
 	// can retrieve a new task.
-	if err = h.ClearRunningTask(); err != nil {
+	if err = h.ClearRunningTask(ctx); err != nil {
 		grip.Error(message.WrapError(err, getMessage("could not clear host's running task after it was found to be inactive")))
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1255,7 +1255,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// This is a more difficult check because it will require cross-referencing
 	// the host's state against the task's state. Doing the former order of
 	// operations avoids this expensive check.
-	if err = currentHost.ClearRunningAndSetLastTask(t); err != nil {
+	if err = currentHost.ClearRunningAndSetLastTask(ctx, t); err != nil {
 		err = errors.Wrapf(err, "clearing running task '%s' for host '%s'", t.Id, currentHost.Id)
 		grip.Errorf(err.Error())
 		return gimlet.MakeJSONInternalErrorResponder(err)
@@ -1372,7 +1372,7 @@ func prepareHostForAgentExit(ctx context.Context, params agentExitParams, env ev
 			return true, errors.Wrap(err, "stopping agent monitor")
 		}
 
-		if err := params.host.SetNeedsAgentDeploy(true); err != nil {
+		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
 

@@ -103,9 +103,9 @@ func TestHostNextTask(t *testing.T) {
 		"ShouldExitWithOutOfDateRevisionAndTaskGroup": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			sampleHost, err := host.FindOneId(ctx, "h1")
 			require.NoError(t, err)
-			require.NoError(t, sampleHost.SetAgentRevision("out-of-date-string"))
+			require.NoError(t, sampleHost.SetAgentRevision(ctx, "out-of-date-string"))
 			defer func() {
-				assert.NoError(t, sampleHost.SetAgentRevision(evergreen.AgentVersion)) // reset
+				assert.NoError(t, sampleHost.SetAgentRevision(ctx, evergreen.AgentVersion)) // reset
 			}()
 			rh.host = sampleHost
 			rh.details = &apimodels.GetNextTaskDetails{TaskGroup: "task_group"}
@@ -141,7 +141,7 @@ func TestHostNextTask(t *testing.T) {
 				"DoesntReprovisionIfNotNeeded": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					h, err := host.FindOneId(ctx, "id")
 					require.NoError(t, err)
-					require.NoError(t, host.UpdateOne(bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}))
+					require.NoError(t, host.UpdateOneWithContext(ctx, bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}))
 					h.NeedsReprovision = ""
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = h
@@ -335,7 +335,7 @@ func TestHostNextTask(t *testing.T) {
 				"ShouldMarkRunningWhenProvisionedByAppServer": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
-					require.NoError(t, nonLegacyHost.SetProvisionedNotRunning())
+					require.NoError(t, nonLegacyHost.SetProvisionedNotRunning(ctx))
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = nonLegacyHost
 					resp := rh.Run(ctx)

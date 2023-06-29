@@ -580,7 +580,7 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 
 // SetStatusAtomically is the same as SetStatus but only updates the host if its
 // status in the database matches currentStatus.
-func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
+func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
@@ -591,7 +591,8 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 		return errors.New(msg)
 	}
 
-	err := UpdateOne(
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
@@ -622,8 +623,9 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 
 // SetProvisioning marks the host as initializing. Only allow this
 // if the host is uninitialized.
-func (h *Host) SetProvisioning() error {
-	return UpdateOne(
+func (h *Host) SetProvisioning(ctx context.Context) error {
+	return UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: evergreen.HostStarting,
@@ -684,8 +686,9 @@ func (h *Host) SetStopping(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }
 
-func (h *Host) SetStopped(user string) error {
-	err := UpdateOne(
+func (h *Host) SetStopped(ctx context.Context, user string) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
@@ -716,8 +719,9 @@ func (h *Host) SetStopped(user string) error {
 	return nil
 }
 
-func (h *Host) SetUnprovisioned() error {
-	if err := UpdateOne(
+func (h *Host) SetUnprovisioned(ctx context.Context) error {
+	if err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
@@ -742,9 +746,10 @@ func (h *Host) SetQuarantined(ctx context.Context, user string, logs string) err
 
 // CreateSecret generates a host secret and updates the host both locally
 // and in the database.
-func (h *Host) CreateSecret() error {
+func (h *Host) CreateSecret(ctx context.Context) error {
 	secret := utility.RandomString()
-	err := UpdateOne(
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{SecretKey: secret}},
 	)
@@ -755,8 +760,9 @@ func (h *Host) CreateSecret() error {
 	return nil
 }
 
-func (h *Host) SetBillingStartTime(startTime time.Time) error {
-	if err := UpdateOne(
+func (h *Host) SetBillingStartTime(ctx context.Context, startTime time.Time) error {
+	if err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{BillingStartTimeKey: startTime}},
 	); err != nil {
@@ -766,9 +772,10 @@ func (h *Host) SetBillingStartTime(startTime time.Time) error {
 	return nil
 }
 
-func (h *Host) SetAgentStartTime() error {
+func (h *Host) SetAgentStartTime(ctx context.Context) error {
 	now := time.Now()
-	if err := UpdateOne(
+	if err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{AgentStartTimeKey: now}},
 	); err != nil {
@@ -819,7 +826,7 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 // database, they are deleted.
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
 	if h.JasperCredentialsID == "" {
-		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
+		if err := h.UpdateJasperCredentialsID(ctx, h.Id); err != nil {
 			return nil, errors.Wrap(err, "setting Jasper credentials ID")
 		}
 	}
@@ -882,8 +889,9 @@ func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Enviro
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
-func (h *Host) UpdateJasperCredentialsID(id string) error {
-	if err := UpdateOne(
+func (h *Host) UpdateJasperCredentialsID(ctx context.Context, id string) error {
+	if err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
 	); err != nil {
@@ -894,9 +902,10 @@ func (h *Host) UpdateJasperCredentialsID(id string) error {
 }
 
 // UpdateLastCommunicated sets the host's last communication time to the current time.
-func (h *Host) UpdateLastCommunicated() error {
+func (h *Host) UpdateLastCommunicated(ctx context.Context) error {
 	now := time.Now()
-	err := UpdateOne(
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{
 			LastCommunicationTimeKey: now,
@@ -910,8 +919,9 @@ func (h *Host) UpdateLastCommunicated() error {
 }
 
 // ResetLastCommunicated sets the LastCommunicationTime to be zero.
-func (h *Host) ResetLastCommunicated() error {
-	err := UpdateOne(
+func (h *Host) ResetLastCommunicated(ctx context.Context) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{LastCommunicationTimeKey: time.Unix(0, 0)}})
 	if err != nil {
@@ -939,8 +949,9 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 }
 
 // SetDNSName updates the DNS name for a given host once
-func (h *Host) SetDNSName(dnsName string) error {
-	err := UpdateOne(
+func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey:  h.Id,
 			DNSKey: "",
@@ -967,8 +978,9 @@ func (h *Host) SetDNSName(dnsName string) error {
 	return err
 }
 
-func (h *Host) SetIPv6Address(ipv6Address string) error {
-	err := UpdateOne(
+func (h *Host) SetIPv6Address(ctx context.Context, ipv6Address string) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -988,8 +1000,9 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 }
 
 // probably don't want to store the port mapping exactly this way
-func (h *Host) SetPortMapping(portsMap PortMap) error {
-	err := UpdateOne(
+func (h *Host) SetPortMapping(ctx context.Context, portsMap PortMap) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -1006,8 +1019,9 @@ func (h *Host) SetPortMapping(portsMap PortMap) error {
 	return nil
 }
 
-func (h *Host) UpdateCachedDistroProviderSettings(settingsDocuments []*birch.Document) error {
-	err := UpdateOne(
+func (h *Host) UpdateCachedDistroProviderSettings(ctx context.Context, settingsDocuments []*birch.Document) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{
 			"$set": bson.M{
@@ -1023,9 +1037,10 @@ func (h *Host) UpdateCachedDistroProviderSettings(settingsDocuments []*birch.Doc
 	return nil
 }
 
-func (h *Host) MarkAsProvisioned() error {
+func (h *Host) MarkAsProvisioned(ctx context.Context) error {
 	now := time.Now()
-	err := UpdateOne(
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 			StatusKey: bson.M{
@@ -1064,9 +1079,10 @@ func (h *Host) MarkAsProvisioned() error {
 
 // SetProvisionedNotRunning marks the host as having been provisioned by the app
 // server but the host is not necessarily running yet.
-func (h *Host) SetProvisionedNotRunning() error {
+func (h *Host) SetProvisionedNotRunning(ctx context.Context) error {
 	now := time.Now()
-	if err := UpdateOne(
+	if err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 			StatusKey: bson.M{
@@ -1090,12 +1106,13 @@ func (h *Host) SetProvisionedNotRunning() error {
 
 // UpdateStartingToRunning changes the host status from provisioning to
 // running, as well as logging that the host has finished provisioning.
-func (h *Host) UpdateStartingToRunning() error {
+func (h *Host) UpdateStartingToRunning(ctx context.Context) error {
 	if h.Status != evergreen.HostStarting {
 		return nil
 	}
 
-	if err := UpdateOne(
+	if err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey:          h.Id,
 			StatusKey:      evergreen.HostStarting,
@@ -1124,26 +1141,26 @@ func (h *Host) UpdateStartingToRunning() error {
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
-func (h *Host) SetNeedsToRestartJasper(user string) error {
+func (h *Host) SetNeedsToRestartJasper(ctx context.Context, user string) error {
 	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
 	// tasks) and legacy SSH hosts.
 	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
 		return nil
 	}
 
-	if err := h.setAwaitingJasperRestart(user); err != nil {
+	if err := h.setAwaitingJasperRestart(ctx, user); err != nil {
 		return err
 	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
 		return nil
 	}
-	return h.MarkAsReprovisioning()
+	return h.MarkAsReprovisioning(ctx)
 }
 
 // setAwaitingJasperRestart marks a host as needing Jasper to be restarted by
 // the given user but is not yet ready to reprovision now (i.e. the agent
 // monitor is still running).
-func (h *Host) setAwaitingJasperRestart(user string) error {
+func (h *Host) setAwaitingJasperRestart(ctx context.Context, user string) error {
 	// While these checks aren't strictly necessary since they're already
 	// filtered in the query, they do return more useful error messages.
 
@@ -1164,7 +1181,7 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	}
 
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	if err := UpdateOne(bson.M{
+	if err := UpdateOneWithContext(ctx, bson.M{
 		IdKey:        h.Id,
 		StatusKey:    bson.M{"$in": allowedStatuses},
 		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
@@ -1200,24 +1217,24 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 
 // SetNeedsReprovisionToNew marks a host that is currently using new
 // provisioning to provision again.
-func (h *Host) SetNeedsReprovisionToNew(user string) error {
+func (h *Host) SetNeedsReprovisionToNew(ctx context.Context, user string) error {
 	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
 	// tasks) and legacy SSH hosts.
 	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
 		return nil
 	}
 
-	if err := h.setAwaitingReprovisionToNew(user); err != nil {
+	if err := h.setAwaitingReprovisionToNew(ctx, user); err != nil {
 		return err
 	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
 		return nil
 	}
 
-	return h.MarkAsReprovisioning()
+	return h.MarkAsReprovisioning(ctx)
 }
 
-func (h *Host) setAwaitingReprovisionToNew(user string) error {
+func (h *Host) setAwaitingReprovisionToNew(ctx context.Context, user string) error {
 	// While these checks aren't strictly necessary since they're already
 	// filtered in the query, they do return more useful error messages.
 
@@ -1239,7 +1256,7 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 	}
 
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	if err := UpdateOne(bson.M{
+	if err := UpdateOneWithContext(ctx, bson.M{
 		IdKey:        h.Id,
 		StatusKey:    bson.M{"$in": allowedStatuses},
 		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
@@ -1276,7 +1293,7 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 
 // MarkAsReprovisioning puts the host in a state that means it is ready to be
 // reprovisioned immediately.
-func (h *Host) MarkAsReprovisioning() error {
+func (h *Host) MarkAsReprovisioning(ctx context.Context) error {
 	allowedStatuses := []string{evergreen.HostProvisioning, evergreen.HostRunning}
 	if !utility.StringSliceContains(allowedStatuses, h.Status) {
 		return errors.Errorf("cannot reprovision a host when host status is '%s'", h.Status)
@@ -1293,7 +1310,7 @@ func (h *Host) MarkAsReprovisioning() error {
 		needsAgentMonitor = h.StartedBy == evergreen.User
 	}
 
-	err := UpdateOne(bson.M{
+	err := UpdateOneWithContext(ctx, bson.M{
 		IdKey:               h.Id,
 		NeedsReprovisionKey: h.NeedsReprovision,
 		StatusKey:           bson.M{"$in": allowedStatuses},
@@ -1322,9 +1339,10 @@ func (h *Host) MarkAsReprovisioning() error {
 }
 
 // MarkAsReprovisioned indicates that the host was successfully reprovisioned.
-func (h *Host) MarkAsReprovisioned() error {
+func (h *Host) MarkAsReprovisioned(ctx context.Context) error {
 	now := time.Now()
-	err := UpdateOne(
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 			StatusKey: bson.M{
@@ -1355,9 +1373,10 @@ func (h *Host) MarkAsReprovisioned() error {
 }
 
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
-func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
+func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) error {
 	now := time.Now()
-	err := UpdateOne(
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey:                   h.Id,
 			RunningTaskKey:          h.RunningTask,
@@ -1417,10 +1436,10 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 
 // ClearRunningTask unsets the running task on the host and logs an event
 // indicating it is no longer running the task.
-func (h *Host) ClearRunningTask() error {
+func (h *Host) ClearRunningTask(ctx context.Context) error {
 	hadRunningTask := h.RunningTask != ""
 	doUpdate := func(update bson.M) error {
-		return UpdateOne(bson.M{IdKey: h.Id}, update)
+		return UpdateOneWithContext(ctx, bson.M{IdKey: h.Id}, update)
 	}
 	if err := h.clearRunningTaskWithFunc(doUpdate); err != nil {
 		return err
@@ -1537,8 +1556,8 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 }
 
 // SetAgentRevision sets the updated agent revision for the host
-func (h *Host) SetAgentRevision(agentRevision string) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
+func (h *Host) SetAgentRevision(ctx context.Context, agentRevision string) error {
+	err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{AgentRevisionKey: agentRevision}})
 	if err != nil {
 		return err
@@ -1573,8 +1592,8 @@ func (h *Host) IsWaitingForAgent() bool {
 }
 
 // SetNeedsNewAgent sets the "needs new agent" flag on the host.
-func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
+func (h *Host) SetNeedsNewAgent(ctx context.Context, needsAgent bool) error {
+	err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
 		return err
@@ -1585,8 +1604,8 @@ func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
 
 // SetNeedsNewAgentMonitor sets the "needs new agent monitor" flag on the host
 // to indicate that the host needs to have the agent monitor deployed.
-func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
+func (h *Host) SetNeedsNewAgentMonitor(ctx context.Context, needsAgentMonitor bool) error {
+	err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})
 	if err != nil {
 		return err
@@ -1597,21 +1616,22 @@ func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
 
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
 // to be deployed.
-func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
+func (h *Host) SetNeedsAgentDeploy(ctx context.Context, needsDeploy bool) error {
 	if !h.Distro.LegacyBootstrap() {
-		if err := h.SetNeedsNewAgentMonitor(needsDeploy); err != nil {
+		if err := h.SetNeedsNewAgentMonitor(ctx, needsDeploy); err != nil {
 			return errors.Wrap(err, "setting host needs new agent monitor")
 		}
 	}
-	return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "setting host needs new agent")
+	return errors.Wrap(h.SetNeedsNewAgent(ctx, needsDeploy), "setting host needs new agent")
 }
 
 // SetExpirationTime updates the expiration time of a spawn host
-func (h *Host) SetExpirationTime(expirationTime time.Time) error {
+func (h *Host) SetExpirationTime(ctx context.Context, expirationTime time.Time) error {
 	// update the in-memory host, then the database
 	h.ExpirationTime = expirationTime
 	h.NoExpiration = false
-	return UpdateOne(
+	return UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -1624,12 +1644,13 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	)
 }
 
-func (h *Host) MarkReachable() error {
+func (h *Host) MarkReachable(ctx context.Context) error {
 	if h.Status == evergreen.HostRunning {
 		return nil
 	}
 
-	if err := UpdateOne(
+	if err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
 		return errors.WithStack(err)
@@ -1828,16 +1849,18 @@ func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
 	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, false, logs))
 }
 
-func (h *Host) SetExtId() error {
-	return UpdateOne(
+func (h *Host) SetExtId(ctx context.Context) error {
+	return UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
 	)
 }
 
-func (h *Host) SetDisplayName(newName string) error {
+func (h *Host) SetDisplayName(ctx context.Context, newName string) error {
 	h.DisplayName = newName
-	return UpdateOne(
+	return UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{DisplayNameKey: h.DisplayName}},
 	)
@@ -1845,14 +1868,14 @@ func (h *Host) SetDisplayName(newName string) error {
 
 // AddSSHKeyName adds the SSH key name for the host if it doesn't already have
 // it.
-func (h *Host) AddSSHKeyName(name string) error {
+func (h *Host) AddSSHKeyName(ctx context.Context, name string) error {
 	var update bson.M
 	if len(h.SSHKeyNames) == 0 {
 		update = bson.M{"$push": bson.M{SSHKeyNamesKey: name}}
 	} else {
 		update = bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}}
 	}
-	if err := UpdateOne(bson.M{IdKey: h.Id}, update); err != nil {
+	if err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id}, update); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -2148,7 +2171,7 @@ func (h *Host) PastMaxExpiration(extension time.Duration) error {
 }
 
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
-func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
+func (h *Host) UpdateLastContainerFinishTime(ctx context.Context, t time.Time) error {
 	selector := bson.M{
 		IdKey: h.Id,
 	}
@@ -2159,7 +2182,7 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 		},
 	}
 
-	if err := UpdateOne(selector, update); err != nil {
+	if err := UpdateOneWithContext(ctx, selector, update); err != nil {
 		return errors.Wrapf(err, "updating last container finish time for host '%s'", h.Id)
 	}
 
@@ -2547,8 +2570,9 @@ func (h *Host) DeleteTags(keys []string) {
 }
 
 // SetTags updates the host's instance tags in the database.
-func (h *Host) SetTags() error {
-	return UpdateOne(
+func (h *Host) SetTags(ctx context.Context) error {
+	return UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -2597,8 +2621,9 @@ func MakeHostTags(tagSlice []string) ([]Tag, error) {
 }
 
 // SetInstanceType updates the host's instance type in the database.
-func (h *Host) SetInstanceType(instanceType string) error {
-	err := UpdateOne(
+func (h *Host) SetInstanceType(ctx context.Context, instanceType string) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -2730,11 +2755,12 @@ func makeExpireOnTag(expireOn string) Tag {
 
 // MarkShouldNotExpire marks a host as one that should not expire
 // and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
+func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) error {
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)
-	return UpdateOne(
+	return UpdateOneWithContext(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -2750,7 +2776,7 @@ func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
 
 // MarkShouldExpire resets a host's expiration to expire like
 // a normal spawn host, after 24 hours.
-func (h *Host) MarkShouldExpire(expireOnValue string) error {
+func (h *Host) MarkShouldExpire(ctx context.Context, expireOnValue string) error {
 	// If it's already set to expire, do nothing.
 	if !h.NoExpiration {
 		return nil
@@ -2761,9 +2787,9 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 	if expireOnValue != "" {
 		h.addTag(makeExpireOnTag(expireOnValue), true)
 	}
-	return UpdateOne(bson.M{
-		IdKey: h.Id,
-	},
+	return UpdateOneWithContext(
+		ctx,
+		bson.M{IdKey: h.Id},
 		bson.M{
 			"$set": bson.M{
 				NoExpirationKey:   h.NoExpiration,
@@ -2777,8 +2803,9 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 // UnsetHomeVolume disassociates a home volume from a (stopped) host.
 // This is for internal use, and should only be used on hosts that
 // will be terminated imminently; otherwise, the host will fail to boot.
-func (h *Host) UnsetHomeVolume() error {
-	err := UpdateOne(
+func (h *Host) UnsetHomeVolume(ctx context.Context) error {
+	err := UpdateOneWithContext(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{HomeVolumeIDKey: ""}},
 	)
@@ -2790,9 +2817,9 @@ func (h *Host) UnsetHomeVolume() error {
 	return nil
 }
 
-func (h *Host) SetHomeVolumeID(volumeID string) error {
+func (h *Host) SetHomeVolumeID(ctx context.Context, volumeID string) error {
 	h.HomeVolumeID = volumeID
-	return UpdateOne(bson.M{
+	return UpdateOneWithContext(ctx, bson.M{
 		IdKey:           h.Id,
 		HomeVolumeIDKey: "",
 	},

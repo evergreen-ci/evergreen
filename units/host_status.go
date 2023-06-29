@@ -239,14 +239,14 @@ func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) erro
 		// From the app server's perspective, it is done provisioning a user
 		// data host once the instance is running. The user data script will
 		// handle the rest of host provisioning.
-		return errors.Wrap(h.SetProvisionedNotRunning(), "marking host as provisioned but not yet running")
+		return errors.Wrap(h.SetProvisionedNotRunning(ctx), "marking host as provisioned but not yet running")
 	case distro.BootstrapMethodNone:
 		// A host created by a task goes through no further provisioning, so we
 		// can just set it as running.
-		return errors.Wrap(h.MarkAsProvisioned(), "marking host as running")
+		return errors.Wrap(h.MarkAsProvisioned(ctx), "marking host as running")
 	default:
 		// All other host types must be manually provisioned by the app server.
-		if err := h.SetProvisioning(); err != nil {
+		if err := h.SetProvisioning(ctx); err != nil {
 			return errors.Wrap(err, "marking host as provisioning")
 		}
 

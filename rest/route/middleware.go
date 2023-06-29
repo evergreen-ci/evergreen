@@ -337,7 +337,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	updateHostAccessTime(h)
+	updateHostAccessTime(r.Context(), h)
 	next(rw, r)
 }
 
@@ -380,7 +380,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 			}))
 			return
 		}
-		updateHostAccessTime(h)
+		updateHostAccessTime(r.Context(), h)
 		next(rw, r)
 		return
 	}
@@ -580,8 +580,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
-func updateHostAccessTime(h *host.Host) {
-	if err := h.UpdateLastCommunicated(); err != nil {
+func updateHostAccessTime(ctx context.Context, h *host.Host) {
+	if err := h.UpdateLastCommunicated(ctx); err != nil {
 		grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 	}
 	// Since the host has contacted the app server, we should prevent the
@@ -589,10 +589,10 @@ func updateHostAccessTime(h *host.Host) {
 	// Deciding whether we should redeploy agents or agent monitors
 	// is handled within the REST route handler.
 	if h.NeedsNewAgent {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
+		grip.Warning(message.WrapError(h.SetNeedsNewAgent(ctx, false), "problem clearing host needs new agent"))
 	}
 	if h.NeedsNewAgentMonitor {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
+		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
 	}
 }
 

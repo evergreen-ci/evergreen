@@ -89,7 +89,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		if err := j.host.AddSSHKeyName(pair.Name); err != nil {
+		if err := j.host.AddSSHKeyName(ctx, pair.Name); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not add SSH key name to host",
 				"host_id": j.host.Id,

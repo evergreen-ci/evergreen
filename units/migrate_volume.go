@@ -101,7 +101,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 
 	if j.volume.Host != "" {
 		// Unmount volume from initial host
-		if err := j.initialHost.UnsetHomeVolume(); err != nil {
+		if err := j.initialHost.UnsetHomeVolume(ctx); err != nil {
 			j.AddError(errors.Wrapf(err, "unsetting home volume '%s' from host '%s'", j.VolumeID, j.InitialHostID))
 			return
 		}
@@ -139,7 +139,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 
 	// If not terminated, set initial host to have expiration in 24 hours
 	if j.initialHost.Status == evergreen.HostStopped {
-		err := j.initialHost.SetExpirationTime(time.Now().Add(evergreen.DefaultSpawnHostExpiration))
+		err := j.initialHost.SetExpirationTime(ctx, time.Now().Add(evergreen.DefaultSpawnHostExpiration))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "setting expiration for host '%s'", j.InitialHostID))
 			return

@@ -252,7 +252,7 @@ func (j *createHostJob) selfThrottle(ctx context.Context) bool {
 		return false
 	} else if numProv >= j.env.Settings().HostInit.HostThrottle {
 		reason := "host creation throttle"
-		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
+		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(ctx, evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
 		event.LogHostCreationFailed(j.host.Id, reason)
 		return true
 	}
@@ -301,7 +301,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// with the agent. This state allows intent documents to stay around until
 	// SpawnHost returns, but NOT as initializing hosts that could still be
 	// spawned by Evergreen.
-	if err = j.host.SetStatusAtomically(evergreen.HostBuilding, evergreen.User, ""); err != nil {
+	if err = j.host.SetStatusAtomically(ctx, evergreen.HostBuilding, evergreen.User, ""); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "host could not be transitioned from initializing to building, so it may already be building",
 			"host_id": j.host.Id,

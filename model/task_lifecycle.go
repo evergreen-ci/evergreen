@@ -1944,7 +1944,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
 	}
 
-	if err = h.ClearRunningTask(); err != nil {
+	if err = h.ClearRunningTask(ctx); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 

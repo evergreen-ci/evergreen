@@ -155,11 +155,11 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host)))
 	}
 
-	j.finishJob()
+	j.finishJob(ctx)
 }
 
-func (j *userDataDoneJob) finishJob() {
-	if err := j.host.SetUserDataHostProvisioned(); err != nil {
+func (j *userDataDoneJob) finishJob(ctx context.Context) {
+	if err := j.host.SetUserDataHostProvisioned(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host that has finished running user data as done provisioning",
 			"host_id": j.host.Id,

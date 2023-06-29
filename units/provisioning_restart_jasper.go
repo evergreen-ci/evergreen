@@ -90,7 +90,7 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 			// Static hosts should be quarantined if they've run out of attempts
 			// to restart jasper.
 			if j.RetryInfo().GetRemainingAttempts() == 0 && j.host.Provider == evergreen.ProviderNameStatic {
-				if err := j.host.SetStatusAtomically(evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to restart Jasper"); err != nil {
+				if err := j.host.SetStatusAtomically(ctx, evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to restart Jasper"); err != nil {
 					j.AddError(errors.Wrap(err, "quarantining static host that could not restart Jasper"))
 				}
 			}
@@ -113,7 +113,7 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.UpdateLastCommunicated(); err != nil {
+	if err := j.host.UpdateLastCommunicated(ctx); err != nil {
 		j.AddError(errors.Wrapf(err, "updating last communication time for host '%s'", j.host.Id))
 	}
 
@@ -151,7 +151,7 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.MarkAsReprovisioned(); err != nil {
+	if err := j.host.MarkAsReprovisioned(ctx); err != nil {
 		j.AddRetryableError(errors.Wrap(err, "marking host as reprovisioned"))
 		return
 	}
@@ -181,7 +181,7 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 
 	// If this doesn't succeed, a new agent monitor will be deployed when LCT
 	// elapses.
-	if err := j.host.SetNeedsNewAgentMonitor(true); err != nil {
+	if err := j.host.SetNeedsNewAgentMonitor(ctx, true); err != nil {
 		j.AddError(errors.Wrap(err, "marking host as needing new agent monitor"))
 		return
 	}

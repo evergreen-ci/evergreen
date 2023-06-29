@@ -303,7 +303,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 	// set IPv6 address, if applicable
 	for _, networkInterface := range instance.NetworkInterfaces {
 		if len(networkInterface.Ipv6Addresses) > 0 {
-			if err := h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address); err != nil {
+			if err := h.SetIPv6Address(ctx, *networkInterface.Ipv6Addresses[0].Ipv6Address); err != nil {
 				return errors.Wrap(err, "setting IPv6 address")
 			}
 			break

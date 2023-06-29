@@ -100,7 +100,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
 		}
 	}
-	script, err := h.GenerateUserDataProvisioningScript(env.Settings(), creds)
+	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds)
 	if err != nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

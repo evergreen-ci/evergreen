@@ -26,7 +26,7 @@ func TestMakeUserData(t *testing.T) {
 			userData, err := makeUserData(ctx, env.Settings(), h, "", false)
 			require.NoError(t, err)
 
-			opts, err := h.GenerateFetchProvisioningScriptUserData(env.Settings())
+			opts, err := h.GenerateFetchProvisioningScriptUserData(ctx, env.Settings())
 			require.NoError(t, err)
 			assert.Contains(t, userData, opts.Content)
 		},

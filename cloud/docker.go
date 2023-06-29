@@ -61,12 +61,12 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, err
 	}
 
-	if err = h.SetAgentRevision(evergreen.AgentVersion); err != nil {
+	if err = h.SetAgentRevision(ctx, evergreen.AgentVersion); err != nil {
 		return nil, errors.Wrapf(err, "setting agent revision on host '%s' to '%s'", h.Id, evergreen.AgentVersion)
 	}
 
 	// The setup was successful. Update the container host accordingly in the database.
-	if err := h.MarkAsProvisioned(); err != nil {
+	if err := h.MarkAsProvisioned(ctx); err != nil {
 		return nil, errors.Wrapf(err, "marking host '%s' as provisioned", h.Id)
 	}
 
@@ -132,7 +132,7 @@ func (m *dockerManager) SetPortMappings(ctx context.Context, h, parent *host.Hos
 
 	}
 
-	if err = h.SetPortMapping(host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
+	if err = h.SetPortMapping(ctx, host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
 		return errors.Wrapf(err, "saving ports to host '%s", h.Id)
 	}
 	return nil
