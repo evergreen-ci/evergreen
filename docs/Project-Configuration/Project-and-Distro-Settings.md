@@ -307,7 +307,7 @@ use performance tooling.
 
 ### Views and Filters
 #### Project Health View
-Customize the default behavior of the Project Health page by choosing to show failing task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
+Customize the default behavior of the Project Health page by choosing to show failed task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
 
 ![project_health_view.png](../images/project_health_view.png)
 
