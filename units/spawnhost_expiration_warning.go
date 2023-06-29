@@ -73,7 +73,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 	// already have alerts sent.
 	now := time.Now()
 	thresholdTime := now.Add(12 * time.Hour)
-	expiringSoonHosts, err := host.FindWithContext(ctx, host.ByExpiringBetween(now, thresholdTime))
+	expiringSoonHosts, err := host.Find(ctx, host.ByExpiringBetween(now, thresholdTime))
 	if err != nil {
 		j.AddError(errors.WithStack(err))
 		return

@@ -499,14 +499,14 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 // MyHosts is the resolver for the myHosts field.
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
-	hosts, err := host.FindWithContext(ctx, host.ByUserWithRunningStatus(usr.Username()))
+	hosts, err := host.Find(ctx, host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
 	}
 	duration := time.Duration(5) * time.Minute
 	timestamp := time.Now().Add(-duration) // within last 5 minutes
-	recentlyTerminatedHosts, err := host.FindWithContext(ctx, host.ByUserRecentlyTerminated(usr.Username(), timestamp))
+	recentlyTerminatedHosts, err := host.Find(ctx, host.ByUserRecentlyTerminated(usr.Username(), timestamp))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding recently terminated hosts for user %s : %s", usr.Username(), err))

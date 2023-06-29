@@ -76,7 +76,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		threshold := time.Now().Add(-reachabilityCheckInterval)
-		hosts, err := host.FindWithContext(ctx, host.ByNotMonitoredSince(threshold))
+		hosts, err := host.Find(ctx, host.ByNotMonitoredSince(threshold))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -633,7 +633,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.FindWithContext(ctx, host.ShouldDeployAgent())
+		hosts, err := host.Find(ctx, host.ShouldDeployAgent())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
@@ -695,7 +695,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.FindWithContext(ctx, host.ShouldDeployAgentMonitor())
+		hosts, err := host.Find(ctx, host.ShouldDeployAgentMonitor())
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",
@@ -760,7 +760,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			return nil
 		}
 
-		hosts, err := host.FindWithContext(ctx, host.IsUninitialized)
+		hosts, err := host.Find(ctx, host.IsUninitialized)
 		if err != nil {
 			return errors.Wrap(err, "finding uninitialized hosts")
 		}

@@ -270,7 +270,7 @@ func CountIdleStartedTaskHosts() (int, error) {
 // IdleHostsWithDistroID, given a distroID, returns a slice of all idle hosts in that distro
 func IdleHostsWithDistroID(ctx context.Context, distroID string) ([]Host, error) {
 	q := idleHostsQuery(distroID)
-	idleHosts, err := FindWithContext(ctx, q)
+	idleHosts, err := Find(ctx, q)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding idle hosts")
 	}
@@ -290,7 +290,7 @@ func AllActiveHosts(ctx context.Context, distroID string) (HostGroup, error) {
 		q[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
 	}
 
-	activeHosts, err := FindWithContext(ctx, q)
+	activeHosts, err := Find(ctx, q)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding active hosts")
 	}
@@ -326,7 +326,7 @@ func allHostsSpawnedByTasksTimedOut(ctx context.Context) ([]Host, error) {
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTimeoutKey):       bson.M{"$lte": time.Now()},
 	}
-	return FindWithContext(ctx, query)
+	return Find(ctx, query)
 }
 
 // allHostsSpawnedByFinishedTasks finds hosts spawned by tasks that should be terminated because their tasks have finished.
@@ -445,7 +445,7 @@ func MinTaskGroupOrderRunningByTaskSpec(ctx context.Context, group, buildVariant
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
-	hosts, err := FindWithContext(ctx,
+	hosts, err := Find(ctx,
 		ByTaskSpec(group, buildVariant, project, version),
 		options.Find().SetProjection(bson.M{RunningTaskGroupOrderKey: 1}).SetSort(bson.M{RunningTaskGroupOrderKey: 1}),
 	)
@@ -466,7 +466,7 @@ var IsUninitialized = bson.M{StatusKey: evergreen.HostUninitialized}
 // FindByProvisioning finds all hosts that are not yet provisioned by the app
 // server.
 func FindByProvisioning(ctx context.Context) ([]Host, error) {
-	return FindWithContext(ctx, bson.M{
+	return Find(ctx, bson.M{
 		StatusKey:           evergreen.HostProvisioning,
 		NeedsReprovisionKey: bson.M{"$exists": false},
 		ProvisionedKey:      false,
@@ -476,7 +476,7 @@ func FindByProvisioning(ctx context.Context) ([]Host, error) {
 // FindByShouldConvertProvisioning finds all hosts that are ready and waiting to
 // convert their provisioning type.
 func FindByShouldConvertProvisioning(ctx context.Context) ([]Host, error) {
-	return FindWithContext(ctx, bson.M{
+	return Find(ctx, bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
 		StartedByKey:        evergreen.User,
 		RunningTaskKey:      bson.M{"$exists": false},
@@ -494,7 +494,7 @@ func FindByShouldConvertProvisioning(ctx context.Context) ([]Host, error) {
 // restart their Jasper service.
 func FindByNeedsToRestartJasper(ctx context.Context) ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	return FindWithContext(ctx, bson.M{
+	return Find(ctx, bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
 		bootstrapKey:        bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 		RunningTaskKey:      bson.M{"$exists": false},
@@ -727,7 +727,7 @@ func FindUserDataSpawnHostsProvisioning(ctx context.Context) ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	provisioningCutoff := time.Now().Add(-30 * time.Minute)
 
-	hosts, err := FindWithContext(ctx, bson.M{
+	hosts, err := Find(ctx, bson.M{
 		StatusKey:      evergreen.HostStarting,
 		ProvisionedKey: true,
 		// Ignore hosts that have failed to provision within the cutoff.
@@ -861,13 +861,7 @@ func FindOneByIdOrTag(id string) (*Host, error) {
 	return host, nil
 }
 
-// Find gets all Hosts for the given query.
-func Find(query db.Q) ([]Host, error) {
-	hosts := []Host{}
-	return hosts, errors.WithStack(db.FindAllQ(Collection, query, &hosts))
-}
-
-func FindWithContext(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Host, error) {
+func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Host, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding hosts")
@@ -943,7 +937,7 @@ func GetHostsByFromIDWithStatus(ctx context.Context, id, status, user string, li
 		filter[StartedByKey] = user
 	}
 
-	hosts, err := FindWithContext(ctx, filter, options.Find().SetSort(bson.M{IdKey: 1}).SetLimit(int64(limit)))
+	hosts, err := Find(ctx, filter, options.Find().SetSort(bson.M{IdKey: 1}).SetLimit(int64(limit)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts with an ID of '%s' or greater, status '%s', and user '%s'", id, status, user)
 	}
@@ -993,7 +987,7 @@ func FindHostsInRange(ctx context.Context, params HostsInRangeParams) ([]Host, e
 	if params.Region != "" {
 		filter[bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsRegionKey)] = params.Region
 	}
-	hosts, err := FindWithContext(ctx, filter)
+	hosts, err := Find(ctx, filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding hosts by filters")
 	}

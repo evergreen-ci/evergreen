@@ -35,7 +35,7 @@ func MarkInactiveStaticHosts(ctx context.Context, activeStaticHosts []string, d 
 		}
 	}
 
-	toTerminate, err := FindWithContext(ctx, query)
+	toTerminate, err := Find(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "getting inactive static hosts for termination")
 	}

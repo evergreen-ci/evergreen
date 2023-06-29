@@ -334,7 +334,7 @@ func TestHostCreateDocker(t *testing.T) {
 
 	assert.Equal(200, handler.Run(context.Background()).Status())
 
-	hosts, err := host.FindWithContext(ctx, bson.M{})
+	hosts, err := host.Find(ctx, bson.M{})
 	assert.NoError(err)
 	require.Len(hosts, 3)
 	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)

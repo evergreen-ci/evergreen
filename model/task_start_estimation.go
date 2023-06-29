@@ -114,7 +114,7 @@ func GetEstimatedStartTime(ctx context.Context, t task.Task) (time.Duration, err
 	if queuePos == -1 {
 		return -1, nil
 	}
-	hosts, err := host.FindWithContext(ctx, host.ByDistroIDs(t.DistroId))
+	hosts, err := host.Find(ctx, host.ByDistroIDs(t.DistroId))
 	if err != nil {
 		return -1, errors.Wrapf(err, "retrieving hosts from distro '%s'", t.DistroId)
 	}

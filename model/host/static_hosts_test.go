@@ -67,7 +67,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			activeStaticHosts := []string{"activeStaticOne", "activeStaticTwo"}
 			So(MarkInactiveStaticHosts(ctx, activeStaticHosts, nil), ShouldBeNil)
 
-			found, err := FindWithContext(ctx, IsTerminated)
+			found, err := Find(ctx, IsTerminated)
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 2)
 			So(hostIdInSlice(found, inactiveOne.Id), ShouldBeTrue)
@@ -125,17 +125,17 @@ func TestTerminateStaticHostsForDistro(t *testing.T) {
 	for _, h := range hosts {
 		assert.NoError(t, h.Insert())
 	}
-	found, err := FindWithContext(ctx, IsTerminated)
+	found, err := Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 0)
 	d := &distro.Distro{Id: "d1"}
 	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{}, d))
-	found, err = FindWithContext(ctx, IsTerminated)
+	found, err = Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 	d2 := &distro.Distro{Id: "d2"}
 	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{}, d2))
-	found, err = FindWithContext(ctx, IsTerminated)
+	found, err = Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 4)
 }
@@ -188,7 +188,7 @@ func TestTerminateStaticHostsForDistroAliases(t *testing.T) {
 		Aliases: []string{"dAlias"},
 	}
 	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{"h1"}, d))
-	found, err := FindWithContext(ctx, IsTerminated)
+	found, err := Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 }

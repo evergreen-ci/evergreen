@@ -149,7 +149,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 
-	hosts, err := host.FindWithContext(r.Context(), host.ByUserWithRunningStatus(user.Username()))
+	hosts, err := host.Find(r.Context(), host.ByUserWithRunningStatus(user.Username()))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "Error finding running hosts for user %v", user.Username()))

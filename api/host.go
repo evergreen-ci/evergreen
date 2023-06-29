@@ -48,7 +48,7 @@ func GetHostsAndUserPermissions(ctx context.Context, user *user.DBUser, hostIds 
 		return nil, nil, http.StatusBadRequest, errors.New("hostIds cannot be empty")
 	}
 
-	hosts, err := host.FindWithContext(ctx, host.ByIds(hostIds))
+	hosts, err := host.Find(ctx, host.ByIds(hostIds))
 	if err != nil {
 		return nil, nil, http.StatusInternalServerError, errors.New("Error getting hosts to update")
 	}

@@ -178,7 +178,7 @@ buildvariants:
 		assert.NoError(t, pp.Insert())
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -247,7 +247,7 @@ buildvariants:
 
 		err = CreateHostsFromTask(ctx, env, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
-		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -320,7 +320,7 @@ buildvariants:
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t3, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -388,7 +388,7 @@ buildvariants:
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t4, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -514,7 +514,7 @@ buildvariants:
 
 	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 
-	createdHosts, err := host.FindWithContext(ctx, bson.M{host.StartedByKey: "me"})
+	createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 	assert.NoError(err)
 	require.Len(createdHosts, 1)
 	h := createdHosts[0]

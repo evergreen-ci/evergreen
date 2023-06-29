@@ -97,7 +97,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			distroIDsFound = append(distroIDsFound, d.Id)
 		}
 		missingDistroIDs := utility.GetSetDifference(distroIDsToFind, distroIDsFound)
-		hosts, err := host.FindWithContext(ctx, host.ByDistroIDs(missingDistroIDs...))
+		hosts, err := host.Find(ctx, host.ByDistroIDs(missingDistroIDs...))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding hosts in missing distros: %s", strings.Join(missingDistroIDs, ", ")))
 			return

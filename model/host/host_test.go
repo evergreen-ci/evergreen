@@ -105,7 +105,7 @@ func TestGenericHostFinding(t *testing.T) {
 				}
 				So(nonMatchingHost.Insert(), ShouldBeNil)
 
-				found, err := FindWithContext(ctx, (bson.M{dId: "d1"}))
+				found, err := Find(ctx, (bson.M{dId: "d1"}))
 				So(err, ShouldBeNil)
 				So(len(found), ShouldEqual, 2)
 				So(hostIdInSlice(found, matchingHostOne.Id), ShouldBeTrue)
@@ -119,7 +119,7 @@ func TestGenericHostFinding(t *testing.T) {
 				nonMatchingHost := &Host{Id: "nope", Status: evergreen.HostRunning}
 				So(nonMatchingHost.Insert(), ShouldBeNil)
 				Convey("the host with the running task should be returned", func() {
-					found, err := FindWithContext(ctx, IsRunningTask)
+					found, err := Find(ctx, IsRunningTask)
 					So(err, ShouldBeNil)
 					So(len(found), ShouldEqual, 1)
 					So(found[0].Id, ShouldEqual, matchingHost.Id)
@@ -154,7 +154,7 @@ func TestGenericHostFinding(t *testing.T) {
 				// find the hosts, removing the host field from the projection,
 				// sorting by tag, skipping one, and limiting to one
 
-				found, err := FindWithContext(ctx, bson.M{dId: "d1"}, options.Find().
+				found, err := Find(ctx, bson.M{dId: "d1"}, options.Find().
 					SetProjection(bson.M{DNSKey: 0}).
 					SetSort(bson.M{TagKey: 1}).
 					SetSkip(1).
@@ -179,7 +179,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 			Status: evergreen.HostRunning,
 		}
 		So(h.Insert(), ShouldBeNil)
-		found, err := FindWithContext(ctx, IsRunningTask)
+		found, err := Find(ctx, IsRunningTask)
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 0)
 		Convey("with a host that is terminated with no running task", func() {
@@ -189,7 +189,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 				Status: evergreen.HostTerminated,
 			}
 			So(h1.Insert(), ShouldBeNil)
-			found, err = FindWithContext(ctx, IsRunningTask)
+			found, err = Find(ctx, IsRunningTask)
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
 		})
@@ -210,7 +210,7 @@ func TestMonitorHosts(t *testing.T) {
 			StartedBy: evergreen.User,
 		}
 		So(h.Insert(), ShouldBeNil)
-		found, err := FindWithContext(ctx, ByNotMonitoredSince(now))
+		found, err := Find(ctx, ByNotMonitoredSince(now))
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 1)
 		Convey("a host that has a running task and no reachability check should not return", func() {
@@ -222,7 +222,7 @@ func TestMonitorHosts(t *testing.T) {
 				RunningTask: "id",
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			found, err := FindWithContext(ctx, ByNotMonitoredSince(now))
+			found, err := Find(ctx, ByNotMonitoredSince(now))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
 		})
@@ -234,7 +234,7 @@ func TestMonitorHosts(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			found, err := FindWithContext(ctx, ByNotMonitoredSince(now))
+			found, err := Find(ctx, ByNotMonitoredSince(now))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
 		})
@@ -252,7 +252,7 @@ func TestMonitorHosts(t *testing.T) {
 				},
 			}
 			So(h.Insert(), ShouldBeNil)
-			found, err := FindWithContext(ctx, ByNotMonitoredSince(now))
+			found, err := Find(ctx, ByNotMonitoredSince(now))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 1)
 		})
@@ -876,7 +876,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
-			runningTaskHosts, err := FindWithContext(ctx, IsRunningTask)
+			runningTaskHosts, err := Find(ctx, IsRunningTask)
 			So(err, ShouldBeNil)
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
@@ -888,7 +888,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			found, err := FindOne(ById(h2.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
-			runningTaskHosts, err := FindWithContext(ctx, IsRunningTask)
+			runningTaskHosts, err := Find(ctx, IsRunningTask)
 			So(err, ShouldBeNil)
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
@@ -1010,10 +1010,10 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("Distro should be marked as decommissioned accordingly", func() {
-				hostsTypeA, err := FindWithContext(ctx, ByDistroIDs(distroA))
+				hostsTypeA, err := Find(ctx, ByDistroIDs(distroA))
 				So(err, ShouldBeNil)
 
-				hostsTypeB, err := FindWithContext(ctx, ByDistroIDs(distroB))
+				hostsTypeB, err := Find(ctx, ByDistroIDs(distroB))
 				So(err, ShouldBeNil)
 				for _, host := range hostsTypeA {
 
@@ -1050,7 +1050,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				},
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := FindWithContext(ctx, NeedsAgentDeploy(time.Now()))
+			hosts, err := Find(ctx, NeedsAgentDeploy(time.Now()))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
@@ -1063,7 +1063,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				foundHost, err := FindOne(ById(h.Id))
 				So(err, ShouldBeNil)
 				So(foundHost, ShouldNotBeNil)
-				hosts, err := FindWithContext(ctx, NeedsAgentDeploy(time.Now()))
+				hosts, err := Find(ctx, NeedsAgentDeploy(time.Now()))
 				So(err, ShouldBeNil)
 				So(len(hosts), ShouldEqual, 1)
 				So(hosts[0].Id, ShouldEqual, h.Id)
@@ -1083,7 +1083,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				},
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := FindWithContext(ctx, NeedsAgentDeploy(now))
+			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, anotherHost.Id)
@@ -1102,13 +1102,13 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				},
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := FindWithContext(ctx, NeedsAgentDeploy(now))
+			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 			Convey("after resetting the LCT", func() {
 				So(anotherHost.ResetLastCommunicated(), ShouldBeNil)
 				So(anotherHost.LastCommunicationTime, ShouldResemble, time.Unix(0, 0))
-				h, err := FindWithContext(ctx, NeedsAgentDeploy(now))
+				h, err := Find(ctx, NeedsAgentDeploy(now))
 				So(err, ShouldBeNil)
 				So(len(h), ShouldEqual, 1)
 				So(h[0].Id, ShouldEqual, "testhost")
@@ -1121,7 +1121,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := FindWithContext(ctx, NeedsAgentDeploy(now))
+			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -1132,7 +1132,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: "anotherUser",
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := FindWithContext(ctx, NeedsAgentDeploy(now))
+			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -1146,7 +1146,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			}
 			So(h.Insert(), ShouldBeNil)
 
-			hosts, err := FindWithContext(ctx, ShouldDeployAgent())
+			hosts, err := Find(ctx, ShouldDeployAgent())
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, h.Id)
@@ -1159,7 +1159,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				NeedsNewAgent: true,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := FindWithContext(ctx, NeedsAgentDeploy(now))
+			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(hosts, ShouldBeEmpty)
 		})
@@ -1177,12 +1177,12 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				NeedsNewAgent: true,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := FindWithContext(ctx, NeedsAgentDeploy(now))
+			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, h.Id)
 
-			hosts, err = FindWithContext(ctx, ShouldDeployAgent())
+			hosts, err = Find(ctx, ShouldDeployAgent())
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -1329,7 +1329,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 		"FindsNotRecentlyCommunicatedHosts": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, NeedsAgentMonitorDeploy(time.Now()))
+			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
 
 			require.Len(t, hosts, 1)
@@ -1339,7 +1339,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 			h.Status = evergreen.HostProvisioning
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, NeedsAgentMonitorDeploy(time.Now()))
+			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
 
 			assert.Len(t, hosts, 0)
@@ -1349,7 +1349,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 			h.NeedsReprovision = ReprovisionToNew
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, NeedsAgentMonitorDeploy(time.Now()))
+			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
 
 			require.Len(t, hosts, 1)
@@ -1359,7 +1359,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 			h.LastCommunicationTime = time.Now()
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, NeedsAgentMonitorDeploy(time.Now()))
+			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
 
 			assert.Empty(t, hosts)
@@ -1369,7 +1369,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, NeedsAgentMonitorDeploy(time.Now()))
+			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
 
 			assert.Empty(t, hosts)
@@ -1379,7 +1379,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 			h.Distro.BootstrapSettings.Communication = ""
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, NeedsAgentMonitorDeploy(time.Now()))
+			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
 
 			assert.Empty(t, hosts)
@@ -1415,7 +1415,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 			h.Status = evergreen.HostDecommissioned
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, ShouldDeployAgentMonitor())
+			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -1423,7 +1423,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, ShouldDeployAgentMonitor())
+			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -1431,7 +1431,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, ShouldDeployAgentMonitor())
+			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -1439,7 +1439,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, ShouldDeployAgentMonitor())
+			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -1448,7 +1448,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindWithContext(ctx, ShouldDeployAgentMonitor())
+			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -3706,7 +3706,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 
 	findByDistroID := func(distroID string) ([]Host, error) {
 		distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-		return FindWithContext(ctx, bson.M{
+		return Find(ctx, bson.M{
 			distroIDKey: distroID,
 		})
 	}
@@ -5327,12 +5327,12 @@ func (s *FindHostsSuite) TestFindHostsByDistro() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hosts, err := FindWithContext(ctx, ByDistroIDsOrAliasesRunning("distro5"))
+	hosts, err := Find(ctx, ByDistroIDsOrAliasesRunning("distro5"))
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
 
-	hosts, err = FindWithContext(ctx, ByDistroIDsOrAliasesRunning("alias125"))
+	hosts, err = Find(ctx, ByDistroIDsOrAliasesRunning("alias125"))
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 2)
 	var host1Found, host5Found bool

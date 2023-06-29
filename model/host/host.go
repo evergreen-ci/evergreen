@@ -1941,7 +1941,7 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 
 	// In some cases, the query planner will choose a very slow plan for this
 	// query. The hint guarantees that the query will use the host status index.
-	hosts, err := FindWithContext(ctx, query, options.Find().SetHint(StatusIndex))
+	hosts, err := Find(ctx, query, options.Find().SetHint(StatusIndex))
 
 	if adb.ResultsNotFound(err) {
 		return []Host{}, nil
@@ -1993,7 +1993,7 @@ func FindAllRunningContainers(ctx context.Context) ([]Host, error) {
 		ParentIDKey: bson.M{"$exists": true},
 		StatusKey:   evergreen.HostRunning,
 	}
-	hosts, err := FindWithContext(ctx, query)
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running containers")
 	}
@@ -2007,7 +2007,7 @@ func FindAllRunningParents(ctx context.Context) ([]Host, error) {
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
 	}
-	hosts, err := FindWithContext(ctx, query)
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running parents")
 	}
@@ -2022,7 +2022,7 @@ func FindAllRunningParentsOrdered(ctx context.Context) ([]Host, error) {
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
 	}
-	hosts, err := FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
+	hosts, err := Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding ordered running parents")
 	}
@@ -2038,7 +2038,7 @@ func FindAllRunningParentsByDistroID(ctx context.Context, distroID string) ([]Ho
 		HasContainersKey: true,
 		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroID,
 	}
-	return FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
+	return Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 // GetContainers finds all the containers belonging to this host
@@ -2051,7 +2051,7 @@ func (h *Host) GetContainers(ctx context.Context) ([]Host, error) {
 		{ParentIDKey: h.Id},
 		{ParentIDKey: h.Tag},
 	}}
-	hosts, err := FindWithContext(ctx, query)
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding containers")
 	}
@@ -2071,7 +2071,7 @@ func (h *Host) GetActiveContainers(ctx context.Context) ([]Host, error) {
 			{ParentIDKey: h.Id},
 			{ParentIDKey: h.Tag},
 		}}
-	hosts, err := FindWithContext(ctx, query)
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding containers")
 	}
@@ -2210,7 +2210,7 @@ func FindAllHostsSpawnedByTasks(ctx context.Context) ([]Host, error) {
 		StatusKey: evergreen.HostRunning,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
 	}
-	hosts, err := FindWithContext(ctx, query)
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding hosts spawned by tasks")
 	}
@@ -2226,7 +2226,7 @@ func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int) (
 		taskIDKey:              taskID,
 		taskExecutionNumberKey: execution,
 	}
-	hosts, err := FindWithContext(ctx, query)
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts spawned by task '%s' for execution %d", taskID, execution)
 	}
@@ -2240,7 +2240,7 @@ func FindHostsSpawnedByBuild(ctx context.Context, buildID string) ([]Host, error
 		StatusKey:  evergreen.HostRunning,
 		buildIDKey: buildID,
 	}
-	hosts, err := FindWithContext(ctx, query)
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts spawned by build '%s'", buildID)
 	}
@@ -2250,7 +2250,7 @@ func FindHostsSpawnedByBuild(ctx context.Context, buildID string) ([]Host, error
 // FindTerminatedHostsRunningTasks finds all hosts that were running tasks when
 // they were terminated.
 func FindTerminatedHostsRunningTasks(ctx context.Context) ([]Host, error) {
-	hosts, err := FindWithContext(ctx, bson.M{
+	hosts, err := Find(ctx, bson.M{
 		StatusKey: evergreen.HostTerminated,
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": true}},
@@ -2280,7 +2280,7 @@ func (hosts HostGroup) FindUphostContainersOnParents(ctx context.Context) ([]Hos
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		ParentIDKey: bson.M{"$in": ids},
 	}
-	return FindWithContext(ctx, query)
+	return Find(ctx, query)
 }
 
 // GetHostIds returns a slice of host IDs for the given group of hosts
@@ -2466,7 +2466,7 @@ func findAllRunningParentsByContainerPool(ctx context.Context, poolId string) ([
 		StatusKey:           evergreen.HostRunning,
 		hostContainerPoolId: poolId,
 	}
-	return FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
+	return Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 // findUphostParents returns the container parent hosts that are up.
@@ -2477,7 +2477,7 @@ func findUphostParentsByContainerPool(ctx context.Context, poolId string) ([]Hos
 		StatusKey:           bson.M{"$in": evergreen.UpHostStatus},
 		hostContainerPoolId: poolId,
 	}
-	return FindWithContext(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
+	return Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 func InsertMany(hosts []Host) error {
@@ -2717,7 +2717,7 @@ func FindSpawnhostsWithNoExpirationToExtend(ctx context.Context) ([]Host, error)
 		ExpirationTimeKey: bson.M{"$lte": time.Now().Add(24 * time.Hour)},
 	}
 
-	return FindWithContext(ctx, query)
+	return Find(ctx, query)
 }
 
 func makeExpireOnTag(expireOn string) Tag {
@@ -2872,7 +2872,7 @@ func FindStaticNeedsNewSSHKeys(ctx context.Context, settings *evergreen.Settings
 		names = append(names, pair.Name)
 	}
 
-	return FindWithContext(ctx, bson.M{
+	return Find(ctx, bson.M{
 		StatusKey:      evergreen.HostRunning,
 		ProviderKey:    evergreen.ProviderNameStatic,
 		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},

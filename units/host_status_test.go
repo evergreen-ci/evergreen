@@ -93,7 +93,7 @@ func TestCloudStatusJob(t *testing.T) {
 	j.Run(ctx)
 	assert.NoError(j.Error())
 
-	hosts, err := host.FindWithContext(ctx, bson.M{})
+	hosts, err := host.Find(ctx, bson.M{})
 	assert.Len(hosts, 6)
 	assert.NoError(err)
 	for _, h := range hosts {

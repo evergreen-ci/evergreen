@@ -107,7 +107,7 @@ func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) hostsInfoForUser(w http.ResponseWriter, r *http.Request) {
 	user := gimlet.GetVars(r)["user"]
 
-	hosts, err := host.FindWithContext(r.Context(), host.ByUserWithUnterminatedStatus(user))
+	hosts, err := host.Find(r.Context(), host.ByUserWithUnterminatedStatus(user))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
