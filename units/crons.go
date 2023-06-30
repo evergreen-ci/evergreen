@@ -620,7 +620,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		err = host.UpdateAll(host.NeedsAgentDeploy(time.Now()), bson.M{"$set": bson.M{
+		err = host.UpdateAll(ctx, host.NeedsAgentDeploy(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentKey: true,
 		}})
 		if err != nil && !adb.ResultsNotFound(err) {
@@ -683,7 +683,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 		// The agent monitor deploy job will atomically clear the
 		// NeedsNewAgentMonitor field to prevent other jobs from running
 		// concurrently.
-		if err = host.UpdateAll(host.NeedsAgentMonitorDeploy(time.Now()), bson.M{"$set": bson.M{
+		if err = host.UpdateAll(ctx, host.NeedsAgentMonitorDeploy(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentMonitorKey: true,
 		}}); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{

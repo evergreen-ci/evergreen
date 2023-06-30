@@ -191,7 +191,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if shouldDeco {
-			err = host.DecommissionHostsWithDistroId(newDistro.Id)
+			err = host.DecommissionHostsWithDistroId(r.Context(), newDistro.Id)
 			if err != nil {
 				message := fmt.Sprintf("error decommissioning hosts: %s", err.Error())
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))

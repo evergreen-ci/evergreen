@@ -429,7 +429,7 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 	}
 
 	if j.host.HasContainers {
-		grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
+		grip.Error(message.WrapError(j.host.UpdateParentIDs(ctx), message.Fields{
 			"message": "unable to update parent ID of containers",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,

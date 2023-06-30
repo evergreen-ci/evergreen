@@ -1034,7 +1034,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 		}
 
 		Convey("When decommissioning hosts of type distro_a", func() {
-			err := DecommissionHostsWithDistroId(distroA)
+			err := DecommissionHostsWithDistroId(ctx, distroA)
 			So(err, ShouldBeNil)
 
 			Convey("Distro should be marked as decommissioned accordingly", func() {
@@ -2737,7 +2737,7 @@ func TestUpdateParentIDs(t *testing.T) {
 	}
 	assert.NoError(container2.Insert())
 
-	assert.NoError(parent.UpdateParentIDs())
+	assert.NoError(parent.UpdateParentIDs(ctx))
 	dbContainer1, err := FindOneId(ctx, container1.Id)
 	assert.NoError(err)
 	assert.Equal(parent.Id, dbContainer1.ParentID)

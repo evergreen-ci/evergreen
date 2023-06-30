@@ -900,13 +900,9 @@ func UpdateOneWithContext(ctx context.Context, query interface{}, update interfa
 }
 
 // UpdateAll updates all hosts.
-func UpdateAll(query interface{}, update interface{}) error {
-	_, err := db.UpdateAll(
-		Collection,
-		query,
-		update,
-	)
-	return err
+func UpdateAll(ctx context.Context, query interface{}, update interface{}) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update)
+	return errors.Wrap(err, "updating hosts")
 }
 
 // UpsertOne upserts a host.

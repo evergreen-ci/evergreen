@@ -1817,8 +1817,9 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
 // that have a matching distro ID as decommissioned.
-func DecommissionHostsWithDistroId(distroId string) error {
+func DecommissionHostsWithDistroId(ctx context.Context, distroId string) error {
 	err := UpdateAll(
+		ctx,
 		ByDistroIDs(distroId),
 		bson.M{
 			"$set": bson.M{
@@ -2144,7 +2145,7 @@ func (h *Host) IsIdleParent(ctx context.Context) (bool, error) {
 	return num == 0, nil
 }
 
-func (h *Host) UpdateParentIDs() error {
+func (h *Host) UpdateParentIDs(ctx context.Context) error {
 	query := bson.M{
 		ParentIDKey: h.Tag,
 	}
@@ -2153,7 +2154,7 @@ func (h *Host) UpdateParentIDs() error {
 			ParentIDKey: h.Id,
 		},
 	}
-	return UpdateAll(query, update)
+	return UpdateAll(ctx, query, update)
 }
 
 // For spawn hosts that have never been set unexpirable, this will
