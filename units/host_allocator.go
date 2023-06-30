@@ -116,11 +116,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	if err = host.RemoveStaleInitializing(j.DistroID); err != nil {
+	if err = host.RemoveStaleInitializing(ctx, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "removing stale initializing intent hosts"))
 		return
 	}
-	if err = host.MarkStaleBuildingAsFailed(j.DistroID); err != nil {
+	if err = host.MarkStaleBuildingAsFailed(ctx, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "marking building intent hosts as failed"))
 		return
 	}

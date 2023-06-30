@@ -305,11 +305,11 @@ func AllHostsSpawnedByTasksToTerminate(ctx context.Context) ([]Host, error) {
 	hosts = append(hosts, timedOutHosts...)
 	catcher.Wrap(err, "finding hosts that have hit their timeout")
 
-	taskHosts, err := allHostsSpawnedByFinishedTasks()
+	taskHosts, err := allHostsSpawnedByFinishedTasks(ctx)
 	hosts = append(hosts, taskHosts...)
 	catcher.Wrap(err, "finding hosts whose tasks have finished")
 
-	buildHosts, err := allHostsSpawnedByFinishedBuilds()
+	buildHosts, err := allHostsSpawnedByFinishedBuilds(ctx)
 	hosts = append(hosts, buildHosts...)
 	catcher.Wrap(err, "finding hosts whose builds have finished")
 
@@ -330,7 +330,7 @@ func allHostsSpawnedByTasksTimedOut(ctx context.Context) ([]Host, error) {
 }
 
 // allHostsSpawnedByFinishedTasks finds hosts spawned by tasks that should be terminated because their tasks have finished.
-func allHostsSpawnedByFinishedTasks() ([]Host, error) {
+func allHostsSpawnedByFinishedTasks(ctx context.Context) ([]Host, error) {
 	const runningTasks = "running_tasks"
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -365,15 +365,12 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 		}},
 		{"$project": bson.M{runningTasks: 0}},
 	}
-	var hosts []Host
-	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
-		return nil, err
-	}
-	return hosts, nil
+
+	return Aggregate(ctx, pipeline)
 }
 
 // allHostsSpawnedByFinishedBuilds finds hosts spawned by tasks that should be terminated because their builds have finished.
-func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
+func allHostsSpawnedByFinishedBuilds(ctx context.Context) ([]Host, error) {
 	const runningBuilds = "running_builds"
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -389,11 +386,8 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}}},
 		{"$project": bson.M{runningBuilds: 0}},
 	}
-	var hosts []Host
-	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
-		return nil, err
-	}
-	return hosts, nil
+
+	return Aggregate(ctx, pipeline)
 }
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
@@ -447,7 +441,9 @@ func MinTaskGroupOrderRunningByTaskSpec(ctx context.Context, group, buildVariant
 
 	hosts, err := Find(ctx,
 		ByTaskSpec(group, buildVariant, project, version),
-		options.Find().SetProjection(bson.M{RunningTaskGroupOrderKey: 1}).SetSort(bson.M{RunningTaskGroupOrderKey: 1}),
+		options.Find().
+			SetProjection(bson.M{RunningTaskGroupOrderKey: 1}).
+			SetSort(bson.M{RunningTaskGroupOrderKey: 1}),
 	)
 	if err != nil {
 		return 0, errors.Wrap(err, "finding hosts by task spec with running task group order")
@@ -572,13 +568,8 @@ func ByIds(ids []string) bson.M {
 }
 
 // FindByJasperCredentialsID finds a host with the given Jasper credentials ID.
-func FindOneByJasperCredentialsID(id string) (*Host, error) {
-	h := &Host{}
-	query := bson.M{JasperCredentialsIDKey: id}
-	if err := db.FindOneQ(Collection, db.Query(query), h); err != nil {
-		return nil, errors.Wrapf(err, "finding host with Jasper credentials ID '%s'", id)
-	}
-	return h, nil
+func FindOneByJasperCredentialsID(ctx context.Context, id string) (*Host, error) {
+	return FindOne(ctx, bson.M{JasperCredentialsIDKey: id})
 }
 
 // IsIdle is a query that returns all running Evergreen hosts with no task.
@@ -743,7 +734,7 @@ func FindUserDataSpawnHostsProvisioning(ctx context.Context) ([]Host, error) {
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
-func RemoveStaleInitializing(distroID string) error {
+func RemoveStaleInitializing(ctx context.Context, distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
@@ -757,13 +748,13 @@ func RemoveStaleInitializing(distroID string) error {
 		query[key] = distroID
 	}
 
-	return db.RemoveAll(Collection, query)
+	return DeleteAll(ctx, query)
 }
 
 // MarkStaleBuildingAsFailed marks building hosts that have been stuck building
 // for too long as failed in order to indicate that they're stale and should be
 // terminated.
-func MarkStaleBuildingAsFailed(distroID string) error {
+func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	spawnedByTaskKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey)
 	query := bson.M{
@@ -780,9 +771,8 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 		query[key] = distroID
 	}
 
-	q := db.Query(query).Project(bson.M{IdKey: 1})
-	hosts := []Host{}
-	if err := db.FindAllQ(Collection, q, &hosts); err != nil {
+	hosts, err := Find(ctx, query, options.Find().SetProjection(bson.M{IdKey: 1}))
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	var ids []string
@@ -793,9 +783,7 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 		return nil
 	}
 
-	if _, err := db.UpdateAll(Collection, bson.M{
-		IdKey: bson.M{"$in": ids},
-	}, bson.M{
+	if err := UpdateAll(ctx, ByIds(ids), bson.M{
 		"$set": bson.M{StatusKey: evergreen.HostBuildingFailed},
 	}); err != nil {
 		return errors.Wrap(err, "marking stale building hosts as failed")
@@ -819,7 +807,7 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Host, error) {
 	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
 	if err := res.Err(); err != nil {
-		if adb.ResultsNotFound(err) {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}
 		return nil, errors.Wrap(err, "finding host")
@@ -838,17 +826,12 @@ func FindOneId(ctx context.Context, id string) (*Host, error) {
 }
 
 // FindOneByTaskIdAndExecution returns a single host with the given running task ID and execution.
-func FindOneByTaskIdAndExecution(id string, execution int) (*Host, error) {
-	h := &Host{}
-	query := db.Query(bson.M{
+func FindOneByTaskIdAndExecution(ctx context.Context, id string, execution int) (*Host, error) {
+	query := bson.M{
 		RunningTaskKey:          id,
 		RunningTaskExecutionKey: execution,
-	})
-	err := db.FindOneQ(Collection, query, h)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
 	}
-	return h, err
+	return FindOne(ctx, query)
 }
 
 // FindOneByIdOrTag finds a host where the given id is stored in either the _id or tag field.
@@ -880,6 +863,19 @@ func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([
 	return hosts, nil
 }
 
+func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.AggregateOptions) ([]Host, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline, options...)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating hosts")
+	}
+	var hosts []Host
+	if err = cur.Decode(&hosts); err != nil {
+		return nil, errors.Wrap(err, "decoding hosts")
+	}
+
+	return hosts, nil
+}
+
 // Count returns the number of hosts that satisfy the given query.
 func Count(ctx context.Context, query bson.M) (int, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query)
@@ -887,7 +883,7 @@ func Count(ctx context.Context, query bson.M) (int, error) {
 }
 
 // UpdateOneWithContext updates one host.
-func UpdateOneWithContext(ctx context.Context, query interface{}, update interface{}) error {
+func UpdateOneWithContext(ctx context.Context, query bson.M, update bson.M) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update)
 	if err != nil {
 		return err
@@ -900,14 +896,19 @@ func UpdateOneWithContext(ctx context.Context, query interface{}, update interfa
 }
 
 // UpdateAll updates all hosts.
-func UpdateAll(ctx context.Context, query interface{}, update interface{}) error {
+func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update)
 	return errors.Wrap(err, "updating hosts")
 }
 
 // UpsertOne upserts a host.
-func UpsertOne(ctx context.Context, query interface{}, update interface{}) (*mongo.UpdateResult, error) {
+func UpsertOne(ctx context.Context, query bson.M, update bson.M) (*mongo.UpdateResult, error) {
 	return evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update, options.Update().SetUpsert(true))
+}
+
+func DeleteAll(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteMany(ctx, filter, options...)
+	return errors.Wrap(err, "deleting hosts")
 }
 
 func GetHostsByFromIDWithStatus(ctx context.Context, id, status, user string, limit int) ([]Host, error) {
@@ -1071,14 +1072,17 @@ func lastContainerFinishTimePipeline() []bson.M {
 }
 
 // AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
-func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
-	var times []FinishTime
-	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
+func AggregateLastContainerFinishTimes(ctx context.Context) ([]FinishTime, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, lastContainerFinishTimePipeline())
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating parent finish times")
 	}
-	return times, nil
+	var times []FinishTime
+	if err = cur.Decode(&times); err != nil {
+		return nil, errors.Wrap(err, "decoding finish times")
+	}
 
+	return times, nil
 }
 
 func (h *Host) SetVolumes(ctx context.Context, volumes []VolumeAttachment) error {

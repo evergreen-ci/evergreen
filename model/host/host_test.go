@@ -3452,7 +3452,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 	assert.Len(found, 1)
 	assert.Equal("running_host_timeout", found[0].Id)
 
-	found, err = allHostsSpawnedByFinishedTasks()
+	found, err = allHostsSpawnedByFinishedTasks(ctx)
 	assert.NoError(err)
 	assert.Len(found, 3)
 	should := map[string]bool{
@@ -3467,7 +3467,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		assert.True(v, fmt.Sprintf("failed to find host %s", k))
 	}
 
-	found, err = allHostsSpawnedByFinishedBuilds()
+	found, err = allHostsSpawnedByFinishedBuilds(ctx)
 	assert.NoError(err)
 	assert.Len(found, 2)
 	should = map[string]bool{
@@ -3763,7 +3763,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 		require.NoError(h.Insert())
 	}
 
-	require.NoError(RemoveStaleInitializing(distro1.Id))
+	require.NoError(RemoveStaleInitializing(ctx, distro1.Id))
 
 	findByDistroID := func(distroID string) ([]Host, error) {
 		distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
@@ -3784,7 +3784,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	assert.Contains(ids, "host5")
 	assert.Contains(ids, "host6")
 
-	require.NoError(RemoveStaleInitializing(distro2.Id))
+	require.NoError(RemoveStaleInitializing(ctx, distro2.Id))
 
 	distro2Hosts, err := findByDistroID(distro2.Id)
 	require.NoError(err)
@@ -3886,7 +3886,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 		require.NoError(t, h.Insert())
 	}
 
-	require.NoError(t, MarkStaleBuildingAsFailed(distro1.Id))
+	require.NoError(t, MarkStaleBuildingAsFailed(ctx, distro1.Id))
 
 	checkStatus := func(t *testing.T, h Host, expectedStatus string) {
 		dbHost, err := FindOne(ctx, ById(h.Id))
@@ -3900,7 +3900,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 	}
 	checkStatus(t, hosts[1], evergreen.HostBuildingFailed)
 
-	require.NoError(t, MarkStaleBuildingAsFailed(distro2.Id))
+	require.NoError(t, MarkStaleBuildingAsFailed(ctx, distro2.Id))
 
 	checkStatus(t, hosts[6], hosts[6].Status)
 	checkStatus(t, hosts[7], evergreen.HostBuildingFailed)
@@ -4289,18 +4289,21 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 }
 
 func TestFindOneByJasperCredentialsID(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	id := "id"
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"FailsWithoutJasperCredentialsID": func(t *testing.T, h *Host) {
 			h.Id = id
-			dbHost, err := FindOneByJasperCredentialsID(id)
+			dbHost, err := FindOneByJasperCredentialsID(ctx, id)
 			assert.Error(t, err)
 			assert.Nil(t, dbHost)
 		},
 		"FindsHostWithJasperCredentialsID": func(t *testing.T, h *Host) {
 			h.JasperCredentialsID = id
 			require.NoError(t, h.Insert())
-			dbHost, err := FindOneByJasperCredentialsID(id)
+			dbHost, err := FindOneByJasperCredentialsID(ctx, id)
 			require.NoError(t, err)
 			assert.Equal(t, dbHost, h)
 		},
