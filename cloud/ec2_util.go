@@ -296,7 +296,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 	h.IPv4 = *instance.PrivateIpAddress
 
-	if err := h.CacheHostData(); err != nil {
+	if err := h.CacheHostData(ctx); err != nil {
 		return errors.Wrap(err, "updating host document in DB")
 	}
 

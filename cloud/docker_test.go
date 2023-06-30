@@ -87,7 +87,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NoError(err)
 	s.Require().NotNil(hostA)
-	_, err = hostA.Upsert()
+	_, err = hostA.Upsert(ctx)
 	s.NoError(err)
 
 	hostB := host.NewIntent(s.hostOpts)
@@ -95,7 +95,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NoError(err)
 	s.Require().NotNil(hostB)
-	_, err = hostB.Upsert()
+	_, err = hostB.Upsert(ctx)
 	s.NoError(err)
 
 	mock, ok := s.client.(*dockerClientMock)
@@ -118,7 +118,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
-	_, err = myHost.Upsert()
+	_, err = myHost.Upsert(ctx)
 	s.NoError(err)
 
 	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))

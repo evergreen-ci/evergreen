@@ -153,7 +153,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		j.parent.ContainerImages = make(map[string]bool)
 	}
 	j.parent.ContainerImages[j.DockerOptions.Image] = true
-	_, err = j.parent.Upsert()
+	_, err = j.parent.Upsert(ctx)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "upserting parent '%s'", j.parent.Id))
 		return

@@ -1669,7 +1669,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 	return nil
 }
 
-func (h *Host) Upsert() (*adb.ChangeInfo, error) {
+func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 	setFields := bson.M{
 		// If adding or removing fields here, make sure that all callers will work
 		// correctly after the change. Any fields defined here but not set by the
@@ -1713,11 +1713,12 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		update["$unset"] = unsetFields
 	}
 
-	return UpsertOne(bson.M{IdKey: h.Id}, update)
+	return UpsertOne(ctx, bson.M{IdKey: h.Id}, update)
 }
 
-func (h *Host) CacheHostData() error {
+func (h *Host) CacheHostData(ctx context.Context) error {
 	_, err := UpsertOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},

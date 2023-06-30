@@ -216,7 +216,7 @@ func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) 
 		}
 
 		// upsert the host
-		_, err = staticHost.Upsert()
+		_, err = staticHost.Upsert(ctx)
 		if err != nil {
 			return nil, err
 		}

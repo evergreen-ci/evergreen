@@ -1243,7 +1243,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 		},
 		"IgnoresNonUserDataBootstrappedHost": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-			_, err := h.Upsert()
+			_, err := h.Upsert(ctx)
 			require.NoError(t, err)
 
 			require.NoError(t, h.SetUserDataHostProvisioned(ctx))

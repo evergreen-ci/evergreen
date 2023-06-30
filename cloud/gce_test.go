@@ -167,14 +167,14 @@ func (s *GCESuite) TestTerminateInstanceAPICall() {
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
-	_, err = hostA.Upsert()
+	_, err = hostA.Upsert(ctx)
 	s.NoError(err)
 
 	hostB := host.NewIntent(s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
-	_, err = hostB.Upsert()
+	_, err = hostB.Upsert(ctx)
 	s.NoError(err)
 
 	mock, ok := s.client.(*gceClientMock)
@@ -196,7 +196,7 @@ func (s *GCESuite) TestTerminateInstanceDB() {
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
-	_, err = myHost.Upsert()
+	_, err = myHost.Upsert(ctx)
 	s.NoError(err)
 
 	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))

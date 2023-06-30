@@ -111,14 +111,14 @@ func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
-	_, err = hostA.Upsert()
+	_, err = hostA.Upsert(ctx)
 	s.NoError(err)
 
 	hostB := host.NewIntent(s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
-	_, err = hostB.Upsert()
+	_, err = hostB.Upsert(ctx)
 	s.NoError(err)
 
 	mock, ok := s.client.(*openStackClientMock)
@@ -140,7 +140,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
-	_, err = myHost.Upsert()
+	_, err = myHost.Upsert(ctx)
 	s.NoError(err)
 
 	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))
@@ -219,14 +219,14 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
-	_, err = hostOne.Upsert()
+	_, err = hostOne.Upsert(ctx)
 	s.NoError(err)
 
 	hostTwo := host.NewIntent(s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
-	_, err = hostTwo.Upsert()
+	_, err = hostTwo.Upsert(ctx)
 	s.NoError(err)
 }
 
@@ -254,7 +254,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
 	s.NotNil(h)
-	_, err = h.Upsert()
+	_, err = h.Upsert(ctx)
 	s.NoError(err)
 
 	mock.failCreate = true

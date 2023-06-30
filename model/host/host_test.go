@@ -939,7 +939,7 @@ func TestUpsert(t *testing.T) {
 		var err error
 
 		Convey("Performing a host upsert should upsert correctly", func() {
-			_, err = host.Upsert()
+			_, err = host.Upsert(ctx)
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
@@ -952,7 +952,7 @@ func TestUpsert(t *testing.T) {
 		Convey("Updating some fields of an already inserted host should cause "+
 			"those fields to be updated ",
 			func() {
-				_, err := host.Upsert()
+				_, err := host.Upsert(ctx)
 				So(err, ShouldBeNil)
 				So(host.Status, ShouldEqual, evergreen.HostRunning)
 
@@ -977,7 +977,7 @@ func TestUpsert(t *testing.T) {
 				// update the hostname and status
 				host.Host = "host2"
 				host.Status = evergreen.HostRunning
-				_, err = host.Upsert()
+				_, err = host.Upsert(ctx)
 				So(err, ShouldBeNil)
 
 				// host db status should be modified
@@ -989,7 +989,7 @@ func TestUpsert(t *testing.T) {
 			})
 		Convey("Upserting a host that does not need its provisioning changed unsets the field", func() {
 			So(host.Insert(), ShouldBeNil)
-			_, err := host.Upsert()
+			_, err := host.Upsert(ctx)
 			So(err, ShouldBeNil)
 
 			_, err = FindOne(ctx, bson.M{IdKey: host.Id, NeedsReprovisionKey: bson.M{"$exists": false}})
@@ -1787,7 +1787,7 @@ func TestHostUpsert(t *testing.T) {
 	}
 
 	// test inserting new host
-	_, err := testHost.Upsert()
+	_, err := testHost.Upsert(ctx)
 	assert.NoError(err)
 	hostFromDB, err := FindOne(ctx, ById(hostID))
 	assert.NoError(err)
@@ -1796,7 +1796,7 @@ func TestHostUpsert(t *testing.T) {
 
 	// test updating the same host
 	testHost.User = "user2"
-	_, err = testHost.Upsert()
+	_, err = testHost.Upsert(ctx)
 	assert.NoError(err)
 	hostFromDB, err = FindOne(ctx, ById(hostID))
 	assert.NoError(err)
@@ -1805,7 +1805,7 @@ func TestHostUpsert(t *testing.T) {
 
 	// test updating a field that is not upserted
 	testHost.Secret = "secret"
-	_, err = testHost.Upsert()
+	_, err = testHost.Upsert(ctx)
 	assert.NoError(err)
 	hostFromDB, err = FindOne(ctx, ById(hostID))
 	assert.NoError(err)

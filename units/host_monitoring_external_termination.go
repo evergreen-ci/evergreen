@@ -125,7 +125,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			})
-			return false, errors.Wrapf(h.MarkReachable(), "updating reachability for host '%s'", h.Id)
+			return false, errors.Wrapf(h.MarkReachable(ctx), "updating reachability for host '%s'", h.Id)
 		}
 		return false, nil
 	case cloud.StatusStopping, cloud.StatusStopped, cloud.StatusTerminated, cloud.StatusNonExistent:

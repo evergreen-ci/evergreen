@@ -21,7 +21,7 @@ func TestUserDataDoneJob(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
 		"NewUserDataSpawnHostReadyJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			_, err := h.Upsert()
+			_, err := h.Upsert(ctx)
 			require.NoError(t, err)
 
 			j := NewUserDataDoneJob(env, h.Id, time.Now())

@@ -230,7 +230,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		"job":      j.ID(),
 	})
 
-	if err := j.host.SetAgentRevision(evergreen.AgentVersion); err != nil {
+	if err := j.host.SetAgentRevision(ctx, evergreen.AgentVersion); err != nil {
 		return errors.Wrapf(err, "setting agent revision on host '%s'", j.host.Id)
 	}
 	return nil

@@ -906,12 +906,8 @@ func UpdateAll(ctx context.Context, query interface{}, update interface{}) error
 }
 
 // UpsertOne upserts a host.
-func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
-	return db.Upsert(
-		Collection,
-		query,
-		update,
-	)
+func UpsertOne(ctx context.Context, query interface{}, update interface{}) (*mongo.UpdateResult, error) {
+	return evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update, options.Update().SetUpsert(true))
 }
 
 func GetHostsByFromIDWithStatus(ctx context.Context, id, status, user string, limit int) ([]Host, error) {
