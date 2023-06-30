@@ -574,6 +574,63 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
 }
 
+func TestPatchRawModulesHandler(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection))
+	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
+	patchString := `main diff`
+	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	patchString = `module1 diff`
+	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
+	patchString = `module2 diff`
+	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module2Patch", strings.NewReader(patchString)))
+	patchId := "aabbccddeeff001122334455"
+	patchToInsert := patch.Patch{
+		Id: patch.NewId(patchId),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "",
+				PatchSet: patch.PatchSet{
+					PatchFileId:    "testPatch",
+					CommitMessages: []string{"Commit 1", "Commit 2"},
+				},
+			},
+			{
+				ModuleName: "module1",
+				PatchSet: patch.PatchSet{
+					PatchFileId:    "module1Patch",
+					CommitMessages: []string{"Commit 1", "Commit 2"},
+				},
+			},
+			{
+				ModuleName: "module2",
+				PatchSet: patch.PatchSet{
+					PatchFileId:    "module2Patch",
+					CommitMessages: []string{"Commit 1", "Commit 2"},
+				},
+			},
+		},
+	}
+	assert.NoError(t, patchToInsert.Insert())
+
+	route := &moduleRawHandler{
+		patchID: patchId,
+	}
+
+	response := route.Run(context.Background())
+
+	rawModulesResponse := response.Data().(data.RawPatch)
+	rp := rawModulesResponse.Patch
+	modules := rawModulesResponse.RawModules
+	assert.Equal(t, rp.Diff, "main diff")
+	assert.Equal(t, len(modules), 2)
+
+	assert.Equal(t, modules[0].Name, "module1")
+	assert.Equal(t, modules[0].Diff, "module1 diff")
+
+	assert.Equal(t, modules[1].Name, "module2")
+	assert.Equal(t, modules[1].Diff, "module2 diff")
+}
+
 func TestPatchRawHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))

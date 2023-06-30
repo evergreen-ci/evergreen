@@ -197,35 +197,56 @@ func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestE
 	return nil
 }
 
+type RawPatch struct {
+	Patch      RawModule
+	RawModules []RawModule
+}
+type RawModule struct {
+	Name    string `json:"name"`
+	Diff    string `json:"diff"`
+	Githash string `json:"githash"`
+}
+
 // GetPatchRawPatches fetches the raw patches for a patch
-func GetPatchRawPatches(patchID string) (map[string]string, error) {
+func GetPatchRawPatches(patchID string) (RawPatch, error) {
+	var rawPatch RawPatch
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {
-		return nil, gimlet.ErrorResponse{
+		return rawPatch, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "finding patch '%s'", patchID).Error(),
 		}
 	}
 	if patchDoc == nil {
-		return nil, gimlet.ErrorResponse{
+		return rawPatch, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch '%s' not found", patchID),
 		}
 	}
 
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
-		return nil, gimlet.ErrorResponse{
+		return rawPatch, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "getting patch contents").Error(),
 		}
 	}
 
-	patchMap := make(map[string]string)
+	var rawModules []RawModule
 	for _, raw := range patchDoc.Patches {
-		patchMap[raw.ModuleName] = raw.PatchSet.Patch
+		module := RawModule{
+			Name:    raw.ModuleName,
+			Diff:    raw.PatchSet.Patch,
+			Githash: raw.Githash,
+		}
+		if raw.ModuleName == "" {
+			rawPatch.Patch = module
+		} else {
+			rawModules = append(rawModules, module)
+		}
 	}
+	rawPatch.RawModules = rawModules
 
-	return patchMap, nil
+	return rawPatch, nil
 }
 
 func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, string, error) {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -268,8 +269,9 @@ func getParametersFromInput(params []string) ([]patch.Parameter, error) {
 
 func PatchFile() cli.Command {
 	const (
-		baseFlagName     = "base"
-		diffPathFlagName = "diff-file"
+		baseFlagName          = "base"
+		diffPathFlagName      = "diff-file"
+		diffFromPatchFlagName = "diff-from-patch"
 	)
 
 	return cli.Command{
@@ -285,6 +287,10 @@ func PatchFile() cli.Command {
 				Usage: "path to a file for diff of the patch",
 			},
 			cli.StringFlag{
+				Name:  diffFromPatchFlagName,
+				Usage: "patch id to fetch the full diff (including modules) from",
+			},
+			cli.StringFlag{
 				Name: patchAuthorFlag,
 				Usage: "optionally define the patch author by providing an Evergreen username; " +
 					"if not found or provided, will default to the submitter",
@@ -292,10 +298,21 @@ func PatchFile() cli.Command {
 		),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
-			requireFileExists(diffPathFlagName),
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
+			mutuallyExclusiveArgs(false, diffPathFlagName, diffFromPatchFlagName),
+			mutuallyExclusiveArgs(false, baseFlagName, diffFromPatchFlagName),
 		),
 		Action: func(c *cli.Context) error {
+			println("Hi 307")
+
+			diffFromPatch := c.String(diffFromPatchFlagName)
+			if diffFromPatch == "" {
+				path := c.String(diffPathFlagName)
+				if _, err := os.Stat(path); os.IsNotExist(err) {
+					return errors.Errorf("file '%s' does not exist %s ", path, diffFromPatch)
+				}
+			}
+			println("Hi 316")
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
 				Project:         c.String(projectFlagName),
@@ -311,6 +328,7 @@ func PatchFile() cli.Command {
 				SyncTasks:       utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 				PatchAuthor:     c.String(patchAuthorFlag),
 			}
+			println("Hi 332")
 			var err error
 			diffPath := c.String(diffPathFlagName)
 			base := c.String(baseFlagName)
@@ -335,6 +353,7 @@ func PatchFile() cli.Command {
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
+
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
@@ -344,22 +363,49 @@ func PatchFile() cli.Command {
 			}
 			params.Description = params.getDescription()
 
-			fullPatch, err := os.ReadFile(diffPath)
-			if err != nil {
-				return errors.Wrapf(err, "reading diff file '%s'", diffPath)
+			var diffData localDiff
+			var rp data.RawPatch
+			if diffFromPatch == "" {
+				fullPatch, err := os.ReadFile(diffPath)
+				if err != nil {
+					return errors.Wrapf(err, "reading diff file '%s'", diffPath)
+				}
+				diffData.fullPatch = string(fullPatch)
+				diffData.base = base
+			} else {
+				rp, err = ac.GetRawPatchWithModules(diffFromPatch)
+				if err != nil {
+					return errors.Wrap(err, "getting raw patch with modules")
+				}
+				diffData.fullPatch = rp.Patch.Diff
+				diffData.base = rp.Patch.Githash
 			}
 
-			diffData := &localDiff{
-				fullPatch: string(fullPatch),
-				base:      base,
-			}
-
-			if err = params.validateSubmission(diffData); err != nil {
+			if err = params.validateSubmission(&diffData); err != nil {
 				return err
 			}
-			newPatch, err := params.createPatch(ac, diffData)
+			newPatch, err := params.createPatch(ac, &diffData)
 			if err != nil {
 				return err
+			}
+
+			if len(rp.RawModules) > 0 {
+
+				for _, module := range rp.RawModules {
+					moduleParams := UpdatePatchModuleParams{
+						patchID: newPatch.Id.Hex(),
+						module:  module.Name,
+						patch:   module.Diff,
+						base:    module.Githash,
+					}
+					//todo: write a route to take in all module params
+					err = ac.UpdatePatchModule(moduleParams)
+					if err != nil {
+						return err
+					}
+					grip.Infof("Module '%s' updated.", module.Name)
+
+				}
 			}
 			return params.displayPatch(newPatch, conf.UIServerHost, false)
 		},
