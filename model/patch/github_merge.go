@@ -9,6 +9,8 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v52/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -58,29 +60,45 @@ type githubMergeIntent struct {
 
 // NewGithubIntent creates an Intent from a google/go-github MergeGroup.
 func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeGroupEvent) (Intent, error) {
+	catcher := grip.NewBasicCatcher()
 	if msgDeliveryID == "" {
-		return nil, errors.New("message ID cannot be empty")
+		catcher.Add(errors.New("message ID cannot be empty"))
 	}
 	if caller == "" {
-		return nil, errors.New("empty caller errors")
+		catcher.Add(errors.New("empty caller errors"))
 	}
-	if mg.GetOrg().GetName() == "" {
-		return nil, errors.New("merge group org name cannot be empty")
+	if mg.GetOrg().GetLogin() == "" {
+		catcher.Add(errors.New("merge group org name cannot be empty"))
 	}
 	if mg.GetRepo().GetName() == "" {
-		return nil, errors.New("merge group repo name cannot be empty")
+		catcher.Add(errors.New("merge group repo name cannot be empty"))
 	}
 	if headRef := mg.GetMergeGroup().GetHeadRef(); headRef == "" {
-		return nil, errors.New("merge group head ref cannot be empty")
+		catcher.Add(errors.New("merge group head ref cannot be empty"))
 	}
 	if mg.GetMergeGroup().GetHeadSHA() == "" {
-		return nil, errors.New("head SHA cannot be empty")
+		catcher.Add(errors.New("head SHA cannot be empty"))
 	}
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	grip.Info(message.Fields{
+		"message":    "creating new merge intent for GitHub merge queue",
+		"DocumentID": msgDeliveryID,
+		"MsgID":      msgDeliveryID,
+		"IntentType": GithubMergeIntentType,
+		"Org":        mg.GetOrg().GetLogin(),
+		"Repo":       mg.GetRepo().GetName(),
+		"HeadRef":    mg.GetMergeGroup().GetHeadRef(),
+		"HeadSHA":    mg.GetMergeGroup().GetHeadSHA(),
+		"CalledBy":   caller,
+	})
 	return &githubMergeIntent{
 		DocumentID: msgDeliveryID,
 		MsgID:      msgDeliveryID,
 		IntentType: GithubMergeIntentType,
-		Org:        mg.GetOrg().GetName(),
+		Org:        mg.GetOrg().GetLogin(),
 		Repo:       mg.GetRepo().GetName(),
 		HeadRef:    mg.GetMergeGroup().GetHeadRef(),
 		HeadSHA:    mg.GetMergeGroup().GetHeadSHA(),
