@@ -2220,7 +2220,7 @@ type GroupedTaskStatusCount struct {
 	StatusCounts []*StatusCount `bson:"status_counts"`
 }
 
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2286,7 +2286,12 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	}
 
 	taskStats := []taskStatsForQueryResult{}
-	if err := Aggregate(pipeline, &taskStats); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	if err := cursor.All(ctx, &taskStats); err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	result := TaskStats{}
@@ -2298,7 +2303,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	return &result, nil
 }
 
-func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
 	opts.IncludeBuildVariantDisplayName = true
 	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
@@ -2385,8 +2390,14 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	pipeline = append(pipeline, groupByStatusPipeline...)
 	result := []*GroupedTaskStatusCount{}
 
-	if err := Aggregate(pipeline, &result); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats")
+	}
+	err = cursor.All(ctx, &result)
+	if err != nil {
+		return nil, err
 	}
 	return result, nil
 

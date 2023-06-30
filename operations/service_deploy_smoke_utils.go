@@ -326,7 +326,7 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 			return nil
 		}
 		// Validate that setup_group only runs in first task
-		const firstTaskGroupTaskLog = "smoke test is running first task in the task group"
+		const firstTaskGroupTaskLog = "smoke test is running the first task in the task group"
 		const setupGroupLog = "smoke test is running the setup group"
 		if strings.Contains(page, firstTaskGroupTaskLog) {
 			if !strings.Contains(page, setupGroupLog) {
@@ -362,7 +362,13 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 		}
 	} else if mode == agent.PodMode {
 		// TODO (PM-2617) Add task groups to the container task smoke test once they are supported
-		const containerTaskLog = "smoke test is running the container task"
+		// TODO (EVG-17658): this test is highly fragile and has a chance of
+		// breaking if you change any of the container task YAML setup (e.g.
+		// change any container-related configuration in agent.yml). If you
+		// change the container task setup, you will likely also have to change
+		// the smoke testdata. EVG-17658 should address the issues with the
+		// smoke test.
+		const containerTaskLog = "container task"
 		if !strings.Contains(page, containerTaskLog) {
 			return errors.Errorf("did not find expected container task log: '%s'", containerTaskLog)
 		}

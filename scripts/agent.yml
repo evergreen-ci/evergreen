@@ -35,11 +35,11 @@ task_groups:
             set -o errexit
             echo "smoke test is running the teardown task"
     tasks:
-      - first_task_in_task_group
-      - second_task_in_task_group
-      - test
-      - third_task_in_task_group
-      - fourth_task_in_task_group
+      - smoke_test_first_task_in_task_group
+      - smoke_test_second_task_in_task_group
+      - smoke_test_commands
+      - smoke_test_third_task_in_task_group
+      - smoke_test_fourth_task_in_task_group
 
 tasks:
   - name: smoke_test_first_task_in_task_group
@@ -74,14 +74,16 @@ tasks:
             set -o verbose
             set -o errexit
             echo "smoke test is running the fourth task in the task group"
-  - name: smoke_test_container_task
+  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
+  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
+  - name: container-task
     commands:
       - command: shell.exec
         params:
           script: |
             set -o verbose
             set -o errexit
-            echo "smoke test is running the container task"
+            echo "container task"
   - name: smoke_test_generate_task
     commands:
       - command: git.get_project
@@ -92,7 +94,7 @@ tasks:
         params:
           files:
             - agent/command/testdata/generated.json
-  - name: test
+  - name: smoke_test_commands
     commands:
       - command: git.get_project
         params:
@@ -234,13 +236,15 @@ buildvariants:
       - localhost
     tasks:
       - name: my_group
-      - name: generate_task
+      - name: smoke_test_generate_task
+  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
+  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
   - name: pod_bv
     display_name: pod_bv
     run_on:
       - container
     tasks:
-      - name: container_task
+      - name: container-task
 
 # TODO (EVG-17658): Refactor smoke tests to allow for faking agent creation
 # The following configuration is currently unused since the container task
