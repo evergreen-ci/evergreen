@@ -615,6 +615,8 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		if err = setTasksToPreviousFailed(patchDoc, reusePatch, project); err != nil {
 			return "", errors.Wrap(err, "settings tasks to previous failed")
 		}
+	} else if j.IntentType == patch.GithubIntentType {
+		patchDoc.Tasks = reusePatch.Tasks
 	} else {
 		// Only add activated tasks from previous patch
 		query := db.Query(bson.M{
