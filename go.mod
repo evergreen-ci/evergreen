@@ -46,7 +46,7 @@ require (
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
-	github.com/smartystreets/goconvey v1.8.0
+	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.13
 	github.com/vektah/gqlparser/v2 v2.5.1
@@ -178,7 +178,7 @@ require (
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/slack-go/slack v0.12.1 // indirect
-	github.com/smartystreets/assertions v1.13.1 // indirect
+	github.com/smarty/assertions v1.15.0 // indirect
 	github.com/square/certstrap v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
