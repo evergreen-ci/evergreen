@@ -136,9 +136,13 @@ func (opts *cloneOpts) setLocation() error {
 
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over global settings.
-func getProjectMethodAndToken(projectToken, globalToken, globalCloneMethod string) (string, string, error) {
+func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMethod string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
+		return evergreen.CloneMethodOAuth, token, err
+	}
+	if appToken != "" {
+		token, err := parseToken(appToken)
 		return evergreen.CloneMethodOAuth, token, err
 	}
 	token, err := parseToken(globalToken)
@@ -492,7 +496,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
+	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Expansions.Get(evergreen.GithubAppToken), conf.GetCloneMethod())
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
