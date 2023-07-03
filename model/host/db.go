@@ -882,8 +882,8 @@ func Count(ctx context.Context, query bson.M) (int, error) {
 	return int(res), errors.Wrap(err, "getting host count")
 }
 
-// UpdateOneWithContext updates one host.
-func UpdateOneWithContext(ctx context.Context, query bson.M, update bson.M) error {
+// UpdateOne updates one host.
+func UpdateOne(ctx context.Context, query bson.M, update bson.M) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update)
 	if err != nil {
 		return err
@@ -1105,7 +1105,7 @@ func AggregateLastContainerFinishTimes(ctx context.Context) ([]FinishTime, error
 }
 
 func (h *Host) SetVolumes(ctx context.Context, volumes []VolumeAttachment) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,

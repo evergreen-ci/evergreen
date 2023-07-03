@@ -961,7 +961,7 @@ func TestUpsert(t *testing.T) {
 				So(host.Status, ShouldEqual, evergreen.HostRunning)
 				So(host.Host, ShouldEqual, "host")
 
-				err = UpdateOneWithContext(
+				err = UpdateOne(
 					ctx,
 					bson.M{
 						IdKey: host.Id,
@@ -1083,7 +1083,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
 			Convey("after unsetting the host's lct", func() {
-				err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
+				err := UpdateOne(ctx, bson.M{IdKey: h.Id},
 					bson.M{
 						"$unset": bson.M{LastCommunicationTimeKey: 0},
 					})

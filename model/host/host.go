@@ -556,7 +556,7 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		update["$unset"] = unsetFields
 	}
 
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		query,
 		update,
@@ -591,7 +591,7 @@ func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, 
 		return errors.New(msg)
 	}
 
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
@@ -624,7 +624,7 @@ func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, 
 // SetProvisioning marks the host as initializing. Only allow this
 // if the host is uninitialized.
 func (h *Host) SetProvisioning(ctx context.Context) error {
-	return UpdateOneWithContext(
+	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
@@ -687,7 +687,7 @@ func (h *Host) SetStopping(ctx context.Context, user string) error {
 }
 
 func (h *Host) SetStopped(ctx context.Context, user string) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
@@ -720,7 +720,7 @@ func (h *Host) SetStopped(ctx context.Context, user string) error {
 }
 
 func (h *Host) SetUnprovisioned(ctx context.Context) error {
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
@@ -748,7 +748,7 @@ func (h *Host) SetQuarantined(ctx context.Context, user string, logs string) err
 // and in the database.
 func (h *Host) CreateSecret(ctx context.Context) error {
 	secret := utility.RandomString()
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{SecretKey: secret}},
@@ -761,7 +761,7 @@ func (h *Host) CreateSecret(ctx context.Context) error {
 }
 
 func (h *Host) SetBillingStartTime(ctx context.Context, startTime time.Time) error {
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{BillingStartTimeKey: startTime}},
@@ -774,7 +774,7 @@ func (h *Host) SetBillingStartTime(ctx context.Context, startTime time.Time) err
 
 func (h *Host) SetAgentStartTime(ctx context.Context) error {
 	now := time.Now()
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{AgentStartTimeKey: now}},
@@ -890,7 +890,7 @@ func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Enviro
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
 func (h *Host) UpdateJasperCredentialsID(ctx context.Context, id string) error {
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
@@ -904,7 +904,7 @@ func (h *Host) UpdateJasperCredentialsID(ctx context.Context, id string) error {
 // UpdateLastCommunicated sets the host's last communication time to the current time.
 func (h *Host) UpdateLastCommunicated(ctx context.Context) error {
 	now := time.Now()
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{
@@ -920,7 +920,7 @@ func (h *Host) UpdateLastCommunicated(ctx context.Context) error {
 
 // ResetLastCommunicated sets the LastCommunicationTime to be zero.
 func (h *Host) ResetLastCommunicated(ctx context.Context) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{LastCommunicationTimeKey: time.Unix(0, 0)}})
@@ -950,7 +950,7 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 
 // SetDNSName updates the DNS name for a given host once
 func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:  h.Id,
@@ -979,7 +979,7 @@ func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
 }
 
 func (h *Host) SetIPv6Address(ctx context.Context, ipv6Address string) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1001,7 +1001,7 @@ func (h *Host) SetIPv6Address(ctx context.Context, ipv6Address string) error {
 
 // probably don't want to store the port mapping exactly this way
 func (h *Host) SetPortMapping(ctx context.Context, portsMap PortMap) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1020,7 +1020,7 @@ func (h *Host) SetPortMapping(ctx context.Context, portsMap PortMap) error {
 }
 
 func (h *Host) UpdateCachedDistroProviderSettings(ctx context.Context, settingsDocuments []*birch.Document) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{
@@ -1039,7 +1039,7 @@ func (h *Host) UpdateCachedDistroProviderSettings(ctx context.Context, settingsD
 
 func (h *Host) MarkAsProvisioned(ctx context.Context) error {
 	now := time.Now()
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1081,7 +1081,7 @@ func (h *Host) MarkAsProvisioned(ctx context.Context) error {
 // server but the host is not necessarily running yet.
 func (h *Host) SetProvisionedNotRunning(ctx context.Context) error {
 	now := time.Now()
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1111,7 +1111,7 @@ func (h *Host) UpdateStartingToRunning(ctx context.Context) error {
 		return nil
 	}
 
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:          h.Id,
@@ -1181,7 +1181,7 @@ func (h *Host) setAwaitingJasperRestart(ctx context.Context, user string) error 
 	}
 
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	if err := UpdateOneWithContext(ctx, bson.M{
+	if err := UpdateOne(ctx, bson.M{
 		IdKey:        h.Id,
 		StatusKey:    bson.M{"$in": allowedStatuses},
 		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
@@ -1256,7 +1256,7 @@ func (h *Host) setAwaitingReprovisionToNew(ctx context.Context, user string) err
 	}
 
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	if err := UpdateOneWithContext(ctx, bson.M{
+	if err := UpdateOne(ctx, bson.M{
 		IdKey:        h.Id,
 		StatusKey:    bson.M{"$in": allowedStatuses},
 		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
@@ -1310,7 +1310,7 @@ func (h *Host) MarkAsReprovisioning(ctx context.Context) error {
 		needsAgentMonitor = h.StartedBy == evergreen.User
 	}
 
-	err := UpdateOneWithContext(ctx, bson.M{
+	err := UpdateOne(ctx, bson.M{
 		IdKey:               h.Id,
 		NeedsReprovisionKey: h.NeedsReprovision,
 		StatusKey:           bson.M{"$in": allowedStatuses},
@@ -1341,7 +1341,7 @@ func (h *Host) MarkAsReprovisioning(ctx context.Context) error {
 // MarkAsReprovisioned indicates that the host was successfully reprovisioned.
 func (h *Host) MarkAsReprovisioned(ctx context.Context) error {
 	now := time.Now()
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1375,7 +1375,7 @@ func (h *Host) MarkAsReprovisioned(ctx context.Context) error {
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
 func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) error {
 	now := time.Now()
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:                   h.Id,
@@ -1439,7 +1439,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 func (h *Host) ClearRunningTask(ctx context.Context) error {
 	hadRunningTask := h.RunningTask != ""
 	doUpdate := func(update bson.M) error {
-		return UpdateOneWithContext(ctx, bson.M{IdKey: h.Id}, update)
+		return UpdateOne(ctx, bson.M{IdKey: h.Id}, update)
 	}
 	if err := h.clearRunningTaskWithFunc(doUpdate); err != nil {
 		return err
@@ -1557,7 +1557,7 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 
 // SetAgentRevision sets the updated agent revision for the host
 func (h *Host) SetAgentRevision(ctx context.Context, agentRevision string) error {
-	err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
+	err := UpdateOne(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{AgentRevisionKey: agentRevision}})
 	if err != nil {
 		return err
@@ -1593,7 +1593,7 @@ func (h *Host) IsWaitingForAgent() bool {
 
 // SetNeedsNewAgent sets the "needs new agent" flag on the host.
 func (h *Host) SetNeedsNewAgent(ctx context.Context, needsAgent bool) error {
-	err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
+	err := UpdateOne(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
 		return err
@@ -1605,7 +1605,7 @@ func (h *Host) SetNeedsNewAgent(ctx context.Context, needsAgent bool) error {
 // SetNeedsNewAgentMonitor sets the "needs new agent monitor" flag on the host
 // to indicate that the host needs to have the agent monitor deployed.
 func (h *Host) SetNeedsNewAgentMonitor(ctx context.Context, needsAgentMonitor bool) error {
-	err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id},
+	err := UpdateOne(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})
 	if err != nil {
 		return err
@@ -1630,7 +1630,7 @@ func (h *Host) SetExpirationTime(ctx context.Context, expirationTime time.Time) 
 	// update the in-memory host, then the database
 	h.ExpirationTime = expirationTime
 	h.NoExpiration = false
-	return UpdateOneWithContext(
+	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1649,7 +1649,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return nil
 	}
 
-	if err := UpdateOneWithContext(
+	if err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
@@ -1847,7 +1847,7 @@ func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
 }
 
 func (h *Host) SetExtId(ctx context.Context) error {
-	return UpdateOneWithContext(
+	return UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
@@ -1856,7 +1856,7 @@ func (h *Host) SetExtId(ctx context.Context) error {
 
 func (h *Host) SetDisplayName(ctx context.Context, newName string) error {
 	h.DisplayName = newName
-	return UpdateOneWithContext(
+	return UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{DisplayNameKey: h.DisplayName}},
@@ -1872,7 +1872,7 @@ func (h *Host) AddSSHKeyName(ctx context.Context, name string) error {
 	} else {
 		update = bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}}
 	}
-	if err := UpdateOneWithContext(ctx, bson.M{IdKey: h.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, update); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -2183,7 +2183,7 @@ func (h *Host) UpdateLastContainerFinishTime(ctx context.Context, t time.Time) e
 		},
 	}
 
-	if err := UpdateOneWithContext(ctx, selector, update); err != nil {
+	if err := UpdateOne(ctx, selector, update); err != nil {
 		return errors.Wrapf(err, "updating last container finish time for host '%s'", h.Id)
 	}
 
@@ -2556,7 +2556,7 @@ func (h *Host) DeleteTags(keys []string) {
 
 // SetTags updates the host's instance tags in the database.
 func (h *Host) SetTags(ctx context.Context) error {
-	return UpdateOneWithContext(
+	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -2607,7 +2607,7 @@ func MakeHostTags(tagSlice []string) ([]Tag, error) {
 
 // SetInstanceType updates the host's instance type in the database.
 func (h *Host) SetInstanceType(ctx context.Context, instanceType string) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -2767,7 +2767,7 @@ func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) er
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)
-	return UpdateOneWithContext(
+	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -2795,7 +2795,7 @@ func (h *Host) MarkShouldExpire(ctx context.Context, expireOnValue string) error
 	if expireOnValue != "" {
 		h.addTag(makeExpireOnTag(expireOnValue), true)
 	}
-	return UpdateOneWithContext(
+	return UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{
@@ -2812,7 +2812,7 @@ func (h *Host) MarkShouldExpire(ctx context.Context, expireOnValue string) error
 // This is for internal use, and should only be used on hosts that
 // will be terminated imminently; otherwise, the host will fail to boot.
 func (h *Host) UnsetHomeVolume(ctx context.Context) error {
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{HomeVolumeIDKey: ""}},
@@ -2827,7 +2827,7 @@ func (h *Host) UnsetHomeVolume(ctx context.Context) error {
 
 func (h *Host) SetHomeVolumeID(ctx context.Context, volumeID string) error {
 	h.HomeVolumeID = volumeID
-	return UpdateOneWithContext(ctx, bson.M{
+	return UpdateOne(ctx, bson.M{
 		IdKey:           h.Id,
 		HomeVolumeIDKey: "",
 	},

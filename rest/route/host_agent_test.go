@@ -141,7 +141,7 @@ func TestHostNextTask(t *testing.T) {
 				"DoesntReprovisionIfNotNeeded": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					h, err := host.FindOneId(ctx, "id")
 					require.NoError(t, err)
-					require.NoError(t, host.UpdateOneWithContext(ctx, bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}))
+					require.NoError(t, host.UpdateOne(ctx, bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}))
 					h.NeedsReprovision = ""
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = h

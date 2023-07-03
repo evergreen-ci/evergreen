@@ -585,7 +585,7 @@ func (h *Host) CreateServicePassword(ctx context.Context) error {
 		return errors.New("generating valid service password")
 	}
 
-	err := UpdateOneWithContext(
+	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ServicePasswordKey: password}},
