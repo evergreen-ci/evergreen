@@ -863,6 +863,8 @@ func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([
 	return hosts, nil
 }
 
+// Aggregate performs the aggregation pipeline on the host collection and returns the resulting hosts.
+// Implement the aggregation directly if the result of the pipeline is not an array of hosts.
 func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.AggregateOptions) ([]Host, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline, options...)
 	if err != nil {
@@ -901,11 +903,13 @@ func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 	return errors.Wrap(err, "updating hosts")
 }
 
+// InsertOne inserts the host into the hosts collection.
 func InsertOne(ctx context.Context, h *Host, options ...*options.InsertOneOptions) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, h)
 	return errors.Wrap(err, "inserting host")
 }
 
+// InsertMany inserts the hosts into the hosts collection.
 func InsertMany(ctx context.Context, hosts []Host, options ...*options.InsertManyOptions) error {
 	docs := make([]interface{}, len(hosts))
 	for idx := range hosts {
@@ -920,11 +924,13 @@ func UpsertOne(ctx context.Context, query bson.M, update bson.M) (*mongo.UpdateR
 	return evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update, options.Update().SetUpsert(true))
 }
 
+// DeleteOne removes a single host matching the filter from the hosts collection.
 func DeleteOne(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, filter, options...)
 	return errors.Wrap(err, "deleting host")
 }
 
+// DeleteMany removes all hosts matching the filter from the hosts collection.
 func DeleteMany(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteMany(ctx, filter, options...)
 	return errors.Wrap(err, "deleting hosts")
@@ -1135,6 +1141,9 @@ func (h *Host) AddVolumeToHost(ctx context.Context, newVolume *VolumeAttachment)
 	if err := res.Err(); err != nil {
 		return errors.Wrap(err, "finding host and adding volume")
 	}
+	if err := res.Decode(h); err != nil {
+		return errors.Wrap(err, "decoding host")
+	}
 
 	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(h.Id),
 		message.Fields{
@@ -1159,6 +1168,9 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 	)
 	if err := res.Err(); err != nil {
 		return errors.Wrap(err, "finding host and removing volume")
+	}
+	if err := res.Decode(h); err != nil {
+		return errors.Wrap(err, "decoding host")
 	}
 
 	grip.Error(message.WrapError(UnsetVolumeHost(volumeId),

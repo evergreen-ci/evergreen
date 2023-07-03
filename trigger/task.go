@@ -916,6 +916,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project, testNames string) (*m
 	})
 }
 
+// JiraIssueParameters specify a task payload.
 type JiraIssueParameters struct {
 	SubID     string
 	Project   string
@@ -927,6 +928,7 @@ type JiraIssueParameters struct {
 	Host      *host.Host
 }
 
+// JIRATaskPayload creates a Jira issue for a given task.
 func JIRATaskPayload(params JiraIssueParameters) (*message.JiraIssue, error) {
 	buildDoc, err := build.FindOne(build.ById(params.Task.BuildId))
 	if err != nil {

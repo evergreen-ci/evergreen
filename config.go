@@ -370,7 +370,7 @@ func UpdateConfig(config *Settings) error {
 	return UpdateConfigContext(ctx, config)
 }
 
-// UpdateConfigContext updates all evergreen settings documents in DB
+// UpdateConfigContext updates all evergreen settings documents in the DB.
 func UpdateConfigContext(ctx context.Context, config *Settings) error {
 	// update the root config document
 	if err := config.Set(ctx); err != nil {
