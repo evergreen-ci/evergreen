@@ -104,7 +104,7 @@ func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([
 		return nil, errors.Wrap(err, "finding distros")
 	}
 	var distros []Distro
-	if err := cur.Decode(&distros); err != nil {
+	if err := cur.All(ctx, &distros); err != nil {
 		return nil, errors.Wrap(err, "decoding distros")
 	}
 
