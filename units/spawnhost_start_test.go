@@ -27,7 +27,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			Provider: evergreen.ProviderNameMock,
 			Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
 		}
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 		mock.Set(h.Id, cloud.MockInstance{
 			Status: cloud.StatusRunning,
 		})
@@ -47,7 +47,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			Provider: evergreen.ProviderNameMock,
 			Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
 		}
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 		mock.Set(h.Id, cloud.MockInstance{
 			Status: cloud.StatusStopped,
 		})

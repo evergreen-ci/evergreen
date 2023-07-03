@@ -64,6 +64,9 @@ func TestHostParseAndValidate(t *testing.T) {
 }
 
 func TestHostPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
 		So(db.Clear(host.Collection), ShouldBeNil)
@@ -82,7 +85,7 @@ func TestHostPaginator(t *testing.T) {
 					Status: evergreen.HostRunning,
 				}
 				cachedHosts = append(cachedHosts, nextHost)
-				So(nextHost.Insert(), ShouldBeNil)
+				So(nextHost.Insert(ctx), ShouldBeNil)
 			}
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {

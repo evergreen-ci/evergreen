@@ -306,7 +306,7 @@ func TestHostCreateDocker(t *testing.T) {
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert(ctx))
@@ -379,7 +379,7 @@ func TestGetDockerLogs(t *testing.T) {
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert(ctx))
@@ -493,7 +493,7 @@ func TestGetDockerStatus(t *testing.T) {
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert(ctx))

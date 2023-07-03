@@ -180,7 +180,7 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		return
 	}
 
-	if err := intentHost.Insert(); err != nil {
+	if err := intentHost.Insert(ctx); err != nil {
 		j.AddError(errors.Wrap(err, "inserting new intent host"))
 		return
 	}

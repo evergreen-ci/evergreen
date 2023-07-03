@@ -748,7 +748,7 @@ func RemoveStaleInitializing(ctx context.Context, distroID string) error {
 		query[key] = distroID
 	}
 
-	return DeleteAll(ctx, query)
+	return DeleteMany(ctx, query)
 }
 
 // MarkStaleBuildingAsFailed marks building hosts that have been stuck building
@@ -856,7 +856,7 @@ func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([
 		return nil, errors.Wrap(err, "finding hosts")
 	}
 	var hosts []Host
-	if err = cur.Decode(&hosts); err != nil {
+	if err = cur.All(ctx, &hosts); err != nil {
 		return nil, errors.Wrap(err, "decoding hosts")
 	}
 
@@ -869,7 +869,7 @@ func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.Aggre
 		return nil, errors.Wrap(err, "aggregating hosts")
 	}
 	var hosts []Host
-	if err = cur.Decode(&hosts); err != nil {
+	if err = cur.All(ctx, &hosts); err != nil {
 		return nil, errors.Wrap(err, "decoding hosts")
 	}
 
@@ -901,12 +901,31 @@ func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 	return errors.Wrap(err, "updating hosts")
 }
 
+func InsertOne(ctx context.Context, h *Host, options ...*options.InsertOneOptions) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, h)
+	return errors.Wrap(err, "inserting host")
+}
+
+func InsertMany(ctx context.Context, hosts []Host, options ...*options.InsertManyOptions) error {
+	docs := make([]interface{}, len(hosts))
+	for idx := range hosts {
+		docs[idx] = &hosts[idx]
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, docs)
+	return errors.Wrap(err, "inserting hosts")
+}
+
 // UpsertOne upserts a host.
 func UpsertOne(ctx context.Context, query bson.M, update bson.M) (*mongo.UpdateResult, error) {
 	return evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, query, update, options.Update().SetUpsert(true))
 }
 
-func DeleteAll(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
+func DeleteOne(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, filter, options...)
+	return errors.Wrap(err, "deleting host")
+}
+
+func DeleteMany(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteMany(ctx, filter, options...)
 	return errors.Wrap(err, "deleting hosts")
 }
@@ -1078,7 +1097,7 @@ func AggregateLastContainerFinishTimes(ctx context.Context) ([]FinishTime, error
 		return nil, errors.Wrap(err, "aggregating parent finish times")
 	}
 	var times []FinishTime
-	if err = cur.Decode(&times); err != nil {
+	if err = cur.All(ctx, &times); err != nil {
 		return nil, errors.Wrap(err, "decoding finish times")
 	}
 
@@ -1247,7 +1266,7 @@ func StartingHostsByClient(ctx context.Context, limit int) (map[ClientOptions][]
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating starting hosts by client options")
 	}
-	if err = cur.Decode(&results); err != nil {
+	if err = cur.All(ctx, &results); err != nil {
 		return nil, errors.Wrap(err, "decoding starting hosts by client options")
 	}
 

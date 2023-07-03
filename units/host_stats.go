@@ -65,7 +65,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 		j.logger = logging.MakeGrip(grip.GetSender())
 	}
 
-	inactiveHosts, err := host.CountInactiveHostsByProvider()
+	inactiveHosts, err := host.CountInactiveHostsByProvider(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting inactive hosts by cloud provider"))
 		return
@@ -110,7 +110,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 		}
 	}
 
-	count, err := host.CountVirtualWorkstationsByInstanceType()
+	count, err := host.CountVirtualWorkstationsByInstanceType(ctx)
 	j.AddError(err)
 	grip.Info(message.Fields{
 		"message": "virtual workstations",

@@ -171,7 +171,7 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 		})
 	}
 	for _, h := range hosts {
-		require.NoError(h.Insert())
+		require.NoError(h.Insert(ctx))
 	}
 	tasks := []task.Task{}
 	for i := 0; i < 10; i++ {
@@ -289,7 +289,7 @@ func TestFindNextTaskWithLastTask(t *testing.T) {
 		})
 	}
 	for _, h := range hosts {
-		require.NoError(h.Insert())
+		require.NoError(h.Insert(ctx))
 	}
 	tasks := []task.Task{}
 	for i := 0; i < 10; i++ {

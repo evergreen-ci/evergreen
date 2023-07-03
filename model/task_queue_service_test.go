@@ -1528,7 +1528,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 		LastBuildVariant: "variant_1",
 		Status:           evergreen.HostRunning,
 	}
-	s.Require().NoError(h1.Insert())
+	s.Require().NoError(h1.Insert(ctx))
 
 	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(e)
@@ -2218,7 +2218,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 		LastBuildVariant: "variant_1",
 		Status:           evergreen.HostRunning,
 	}
-	s.Require().NoError(h1.Insert())
+	s.Require().NoError(h1.Insert(ctx))
 
 	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	//////////////////////////////////////////////////////////////////////////////

@@ -109,9 +109,9 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	}
 	s.NoError(d.Insert(ctx))
 	s.NoError(parent.Insert(ctx))
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
@@ -169,9 +169,9 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	}
 	s.NoError(d.Insert(ctx))
 	s.NoError(parent.Insert(ctx))
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
@@ -220,9 +220,9 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	}
 	s.NoError(d.Insert(ctx))
 	s.NoError(parent.Insert(ctx))
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 5, pool)
 	s.NoError(err)
@@ -321,8 +321,8 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 		ParentID: "host1",
 	}
 	s.NoError(d.Insert(ctx))
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 2, pool)
 	s.NoError(err)
@@ -383,9 +383,9 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 
 	s.NoError(d.Insert(ctx))
 	s.NoError(parent.Insert(ctx))
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 4, pool)
 	s.NoError(err)

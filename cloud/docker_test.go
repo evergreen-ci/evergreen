@@ -32,6 +32,9 @@ func (s *DockerSuite) SetupSuite() {
 }
 
 func (s *DockerSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.client = &dockerClientMock{
 		hasOpenPorts: true,
 	}
@@ -57,7 +60,7 @@ func (s *DockerSuite) SetupTest() {
 			Image: "http://0.0.0.0:8000/docker_image.tgz",
 		},
 	}
-	s.NoError(s.parentHost.Insert())
+	s.NoError(s.parentHost.Insert(ctx))
 }
 
 func (s *DockerSuite) TearDownTest() {
@@ -83,7 +86,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	defer cancel()
 
 	hostA := host.NewIntent(s.hostOpts)
-	s.NoError(hostA.Insert())
+	s.NoError(hostA.Insert(ctx))
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NoError(err)
 	s.Require().NotNil(hostA)
@@ -91,7 +94,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	s.NoError(err)
 
 	hostB := host.NewIntent(s.hostOpts)
-	s.NoError(hostB.Insert())
+	s.NoError(hostB.Insert(ctx))
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NoError(err)
 	s.Require().NotNil(hostB)
@@ -114,7 +117,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	myHost := host.NewIntent(s.hostOpts)
-	s.NoError(myHost.Insert())
+	s.NoError(myHost.Insert(ctx))
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -174,13 +177,13 @@ func (s *DockerSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
 	hostOne := host.NewIntent(s.hostOpts)
-	s.NoError(hostOne.Insert())
+	s.NoError(hostOne.Insert(ctx))
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
 	hostTwo := host.NewIntent(s.hostOpts)
-	s.NoError(hostTwo.Insert())
+	s.NoError(hostTwo.Insert(ctx))
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -195,14 +198,14 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 	defer cancel()
 
 	h := host.NewIntent(s.hostOpts)
-	s.NoError(h.Insert())
+	s.NoError(h.Insert(ctx))
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
 	s.NotNil(h)
 
 	mock.failCreate = true
 	h = host.NewIntent(s.hostOpts)
-	s.NoError(h.Insert())
+	s.NoError(h.Insert(ctx))
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
@@ -217,7 +220,7 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	defer cancel()
 
 	intent := host.NewIntent(s.hostOpts)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(ctx))
 	h, err := s.manager.SpawnHost(ctx, intent)
 	s.NoError(err)
 	s.NotNil(h)

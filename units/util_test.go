@@ -53,9 +53,9 @@ func TestHandlePoisonedHost(t *testing.T) {
 				RunningTask: t1.Id,
 			}
 
-			require.NoError(t, parent.Insert())
-			require.NoError(t, container1.Insert())
-			require.NoError(t, container2.Insert())
+			require.NoError(t, parent.Insert(ctx))
+			require.NoError(t, container1.Insert(ctx))
+			require.NoError(t, container2.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, container1, ""))
 
@@ -94,7 +94,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Status:      evergreen.HostRunning,
 				RunningTask: t1.Id,
 			}
-			require.NoError(t, hostRunningTask.Insert())
+			require.NoError(t, hostRunningTask.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, hostRunningTask, ""))
 			hostRunningTask, err := host.FindOneId(ctx, hostRunningTask.Id)
@@ -111,7 +111,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Status:   evergreen.HostRunning,
 				Provider: evergreen.ProviderNameStatic,
 			}
-			require.NoError(t, static.Insert())
+			require.NoError(t, static.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, static, ""))
 			static, err := host.FindOneId(ctx, static.Id)
@@ -123,7 +123,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Id:     "decommissioned",
 				Status: evergreen.HostDecommissioned,
 			}
-			require.NoError(t, decommissioned.Insert())
+			require.NoError(t, decommissioned.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, decommissioned, ""))
 			decommissioned, err := host.FindOneId(ctx, decommissioned.Id)
@@ -135,7 +135,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Id:     "terminated",
 				Status: evergreen.HostTerminated,
 			}
-			require.NoError(t, terminated.Insert())
+			require.NoError(t, terminated.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, terminated, ""))
 			terminated, err := host.FindOneId(ctx, terminated.Id)

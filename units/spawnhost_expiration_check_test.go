@@ -41,7 +41,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 		ExpirationTime: time.Now(),
 	}
 
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	mock.Set(h.Id, cloud.MockInstance{
 		Status: cloud.StatusRunning,
 	})

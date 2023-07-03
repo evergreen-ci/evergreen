@@ -86,7 +86,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert())
+		require.NoError(t, host1.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(ctx, env, t)
@@ -117,7 +117,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			LastCommunicationTime: time.Now().Add(-30 * time.Minute),
 			StartedBy:             evergreen.User,
 		}
-		require.NoError(t, host1.Insert())
+		require.NoError(t, host1.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
@@ -159,8 +159,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			Provisioned:           true,
 		}
-		require.NoError(t, host1.Insert())
-		require.NoError(t, host2.Insert())
+		require.NoError(t, host1.Insert(ctx))
+		require.NoError(t, host2.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 1, num)
@@ -194,7 +194,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			NeedsNewAgent:         true,
 		}
-		require.NoError(t, host1.Insert())
+		require.NoError(t, host1.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
@@ -228,7 +228,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			NeedsNewAgentMonitor:  true,
 		}
-		require.NoError(t, host1.Insert())
+		require.NoError(t, host1.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
@@ -262,7 +262,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			NeedsNewAgent:         true,
 		}
-		require.NoError(t, host1.Insert())
+		require.NoError(t, host1.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(ctx, env, t)
@@ -350,11 +350,11 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert())
-		require.NoError(t, host2.Insert())
-		require.NoError(t, host3.Insert())
-		require.NoError(t, host4.Insert())
-		require.NoError(t, host5.Insert())
+		require.NoError(t, host1.Insert(ctx))
+		require.NoError(t, host2.Insert(ctx))
+		require.NoError(t, host3.Insert(ctx))
+		require.NoError(t, host4.Insert(ctx))
+		require.NoError(t, host5.Insert(ctx))
 
 		// If we encounter missing distros, we decommission hosts from those
 		// distros.
@@ -405,8 +405,8 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert())
-		require.NoError(t, host2.Insert())
+		require.NoError(t, host1.Insert(ctx))
+		require.NoError(t, host2.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
@@ -451,9 +451,9 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 			StartedBy:    evergreen.User,
 			RunningTask:  "t1",
 		}
-		require.NoError(t, host1.Insert())
-		require.NoError(t, host2.Insert())
-		require.NoError(t, host3.Insert())
+		require.NoError(t, host1.Insert(ctx))
+		require.NoError(t, host2.Insert(ctx))
+		require.NoError(t, host3.Insert(ctx))
 
 		// Only the oldest host not running a task should be flagged as idle.
 		num, hosts := numIdleHostsFound(ctx, env, t)
@@ -552,12 +552,12 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 		HasContainers: false,
 		CreationTime:  time.Now().Add(-60 * time.Minute),
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
 
 	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, &env)
 	assert.NoError(err)

@@ -40,10 +40,10 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 		Status:   evergreen.HostUninitialized,
 		ParentID: "parent-1",
 	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
-	assert.NoError(h4.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
+	assert.NoError(h4.Insert(ctx))
 
 	j := NewHostMonitorContainerStateJob(env, h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)

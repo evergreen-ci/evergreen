@@ -329,7 +329,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 			)),
 		)),
 	)}
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
@@ -377,7 +377,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 			)),
 		)),
 	)}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
@@ -425,7 +425,7 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 			)),
 		)),
 	)}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
@@ -464,7 +464,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h.SpawnOptions.TaskID = "task_1"
 	h.StartedBy = "task_1"
 	h.SpawnOptions.SpawnedByTask = true
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 	s.Require().NoError(t.Insert())
 	newVars := &model.ProjectVars{
 		Id: project,
@@ -517,15 +517,15 @@ func (s *EC2Suite) TestModifyHost() {
 	defer cancel()
 
 	s.h.Status = evergreen.HostRunning
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	s.Require().NoError(s.h.Remove())
+	s.Require().NoError(s.h.Remove(ctx))
 
 	s.h.CreationTime = time.Now()
 	s.h.ExpirationTime = s.h.CreationTime.Add(time.Hour * 24 * 7)
 	s.h.NoExpiration = false
 	s.h.Status = evergreen.HostStopped
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 
 	// updating instance tags and instance type
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
@@ -565,21 +565,21 @@ func (s *EC2Suite) TestModifyHost() {
 	}
 	s.Require().NoError(volumeToMount.Insert())
 	s.h.Zone = "us-east-1a"
-	s.Require().NoError(s.h.Remove())
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Remove(ctx))
+	s.Require().NoError(s.h.Insert(ctx))
 	changes = host.HostModifyOptions{
 		AttachVolume: "thang",
 	}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	_, err = host.FindOne(ctx, host.ById(s.h.Id))
 	s.NoError(err)
-	s.Require().NoError(s.h.Remove())
+	s.Require().NoError(s.h.Remove(ctx))
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	status, err := s.onDemandManager.GetInstanceStatus(ctx, s.h)
@@ -598,7 +598,7 @@ func (s *EC2Suite) TestTerminateInstance() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	s.NoError(s.h.Insert())
+	s.NoError(s.h.Insert(ctx))
 	s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
 	found, err := host.FindOne(ctx, host.ById("h1"))
 	s.Equal(evergreen.HostTerminated, found.Status)
@@ -615,7 +615,7 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 	}()
 
 	s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-	s.NoError(s.h.Insert())
+	s.NoError(s.h.Insert(ctx))
 
 	creds, err := s.h.GenerateJasperCredentials(ctx, s.env)
 	s.Require().NoError(err)
@@ -646,7 +646,7 @@ func (s *EC2Suite) TestStopInstance() {
 	}
 	for _, h := range unstoppableHosts {
 		h.Distro = s.distro
-		s.Require().NoError(h.Insert())
+		s.Require().NoError(h.Insert(ctx))
 	}
 	for _, h := range unstoppableHosts {
 		s.Error(s.onDemandManager.StopInstance(ctx, h, evergreen.User))
@@ -664,7 +664,7 @@ func (s *EC2Suite) TestStopInstance() {
 	}
 	for _, h := range stoppableHosts {
 		h.Distro = s.distro
-		s.Require().NoError(h.Insert())
+		s.Require().NoError(h.Insert(ctx))
 	}
 
 	for _, h := range stoppableHosts {
@@ -693,7 +693,7 @@ func (s *EC2Suite) TestStartInstance() {
 	}
 	for _, h := range hosts {
 		h.Distro = s.distro
-		s.NoError(h.Insert())
+		s.NoError(h.Insert(ctx))
 	}
 
 	s.Error(s.onDemandManager.StartInstance(ctx, hosts[0], evergreen.User))
@@ -970,7 +970,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		},
 	}
 	for _, h := range hosts {
-		s.NoError(h.Insert())
+		s.NoError(h.Insert(s.ctx))
 	}
 
 	manager := s.onDemandManager.(*ec2Manager)
@@ -1035,7 +1035,7 @@ func (s *EC2Suite) TestCacheHostData() {
 
 	ec2m := s.onDemandManager.(*ec2Manager)
 
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 
 	instance := &types.Instance{Placement: &types.Placement{}}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
@@ -1199,7 +1199,7 @@ func (s *EC2Suite) TestSetNextSubnet() {
 			},
 		},
 	}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 	s.impl.region = evergreen.DefaultEC2Region
 
 	// set to the first supporting subnet
@@ -1262,7 +1262,7 @@ func (s *EC2Suite) TestAttachVolume() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	newAttachment := host.VolumeAttachment{
 		VolumeID:   "test-volume",
 		DeviceName: "test-device-name",
@@ -1288,7 +1288,7 @@ func (s *EC2Suite) TestAttachVolume() {
 func (s *EC2Suite) TestAttachVolumeGenerateDeviceName() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	newAttachment := &host.VolumeAttachment{
 		VolumeID: "test-volume",
 	}
@@ -1309,7 +1309,7 @@ func (s *EC2Suite) TestDetachVolume() {
 		DeviceName: "test-device-name",
 	}
 	s.h.Volumes = []host.VolumeAttachment{oldAttachment}
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	s.Require().NoError(s.volume.Insert())
 
 	s.NoError(s.onDemandManager.DetachVolume(ctx, s.h, "test-volume"))

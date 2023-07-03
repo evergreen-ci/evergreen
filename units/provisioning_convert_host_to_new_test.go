@@ -34,7 +34,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 		},
 		"NoopsIfAgentIsUp": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.NeedsNewAgent = false
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
 			convertJob, ok := j.(*convertHostToNewProvisioningJob)
@@ -46,7 +46,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 		},
 		"NoopsIfHostIsNotProvisioningOrRunning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
 			convertJob, ok := j.(*convertHostToNewProvisioningJob)
@@ -58,7 +58,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 		},
 		"NoopsIfDoesNotNeedNewProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.NeedsReprovision = host.ReprovisionNone
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
 			convertJob, ok := j.(*convertHostToNewProvisioningJob)

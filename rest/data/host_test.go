@@ -96,7 +96,7 @@ func TestHostConnectorSuite(t *testing.T) {
 
 		hosts := s.hosts()
 		for _, h := range hosts {
-			s.Require().NoError(h.Insert())
+			s.Require().NoError(h.Insert(ctx))
 		}
 
 		users := []string{testUser, "user2", "user3", "user4"}

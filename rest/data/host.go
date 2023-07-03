@@ -52,7 +52,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		return nil, errors.Wrap(err, "creating spawn host")
 	}
 
-	if err := intentHost.Insert(); err != nil {
+	if err := intentHost.Insert(ctx); err != nil {
 		return nil, err
 	}
 

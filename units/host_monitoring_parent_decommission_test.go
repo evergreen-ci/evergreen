@@ -58,10 +58,10 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 		Status:   evergreen.HostTerminated,
 		ParentID: "host2",
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
 
 	// Running the job should not drop parents below min hosts
 	j := NewParentDecommissionJob("two", d2.Id, 3)

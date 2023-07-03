@@ -25,6 +25,9 @@ import (
 )
 
 func TestListHostsForTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(host.Collection, build.Collection, task.Collection))
@@ -82,7 +85,7 @@ func TestListHostsForTask(t *testing.T) {
 		},
 	}
 	for i := range hosts {
-		require.NoError(hosts[i].Insert())
+		require.NoError(hosts[i].Insert(ctx))
 	}
 	require.NoError((&task.Task{Id: "task_1", BuildId: "build_1"}).Insert())
 	require.NoError((&build.Build{Id: "build_1"}).Insert())
@@ -170,7 +173,7 @@ buildvariants:
 			Id:          "h1",
 			RunningTask: t1.Id,
 		}
-		assert.NoError(t, h1.Insert())
+		assert.NoError(t, h1.Insert(ctx))
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
@@ -238,7 +241,7 @@ buildvariants:
 			Id:          "h2",
 			RunningTask: t2.Id,
 		}
-		assert.NoError(t, h2.Insert())
+		assert.NoError(t, h2.Insert(ctx))
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
@@ -307,7 +310,7 @@ buildvariants:
 			Id:          "h3",
 			RunningTask: t3.Id,
 		}
-		assert.NoError(t, h3.Insert())
+		assert.NoError(t, h3.Insert(ctx))
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
@@ -374,7 +377,7 @@ buildvariants:
 			Id:          "h4",
 			RunningTask: t4.Id,
 		}
-		assert.NoError(t, h4.Insert())
+		assert.NoError(t, h4.Insert(ctx))
 
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
@@ -457,7 +460,7 @@ buildvariants:
 		Id:          "h1",
 		RunningTask: t1.Id,
 	}
-	assert.NoError(h1.Insert())
+	assert.NoError(h1.Insert(ctx))
 	pp := model.ParserProject{}
 	err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 	require.NoError(err)
@@ -494,7 +497,7 @@ buildvariants:
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{
 		Id:            "distro",

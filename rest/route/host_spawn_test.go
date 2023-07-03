@@ -162,7 +162,7 @@ func TestHostStopHandler(t *testing.T) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 
 	h.hostID = hosts[0].Id
@@ -218,7 +218,7 @@ func TestHostStartHandler(t *testing.T) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 
 	h.hostID = "host-running"
@@ -302,7 +302,7 @@ func TestDeleteVolumeHandler(t *testing.T) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 	for _, volumeToAdd := range volumes {
 		assert.NoError(t, volumeToAdd.Insert())
@@ -333,7 +333,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 
 	// no volume
@@ -396,7 +396,7 @@ func TestDetachVolumeHandler(t *testing.T) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 
 	v := host.VolumeAttachment{VolumeID: "not-a-volume"}
@@ -528,7 +528,7 @@ func TestGetVolumesHandler(t *testing.T) {
 	for _, volumeToAdd := range volumesToAdd {
 		assert.NoError(t, volumeToAdd.Insert())
 	}
-	assert.NoError(t, h1.Insert())
+	assert.NoError(t, h1.Insert(ctx))
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
@@ -577,7 +577,7 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 	}
 	assert.NoError(t, volume.Insert())
-	assert.NoError(t, h1.Insert())
+	assert.NoError(t, h1.Insert(ctx))
 	r, err := http.NewRequest(http.MethodGet, "/volumes/volume1", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})

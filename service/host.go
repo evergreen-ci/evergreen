@@ -120,7 +120,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	includeSpawnedHosts, _ := strconv.ParseBool(r.FormValue(IncludeSpawnedHosts))
-	hosts, err := getHostsData(includeSpawnedHosts)
+	hosts, err := getHostsData(r.Context(), includeSpawnedHosts)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -275,7 +275,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		}
 	}
 
-	if err := host.InsertMany(hostsSpawned); err != nil {
+	if err := host.InsertMany(ctx, hostsSpawned); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host documents")
 	}
 

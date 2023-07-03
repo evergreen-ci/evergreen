@@ -830,6 +830,9 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 }
 
 func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))
 	windowsDistro := distro.Distro{
 		Id:       "windows",
@@ -895,7 +898,7 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		grip.Error(hostToAdd.Insert())
+		grip.Error(hostToAdd.Insert(ctx))
 	}
 	for _, userToAdd := range users {
 		grip.Error(userToAdd.Insert())
@@ -960,10 +963,10 @@ func TestClearHostsHandler(t *testing.T) {
 		CreatedBy:    "user0",
 		NoExpiration: true,
 	}
-	assert.NoError(t, h0.Insert())
-	assert.NoError(t, h1.Insert())
-	assert.NoError(t, h2.Insert())
-	assert.NoError(t, h3.Insert())
+	assert.NoError(t, h0.Insert(ctx))
+	assert.NoError(t, h1.Insert(ctx))
+	assert.NoError(t, h2.Insert(ctx))
+	assert.NoError(t, h3.Insert(ctx))
 	assert.NoError(t, v1.Insert())
 
 	handler := offboardUserHandler{}
@@ -1048,6 +1051,9 @@ func TestRemoveAdminHandler(t *testing.T) {
 }
 
 func TestHostFilterGetHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	newHosts := []host.Host{
 		{
 			Id:           "h0",
@@ -1073,7 +1079,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	}
 
 	for _, hostToAdd := range newHosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 	handler := hostFilterGetHandler{
 		params: model.APIHostParams{Status: evergreen.HostTerminated},
@@ -1115,7 +1121,7 @@ func TestDisableHostHandler(t *testing.T) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -1147,7 +1153,7 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 			Arch: evergreen.ArchLinuxAmd64,
 		},
 	}
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	t.Run("SucceedsWithValidHostID", func(t *testing.T) {
 		rh := hostProvisioningOptionsGetHandler{

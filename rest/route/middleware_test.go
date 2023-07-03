@@ -428,6 +428,9 @@ func TestCommitQueueItemOwnerMiddlewarePatchAdmin(t *testing.T) {
 }
 
 func TestTaskAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	assert.NoError(db.ClearCollections(host.Collection, task.Collection))
@@ -440,7 +443,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 		Secret: "abcdef",
 	}
 	assert.NoError(task1.Insert())
-	assert.NoError(host1.Insert())
+	assert.NoError(host1.Insert(ctx))
 	m := NewTaskAuthMiddleware()
 	r := &http.Request{
 		Header: http.Header{
@@ -461,6 +464,9 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := NewHostAuthMiddleware()
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
@@ -513,7 +519,7 @@ func TestHostAuthMiddleware(t *testing.T) {
 				Id:     "id",
 				Secret: "secret",
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			testCase(t, h, httptest.NewRecorder())
 		})
@@ -602,6 +608,9 @@ func TestPodAuthMiddleware(t *testing.T) {
 }
 
 func TestPodOrHostAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := NewPodOrHostAuthMiddleWare()
 	for testName, testCase := range map[string]func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder){
 		"SucceedsWithPod": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
@@ -748,7 +757,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 				Id:     "id",
 				Secret: "secret",
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, p.Insert())
 
 			testCase(t, p, h, httptest.NewRecorder())

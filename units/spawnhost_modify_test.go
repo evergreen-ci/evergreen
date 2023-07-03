@@ -57,7 +57,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 		InstanceType: "instance-type-1",
 		Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	mock.Set(h.Id, cloud.MockInstance{
 		Status: cloud.StatusRunning,
 		Tags: []host.Tag{

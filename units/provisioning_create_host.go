@@ -181,7 +181,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		if removeHostIntent {
-			err = errors.Wrap(j.host.Remove(), "removing host intent to respect max distro hosts")
+			err = errors.Wrap(j.host.Remove(ctx), "removing host intent to respect max distro hosts")
 
 			j.AddError(err)
 			grip.Error(message.WrapError(err, message.Fields{

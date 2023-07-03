@@ -1571,7 +1571,7 @@ func (s *distroExecuteSuite) SetupTest() {
 			Aliases: []string{"alias1"},
 		},
 	}
-	s.Require().NoError(hostToAdd.Insert())
+	s.Require().NoError(hostToAdd.Insert(ctx))
 	h := makeDistroExecute(s.env)
 	rh, ok := h.(*distroExecuteHandler)
 	s.Require().True(ok)

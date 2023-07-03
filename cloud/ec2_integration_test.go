@@ -85,7 +85,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	})
 	h, err := m.SpawnHost(ctx, h)
 	assert.NoError(err)
-	assert.NoError(h.Insert())
+	assert.NoError(h.Insert(ctx))
 	foundHosts, err := host.Find(ctx, host.IsUninitialized)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)

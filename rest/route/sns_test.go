@@ -103,7 +103,7 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 
 	// known host
 	hostToAdd := host.Host{Id: "i-0123456789"}
-	assert.NoError(t, hostToAdd.Insert())
+	assert.NoError(t, hostToAdd.Insert(ctx))
 
 	assert.NoError(t, rh.handleNotification(ctx))
 	require.Equal(t, 1, rh.queue.Stats(ctx).Total)
@@ -133,8 +133,8 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	messageID := "m0"
 	rh := ec2SNS{}
 	rh.payload.MessageId = messageID
-	assert.NoError(t, agentHost.Insert())
-	assert.NoError(t, spawnHost.Insert())
+	assert.NoError(t, agentHost.Insert(ctx))
+	assert.NoError(t, spawnHost.Insert(ctx))
 
 	checkStatus := func(t *testing.T, hostID, status string) {
 		dbHost, err := host.FindOneId(ctx, hostID)

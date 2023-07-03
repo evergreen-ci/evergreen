@@ -174,7 +174,7 @@ func TestFleet(t *testing.T) {
 		}
 
 		require.NoError(t, db.Clear(host.Collection))
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 		t.Run(name, test)
 	}
 }

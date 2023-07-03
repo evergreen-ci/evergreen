@@ -178,7 +178,7 @@ func TestHostNextTask(t *testing.T) {
 						Status:           evergreen.HostRunning,
 						NeedsReprovision: host.ReprovisionToNew,
 					}
-					require.NoError(t, h.Insert())
+					require.NoError(t, h.Insert(ctx))
 					handler := hostAgentNextTask{
 						env: env,
 					}
@@ -290,7 +290,7 @@ func TestHostNextTask(t *testing.T) {
 						AgentRevision: evergreen.AgentVersion,
 						Provider:      evergreen.ProviderNameEc2Fleet,
 					}
-					require.NoError(t, intentHost.Insert())
+					require.NoError(t, intentHost.Insert(ctx))
 					handler := hostAgentNextTask{}
 					testCase(ctx, t, handler)
 				})
@@ -312,7 +312,7 @@ func TestHostNextTask(t *testing.T) {
 				Status:        evergreen.HostRunning,
 				AgentRevision: evergreen.AgentVersion,
 			}
-			require.NoError(t, nonLegacyHost.Insert())
+			require.NoError(t, nonLegacyHost.Insert(ctx))
 
 			for _, status = range []string{evergreen.HostQuarantined, evergreen.HostDecommissioned, evergreen.HostTerminated} {
 				require.NoError(t, nonLegacyHost.SetStatus(ctx, status, evergreen.User, ""))
@@ -407,7 +407,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, task2.Insert())
 					require.NoError(t, task3.Insert())
 					require.NoError(t, task4.Insert())
-					require.NoError(t, nonLegacyHost.Insert())
+					require.NoError(t, nonLegacyHost.Insert(ctx))
 					handler.host = nonLegacyHost
 					testCase(ctx, t, handler)
 				})
@@ -447,7 +447,7 @@ func TestHostNextTask(t *testing.T) {
 					}
 					anotherBuild := build.Build{Id: "anotherBuild"}
 					require.NoError(t, anotherBuild.Insert())
-					require.NoError(t, anotherHost.Insert())
+					require.NoError(t, anotherHost.Insert(ctx))
 
 					rh.host = &anotherHost
 					resp := rh.Run(ctx)
@@ -474,7 +474,7 @@ func TestHostNextTask(t *testing.T) {
 						Status:        evergreen.HostRunning,
 						AgentRevision: evergreen.AgentVersion,
 					}
-					require.NoError(t, h3.Insert())
+					require.NoError(t, h3.Insert(ctx))
 					anotherBuild = build.Build{Id: "b"}
 					require.NoError(t, anotherBuild.Insert())
 					rh.host = &h3
@@ -498,7 +498,7 @@ func TestHostNextTask(t *testing.T) {
 						Provisioned:   true,
 						Status:        evergreen.HostRunning,
 					}
-					require.NoError(t, h2.Insert())
+					require.NoError(t, h2.Insert(ctx))
 
 					existingTask := task.Task{
 						Id:        "existingTask",
@@ -576,7 +576,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, task4.Insert())
 			require.NoError(t, testBuild.Insert())
 			require.NoError(t, pref.Insert())
-			require.NoError(t, sampleHost.Insert())
+			require.NoError(t, sampleHost.Insert(ctx))
 			require.NoError(t, tq.Save())
 
 			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
@@ -676,7 +676,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				Status:        evergreen.HostRunning,
 				AgentRevision: evergreen.AgentVersion,
 			}
-			require.NoError(t, sampleHost.Insert())
+			require.NoError(t, sampleHost.Insert(ctx))
 
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskUndispatched,
@@ -729,7 +729,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				Status:        evergreen.HostRunning,
 				AgentRevision: evergreen.AgentVersion,
 			}
-			require.NoError(t, sampleHost.Insert())
+			require.NoError(t, sampleHost.Insert(ctx))
 
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
@@ -798,7 +798,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				AgentRevision:         evergreen.AgentVersion,
 				LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
 			}
-			require.NoError(t, sampleHost.Insert())
+			require.NoError(t, sampleHost.Insert(ctx))
 
 			testBuild := build.Build{
 				Id:      buildID,
@@ -876,7 +876,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			Secret: hostSecret,
 			Status: evergreen.HostRunning,
 		}
-		So(theHostWhoCanBoastTheMostRoast.Insert(), ShouldBeNil)
+		So(theHostWhoCanBoastTheMostRoast.Insert(ctx), ShouldBeNil)
 
 		task1 := task.Task{
 			Id:        "task1",
@@ -1003,7 +1003,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				},
 				Secret: hostSecret,
 			}
-			So(anotherHost.Insert(), ShouldBeNil)
+			So(anotherHost.Insert(ctx), ShouldBeNil)
 			h2 := host.Host{
 				Id: "host2",
 				Distro: distro.Distro{
@@ -1012,7 +1012,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				Secret: hostSecret,
 				Status: evergreen.HostRunning,
 			}
-			So(h2.Insert(), ShouldBeNil)
+			So(h2.Insert(ctx), ShouldBeNil)
 
 			t1 := task.Task{
 				Id:        "sampleTask",
@@ -1059,7 +1059,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				RunningTaskVersion:      "version1",
 				RunningTaskProject:      "exists",
 			}
-			So(host1.Insert(), ShouldBeNil)
+			So(host1.Insert(ctx), ShouldBeNil)
 			host2 := host.Host{
 				Id:                      "host2",
 				Status:                  evergreen.HostRunning,
@@ -1069,7 +1069,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				RunningTaskVersion:      "",
 				RunningTaskProject:      "",
 			}
-			So(host2.Insert(), ShouldBeNil)
+			So(host2.Insert(ctx), ShouldBeNil)
 			task3 := task.Task{
 				Id:                "task3",
 				Status:            evergreen.TaskUndispatched,
@@ -1121,7 +1121,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				RunningTaskProject:      "exists",
 				RunningTaskGroupOrder:   2,
 			}
-			So(host1.Insert(), ShouldBeNil)
+			So(host1.Insert(ctx), ShouldBeNil)
 			host2 := host.Host{
 				Id:                      "host2",
 				Status:                  evergreen.HostRunning,
@@ -1131,7 +1131,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				RunningTaskVersion:      "",
 				RunningTaskProject:      "",
 			}
-			So(host2.Insert(), ShouldBeNil)
+			So(host2.Insert(ctx), ShouldBeNil)
 			task3 := task.Task{
 				Id:                "task3",
 				Status:            evergreen.TaskUndispatched,
@@ -1225,7 +1225,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			Secret: hostSecret,
 			Status: evergreen.HostRunning,
 		}
-		So(theHostWhoCanBoastTheMostRoast.Insert(), ShouldBeNil)
+		So(theHostWhoCanBoastTheMostRoast.Insert(ctx), ShouldBeNil)
 
 		task1 := task.Task{
 			Id:        "task1",
@@ -1333,7 +1333,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				},
 				Secret: hostSecret,
 			}
-			So(anotherHost.Insert(), ShouldBeNil)
+			So(anotherHost.Insert(ctx), ShouldBeNil)
 			h2 := host.Host{
 				Id: "host2",
 				Distro: distro.Distro{
@@ -1342,7 +1342,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Secret: hostSecret,
 				Status: evergreen.HostRunning,
 			}
-			So(h2.Insert(), ShouldBeNil)
+			So(h2.Insert(ctx), ShouldBeNil)
 
 			t1 := task.Task{
 				Id:        "sampleTask",
@@ -1391,7 +1391,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				RunningTaskVersion:      "version1",
 				RunningTaskProject:      "exists",
 			}
-			So(host1.Insert(), ShouldBeNil)
+			So(host1.Insert(ctx), ShouldBeNil)
 			host2 := host.Host{
 				Id:                      "host2",
 				Status:                  evergreen.HostRunning,
@@ -1401,7 +1401,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				RunningTaskVersion:      "",
 				RunningTaskProject:      "",
 			}
-			So(host2.Insert(), ShouldBeNil)
+			So(host2.Insert(ctx), ShouldBeNil)
 			task3 := task.Task{
 				Id:                "task3",
 				Status:            evergreen.TaskUndispatched,

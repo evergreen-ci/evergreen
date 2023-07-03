@@ -41,7 +41,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 		Provider:              evergreen.ProviderNameMock,
 		StartedBy:             evergreen.User,
 	}
-	require.NoError(h.Insert())
+	require.NoError(h.Insert(ctx))
 
 	mockInstance := cloud.MockInstance{
 		IsSSHReachable: true,
@@ -113,7 +113,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 				}
 				cloud.GetMockProvider().Set(h.Id, mockInstance)
 
-				require.NoError(t, h.Insert())
+				require.NoError(t, h.Insert(ctx))
 
 				terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
 				require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		}
 		require.NoError(t, tsk.Insert())
 		h.RunningTask = tsk.Id
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 
 		mockInstance := cloud.MockInstance{
 			Status: status,
@@ -171,7 +171,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		"NonexistentInstanceStatusTerminatesSpawnHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.UserHost = true
 			h.StartedBy = "user"
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
 			require.NoError(t, err)
@@ -187,7 +187,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		"StoppedInstanceStatusErrorsWithSpawnHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.UserHost = true
 			h.StartedBy = "user"
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusStopped,
@@ -204,7 +204,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"RunningInstanceNoops": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusRunning,
@@ -221,7 +221,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"UnexpectedInstanceStatusErrors": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusUnknown,
@@ -378,7 +378,7 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			require.NoError(t, testCase.t.Insert())
 
-			assert.NoError(t, handleTerminatedHostSpawnedByTask(testCase.h))
+			assert.NoError(t, handleTerminatedHostSpawnedByTask(ctx, testCase.h))
 
 			intent, err := host.FindOne(ctx, bson.M{})
 			require.NoError(t, err)

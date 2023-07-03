@@ -29,7 +29,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 		"VolumeMigratesToNewHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, ts)
@@ -84,7 +84,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			h.Distro.Provider = ""
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
 			j.UpdateRetryInfo(amboy.JobRetryOptions{
@@ -127,7 +127,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			spawnOptions.PublicKey = ""
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
 			// Limit retry attempts, since a failure to spawn a host will cause a retry
@@ -171,7 +171,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			v.Host = ""
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
 			require.NoError(t, env.RemoteQueue().Start(ctx))
@@ -200,7 +200,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 		"NonexistentVolumeFailsGracefully": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, v.Insert())
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, "foo", spawnOptions, "123")
 			// Limit retry attempts, since a failure to find a volume will cause a retry

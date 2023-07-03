@@ -21,6 +21,9 @@ import (
 )
 
 func TestMakeUserData(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host){
 		"ContainsCommandsToStartHostProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			userData, err := makeUserData(ctx, env.Settings(), h, "", false)
@@ -112,7 +115,7 @@ func TestMakeUserData(t *testing.T) {
 				},
 				StartedBy: evergreen.User,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			env := &mock.Environment{}

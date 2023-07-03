@@ -289,7 +289,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Status:      evergreen.HostRunning,
 				RunningTask: taskID,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			mp.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
 			})

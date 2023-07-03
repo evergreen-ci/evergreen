@@ -26,7 +26,7 @@ func TestMigrateVolume(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser){
 		"StartsJob": func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, v.Insert())
 
 			jobStarted, err := MigrateVolume(ctx, v.ID, options, user, env)
@@ -35,7 +35,7 @@ func TestMigrateVolume(t *testing.T) {
 			assert.Equal(t, env.RemoteQueue().Stats(ctx).Running, 1)
 		},
 		"FailsWithoutKey": func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, v.Insert())
 
 			options.KeyName = ""

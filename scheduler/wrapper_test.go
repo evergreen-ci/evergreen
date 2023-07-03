@@ -295,7 +295,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"LegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -318,7 +318,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"LegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -341,7 +341,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"NonLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -364,7 +364,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"NonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -389,7 +389,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -414,7 +414,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -439,7 +439,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -464,7 +464,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedNonLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -489,7 +489,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -514,7 +514,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -539,7 +539,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -564,7 +564,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedNonLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -589,7 +589,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"ProvisioningLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostProvisioning
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -613,7 +613,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"ProvisioningNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostProvisioning
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},

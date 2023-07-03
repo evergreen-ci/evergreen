@@ -107,7 +107,7 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 
 	// Start the instance, and remove the intent host document if unsuccessful.
 	if _, err := m.client.CreateInstance(ctx, h, s); err != nil {
-		if rmErr := h.Remove(); rmErr != nil {
+		if rmErr := h.Remove(ctx); rmErr != nil {
 			grip.Errorf("Could not remove intent host '%s': %+v", h.Id, rmErr)
 		}
 		grip.Error(err)

@@ -54,7 +54,7 @@ func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 	defer cancel()
 
 	s.e.EventType = event.EventHostProvisioned
-	s.NoError(s.h.Insert())
+	s.NoError(s.h.Insert(ctx))
 	s.NoError(s.tProvisioning.Fetch(ctx, &s.e))
 
 	sub := event.Subscription{
@@ -101,7 +101,7 @@ func (s *spawnHostTriggersSuite) TestFailedSpawn() {
 	defer cancel()
 
 	s.e.EventType = event.EventHostProvisioned
-	s.NoError(s.h.Insert())
+	s.NoError(s.h.Insert(ctx))
 	s.e.EventType = event.EventHostProvisionError
 	s.NoError(s.tProvisioning.Fetch(ctx, &s.e))
 
@@ -149,7 +149,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostStateChange() {
 	defer cancel()
 
 	s.e.EventType = event.EventHostStarted
-	s.NoError(s.h.Insert())
+	s.NoError(s.h.Insert(ctx))
 	s.NoError(s.tStateChange.Fetch(ctx, &s.e))
 
 	sub := event.Subscription{

@@ -67,12 +67,12 @@ func TestGenericHostFinding(t *testing.T) {
 				matchingHost := &Host{
 					Id: "matches",
 				}
-				So(matchingHost.Insert(), ShouldBeNil)
+				So(matchingHost.Insert(ctx), ShouldBeNil)
 
 				nonMatchingHost := &Host{
 					Id: "nonMatches",
 				}
-				So(nonMatchingHost.Insert(), ShouldBeNil)
+				So(nonMatchingHost.Insert(ctx), ShouldBeNil)
 
 				found, err := FindOne(ctx, ById(matchingHost.Id))
 				So(err, ShouldBeNil)
@@ -89,19 +89,19 @@ func TestGenericHostFinding(t *testing.T) {
 					Id:     "matches",
 					Distro: distro.Distro{Id: "d1"},
 				}
-				So(matchingHostOne.Insert(), ShouldBeNil)
+				So(matchingHostOne.Insert(ctx), ShouldBeNil)
 
 				matchingHostTwo := &Host{
 					Id:     "matchesAlso",
 					Distro: distro.Distro{Id: "d1"},
 				}
-				So(matchingHostTwo.Insert(), ShouldBeNil)
+				So(matchingHostTwo.Insert(ctx), ShouldBeNil)
 
 				nonMatchingHost := &Host{
 					Id:     "nonMatches",
 					Distro: distro.Distro{Id: "d2"},
 				}
-				So(nonMatchingHost.Insert(), ShouldBeNil)
+				So(nonMatchingHost.Insert(ctx), ShouldBeNil)
 
 				found, err := Find(ctx, (bson.M{dId: "d1"}))
 				So(err, ShouldBeNil)
@@ -113,9 +113,9 @@ func TestGenericHostFinding(t *testing.T) {
 
 			Convey("when querying two hosts for running tasks", func() {
 				matchingHost := &Host{Id: "task", Status: evergreen.HostRunning, RunningTask: "t1"}
-				So(matchingHost.Insert(), ShouldBeNil)
+				So(matchingHost.Insert(ctx), ShouldBeNil)
 				nonMatchingHost := &Host{Id: "nope", Status: evergreen.HostRunning}
-				So(nonMatchingHost.Insert(), ShouldBeNil)
+				So(nonMatchingHost.Insert(ctx), ShouldBeNil)
 				Convey("the host with the running task should be returned", func() {
 					found, err := Find(ctx, IsRunningTask)
 					So(err, ShouldBeNil)
@@ -131,7 +131,7 @@ func TestGenericHostFinding(t *testing.T) {
 					Distro: distro.Distro{Id: "d1"},
 					Tag:    "2",
 				}
-				So(matchingHostOne.Insert(), ShouldBeNil)
+				So(matchingHostOne.Insert(ctx), ShouldBeNil)
 
 				matchingHostTwo := &Host{
 					Id:     "matchesAlso",
@@ -139,7 +139,7 @@ func TestGenericHostFinding(t *testing.T) {
 					Distro: distro.Distro{Id: "d1"},
 					Tag:    "1",
 				}
-				So(matchingHostTwo.Insert(), ShouldBeNil)
+				So(matchingHostTwo.Insert(ctx), ShouldBeNil)
 
 				matchingHostThree := &Host{
 					Id:     "stillMatches",
@@ -147,7 +147,7 @@ func TestGenericHostFinding(t *testing.T) {
 					Distro: distro.Distro{Id: "d1"},
 					Tag:    "3",
 				}
-				So(matchingHostThree.Insert(), ShouldBeNil)
+				So(matchingHostThree.Insert(ctx), ShouldBeNil)
 
 				// find the hosts, removing the host field from the projection,
 				// sorting by tag, skipping one, and limiting to one
@@ -176,7 +176,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 			Id:     "sample_host",
 			Status: evergreen.HostRunning,
 		}
-		So(h.Insert(), ShouldBeNil)
+		So(h.Insert(ctx), ShouldBeNil)
 		found, err := Find(ctx, IsRunningTask)
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 0)
@@ -186,7 +186,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 				Id:     "another",
 				Status: evergreen.HostTerminated,
 			}
-			So(h1.Insert(), ShouldBeNil)
+			So(h1.Insert(ctx), ShouldBeNil)
 			found, err = Find(ctx, IsRunningTask)
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
@@ -207,7 +207,7 @@ func TestMonitorHosts(t *testing.T) {
 			Status:    evergreen.HostRunning,
 			StartedBy: evergreen.User,
 		}
-		So(h.Insert(), ShouldBeNil)
+		So(h.Insert(ctx), ShouldBeNil)
 		found, err := Find(ctx, ByNotMonitoredSince(now))
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 1)
@@ -219,7 +219,7 @@ func TestMonitorHosts(t *testing.T) {
 				StartedBy:   evergreen.User,
 				RunningTask: "id",
 			}
-			So(anotherHost.Insert(), ShouldBeNil)
+			So(anotherHost.Insert(ctx), ShouldBeNil)
 			found, err := Find(ctx, ByNotMonitoredSince(now))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
@@ -231,7 +231,7 @@ func TestMonitorHosts(t *testing.T) {
 				Status:    evergreen.HostStarting,
 				StartedBy: evergreen.User,
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 			found, err := Find(ctx, ByNotMonitoredSince(now))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
@@ -249,7 +249,7 @@ func TestMonitorHosts(t *testing.T) {
 					},
 				},
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 			found, err := Find(ctx, ByNotMonitoredSince(now))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 1)
@@ -270,7 +270,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 			Id: "hostOne",
 		}
 
-		So(host.Insert(), ShouldBeNil)
+		So(host.Insert(ctx), ShouldBeNil)
 
 		Convey("setting the host's status should update both the in-memory"+
 			" and database versions of the host", func() {
@@ -313,7 +313,7 @@ func TestSetStatusAndFields(t *testing.T) {
 			assert.Zero(t, dbHost)
 		},
 		"DoesNotUpdatesAnyFieldsIfStatusIsIdentical": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			currentStatus := h.Status
 			newDisplayName := "new-display-name"
@@ -326,7 +326,7 @@ func TestSetStatusAndFields(t *testing.T) {
 			assert.Zero(t, dbHost.DisplayName, "display name should not be updated when host status is identical")
 		},
 		"UpdatesOnlyStatus": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			newStatus := evergreen.HostQuarantined
 			require.NoError(t, h.setStatusAndFields(ctx, newStatus, nil, nil, nil, evergreen.User, ""))
 
@@ -336,7 +336,7 @@ func TestSetStatusAndFields(t *testing.T) {
 			assert.Equal(t, newStatus, dbHost.Status)
 		},
 		"UpdatesStatusAndAdditionalFields": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			newStatus := evergreen.HostQuarantined
 			newDisplayName := "new-display-name"
@@ -351,7 +351,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		"UpdatesStatusAndUnsetsFields": func(t *testing.T, h *Host) {
 			h.LastTask = "taskZero"
 			h.RunningTask = "taskHero"
-			assert.NoError(t, h.Insert())
+			assert.NoError(t, h.Insert(ctx))
 
 			newStatus := evergreen.HostQuarantined
 			assert.NoError(t, h.setStatusAndFields(ctx, newStatus, nil, nil, bson.M{LTCTaskKey: 1}, evergreen.User, ""))
@@ -365,7 +365,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		},
 		"FailsForAlreadyTerminatedHost": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			assert.Error(t, h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, ""))
 
@@ -376,7 +376,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		},
 		"FailsDecommissionIfHostIsNowRunningTaskGroup": func(t *testing.T, h *Host) {
 			h.RunningTaskGroup = "my_task_group"
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			query := bson.M{
 				RunningTaskGroupKey: bson.M{"$eq": ""},
 			}
@@ -409,7 +409,7 @@ func TestDecommissionHost(t *testing.T) {
 		RunningTaskGroup: "myTaskGroup",
 		Status:           evergreen.HostRunning,
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 
 	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "because I said so"))
 
@@ -442,7 +442,7 @@ func TestSetStopped(t *testing.T) {
 		Host:      "host.mongodb.com",
 	}
 
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	assert.NoError(t, h.SetStopped(ctx, ""))
 	assert.Equal(t, evergreen.HostStopped, h.Status)
@@ -470,7 +470,7 @@ func TestSetHostTerminated(t *testing.T) {
 			Id: "hostOne",
 		}
 
-		So(host.Insert(), ShouldBeNil)
+		So(host.Insert(ctx), ShouldBeNil)
 
 		Convey("setting the host as terminated should set the status and the"+
 			" termination time in both the in-memory and database copies of"+
@@ -504,7 +504,7 @@ func TestHostSetDNSName(t *testing.T) {
 			Id: "hostOne",
 		}
 
-		So(host.Insert(), ShouldBeNil)
+		So(host.Insert(ctx), ShouldBeNil)
 
 		Convey("setting the hostname should update both the in-memory and"+
 			" database copies of the host", func() {
@@ -538,7 +538,7 @@ func TestHostSetIPv6Address(t *testing.T) {
 	host := &Host{
 		Id: "hostOne",
 	}
-	assert.NoError(host.Insert())
+	assert.NoError(host.Insert(ctx))
 
 	ipv6Address := "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
 	ipv6Address2 := "aaaa:1f18:459c:2d00:cfe4:843b:1d60:9999"
@@ -583,9 +583,9 @@ func TestMarkAsProvisioned(t *testing.T) {
 			NeedsReprovision: ReprovisionToNew,
 		}
 
-		So(host.Insert(), ShouldBeNil)
-		So(host2.Insert(), ShouldBeNil)
-		So(host3.Insert(), ShouldBeNil)
+		So(host.Insert(ctx), ShouldBeNil)
+		So(host2.Insert(ctx), ShouldBeNil)
+		So(host3.Insert(ctx), ShouldBeNil)
 		Convey("marking a host that isn't down as provisioned should update the status"+
 			" and provisioning fields in both the in-memory and"+
 			" database copies of the host", func() {
@@ -613,7 +613,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"ConvertToLegacyNeedsAgent": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -624,7 +624,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 		},
 		"ConvertToNewNeedsAgentMonitor": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToNew
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -635,7 +635,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 		},
 		"RestartJasper": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionRestartJasper
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -647,7 +647,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 		"RestartJasperWithSpawnHost": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionRestartJasper
 			h.StartedBy = "user"
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -658,7 +658,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 		"NeedsRestartJasperSetsNeedsAgentMonitor": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionRestartJasper
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.MarkAsReprovisioning(ctx))
 			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
@@ -668,7 +668,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 		},
 		"FailsWithHostInBadStatus": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			assert.Error(t, h.MarkAsReprovisioning(ctx))
 		},
 	} {
@@ -698,7 +698,7 @@ func TestHostCreateSecret(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		host := &Host{Id: "hostOne"}
-		So(host.Insert(), ShouldBeNil)
+		So(host.Insert(ctx), ShouldBeNil)
 
 		Convey("creating a secret", func() {
 			So(host.Secret, ShouldEqual, "")
@@ -729,7 +729,7 @@ func TestHostSetBillingStartTime(t *testing.T) {
 	h := &Host{
 		Id: "id",
 	}
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	require.NoError(t, h.SetBillingStartTime(ctx, now))
@@ -752,7 +752,7 @@ func TestHostSetAgentStartTime(t *testing.T) {
 	h := &Host{
 		Id: "id",
 	}
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	now := time.Now()
 	require.NoError(t, h.SetAgentStartTime(ctx))
@@ -777,7 +777,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 			NoExpiration:   true,
 			ExpirationTime: initialExpirationTime,
 		}
-		So(memHost.Insert(), ShouldBeNil)
+		So(memHost.Insert(ctx), ShouldBeNil)
 
 		Convey("setting the expiration time for the host should change the "+
 			" expiration time for both the in-memory and database"+
@@ -830,7 +830,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 			Status:      evergreen.HostRunning,
 		}
 
-		So(host.Insert(), ShouldBeNil)
+		So(host.Insert(ctx), ShouldBeNil)
 
 		Convey("host statistics should properly count this host as active"+
 			" but not idle", func() {
@@ -894,8 +894,8 @@ func TestUpdateHostRunningTask(t *testing.T) {
 				},
 			},
 		}
-		So(h.Insert(), ShouldBeNil)
-		So(h2.Insert(), ShouldBeNil)
+		So(h.Insert(ctx), ShouldBeNil)
+		So(h2.Insert(ctx), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
 			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ctx, ById(h.Id))
@@ -988,7 +988,7 @@ func TestUpsert(t *testing.T) {
 
 			})
 		Convey("Upserting a host that does not need its provisioning changed unsets the field", func() {
-			So(host.Insert(), ShouldBeNil)
+			So(host.Insert(ctx), ShouldBeNil)
 			_, err := host.Upsert(ctx)
 			So(err, ShouldBeNil)
 
@@ -1027,9 +1027,9 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 				Status: evergreen.HostRunning,
 			}
 
-			require.NoError(t, hostWithDistroA.Insert(), "Error inserting"+
+			require.NoError(t, hostWithDistroA.Insert(ctx), "Error inserting"+
 				"host into database")
-			require.NoError(t, hostWithDistroB.Insert(), "Error inserting"+
+			require.NoError(t, hostWithDistroB.Insert(ctx), "Error inserting"+
 				"host into database")
 		}
 
@@ -1077,7 +1077,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 					},
 				},
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 			hosts, err := Find(ctx, NeedsAgentDeploy(time.Now()))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
@@ -1110,7 +1110,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 					},
 				},
 			}
-			So(anotherHost.Insert(), ShouldBeNil)
+			So(anotherHost.Insert(ctx), ShouldBeNil)
 			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
@@ -1129,7 +1129,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 					},
 				},
 			}
-			So(anotherHost.Insert(), ShouldBeNil)
+			So(anotherHost.Insert(ctx), ShouldBeNil)
 			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
@@ -1148,7 +1148,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				Status:    evergreen.HostTerminated,
 				StartedBy: evergreen.User,
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
@@ -1159,7 +1159,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				Status:    evergreen.HostRunning,
 				StartedBy: "anotherUser",
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
@@ -1172,7 +1172,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				NeedsNewAgent: true,
 				Distro:        distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodLegacySSH}},
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 
 			hosts, err := Find(ctx, ShouldDeployAgent())
 			So(err, ShouldBeNil)
@@ -1186,7 +1186,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:     evergreen.User,
 				NeedsNewAgent: true,
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(hosts, ShouldBeEmpty)
@@ -1204,7 +1204,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:     evergreen.User,
 				NeedsNewAgent: true,
 			}
-			So(h.Insert(), ShouldBeNil)
+			So(h.Insert(ctx), ShouldBeNil)
 			hosts, err := Find(ctx, NeedsAgentDeploy(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
@@ -1223,7 +1223,7 @@ func TestSetNeedsToRestartJasper(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -1232,7 +1232,7 @@ func TestSetNeedsToRestartJasper(t *testing.T) {
 		},
 		"SucceedsIfAlreadyNeedsToRestartJasper": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionRestartJasper
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -1244,20 +1244,20 @@ func TestSetNeedsToRestartJasper(t *testing.T) {
 		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			assert.Error(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 		},
 		"FailsIfAlreadyNeedsOtherReprovisioning": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			assert.Error(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 		},
 		"NoopsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, h.SetNeedsToRestartJasper(ctx, evergreen.User))
 
 			assert.True(t, h.Provisioned)
@@ -1291,7 +1291,7 @@ func TestSetNeedsReprovisionToNew(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -1300,7 +1300,7 @@ func TestSetNeedsReprovisionToNew(t *testing.T) {
 		},
 		"SucceedsIfAlreadyNeedsReprovisionToNew": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToNew
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
@@ -1312,20 +1312,20 @@ func TestSetNeedsReprovisionToNew(t *testing.T) {
 		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			assert.Error(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 		},
 		"FailsIfAlreadyNeedsReprovisioningToLegacy": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			assert.Error(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 		},
 		"NoopsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, h.SetNeedsReprovisionToNew(ctx, evergreen.User))
 
@@ -1361,7 +1361,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"FindsNotRecentlyCommunicatedHosts": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
@@ -1371,7 +1371,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 		},
 		"DoesNotFindsHostsNotNeedingReprovisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostProvisioning
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
@@ -1381,7 +1381,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 		"FindsHostsReprovisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostProvisioning
 			h.NeedsReprovision = ReprovisionToNew
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
@@ -1391,7 +1391,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 		},
 		"DoesNotFindRecentlyCommunicatedHosts": func(t *testing.T, h *Host) {
 			h.LastCommunicationTime = time.Now()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
@@ -1401,7 +1401,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 		"DoesNotFindLegacyHosts": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
@@ -1411,7 +1411,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 		"DoesNotFindHostsWithoutBootstrapMethod": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = ""
 			h.Distro.BootstrapSettings.Communication = ""
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
@@ -1447,7 +1447,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"NotRunningHost": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostDecommissioned
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
@@ -1455,7 +1455,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 		},
 		"DoesNotNeedNewAgentMonitor": func(t *testing.T, h *Host) {
 			h.NeedsNewAgentMonitor = false
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
@@ -1463,7 +1463,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 		},
 		"BootstrapLegacySSH": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
@@ -1471,7 +1471,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 		},
 		"BootstrapSSH": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
@@ -1480,7 +1480,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 		},
 		"BootstrapUserData": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
@@ -1510,7 +1510,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"ReturnsHostsStartedButNotRunning": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindUserDataSpawnHostsProvisioning(ctx)
 			require.NoError(t, err)
@@ -1519,7 +1519,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 		},
 		"IgnoresNonUserDataBootstrap": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindUserDataSpawnHostsProvisioning(ctx)
 			require.NoError(t, err)
@@ -1527,7 +1527,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 		},
 		"IgnoresUnprovisionedHosts": func(t *testing.T, h *Host) {
 			h.Provisioned = false
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindUserDataSpawnHostsProvisioning(ctx)
 			require.NoError(t, err)
@@ -1535,7 +1535,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 		},
 		"IgnoresHostsSpawnedByEvergreen": func(t *testing.T, h *Host) {
 			h.StartedBy = evergreen.User
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindUserDataSpawnHostsProvisioning(ctx)
 			require.NoError(t, err)
@@ -1543,7 +1543,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 		},
 		"IgnoresRunningSpawnHosts": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostRunning
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindUserDataSpawnHostsProvisioning(ctx)
 			require.NoError(t, err)
@@ -1551,7 +1551,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 		},
 		"IgnoresSpawnHostsThatProvisionForTooLong": func(t *testing.T, h *Host) {
 			h.ProvisionTime = time.Now().Add(-24 * time.Hour)
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindUserDataSpawnHostsProvisioning(ctx)
 			require.NoError(t, err)
@@ -1593,7 +1593,7 @@ func TestGenerateAndSaveJasperCredentials(t *testing.T) {
 		assert.Equal(t, h.JasperCredentialsID, creds.ServerName)
 	}
 	generateAndSaveCreds := func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) *certdepot.Credentials {
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 		creds, err := h.GenerateJasperCredentials(ctx, env)
 		require.NoError(t, err)
 		assert.NotZero(t, h.JasperCredentialsID)
@@ -1687,14 +1687,14 @@ func TestFindByShouldConvertProvisioning(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"IgnoresHostWithoutMatchingStatus": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindByShouldConvertProvisioning(ctx)
 			assert.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
 		"ReturnsHostsThatNeedNewReprovisioning": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindByShouldConvertProvisioning(ctx)
 			require.NoError(t, err)
@@ -1705,7 +1705,7 @@ func TestFindByShouldConvertProvisioning(t *testing.T) {
 			h.NeedsReprovision = ReprovisionToLegacy
 			h.NeedsNewAgentMonitor = false
 			h.NeedsNewAgent = true
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindByShouldConvertProvisioning(ctx)
 			require.NoError(t, err)
@@ -1816,6 +1816,9 @@ func TestHostUpsert(t *testing.T) {
 }
 
 func TestHostStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	const d1 = "distro1"
@@ -1865,14 +1868,14 @@ func TestHostStats(t *testing.T) {
 		Distro: distro.Distro{Id: d2},
 		Status: evergreen.HostRunning,
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
-	assert.NoError(host8.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
+	assert.NoError(host8.Insert(ctx))
 
 	// test GetStatsByDistro
 	stats, err := GetStatsByDistro()
@@ -1899,6 +1902,9 @@ func TestHostStats(t *testing.T) {
 }
 
 func TestHostFindingWithTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 	assert := assert.New(t)
 	task1 := task.Task{
@@ -1932,12 +1938,12 @@ func TestHostFindingWithTask(t *testing.T) {
 	assert.NoError(task1.Insert())
 	assert.NoError(task2.Insert())
 	assert.NoError(task3.Insert())
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
 
-	hosts, err := FindRunningHosts(true)
+	hosts, err := FindRunningHosts(ctx, true)
 	assert.NoError(err)
 
 	assert.Equal(3, len(hosts))
@@ -1947,6 +1953,9 @@ func TestHostFindingWithTask(t *testing.T) {
 }
 
 func TestInactiveHostCountPipeline(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	assert := assert.New(t)
 
@@ -1955,31 +1964,31 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		Provider: evergreen.HostTypeStatic,
 	}
-	assert.NoError(h1.Insert())
+	assert.NoError(h1.Insert(ctx))
 	h2 := Host{
 		Id:       "h2",
 		Status:   evergreen.HostQuarantined,
 		Provider: evergreen.HostTypeStatic,
 	}
-	assert.NoError(h2.Insert())
+	assert.NoError(h2.Insert(ctx))
 	h3 := Host{
 		Id:       "h3",
 		Status:   evergreen.HostDecommissioned,
 		Provider: "notstatic",
 	}
-	assert.NoError(h3.Insert())
+	assert.NoError(h3.Insert(ctx))
 	h4 := Host{
 		Id:       "h4",
 		Status:   evergreen.HostRunning,
 		Provider: "notstatic",
 	}
-	assert.NoError(h4.Insert())
+	assert.NoError(h4.Insert(ctx))
 	h5 := Host{
 		Id:       "h5",
 		Status:   evergreen.HostQuarantined,
 		Provider: "notstatic",
 	}
-	assert.NoError(h5.Insert())
+	assert.NoError(h5.Insert(ctx))
 
 	var out []InactiveHostCounts
 	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &out)
@@ -2146,16 +2155,16 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		CreationTime:          time.Now(),
 	}
 
-	require.NoError(host1.Insert())
-	require.NoError(host2.Insert())
-	require.NoError(host3.Insert())
-	require.NoError(host4.Insert())
-	require.NoError(host5.Insert())
-	require.NoError(host6.Insert())
-	require.NoError(host7.Insert())
-	require.NoError(host8.Insert())
-	require.NoError(host9.Insert())
-	require.NoError(host10.Insert())
+	require.NoError(host1.Insert(ctx))
+	require.NoError(host2.Insert(ctx))
+	require.NoError(host3.Insert(ctx))
+	require.NoError(host4.Insert(ctx))
+	require.NoError(host5.Insert(ctx))
+	require.NoError(host6.Insert(ctx))
+	require.NoError(host7.Insert(ctx))
+	require.NoError(host8.Insert(ctx))
+	require.NoError(host9.Insert(ctx))
+	require.NoError(host10.Insert(ctx))
 
 	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroID(ctx, &env)
 	assert.NoError(err)
@@ -2238,14 +2247,14 @@ func TestFindAllRunningContainers(t *testing.T) {
 		Distro: distro.Distro{Id: d2},
 		Status: evergreen.HostRunning,
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
-	assert.NoError(host8.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
+	assert.NoError(host8.Insert(ctx))
 
 	containers, err := FindAllRunningContainers(ctx)
 	assert.NoError(err)
@@ -2305,14 +2314,14 @@ func TestFindAllRunningContainersEmpty(t *testing.T) {
 		Distro: distro.Distro{Id: d2},
 		Status: evergreen.HostRunning,
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
-	assert.NoError(host8.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
+	assert.NoError(host8.Insert(ctx))
 
 	containers, err := FindAllRunningContainers(ctx)
 	assert.NoError(err)
@@ -2374,14 +2383,14 @@ func TestFindAllRunningParents(t *testing.T) {
 		Status:        evergreen.HostTerminated,
 		HasContainers: true,
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
-	assert.NoError(host8.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
+	assert.NoError(host8.Insert(ctx))
 
 	hosts, err := FindAllRunningParents(ctx)
 	assert.NoError(err)
@@ -2443,13 +2452,13 @@ func TestFindAllRunningParentsOrdered(t *testing.T) {
 		LastContainerFinishTime: time.Now().Add(15 * time.Minute),
 	}
 
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
 
 	hosts, err := FindAllRunningParentsOrdered(ctx)
 	assert.NoError(err)
@@ -2480,8 +2489,8 @@ func TestFindAllRunningParentsEmpty(t *testing.T) {
 		Distro: distro.Distro{Id: d2},
 		Status: evergreen.HostStarting,
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
 
 	containers, err := FindAllRunningParents(ctx)
 	assert.NoError(err)
@@ -2549,14 +2558,14 @@ func TestGetContainers(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
-	assert.NoError(host8.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
+	assert.NoError(host8.Insert(ctx))
 
 	containers, err := host1.GetContainers(ctx)
 	assert.NoError(err)
@@ -2623,14 +2632,14 @@ func TestGetContainersNotParent(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		ParentID: "parentId",
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
-	assert.NoError(host8.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
+	assert.NoError(host8.Insert(ctx))
 
 	containers, err := host1.GetContainers(ctx)
 	assert.Error(err)
@@ -2680,12 +2689,12 @@ func TestIsIdleParent(t *testing.T) {
 		Status:   evergreen.HostDecommissioned,
 		ParentID: "host4",
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
 
 	// does not have containers --> false
 	idle, err := host1.IsIdleParent(ctx)
@@ -2725,17 +2734,17 @@ func TestUpdateParentIDs(t *testing.T) {
 		Tag:           "foo",
 		HasContainers: true,
 	}
-	assert.NoError(parent.Insert())
+	assert.NoError(parent.Insert(ctx))
 	container1 := Host{
 		Id:       "c1",
 		ParentID: parent.Tag,
 	}
-	assert.NoError(container1.Insert())
+	assert.NoError(container1.Insert(ctx))
 	container2 := Host{
 		Id:       "c2",
 		ParentID: parent.Tag,
 	}
-	assert.NoError(container2.Insert())
+	assert.NoError(container2.Insert(ctx))
 
 	assert.NoError(parent.UpdateParentIDs(ctx))
 	dbContainer1, err := FindOneId(ctx, container1.Id)
@@ -2768,8 +2777,8 @@ func TestFindParentOfContainer(t *testing.T) {
 		HasContainers: true,
 	}
 
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
 
 	parent, err := host1.GetParent(ctx)
 	assert.NoError(err)
@@ -2791,7 +2800,7 @@ func TestFindParentOfContainerNoParent(t *testing.T) {
 		Status: evergreen.HostRunning,
 	}
 
-	assert.NoError(host.Insert())
+	assert.NoError(host.Insert(ctx))
 
 	parent, err := host.GetParent(ctx)
 	assert.Error(err)
@@ -2814,7 +2823,7 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 		ParentID: "parentId",
 	}
 
-	assert.NoError(host.Insert())
+	assert.NoError(host.Insert(ctx))
 
 	parent, err := host.GetParent(ctx)
 	require.Error(t, err)
@@ -2844,8 +2853,8 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 		Status: evergreen.HostRunning,
 	}
 
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
 
 	parent, err := host1.GetParent(ctx)
 	assert.Error(err)
@@ -2853,6 +2862,8 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 }
 
 func TestLastContainerFinishTimePipeline(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 	assert := assert.New(t)
@@ -2871,41 +2882,41 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 		ParentID:    "p1",
 		RunningTask: "t1",
 	}
-	assert.NoError(h1.Insert())
+	assert.NoError(h1.Insert(ctx))
 	h2 := Host{
 		Id:          "h2",
 		Status:      evergreen.HostRunning,
 		ParentID:    "p1",
 		RunningTask: "t2",
 	}
-	assert.NoError(h2.Insert())
+	assert.NoError(h2.Insert(ctx))
 	h3 := Host{
 		Id:          "h3",
 		Status:      evergreen.HostRunning,
 		ParentID:    "p1",
 		RunningTask: "t3",
 	}
-	assert.NoError(h3.Insert())
+	assert.NoError(h3.Insert(ctx))
 	h4 := Host{
 		Id:          "h4",
 		Status:      evergreen.HostRunning,
 		RunningTask: "t4",
 	}
-	assert.NoError(h4.Insert())
+	assert.NoError(h4.Insert(ctx))
 	h5 := Host{
 		Id:          "h5",
 		Status:      evergreen.HostRunning,
 		ParentID:    "p2",
 		RunningTask: "t5",
 	}
-	assert.NoError(h5.Insert())
+	assert.NoError(h5.Insert(ctx))
 	h6 := Host{
 		Id:          "h6",
 		Status:      evergreen.HostRunning,
 		ParentID:    "p2",
 		RunningTask: "t6",
 	}
-	assert.NoError(h6.Insert())
+	assert.NoError(h6.Insert(ctx))
 	t1 := task.Task{
 		Id: "t1",
 		DurationPrediction: util.CachedDurationValue{
@@ -3036,7 +3047,7 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 		},
 	}
 	for i := range hosts {
-		require.NoError(hosts[i].Insert())
+		require.NoError(hosts[i].Insert(ctx))
 	}
 	found, err := FindAllHostsSpawnedByTasks(ctx)
 	assert.NoError(err)
@@ -3100,12 +3111,12 @@ func TestCountContainersOnParents(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		ParentID: "h2",
 	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
-	assert.NoError(h4.Insert())
-	assert.NoError(h5.Insert())
-	assert.NoError(h6.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
+	assert.NoError(h4.Insert(ctx))
+	assert.NoError(h5.Insert(ctx))
+	assert.NoError(h6.Insert(ctx))
 
 	c1, err := HostGroup{h1, h2}.CountContainersOnParents(ctx)
 	assert.NoError(err)
@@ -3172,12 +3183,12 @@ func TestFindUphostContainersOnParents(t *testing.T) {
 		Status:   evergreen.HostTerminated,
 		ParentID: "h2",
 	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
-	assert.NoError(h4.Insert())
-	assert.NoError(h5.Insert())
-	assert.NoError(h6.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
+	assert.NoError(h4.Insert(ctx))
+	assert.NoError(h5.Insert(ctx))
+	assert.NoError(h6.Insert(ctx))
 
 	hosts1, err := HostGroup{h1, h2, h3}.FindUphostContainersOnParents(ctx)
 	assert.NoError(err)
@@ -3267,14 +3278,14 @@ func TestFindAllRunningParentsByDistroID(t *testing.T) {
 		Status:        evergreen.HostTerminated,
 		HasContainers: true,
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
-	assert.NoError(host7.Insert())
-	assert.NoError(host8.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
+	assert.NoError(host5.Insert(ctx))
+	assert.NoError(host6.Insert(ctx))
+	assert.NoError(host7.Insert(ctx))
+	assert.NoError(host8.Insert(ctx))
 
 	parents, err := FindAllRunningParentsByDistroID(ctx, d1)
 	assert.NoError(err)
@@ -3312,9 +3323,9 @@ func TestFindUphostParentsByContainerPool(t *testing.T) {
 		Id:     "host3",
 		Status: evergreen.HostRunning,
 	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
 
 	hosts, err := findUphostParentsByContainerPool(ctx, "test-pool")
 	assert.NoError(err)
@@ -3444,7 +3455,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		},
 	}
 	for i := range hosts {
-		require.NoError(hosts[i].Insert())
+		require.NoError(hosts[i].Insert(ctx))
 	}
 
 	found, err := allHostsSpawnedByTasksTimedOut(ctx)
@@ -3528,7 +3539,7 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 			NeedsReprovision: ReprovisionToNew,
 		},
 	} {
-		assert.NoError(h.Insert())
+		assert.NoError(h.Insert(ctx))
 	}
 
 	hosts, err := FindByProvisioning(ctx)
@@ -3581,7 +3592,7 @@ func TestCountContainersRunningAtTime(t *testing.T) {
 		},
 	}
 	for i := range containers {
-		assert.NoError(containers[i].Insert())
+		assert.NoError(containers[i].Insert(ctx))
 	}
 
 	count1, err := parent.CountContainersRunningAtTime(ctx, now.Add(-15*time.Minute))
@@ -3612,7 +3623,7 @@ func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 			RunningTask: "foo",
 			Status:      evergreen.HostTerminated,
 		}
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 
 		hosts, err := FindTerminatedHostsRunningTasks(ctx)
 		assert.NoError(t, err)
@@ -3665,11 +3676,11 @@ func TestFindUphostParents(t *testing.T) {
 		ParentID: "h1",
 	}
 
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
-	assert.NoError(h4.Insert())
-	assert.NoError(h5.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
+	assert.NoError(h4.Insert(ctx))
+	assert.NoError(h5.Insert(ctx))
 
 	uphostParents, err := findUphostParentsByContainerPool(ctx, "test-pool")
 	assert.NoError(err)
@@ -3760,7 +3771,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	}
 
 	for _, h := range hosts {
-		require.NoError(h.Insert())
+		require.NoError(h.Insert(ctx))
 	}
 
 	require.NoError(RemoveStaleInitializing(ctx, distro1.Id))
@@ -3883,7 +3894,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 	}
 
 	for _, h := range hosts {
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 	}
 
 	require.NoError(t, MarkStaleBuildingAsFailed(ctx, distro1.Id))
@@ -3951,10 +3962,10 @@ func TestNumNewParentsNeeded(t *testing.T) {
 		ContainerPoolSettings: pool,
 	}
 
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
 
 	existingParents, err := findUphostParentsByContainerPool(ctx, d.ContainerPool)
 	assert.NoError(err)
@@ -4012,9 +4023,9 @@ func TestNumNewParentsNeeded2(t *testing.T) {
 		ParentID: "host1",
 	}
 
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
 
 	existingParents, err := findUphostParentsByContainerPool(ctx, d.ContainerPool)
 	assert.NoError(err)
@@ -4098,10 +4109,10 @@ func TestFindAvailableParent(t *testing.T) {
 		StartTime:    time.Now(),
 	}
 	assert.NoError(d.Insert(ctx))
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
 	assert.NoError(task1.Insert())
 	assert.NoError(task2.Insert())
 
@@ -4174,10 +4185,10 @@ func TestFindNoAvailableParent(t *testing.T) {
 		StartTime: time.Now(),
 	}
 	assert.NoError(d.Insert(ctx))
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
+	assert.NoError(host4.Insert(ctx))
 	assert.NoError(task1.Insert())
 	assert.NoError(task2.Insert())
 
@@ -4226,9 +4237,9 @@ func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 		RunningTask: "task1",
 	}
 	assert.NoError(d.Insert(ctx))
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(host2.Insert(ctx))
+	assert.NoError(host3.Insert(ctx))
 
 	parents, hosts, err := getNumNewParentsAndHostsToSpawn(ctx, pool, 3, false)
 	assert.NoError(err)
@@ -4274,8 +4285,8 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 		RunningTask: "task1",
 	}
 	assert.NoError(d.Insert(ctx))
-	assert.NoError(host1.Insert())
-	assert.NoError(container.Insert())
+	assert.NoError(host1.Insert(ctx))
+	assert.NoError(container.Insert(ctx))
 
 	parents, hosts, err := getNumNewParentsAndHostsToSpawn(ctx, pool, 4, false)
 	assert.NoError(err)
@@ -4302,7 +4313,7 @@ func TestFindOneByJasperCredentialsID(t *testing.T) {
 		},
 		"FindsHostWithJasperCredentialsID": func(t *testing.T, h *Host) {
 			h.JasperCredentialsID = id
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			dbHost, err := FindOneByJasperCredentialsID(ctx, id)
 			require.NoError(t, err)
 			assert.Equal(t, dbHost, h)
@@ -4370,7 +4381,7 @@ func TestSetTags(t *testing.T) {
 			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	h.InstanceTags = []Tag{
 		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}
@@ -4437,7 +4448,7 @@ func TestSetInstanceType(t *testing.T) {
 		Id:           "id",
 		InstanceType: "old-instance-type",
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	newInstanceType := "new-instance-type"
 	assert.NoError(t, h.SetInstanceType(ctx, newInstanceType))
 	foundHost, err := FindOneId(ctx, h.Id)
@@ -4446,6 +4457,9 @@ func TestSetInstanceType(t *testing.T) {
 }
 
 func TestAggregateSpawnhostData(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, VolumesCollection))
 	hosts := []Host{
 		{
@@ -4494,7 +4508,7 @@ func TestAggregateSpawnhostData(t *testing.T) {
 		},
 	}
 	for _, h := range hosts {
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 	}
 
 	volumes := []Volume{
@@ -4518,7 +4532,7 @@ func TestAggregateSpawnhostData(t *testing.T) {
 		assert.NoError(t, v.Insert())
 	}
 
-	res, err := AggregateSpawnhostData()
+	res, err := AggregateSpawnhostData(ctx)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, 3, res.NumUsersWithHosts)
@@ -4574,7 +4588,7 @@ func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
 		},
 	}
 	for _, h := range hosts {
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 	}
 	count, err := CountSpawnhostsWithNoExpirationByUser(ctx, "user-1")
 	assert.NoError(t, err)
@@ -4630,7 +4644,7 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 		},
 	}
 	for _, h := range hosts {
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 	}
 
 	foundHosts, err := FindSpawnhostsWithNoExpirationToExtend(ctx)
@@ -4653,7 +4667,7 @@ func TestAddVolumeToHost(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 
 	newAttachment := &VolumeAttachment{
 		VolumeID:   "volume-2",
@@ -4699,7 +4713,7 @@ func TestUnsetHomeVolume(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	assert.NoError(t, h.UnsetHomeVolume(ctx))
 	assert.Equal(t, "", h.HomeVolumeID)
 	assert.Equal(t, []VolumeAttachment{
@@ -4737,7 +4751,7 @@ func TestRemoveVolumeFromHost(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	assert.NoError(t, h.RemoveVolumeFromHost(ctx, "volume-2"))
 	assert.Equal(t, []VolumeAttachment{
 		{
@@ -4771,7 +4785,7 @@ func TestFindHostWithVolume(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	foundHost, err := FindHostWithVolume(ctx, "volume-1")
 	assert.NoError(t, err)
 	assert.NotNil(t, foundHost)
@@ -4826,7 +4840,7 @@ func TestStartingHostsByClient(t *testing.T) {
 		},
 	}
 	for _, h := range startingHosts {
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 	}
 
 	hostsByClient, err := StartingHostsByClient(ctx, 0)
@@ -4895,7 +4909,7 @@ func TestFindHostsInRange(t *testing.T) {
 		},
 	}
 	for _, h := range hosts {
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 	}
 
 	filteredHosts, err := FindHostsInRange(ctx, HostsInRangeParams{Status: evergreen.HostTerminated})
@@ -4944,7 +4958,7 @@ func TestRemoveAndReplace(t *testing.T) {
 		Id:     "bar",
 		Status: evergreen.HostUninitialized,
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 
 	h.DockerOptions.Command = "hello world"
 	assert.NoError(t, h.Replace())
@@ -4971,7 +4985,7 @@ func TestFindStaticNeedsNewSSHKeys(t *testing.T) {
 	keyName := "key"
 	for testName, testCase := range map[string]func(t *testing.T, settings *evergreen.Settings, h *Host){
 		"IgnoresHostsWithMatchingKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindStaticNeedsNewSSHKeys(ctx, settings)
 			require.NoError(t, err)
@@ -4979,7 +4993,7 @@ func TestFindStaticNeedsNewSSHKeys(t *testing.T) {
 		},
 		"FindsHostsMissingAllKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
 			h.SSHKeyNames = []string{}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindStaticNeedsNewSSHKeys(ctx, settings)
 			require.NoError(t, err)
@@ -4987,7 +5001,7 @@ func TestFindStaticNeedsNewSSHKeys(t *testing.T) {
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
 		"FindsHostsMissingSubsetOfKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			newKeyName := "new_key"
 			settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
@@ -5004,7 +5018,7 @@ func TestFindStaticNeedsNewSSHKeys(t *testing.T) {
 		"IgnoresNonstaticHosts": func(t *testing.T, settings *evergreen.Settings, h *Host) {
 			h.SSHKeyNames = []string{}
 			h.Provider = evergreen.ProviderNameMock
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindStaticNeedsNewSSHKeys(ctx, settings)
 			require.NoError(t, err)
@@ -5012,7 +5026,7 @@ func TestFindStaticNeedsNewSSHKeys(t *testing.T) {
 		},
 		"IgnoresHostsWithExtraKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
 			h.SSHKeyNames = append(h.SSHKeyNames, "other_key")
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			hosts, err := FindStaticNeedsNewSSHKeys(ctx, settings)
 			require.NoError(t, err)
@@ -5062,7 +5076,7 @@ func TestSetNewSSHKeys(t *testing.T) {
 	assert.Error(t, h.AddSSHKeyName(ctx, "foo"))
 	assert.Empty(t, h.SSHKeyNames)
 
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 	require.NoError(t, h.AddSSHKeyName(ctx, "foo"))
 	assert.Equal(t, []string{"foo"}, h.SSHKeyNames)
 
@@ -5098,7 +5112,7 @@ func TestUpdateCachedDistroProviderSettings(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	newProviderSettings := []*birch.Document{
 		birch.NewDocument(
@@ -5146,6 +5160,9 @@ func TestPartitionParents(t *testing.T) {
 }
 
 func TestCountVirtualWorkstationsByDistro(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	for i := 0; i < 100; i++ {
 		h := &Host{
@@ -5162,9 +5179,9 @@ func TestCountVirtualWorkstationsByDistro(t *testing.T) {
 		if i%11 == 0 {
 			h.InstanceType = "bar"
 		}
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 	}
-	count, err := CountVirtualWorkstationsByInstanceType()
+	count, err := CountVirtualWorkstationsByInstanceType(ctx)
 	require.NoError(t, err)
 	for _, counter := range count {
 		require.NotEmpty(t, counter.InstanceType)
@@ -5209,7 +5226,7 @@ func TestUnsafeReplace(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, old, replacement Host){
 		"SuccessfullySwapsHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, old, replacement Host) {
-			require.NoError(t, old.Insert())
+			require.NoError(t, old.Insert(ctx))
 
 			require.NoError(t, UnsafeReplace(ctx, env, old.Id, &replacement))
 
@@ -5223,7 +5240,7 @@ func TestUnsafeReplace(t *testing.T) {
 			assert.Equal(t, *found, replacement)
 		},
 		"SucceedsIfNewHostIsIdenticalToOldHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h, _ Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, UnsafeReplace(ctx, env, h.Id, &h))
 
@@ -5244,7 +5261,7 @@ func TestUnsafeReplace(t *testing.T) {
 			assert.Zero(t, h)
 		},
 		"FailsIfNewHostAlreadyExists": func(ctx context.Context, t *testing.T, env evergreen.Environment, old, replacement Host) {
-			require.NoError(t, replacement.Insert())
+			require.NoError(t, replacement.Insert(ctx))
 
 			require.Error(t, UnsafeReplace(ctx, env, old.Id, &replacement))
 
@@ -5336,12 +5353,15 @@ func TestFindHostsSuite(t *testing.T) {
 	s := new(FindHostsSuite)
 
 	s.setup = func(s *FindHostsSuite) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		s.NoError(db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		hosts := s.hosts()
 		for _, h := range hosts {
-			s.Require().NoError(h.Insert())
+			s.Require().NoError(h.Insert(ctx))
 		}
 
 		users := []string{testUser, "user2", "user3", "user4"}
@@ -5554,7 +5574,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(-10 * time.Minute),
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			require.NoError(t, err)
@@ -5569,7 +5589,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(time.Hour),
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			assert.NoError(t, err)
@@ -5581,7 +5601,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Id:       "h3",
 				Status:   evergreen.HostDecommissioned,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			require.NoError(t, err)
@@ -5594,7 +5614,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provider: evergreen.ProviderNameMock,
 				Status:   evergreen.HostQuarantined,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			assert.NoError(t, err)
@@ -5608,7 +5628,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Status:       evergreen.HostBuildingFailed,
 				Provider:     evergreen.ProviderNameMock,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			require.NoError(t, err)
@@ -5623,7 +5643,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Status:       evergreen.HostProvisionFailed,
 				Provider:     evergreen.ProviderNameMock,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			require.NoError(t, err)
@@ -5637,7 +5657,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Status:       evergreen.HostTerminated,
 				CreationTime: time.Now().Add(-time.Minute * 60),
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			assert.NoError(t, err)
@@ -5652,7 +5672,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provisioned:  true,
 				Status:       evergreen.HostRunning,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			assert.NoError(t, err)
@@ -5665,7 +5685,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-time.Minute * 10),
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			assert.NoError(t, err)
@@ -5680,7 +5700,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			require.NoError(t, err)
@@ -5701,7 +5721,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				RunningTask:           "running_task",
 				StartedBy:             evergreen.User,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			toTerminate, err := FindHostsToTerminate(ctx)
 			require.NoError(t, err)
@@ -5722,7 +5742,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 				CreationTime: time.Now().Add(-time.Hour),
 				Provider:     evergreen.ProviderNameEc2Fleet,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			toTerminate, err := FindHostsToTerminate(ctx)
 			require.NoError(t, err)
 			require.Len(t, toTerminate, 1)

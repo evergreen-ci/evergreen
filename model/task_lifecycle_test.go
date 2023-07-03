@@ -1882,7 +1882,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
 			So(pp.Insert(), ShouldBeNil)
-			So(taskHost.Insert(), ShouldBeNil)
+			So(taskHost.Insert(ctx), ShouldBeNil)
 		}
 
 		Convey("task should not fail if there are no failed test", func() {
@@ -2006,7 +2006,7 @@ func TestMarkEnd(t *testing.T) {
 	require.NoError(v.Insert())
 	require.NoError(pp.Insert())
 	require.NoError(dependentTask.Insert())
-	require.NoError(taskHost.Insert())
+	require.NoError(taskHost.Insert(ctx))
 
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
@@ -2179,7 +2179,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 				Id:          "h1",
 				RunningTask: "say-hi",
 			}
-			assert.NoError(h.Insert())
+			assert.NoError(h.Insert(ctx))
 			b := build.Build{
 				Id:      "b",
 				Version: "abc",
@@ -2486,7 +2486,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 		Id:          "h1",
 		RunningTask: "say-hi",
 	}
-	assert.NoError(h.Insert())
+	assert.NoError(h.Insert(ctx))
 	b := build.Build{
 		Id:      "b",
 		Version: "abc",
@@ -4007,7 +4007,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Id:          "myHost",
 		RunningTask: "testone",
 	}
-	assert.NoError(taskHost.Insert())
+	assert.NoError(taskHost.Insert(ctx))
 	buildID := "buildtest"
 	testTask := &task.Task{
 		Id:          "testone",
@@ -4169,7 +4169,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Id:          "myHost",
 		RunningTask: testTask.Id,
 	}
-	assert.NoError(taskHost.Insert())
+	assert.NoError(taskHost.Insert(ctx))
 	anotherTask := task.Task{
 		Id:          "two",
 		Activated:   true,
@@ -4255,7 +4255,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		Id:          "myHost",
 		RunningTask: testTask.Id,
 	}
-	assert.NoError(taskHost.Insert())
+	assert.NoError(taskHost.Insert(ctx))
 	anotherTask := task.Task{
 		Id:          "two",
 		DisplayName: "test 2",
@@ -4386,7 +4386,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 		Id:          "h1",
 		RunningTask: "t",
 	}
-	assert.NoError(h.Insert())
+	assert.NoError(h.Insert(ctx))
 
 	b := build.Build{
 		Id:      "b",
@@ -4483,7 +4483,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 		Id:          "h1",
 		RunningTask: "t",
 	}
-	assert.NoError(h.Insert())
+	assert.NoError(h.Insert(ctx))
 
 	b := build.Build{Id: "b"}
 	assert.NoError(b.Insert())
@@ -4547,7 +4547,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 		Id:          "h1",
 		RunningTask: "et1",
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 
 	b := build.Build{
 		Id:      "b",
@@ -4743,7 +4743,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 		Id:          "h1",
 		RunningTask: "et",
 	}
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 
 	b := build.Build{
 		Id:      "b",
@@ -5262,7 +5262,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Id:          "hostId",
 		RunningTask: testTask1.Id,
 	}
-	assert.NoError(t, taskHost.Insert())
+	assert.NoError(t, taskHost.Insert(ctx))
 	testTask2 := task.Task{
 		Id:              "t2",
 		Status:          evergreen.TaskStarted,
@@ -5643,7 +5643,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 	taskHost := host.Host{
 		Id: "hostId",
 	}
-	assert.NoError(t, taskHost.Insert())
+	assert.NoError(t, taskHost.Insert(ctx))
 	b := build.Build{
 		Id:      "b",
 		Version: "version",

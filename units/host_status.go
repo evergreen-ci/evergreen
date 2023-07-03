@@ -202,7 +202,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		})
 
 		catcher := grip.NewBasicCatcher()
-		catcher.Wrap(handleTerminatedHostSpawnedByTask(&h), "handling host.create host that was terminating before it was running")
+		catcher.Wrap(handleTerminatedHostSpawnedByTask(ctx, &h), "handling host.create host that was terminating before it was running")
 		catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, fmt.Sprintf("host status is '%s'", cloudStatus.String())), "decommissioning host")
 		terminationJob := NewHostTerminationJob(j.env, &h, HostTerminationOptions{
 			TerminateIfBusy:          true,

@@ -325,10 +325,10 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 	if len(containerIntents) != 1 {
 		return nil, errors.Errorf("programmatic error: should have created one new container, not %d", len(containerIntents))
 	}
-	if err = host.InsertMany(containerIntents); err != nil {
+	if err = host.InsertMany(ctx, containerIntents); err != nil {
 		return nil, errors.Wrap(err, "inserting container intents")
 	}
-	if err = host.InsertMany(parentIntents); err != nil {
+	if err = host.InsertMany(ctx, parentIntents); err != nil {
 		return nil, errors.Wrap(err, "inserting parent intent hosts")
 	}
 
@@ -438,7 +438,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		return nil, errors.Wrap(err, "making intent host options")
 	}
 	intent := host.NewIntent(*options)
-	if err = intent.Insert(); err != nil {
+	if err = intent.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
 

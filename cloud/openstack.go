@@ -119,7 +119,7 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	server, err := m.client.CreateInstance(opts, settings.KeyName)
 	if err != nil {
 		grip.Error(err)
-		if rmErr := h.Remove(); rmErr != nil {
+		if rmErr := h.Remove(ctx); rmErr != nil {
 			grip.Errorf("Could not remove intent host: %s", message.Fields{
 				"host_id": h.Id,
 				"error":   rmErr,

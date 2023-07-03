@@ -20,6 +20,9 @@ import (
 )
 
 func TestCloudStatusJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -79,14 +82,13 @@ func TestCloudStatusJob(t *testing.T) {
 	mockState := cloud.GetMockProvider()
 	mockState.Reset()
 	for _, h := range hosts {
-		require.NoError(h.Insert())
+		require.NoError(h.Insert(ctx))
 		mockState.Set(h.Id, cloud.MockInstance{
 			Status:  cloud.StatusRunning,
 			DNSName: "dns_name",
 		})
 	}
 
-	ctx := context.Background()
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
 	j := NewCloudHostReadyJob(env, "id")
@@ -120,17 +122,19 @@ func TestCloudStatusJob(t *testing.T) {
 }
 
 func TestTerminateUnknownHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(host.Collection))
 	h1 := host.Host{
 		Id: "h1",
 	}
-	require.NoError(t, h1.Insert())
+	require.NoError(t, h1.Insert(ctx))
 	h2 := host.Host{
 		Id: "h2",
 	}
-	require.NoError(t, h2.Insert())
+	require.NoError(t, h2.Insert(ctx))
 	env := &mock.Environment{}
-	ctx := context.Background()
 	require.NoError(t, env.Configure(ctx))
 	j := NewCloudHostReadyJob(env, "id").(*cloudHostReadyJob)
 	awsErr := "getting host statuses for providers: error describing instances: after 10 retries, operation failed: InvalidInstanceID.NotFound: The instance IDs 'h1, h2' do not exist"
@@ -150,7 +154,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			provider.Set(h.Id, mockInstance)
 
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
 
@@ -168,7 +172,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			provider.Set(h.Id, mockInstance)
 
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
 
@@ -179,7 +183,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			assert.True(t, dbHost.Provisioned)
 		},
 		"NonExistentStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusNonExistent))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
@@ -190,7 +194,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"FailedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusFailed))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
@@ -208,7 +212,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 			h.RunningTask = tsk.Id
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusStopped))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))

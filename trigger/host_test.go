@@ -43,7 +43,7 @@ func (s *hostSuite) SetupTest() {
 		Id:             "host",
 		ExpirationTime: time.Now().Add(12 * time.Hour),
 	}
-	s.NoError(s.t.host.Insert())
+	s.NoError(s.t.host.Insert(s.ctx))
 
 	s.t.event = &event.EventLogEntry{
 		ResourceType: event.ResourceTypeHost,

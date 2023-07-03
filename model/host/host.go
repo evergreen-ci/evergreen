@@ -1735,8 +1735,8 @@ func (h *Host) CacheHostData(ctx context.Context) error {
 	return err
 }
 
-func (h *Host) Insert() error {
-	if err := db.Insert(Collection, h); err != nil {
+func (h *Host) Insert(ctx context.Context) error {
+	if err := InsertOne(ctx, h); err != nil {
 		return errors.Wrap(err, "inserting host")
 	}
 	h.logHostCreated()
@@ -1769,13 +1769,8 @@ func (h *Host) logHostCreated() {
 // what happened to it. Instead, it's preferable to set a host to a failure
 // state (e.g. building-failed, decommissioned) so that it can be cleaned up by
 // host termination.
-func (h *Host) Remove() error {
-	return db.Remove(
-		Collection,
-		bson.M{
-			IdKey: h.Id,
-		},
-	)
+func (h *Host) Remove(ctx context.Context) error {
+	return errors.Wrapf(DeleteOne(ctx, ById(h.Id)), "deleting host '%s'", h.Id)
 }
 
 // RemoveStrict deletes a host and errors if the host is not found.
@@ -2003,12 +1998,16 @@ var StartedByStatusIndex = bson.D{
 	},
 }
 
-func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
-	var counts []InactiveHostCounts
-	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &counts)
+func CountInactiveHostsByProvider(ctx context.Context) ([]InactiveHostCounts, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, inactiveHostCountPipeline())
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating inactive hosts")
 	}
+	var counts []InactiveHostCounts
+	if err = cur.All(ctx, &counts); err != nil {
+		return nil, errors.Wrap(err, "decoding inactive hosts")
+	}
+
 	return counts, nil
 }
 
@@ -2192,7 +2191,7 @@ func (h *Host) UpdateLastContainerFinishTime(ctx context.Context, t time.Time) e
 }
 
 // FindRunningHosts is the underlying query behind the hosts page's table
-func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
+func FindRunningHosts(ctx context.Context, includeSpawnHosts bool) ([]Host, error) {
 	query := bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
 
 	if !includeSpawnHosts {
@@ -2219,13 +2218,7 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 		},
 	}
 
-	var dbHosts []Host
-
-	if err := db.Aggregate(Collection, pipeline, &dbHosts); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return dbHosts, nil
+	return Aggregate(ctx, pipeline)
 }
 
 // FindAllHostsSpawnedByTasks finds all running hosts spawned by the
@@ -2505,16 +2498,6 @@ func findUphostParentsByContainerPool(ctx context.Context, poolId string) ([]Hos
 	return Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
-func InsertMany(hosts []Host) error {
-	docs := make([]interface{}, len(hosts))
-	for idx := range hosts {
-		docs[idx] = &hosts[idx]
-	}
-
-	return errors.WithStack(db.InsertMany(Collection, docs...))
-
-}
-
 // CountContainersRunningAtTime counts how many containers were running on the
 // given parent host at the specified time, using the host StartTime and
 // TerminationTime fields.
@@ -2643,8 +2626,7 @@ func (h *Host) SetInstanceType(ctx context.Context, instanceType string) error {
 }
 
 // AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
-func AggregateSpawnhostData() (*SpawnHostUsage, error) {
-	res := []SpawnHostUsage{}
+func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 	hostPipeline := []bson.M{
 		{"$match": bson.M{
 			UserHostKey: bson.M{"$eq": true},
@@ -2666,8 +2648,13 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 		}},
 	}
 
-	if err := db.Aggregate(Collection, hostPipeline, &res); err != nil {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, hostPipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating spawn host usage data")
+	}
+	var hostRes []SpawnHostUsage
+	if err = cur.All(ctx, &hostRes); err != nil {
+		return nil, errors.Wrap(err, "decoding spawn host usage data")
 	}
 
 	volumePipeline := []bson.M{
@@ -2684,17 +2671,18 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 			"num_users_with_volumes": bson.M{"$size": "$users"},
 		}},
 	}
-	if err := db.Aggregate(VolumesCollection, volumePipeline, &res); err != nil {
+	cur, err = evergreen.GetEnvironment().DB().Collection(VolumesCollection).Aggregate(ctx, volumePipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating spawn host volume usage data")
 	}
-	if len(res) == 0 {
-		return nil, errors.New("no host/volume results found")
+	var volRes []SpawnHostUsage
+	if err = cur.All(ctx, &volRes); err != nil {
+		return nil, errors.Wrap(err, "decoding spawn host volume usage data")
 	}
 
-	temp := []struct {
-		InstanceType string `bson:"instance_type"`
-		Count        int    `bson:"count"`
-	}{}
+	if len(hostRes) == 0 || len(volRes) == 0 {
+		return nil, errors.New("no host/volume results found")
+	}
 
 	instanceTypePipeline := []bson.M{
 		{"$match": bson.M{
@@ -2712,15 +2700,33 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 		}},
 	}
 
-	if err := db.Aggregate(Collection, instanceTypePipeline, &temp); err != nil {
+	cur, err = evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, instanceTypePipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating spawn host instance type usage data")
 	}
-
-	res[0].InstanceTypes = map[string]int{}
-	for _, each := range temp {
-		res[0].InstanceTypes[each.InstanceType] = each.Count
+	temp := []struct {
+		InstanceType string `bson:"instance_type"`
+		Count        int    `bson:"count"`
+	}{}
+	if err = cur.All(ctx, &temp); err != nil {
+		return nil, errors.Wrap(err, "decoding spawn host instance type usage data")
 	}
-	return &res[0], nil
+
+	instanceTypes := make(map[string]int, len(temp))
+	for _, each := range temp {
+		instanceTypes[each.InstanceType] = each.Count
+	}
+
+	return &SpawnHostUsage{
+		TotalHosts:            hostRes[0].TotalHosts,
+		TotalStoppedHosts:     hostRes[0].TotalStoppedHosts,
+		TotalUnexpirableHosts: hostRes[0].TotalUnexpirableHosts,
+		NumUsersWithHosts:     hostRes[0].NumUsersWithHosts,
+		TotalVolumes:          volRes[0].TotalVolumes,
+		TotalVolumeSize:       volRes[0].TotalVolumeSize,
+		NumUsersWithVolumes:   volRes[0].NumUsersWithVolumes,
+		InstanceTypes:         instanceTypes,
+	}, nil
 }
 
 // CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated
@@ -3131,7 +3137,7 @@ type VirtualWorkstationCounter struct {
 	Count        int    `bson:"count" json:"count"`
 }
 
-func CountVirtualWorkstationsByInstanceType() ([]VirtualWorkstationCounter, error) {
+func CountVirtualWorkstationsByInstanceType(ctx context.Context) ([]VirtualWorkstationCounter, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			StatusKey:               evergreen.HostRunning,
@@ -3148,9 +3154,14 @@ func CountVirtualWorkstationsByInstanceType() ([]VirtualWorkstationCounter, erro
 		}},
 	}
 
-	data := []VirtualWorkstationCounter{}
-	if err := db.Aggregate(Collection, pipeline, &data); err != nil {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating virtual workstation counts by instance type")
 	}
+	var data []VirtualWorkstationCounter
+	if err = cur.All(ctx, &data); err != nil {
+		return nil, errors.Wrap(err, "decoding virtual workstation counts")
+	}
+
 	return data, nil
 }

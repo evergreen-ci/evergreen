@@ -375,6 +375,9 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 }
 
 func spawnTestHostAndVolume(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Initialize Spawn Host and Spawn Volume used in tests
 	volExp, err := time.Parse(time.RFC3339, "2020-06-06T14:43:06.287Z")
 	require.NoError(t, err)
@@ -419,8 +422,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 		Zone:               "us-east-1a",
 		Provisioned:        true,
 	}
-	require.NoError(t, h.Insert())
-	ctx := context.Background()
+	require.NoError(t, h.Insert(ctx))
 	err = spawnHostForTestCode(ctx, &mountedVolume, &h)
 	require.NoError(t, err)
 }

@@ -36,7 +36,7 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 		Status:        evergreen.HostRunning,
 		HasContainers: true,
 	}
-	assert.NoError(p1.Insert())
+	assert.NoError(p1.Insert(ctx))
 
 	h1 := &host.Host{
 		Id:          "h1",
@@ -44,14 +44,14 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 		ParentID:    "p1",
 		RunningTask: "t1",
 	}
-	assert.NoError(h1.Insert())
+	assert.NoError(h1.Insert(ctx))
 	h2 := &host.Host{
 		Id:          "h2",
 		Status:      evergreen.HostRunning,
 		ParentID:    "p1",
 		RunningTask: "t2",
 	}
-	assert.NoError(h2.Insert())
+	assert.NoError(h2.Insert(ctx))
 
 	t1 := &task.Task{
 		Id: "t1",
