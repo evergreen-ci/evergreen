@@ -934,7 +934,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	repoName := "commit-queue-sandbox"
 	headSHA := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
 	org := github.Organization{
-		Name: &orgName,
+		Login: &orgName,
 	}
 	repo := github.Repository{
 		Name: &repoName,

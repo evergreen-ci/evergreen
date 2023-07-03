@@ -849,7 +849,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 	}
 	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, false))
 
-	assert.Equal(t, "GitHub Merge Queue: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, true))
+	assert.Equal(t, "GitHub Merge Queue", MakeCommitQueueDescription(patches, projectRef, project, true))
 
 	// main repo + module commits
 	patches = []patch.ModulePatch{
