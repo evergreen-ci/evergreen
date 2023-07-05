@@ -307,7 +307,9 @@ func TestNewTaskIntentPod(t *testing.T) {
 	})
 	t.Run("FailsWithNotAllowedImage", func(t *testing.T) {
 		opts := makeValidOpts()
-		ecsConf := evergreen.ECSConfig{}
+		ecsConf := evergreen.ECSConfig{
+			AllowedImages: []string{"allowedImage"},
+		}
 		opts.Image = "notAllowedImage"
 		p, err := NewTaskIntentPod(ecsConf, opts)
 		assert.Error(t, err)
