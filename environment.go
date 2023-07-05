@@ -699,38 +699,6 @@ func (e *envState) initSenders(ctx context.Context) error {
 		Threshold: level.Notice,
 	}
 
-	// if e.settings.Notify.SMTP.From != "" {
-	// 	smtp := e.settings.Notify.SMTP
-	// 	opts := send.SMTPOptions{
-	// 		Name:              "evergreen",
-	// 		Server:            smtp.Server,
-	// 		Port:              smtp.Port,
-	// 		UseSSL:            smtp.UseSSL,
-	// 		Username:          smtp.Username,
-	// 		Password:          smtp.Password,
-	// 		From:              smtp.From,
-	// 		PlainTextContents: false,
-	// 		NameAsSubject:     true,
-	// 	}
-	// 	if len(smtp.AdminEmail) == 0 {
-	// 		if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
-	// 			return errors.Wrap(err, "adding email logger test recipient")
-	// 		}
-
-	// 	} else {
-	// 		for i := range smtp.AdminEmail {
-	// 			if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
-	// 				return errors.Wrap(err, "adding email logger recipient")
-	// 			}
-	// 		}
-	// 	}
-	// 	sender, err := send.NewSMTPLogger(&opts, levelInfo)
-	// 	if err != nil {
-	// 		return errors.Wrap(err, "setting up email logger")
-	// 	}
-	// 	e.senders[SenderEmail] = sender
-	// }
-
 	if e.settings.Notify.SES.From != "" {
 		provider := credentials.NewStaticCredentialsProvider(e.settings.Providers.AWS.EC2Keys[0].Key, e.settings.Providers.AWS.EC2Keys[0].Secret, "")
 		config, err := config.LoadDefaultConfig(ctx,
