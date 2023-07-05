@@ -809,6 +809,7 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		return errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
+	buildsToUpdate := make(map[string]bool)
 	for _, blockedTask := range blockedTasks {
 		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
 			return errors.Wrap(err, "marking dependency attainable")
@@ -817,6 +818,16 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		if err := UpdateUnblockedDependencies(&blockedTask); err != nil {
 			return errors.WithStack(err)
 		}
+
+		buildsToUpdate[blockedTask.BuildId] = true
+	}
+
+	var buildIDs []string
+	for buildID := range buildsToUpdate {
+		buildIDs = append(buildIDs, buildID)
+	}
+	if err := UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
+		return errors.Wrapf(err, "updating build, version, and patch statuses")
 	}
 
 	return nil
@@ -1269,7 +1280,7 @@ func checkUpdateBuildPRStatusPending(b *build.Build) error {
 			Caller:    "pr-task-reset",
 			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		}
-		if err = thirdparty.SendPendingStatusToGithub(input); err != nil {
+		if err = thirdparty.SendPendingStatusToGithub(input, ""); err != nil {
 			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
 		}
 	}
@@ -1719,10 +1730,6 @@ func MarkOneTaskReset(t *task.Task) error {
 		return errors.Wrap(err, "clearing unattainable dependencies")
 	}
 
-	if err := t.RefreshUnattainableDependency(); err != nil {
-		return errors.Wrap(err, "refreshing cached unattainable status")
-	}
-
 	if err := t.MarkDependenciesFinished(false); err != nil {
 		return errors.Wrap(err, "marking direct dependencies unfinished")
 	}
@@ -1749,7 +1756,6 @@ func MarkTasksReset(taskIds []string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing unattainable dependencies for task '%s'", t.Id)
-		catcher.Wrapf(t.RefreshUnattainableDependency(), "refreshing cached unattainable status for task '%s'", t.Id)
 		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 

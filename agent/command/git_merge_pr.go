@@ -72,6 +72,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	if token == "" {
 		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	}
+	appToken := conf.Expansions.Get(evergreen.GithubAppToken)
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token: token,
@@ -101,7 +102,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	// Add retry logic in case multiple PRs are merged in quick succession, since
 	// it takes GitHub some time to put the PR back in a mergeable state.
 	err = utility.Retry(ctx, func() (bool, error) {
-		err = thirdparty.MergePullRequest(ctx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+		err = thirdparty.MergePullRequest(ctx, token, appToken, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 			patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
 		if err != nil {
 			return true, errors.Wrap(err, "getting pull request data from GitHub")

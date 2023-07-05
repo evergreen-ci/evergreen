@@ -2104,12 +2104,12 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"func1": &YAMLCommandSet{
+			"func1": {
 				SingleCommand: &PluginCommandConf{
 					Command: "single_command",
 				},
 			},
-			"func2": &YAMLCommandSet{
+			"func2": {
 				MultiCommand: []PluginCommandConf{
 					{
 						Command: "multi_command1",
@@ -2138,9 +2138,9 @@ func TestMergeUnordered(t *testing.T) {
 			"a",
 		},
 		Loggers: &LoggerConfig{
-			Agent:  []LogOpts{{Type: LogkeeperLogSender}},
-			System: []LogOpts{{Type: LogkeeperLogSender}},
-			Task:   []LogOpts{{Type: LogkeeperLogSender}},
+			Agent:  []LogOpts{{Type: BuildloggerLogSender}},
+			System: []LogOpts{{Type: BuildloggerLogSender}},
+			Task:   []LogOpts{{Type: BuildloggerLogSender}},
 		},
 	}
 

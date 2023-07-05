@@ -2839,6 +2839,43 @@ func TestMarkUnattainableDependency(t *testing.T) {
 		assert.False(t, dbTask.DependsOn[0].Unattainable)
 		assert.False(t, dbTask.DependsOn[1].Unattainable)
 	})
+
+	t.Run("InMemoryTaskOutdated", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		dependentTask := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: true,
+				},
+				{
+					TaskId:       "t2",
+					Unattainable: false,
+				},
+			},
+		}
+		require.NoError(t, dependentTask.Insert())
+
+		dependentTask.DependsOn[1].Unattainable = true
+
+		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", false))
+
+		assert.False(t, dependentTask.Blocked())
+		assert.False(t, dependentTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dependentTask.DependsOn[0].Unattainable)
+		assert.False(t, dependentTask.DependsOn[1].Unattainable)
+
+		dbTask, err := FindOneId("t0")
+		require.NoError(t, err)
+		assert.False(t, dbTask.Blocked())
+		assert.False(t, dbTask.UnattainableDependency)
+		require.Len(t, dependentTask.DependsOn, 2)
+		assert.False(t, dbTask.DependsOn[0].Unattainable)
+		assert.False(t, dbTask.DependsOn[1].Unattainable)
+	})
 }
 
 func TestSetGeneratedTasksToActivate(t *testing.T) {

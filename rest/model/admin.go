@@ -879,11 +879,13 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 }
 
 type APIGithubAuthConfig struct {
+	AppId        int64     `json:"app_id"`
 	ClientId     *string   `json:"client_id"`
 	ClientSecret *string   `json:"client_secret"`
-	Users        []*string `json:"users"`
+	DefaultOwner *string   `json:"default_owner"`
+	DefaultRepo  *string   `json:"default_repo"`
 	Organization *string   `json:"organization"`
-	AppId        int64     `json:"app_id"`
+	Users        []*string `json:"users"`
 }
 
 func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
@@ -895,6 +897,8 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 		a.ClientId = utility.ToStringPtr(v.ClientId)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Organization = utility.ToStringPtr(v.Organization)
+		a.DefaultOwner = utility.ToStringPtr(v.DefaultOwner)
+		a.DefaultRepo = utility.ToStringPtr(v.DefaultRepo)
 		a.AppId = v.AppId
 		for _, u := range v.Users {
 			a.Users = append(a.Users, utility.ToStringPtr(u))
@@ -913,6 +917,8 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		ClientId:     utility.FromStringPtr(a.ClientId),
 		ClientSecret: utility.FromStringPtr(a.ClientSecret),
 		Organization: utility.FromStringPtr(a.Organization),
+		DefaultOwner: utility.FromStringPtr(a.DefaultOwner),
+		DefaultRepo:  utility.FromStringPtr(a.DefaultRepo),
 		AppId:        a.AppId,
 	}
 	for _, u := range a.Users {
@@ -2236,7 +2242,6 @@ type APIServiceFlags struct {
 	BackgroundCleanupDisabled      bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
 	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
-	LegacyUIProjectPageDisabled    bool `json:"legacy_ui_project_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2524,7 +2529,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
-		as.LegacyUIProjectPageDisabled = v.LegacyUIProjectPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2565,7 +2569,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundReauthDisabled:       as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:           as.CloudCleanupDisabled,
 		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
-		LegacyUIProjectPageDisabled:    as.LegacyUIProjectPageDisabled,
 	}, nil
 }
 

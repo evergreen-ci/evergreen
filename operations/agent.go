@@ -29,6 +29,7 @@ func Agent() cli.Command {
 		hostIDFlagName           = "host_id"
 		hostSecretFlagName       = "host_secret"
 		workingDirectoryFlagName = "working_directory"
+		logOutputFlagName        = "log_output"
 		logPrefixFlagName        = "log_prefix"
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
@@ -72,9 +73,14 @@ func Agent() cli.Command {
 				Usage: "working directory for the agent",
 			},
 			cli.StringFlag{
+				Name:  logOutputFlagName,
+				Value: string(agent.LogOutputFile),
+				Usage: "location for the agent's log output (file, stdout)",
+			},
+			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: "evg.agent",
-				Usage: "prefix for the agent's log filename",
+				Usage: "prefix for the agent's log output",
 			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
@@ -140,6 +146,7 @@ func Agent() cli.Command {
 				Mode:             agent.Mode(c.String(modeFlagName)),
 				StatusPort:       c.Int(statusPortFlagName),
 				LogPrefix:        c.String(logPrefixFlagName),
+				LogOutput:        agent.LogOutputType(c.String(logOutputFlagName)),
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
 				CloudProvider:    c.String(agentCloudProviderFlagName),
@@ -168,7 +175,7 @@ func Agent() cli.Command {
 
 			defer agt.Close(ctx)
 
-			sender, err := agt.GetSender(ctx, opts.LogPrefix)
+			sender, err := agt.GetSender(ctx, opts.LogOutput, opts.LogPrefix)
 			if err != nil {
 				return errors.Wrap(err, "configuring logger")
 			}

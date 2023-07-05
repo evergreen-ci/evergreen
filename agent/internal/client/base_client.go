@@ -43,7 +43,6 @@ type baseCommunicator struct {
 	httpClient      *http.Client
 	reqHeaders      map[string]string
 	cedarGRPCClient *grpc.ClientConn
-	loggerInfo      LoggerMetadata
 
 	lastMessageSent time.Time
 	mutex           sync.RWMutex
@@ -95,10 +94,6 @@ func (c *baseCommunicator) LastMessageAt() time.Time {
 	defer c.mutex.RUnlock()
 
 	return c.lastMessageSent
-}
-
-func (c *baseCommunicator) GetLoggerMetadata() LoggerMetadata {
-	return c.loggerInfo
 }
 
 func (c *baseCommunicator) resetClient() {
@@ -322,6 +317,10 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 	return &expAndVars, nil
 }
 
+// TaskConflict is a special agent-internal message that the heartbeat uses to
+// indicate that the task is failing because it's being aborted.
+const TaskConflict = "task-conflict"
+
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
 	data := interface{}("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
@@ -337,7 +336,7 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusConflict {
-		return evergreen.TaskConflict, errors.Errorf("unauthorized - wrong secret")
+		return TaskConflict, errors.Errorf("unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", util.RespErrorf(resp, "sending heartbeat")
@@ -414,8 +413,8 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		}
 		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
 
-		// disallow sending system logs to S3 or logkeeper for security reasons
-		if prefix == apimodels.SystemLogPrefix && (opt.Sender == model.FileLogSender || opt.Sender == model.LogkeeperLogSender) {
+		// disallow sending system logs to S3 for security reasons
+		if prefix == apimodels.SystemLogPrefix && opt.Sender == model.FileLogSender {
 			opt.Sender = model.EvergreenLogSender
 		}
 		switch opt.Sender {
@@ -443,36 +442,6 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, prefix, sender), bufferedSenderOpts)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
-			}
-		case model.LogkeeperLogSender:
-			config := send.BuildloggerConfig{
-				URL:        opt.LogkeeperURL,
-				Number:     opt.LogkeeperBuildNum,
-				Local:      grip.GetSender(),
-				Test:       prefix,
-				CreateTest: true,
-			}
-			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating Logkeeper logger")
-			}
-			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating buffered Logkeeper logger")
-			}
-
-			metadata := LogkeeperMetadata{
-				Build: config.GetBuildID(),
-				Test:  config.GetTestID(),
-			}
-			switch prefix {
-			case apimodels.AgentLogPrefix:
-				c.loggerInfo.Agent = append(c.loggerInfo.Agent, metadata)
-			case apimodels.SystemLogPrefix:
-				c.loggerInfo.System = append(c.loggerInfo.System, metadata)
-			case apimodels.TaskLogPrefix:
-				c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
 			}
 		case model.BuildloggerLogSender:
 			tk, err := c.GetTask(ctx, td)

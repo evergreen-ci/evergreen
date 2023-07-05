@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -8,6 +9,8 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/v52/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -47,28 +50,58 @@ type githubMergeIntent struct {
 
 	// HeadHash is the SHA of the head of the merge group. Evergreen checks this out.
 	HeadSHA string `bson:"head_hash"`
+
+	// Owner is the GitHub repository organization name.
+	Org string `bson:"org"`
+
+	// Repo is the GitHub repository name
+	Repo string `bson:"repo"`
 }
 
 // NewGithubIntent creates an Intent from a google/go-github MergeGroup.
-func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeGroup) (Intent, error) {
+func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeGroupEvent) (Intent, error) {
+	catcher := grip.NewBasicCatcher()
 	if msgDeliveryID == "" {
-		return nil, errors.New("message ID cannot be empty")
+		catcher.Add(errors.New("message ID cannot be empty"))
 	}
 	if caller == "" {
-		return nil, errors.New("empty caller errors")
+		catcher.Add(errors.New("empty caller errors"))
 	}
-	if mg.GetHeadRef() == "" {
-		return nil, errors.New("merge group head ref cannot be empty")
+	if mg.GetOrg().GetLogin() == "" {
+		catcher.Add(errors.New("merge group org name cannot be empty"))
 	}
-	if mg.GetHeadSHA() == "" {
-		return nil, errors.New("head ref cannot be empty")
+	if mg.GetRepo().GetName() == "" {
+		catcher.Add(errors.New("merge group repo name cannot be empty"))
 	}
+	if headRef := mg.GetMergeGroup().GetHeadRef(); headRef == "" {
+		catcher.Add(errors.New("merge group head ref cannot be empty"))
+	}
+	if mg.GetMergeGroup().GetHeadSHA() == "" {
+		catcher.Add(errors.New("head SHA cannot be empty"))
+	}
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	grip.Info(message.Fields{
+		"message":    "creating new merge intent for GitHub merge queue",
+		"DocumentID": msgDeliveryID,
+		"MsgID":      msgDeliveryID,
+		"IntentType": GithubMergeIntentType,
+		"Org":        mg.GetOrg().GetLogin(),
+		"Repo":       mg.GetRepo().GetName(),
+		"HeadRef":    mg.GetMergeGroup().GetHeadRef(),
+		"HeadSHA":    mg.GetMergeGroup().GetHeadSHA(),
+		"CalledBy":   caller,
+	})
 	return &githubMergeIntent{
 		DocumentID: msgDeliveryID,
 		MsgID:      msgDeliveryID,
 		IntentType: GithubMergeIntentType,
-		HeadRef:    mg.GetHeadRef(),
-		HeadSHA:    mg.GetHeadSHA(),
+		Org:        mg.GetOrg().GetLogin(),
+		Repo:       mg.GetRepo().GetName(),
+		HeadRef:    mg.GetMergeGroup().GetHeadRef(),
+		HeadSHA:    mg.GetMergeGroup().GetHeadSHA(),
 		CalledBy:   caller,
 	}, nil
 }
@@ -140,13 +173,34 @@ func (g *githubMergeIntent) GetCalledBy() string {
 
 // NewPatch creates a patch document from a merge intent.
 func (g *githubMergeIntent) NewPatch() *Patch {
+	// merge_group.head_ref looks like this:
+	// refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
+	split := strings.Split(g.HeadRef, "/")
+
+	// handle cases where base branch has a slash in it
+	baseBranchSlice := []string{}
+	for i := 3; i < len(split)-1; i++ {
+		baseBranchSlice = append(baseBranchSlice, split[i])
+	}
+	baseBranch := strings.Join(baseBranchSlice, "/")
+
+	// produce a branch name like gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
+	ghReadOnlyQueue := split[2]
+	lastElement := split[len(split)-1]
+	headBranch := strings.Join([]string{ghReadOnlyQueue, baseBranch, lastElement}, "/")
+
 	patchDoc := &Patch{
-		Id:     mgobson.NewObjectId(),
-		Alias:  g.GetAlias(),
-		Status: evergreen.PatchCreated,
+		Id:      mgobson.NewObjectId(),
+		Alias:   g.GetAlias(),
+		Status:  evergreen.PatchCreated,
+		Author:  evergreen.GithubMergeUser,
+		Githash: g.HeadSHA,
 		GithubMergeData: thirdparty.GithubMergeGroup{
-			HeadRef: g.HeadRef,
-			HeadSHA: g.HeadSHA,
+			Org:        g.Org,
+			Repo:       g.Repo,
+			BaseBranch: baseBranch,
+			HeadBranch: headBranch,
+			HeadSHA:    g.HeadSHA,
 		},
 	}
 	return patchDoc

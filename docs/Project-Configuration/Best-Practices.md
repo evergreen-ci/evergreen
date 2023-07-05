@@ -38,3 +38,7 @@ Evergreen will first look for an expansion called `foo` and will substitute that
 export foo=bar
 echo $foo
 ```
+
+## Distro Choice
+
+Tasks on more popular distros are often run quicker than tasks on less popular ones. Prefer more popular distros where possible.

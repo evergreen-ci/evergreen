@@ -1820,31 +1820,48 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattainable bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
+
+	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
+	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
+	// impervious to races because updates to single documents are atomic.
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
-			IdKey: taskId,
+			IdKey: t.Id,
 		},
-		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable},
-		},
-		options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
-			bson.M{
-				bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId,
+		[]bson.M{
+			{
+				// Iterate over the DependsOn array and set unattainable for dependencies that
+				// match the dependencyID. Leave other dependencies untouched.
+				"$set": bson.M{DependsOnKey: bson.M{
+					"$map": bson.M{
+						"input": "$" + DependsOnKey,
+						"as":    "dependency",
+						"in": bson.M{
+							"$cond": bson.M{
+								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
+								"else": "$$dependency",
+							},
+						},
+					}},
+				},
 			},
-		}}),
+			{
+				// Cache whether any dependencies are unattainable.
+				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
+			},
+		},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
-	return res.Err()
-}
+	if res.Err() != nil {
+		return errors.Wrap(res.Err(), "updating matching dependencies")
+	}
 
-func updateUnattainableDependency(taskID string, unattainableDependency bool) error {
-	return UpdateOne(
-		bson.M{IdKey: taskID},
-		bson.M{"$set": bson.M{UnattainableDependencyKey: unattainableDependency}},
-	)
+	return res.Decode(t)
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
@@ -2133,6 +2150,60 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	return results, count, nil
 }
 
+// GetTaskStatusesByVersion gets all unique task display statuses for a specific version
+func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+
+	opts := GetTasksByVersionOptions{
+		IncludeBaseTasks:               false,
+		FieldsToProject:                []string{DisplayStatusKey},
+		IncludeBuildVariantDisplayName: false,
+		IncludeNeverActivatedTasks:     true,
+		IncludeExecutionTasks:          false,
+	}
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "getting tasks by version pipeline")
+	}
+
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			"_id": nil,
+			"statuses": bson.M{
+				"$addToSet": "$" + DisplayStatusKey,
+			},
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			"_id": 0,
+			"statuses": bson.M{
+				"$sortArray": bson.M{
+					"input":  "$statuses",
+					"sortBy": 1,
+				},
+			},
+		},
+	})
+
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []struct {
+		Statuses []string `bson:"statuses"`
+	}
+	err = cursor.All(ctx, &results)
+
+	if err != nil {
+		return nil, err
+	}
+	return results[0].Statuses, nil
+
+}
+
 type StatusCount struct {
 	Status string `bson:"status"`
 	Count  int    `bson:"count"`
@@ -2149,7 +2220,7 @@ type GroupedTaskStatusCount struct {
 	StatusCounts []*StatusCount `bson:"status_counts"`
 }
 
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2215,7 +2286,12 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	}
 
 	taskStats := []taskStatsForQueryResult{}
-	if err := Aggregate(pipeline, &taskStats); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	if err := cursor.All(ctx, &taskStats); err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	result := TaskStats{}
@@ -2227,7 +2303,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	return &result, nil
 }
 
-func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
 	opts.IncludeBuildVariantDisplayName = true
 	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
@@ -2314,15 +2390,21 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	pipeline = append(pipeline, groupByStatusPipeline...)
 	result := []*GroupedTaskStatusCount{}
 
-	if err := Aggregate(pipeline, &result); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats")
+	}
+	err = cursor.All(ctx, &result)
+	if err != nil {
+		return nil, err
 	}
 	return result, nil
 
 }
 
 // GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
-func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([]string, error) {
+func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, baseVersionID string) ([]string, error) {
 	pipeline := []bson.M{}
 	taskField := "tasks"
 
@@ -2374,7 +2456,12 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 	})
 
 	res := []map[string]string{}
-	err := Aggregate(pipeline, &res)
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &res)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating base task statuses")
 	}
@@ -2676,6 +2763,8 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
 				ActivatedTimeKey: activationTime,
+				// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 			},
 		})
 	if err != nil {

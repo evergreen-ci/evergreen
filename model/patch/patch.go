@@ -529,6 +529,22 @@ func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
 	return nil
 }
 
+// UpdateMergeCommitSHA updates the merge commit SHA for the patch.
+func (p *Patch) UpdateMergeCommitSHA(sha string) error {
+	if p.GithubPatchData.MergeCommitSHA == sha {
+		return nil
+	}
+	shaKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchMergeCommitSHAKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				shaKey: sha,
+			},
+		},
+	)
+}
+
 func (p *Patch) FindModule(moduleName string) *ModulePatch {
 	for _, module := range p.Patches {
 		if module.ModuleName == moduleName {
@@ -772,8 +788,15 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+// IsCommitQueuePatch returns true if the the patch is part of any commit queue:
+// either Evergreen's commit queue or GitHub's merge queue.
 func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch()
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.IsGithubMergePatch()
+}
+
+// IsGithubMergePatch returns true if the patch is from the GitHub merge queue.
+func (p *Patch) IsGithubMergePatch() bool {
+	return p.GithubMergeData.HeadSHA != ""
 }
 
 func (p *Patch) IsBackport() bool {

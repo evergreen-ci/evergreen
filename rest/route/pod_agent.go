@@ -116,6 +116,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 		"agent",
 		fmt.Sprintf("--api_server=%s", h.settings.ApiUrl),
 		"--mode=pod",
+		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", strings.Join([]string{p.TaskContainerCreationOpts.WorkingDir, "agent"}, "/")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 	}

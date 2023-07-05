@@ -238,8 +238,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
 			"event":    gh.eventType,
-			"org":      event.GetOrg(),
-			"repo":     event.GetRepo(),
+			"org":      event.GetOrg().GetLogin(),
+			"repo":     event.GetRepo().GetName(),
 			"base_sha": event.GetMergeGroup().GetBaseSHA(),
 			"head_sha": event.GetMergeGroup().GetHeadSHA(),
 			"message":  msg,
@@ -249,13 +249,13 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if disableMergeGroup {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
-		if err := gh.AddIntentForGithubMerge(event.GetMergeGroup()); err != nil {
+		if err := gh.AddIntentForGithubMerge(event); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":   "GitHub hook",
 				"msg_id":   gh.msgID,
 				"event":    gh.eventType,
-				"org":      event.GetOrg(),
-				"repo":     event.GetRepo(),
+				"org":      event.GetOrg().GetLogin(),
+				"repo":     event.GetRepo().GetName(),
 				"base_sha": event.GetMergeGroup().GetBaseSHA(),
 				"head_sha": event.GetMergeGroup().GetHeadSHA(),
 				"message":  "can't add intent",
@@ -268,12 +268,12 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 }
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
-func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroup) error {
+func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroupEvent) error {
 	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")
 	}
-	if err := data.AddPatchIntent(intent, gh.queue); err != nil {
+	if err := data.AddGithubMergeIntent(intent, gh.queue); err != nil {
 		return errors.Wrap(err, "saving GitHub merge intent")
 	}
 	return nil
@@ -512,7 +512,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		Pusher: pusher,
 	}
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
-	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, token, ownerAndRepo[0], ownerAndRepo[1], tag.Tag)
+	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, token, ownerAndRepo[0], ownerAndRepo[1], event.GetRef())
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
@@ -654,7 +654,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		return nil, nil
 	}
 
-	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token) {
+	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token, pRef.Owner, pRef.Repo) {
 		grip.Debug(message.Fields{
 			"source":             "GitHub hook",
 			"msg_id":             gh.msgID,

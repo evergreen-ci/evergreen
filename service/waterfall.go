@@ -614,7 +614,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	project, err := projCtx.GetProject()
 
 	if err != nil || project == nil {
-		uis.ProjectNotFound(w, r)
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
 		return
 	}
 
