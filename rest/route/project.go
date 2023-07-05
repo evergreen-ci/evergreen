@@ -884,10 +884,14 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		if err != nil {
 			return errors.Wrap(err, "invalid start query parameter")
 		}
-		h.opts.StartAfter = startOrder
+		h.opts.Start = startOrder
 	}
-	if h.opts.StartAfter < 0 {
+	if h.opts.Start < 0 {
 		return errors.New("start must be a non-negative integer")
+	}
+
+	if h.opts.RevisionEnd < 0 {
+		return errors.New("revision_end must be a non-negative integer")
 	}
 
 	requester := params.Get("requester")

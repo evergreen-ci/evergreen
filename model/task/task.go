@@ -22,6 +22,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1630,6 +1631,8 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 			DeactivatedForDependencyKey: false,
 			ActivatedByKey:              caller,
 			ActivatedTimeKey:            time.Now(),
+			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 		}},
 	)
 	if err != nil {
@@ -1650,6 +1653,20 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 }
 
 func topologicalSort(tasks []Task) ([]Task, error) {
+	var fromTask, toTask string
+	defer func() {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.Id)
+		}
+		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
+		grip.Error(message.WrapError(panicErr, message.Fields{
+			"function":       "topologicalSort",
+			"from_task":      fromTask,
+			"to_task":        toTask,
+			"original_tasks": taskIds,
+		}))
+	}()
 	depGraph := simple.NewDirectedGraph()
 	taskNodeMap := make(map[string]graph.Node)
 	nodeTaskMap := make(map[int64]Task)
@@ -1663,10 +1680,12 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 
 	for _, task := range tasks {
 		for _, dep := range task.DependsOn {
-			if toNode, ok := taskNodeMap[dep.TaskId]; ok {
+			fromTask = dep.TaskId
+			if toNode, ok := taskNodeMap[fromTask]; ok {
+				toTask = task.Id
 				edge := simple.Edge{
 					F: simple.Node(toNode.ID()),
-					T: simple.Node(taskNodeMap[task.Id].ID()),
+					T: simple.Node(taskNodeMap[toTask].ID()),
 				}
 				depGraph.SetEdge(edge)
 			}
@@ -1998,6 +2017,8 @@ func resetTaskUpdate(t *Task) bson.M {
 			TimeTakenKey:                   0,
 			LastHeartbeatKey:               utility.ZeroTime,
 			ContainerAllocationAttemptsKey: 0,
+			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 		},
 		"$unset": bson.M{
 			DetailsKey:                 "",
@@ -2167,19 +2188,8 @@ func (t *Task) MarkUnscheduled() error {
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
 	wasBlocked := t.Blocked()
-	// Check all dependencies in case of erroneous duplicate
-	for i := range t.DependsOn {
-		if t.DependsOn[i].TaskId == dependencyId {
-			t.DependsOn[i].Unattainable = unattainable
-		}
-	}
-
-	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
+	if err := t.updateAllMatchingDependenciesForTask(dependencyId, unattainable); err != nil {
 		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
-	}
-
-	if err := t.RefreshUnattainableDependency(); err != nil {
-		return errors.Wrapf(err, "caching unattainable dependency for task '%s'", t.Id)
 	}
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
@@ -2187,22 +2197,6 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		event.LogTaskBlocked(t.Id, t.Execution)
 	}
 	return nil
-}
-
-// RefreshUnattainableDependency refreshes the contents of the task's UnattainableDependency field
-// by iterating through the task's DependsOn.
-func (t *Task) RefreshUnattainableDependency() error {
-	t.UnattainableDependency = t.hasUnattainableDependency()
-	return updateUnattainableDependency(t.Id, t.UnattainableDependency)
-}
-
-func (t *Task) hasUnattainableDependency() bool {
-	for _, dependency := range t.DependsOn {
-		if dependency.Unattainable {
-			return true
-		}
-	}
-	return false
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
@@ -2926,7 +2920,13 @@ func (t *Task) Blocked() bool {
 	if t.OverrideDependencies {
 		return false
 	}
-	return t.hasUnattainableDependency()
+
+	for _, dependency := range t.DependsOn {
+		if dependency.Unattainable {
+			return true
+		}
+	}
+	return false
 }
 
 // isUnscheduled returns true if a task is unscheduled and will not run

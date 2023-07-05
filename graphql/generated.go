@@ -311,6 +311,11 @@ type ComplexityRoot struct {
 		TriggerData    func(childComplexity int) int
 	}
 
+	GitTag struct {
+		Pusher func(childComplexity int) int
+		Tag    func(childComplexity int) int
+	}
+
 	GithubCheckSubscriber struct {
 		Owner func(childComplexity int) int
 		Ref   func(childComplexity int) int
@@ -1154,6 +1159,7 @@ type ComplexityRoot struct {
 		Status      func(childComplexity int) int
 		TimedOut    func(childComplexity int) int
 		TimeoutType func(childComplexity int) int
+		TraceID     func(childComplexity int) int
 		Type        func(childComplexity int) int
 	}
 
@@ -1366,6 +1372,7 @@ type ComplexityRoot struct {
 		Errors                   func(childComplexity int) int
 		ExternalLinksForMetadata func(childComplexity int) int
 		FinishTime               func(childComplexity int) int
+		GitTags                  func(childComplexity int) int
 		Id                       func(childComplexity int) int
 		IsPatch                  func(childComplexity int) int
 		Manifest                 func(childComplexity int) int
@@ -1723,6 +1730,8 @@ type VersionResolver interface {
 	BuildVariantStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error)
 	ChildVersions(ctx context.Context, obj *model.APIVersion) ([]*model.APIVersion, error)
 
+	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
+
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
 
@@ -1738,7 +1747,6 @@ type VersionResolver interface {
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
-	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
 	Warnings(ctx context.Context, obj *model.APIVersion) ([]string, error)
 }
 type VolumeResolver interface {
@@ -2743,6 +2751,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GeneralSubscription.TriggerData(childComplexity), true
+
+	case "GitTag.pusher":
+		if e.complexity.GitTag.Pusher == nil {
+			break
+		}
+
+		return e.complexity.GitTag.Pusher(childComplexity), true
+
+	case "GitTag.tag":
+		if e.complexity.GitTag.Tag == nil {
+			break
+		}
+
+		return e.complexity.GitTag.Tag(childComplexity), true
 
 	case "GithubCheckSubscriber.owner":
 		if e.complexity.GithubCheckSubscriber.Owner == nil {
@@ -7352,6 +7374,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.TimeoutType(childComplexity), true
 
+	case "TaskEndDetail.traceID":
+		if e.complexity.TaskEndDetail.TraceID == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.TraceID(childComplexity), true
+
 	case "TaskEndDetail.type":
 		if e.complexity.TaskEndDetail.Type == nil {
 			break
@@ -8325,6 +8354,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.FinishTime(childComplexity), true
+
+	case "Version.gitTags":
+		if e.complexity.Version.GitTags == nil {
+			break
+		}
+
+		return e.complexity.Version.GitTags(childComplexity), true
 
 	case "Version.id":
 		if e.complexity.Version.Id == nil {
@@ -17323,6 +17359,94 @@ func (ec *executionContext) fieldContext_GeneralSubscription_triggerData(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _GitTag_tag(ctx context.Context, field graphql.CollectedField, obj *model.APIGitTag) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitTag_tag(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tag, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitTag_tag(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitTag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitTag_pusher(ctx context.Context, field graphql.CollectedField, obj *model.APIGitTag) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitTag_pusher(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pusher, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitTag_pusher(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitTag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GithubCheckSubscriber_owner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubCheckSubscriber) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GithubCheckSubscriber_owner(ctx, field)
 	if err != nil {
@@ -23274,8 +23398,12 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -23318,8 +23446,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -23387,8 +23513,12 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -23431,8 +23561,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -29297,8 +29425,12 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -29341,8 +29473,6 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -31886,8 +32016,12 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -31930,8 +32064,6 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -42313,8 +42445,12 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -42357,8 +42493,6 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -48514,6 +48648,8 @@ func (ec *executionContext) fieldContext_Task_details(ctx context.Context, field
 				return ec.fieldContext_TaskEndDetail_timeoutType(ctx, field)
 			case "type":
 				return ec.fieldContext_TaskEndDetail_type(ctx, field)
+			case "traceID":
+				return ec.fieldContext_TaskEndDetail_traceID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskEndDetail", field.Name)
 		},
@@ -50915,8 +51051,12 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -50959,8 +51099,6 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -51580,6 +51718,47 @@ func (ec *executionContext) _TaskEndDetail_type(ctx context.Context, field graph
 }
 
 func (ec *executionContext) fieldContext_TaskEndDetail_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskEndDetail_traceID(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_traceID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TraceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_traceID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskEndDetail",
 		Field:      field,
@@ -56212,8 +56391,12 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -56256,8 +56439,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -57555,8 +57736,12 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -57599,8 +57784,6 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -57832,8 +58015,12 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -57876,8 +58063,6 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -57975,6 +58160,56 @@ func (ec *executionContext) fieldContext_Version_errors(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().ExternalLinksForMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ExternalLinkForMetadata)
+	fc.Result = res
+	return ec.marshalNExternalLinkForMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadataᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_ExternalLinkForMetadata_url(ctx, field)
+			case "displayName":
+				return ec.fieldContext_ExternalLinkForMetadata_displayName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalLinkForMetadata", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Version_finishTime(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Version_finishTime(ctx, field)
 	if err != nil {
@@ -58011,6 +58246,53 @@ func (ec *executionContext) fieldContext_Version_finishTime(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_gitTags(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_gitTags(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GitTags, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIGitTag)
+	fc.Result = res
+	return ec.marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTagᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_gitTags(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "tag":
+				return ec.fieldContext_GitTag_tag(ctx, field)
+			case "pusher":
+				return ec.fieldContext_GitTag_pusher(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GitTag", field.Name)
 		},
 	}
 	return fc, nil
@@ -58420,8 +58702,12 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_createTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -58464,8 +58750,6 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "warnings":
 				return ec.fieldContext_Version_warnings(ctx, field)
 			}
@@ -59224,56 +59508,6 @@ func (ec *executionContext) fieldContext_Version_versionTiming(ctx context.Conte
 				return ec.fieldContext_VersionTiming_timeTaken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VersionTiming", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().ExternalLinksForMetadata(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*ExternalLinkForMetadata)
-	fc.Result = res
-	return ec.marshalNExternalLinkForMetadata2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐExternalLinkForMetadataᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Version_externalLinksForMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Version",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "url":
-				return ec.fieldContext_ExternalLinkForMetadata_url(ctx, field)
-			case "displayName":
-				return ec.fieldContext_ExternalLinkForMetadata_displayName(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ExternalLinkForMetadata", field.Name)
 		},
 	}
 	return fc, nil
@@ -68153,6 +68387,41 @@ func (ec *executionContext) _GeneralSubscription(ctx context.Context, sel ast.Se
 	return out
 }
 
+var gitTagImplementors = []string{"GitTag"}
+
+func (ec *executionContext) _GitTag(ctx context.Context, sel ast.SelectionSet, obj *model.APIGitTag) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gitTagImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GitTag")
+		case "tag":
+
+			out.Values[i] = ec._GitTag_tag(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "pusher":
+
+			out.Values[i] = ec._GitTag_pusher(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var githubCheckSubscriberImplementors = []string{"GithubCheckSubscriber"}
 
 func (ec *executionContext) _GithubCheckSubscriber(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubCheckSubscriber) graphql.Marshaler {
@@ -75120,6 +75389,10 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "traceID":
+
+			out.Values[i] = ec._TaskEndDetail_traceID(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -76637,9 +76910,33 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "externalLinksForMetadata":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_externalLinksForMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "finishTime":
 
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
+
+		case "gitTags":
+
+			out.Values[i] = ec._Version_gitTags(ctx, field, obj)
 
 		case "isPatch":
 			field := field
@@ -76910,26 +77207,6 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_versionTiming(ctx, field, obj)
-				return res
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
-		case "externalLinksForMetadata":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Version_externalLinksForMetadata(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			}
 
@@ -78181,6 +78458,10 @@ func (ec *executionContext) marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergr
 		return graphql.Null
 	}
 	return ec._GeneralSubscription(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTag(ctx context.Context, sel ast.SelectionSet, v model.APIGitTag) graphql.Marshaler {
+	return ec._GitTag(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNGithubProjectConflicts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, v model1.GithubProjectConflicts) graphql.Marshaler {
@@ -81860,6 +82141,53 @@ func (ec *executionContext) marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋeve
 				defer wg.Done()
 			}
 			ret[i] = ec.marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTagᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIGitTag) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTag(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

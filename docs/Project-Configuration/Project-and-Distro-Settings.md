@@ -305,6 +305,18 @@ tasks for which you hope to use performance tooling, like performance
 monitoring charts. Use a cron to schedule your tasks if you'd like to
 use performance tooling.
 
+### Views and Filters
+#### Project Health View
+Customize the default behavior of the Project Health page by choosing to show failed task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
+
+![project_health_view.png](../images/project_health_view.png)
+
+#### Parsley Filters
+Define default filters for your project. Users can access these filters in Parsley and apply them directly to their logs.
+
+![parsley_filters.png](../images/parsley_filters.png)
+
+
 ### Task Sync
 
 Enabling this feature allows users to push and pull their task working
@@ -365,7 +377,7 @@ Options:
     creation of a specific field when displaying jira links.
 
 
-## Metadata Links
+### Metadata Links
 
 Customize additional links to specify for your project under the Plugins section
 of the project page, by specifying a link and title. 

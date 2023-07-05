@@ -90,6 +90,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  GitTag:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGitTag
   GroupedTaskStatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
   HomeVolumeSettings:

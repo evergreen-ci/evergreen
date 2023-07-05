@@ -118,6 +118,7 @@ type taskContext struct {
 	project        *model.Project
 	taskModel      *task.Task
 	oomTracker     jasper.OOMTracker
+	traceID        string
 	sync.RWMutex
 }
 
@@ -578,6 +579,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
 	defer span.End()
+	tc.traceID = span.SpanContext().TraceID().String()
 
 	shutdown, err := a.startMetrics(tskCtx, tc.taskConfig)
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
@@ -771,6 +773,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		OOMTracker:      tc.getOomTrackerInfo(),
 		Status:          status,
 		Message:         message,
+		TraceID:         tc.traceID,
 	}
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths

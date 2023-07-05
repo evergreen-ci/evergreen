@@ -536,7 +536,8 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
-	StartAfter     int    `json:"start"`
+	Start          int    `json:"start"`
+	RevisionEnd    int    `json:"revision_end"`
 	Requester      string `json:"requester"`
 	Limit          int    `json:"limit"`
 	Skip           int    `json:"skip"`
@@ -565,9 +566,17 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
-	if opts.StartAfter > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
+	revisionFilter := bson.M{}
+	if opts.Start > 0 {
+		revisionFilter["$lt"] = opts.Start
+		match[VersionRevisionOrderNumberKey] = revisionFilter
 	}
+
+	if opts.RevisionEnd > 0 {
+		revisionFilter["$gte"] = opts.RevisionEnd
+		match[VersionRevisionOrderNumberKey] = revisionFilter
+	}
+
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 

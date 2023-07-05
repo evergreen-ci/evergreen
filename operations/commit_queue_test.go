@@ -109,7 +109,8 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.NoError(p3.Insert())
 
 	pRef := &model.ProjectRef{
-		Id: "mci",
+		Id:         "mci",
+		Identifier: "mci",
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -166,7 +167,8 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	}
 	s.NoError(p1.Insert())
 	pRef := &model.ProjectRef{
-		Id: "mci",
+		Id:         "mci",
+		Identifier: "mci",
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -221,9 +223,10 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	cq.Queue[0].Version = "my_version"
 	s.NoError(cq.UpdateVersion(&cq.Queue[0]))
 	pRef := &model.ProjectRef{
-		Id:    "mci",
-		Owner: "evergreen-ci",
-		Repo:  "evergreen",
+		Id:         "mci",
+		Identifier: "mci",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -279,9 +282,10 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
 	pRef := &model.ProjectRef{
-		Id:    "mci",
-		Owner: "me",
-		Repo:  "evergreen",
+		Id:         "mci",
+		Identifier: "mci",
+		Owner:      "me",
+		Repo:       "evergreen",
 	}
 	s.Require().NoError(pRef.Insert())
 

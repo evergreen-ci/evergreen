@@ -156,14 +156,6 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			false, patchDoc.Id.Hex(), patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber))
 	}
-
-	if j.IntentType == patch.GithubMergeIntentType {
-		// TODO support status checks in EVG-19964
-		grip.Debug(message.Fields{
-			"message": "would start GitHub merge group check",
-			"ticket":  "EVG-19964",
-		})
-	}
 }
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
