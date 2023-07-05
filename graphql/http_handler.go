@@ -8,7 +8,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -26,9 +25,6 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 		otelgqlgen.WithCreateSpanFromFields(func(fieldCtx *graphql.FieldContext) bool { return fieldCtx.IsResolver }),
 	))
 
-	// Apollo tracing support https://github.com/apollographql/apollo-tracing
-	srv.Use(apollotracing.Tracer{})
-
 	// Log graphql requests to splunk
 	srv.Use(SplunkTracing{})
 
@@ -37,17 +33,6 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	// Handler to log graphql panics to splunk
 	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
-
-		if queryPath == nil {
-			grip.Error(message.Fields{
-				"path":    "/graphql/query",
-				"message": "graphql operation is null",
-				"error":   err,
-				"stack":   string(debug.Stack()),
-				"request": gimlet.GetRequestID(ctx),
-			})
-			return nil
-		}
 
 		grip.Critical(message.Fields{
 			"path":    "/graphql/query",
