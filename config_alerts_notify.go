@@ -17,6 +17,7 @@ type NotifyConfig struct {
 	BufferTargetPerInterval int        `bson:"buffer_target_per_interval" json:"buffer_target_per_interval" yaml:"buffer_target_per_interval"`
 	BufferIntervalSeconds   int        `bson:"buffer_interval_seconds" json:"buffer_interval_seconds" yaml:"buffer_interval_seconds"`
 	SMTP                    SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
+	SES                     SESConfig  `bson:"ses" json:"ses" yaml:"ses"`
 }
 
 func (c *NotifyConfig) SectionId() string { return "notify" }
@@ -124,4 +125,9 @@ type SMTPConfig struct {
 	Password   string   `bson:"password" json:"password" yaml:"password"`
 	From       string   `bson:"from" json:"from" yaml:"from"`
 	AdminEmail []string `bson:"admin_email" json:"admin_email" yaml:"admin_email"`
+}
+
+// SESConfig configures the SES email sender.
+type SESConfig struct {
+	From string `bson:"from" json:"from" yaml:"from"`
 }

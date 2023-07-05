@@ -262,6 +262,9 @@ func MockConfig() *evergreen.Settings {
 				From:       "from",
 				AdminEmail: []string{"email"},
 			},
+			SES: evergreen.SESConfig{
+				From: "from",
+			},
 		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{

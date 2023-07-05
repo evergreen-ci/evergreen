@@ -731,7 +731,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 	// 	e.senders[SenderEmail] = sender
 	// }
 
-	if e.settings.Notify.SMTP.From != "" {
+	if e.settings.Notify.SES.From != "" {
 		provider := credentials.NewStaticCredentialsProvider(e.settings.Providers.AWS.EC2Keys[0].Key, e.settings.Providers.AWS.EC2Keys[0].Secret, "")
 		config, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(DefaultEC2Region),
@@ -744,7 +744,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 		sesSender, err := send.NewSESLogger(send.SESOptions{
 			Name:      "evergreen",
 			AWSConfig: config,
-			From:      e.settings.Notify.SMTP.From,
+			From:      e.settings.Notify.SES.From,
 		}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up email logger")

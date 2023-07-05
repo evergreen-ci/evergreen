@@ -354,6 +354,30 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 	return config, nil
 }
 
+type APISESConfig struct {
+	From *string `json:"from"`
+}
+
+func (a *APISESConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SESConfig:
+		a.From = utility.ToStringPtr(v.From)
+	default:
+		return errors.Errorf("programmatic error: expected SESConfig but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISESConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	config := evergreen.SESConfig{
+		From: utility.FromStringPtr(a.From),
+	}
+	return config, nil
+}
+
 type APIAmboyConfig struct {
 	Name                                  *string                    `json:"name"`
 	SingleName                            *string                    `json:"single_name"`
@@ -1237,6 +1261,7 @@ type APINotifyConfig struct {
 	BufferTargetPerInterval int           `json:"buffer_target_per_interval"`
 	BufferIntervalSeconds   int           `json:"buffer_interval_seconds"`
 	SMTP                    APISMTPConfig `json:"smtp"`
+	SES                     APISESConfig  `json:"ses"`
 }
 
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
@@ -1244,6 +1269,10 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 	case evergreen.NotifyConfig:
 		a.SMTP = APISMTPConfig{}
 		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+			return err
+		}
+		a.SES = APISESConfig{}
+		if err := a.SES.BuildFromService(v.SES); err != nil {
 			return err
 		}
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
@@ -1259,10 +1288,17 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ses, err := a.SES.ToService()
+	if err != nil {
+		return nil, err
+	}
+
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
 		SMTP:                    smtp.(evergreen.SMTPConfig),
+		SES:                     ses.(evergreen.SESConfig),
 	}, nil
 }
 
