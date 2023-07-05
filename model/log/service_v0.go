@@ -18,27 +18,6 @@ type logServiceV0 struct {
 	bucket pail.Bucket
 }
 
-func (s *logServiceV0) GetTaskLogPrefix(opts TaskOptions, logType LogType) (string, error) {
-	prefix := fmt.Sprintf("project_id=%s/task_id=%s/execution=%d/build/", opts.ProjectID, opts.TaskID, opts.Execution)
-
-	switch logType {
-	case LogTypeTaskAll:
-		prefix += "/task_logs"
-	case LogTypeTaskAgent:
-		prefix += "/task_logs/agent"
-	case LogTypeTaskTask:
-		prefix += "/task_logs/task"
-	case LogTypeTaskSystem:
-		prefix += "/task_logs/system"
-	case LogTypeTaskTest:
-		prefix = "/test_logs"
-	default:
-		return "", errors.Errorf("unsupported task log type '%s'", logType)
-	}
-
-	return prefix, nil
-}
-
 func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, getOpts GetOptions) (LogIterator, error) {
 	var its []LogIterator
 	logChunks, err := s.getLogChunks(ctx, getOpts.LogNames)
@@ -64,12 +43,9 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, ge
 	return newMergingIterator(its...), nil
 }
 
-func (s *logServiceV0) WriteTaskLog(ctx context.Context, taskOpts TaskOptions, logType LogType, logName string, lines []LogLine) error {
-	prefix, err := s.GetTaskLogPrefix(taskOpts, logType)
-	if err != nil {
-		return err
-	}
-	key := fmt.Sprintf("%s/%s/%s", prefix, logName, s.createChunkKey(lines[0].start, lines[len(lines)-1].end, len(lines)))
+func (s *logServiceV0) WriteTaskLog(ctx context.Context, opts TaskOptions, logName string, lines []LogLine) error {
+	prefix := fmt.Sprintf("project_id=%s/task_id=%s/execution=%d", opts.ProjectID, opts.TaskID, opts.Execution)
+	key := fmt.Sprintf("%s/%s/%s", prefix, logName, s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
 
 	// TODO: return nil here or error?
 	if len(lines) == 0 {
@@ -78,7 +54,7 @@ func (s *logServiceV0) WriteTaskLog(ctx context.Context, taskOpts TaskOptions, l
 
 	var rawLines []byte
 	for _, line := range lines {
-		rawLines = append(rawLines, s.formatRawLine(line))
+		rawLines = append(rawLines, []byte(s.formatRawLine(line))...)
 	}
 
 	return errors.Wrap(s.bucket.Put(ctx, key, bytes.NewReader(rawLines)), "writing log chunk to bucket")

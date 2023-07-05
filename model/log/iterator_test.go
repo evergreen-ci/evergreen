@@ -114,8 +114,7 @@ func TestChunkIterator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tmpDir := t.TempDir()
-	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: tmpDir})
+	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
 	require.NoError(t, err)
 
 	chunks, lines, parser, err := generateTestLog(ctx, bucket, 99, 30)
@@ -471,7 +470,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 				Timestamp: ts,
 				Data:      line + "\n",
 			}
-			rawLines += service.getFormatter()(lines[lineNum])
+			rawLines += service.formatRawLine(lines[lineNum])
 			ts += int64(time.Millisecond)
 			lineCount++
 		}

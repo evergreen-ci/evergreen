@@ -19,6 +19,8 @@ type LogLine struct {
 	Data      string
 }
 
+// LineParser functions parse a raw log line into the service representation of
+// a log line. Parsers need not set the log name or priority.
 type LineParser func(string) (LogLine, error)
 
 // GetOptions represents the arguments for fetching Evergreen logs.
@@ -47,24 +49,6 @@ type TaskOptions struct {
 	Execution int
 	// ServiceVersion is the version of the backing logger service.
 	ServiceVersion int
-}
-
-// LogType represents the recognized log types collected on an Evergreen host.
-type LogType string
-
-const (
-	// LogTypeTaskAll includes agent, task, and system logs.
-	LogTypeTaskAll    = "all"
-	LogTypeTaskAgent  = "agent"
-	LogTypeTaskTask   = "task"
-	LogTypeTaskSystem = "system"
-	LogTypeTaskTest   = "test"
-)
-
-// GetTaskLogTypePrefix returns the appropriate "path" prefix for the given log
-// type.
-func GetTaskLogTypePrefix(env evergreen.Environment, taskOpts TaskOptions, logType LogType) (string, error) {
-	return "", errors.New("not implemented")
 }
 
 // GetTaskLogs returns the logs from a task run specified by the options.

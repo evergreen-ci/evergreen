@@ -17,12 +17,45 @@ const (
 	defaultFlushInterval     = time.Minute
 )
 
+// LoggerOptions support the use and creation of an Evergreen log Sender.
+type LoggerOptions struct {
+	// LogName is the identifying name of the log to use when persisting
+	// data.
+	LogName string
+	// Parse is the function for parsing raw log lines collected by the
+	// Sender.
+	Parse LineParser
+
+	// Local is the Sender for "fallback" operations and to collect the
+	// location of the logger output.
+	Local send.Sender
+
+	// MaxBufferSize is the maximum number of bytes to buffer before
+	// persisting log data. Defaults to 10MB.
+	MaxBufferSize int
+	// FlushInterval is time interval at which to flush log lines,
+	// regardless of whether the max buffer size has been reached. A flush
+	// interval less than or equal to 0 will disable timed flushes.
+	FlushInterval time.Duration
+}
+
+/*
+func MakeTaskLogger(ctx context.Context, name string, taskOpts TaskOptions, loggerOpts LoggerOptions) (send.Sender, error) {
+	service := &logServiceV0{}
+	w := func(ctx context.Context, lines []LogLine) error {
+		return service.WriteTaskLog(ctx, taskOpts, loggerOpts.LogName, lines)
+	}
+
+	return makeLogger(ctx, name, loggerOpts, w)
+}
+*/
+
 type sender struct {
 	mu         sync.Mutex
 	ctx        context.Context
 	cancel     context.CancelFunc
 	opts       LoggerOptions
-	writeLog   func(context.Context, []LogLine) error
+	write      logWriter
 	buffer     []LogLine
 	bufferSize int
 	lastFlush  time.Time
@@ -31,102 +64,17 @@ type sender struct {
 	*send.Base
 }
 
-// LoggerOptions support the use and creation of an Evergreen log Sender.
-type LoggerOptions struct {
-	LogType LogType
-	LogName string
-	Parser  LineParser
+type logWriter func(context.Context, []LogLine) error
 
-	// Configure a local sender for "fallback" operations and to collect
-	// the location of the logger output.
-	Local send.Sender
-
-	// The number max number of bytes to buffer before persisting log data.
-	// Defaults to 10MB.
-	MaxBufferSize int
-	// The interval at which to flush log lines, regardless of whether the
-	// max buffer size has been reached or not. Setting FlushInterval to a
-	// duration less than 0 will disable timed flushes. Defaults to 1
-	// minute.
-	FlushInterval time.Duration
-}
-
-/*
-// NewLogger returns a grip Sender backed by the Evergreen log service.
-func NewLogger(name string, l send.LevelInfo, opts LoggerOptions) (send.Sender, error) {
-	return NewLoggerWithContext(context.Background(), name, l, opts)
-}
-
-// NewLoggerWithContext returns a grip Sender backed by the Evergreen log
-// service with level information set, using the passed in context.
-func NewLoggerWithContext(ctx context.Context, name string, l send.LevelInfo, opts LoggerOptions) (send.Sender, error) {
-	b, err := MakeLoggerWithContext(ctx, name, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "making new logger")
-	}
-
-	if err := b.SetLevel(l); err != nil {
-		return nil, errors.Wrap(err, "setting grip level")
-	}
-
-	return b, nil
-}
-
-// MakeLogger returns a grip Sender backed by the Evergreen log service.
-func MakeLogger(name string, opts LoggerOptions) (send.Sender, error) {
-	return MakeLoggerWithContext(context.Background(), name, opts)
-}
-
-// MakeLoggerWithContext returns a grip Sender backed by the Evergreen log
-// service using the passed in context.
-func MakeLoggerWithContext(ctx context.Context, name string, taskOpts TaskOptions, loggerOpts LoggerOptions) (send.Sender, error) {
-	if err := loggerOpts.validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid logger options")
-	}
-
-	service := &logServiceV0{bucket: opts.Bucket}
+// makeLogger returns a grip Sender backed by the Evergreen log service.
+func makeLogger(ctx context.Context, name string, opts LoggerOptions, write logWriter) (send.Sender, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &sender{
-		ctx:       ctx,
-		cancel:    cancel,
-		opts:      opts,
-		formatter: service.getFormatter(),
-		keyPrefix: service,
-		buffer:    new(bytes.Buffer),
-		Base:      send.NewBase(name),
-	}
-
-	if err := s.SetErrorHandler(send.ErrorHandlerFromSender(s.opts.Local)); err != nil {
-		return nil, errors.Wrap(err, "setting default error handler")
-	}
-
-	if opts.FlushInterval > 0 {
-		go s.timedFlush()
-	}
-
-	return s, nil
-}
-*/
-
-func MakeTaskLogger(ctx context.Context, name string, taskOpts TaskOptions, loggerOpts LoggerOptions) (send.Sender, error) {
-	service := &logServiceV0{}
-	writeLog := func(ctx context.Context, lines []LogLine) error {
-		return service.WriteTaskLog(ctx, taskOpts, loggerOpts.LogType, loggerOpts.LogName, lines)
-	}
-
-	return makeLogger(ctx, name, loggerOpts, writeLog)
-}
-
-// makeLoggerWithContext returns a grip Sender backed by the Evergreen log
-// service using the passed in context.
-func makeLogger(ctx context.Context, name string, loggerOpts LoggerOptions, writeLog func(context.Context, []LogLine) error) (send.Sender, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	s := &sender{
-		ctx:      ctx,
-		cancel:   cancel,
-		opts:     loggerOpts,
-		writeLog: writeLog,
-		Base:     send.NewBase(name),
+		ctx:    ctx,
+		cancel: cancel,
+		opts:   opts,
+		write:  write,
+		Base:   send.NewBase(name),
 	}
 
 	if err := s.SetErrorHandler(send.ErrorHandlerFromSender(s.opts.Local)); err != nil {
@@ -140,11 +88,10 @@ func makeLogger(ctx context.Context, name string, loggerOpts LoggerOptions, writ
 	return s, nil
 }
 
-// Send sends the given message with a timestamp created when the function is
-// called to the cedar Buildlogger backend. This function buffers the messages
-// until the maximum allowed buffer size is reached, at which point the
-// messages in the buffer are sent to the Buildlogger server via RPC. Send is
-// thread safe.
+// Send sends the given message to the Evergreen log service. This function
+// buffers the messages until the maximum allowed buffer size is reached, at
+// which point the messages in the buffer are written to persistent storage by
+// the backing log service. Send is thread safe.
 func (s *sender) Send(m message.Composer) {
 	if !s.Level().ShouldLog(m) {
 		return
@@ -153,28 +100,25 @@ func (s *sender) Send(m message.Composer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	ts := time.Now()
 	if s.closed {
-		s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.New("cannot call Send on a closed Buildlogger Sender")))
+		s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.New("cannot call Send on a closed Sender")))
 		return
 	}
 
-	_, ok := m.(*message.GroupComposer)
-	lines = strings.Split(m.String(), "\n")
-
-	for _, line := range lines {
+	for _, line := range strings.Split(m.String(), "\n") {
 		if line == "" {
 			continue
 		}
 
-		logLine, err := s.opts.Parser(line)
+		logLine, err := s.opts.Parse(line)
 		if err != nil {
 			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Wrap(err, "parsing log line")))
 		}
+		logLine.Priority = m.Priority()
 
 		s.buffer = append(s.buffer, logLine)
 		s.bufferSize += len(line)
-		if s.buffer.Len() > s.opts.MaxBufferSize {
+		if s.bufferSize > s.opts.MaxBufferSize {
 			if err := s.flush(s.ctx); err != nil {
 				s.opts.Local.Send(message.NewErrorMessage(level.Error, err))
 				return
@@ -183,8 +127,8 @@ func (s *sender) Send(m message.Composer) {
 	}
 }
 
-// Flush flushes anything messages that may be in the buffer to the pail-backed
-// bucket storage.
+// Flush flushes anything messages that may be in the buffer to persistent
+// storage determined by the backing log service.
 func (s *sender) Flush(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -196,13 +140,11 @@ func (s *sender) Flush(ctx context.Context) error {
 	return s.flush(ctx)
 }
 
-// Close flushes anything that may be left in the underlying buffer and closes
-// out the log with a completed at timestamp and the exit code. If the gRPC
-// client connection was created in NewLogger or MakeLogger, this connection is
-// also closed. Close is thread safe but should only be called once no more
-// calls to Send are needed; after Close has been called any subsequent calls
-// to Send will error. After the first call to Close subsequent calls will
-// no-op.
+// Close flushes anything that may be left in the underlying buffer and
+// terminates all background operations of the Sender. Close is thread safe but
+// should only be called once no more calls to Send are needed; after Close has
+// been called any subsequent calls to Send will error while subsequent calls
+// to Close will no-op.
 func (s *sender) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -216,16 +158,16 @@ func (s *sender) Close() error {
 	if len(s.buffer) > 0 {
 		if err := s.flush(s.ctx); err != nil {
 			s.opts.Local.Send(message.NewErrorMessage(level.Error, err))
-			catcher.Add(errors.Wrap(err, "flushing buffer"))
+			return errors.Wrap(err, "flushing buffer")
 		}
 	}
 
-	return catcher.Resolve()
+	return nil
 }
 
 func (s *sender) timedFlush() {
 	s.mu.Lock()
-	s.timer = time.NewTimer(b.opts.FlushInterval)
+	s.timer = time.NewTimer(s.opts.FlushInterval)
 	s.mu.Unlock()
 	defer s.timer.Stop()
 
@@ -247,12 +189,12 @@ func (s *sender) timedFlush() {
 }
 
 func (s *sender) flush(ctx context.Context) error {
-	s.writeLog(ctx, s.buffer)
-	if err != nil {
+	if err := s.write(ctx, s.buffer); err != nil {
 		return errors.Wrap(err, "writing log")
 	}
 
 	s.buffer = []LogLine{}
+	s.bufferSize = 0
 	s.lastFlush = time.Now()
 
 	return nil
