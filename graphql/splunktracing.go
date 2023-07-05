@@ -24,10 +24,8 @@ func (SplunkTracing) Validate(graphql.ExecutableSchema) error {
 
 func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 	if hasOperationContext := graphql.HasOperationContext(ctx); !hasOperationContext {
-		// There was an invalid operation context, so we can't do anything
-		grip.Alert(message.Fields{
-			"message": "no operation context found for this graphql request",
-		})
+		// There was an invalid operation context, so we can't do anything. This could be because the user made a
+		// malformed request to GraphQL.
 		return next(ctx)
 	}
 

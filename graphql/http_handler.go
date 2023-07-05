@@ -30,6 +30,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 
 	// Disable queries for service degradation
 	srv.Use(DisableQuery{})
+
 	// Handler to log graphql panics to splunk
 	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()

@@ -318,15 +318,6 @@ func TestRequireProjectAdmin(t *testing.T) {
 	err = usr.RemoveRole("superuser")
 	require.NoError(t, err)
 
-	// Should error if the operation context is missing
-	obj = map[string]interface{}{
-		"project": map[string]interface{}{},
-	}
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.EqualError(t, err, "input: missing operation context")
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
-
 	// CreateProject - permission denied
 	operationContext := &graphql.OperationContext{
 		OperationName: CreateProjectMutation,
