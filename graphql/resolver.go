@@ -96,7 +96,6 @@ func New(apiURL string) Config {
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "Project not specified")
 		}
-
 		operationContext := graphql.GetOperationContext(ctx).OperationName
 
 		if operationContext == CreateProjectMutation {
