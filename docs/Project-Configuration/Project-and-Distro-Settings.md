@@ -314,10 +314,7 @@ Customize the default behavior of the Project Health page by choosing to show fa
 #### Parsley Filters
 Define default filters for your project. Users can access these filters in Parsley and apply them directly to their logs.
 
-<p float="left">
-  <img width="40%" alt="View project filters" src="../images/parsley_filters_1.png" /> &nbsp;
-  <img width="50%" alt="Project filters modal" src="../images/parsley_filters_2.png" />
-</p>
+![parsley_filters.png](../images/parsley_filters.png)
 
 
 ### Task Sync

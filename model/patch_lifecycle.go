@@ -974,7 +974,7 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 	}
 
 	if githubMergePatch {
-		return "GitHub Merge Queue: " + description[0]
+		return "GitHub Merge Queue"
 	} else {
 		return "Commit Queue Merge: " + strings.Join(description, " || ")
 	}

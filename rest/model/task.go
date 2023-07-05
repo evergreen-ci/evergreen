@@ -114,6 +114,7 @@ type ApiTaskEndDetail struct {
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
+	TraceID     *string           `json:"trace_id"`
 }
 
 func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
@@ -126,6 +127,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	apiOomTracker := APIOomTrackerInfo{}
 	apiOomTracker.BuildFromService(t.OOMTracker)
 	at.OOMTracker = apiOomTracker
+	at.TraceID = utility.ToStringPtr(t.TraceID)
 
 	return nil
 }
@@ -138,6 +140,7 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 		TimedOut:    ad.TimedOut,
 		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
 		OOMTracker:  ad.OOMTracker.ToService(),
+		TraceID:     utility.FromStringPtr(ad.TraceID),
 	}
 }
 
