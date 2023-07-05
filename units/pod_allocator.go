@@ -202,6 +202,7 @@ func (j *podAllocatorJob) populate() error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	// Retrieve the latest settings rather than the cached ones.
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
