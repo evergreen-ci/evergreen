@@ -2,12 +2,12 @@ package trigger
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
 

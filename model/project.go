@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"reflect"
 	"regexp"
 	"sort"
@@ -19,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
