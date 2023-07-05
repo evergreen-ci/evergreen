@@ -591,6 +591,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}).TVPairsToVariantTasks()
 	}
 
+	if len(p.VariantsTasks) == 0 {
+		return nil, errors.New("cannot finalize patch with no tasks")
+	}
+
 	// if variant tasks is still empty, then the patch is empty and we shouldn't add to commit queue
 	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
 		return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
