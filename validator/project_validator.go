@@ -343,9 +343,18 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateContainers(settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+func validateContainers(_ *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return ValidationErrors{
+			ValidationError{
+				Message: errors.Wrap(err, "getting evergreen settings").Error(),
+				Level:   Error,
+			},
+		}
+	}
 	errs := ValidationErrors{}
-	err := model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
+	err = model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{

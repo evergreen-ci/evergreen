@@ -929,12 +929,13 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
+	s.NoError(evergreen.UpdateConfig(testutil.TestConfig()))
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"
 	headSHA := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
 	org := github.Organization{
-		Name: &orgName,
+		Login: &orgName,
 	}
 	repo := github.Repository{
 		Name: &repoName,

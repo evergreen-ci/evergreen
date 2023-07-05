@@ -156,6 +156,7 @@ type TaskEndDetail {
   timedOut: Boolean
   timeoutType: String
   type: String!
+  traceID: String
 }
 
 type OomTrackerInfo {
