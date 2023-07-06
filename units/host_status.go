@@ -302,7 +302,8 @@ func (j *cloudHostReadyJob) logHostStatusMessage(h *host.Host, cloudStatus cloud
 }
 
 // prepareToTerminateHost handles a host that is an unrecoverable state by
-// marking it for termination and handling any other.
+// marking it for termination and handling any other cleanup necessary for a
+// host that fails to start up.
 func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.Host, terminationReason string, skipCloudHostTermination bool) error {
 	event.LogHostTerminatedExternally(h.Id, h.Status)
 
