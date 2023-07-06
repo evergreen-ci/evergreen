@@ -67,6 +67,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
 
 	// set up the system stats collector
+	//start here
 	tc.statsCollector = NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
@@ -77,20 +78,20 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	if ctx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution after setup: %s", ctx.Err())
+	if innerCtx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
 		return
 	}
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-	if err = a.comm.StartTask(ctx, tc.task); err != nil {
+	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return
 	}
 
-	a.killProcs(ctx, tc, false)
+	a.killProcs(innerCtx, tc, false)
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
 		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
