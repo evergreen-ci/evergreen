@@ -111,7 +111,7 @@ func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching distro '%s': %s", distroID, err.Error()))
 	}
 	if d == nil {
-		return nil, werrors.Errorf("unable to find distro '%s'", distroID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", distroID))
 	}
 
 	apiDistro := restModel.APIDistro{}
