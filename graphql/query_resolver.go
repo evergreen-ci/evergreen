@@ -320,10 +320,9 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
 		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 		opts := task.GetTasksByVersionOptions{
-			Statuses:                       failedAndAbortedStatuses,
-			FieldsToProject:                []string{task.DisplayStatusKey},
-			IncludeBaseTasks:               false,
-			IncludeBuildVariantDisplayName: false,
+			Statuses:         failedAndAbortedStatuses,
+			FieldsToProject:  []string{task.DisplayStatusKey},
+			IncludeBaseTasks: false,
 		}
 		tasks, _, err := task.GetTasksByVersion(ctx, id, opts)
 		if err != nil {

@@ -166,9 +166,8 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, *obj.Id, opts)
 	if err != nil {
