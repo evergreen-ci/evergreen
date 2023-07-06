@@ -736,7 +736,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		var sha, url string
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't parse git url '%s'", module.Repo)
+			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
 		}
 		if module.Ref == "" {
 			var commit *github.RepositoryCommit
