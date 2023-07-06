@@ -2200,6 +2200,9 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
+	if len(results) == 0 {
+		return nil, errors.Errorf("task statuses for version '%s' not found", versionID)
+	}
 	return results[0].Statuses, nil
 
 }

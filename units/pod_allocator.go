@@ -202,13 +202,12 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-
-	// Use the latest service flags instead of those cached in the environment.
-	settings := *j.env.Settings()
-	if err := settings.ServiceFlags.Get(ctx); err != nil {
-		return errors.Wrap(err, "getting service flags")
+	// Retrieve the latest settings rather than the cached ones.
+	settings, err := evergreen.GetConfigContext(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
 	}
-	j.settings = settings
+	j.settings = *settings
 
 	if j.task == nil {
 		t, err := task.FindOneId(j.TaskID)
@@ -233,7 +232,7 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 	}
 
 	if j.smClient == nil {
-		client, err := cloud.MakeSecretsManagerClient(&settings)
+		client, err := cloud.MakeSecretsManagerClient(&j.settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing Secrets Manager client")
 		}
