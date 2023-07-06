@@ -2284,6 +2284,10 @@ func FindTerminatedHostsRunningTasks(ctx context.Context) ([]Host, error) {
 // CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error) {
 	ids := hosts.GetHostIds()
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
 	query := bson.M{
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		ParentIDKey: bson.M{"$in": ids},
@@ -2294,6 +2298,10 @@ func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error
 // FindUphostContainersOnParents returns the containers that are children of the given hosts
 func (hosts HostGroup) FindUphostContainersOnParents(ctx context.Context) ([]Host, error) {
 	ids := hosts.GetHostIds()
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
 	query := bson.M{
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		ParentIDKey: bson.M{"$in": ids},

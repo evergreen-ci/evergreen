@@ -567,11 +567,6 @@ func ByIds(ids []string) bson.M {
 	return bson.M{IdKey: bson.M{"$in": ids}}
 }
 
-// FindByJasperCredentialsID finds a host with the given Jasper credentials ID.
-func FindOneByJasperCredentialsID(ctx context.Context, id string) (*Host, error) {
-	return FindOne(ctx, bson.M{JasperCredentialsIDKey: id})
-}
-
 // IsIdle is a query that returns all running Evergreen hosts with no task.
 var IsIdle = bson.M{
 	RunningTaskKey: bson.M{"$exists": false},
