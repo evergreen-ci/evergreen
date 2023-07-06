@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -130,19 +131,37 @@ func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, t)
 }
 
-// fetchProjectRef returns a project ref given the project identifier
-func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
-	id := gimlet.GetVars(r)["identifier"]
-	projectRef, err := model.FindMergedProjectRef(id, "", true)
+// fetchLimitedProjectRef returns a limited project ref given the project identifier.
+// No new information should be added to this route, instead a REST v2 route should be added.
+func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Request) {
+	id := gimlet.GetVars(r)["projectId"]
+	p, err := model.FindMergedProjectRef(id, "", true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if projectRef == nil {
+	if p == nil {
 		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
 		return
 	}
-	gimlet.WriteJSON(w, projectRef)
+
+	wc := restModel.APIWorkstationConfig{}
+	wc.BuildFromService(p.WorkstationConfig)
+
+	limitedRef := restModel.APIProjectRef{
+		Id:                utility.ToStringPtr(p.Id),
+		Identifier:        utility.ToStringPtr(p.Identifier),
+		Owner:             utility.ToStringPtr(p.Owner),
+		Repo:              utility.ToStringPtr(p.Repo),
+		Branch:            utility.ToStringPtr(p.Branch),
+		WorkstationConfig: wc,
+		CommitQueue: restModel.APICommitQueueParams{
+			Message: utility.ToStringPtr(p.CommitQueue.Message),
+			Enabled: p.CommitQueue.Enabled,
+		},
+	}
+
+	gimlet.WriteJSON(w, limitedRef)
 }
 
 // listProjects returns the projects merged with the repo settings
@@ -310,6 +329,7 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 }
 
 // NewRouter returns the root router for all APIServer endpoints.
+// These routes are deprecated; any new functionality should be added to REST v2
 func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	requireProject := gimlet.WrapperMiddleware(as.requireProject)
 	requireUser := gimlet.NewRequireAuthHandler()
@@ -322,7 +342,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{identifier}").Wrap(requireUser).Handler(as.fetchProjectRef).Get()
+	app.AddRoute("/ref/{projectId}").Wrap(requireUser).Handler(as.fetchLimitedProjectRef).Get()
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting

@@ -74,14 +74,16 @@ tasks:
             set -o verbose
             set -o errexit
             echo "smoke test is running the fourth task in the task group"
-  - name: smoke_test_container_task
+  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
+  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
+  - name: container-task
     commands:
       - command: shell.exec
         params:
           script: |
             set -o verbose
             set -o errexit
-            echo "smoke test is running the container task"
+            echo "container task"
   - name: smoke_test_generate_task
     commands:
       - command: git.get_project
@@ -235,12 +237,14 @@ buildvariants:
     tasks:
       - name: my_group
       - name: smoke_test_generate_task
+  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
+  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
   - name: pod_bv
     display_name: pod_bv
     run_on:
       - container
     tasks:
-      - name: smoke_test_container_task
+      - name: container-task
 
 # TODO (EVG-17658): Refactor smoke tests to allow for faking agent creation
 # The following configuration is currently unused since the container task

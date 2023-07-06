@@ -91,7 +91,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 		IncludeBuildVariantDisplayName: true,
 		IncludeNeverActivatedTasks:     !obj.IsPatchRequester(),
 	}
-	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(obj.Id), opts)
+	stats, err := task.GetGroupedTaskStatsByVersion(ctx, utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
@@ -133,7 +133,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching a child patch: %s", err.Error()))
 				}
 				if p == nil {
-					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find child patch %s", cp))
 				}
 				if p.Version != "" {
 					// only return the error if the version is activated (and we therefore expect it to be there)
@@ -147,6 +147,27 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 		return childVersions, nil
 	}
 	return nil, nil
+}
+
+// ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
+func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
+	pRef, err := data.FindProjectById(*obj.Project, false, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project `%s`: %s", *obj.Project, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
+	}
+	var externalLinks []*ExternalLinkForMetadata
+	for _, link := range pRef.ExternalLinks {
+		// replace {version_id} with the actual version id
+		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
+		externalLinks = append(externalLinks, &ExternalLinkForMetadata{
+			URL:         formattedURL,
+			DisplayName: link.DisplayName,
+		})
+	}
+	return externalLinks, nil
 }
 
 // IsPatch is the resolver for the isPatch field.
@@ -350,7 +371,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
 	}
-	stats, err := task.GetTaskStatsByVersion(*obj.Id, opts)
+	stats, err := task.GetTaskStatsByVersion(ctx, *obj.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
 	}
@@ -463,27 +484,6 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 		TimeTaken: &apiTimeTaken,
 		Makespan:  &apiMakespan,
 	}, nil
-}
-
-// ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
-func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
-	pRef, err := data.FindProjectById(*obj.Project, false, false)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project `%s`: %s", *obj.Project, err.Error()))
-	}
-	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
-	}
-	var externalLinks []*ExternalLinkForMetadata
-	for _, link := range pRef.ExternalLinks {
-		// replace {version_id} with the actual version id
-		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
-		externalLinks = append(externalLinks, &ExternalLinkForMetadata{
-			URL:         formattedURL,
-			DisplayName: link.DisplayName,
-		})
-	}
-	return externalLinks, nil
 }
 
 // Warnings is the resolver for the warnings field.

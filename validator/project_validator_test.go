@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	_ "github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -3246,13 +3247,14 @@ func TestValidateContainers(t *testing.T) {
 				Pod: evergreen.AWSPodConfig{
 					ECS: evergreen.ECSConfig{
 						AllowedImages: []string{
-							"demo/image:latest",
+							"hadjri/evg-container-self-tests",
 						},
 					},
 				},
 			},
 		},
 	}
+	assert.NoError(t, evergreen.UpdateConfig(testutil.TestConfig()))
 	defer func() {
 		assert.NoError(t, db.Clear(model.ProjectRefCollection))
 	}()
@@ -3342,7 +3344,7 @@ func TestValidateContainers(t *testing.T) {
 				Containers: []model.Container{
 					{
 						Name:       "c1",
-						Image:      "demo/image:latest",
+						Image:      "hadjri/evg-container-self-tests",
 						WorkingDir: "/root",
 						Size:       "s1",
 						Credential: "c1",
