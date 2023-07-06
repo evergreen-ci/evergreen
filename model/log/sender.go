@@ -12,10 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	defaultMaxBufferSize int = 1e7
-	defaultFlushInterval     = time.Minute
-)
+const defaultMaxBufferSize = 1e7 //nolint: unused
 
 // LoggerOptions support the use and creation of an Evergreen log Sender.
 type LoggerOptions struct {
@@ -56,7 +53,7 @@ type sender struct {
 type logWriter func(context.Context, []LogLine) error
 
 // makeLogger returns a grip Sender backed by the Evergreen log service.
-func makeLogger(ctx context.Context, name string, opts LoggerOptions, write logWriter) (send.Sender, error) {
+func makeLogger(ctx context.Context, name string, opts LoggerOptions, write logWriter) (send.Sender, error) { //nolint: unused
 	ctx, cancel := context.WithCancel(ctx)
 	s := &sender{
 		ctx:    ctx,
