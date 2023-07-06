@@ -235,7 +235,7 @@ func TestMakeHost(t *testing.T) {
 	require.Len(d.ProviderSettingsList, 1)
 	doc2 := d.ProviderSettingsList[0].Copy().Set(birch.EC.String("region", "us-west-1")).Set(birch.EC.String("ami", "ami-987654"))
 	d.ProviderSettingsList = append(d.ProviderSettingsList, doc2)
-	require.NoError(d.Update(ctx))
+	require.NoError(d.ReplaceOne(ctx))
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",

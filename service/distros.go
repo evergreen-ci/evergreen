@@ -174,7 +174,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = newDistro.Update(r.Context()); err != nil {
+	if err = newDistro.ReplaceOne(r.Context()); err != nil {
 		message := fmt.Sprintf("error updating distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusBadRequest)

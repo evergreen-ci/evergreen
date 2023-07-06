@@ -117,9 +117,9 @@ func (d *Distro) Insert(ctx context.Context) error {
 	return errors.Wrap(err, "inserting distro")
 }
 
-// Update updates one distro.
-func (d *Distro) Update(ctx context.Context) error {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateByID(ctx, d.Id, d)
+// ReplaceOne replaces one distro.
+func (d *Distro) ReplaceOne(ctx context.Context) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).ReplaceOne(ctx, bson.M{IdKey: d.Id}, d)
 	if err != nil {
 		return errors.Wrapf(err, "updating distro ID '%s'", d.Id)
 	}

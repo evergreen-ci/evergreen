@@ -90,7 +90,7 @@ func TestHostPostHandler(t *testing.T) {
 		birch.EC.String("region", evergreen.DefaultEC2Region),
 	)
 	d.ProviderSettingsList = []*birch.Document{doc}
-	assert.NoError(d.Update(ctx))
+	assert.NoError(d.ReplaceOne(ctx))
 
 	h1 := resp.Data().(*model.APIHost)
 	d1, err := distro.FindOneId(ctx, "distro")
@@ -117,7 +117,7 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Empty(h2.InstanceType)
 
 	d.Provider = evergreen.ProviderNameMock
-	assert.NoError(d.Update(ctx))
+	assert.NoError(d.ReplaceOne(ctx))
 	env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes = append(env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
 	h.options.InstanceType = "test_instance_type"
 	h.options.UserData = ""

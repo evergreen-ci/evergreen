@@ -75,7 +75,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 
 	// Setting min hosts lower should make host2 get decommissioned
 	d2.HostAllocatorSettings.MinimumHosts = 1
-	assert.NoError(d2.Update(ctx))
+	assert.NoError(d2.ReplaceOne(ctx))
 	j.Run(ctx)
 
 	assert.NoError(j.Error())

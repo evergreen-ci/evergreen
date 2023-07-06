@@ -30,7 +30,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 			}
 		}
 	}
-	if err := new.Update(ctx); err != nil {
+	if err := new.ReplaceOne(ctx); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "updating distro '%s'", new.Id).Error(),

@@ -557,7 +557,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	modifiedIDs := []string{}
 	for _, d := range modifiedDistros {
 		if !h.dryRun {
-			if err = d.Update(ctx); err != nil {
+			if err = d.ReplaceOne(ctx); err != nil {
 				catcher.Wrapf(err, "updating distro '%s'", d.Id)
 				continue
 			}
