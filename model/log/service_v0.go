@@ -44,13 +44,17 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, ge
 }
 
 func (s *logServiceV0) WriteTaskLog(ctx context.Context, opts TaskOptions, logName string, lines []LogLine) error {
-	prefix := fmt.Sprintf("project_id=%s/task_id=%s/execution=%d", opts.ProjectID, opts.TaskID, opts.Execution)
-	key := fmt.Sprintf("%s/%s/%s", prefix, logName, s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
-
-	// TODO: return nil here or error?
 	if len(lines) == 0 {
 		return nil
 	}
+
+	key := fmt.Sprintf("project_id=%s/task_id=%s/execution=%d/%s/%s",
+		opts.ProjectID,
+		opts.TaskID,
+		opts.Execution,
+		logName,
+		s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)),
+	)
 
 	var rawLines []byte
 	for _, line := range lines {
