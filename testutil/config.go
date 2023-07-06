@@ -85,17 +85,6 @@ func loadConfig(path ...string) *evergreen.Settings {
 
 func MockConfig() *evergreen.Settings {
 	return &evergreen.Settings{
-		Alerts: evergreen.AlertsConfig{
-			SMTP: evergreen.SMTPConfig{
-				Server:     "server",
-				Port:       2285,
-				UseSSL:     true,
-				Username:   "username",
-				Password:   "password",
-				From:       "from",
-				AdminEmail: []string{"email"},
-			},
-		},
 		Amboy: evergreen.AmboyConfig{
 			Name:       "amboy",
 			SingleName: "single",
@@ -253,15 +242,6 @@ func MockConfig() *evergreen.Settings {
 			ApplicationID: "8888888",
 		},
 		Notify: evergreen.NotifyConfig{
-			SMTP: evergreen.SMTPConfig{
-				Server:     "server",
-				Port:       2285,
-				UseSSL:     true,
-				Username:   "username",
-				Password:   "password",
-				From:       "from",
-				AdminEmail: []string{"email"},
-			},
 			SES: evergreen.SESConfig{
 				From: "from",
 			},
