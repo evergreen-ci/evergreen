@@ -780,7 +780,10 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module for module name '%s'", moduleName)
 	}
-	repoOwner, repoName := module.GetRepoOwnerAndName()
+	repoOwner, repoName, err := thirdparty.ParseGitUrl(module.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+	}
 	moduleOpts := GetProjectOpts{
 		Ref: &ProjectRef{
 			Owner: repoOwner,
