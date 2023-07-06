@@ -353,6 +353,9 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
 
+	// Persist the environment early so the db will be available for the rest of setup.
+	SetEnvironment(e)
+
 	return nil
 }
 
