@@ -14,6 +14,11 @@ import (
 
 const defaultMaxBufferSize = 1e7 //nolint: unused
 
+// LineParser functions parse a raw log line into the service representation of
+// a log line for uniform ingestion of logs by the Evergreen log Sender.
+// Parsers need not set the log name or priority.
+type LineParser func(string) (LogLine, error)
+
 // LoggerOptions support the use and creation of an Evergreen log Sender.
 type LoggerOptions struct {
 	// LogName is the identifying name of the log to use when persisting

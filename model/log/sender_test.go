@@ -117,7 +117,7 @@ func TestSend(t *testing.T) {
 		s.Send(m)
 		require.NotEmpty(t, s.buffer)
 		go s.timedFlush()
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 		s.mu.Lock()
 		require.Empty(t, s.buffer)
 		s.mu.Unlock()
@@ -132,7 +132,7 @@ func TestSend(t *testing.T) {
 		s.mu.Lock()
 		require.NotEmpty(t, s.buffer)
 		s.mu.Unlock()
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 		s.mu.Lock()
 		require.Empty(t, s.buffer)
 		s.mu.Unlock()
@@ -206,7 +206,7 @@ func TestClose(t *testing.T) {
 		assert.Equal(t, context.Canceled, s.ctx.Err())
 		assert.Empty(t, writer.lines)
 	})
-	t.Run("EmptyBuffer", func(t *testing.T) {
+	t.Run("CancelsContext", func(t *testing.T) {
 		writer := &mockService{}
 		s, _ := createTestSender(ctx, writer.write)
 

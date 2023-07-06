@@ -19,10 +19,6 @@ type LogLine struct {
 	Data      string
 }
 
-// LineParser functions parse a raw log line into the service representation of
-// a log line. Parsers need not set the log name or priority.
-type LineParser func(string) (LogLine, error)
-
 // GetOptions represents the arguments for fetching Evergreen logs.
 type GetOptions struct {
 	// LogNames are the names of the logs to fetch and merge, prefixes may
