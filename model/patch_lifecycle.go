@@ -591,9 +591,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}).TVPairsToVariantTasks()
 	}
 
-	// if variant tasks is still empty, then the patch is empty and we shouldn't add to commit queue
-	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
-		return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
+	// if variant tasks is still empty, then the patch is empty and we shouldn't finalize
+	if len(p.VariantsTasks) == 0 {
+		if p.IsCommitQueuePatch() {
+			return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
+		}
+		return nil, errors.New("cannot finalize patch with no tasks")
 	}
 	taskIds, err := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
 	if err != nil {
@@ -971,7 +974,7 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 	}
 
 	if githubMergePatch {
-		return "GitHub Merge Queue: " + description[0]
+		return "GitHub Merge Queue"
 	} else {
 		return "Commit Queue Merge: " + strings.Join(description, " || ")
 	}

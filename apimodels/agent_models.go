@@ -66,6 +66,7 @@ type TaskEndDetail struct {
 	TimeoutDuration time.Duration   `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
 	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
+	TraceID         string          `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 }
 
 type OOMTrackerInfo struct {
