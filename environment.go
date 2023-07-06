@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -700,20 +699,19 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 
 	if e.settings.Notify.SES.From != "" {
-		provider := credentials.NewStaticCredentialsProvider(e.settings.Providers.AWS.EC2Keys[0].Key, e.settings.Providers.AWS.EC2Keys[0].Secret, "")
 		config, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(DefaultEC2Region),
-			config.WithCredentialsProvider(provider),
 		)
 		if err != nil {
 			return errors.Wrap(err, "loading AWS config")
 		}
 		otelaws.AppendMiddlewares(&config.APIOptions)
-		sesSender, err := send.NewSESLogger(send.SESOptions{
-			Name:      "evergreen",
-			AWSConfig: config,
-			From:      e.settings.Notify.SES.From,
-		}, levelInfo)
+		sesSender, err := send.NewSESLogger(ctx,
+			send.SESOptions{
+				Name:          "evergreen",
+				AWSConfig:     config,
+				SenderAddress: e.settings.Notify.SES.From,
+			}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up email logger")
 		}
