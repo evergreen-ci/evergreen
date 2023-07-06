@@ -197,23 +197,9 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 			"status":    h.Status,
 		})
 
-<<<<<<< HEAD
-		catcher := grip.NewBasicCatcher()
-		catcher.Wrap(handleTerminatedHostSpawnedByTask(ctx, &h), "handling host.create host that was terminating before it was running")
-		catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, fmt.Sprintf("host status is '%s'", cloudStatus.String())), "decommissioning host")
-		terminationJob := NewHostTerminationJob(j.env, &h, HostTerminationOptions{
-			TerminateIfBusy:          true,
-			TerminationReason:        "instance was found in stopped state",
-			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated || cloudStatus == cloud.StatusNonExistent,
-		})
-		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob), "enqueueing job to terminate host")
-
-		return catcher.Resolve()
-=======
 		terminationReason := fmt.Sprintf("instance was found in state '%s'", cloudStatus)
 		skipCloudHostTermination := cloudStatus == cloud.StatusTerminated || cloudStatus == cloud.StatusNonExistent
 		return j.prepareToTerminateHost(ctx, &h, terminationReason, skipCloudHostTermination)
->>>>>>> main
 	case cloud.StatusRunning:
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrapf(j.setNextState(ctx, &h), "transitioning host state")
