@@ -81,6 +81,10 @@ func makeLogger(ctx context.Context, name string, opts LoggerOptions, write logW
 		return nil, errors.Wrap(err, "setting default error handler")
 	}
 
+	if opts.MaxBufferSize <= 0 {
+		opts.MaxBufferSize = defaultMaxBufferSize
+	}
+
 	if opts.FlushInterval > 0 {
 		go s.timedFlush()
 	}
@@ -157,7 +161,6 @@ func (s *sender) Close() error {
 
 	if len(s.buffer) > 0 {
 		if err := s.flush(s.ctx); err != nil {
-			s.opts.Local.Send(message.NewErrorMessage(level.Error, err))
 			return errors.Wrap(err, "flushing buffer")
 		}
 	}
