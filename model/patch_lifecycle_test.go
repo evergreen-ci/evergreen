@@ -432,18 +432,17 @@ modules:
 			ppStorageMethod := evergreen.ProjectStorageMethodDB
 			p.ProjectStorageMethod = ppStorageMethod
 
-			//normal patch works
+			//normal patch should error
 			p.Tasks = []string{}
 			p.BuildVariants = []string{}
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert())
 
-			v, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
-			require.NoError(t, err)
-			assert.NotNil(t, v)
-			assert.Empty(t, v.BuildIds)
+			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
-			// commit queue patch should not
+			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
 			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
 			require.Error(t, err)
