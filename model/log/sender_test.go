@@ -215,7 +215,7 @@ func TestClose(t *testing.T) {
 		assert.Equal(t, context.Canceled, s.ctx.Err())
 		assert.Empty(t, writer.lines)
 	})
-	t.Run("NonEmptyBuffer", func(t *testing.T) {
+	t.Run("FlushesNonEmptyBuffer", func(t *testing.T) {
 		writer := &mockService{}
 		s, _ := createTestSender(ctx, writer.write)
 		expectedLines := []LogLine{{Priority: level.Critical, Timestamp: time.Now().UnixNano(), Data: "last line"}}
@@ -227,7 +227,7 @@ func TestClose(t *testing.T) {
 		require.Len(t, writer.lines, 1)
 		assert.Equal(t, expectedLines, writer.lines)
 	})
-	t.Run("NoopWhenClosed", func(t *testing.T) {
+	t.Run("NoopWhenAlreadyClosed", func(t *testing.T) {
 		writer := &mockService{}
 		s, _ := createTestSender(ctx, writer.write)
 		s.buffer = []LogLine{{Priority: level.Critical, Timestamp: time.Now().UnixNano(), Data: "last line"}}

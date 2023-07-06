@@ -39,17 +39,6 @@ type LoggerOptions struct {
 	FlushInterval time.Duration
 }
 
-/*
-func MakeTaskLogger(ctx context.Context, name string, taskOpts TaskOptions, loggerOpts LoggerOptions) (send.Sender, error) {
-	service := &logServiceV0{}
-	w := func(ctx context.Context, lines []LogLine) error {
-		return service.WriteTaskLog(ctx, taskOpts, loggerOpts.LogName, lines)
-	}
-
-	return makeLogger(ctx, name, loggerOpts, w)
-}
-*/
-
 type sender struct {
 	mu         sync.Mutex
 	ctx        context.Context
