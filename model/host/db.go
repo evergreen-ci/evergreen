@@ -906,6 +906,10 @@ func InsertOne(ctx context.Context, h *Host, options ...*options.InsertOneOption
 
 // InsertMany inserts the hosts into the hosts collection.
 func InsertMany(ctx context.Context, hosts []Host, options ...*options.InsertManyOptions) error {
+	if len(hosts) == 0 {
+		return nil
+	}
+
 	docs := make([]interface{}, len(hosts))
 	for idx := range hosts {
 		docs[idx] = &hosts[idx]

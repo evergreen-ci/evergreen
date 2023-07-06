@@ -85,13 +85,13 @@ func FindOneId(ctx context.Context, id string) (*Distro, error) {
 func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
 	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
 	if err := res.Err(); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, errors.Wrap(res.Err(), "finding distro")
 	}
 	d := &Distro{}
 	if err := res.Decode(d); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, errors.Wrap(err, "decoding distro")
 	}
 
