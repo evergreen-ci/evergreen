@@ -41,7 +41,7 @@ func (c *DataPipesConfig) Get(ctx context.Context) error {
 		return errors.Wrapf(err, "retrieving section %s", c.SectionId())
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrap(err, "decoding result")
 	}
 

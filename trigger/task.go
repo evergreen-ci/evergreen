@@ -195,6 +195,7 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 		}
 	}
 
+	t.apiTask = &restModel.APITask{}
 	if err := t.apiTask.BuildFromService(ctx, t.task, &restModel.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true}); err != nil {
 		return errors.Wrap(err, "building API task model")
 	}

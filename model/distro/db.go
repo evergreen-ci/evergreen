@@ -91,7 +91,7 @@ func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptio
 		return nil, errors.Wrap(res.Err(), "finding distro")
 	}
 	d := &Distro{}
-	if err := res.Decode(d); err != nil {
+	if err := res.Decode(&d); err != nil {
 		return nil, errors.Wrap(err, "decoding distro")
 	}
 

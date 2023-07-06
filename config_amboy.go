@@ -98,7 +98,7 @@ func (c *AmboyConfig) Get(ctx context.Context) error {
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 	return nil

@@ -26,7 +26,7 @@ func (c *SplunkConfig) Get(ctx context.Context) error {
 		return nil
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 

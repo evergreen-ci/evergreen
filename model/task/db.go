@@ -1861,7 +1861,7 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 		return errors.Wrap(res.Err(), "updating matching dependencies")
 	}
 
-	return res.Decode(t)
+	return res.Decode(&t)
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.

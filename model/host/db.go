@@ -1140,7 +1140,7 @@ func (h *Host) AddVolumeToHost(ctx context.Context, newVolume *VolumeAttachment)
 	if err := res.Err(); err != nil {
 		return errors.Wrap(err, "finding host and adding volume")
 	}
-	if err := res.Decode(h); err != nil {
+	if err := res.Decode(&h); err != nil {
 		return errors.Wrap(err, "decoding host")
 	}
 
@@ -1168,7 +1168,7 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 	if err := res.Err(); err != nil {
 		return errors.Wrap(err, "finding host and removing volume")
 	}
-	if err := res.Decode(h); err != nil {
+	if err := res.Decode(&h); err != nil {
 		return errors.Wrap(err, "decoding host")
 	}
 
