@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -13,11 +14,21 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
 	maxGeneratedBuildVariants = 200
 	maxGeneratedTasks         = 25000
+)
+
+const (
+	findTasksWithActivationSecondsAttribute  = "evergreen.find_tasks_with_activation.seconds"
+	getTasksWithDependenciesSecondsAttribute = "evergreen.get_tasks_with_dependencies.seconds"
+	addNewTasksSecondsAttribute              = "evergreen.add_new_tasks.seconds"
+	addNewBuildsSecondsAttribute             = "evergreen.add_new_builds.seconds"
+	addDependenciesSecondsAttribute          = "evergreen.add_dependencies.seconds"
 )
 
 var DependencyCycleError = errors.New("adding dependencies creates a dependency cycle")
@@ -219,16 +230,21 @@ func cacheProjectData(p *Project) projectMaps {
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
 func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project) error {
+	span := trace.SpanFromContext(ctx)
 	// Inherit priority from the parent generator task.
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
 			p.BuildVariants[i].Tasks[j].Priority = g.Task.Priority
 		}
 	}
+	start := time.Now()
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
 	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+	span.SetAttributes(attribute.Float64(findTasksWithActivationSecondsAttribute, time.Since(start).Seconds()))
 
+	start = time.Now()
 	newTVPairs := g.getNewTasksWithDependencies(v, p, &activationInfo)
+	span.SetAttributes(attribute.Float64(getTasksWithDependenciesSecondsAttribute, time.Since(start).Seconds()))
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -282,21 +298,27 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
 	}
+	start = time.Now()
 	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
+	span.SetAttributes(attribute.Float64(addNewTasksSecondsAttribute, time.Since(start).Seconds()))
 
+	start = time.Now()
 	creationInfo.Pairs = newTVPairsForNewVariants
 	activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
+	span.SetAttributes(attribute.Float64(addNewBuildsSecondsAttribute, time.Since(start).Seconds()))
 
 	// only want to add dependencies to activated tasks
+	start = time.Now()
 	if err = g.addDependencies(append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "adding dependencies")
 	}
+	span.SetAttributes(attribute.Float64(addDependenciesSecondsAttribute, time.Since(start).Seconds()))
 
 	return nil
 }

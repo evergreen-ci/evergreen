@@ -19,10 +19,23 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
 	generateTasksJobName = "generate-tasks"
+)
+
+const (
+	taskIdAttribute                        = "evergreen.task.id"
+	taskVersionAttribute                   = "evergreen.task.version"
+	parseProjectSecondsAttribute           = "evergreen.parse_project.seconds"
+	mergeGeneratedProjectsSecondsAttribute = "evergreen.merge_generated_projects.seconds"
+	createNewVersionSecondsAttribute       = "evergreen.create_new_version.seconds"
+	validateConfigSecondsAttribute         = "evergreen.validate_config.seconds"
+	simulateDependenciesSecondsAttribute   = "evergreen.simulate_dependencies.seconds"
+	saveTasksSecondsAttribute              = "evergreen.save_tasks.seconds"
 )
 
 func init() {
@@ -66,6 +79,11 @@ func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
 }
 
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
+	ctx, span := tracer.Start(ctx, "task-generation", trace.WithAttributes(
+		attribute.String(taskIdAttribute, t.Id),
+		attribute.String(taskVersionAttribute, t.Version),
+	))
+	defer span.End()
 	start := time.Now()
 	if t.GeneratedTasks {
 		return mongo.ErrNoDocuments
@@ -117,27 +135,11 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "parsing JSON from `generate.tasks`")
 	}
-	grip.Debug(message.Fields{
-		"message":       "generate.tasks timing",
-		"function":      "generate",
-		"operation":     "parseProjects",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-	})
+	span.SetAttributes(attribute.Float64(parseProjectSecondsAttribute, time.Since(start).Seconds()))
 	start = time.Now()
 
 	g, err := model.MergeGeneratedProjects(projects)
-	grip.Debug(message.Fields{
-		"message":       "generate.tasks timing",
-		"function":      "generate",
-		"operation":     "MergeGeneratedProjects",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-	})
+	span.SetAttributes(attribute.Float64(mergeGeneratedProjectsSecondsAttribute, time.Since(start).Seconds()))
 	if err != nil {
 		return errors.Wrap(err, "merging generated projects")
 	}
@@ -148,15 +150,8 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
-	grip.Debug(message.Fields{
-		"message":       "generate.tasks timing",
-		"function":      "generate",
-		"operation":     "NewVersion",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-	})
+	span.SetAttributes(attribute.Float64(createNewVersionSecondsAttribute, time.Since(start).Seconds()))
+
 	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
@@ -168,30 +163,13 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err = validator.CheckProjectConfigurationIsValid(j.env.Settings(), p, pref); err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
-	grip.Debug(message.Fields{
-		"message":       "generate.tasks timing",
-		"function":      "generate",
-		"operation":     "CheckProjectConfigurationIsValid",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-	})
+	span.SetAttributes(attribute.Float64(validateConfigSecondsAttribute, time.Since(start).Seconds()))
 
 	start = time.Now()
 	if err := g.CheckForCycles(v, p, pref); err != nil {
 		return errors.Wrap(err, "checking new dependency graph for cycles")
 	}
-
-	grip.Debug(message.Fields{
-		"message":       "generate.tasks timing",
-		"function":      "generate",
-		"operation":     "SimulateNewDependencyGraph",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-	})
+	span.SetAttributes(attribute.Float64(simulateDependenciesSecondsAttribute, time.Since(start).Seconds()))
 
 	start = time.Now()
 
@@ -208,15 +186,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, evergreen.SaveGenerateTasksError)
 	}
-	grip.Debug(message.Fields{
-		"message":       "generate.tasks timing",
-		"function":      "generate",
-		"operation":     "Save",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-	})
+	span.SetAttributes(attribute.Float64(saveTasksSecondsAttribute, time.Since(start).Seconds()))
 	return nil
 }
 
@@ -262,6 +232,8 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String(evergreen.ProjectIDOtelAttribute, t.Project))
 
 	err = j.generate(ctx, t)
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
