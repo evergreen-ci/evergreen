@@ -2544,8 +2544,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		{"$match": match},
 	}
 
-	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
-	// This is an expensive operation so we only want to do it if we have to
+	// Filter on Build Variants matching on display name or variant name if it exists
 	if len(opts.Variants) > 0 {
 		// Allow searching by either variant name or variant display
 		variantsAsRegex := strings.Join(opts.Variants, "|")
