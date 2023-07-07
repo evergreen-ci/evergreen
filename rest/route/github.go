@@ -333,7 +333,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	if isKeepDefinitionsComment(commentBody) {
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := keepPRPatchDefinition(event.Issue.GetNumber())
+		err := keepPRPatchDefinition(event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
 
 		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
 			"problem keeping pr patch definitions")))
@@ -345,7 +345,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	if isResetDefinitionsComment(commentBody) {
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := resetPRPatchDefinition(event.Issue.GetNumber())
+		err := resetPRPatchDefinition(event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
 
 		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
 			"problem resetting pr patch definitions")))
@@ -478,16 +478,16 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 // RepeatPatchIdNextPatch field in the githubPatchData to the patch id of the latest patch.
 // When the next github patch intent is created for that PR, it will look at this field on the last pr patch
 // to determine if the task definitions should be reused from the specified ID or the default definition
-func keepPRPatchDefinition(prNumber int) error {
-	p, err := patch.FindOne(patch.MostRecentPatchByPR(prNumber))
+func keepPRPatchDefinition(owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
 	if err != nil || p == nil {
 		return errors.Wrap(err, "getting most recent patch for pr")
 	}
 	return p.UpdateRepeatPatchId(p.Id.Hex())
 }
 
-func resetPRPatchDefinition(prNumber int) error {
-	p, err := patch.FindOne(patch.MostRecentPatchByPR(prNumber))
+func resetPRPatchDefinition(owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrap(err, "getting most recent patch for pr")
 	}

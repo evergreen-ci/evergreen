@@ -250,13 +250,6 @@ func MostRecentPatchByUserAndProject(user, project string) db.Q {
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(1)
 }
 
-// MostRecentPatchByPR returns the latest patch for a pr number
-func MostRecentPatchByPR(prNumber int) db.Q {
-	return db.Query(bson.M{
-		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchPRNumberKey): prNumber,
-	}).Sort([]string{"-" + CreateTimeKey}).Limit(1)
-}
-
 // ByVersion produces a query that returns the patch for a given version.
 func ByVersion(version string) db.Q {
 	return db.Query(bson.M{VersionKey: version})

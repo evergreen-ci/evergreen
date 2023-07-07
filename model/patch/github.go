@@ -159,7 +159,10 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 	}
 
 	// get the patchId to repeat the definitions from
-	repeat := getRepeatPatchId(pr.Number)
+	repeat, err := getRepeatPatchId(pr.Base.Repo.Owner.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting patch to repeat definitions from")
+	}
 
 	return &githubIntent{
 		DocumentID:    msgDeliveryID,
@@ -182,13 +185,16 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 
 // getRepeatPatchId returns the patch id to repeat the definitions from
 // this information is found on the most recent pr patch
-func getRepeatPatchId(prNumber *int) string {
-	p, err := FindOne(MostRecentPatchByPR(*prNumber))
-	if err != nil || p == nil {
-		// do not error, it may be the first patch for the PR
-		return ""
+func getRepeatPatchId(owner, repo string, prNumber int) (string, error) {
+	p, err := FindLatestGithubPRPatch(owner, repo, prNumber)
+	if err != nil {
+		return "", errors.Errorf("finding latest patch for PR '%s/%s:%d'", owner, repo, prNumber)
 	}
-	return p.GithubPatchData.RepeatPatchIdNextPatch
+	if p == nil {
+		// do not error, it may be the first patch for the PR
+		return "", nil
+	}
+	return p.GithubPatchData.RepeatPatchIdNextPatch, nil
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
