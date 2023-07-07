@@ -60,6 +60,7 @@ input PeriodicBuildInput {
 
 input ExternalLinkInput {
   displayName: String!
+  requesters: [String!]
   urlTemplate: String!
 }
 
@@ -258,6 +259,7 @@ type WorkstationConfig {
 
 type ExternalLink {
   displayName: String!
+  requesters: [String!]!
   urlTemplate: String!
 }
 
