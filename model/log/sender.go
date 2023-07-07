@@ -15,20 +15,20 @@ import (
 const defaultMaxBufferSize = 1e7 //nolint: unused
 
 // LineParser functions parse a raw log line into the service representation of
-// a log line for uniform ingestion of logs by the Evergreen log Sender.
-// Parsers need not set the log name or priority.
+// a log line for uniform ingestion of logs by the Evergreen log sender.
+// Parsers need not set the log name or, in most cases, the priority.
 type LineParser func(string) (LogLine, error)
 
-// LoggerOptions support the use and creation of an Evergreen log Sender.
+// LoggerOptions support the use and creation of an Evergreen log sender.
 type LoggerOptions struct {
 	// LogName is the identifying name of the log to use when persisting
 	// data.
 	LogName string
 	// Parse is the function for parsing raw log lines collected by the
-	// Sender.
+	// sender.
 	Parse LineParser
 
-	// Local is the Sender for "fallback" operations and to collect the
+	// Local is the sender for "fallback" operations and to collect the
 	// location of the logger output.
 	Local send.Sender
 
@@ -41,6 +41,7 @@ type LoggerOptions struct {
 	FlushInterval time.Duration
 }
 
+// sender implements the send.Sender interface for persisting Evergreen logs.
 type sender struct {
 	mu         sync.Mutex
 	ctx        context.Context
@@ -57,7 +58,7 @@ type sender struct {
 
 type logWriter func(context.Context, []LogLine) error
 
-// makeLogger returns a grip Sender backed by the Evergreen log service.
+// makeLogger returns a sender backed by the Evergreen log service.
 func makeLogger(ctx context.Context, name string, opts LoggerOptions, write logWriter) (send.Sender, error) { //nolint: unused
 	ctx, cancel := context.WithCancel(ctx)
 	s := &sender{
@@ -96,7 +97,7 @@ func (s *sender) Send(m message.Composer) {
 	defer s.mu.Unlock()
 
 	if s.closed {
-		s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.New("cannot call Send on a closed Sender")))
+		s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.New("cannot call Send on a closed sender")))
 		return
 	}
 
@@ -108,8 +109,15 @@ func (s *sender) Send(m message.Composer) {
 		logLine, err := s.opts.Parse(line)
 		if err != nil {
 			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Wrap(err, "parsing log line")))
+			return
 		}
-		logLine.Priority = m.Priority()
+		if logLine.Priority == 0 {
+			logLine.Priority = m.Priority()
+		}
+		if !logLine.Priority.IsValid() {
+			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Errorf("invalid log line priority %d", logLine.Priority)))
+			return
+		}
 
 		s.buffer = append(s.buffer, logLine)
 		s.bufferSize += len(line)
@@ -136,7 +144,7 @@ func (s *sender) Flush(ctx context.Context) error {
 }
 
 // Close flushes anything that may be left in the underlying buffer and
-// terminates all background operations of the Sender. Close is thread safe but
+// terminates all background operations of the sender. Close is thread safe but
 // should only be called once no more calls to Send are needed; after Close has
 // been called any subsequent calls to Send will error while subsequent calls
 // to Close will no-op.

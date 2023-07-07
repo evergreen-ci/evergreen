@@ -19,126 +19,157 @@ func TestSend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	t.Run("WriteError", func(t *testing.T) {
-		service := &mockService{hasErr: true}
-		s, local := createTestSender(ctx, service.write)
-		s.opts.MaxBufferSize = 1
+	t.Run("ParseError", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+		mock.sender.opts.Parse = func(rawLine string) (LogLine, error) {
+			return LogLine{}, errors.New("parse error")
+		}
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		s.Send(m)
-		assert.NotEmpty(t, s.buffer)
-		assert.NotZero(t, s.bufferSize)
-		assert.Nil(t, service.lines)
-		assert.Contains(t, local.lastMessage, "writing log")
+		mock.sender.Send(m)
+		assert.Empty(t, mock.sender.buffer)
+		assert.Zero(t, mock.sender.bufferSize)
+		assert.Empty(t, mock.service.lines)
+		assert.Contains(t, mock.local.lastMessage, "parsing log line")
+	})
+	t.Run("InvalidLogLinePriority", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+		mock.sender.opts.Parse = func(rawLine string) (LogLine, error) {
+			return LogLine{
+				Priority: -1,
+				Data:     rawLine,
+			}, nil
+		}
+
+		m := message.ConvertToComposer(level.Info, "not going to make it")
+		mock.sender.Send(m)
+		assert.Empty(t, mock.sender.buffer)
+		assert.Zero(t, mock.sender.bufferSize)
+		assert.Empty(t, mock.service.lines)
+		assert.Contains(t, mock.local.lastMessage, "invalid log line priority")
+	})
+	t.Run("WriteError", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+		mock.service.hasWriteErr = true
+		mock.sender.opts.MaxBufferSize = 1
+
+		m := message.ConvertToComposer(level.Info, "not going to make it")
+		mock.sender.Send(m)
+		assert.NotEmpty(t, mock.sender.buffer)
+		assert.NotZero(t, mock.sender.bufferSize)
+		assert.Empty(t, mock.service.lines)
+		assert.Contains(t, mock.local.lastMessage, "writing log")
 	})
 	t.Run("ClosedSender", func(t *testing.T) {
-		service := &mockService{}
-		s, local := createTestSender(ctx, service.write)
-		s.closed = true
+		mock := newSenderTestMock(ctx)
+		mock.sender.closed = true
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		s.Send(m)
-		assert.Empty(t, s.buffer)
-		assert.Zero(t, s.bufferSize)
-		assert.Nil(t, service.lines)
-		assert.Contains(t, local.lastMessage, "closed Sender")
+		mock.sender.Send(m)
+		assert.Empty(t, mock.sender.buffer)
+		assert.Zero(t, mock.sender.bufferSize)
+		assert.Nil(t, mock.service.lines)
+		assert.Contains(t, mock.local.lastMessage, "closed sender")
 	})
 	t.Run("SplitsAndParsesData", func(t *testing.T) {
-		service := &mockService{}
-		s, local := createTestSender(ctx, service.write)
+		mock := newSenderTestMock(ctx)
+		ts := time.Now().UnixNano()
+		mock.sender.opts.Parse = func(rawLine string) (LogLine, error) {
+			return LogLine{
+				Priority:  level.Error,
+				Timestamp: ts,
+				Data:      rawLine,
+			}, nil
+		}
 
 		rawLines := []string{"Hello world!", "This is a log line.", "Goodbye world!"}
 		m := message.ConvertToComposer(level.Info, strings.Join(rawLines, "\n"))
-		s.Send(m)
-		require.Len(t, s.buffer, len(rawLines))
-		for i, line := range s.buffer {
-			require.WithinDuration(t, time.Now(), time.Unix(0, line.Timestamp), time.Second)
+		mock.sender.Send(m)
+		require.Len(t, mock.sender.buffer, len(rawLines))
+		for i, line := range mock.sender.buffer {
+			require.Equal(t, level.Error, line.Priority)
+			require.Equal(t, ts, line.Timestamp)
 			require.Equal(t, rawLines[i], line.Data)
-			require.Empty(t, local.lastMessage)
+			require.Empty(t, mock.local.lastMessage)
 		}
 	})
-	t.Run("RespectsPriority", func(t *testing.T) {
-		service := &mockService{}
-		s, local := createTestSender(ctx, service.write)
+	t.Run("RespectsMessagePriority", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
 
-		require.NoError(t, s.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Emergency}))
+		require.NoError(t, mock.sender.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Emergency}))
 		m := message.ConvertToComposer(level.Alert, "alert")
-		s.Send(m)
-		assert.Empty(t, s.buffer)
-		assert.Empty(t, local.lastMessage)
+		mock.sender.Send(m)
+		assert.Empty(t, mock.sender.buffer)
+		assert.Empty(t, mock.local.lastMessage)
 		m = message.ConvertToComposer(level.Emergency, "emergency")
-		s.Send(m)
-		require.NotEmpty(t, s.buffer)
-		assert.Equal(t, level.Emergency, s.buffer[len(s.buffer)-1].Priority)
-		assert.Equal(t, m.String(), s.buffer[len(s.buffer)-1].Data)
-		assert.Empty(t, local.lastMessage)
+		mock.sender.Send(m)
+		require.Len(t, mock.sender.buffer, 1)
+		assert.Equal(t, level.Emergency, mock.sender.buffer[0].Priority)
+		assert.Empty(t, mock.local.lastMessage)
 
-		require.NoError(t, s.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Debug}))
+		require.NoError(t, mock.sender.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Debug}))
 		m = message.ConvertToComposer(level.Debug, "debug")
-		s.Send(m)
-		require.NotEmpty(t, s.buffer)
-		assert.Equal(t, level.Debug, s.buffer[len(s.buffer)-1].Priority)
-		assert.EqualValues(t, m.String(), s.buffer[len(s.buffer)-1].Data)
-		assert.Empty(t, local.lastMessage)
+		mock.sender.Send(m)
+		require.Len(t, mock.sender.buffer, 2)
+		assert.Equal(t, level.Debug, mock.sender.buffer[1].Priority)
+		assert.Empty(t, mock.local.lastMessage)
 	})
 	t.Run("FlushesAtCapacity", func(t *testing.T) {
-		service := &mockService{}
-		s, local := createTestSender(ctx, service.write)
-		s.opts.MaxBufferSize = 4096
+		mock := newSenderTestMock(ctx)
+		mock.sender.opts.MaxBufferSize = 4096
 
 		var rawLines []string
-		for s.bufferSize < s.opts.MaxBufferSize {
+		for mock.sender.bufferSize < mock.sender.opts.MaxBufferSize {
 			// Create two lines, each with a length of 128
 			// characters and create a single message.
 			rawLines = append(rawLines, utility.MakeRandomString(64), utility.MakeRandomString(64))
 			m := message.ConvertToComposer(level.Debug, strings.Join(rawLines[len(rawLines)-2:], "\n"))
 
-			s.Send(m)
-			require.Len(t, s.buffer, len(rawLines))
-			require.Equal(t, 128*len(rawLines), s.bufferSize)
-			require.Empty(t, local.lastMessage)
+			mock.sender.Send(m)
+			require.Len(t, mock.sender.buffer, len(rawLines))
+			require.Equal(t, 128*len(rawLines), mock.sender.bufferSize)
+			require.Empty(t, mock.local.lastMessage)
 		}
 
 		rawLines = append(rawLines, "overflow")
 		m := message.ConvertToComposer(level.Debug, rawLines[len(rawLines)-1])
-		s.Send(m)
-		assert.Empty(t, local.lastMessage)
-		require.Len(t, service.lines, len(rawLines))
-		for i, line := range service.lines {
+		mock.sender.Send(m)
+		assert.Empty(t, mock.local.lastMessage)
+		require.Len(t, mock.service.lines, len(rawLines))
+		for i, line := range mock.service.lines {
 			require.Equal(t, rawLines[i], line.Data)
 		}
 	})
 	t.Run("FlushesAtInterval", func(t *testing.T) {
-		service := &mockService{}
-		s, local := createTestSender(ctx, service.write)
-		s.opts.FlushInterval = 2 * time.Second
+		mock := newSenderTestMock(ctx)
+		mock.sender.opts.FlushInterval = 2 * time.Second
 
 		m := message.ConvertToComposer(level.Debug, utility.RandomString())
-		s.Send(m)
-		require.NotEmpty(t, s.buffer)
-		go s.timedFlush()
+		mock.sender.Send(m)
+		require.NotEmpty(t, mock.sender.buffer)
+		go mock.sender.timedFlush()
 		time.Sleep(3 * time.Second)
-		s.mu.Lock()
-		require.Empty(t, s.buffer)
-		s.mu.Unlock()
-		require.Len(t, service.lines, 1)
-		assert.Equal(t, m.String(), service.lines[0].Data)
-		assert.Empty(t, local.lastMessage)
+		mock.sender.mu.Lock()
+		require.Empty(t, mock.sender.buffer)
+		mock.sender.mu.Unlock()
+		require.Len(t, mock.service.lines, 1)
+		assert.Equal(t, m.String(), mock.service.lines[0].Data)
+		assert.Empty(t, mock.local.lastMessage)
 
 		// Should reset the flush interval and flush again after 2
 		// seconds.
 		m = message.ConvertToComposer(level.Debug, utility.RandomString())
-		s.Send(m)
-		s.mu.Lock()
-		require.NotEmpty(t, s.buffer)
-		s.mu.Unlock()
+		mock.sender.Send(m)
+		mock.sender.mu.Lock()
+		require.NotEmpty(t, mock.sender.buffer)
+		mock.sender.mu.Unlock()
 		time.Sleep(3 * time.Second)
-		s.mu.Lock()
-		require.Empty(t, s.buffer)
-		s.mu.Unlock()
-		require.Len(t, service.lines, 2)
-		assert.Equal(t, m.String(), service.lines[1].Data)
-		assert.Empty(t, local.lastMessage)
+		mock.sender.mu.Lock()
+		require.Empty(t, mock.sender.buffer)
+		mock.sender.mu.Unlock()
+		require.Len(t, mock.service.lines, 2)
+		assert.Equal(t, m.String(), mock.service.lines[1].Data)
+		assert.Empty(t, mock.local.lastMessage)
 	})
 }
 
@@ -147,48 +178,53 @@ func TestFlush(t *testing.T) {
 	defer cancel()
 
 	t.Run("WriteError", func(t *testing.T) {
-		service := &mockService{hasErr: true}
-		s, _ := createTestSender(ctx, service.write)
+		mock := newSenderTestMock(ctx)
+		mock.service.hasWriteErr = true
 
 		m := message.ConvertToComposer(level.Info, "going to be an error")
-		s.Send(m)
-		require.NotEmpty(t, s.buffer)
+		mock.sender.Send(m)
+		require.NotEmpty(t, mock.sender.buffer)
 
-		assert.Error(t, s.Flush(ctx))
-		assert.NotEmpty(t, s.buffer)
-		assert.NotZero(t, s.bufferSize)
-		assert.Empty(t, service.lines)
+		assert.Error(t, mock.sender.Flush(ctx))
+		assert.NotEmpty(t, mock.sender.buffer)
+		assert.NotZero(t, mock.sender.bufferSize)
+		assert.Empty(t, mock.service.lines)
 	})
 	t.Run("ClosedSender", func(t *testing.T) {
-		service := &mockService{}
-		s, _ := createTestSender(ctx, service.write)
+		mock := newSenderTestMock(ctx)
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		s.Send(m)
-		assert.NotEmpty(t, s.buffer)
-		s.closed = true
+		mock.sender.Send(m)
+		assert.NotEmpty(t, mock.sender.buffer)
+		mock.sender.closed = true
 
-		require.NoError(t, s.Flush(ctx))
-		assert.NotEmpty(t, s.buffer)
-		assert.NotZero(t, s.bufferSize)
-		assert.Empty(t, service.lines)
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.NotEmpty(t, mock.sender.buffer)
+		assert.NotZero(t, mock.sender.bufferSize)
+		assert.Empty(t, mock.service.lines)
 	})
 	t.Run("PersistsParsedData", func(t *testing.T) {
-		service := &mockService{}
-		s, _ := createTestSender(ctx, service.write)
+		mock := newSenderTestMock(ctx)
+		ts := time.Now().UnixNano()
+		mock.sender.opts.Parse = func(rawLine string) (LogLine, error) {
+			return LogLine{
+				Timestamp: ts,
+				Data:      rawLine,
+			}, nil
+		}
 
 		m := message.ConvertToComposer(level.Info, "some message")
-		s.Send(m)
-		require.NotEmpty(t, s.buffer)
+		mock.sender.Send(m)
+		require.NotEmpty(t, mock.sender.buffer)
 
-		require.NoError(t, s.Flush(ctx))
-		assert.Empty(t, s.buffer)
-		assert.Zero(t, s.bufferSize)
-		assert.WithinDuration(t, time.Now(), s.lastFlush, time.Second)
-		require.Len(t, service.lines, 1)
-		assert.Equal(t, level.Info, service.lines[0].Priority)
-		assert.WithinDuration(t, time.Now(), time.Unix(0, service.lines[0].Timestamp), time.Second)
-		assert.Equal(t, "some message", service.lines[0].Data)
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Empty(t, mock.sender.buffer)
+		assert.Zero(t, mock.sender.bufferSize)
+		assert.WithinDuration(t, time.Now(), mock.sender.lastFlush, time.Second)
+		require.Len(t, mock.service.lines, 1)
+		assert.Equal(t, level.Info, mock.service.lines[0].Priority)
+		assert.Equal(t, ts, mock.service.lines[0].Timestamp)
+		assert.Equal(t, "some message", mock.service.lines[0].Data)
 	})
 }
 
@@ -197,70 +233,85 @@ func TestClose(t *testing.T) {
 	defer cancel()
 
 	t.Run("WriteError", func(t *testing.T) {
-		writer := &mockService{hasErr: true}
-		s, _ := createTestSender(ctx, writer.write)
-		s.buffer = []LogLine{{Priority: level.Critical, Timestamp: time.Now().UnixNano(), Data: "last line"}}
+		mock := newSenderTestMock(ctx)
+		mock.service.hasWriteErr = true
+		mock.sender.buffer = []LogLine{{Priority: level.Critical, Timestamp: time.Now().UnixNano(), Data: "last line"}}
 
-		assert.Error(t, s.Close())
-		assert.True(t, s.closed)
-		assert.Equal(t, context.Canceled, s.ctx.Err())
-		assert.Empty(t, writer.lines)
+		assert.Error(t, mock.sender.Close())
+		assert.True(t, mock.sender.closed)
+		assert.Equal(t, context.Canceled, mock.sender.ctx.Err())
+		assert.Empty(t, mock.service.lines)
 	})
 	t.Run("CancelsContext", func(t *testing.T) {
-		writer := &mockService{}
-		s, _ := createTestSender(ctx, writer.write)
+		mock := newSenderTestMock(ctx)
 
-		require.NoError(t, s.Close())
-		assert.True(t, s.closed)
-		assert.Equal(t, context.Canceled, s.ctx.Err())
-		assert.Empty(t, writer.lines)
+		require.NoError(t, mock.sender.Close())
+		assert.True(t, mock.sender.closed)
+		assert.Equal(t, context.Canceled, mock.sender.ctx.Err())
+		assert.Empty(t, mock.service.lines)
 	})
 	t.Run("FlushesNonEmptyBuffer", func(t *testing.T) {
-		writer := &mockService{}
-		s, _ := createTestSender(ctx, writer.write)
+		mock := newSenderTestMock(ctx)
 		expectedLines := []LogLine{{Priority: level.Critical, Timestamp: time.Now().UnixNano(), Data: "last line"}}
-		s.buffer = expectedLines
+		mock.sender.buffer = expectedLines
 
-		require.NoError(t, s.Close())
-		assert.True(t, s.closed)
-		assert.Equal(t, context.Canceled, s.ctx.Err())
-		require.Len(t, writer.lines, 1)
-		assert.Equal(t, expectedLines, writer.lines)
+		require.NoError(t, mock.sender.Close())
+		assert.True(t, mock.sender.closed)
+		assert.Equal(t, context.Canceled, mock.sender.ctx.Err())
+		require.Len(t, mock.service.lines, 1)
+		assert.Equal(t, expectedLines, mock.service.lines)
 	})
 	t.Run("NoopWhenAlreadyClosed", func(t *testing.T) {
-		writer := &mockService{}
-		s, _ := createTestSender(ctx, writer.write)
-		s.buffer = []LogLine{{Priority: level.Critical, Timestamp: time.Now().UnixNano(), Data: "last line"}}
-		s.closed = true
+		mock := newSenderTestMock(ctx)
+		mock.sender.buffer = []LogLine{{Priority: level.Critical, Timestamp: time.Now().UnixNano(), Data: "last line"}}
+		mock.sender.closed = true
 
-		require.NoError(t, s.Close())
-		assert.True(t, s.closed)
-		assert.Equal(t, context.Canceled, s.ctx.Err())
-		assert.Empty(t, writer.lines)
+		require.NoError(t, mock.sender.Close())
+		assert.True(t, mock.sender.closed)
+		assert.Equal(t, context.Canceled, mock.sender.ctx.Err())
+		assert.Empty(t, mock.service.lines)
 	})
 }
 
-func createTestSender(ctx context.Context, write logWriter) (*sender, *mockSender) {
-	ctx, cancel := context.WithCancel(ctx)
-	local := &mockSender{Base: send.NewBase("test")}
-	return &sender{
-		ctx:    ctx,
-		cancel: cancel,
-		opts: LoggerOptions{
-			Parse: func(rawLine string) (LogLine, error) {
-				return LogLine{
-					Timestamp: time.Now().UnixNano(),
-					Data:      rawLine,
-				}, nil
-			},
-			Local:         local,
-			MaxBufferSize: 4096,
-		},
-		write: write,
-		Base:  send.NewBase("test"),
-	}, local
+// senderTestMock is a convenience struct for testing that contains a mock
+// logging service, Evergreen log sender, and local mock sender.
+type senderTestMock struct {
+	service *mockService
+	sender  *sender
+	local   *mockSender
 }
 
+// newSenderTestMock returns a mock configured with a mock logging service,
+// Evergreen log sender, and a local mock sender. The log sender is configured
+// with the log writer function implemented by the mock service, a basic line
+// parser function, max buffer size of 4096, and the mock sender as the local
+// sender. Invidiual tests may require to further customization of the
+// configuration after calling.
+func newSenderTestMock(ctx context.Context) *senderTestMock {
+	ctx, cancel := context.WithCancel(ctx)
+	service := &mockService{}
+	local := &mockSender{Base: send.NewBase("test")}
+
+	return &senderTestMock{
+		service: service,
+		local:   local,
+		sender: &sender{
+			ctx:    ctx,
+			cancel: cancel,
+			opts: LoggerOptions{
+				Parse: func(rawLine string) (LogLine, error) {
+					return LogLine{Data: rawLine}, nil
+				},
+				Local:         local,
+				MaxBufferSize: 4096,
+			},
+			write: service.write,
+			Base:  send.NewBase("test"),
+		},
+	}
+}
+
+// mockSender implements a mock send.Sender for testing.
 type mockSender struct {
 	*send.Base
 	lastMessage string
@@ -274,13 +325,15 @@ func (ms *mockSender) Send(m message.Composer) {
 
 func (ms *mockSender) Flush(_ context.Context) error { return nil }
 
+// mockService implements a mock logging service with a log writer function for
+// testing.
 type mockService struct {
-	lines  []LogLine
-	hasErr bool
+	lines       []LogLine
+	hasWriteErr bool
 }
 
 func (s *mockService) write(ctx context.Context, lines []LogLine) error {
-	if s.hasErr {
+	if s.hasWriteErr {
 		return errors.New("write error")
 	}
 	s.lines = append(s.lines, lines...)
