@@ -156,12 +156,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
 
+	tc.setCurrentCommand(cmd)
 	if options.isTaskCommands || options.failPreAndPost {
-		tc.setCurrentCommand(cmd)
 		tc.setCurrentIdleTimeout(cmd)
 		a.comm.UpdateLastMessageTime()
-	} else {
-		tc.setCurrentIdleTimeout(nil)
 	}
 
 	start := time.Now()

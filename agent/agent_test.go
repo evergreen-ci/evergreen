@@ -420,6 +420,217 @@ post:
 	)
 }
 
+func (s *AgentSuite) TestFailingPostAfterMainSucceeds() {
+	name := "test_failing_command_after_main_succeeds"
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: test_failing_command_after_main_succeeds
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 0"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 1"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "some_build_variant",
+		DisplayName:  name,
+		Version:      "my_version",
+	}
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+	_, err = s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal("failed", s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	logs := s.getIdleTimeoutLogs()
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.", logs[0])
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.", logs[1])
+}
+
+func (s *AgentSuite) TestFailingPostErrorFailsNotTrue() {
+	name := "test_failing_command_after_main_succeeds"
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+tasks: 
+ - name: test_failing_command_after_main_succeeds
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 0"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 1"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "some_build_variant",
+		DisplayName:  name,
+		Version:      "my_version",
+	}
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+	_, err = s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal("success", s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	logs := s.getIdleTimeoutLogs()
+	s.Equal(2, len(logs))
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.", logs[0])
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.", logs[1])
+}
+
+func (s *AgentSuite) TestSucceedingPostAfterMainSucceeds() {
+	name := "test_failing_command_after_main_succeeds"
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: test_failing_command_after_main_succeeds
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 0"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 0"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "some_build_variant",
+		DisplayName:  name,
+		Version:      "my_version",
+	}
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+	_, err = s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal("success", s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	logs := s.getIdleTimeoutLogs()
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.", logs[0])
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.", logs[1])
+}
+
+func (s *AgentSuite) TestFailingPostAfterMainFails() {
+	name := "test_failing_command_after_main_succeeds"
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: test_failing_command_after_main_succeeds
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 1"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 1"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "some_build_variant",
+		DisplayName:  name,
+		Version:      "my_version",
+	}
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+	_, err = s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal("failed", s.mockCommunicator.EndTaskResult.Detail.Status)
+	// it should show main as the failing command when both failed.
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	logs := s.getIdleTimeoutLogs()
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.", logs[0])
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.", logs[1])
+}
+
+func (s *AgentSuite) TestSucceedingPostAfterMainFails() {
+	name := "test_failing_command_after_main_succeeds"
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: test_failing_command_after_main_succeeds
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 1"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 0"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "some_build_variant",
+		DisplayName:  name,
+		Version:      "my_version",
+	}
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+	_, err = s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal("failed", s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	logs := s.getIdleTimeoutLogs()
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.", logs[0])
+	s.Equal("Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.", logs[1])
+}
+
 func (s *AgentSuite) TestPostContinuesOnError() {
 	projYml := `
 post:
@@ -921,6 +1132,20 @@ func (s *AgentSuite) getPanicLogs() []string {
 	for _, msgs := range msgsByTask {
 		for _, msg := range msgs {
 			if strings.Contains(msg.Message, "panic") {
+				panicLogs = append(panicLogs, msg.Message)
+			}
+		}
+	}
+	return panicLogs
+}
+
+// getIdleTimeoutLogs returns logs setting the idle timeout.
+func (s *AgentSuite) getIdleTimeoutLogs() []string {
+	var panicLogs []string
+	msgsByTask := s.mockCommunicator.GetMockMessages()
+	for _, msgs := range msgsByTask {
+		for _, msg := range msgs {
+			if strings.Contains(msg.Message, "Set idle timeout") {
 				panicLogs = append(panicLogs, msg.Message)
 			}
 		}

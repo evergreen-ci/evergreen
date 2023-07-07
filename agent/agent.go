@@ -680,6 +680,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed -- FAILURE. Overall task status changed to FAILED.")
 			detail.Status = evergreen.TaskFailed
+			setEndTaskCommand(tc, detail, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
@@ -756,17 +757,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		}
 	}
 
-	if tc.getCurrentCommand() != nil {
-		if description == "" {
-			description = tc.getCurrentCommand().DisplayName()
-		}
-		if failureType == "" {
-			failureType = tc.getCurrentCommand().Type()
-		}
-	}
 	detail := &apimodels.TaskEndDetail{
-		Description:     description,
-		Type:            failureType,
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
@@ -775,10 +766,24 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		Message:         message,
 		TraceID:         tc.traceID,
 	}
+	setEndTaskCommand(tc, detail, description, failureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
+}
+
+func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, description, failureType string) {
+	if tc.getCurrentCommand() != nil {
+		if description == "" {
+			description = tc.getCurrentCommand().DisplayName()
+		}
+		if failureType == "" {
+			failureType = tc.getCurrentCommand().Type()
+		}
+	}
+	detail.Description = description
+	detail.Type = failureType
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
