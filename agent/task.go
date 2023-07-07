@@ -67,7 +67,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
 
 	// set up the system stats collector
-	//start here
 	tc.statsCollector = NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
