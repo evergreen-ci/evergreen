@@ -512,24 +512,28 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 
 func TestPRDef(t *testing.T) {
 	assert.NoError(t, db.Clear(patch.Collection))
+	owner := "owner"
+	repo := "repo"
 	patchId := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
 	p := &patch.Patch{
 		Id:      patchId,
 		Project: "mci",
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:               5,
+			BaseOwner:              owner,
+			BaseRepo:               repo,
 			RepeatPatchIdNextPatch: patchId.Hex(),
 		},
 	}
 	assert.NoError(t, p.Insert())
-	err := keepPRPatchDefinition(5)
+	err := keepPRPatchDefinition(owner, repo, 5)
 	assert.NoError(t, err)
 
 	p, err = patch.FindOne(patch.ById(patchId))
 	assert.NoError(t, err)
 	assert.Equal(t, patchId.Hex(), p.GithubPatchData.RepeatPatchIdNextPatch)
 
-	err = resetPRPatchDefinition(5)
+	err = resetPRPatchDefinition(owner, repo, 5)
 	assert.NoError(t, err)
 
 	p, err = patch.FindOne(patch.ById(patchId))
