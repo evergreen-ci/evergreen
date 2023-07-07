@@ -574,7 +574,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		"task_secret": tc.task.Secret,
 	})
 
-	defer a.killProcs(ctx, tc, false, "finished task")
+	defer a.killProcs(ctx, tc, false, "task is finished")
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
@@ -707,7 +707,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Errorf("Programmer error: invalid task status '%s'.", detail.Status)
 	}
 
-	a.killProcs(ctx, tc, false, "ending task")
+	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
@@ -786,8 +786,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	defer span.End()
 
 	start := time.Now()
-	a.killProcs(ctx, tc, false, "starting post task commands")
-	defer a.killProcs(ctx, tc, false, "finished post task commands")
+	a.killProcs(ctx, tc, false, "post task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post task commands are finished")
 	tc.logger.Task().Info("Running post-task commands.")
 	opts := runCommandsOptions{}
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
@@ -824,7 +824,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runPostGroupCommands.
-	defer a.killProcs(ctx, tc, true, "finished teardown group commands")
+	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
 	defer func() {
 		if tc.logger != nil {
 			grip.Error(tc.logger.Close())
@@ -839,7 +839,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands.")
-		a.killProcs(ctx, tc, true, "starting teardown group commands")
+		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -892,14 +892,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		return
 	}
 
-	cleanupMsg := message.Fields{
-		"message": "cleaning up task",
-		"reason":  reason,
-	}
-	if tc.task.ID != "" {
-		cleanupMsg["task"] = tc.task.ID
-	}
-	logger.Info(cleanupMsg)
+	logger.Infof("Cleaning up task because %s", reason)
 
 	if tc.task.ID != "" && tc.taskConfig != nil {
 		logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
