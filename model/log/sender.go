@@ -87,6 +87,8 @@ func makeLogger(ctx context.Context, name string, opts LoggerOptions, write logW
 // which point the messages in the buffer are written to persistent storage by
 // the backing log service. Send is thread safe.
 func (s *sender) Send(m message.Composer) {
+	ts := time.Now().UnixNano()
+
 	if !s.Level().ShouldLog(m) {
 		return
 	}
@@ -114,6 +116,13 @@ func (s *sender) Send(m message.Composer) {
 		}
 		if !logLine.Priority.IsValid() {
 			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Errorf("invalid log line priority %d", logLine.Priority)))
+			return
+		}
+		if logLine.Timestamp == 0 {
+			logLine.Timestamp = ts
+		}
+		if logLine.Timestamp < 0 {
+			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Errorf("invalid log line timestamp %d", logLine.Timestamp)))
 			return
 		}
 

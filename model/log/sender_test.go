@@ -36,8 +36,9 @@ func TestSend(t *testing.T) {
 		mock := newSenderTestMock(ctx)
 		mock.sender.opts.Parse = func(rawLine string) (LogLine, error) {
 			return LogLine{
-				Priority: -1,
-				Data:     rawLine,
+				Priority:  -1,
+				Timestamp: time.Now().UnixNano(),
+				Data:      rawLine,
 			}, nil
 		}
 
@@ -47,6 +48,23 @@ func TestSend(t *testing.T) {
 		assert.Zero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
 		assert.Contains(t, mock.local.lastMessage, "invalid log line priority")
+	})
+	t.Run("InvalidLogLineTimestamp", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+		mock.sender.opts.Parse = func(rawLine string) (LogLine, error) {
+			return LogLine{
+				Priority:  level.Info,
+				Timestamp: -1,
+				Data:      rawLine,
+			}, nil
+		}
+
+		m := message.ConvertToComposer(level.Info, "not going to make it")
+		mock.sender.Send(m)
+		assert.Empty(t, mock.sender.buffer)
+		assert.Zero(t, mock.sender.bufferSize)
+		assert.Empty(t, mock.service.lines)
+		assert.Contains(t, mock.local.lastMessage, "invalid log line timestamp")
 	})
 	t.Run("WriteError", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
@@ -68,7 +86,7 @@ func TestSend(t *testing.T) {
 		mock.sender.Send(m)
 		assert.Empty(t, mock.sender.buffer)
 		assert.Zero(t, mock.sender.bufferSize)
-		assert.Nil(t, mock.service.lines)
+		assert.Empty(t, mock.service.lines)
 		assert.Contains(t, mock.local.lastMessage, "closed sender")
 	})
 	t.Run("SplitsAndParsesData", func(t *testing.T) {
@@ -85,12 +103,12 @@ func TestSend(t *testing.T) {
 		rawLines := []string{"Hello world!", "This is a log line.", "Goodbye world!"}
 		m := message.ConvertToComposer(level.Info, strings.Join(rawLines, "\n"))
 		mock.sender.Send(m)
+		assert.Empty(t, mock.local.lastMessage)
 		require.Len(t, mock.sender.buffer, len(rawLines))
 		for i, line := range mock.sender.buffer {
 			require.Equal(t, level.Error, line.Priority)
 			require.Equal(t, ts, line.Timestamp)
 			require.Equal(t, rawLines[i], line.Data)
-			require.Empty(t, mock.local.lastMessage)
 		}
 	})
 	t.Run("RespectsMessagePriority", func(t *testing.T) {
@@ -113,6 +131,24 @@ func TestSend(t *testing.T) {
 		require.Len(t, mock.sender.buffer, 2)
 		assert.Equal(t, level.Debug, mock.sender.buffer[1].Priority)
 		assert.Empty(t, mock.local.lastMessage)
+	})
+	t.Run("SetsDefaultLogLineTimestamp", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+		mock.sender.opts.Parse = func(rawLine string) (LogLine, error) {
+			return LogLine{
+				Priority: level.Info,
+				Data:     rawLine,
+			}, nil
+		}
+
+		rawLines := []string{"Hello world!", "This is a log line.", "Goodbye world!"}
+		m := message.ConvertToComposer(level.Info, strings.Join(rawLines, "\n"))
+		mock.sender.Send(m)
+		require.Len(t, mock.sender.buffer, len(rawLines))
+		assert.WithinDuration(t, time.Now(), time.Unix(0, mock.sender.buffer[0].Timestamp), time.Second)
+		for i := 1; i < len(mock.sender.buffer); i++ {
+			require.Equal(t, mock.sender.buffer[0].Timestamp, mock.sender.buffer[i].Timestamp)
+		}
 	})
 	t.Run("FlushesAtCapacity", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
