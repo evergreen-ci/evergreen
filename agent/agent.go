@@ -574,7 +574,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		"task_secret": tc.task.Secret,
 	})
 
-	defer a.killProcs(ctx, tc, false, "preparing to run new task")
+	defer a.killProcs(ctx, tc, false, "finished task")
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))

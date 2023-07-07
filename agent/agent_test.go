@@ -623,7 +623,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc.ranSetupGroup = false
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
 	s.False(tc.ranSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be false")
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("", tc.taskDirectory)
