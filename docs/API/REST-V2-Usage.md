@@ -1040,7 +1040,7 @@ exception of project variables, task annotation settings, workstation settings, 
 |--------------|--------|-------------------------------------------|
 | enabled      | bool   | Enable/disable the commit queue           |
 | merge_method | string | method of merging (squash, merge, rebase) |
-| merge_queue  | string | merge queue to use (EVERGREEN or GITHUB ) |
+| merge_queue  | string | merge queue to use (EVERGREEN or GITHUB)  |
 | patch_type   | string | type of patch (PR, CLI)                   |
 
 
