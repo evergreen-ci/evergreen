@@ -1530,7 +1530,9 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
 // Returns activated task IDs.
-func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
+func addNewBuilds(ctx, saveCtx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
+	ctx, span := tracer.Start(ctx, "add-new-builds")
+	defer span.End()
 	taskIdTables, err := getTaskIdTables(creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task ID table")
@@ -1597,7 +1599,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		if err = build.Insert(); err != nil {
 			return nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
 		}
-		if err = tasks.InsertUnordered(ctx); err != nil {
+		if err = tasks.InsertUnordered(saveCtx); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for build '%s'", build.Id)
 		}
 		newBuildIds = append(newBuildIds, build.Id)
@@ -1661,7 +1663,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns activated task IDs.
-func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
+func addNewTasks(ctx, saveCtx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
+	ctx, span := tracer.Start(ctx, "add-new-tasks")
+	defer span.End()
 	if creationInfo.Version.BuildIds == nil {
 		return nil, nil
 	}
@@ -1724,7 +1728,7 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		creationInfo.TaskNames = tasksToAdd
 		creationInfo.DisplayNames = displayTasksToAdd
 		creationInfo.DistroAliases = distroAliases
-		_, tasks, err := addTasksToBuild(ctx, creationInfo)
+		_, tasks, err := addTasksToBuild(saveCtx, creationInfo)
 		if err != nil {
 			return nil, err
 		}

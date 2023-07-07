@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -298,8 +299,10 @@ func CheckProjectSettings(settings *evergreen.Settings, p *model.Project, ref *m
 	return errs
 }
 
-// checks if the project configuration has errors
-func CheckProjectConfigurationIsValid(settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
+// CheckProjectConfigurationIsValid checks if the project configuration has errors
+func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
+	ctx, span := tracer.Start(ctx, "check-configuration")
+	defer span.End()
 	catcher := grip.NewBasicCatcher()
 	projectErrors := CheckProjectErrors(project, false)
 	if len(projectErrors) != 0 {
