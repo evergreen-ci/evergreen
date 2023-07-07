@@ -27,8 +27,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 	}()
 
-	taskCtx, taskCancel := context.WithCancel(ctx)
-	defer taskCancel()
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
@@ -36,23 +34,23 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	if taskCtx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution before setup: %s", taskCtx.Err())
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution before setup: %s", ctx.Err())
 		return
 	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
-	if taskCtx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution during setup: %s", taskCtx.Err())
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution during setup: %s", ctx.Err())
 		return
 	}
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
-	if taskCtx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution: %s", taskCtx.Err())
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution: %s", ctx.Err())
 		return
 	}
 	hostname, err := os.Hostname()

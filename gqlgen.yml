@@ -134,6 +134,8 @@ models:
     model: github.com/evergreen-ci/plank.Test
   LogMessage:
     model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
+  MergeQueue:
+    model: github.com/evergreen-ci/evergreen/model.MergeQueue
   Module:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModule
   ModuleCodeChange:
