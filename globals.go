@@ -473,6 +473,7 @@ const (
 	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
 const (
