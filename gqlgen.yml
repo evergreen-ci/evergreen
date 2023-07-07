@@ -22,6 +22,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
   BannerTheme:
     model: github.com/evergreen-ci/evergreen.BannerTheme
+  BootstrapSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBootstrapSettings
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
   BuildBaronSettings:
@@ -52,14 +54,20 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
   CreateProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-  DistroInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
+  DispatcherSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+  DistroInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   ECSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIECSConfig
+  EnvVar:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
+  Expansion:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIExpansion
   ExternalLink:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
   ExternalLinkInput:
@@ -68,6 +76,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
+  FinderSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubCheckSubscriber:
@@ -84,12 +94,18 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitTag
   GroupedTaskStatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
+  HomeVolumeSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
   Host:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+  HostAllocatorSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
   HostEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
   HostEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventLogEntry
+  IceCreamSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:
@@ -157,12 +173,16 @@ models:
     fields:
       canCreateProject:
         resolver: true
+  PlannerSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
   Pod:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPod
   PodEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventLogEntry
   PodEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventData
+  PreconditionScript:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
@@ -235,6 +255,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
   RepoWorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
+  ResourceLimits:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
   SearchReturnInfo:
     model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
   Selector:
