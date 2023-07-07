@@ -478,11 +478,11 @@ func (s *AgentSuite) TestEndTaskResponse() {
 func (s *AgentSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Nanosecond
-	// TODO (EVG-19590): fix this test by splitting runTask.
+	// TODO (EVG-20390): potentially fix this test by splitting runTask.
 	// This is a little weird, but it's necessary for now because the test loads
 	// mock data, which changes the task ID.
 	// Once this is fixed, we should uncomment the assertion below about
-	// post-task commands (an aborted task should not run post).
+	// post-task commands running on abort.
 	originalTaskID := s.tc.taskConfig.Task.Id
 	_, err := s.a.runTask(s.ctx, s.tc)
 	s.NoError(err)
@@ -497,7 +497,7 @@ func (s *AgentSuite) TestAbort() {
 	)
 
 	// for _, msg := range s.mockCommunicator.GetMockMessages()[originalTaskID] {
-	//     s.NotContains(msg.Message, "Running post-task commands", "aborted task should not run post block")
+	//     s.Contains(msg.Message, "Running post-task commands", "aborted task should not run post block")
 	// }
 }
 
