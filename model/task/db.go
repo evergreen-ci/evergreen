@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -2045,6 +2046,8 @@ func recalculateTimeTaken() bson.M {
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String("db.aggregationName", "GetTasksByVersion")})
+
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2152,6 +2155,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
 func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String("db.aggregationName", "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
 		IncludeBaseTasks:               false,
@@ -2224,6 +2228,8 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String("db.aggregationName", "GetTaskStatsByVersion")})
+
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2307,6 +2313,7 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 }
 
 func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String("db.aggregationName", "GetGroupedTaskStatsByVersion")})
 	opts.IncludeBuildVariantDisplayName = true
 	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
@@ -2484,6 +2491,7 @@ type HasMatchingTasksOptions struct {
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String("db.aggregationName", "HasMatchingTasks")})
 	options := GetTasksByVersionOptions{
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
