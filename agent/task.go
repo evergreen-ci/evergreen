@@ -207,6 +207,13 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 
+	if cmd == nil {
+		tc.setIdleTimeout(defaultIdleTimeout)
+		tc.logger.Execution().Debugf("Set idle timeout for %s (%s) to %s.",
+			tc.currentCommand.DisplayName(), tc.currentCommand.Type(), tc.getIdleTimeout())
+		return
+	}
+
 	var timeout time.Duration
 	if dynamicTimeout := tc.taskConfig.GetIdleTimeout(); dynamicTimeout != 0 {
 		timeout = time.Duration(dynamicTimeout) * time.Second
