@@ -511,7 +511,7 @@ func RefreshTasksCache(buildId string) error {
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
 
-// addTasksToBuild creates/activates the tasks for the given build of a project
+// addTasksToBuild creates/activates the tasks for the given existing build.
 func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
 	// Find the build variant for this project/build
 	creationInfo.BuildVariant = creationInfo.Project.FindBuildVariant(creationInfo.Build.BuildVariant)
@@ -552,10 +552,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	for _, t := range tasks {
 		if t.IsGithubCheck {
 			hasGitHubCheck = true
-			if err = creationInfo.Build.SetIsGithubCheck(); err != nil {
-				return nil, nil, errors.Wrapf(err, "setting build '%s' as a GitHub check", creationInfo.Build.Id)
-			}
-			break
 		}
 		if t.IsEssentialToFinish {
 			hasUnfinishedEssentialTask = true
@@ -566,7 +562,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 			return nil, nil, errors.Wrapf(err, "setting build '%s' as a GitHub check", creationInfo.Build.Id)
 		}
 	}
-	// kim: TODO: test updated build has unfinished essential task
 	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask); err != nil {
 		return nil, nil, errors.Wrapf(err, "setting build '%s' as having an unfinished essential task", creationInfo.Build.Id)
 	}
@@ -699,7 +694,6 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	}
 	b.Tasks = CreateTasksCache(tasks)
 	b.Activated = containsActivatedTask
-	// kim: TODO: test creating build with essential task
 	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
 	return b, tasksForBuild, nil
 }

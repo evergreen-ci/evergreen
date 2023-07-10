@@ -258,6 +258,57 @@ func TestBuildUpdateStatus(t *testing.T) {
 	})
 }
 
+func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, b Build){
+		"FailsWithNonexistentBuild": func(t *testing.T, b Build) {
+			assert.Error(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+		},
+		"NoopsWithSameValue": func(t *testing.T, b Build) {
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+		"SetsFlag": func(t *testing.T, b Build) {
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.True(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.True(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+		"ClearsFlag": func(t *testing.T, b Build) {
+			b.HasUnfinishedEssentialTask = true
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			tCase(t, Build{
+				Id:                         "build_id",
+				HasUnfinishedEssentialTask: false,
+			})
+		})
+	}
+}
+
 func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 

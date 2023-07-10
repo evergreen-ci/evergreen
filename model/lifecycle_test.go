@@ -1326,13 +1326,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		Convey("all of the build's essential fields should be set correctly", func() {
 			creationInfo := TaskCreationInfo{
-				Project:          project,
-				ProjectRef:       pref,
-				Version:          v,
-				TaskIDs:          table,
-				BuildVariantName: buildVar1.Name,
-				ActivateBuild:    false,
-				TaskNames:        []string{},
+				Project:                              project,
+				ProjectRef:                           pref,
+				Version:                              v,
+				TaskIDs:                              table,
+				BuildVariantName:                     buildVar1.Name,
+				ActivateBuild:                        false,
+				TaskNames:                            []string{},
+				ActivatedTasksAreEssentialToComplete: true,
 			}
 			build, _, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
@@ -1352,6 +1353,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(build.DisplayName, ShouldEqual, buildVar1.DisplayName)
 			So(build.RevisionOrderNumber, ShouldEqual, v.RevisionOrderNumber)
 			So(build.Requester, ShouldEqual, v.Requester)
+			So(build.HasUnfinishedEssentialTask, ShouldBeFalse)
 		})
 
 		Convey("all of the tasks' essential fields should be set correctly", func() {
@@ -1379,10 +1381,11 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
+			So(build.HasUnfinishedEssentialTask, ShouldBeFalse)
 
 			So(len(tasks), ShouldEqual, 6)
 			for _, t := range tasks {
-				// Tasks that are have specific activation conditions are not
+				// Tasks that have specific activation conditions are not
 				// essential to finish.
 				So(t.IsEssentialToFinish, ShouldBeFalse)
 			}
@@ -1473,6 +1476,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(build.Id, ShouldNotEqual, "")
 				So(build.Activated, ShouldBeTrue)
 				So(build.ActivatedTime.Equal(utility.ZeroTime), ShouldBeFalse)
+				So(build.HasUnfinishedEssentialTask, ShouldBeTrue)
 
 				for _, t := range tasks {
 					// Activated execution tasks are essential to finish.

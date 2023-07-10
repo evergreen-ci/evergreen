@@ -1228,20 +1228,11 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 	}
 
 	var hasUnfinishedTask bool
-	// kim: TODO: move essential check higher up for EVG-20113, where all tasks
-	// are unscheduled but it includes essential tasks.
-	// kim: TODO: may have to try to reproduce condition in sandbox (i.e. get
-	// one success in one variant, then unschedule everything in the other
-	// variant).
-	// kim: NOTE: this may have been fixed by the AllTasksBlocked bugfix.
-	// Check if tasks will run or must run, but are not finished.
 	for _, t := range buildTasks {
 		if t.WillRun() || t.IsInProgress() {
 			hasUnfinishedTask = true
 		}
 	}
-	// kim: NOTE: this ensures that if there's any essential task, the build
-	// cannot return a completed status (It can only return created or started).
 	if hasUnfinishedTask || hasUnfinishedEssentialTask {
 		return buildStatus{
 			status:                     evergreen.BuildStarted,

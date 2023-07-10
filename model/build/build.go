@@ -246,7 +246,6 @@ func (b *Build) SetIsGithubCheck() error {
 
 // SetHasUnfinishedEssentialTask sets whether or not the build has at least one
 // unfinished essential task.
-// kim: TODO: test
 func (b *Build) SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask bool) error {
 	if b.HasUnfinishedEssentialTask == hasUnfinishedEssentialTask {
 		return nil
