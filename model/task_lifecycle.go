@@ -1203,7 +1203,6 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 		if !evergreen.IsUnstartedTaskStatus(t.Status) {
 			noStartedTasks = false
 			allTasksBlocked = false
-			break
 		}
 		if !t.Blocked() {
 			allTasksBlocked = false
@@ -1394,7 +1393,6 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 // getVersionActivationAndStatus returns if the version is activated, as well as its status.
 // Need to differentiate activated to distinguish between a version that's created
 // but will run vs a version that's created but nothing is scheduled.
-// kim: TODO: test HasUnfinishedEssentialTask on build
 func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 	// Check if no builds have started in the version.
 	noStartedBuilds := true
@@ -1558,7 +1556,6 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 // UpdateBuildAndVersionStatusForTask updates the status of the task's build based on all the tasks in the build
 // and the task's version based on all the builds in the version.
 // Also update build and version Github statuses based on the subset of tasks and builds included in github checks
-// kim: TODO: update tests
 func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	taskBuild, err := build.FindOneId(t.BuildId)
 	if err != nil {
@@ -1636,7 +1633,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
 // patches and builds associated with the given input list of build IDs.
-// kim: TODO: update tests
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
