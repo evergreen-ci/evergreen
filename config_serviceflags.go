@@ -36,6 +36,7 @@ type ServiceFlags struct {
 	BackgroundCleanupDisabled      bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled           bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	LegacyUIPublicAccessDisabled   bool `bson:"legacy_ui_public_access_disabled" json:"legacy_ui_public_access_disabled"`
+	GlobalGitHubTokenDisabled      bool `bson:"global_github_token_disabled" json:"global_github_token_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -97,6 +98,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			backgroundReauthDisabledKey:       c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:           c.CloudCleanupDisabled,
 			legacyUIPublicAccessDisabledKey:   c.LegacyUIPublicAccessDisabled,
+			globalGitHubTokenDisabledKey:      c.GlobalGitHubTokenDisabled,
 			unrecognizedPodCleanupDisabledKey: c.UnrecognizedPodCleanupDisabled,
 		},
 	}, options.Update().SetUpsert(true))

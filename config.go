@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-07-06"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-06-30"
+	AgentVersion = "2023-07-08"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -58,7 +58,6 @@ type ConfigSection interface {
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
 	Id                  string                  `bson:"_id" json:"id" yaml:"id"`
-	Alerts              AlertsConfig            `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy               AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
 	ApiUrl              string                  `yaml:"api_url" bson:"api_url" json:"api_url"`
@@ -590,6 +589,13 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
 		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "no auth",
+			"owner":   owner,
+			"repo":    repo,
+			"ticket":  "EVG-19966",
+		})
+
 		return "", nil
 	}
 	httpClient := utility.GetHTTPClient()
@@ -606,7 +612,15 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
 		// TODO EVG-19966: Return error here
-		return "", nil
+		grip.Debug(message.Fields{
+			"message": "error finding installation id",
+			"owner":   owner,
+			"repo":    repo,
+			"error":   err.Error(),
+			"appId":   authFields.AppId,
+			"ticket":  "EVG-19966",
+		})
+		return "", errors.Wrap(err, "finding installation id")
 	}
 	if installationId == nil {
 		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
@@ -689,9 +703,13 @@ func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	return tokens, nil
 }
 
+// TODO EVG-19966: Delete this function
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	if s == nil {
 		return "", errors.New("not defined")
+	}
+	if s.ServiceFlags.GlobalGitHubTokenDisabled {
+		return "", nil
 	}
 
 	oauthStrings, err := s.GetGithubOauthStrings()

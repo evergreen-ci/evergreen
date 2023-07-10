@@ -146,6 +146,8 @@ type GithubPatch struct {
 	MergeCommitSHA string `bson:"merge_commit_sha"`
 	CommitTitle    string `bson:"commit_title"`
 	CommitMessage  string `bson:"commit_message"`
+	// the patchId to copy the definitions for for the next patch the pr creates
+	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
 }
 
 // GithubMergeGroup stores patch data for patches created from GitHub merge groups
@@ -175,6 +177,7 @@ var (
 	GithubPatchBaseOwnerKey      = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
 	GithubPatchBaseRepoKey       = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
 	GithubPatchMergeCommitSHAKey = bsonutil.MustHaveTag(GithubPatch{}, "MergeCommitSHA")
+	RepeatPatchIdNextPatchKey    = bsonutil.MustHaveTag(GithubPatch{}, "RepeatPatchIdNextPatch")
 )
 
 type retryConfig struct {
@@ -1536,7 +1539,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 		return pr, nil
 	}
 	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
+	grip.DebugWhen(true, message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR from GitHub",
 		"caller":  "GetGithubPullRequest",

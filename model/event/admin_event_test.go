@@ -74,15 +74,13 @@ func (s *AdminEventSuite) TestEventLogging2() {
 
 func (s *AdminEventSuite) TestEventLogging3() {
 	before := evergreen.NotifyConfig{
-		SMTP: evergreen.SMTPConfig{
-			Port:     10,
-			Password: "pass",
+		SES: evergreen.SESConfig{
+			SenderAddress: "evergreen@mongodb.com",
 		},
 	}
 	after := evergreen.NotifyConfig{
-		SMTP: evergreen.SMTPConfig{
-			Port:     20,
-			Password: "nope",
+		SES: evergreen.SESConfig{
+			SenderAddress: "evergreen2@mongodb.com",
 		},
 	}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
@@ -93,10 +91,8 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.NotifyConfig)
 	afterVal := eventData.Changes.After.(*evergreen.NotifyConfig)
-	s.Equal(before.SMTP.Port, beforeVal.SMTP.Port)
-	s.Equal(before.SMTP.Password, beforeVal.SMTP.Password)
-	s.Equal(after.SMTP.Port, afterVal.SMTP.Port)
-	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
+	s.Equal(before.SES.SenderAddress, beforeVal.SES.SenderAddress)
+	s.Equal(after.SES.SenderAddress, afterVal.SES.SenderAddress)
 }
 
 func (s *AdminEventSuite) TestNoSpuriousLogging() {

@@ -35,6 +35,8 @@ const (
 	patchComment            = "evergreen patch"
 	commitQueueMergeComment = "evergreen merge"
 	evergreenHelpComment    = "evergreen help"
+	keepDefinitionsComment  = "evergreen keep-definitions"
+	resetDefinitionsComment = "evergreen reset-definitions"
 
 	refTags = "refs/tags/"
 
@@ -328,6 +330,30 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		return errors.Wrap(err, "sending help comment")
 	}
 
+	if isKeepDefinitionsComment(commentBody) {
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
+
+		err := keepPRPatchDefinition(event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
+			"problem keeping pr patch definitions")))
+
+		return errors.Wrap(err, "keeping pr patch definition")
+
+	}
+
+	if isResetDefinitionsComment(commentBody) {
+		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
+
+		err := resetPRPatchDefinition(event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+
+		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
+			"problem resetting pr patch definitions")))
+
+		return errors.Wrap(err, "resetting pr patch definition")
+
+	}
+
 	return nil
 }
 
@@ -413,6 +439,8 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 			"this is required to create a PR patch when only manual PR testing is enabled")
 	}
 	if autoPRProjectEnabled || manualPRProjectEnabled {
+		res += fmt.Sprintf(formatStr, keepDefinitionsComment, "reuse the tasks from the previous patch in subsequent patches")
+		res += fmt.Sprintf(formatStr, resetDefinitionsComment, "reset the patch tasks to the original definition")
 		res += fmt.Sprintf(formatStr, refreshStatusComment, "resyncs PR GitHub checks")
 	}
 	if cqProjectEnabled {
@@ -444,6 +472,26 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 	}
 
 	return gh.AddIntentForPR(pr, pr.User.GetLogin(), calledBy)
+}
+
+// keepPRPatchDefinition looks for the most recent patch created for the pr number and updates the
+// RepeatPatchIdNextPatch field in the githubPatchData to the patch id of the latest patch.
+// When the next github patch intent is created for that PR, it will look at this field on the last pr patch
+// to determine if the task definitions should be reused from the specified ID or the default definition
+func keepPRPatchDefinition(owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	if err != nil || p == nil {
+		return errors.Wrap(err, "getting most recent patch for pr")
+	}
+	return p.UpdateRepeatPatchId(p.Id.Hex())
+}
+
+func resetPRPatchDefinition(owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	if err != nil {
+		return errors.Wrap(err, "getting most recent patch for pr")
+	}
+	return p.UpdateRepeatPatchId("")
 }
 
 func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo string, prNumber int) error {
@@ -769,6 +817,14 @@ func isPatchComment(comment string) bool {
 // it may be followed by a newline and a message.
 func triggersCommitQueue(comment string) bool {
 	return strings.HasPrefix(trimComment(comment), commitQueueMergeComment)
+}
+
+func isKeepDefinitionsComment(comment string) bool {
+	return trimComment(comment) == keepDefinitionsComment
+}
+
+func isResetDefinitionsComment(comment string) bool {
+	return trimComment(comment) == resetDefinitionsComment
 }
 
 // The bool value returns whether the patch should be created or not.

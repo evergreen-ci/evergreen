@@ -310,7 +310,7 @@ const (
 	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
-	githubAppPrivateKey        = "github_app_test_key"
+	githubAppPrivateKey        = "github_app_key"
 
 	VSCodePort = 2021
 
@@ -473,6 +473,7 @@ const (
 	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
 const (

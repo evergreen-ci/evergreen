@@ -69,7 +69,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
 		{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 	}
-	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "project_grumpyCat", "project_happyAbyssinian"}
+	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "project_grumpyCat", "project_happyAbyssinian", "superuser_distro_access"}
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
@@ -121,10 +121,21 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.AllDistrosScope,
 		Name:      "modify host scope",
 		Type:      evergreen.DistroResourceType,
-		Resources: []string{"ubuntu1604-small", "ubuntu1604-large"},
+		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small"},
 	}
 	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)
+
+	superUserDistroRole := gimlet.Role{
+		ID:    evergreen.SuperUserDistroAccessRole,
+		Name:  "admin access",
+		Scope: evergreen.AllDistrosScope,
+		Permissions: map[string]int{
+			"distro_settings": 30,
+			"distro_hosts":    20,
+		},
+	}
+	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
 
 	modifyHostRole := gimlet.Role{
 		ID:          "modify_host",
