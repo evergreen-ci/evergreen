@@ -281,7 +281,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 }
 
 func parseProjectsAsString(ctx context.Context, jsonStrings []string) ([]model.GeneratedProject, error) {
-	ctx, span := tracer.Start(ctx, "parse-projects")
+	_, span := tracer.Start(ctx, "parse-projects")
 	defer span.End()
 	catcher := grip.NewBasicCatcher()
 	var projects []model.GeneratedProject

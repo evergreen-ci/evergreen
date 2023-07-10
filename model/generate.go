@@ -130,7 +130,7 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config number.
 func (g *GeneratedProject) NewVersion(ctx context.Context, p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
-	ctx, span := tracer.Start(ctx, "parse-projects")
+	ctx, span := tracer.Start(ctx, "create-generated-version")
 	defer span.End()
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)

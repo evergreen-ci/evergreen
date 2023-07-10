@@ -3109,7 +3109,7 @@ buildvariants:
 	assert.Len(errs, 0, "no errors were found")
 	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")
-	assert.NoError(CheckProjectConfigurationIsValid(&evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
+	assert.NoError(CheckProjectConfigurationIsValid(context.Background(), &evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 
 	exampleYml = `
 tasks:
@@ -3128,7 +3128,7 @@ buildvariants:
 	require.NoError(err)
 	assert.NotNil(pp)
 	assert.NotEmpty(proj)
-	assert.Error(CheckProjectConfigurationIsValid(&evergreen.Settings{}, &proj, &model.ProjectRef{}))
+	assert.Error(CheckProjectConfigurationIsValid(context.Background(), &evergreen.Settings{}, &proj, &model.ProjectRef{}))
 }
 
 func TestGetDistrosForProject(t *testing.T) {
