@@ -78,6 +78,10 @@ type Build struct {
 	// Set to true if all tasks in the build are blocked.
 	// Should not be exposed, only for internal use.
 	AllTasksBlocked bool `bson:"all_tasks_blocked"`
+	// HasUnfinishedEssentialTask tracks whether or not this build has an
+	// unfinished essential task. The build cannot be in a finished state until
+	// all of its essential tasks have finished.
+	HasUnfinishedEssentialTask bool `bson:"has_unfinished_essential_task"`
 }
 
 func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
@@ -238,6 +242,25 @@ func (b *Build) SetIsGithubCheck() error {
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{IsGithubCheckKey: true}},
 	)
+}
+
+// SetHasUnfinishedEssentialTask sets whether or not the build has at least one
+// unfinished essential task.
+// kim: TODO: test
+func (b *Build) SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask bool) error {
+	if b.HasUnfinishedEssentialTask == hasUnfinishedEssentialTask {
+		return nil
+	}
+	if err := UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{HasUnfinishedEssentialTaskKey: hasUnfinishedEssentialTask}},
+	); err != nil {
+		return err
+	}
+
+	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
+
+	return nil
 }
 
 // UpdateMakespans sets the builds predicted and actual makespans to given durations

@@ -547,13 +547,28 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		return nil, nil, errors.Wrapf(err, "inserting tasks for build '%s'", creationInfo.Build.Id)
 	}
 
+	var hasGitHubCheck bool
+	var hasUnfinishedEssentialTask bool
 	for _, t := range tasks {
 		if t.IsGithubCheck {
+			hasGitHubCheck = true
 			if err = creationInfo.Build.SetIsGithubCheck(); err != nil {
 				return nil, nil, errors.Wrapf(err, "setting build '%s' as a GitHub check", creationInfo.Build.Id)
 			}
 			break
 		}
+		if t.IsEssentialToFinish {
+			hasUnfinishedEssentialTask = true
+		}
+	}
+	if hasGitHubCheck {
+		if err := creationInfo.Build.SetIsGithubCheck(); err != nil {
+			return nil, nil, errors.Wrapf(err, "setting build '%s' as a GitHub check", creationInfo.Build.Id)
+		}
+	}
+	// kim: TODO: test updated build has unfinished essential task
+	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask); err != nil {
+		return nil, nil, errors.Wrapf(err, "setting build '%s' as having an unfinished essential task", creationInfo.Build.Id)
 	}
 
 	// update the build to hold the new tasks
@@ -666,13 +681,16 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
 	containsActivatedTask := false
-
+	hasUnfinishedEssentialTask := false
 	for _, taskP := range tasksForBuild {
 		if taskP.IsGithubCheck {
 			b.IsGithubCheck = true
 		}
 		if taskP.Activated {
 			containsActivatedTask = true
+		}
+		if taskP.IsEssentialToFinish {
+			hasUnfinishedEssentialTask = true
 		}
 		if taskP.IsPartOfDisplay() {
 			continue // don't add execution parts of display tasks to the UI cache
@@ -681,6 +699,8 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	}
 	b.Tasks = CreateTasksCache(tasks)
 	b.Activated = containsActivatedTask
+	// kim: TODO: test creating build with essential task
+	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
 	return b, tasksForBuild, nil
 }
 
