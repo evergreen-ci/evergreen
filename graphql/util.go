@@ -336,16 +336,23 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
+	baseVersionID := ""
 	if buildVariantOpts.IncludeBaseTasks == nil {
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
-
+	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
+		var err error
+		baseVersionID, err = model.FindBaseVersionIDForVersion(versionId)
+		if err != nil {
+			return nil, errors.Wrapf(err, fmt.Sprintf("Error getting base version for version `%s`", versionId))
+		}
+	}
 	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
 		Variants:                       buildVariantOpts.Variants,
 		TaskNames:                      buildVariantOpts.Tasks,
 		Sorts:                          defaultSort,
-		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
+		BaseVersionID:                  baseVersionID,
 		IncludeBuildVariantDisplayName: true,
 		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
 		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
@@ -660,7 +667,6 @@ func setVersionActivationStatus(ctx context.Context, version *model.Version) err
 	}
 	opts := task.GetTasksByVersionOptions{
 		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, version.Id, opts)

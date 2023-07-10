@@ -2158,7 +2158,6 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, 
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
-		IncludeBaseTasks:               false,
 		FieldsToProject:                []string{DisplayStatusKey},
 		IncludeBuildVariantDisplayName: false,
 		IncludeNeverActivatedTasks:     true,
@@ -2552,11 +2551,10 @@ type GetTasksByVersionOptions struct {
 	FieldsToProject                     []string
 	Sorts                               []TasksSortOrder
 	IncludeExecutionTasks               bool
-	IncludeBaseTasks                    bool
 	IncludeNeverActivatedTasks          bool // NeverActivated tasks are tasks that lack an activation time
 	IncludeBuildVariantDisplayName      bool
-	IsMainlineCommit                    bool
 	UseLegacyAddBuildVariantDisplayName bool
+	BaseVersionID                       string
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
@@ -2670,42 +2668,19 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
-	if opts.IncludeBaseTasks {
-		baseCommitMatch := []bson.M{
-			{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-			{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-		}
-
-		// If we are requesting a mainline commit's base task we want to use the previous commit instead.
-		if opts.IsMainlineCommit {
-			baseCommitMatch = append(baseCommitMatch, bson.M{
-				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
-					"$subtract": []interface{}{"$$" + RevisionOrderNumberKey, 1},
-				}},
-			})
-		} else {
-			baseCommitMatch = append(baseCommitMatch, bson.M{
-				"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey},
-			})
+	if len(opts.BaseVersionID) > 0 {
+		baseVersionMatch := bson.M{
+			"$match": bson.M{
+				VersionKey: opts.BaseVersionID,
+			},
 		}
 		pipeline = append(pipeline, []bson.M{
 			// Add data about the base task
 			{"$lookup": bson.M{
 				"from": Collection,
-				"let": bson.M{
-					RevisionKey:            "$" + RevisionKey,
-					BuildVariantKey:        "$" + BuildVariantKey,
-					DisplayNameKey:         "$" + DisplayNameKey,
-					RevisionOrderNumberKey: "$" + RevisionOrderNumberKey,
-				},
-				"as": BaseTaskKey,
+				"as":   BaseTaskKey,
 				"pipeline": []bson.M{
-					{"$match": bson.M{
-						RequesterKey: evergreen.RepotrackerVersionRequester,
-						"$expr": bson.M{
-							"$and": baseCommitMatch,
-						},
-					}},
+					baseVersionMatch,
 					{"$project": bson.M{
 						IdKey:     1,
 						StatusKey: displayStatusExpression,
@@ -2729,7 +2704,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		}
 	}
 
-	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
+	if len(opts.BaseVersionID) > 0 && len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
 				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},

@@ -313,19 +313,23 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: '%s'", versionId))
 	}
 
+	baseVersionId, err := model.FindBaseVersionIDForVersion(v.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version id for version with id: '%s': %s", versionId, err.Error()))
+	}
+
 	opts := task.GetTasksByVersionOptions{
-		Statuses:         getValidTaskStatusesFilter(options.Statuses),
-		BaseStatuses:     getValidTaskStatusesFilter(options.BaseStatuses),
-		Variants:         []string{variantParam},
-		TaskNames:        []string{taskNameParam},
-		Page:             pageParam,
-		Limit:            limitParam,
-		Sorts:            taskSorts,
-		IncludeBaseTasks: true,
+		Statuses:     getValidTaskStatusesFilter(options.Statuses),
+		BaseStatuses: getValidTaskStatusesFilter(options.BaseStatuses),
+		Variants:     []string{variantParam},
+		TaskNames:    []string{taskNameParam},
+		Page:         pageParam,
+		Limit:        limitParam,
+		Sorts:        taskSorts,
 		// If the version is a patch, we want to exclude inactive tasks by default.
 		IncludeNeverActivatedTasks:     !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
 		IncludeBuildVariantDisplayName: true,
-		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
+		BaseVersionID:                  baseVersionId,
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
@@ -360,7 +364,6 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVe
 // TaskStatusStats is the resolver for the taskStatusStats field.
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.APIVersion, options BuildVariantOptions) (*task.TaskStats, error) {
 	opts := task.GetTasksByVersionOptions{
-		IncludeBaseTasks:      false,
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,

@@ -337,7 +337,6 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		opts := task.GetTasksByVersionOptions{
 			Statuses:                       failedAndAbortedStatuses,
 			FieldsToProject:                []string{task.DisplayStatusKey},
-			IncludeBaseTasks:               false,
 			IncludeBuildVariantDisplayName: false,
 		}
 		tasks, _, err := task.GetTasksByVersion(ctx, id, opts)
