@@ -433,7 +433,7 @@ func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error 
 		return errors.Wrap(err, "finding builds for tasks")
 	}
 	for _, b := range builds {
-		if err = checkUpdateBuildPRStatusPending(&b, patchStatusChangeDescription, prTaskResetCaller); err != nil {
+		if err = checkUpdateBuildPRStatusPending(&b); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", b.Id)
 		}
 	}

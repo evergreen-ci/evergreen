@@ -464,11 +464,12 @@ modules:
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
-			// ensure the relevant builds/tasks were created
+
 			builds, err := build.Find(build.All)
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
+
 			tasks, err := task.Find(bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)

@@ -1276,14 +1276,9 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(buildStatus.status)
 }
 
-const (
-	patchStatusChangeDescription = "patch status change"
-	prTaskResetCaller            = "pr-task-reset"
-)
-
 // checkUpdateBuildPRStatusPending checks if the build is coming from a PR, and if so
 // sends a pending status to GitHub to reflect the status of the build.
-func checkUpdateBuildPRStatusPending(b *build.Build, description, caller string) error {
+func checkUpdateBuildPRStatusPending(b *build.Build) error {
 	if !evergreen.IsGitHubPatchRequester(b.Requester) {
 		return nil
 	}
@@ -1300,8 +1295,8 @@ func checkUpdateBuildPRStatusPending(b *build.Build, description, caller string)
 			Owner:     p.GithubPatchData.BaseOwner,
 			Repo:      p.GithubPatchData.BaseRepo,
 			Ref:       p.GithubPatchData.HeadHash,
-			Desc:      description,
-			Caller:    caller,
+			Desc:      "patch status change",
+			Caller:    "pr-task-reset",
 			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		}
 		if err = thirdparty.SendPendingStatusToGithub(input, ""); err != nil {
@@ -1588,7 +1583,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	}
 
 	if !evergreen.IsFinishedVersionStatus(newVersionStatus) && evergreen.IsFinishedVersionStatus(taskVersion.Status) {
-		if err = checkUpdateBuildPRStatusPending(taskBuild, patchStatusChangeDescription, prTaskResetCaller); err != nil {
+		if err = checkUpdateBuildPRStatusPending(taskBuild); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
 	}

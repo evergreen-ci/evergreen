@@ -78,9 +78,9 @@ type Build struct {
 	// Set to true if all tasks in the build are blocked.
 	// Should not be exposed, only for internal use.
 	AllTasksBlocked bool `bson:"all_tasks_blocked"`
-	// HasUnfinishedEssentialTask tracks whether or not this build has an
-	// unfinished essential task. The build cannot be in a finished state until
-	// all of its essential tasks have finished.
+	// HasUnfinishedEssentialTask tracks whether or not this build has at least
+	// one unfinished essential task. The build cannot be in a finished state
+	// until all of its essential tasks have finished.
 	HasUnfinishedEssentialTask bool `bson:"has_unfinished_essential_task"`
 }
 
