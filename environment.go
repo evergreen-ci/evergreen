@@ -193,6 +193,8 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
+		// Persist the environment early so the db will be available for initSettings.
+		SetEnvironment(e)
 	}
 
 	if err := e.initSettings(ctx, confPath); err != nil {
@@ -352,9 +354,6 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
-
-	// Persist the environment early so the db will be available for the rest of setup.
-	SetEnvironment(e)
 
 	return nil
 }
