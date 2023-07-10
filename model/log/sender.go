@@ -49,7 +49,6 @@ type sender struct {
 	buffer     []LogLine
 	bufferSize int
 	lastFlush  time.Time
-	timer      *time.Timer
 	closed     bool
 	*send.Base
 }
@@ -175,23 +174,20 @@ func (s *sender) Close() error {
 }
 
 func (s *sender) timedFlush() {
-	s.mu.Lock()
-	s.timer = time.NewTimer(s.opts.FlushInterval)
-	s.mu.Unlock()
-	defer s.timer.Stop()
+	ticker := time.NewTicker(s.opts.FlushInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-s.timer.C:
+		case <-ticker.C:
 			s.mu.Lock()
 			if len(s.buffer) > 0 && time.Since(s.lastFlush) >= s.opts.FlushInterval {
 				if err := s.flush(s.ctx); err != nil {
 					s.opts.Local.Send(message.NewErrorMessage(level.Error, err))
 				}
 			}
-			_ = s.timer.Reset(s.opts.FlushInterval)
 			s.mu.Unlock()
 		}
 	}
