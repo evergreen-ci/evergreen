@@ -540,53 +540,10 @@ Admin Settings
 							</section>
 						</section>
 						<section layout="row" flex>
-							<md-card flex=50 id="alerts">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Alerts - SMTP Settings</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('alerts')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>Server address</label>
-										<input type="text" ng-model="Settings.alerts.smtp.server">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>From email</label>
-										<input type="text" ng-model="Settings.alerts.smtp.from">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Port</label>
-										<input type="number" ng-model="Settings.alerts.smtp.port">
-									</md-input-container>
-									<md-input-container class="control" style="width:250px; margin-left:50px;">
-										<md-checkbox ng-model="Settings.alerts.smtp.use_ssl">
-											Use SSL
-										</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Username</label>
-										<input type="text" ng-model="Settings.alerts.smtp.username">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.alerts.smtp.password">
-									</md-input-container>
-									<md-input-container class="control">
-										<label>Admin emails</label>
-										<textarea ng-model="Settings.alerts.smtp.admin_email" ng-list="&#10;"
-											ng-trim="false" rows="3" md-select-on-focus></textarea>
-									</md-input-container>
-								</md-card-content>
-							</md-card>
-
 							<md-card flex=50 id="notify">
 								<md-card-title>
 									<md-card-title-text>
-										<span>Notify - SMTP Settings</span>
+										<span>Notify - SES Settings</span>
 									</md-card-title-text>
 									<md-button ng-click="clearSection('notify')">
 										<i class="fa fa-trash"></i>
@@ -594,34 +551,8 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>Server address</label>
-										<input type="text" ng-model="Settings.notify.smtp.server">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>From email</label>
-										<input type="text" ng-model="Settings.notify.smtp.from">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Port</label>
-										<input type="number" ng-model="Settings.notify.smtp.port">
-									</md-input-container>
-									<md-input-container class="control" style="width:250px; margin-left:50px;">
-										<md-checkbox ng-model="Settings.notify.smtp.use_ssl">
-											Use SSL
-										</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Username</label>
-										<input type="text" ng-model="Settings.notify.smtp.username">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.notify.smtp.password">
-									</md-input-container>
-									<md-input-container class="control">
-										<label>Admin emails</label>
-										<textarea ng-model="Settings.notify.smtp.admin_email" ng-list="&#10;"
-											ng-trim="false" rows="3" md-select-on-focus></textarea>
+										<input type="text" ng-model="Settings.notify.ses.sender_address">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

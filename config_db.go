@@ -36,7 +36,6 @@ var (
 	authConfigKey         = bsonutil.MustHaveTag(Settings{}, "AuthConfig")
 	repoTrackerConfigKey  = bsonutil.MustHaveTag(Settings{}, "RepoTracker")
 	apiKey                = bsonutil.MustHaveTag(Settings{}, "Api")
-	alertsConfigKey       = bsonutil.MustHaveTag(Settings{}, "Alerts")
 	uiKey                 = bsonutil.MustHaveTag(Settings{}, "Ui")
 	hostInitConfigKey     = bsonutil.MustHaveTag(Settings{}, "HostInit")
 	notifyKey             = bsonutil.MustHaveTag(Settings{}, "Notify")

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -35,6 +36,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -696,36 +698,24 @@ func (e *envState) initSenders(ctx context.Context) error {
 		Threshold: level.Notice,
 	}
 
-	if e.settings.Notify.SMTP.From != "" {
-		smtp := e.settings.Notify.SMTP
-		opts := send.SMTPOptions{
-			Name:              "evergreen",
-			Server:            smtp.Server,
-			Port:              smtp.Port,
-			UseSSL:            smtp.UseSSL,
-			Username:          smtp.Username,
-			Password:          smtp.Password,
-			From:              smtp.From,
-			PlainTextContents: false,
-			NameAsSubject:     true,
+	if e.settings.Notify.SES.SenderAddress != "" {
+		config, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(DefaultEC2Region),
+		)
+		if err != nil {
+			return errors.Wrap(err, "loading AWS config")
 		}
-		if len(smtp.AdminEmail) == 0 {
-			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
-				return errors.Wrap(err, "adding email logger test recipient")
-			}
-
-		} else {
-			for i := range smtp.AdminEmail {
-				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
-					return errors.Wrap(err, "adding email logger recipient")
-				}
-			}
-		}
-		sender, err := send.NewSMTPLogger(&opts, levelInfo)
+		otelaws.AppendMiddlewares(&config.APIOptions)
+		sesSender, err := send.NewSESLogger(ctx,
+			send.SESOptions{
+				Name:          "evergreen",
+				AWSConfig:     config,
+				SenderAddress: e.settings.Notify.SES.SenderAddress,
+			}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up email logger")
 		}
-		e.senders[SenderEmail] = sender
+		e.senders[SenderEmail] = sesSender
 	}
 
 	var sender send.Sender
