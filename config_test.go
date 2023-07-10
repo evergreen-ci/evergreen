@@ -591,7 +591,7 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 func (s *AdminSuite) TestNotifyConfig() {
 	config := NotifyConfig{
 		SES: SESConfig{
-			From: "from",
+			SenderAddress: "from",
 		},
 	}
 

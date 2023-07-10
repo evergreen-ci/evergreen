@@ -74,12 +74,12 @@ func (s *AdminEventSuite) TestEventLogging2() {
 func (s *AdminEventSuite) TestEventLogging3() {
 	before := evergreen.NotifyConfig{
 		SES: evergreen.SESConfig{
-			From: "evergreen@mongodb.com",
+			SenderAddress: "evergreen@mongodb.com",
 		},
 	}
 	after := evergreen.NotifyConfig{
 		SES: evergreen.SESConfig{
-			From: "evergreen2@mongodb.com",
+			SenderAddress: "evergreen2@mongodb.com",
 		},
 	}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
@@ -90,8 +90,8 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.NotifyConfig)
 	afterVal := eventData.Changes.After.(*evergreen.NotifyConfig)
-	s.Equal(before.SES.From, beforeVal.SES.From)
-	s.Equal(after.SES.From, afterVal.SES.From)
+	s.Equal(before.SES.SenderAddress, beforeVal.SES.SenderAddress)
+	s.Equal(after.SES.SenderAddress, afterVal.SES.SenderAddress)
 }
 
 func (s *AdminEventSuite) TestNoSpuriousLogging() {

@@ -60,7 +60,7 @@ func (c *NotifyConfig) ValidateAndDefault() error {
 		c.BufferTargetPerInterval = DefaultBufferTargetPerInterval
 	}
 
-	// cap to 100 jobs/sec per server
+	// Cap to 100 jobs/sec per server.
 	jobsPerSecond := c.BufferIntervalSeconds / c.BufferTargetPerInterval
 	if jobsPerSecond > maxNotificationsPerSecond {
 		return errors.Errorf("maximum notification jobs per second is %d", maxNotificationsPerSecond)
@@ -72,5 +72,5 @@ func (c *NotifyConfig) ValidateAndDefault() error {
 
 // SESConfig configures the SES email sender.
 type SESConfig struct {
-	From string `bson:"from" json:"from" yaml:"from"`
+	SenderAddress string `bson:"sender_address" json:"sender_address" yaml:"sender_address"`
 }

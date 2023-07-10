@@ -243,7 +243,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		Notify: evergreen.NotifyConfig{
 			SES: evergreen.SESConfig{
-				From: "from",
+				SenderAddress: "from",
 			},
 		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},

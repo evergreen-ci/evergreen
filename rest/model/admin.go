@@ -281,13 +281,13 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 }
 
 type APISESConfig struct {
-	From *string `json:"from"`
+	SenderAddress *string `json:"sender_address"`
 }
 
 func (a *APISESConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.SESConfig:
-		a.From = utility.ToStringPtr(v.From)
+		a.SenderAddress = utility.ToStringPtr(v.SenderAddress)
 	default:
 		return errors.Errorf("programmatic error: expected SESConfig but got type %T", h)
 	}
@@ -299,7 +299,7 @@ func (a *APISESConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.SESConfig{
-		From: utility.FromStringPtr(a.From),
+		SenderAddress: utility.FromStringPtr(a.SenderAddress),
 	}
 	return config, nil
 }

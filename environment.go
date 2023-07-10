@@ -698,7 +698,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 		Threshold: level.Notice,
 	}
 
-	if e.settings.Notify.SES.From != "" {
+	if e.settings.Notify.SES.SenderAddress != "" {
 		config, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(DefaultEC2Region),
 		)
@@ -710,7 +710,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 			send.SESOptions{
 				Name:          "evergreen",
 				AWSConfig:     config,
-				SenderAddress: e.settings.Notify.SES.From,
+				SenderAddress: e.settings.Notify.SES.SenderAddress,
 			}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up email logger")
