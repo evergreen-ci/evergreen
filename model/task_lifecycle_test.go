@@ -61,26 +61,6 @@ func checkDisabled(t *testing.T, dbTask *task.Task) {
 	assert.True(t, loggedDeactivationEvent, "task '%s' did not log an event indicating it was deactivated", dbTask.Id)
 }
 
-// TODO (EVG-16746): these checks for child execution tasks should be replaced
-// by checkDisabled since a child execution tasks should be disabled in the same
-// way as normal tasks and display tasks. However, currently they are not
-// deactivated (even though they should be).
-func checkChildExecutionDisabled(t *testing.T, dbTask *task.Task) {
-	assert.Equal(t, evergreen.DisabledTaskPriority, dbTask.Priority, "execution task '%s' should have disabled priority", dbTask.Id)
-
-	events, err := event.FindAllByResourceID(dbTask.Id)
-	require.NoError(t, err)
-
-	var loggedPriorityChangedEvent bool
-	for _, e := range events {
-		if e.EventType == event.TaskPriorityChanged {
-			loggedPriorityChangedEvent = true
-			break
-		}
-	}
-	assert.True(t, loggedPriorityChangedEvent, "execution task '%s' did not have an event indicating its priority was set", dbTask.Id)
-}
-
 func TestDisableStaleContainerTasks(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
@@ -226,7 +206,7 @@ func TestDisableOneTask(t *testing.T) {
 					assert.Len(t, dbExecTasks, 2)
 
 					for _, task := range dbExecTasks {
-						checkChildExecutionDisabled(t, &task)
+						checkDisabled(t, &task)
 					}
 				},
 				"DoesNotDisableParentDisplayTask": func(t *testing.T, tasks [5]task.Task) {
@@ -328,12 +308,12 @@ func TestDisableManyTasks(t *testing.T) {
 			dbExecTask1, err := task.FindOneId(et1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbExecTask1)
-			checkChildExecutionDisabled(t, dbExecTask1)
+			checkDisabled(t, dbExecTask1)
 
 			dbExecTask2, err := task.FindOneId(et2.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbExecTask2)
-			checkChildExecutionDisabled(t, dbExecTask2)
+			checkDisabled(t, dbExecTask1)
 
 			dbExecTask3, err := task.FindOneId(et3.Id)
 			require.NoError(t, err)
@@ -422,12 +402,12 @@ func TestDisableManyTasks(t *testing.T) {
 			dbExecTask3, err := task.FindOneId(et3.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbExecTask3)
-			checkChildExecutionDisabled(t, dbExecTask3)
+			checkDisabled(t, dbExecTask3)
 
 			dbExecTask4, err := task.FindOneId(et4.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbExecTask4)
-			checkChildExecutionDisabled(t, dbExecTask4)
+			checkDisabled(t, dbExecTask4)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
