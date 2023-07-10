@@ -202,6 +202,7 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 
 	t.event = e
 
+	t.jiraMappings = &evergreen.JIRANotificationsConfig{}
 	return t.jiraMappings.Get(ctx)
 }
 
