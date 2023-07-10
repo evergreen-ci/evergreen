@@ -12,7 +12,6 @@ import (
 
 func NewConfigModel() *APIAdminSettings {
 	return &APIAdminSettings{
-		Alerts:            &APIAlertsConfig{},
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
@@ -50,7 +49,6 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Alerts              *APIAlertsConfig                  `json:"alerts,omitempty"`
 	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                 *APIapiConfig                     `json:"api,omitempty"`
 	ApiUrl              *string                           `json:"api_url,omitempty"`
@@ -284,74 +282,26 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	return settings, nil
 }
 
-type APIAlertsConfig struct {
-	SMTP APISMTPConfig `json:"smtp"`
+type APISESConfig struct {
+	SenderAddress *string `json:"sender_address"`
 }
 
-func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
+func (a *APISESConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.AlertsConfig:
-		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-			return err
-		}
+	case evergreen.SESConfig:
+		a.SenderAddress = utility.ToStringPtr(v.SenderAddress)
 	default:
-		return errors.Errorf("programmatic error: expected alerts config but got type %T", h)
+		return errors.Errorf("programmatic error: expected SESConfig but got type %T", h)
 	}
 	return nil
 }
 
-func (a *APIAlertsConfig) ToService() (interface{}, error) {
-	smtp, err := a.SMTP.ToService()
-	if err != nil {
-		return nil, err
-	}
-	return evergreen.AlertsConfig{
-		SMTP: smtp.(evergreen.SMTPConfig),
-	}, nil
-}
-
-type APISMTPConfig struct {
-	Server     *string   `json:"server"`
-	Port       int       `json:"port"`
-	UseSSL     bool      `json:"use_ssl"`
-	Username   *string   `json:"username"`
-	Password   *string   `json:"password"`
-	From       *string   `json:"from"`
-	AdminEmail []*string `json:"admin_email"`
-}
-
-func (a *APISMTPConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.SMTPConfig:
-		a.Server = utility.ToStringPtr(v.Server)
-		a.Port = v.Port
-		a.UseSSL = v.UseSSL
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
-		a.From = utility.ToStringPtr(v.From)
-		for _, s := range v.AdminEmail {
-			a.AdminEmail = append(a.AdminEmail, utility.ToStringPtr(s))
-		}
-	default:
-		return errors.Errorf("programmatic error: expected SMTP config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APISMTPConfig) ToService() (interface{}, error) {
+func (a *APISESConfig) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
-	config := evergreen.SMTPConfig{
-		Server:   utility.FromStringPtr(a.Server),
-		Port:     a.Port,
-		UseSSL:   a.UseSSL,
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
-		From:     utility.FromStringPtr(a.From),
-	}
-	for _, s := range a.AdminEmail {
-		config.AdminEmail = append(config.AdminEmail, utility.FromStringPtr(s))
+	config := evergreen.SESConfig{
+		SenderAddress: utility.FromStringPtr(a.SenderAddress),
 	}
 	return config, nil
 }
@@ -1265,16 +1215,16 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 }
 
 type APINotifyConfig struct {
-	BufferTargetPerInterval int           `json:"buffer_target_per_interval"`
-	BufferIntervalSeconds   int           `json:"buffer_interval_seconds"`
-	SMTP                    APISMTPConfig `json:"smtp"`
+	BufferTargetPerInterval int          `json:"buffer_target_per_interval"`
+	BufferIntervalSeconds   int          `json:"buffer_interval_seconds"`
+	SES                     APISESConfig `json:"ses"`
 }
 
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.NotifyConfig:
-		a.SMTP = APISMTPConfig{}
-		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+		a.SES = APISESConfig{}
+		if err := a.SES.BuildFromService(v.SES); err != nil {
 			return err
 		}
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
@@ -1286,14 +1236,15 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APINotifyConfig) ToService() (interface{}, error) {
-	smtp, err := a.SMTP.ToService()
+	ses, err := a.SES.ToService()
 	if err != nil {
 		return nil, err
 	}
+
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		SMTP:                    smtp.(evergreen.SMTPConfig),
+		SES:                     ses.(evergreen.SESConfig),
 	}, nil
 }
 
