@@ -27,8 +27,8 @@ type LoggerOptions struct {
 	// Parse is the function for parsing raw log lines collected by the
 	// sender.
 	Parse LineParser
-	// Local is the sender for "fallback" operations and to collect the
-	// location of the logger output.
+	// Local is the sender for "fallback" operations and to collect any
+	// logger error output.
 	Local send.Sender
 	// MaxBufferSize is the maximum number of bytes to buffer before
 	// persisting log data. Defaults to 10MB.
