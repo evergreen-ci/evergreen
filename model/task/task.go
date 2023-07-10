@@ -2235,7 +2235,7 @@ func AbortBuildTasks(buildId string, reason AbortInfo) error {
 // abortable state
 func AbortVersionTasks(versionId string, reason AbortInfo) error {
 	q := ByVersionWithChildTasks(versionId)
-	q[StatusKey] = bson.M{"$in": evergreen.TaskAbortableStatuses}
+	q[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
