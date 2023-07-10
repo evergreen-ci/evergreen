@@ -545,6 +545,19 @@ func (p *Patch) UpdateMergeCommitSHA(sha string) error {
 	)
 }
 
+// UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
+func (p *Patch) UpdateRepeatPatchId(patchId string) error {
+	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				repeatKey: patchId,
+			},
+		},
+	)
+}
+
 func (p *Patch) FindModule(moduleName string) *ModulePatch {
 	for _, module := range p.Patches {
 		if module.ModuleName == moduleName {
