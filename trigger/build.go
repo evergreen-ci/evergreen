@@ -215,7 +215,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 	}
 	if t.build.Requester == evergreen.GithubPRRequester || t.build.Requester == evergreen.RepotrackerVersionRequester {
 		data.githubContext = fmt.Sprintf("evergreen/%s", t.build.BuildVariant)
-		data.githubDescription = t.build.GetFinishedNotificationDescription(t.tasks)
+		data.githubDescription = t.build.GetPRNotificationDescription(t.tasks)
 	}
 	if data.PastTenseStatus == evergreen.BuildFailed {
 		data.githubState = message.GithubStateFailure
@@ -238,7 +238,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	attachments = append(attachments, message.SlackAttachment{
 		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
-		Text:      t.build.GetFinishedNotificationDescription(t.tasks),
+		Text:      t.build.GetPRNotificationDescription(t.tasks),
 		Fields: []*message.SlackAttachmentField{
 			{
 				Title: "Version",

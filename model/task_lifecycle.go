@@ -1169,7 +1169,8 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 	return nil
 }
 
-// updateMakespans
+// updateMakespans updates the predicted and actual makespans for the tasks in
+// the build.
 func updateMakespans(b *build.Build, buildTasks []task.Task) error {
 	depPath := FindPredictedMakespan(buildTasks)
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
@@ -1179,10 +1180,13 @@ type buildStatus struct {
 	status              string
 	allTasksBlocked     bool
 	allTasksUnscheduled bool
+	// numUnfinishedEssentialTasks is the number of tasks are still waiting to
+	// complete.
+	numUnfinishedEssentialTasks int
 }
 
-// getBuildStatus returns a string denoting the status of the build and
-// a boolean denoting if all tasks in the build are blocked.
+// getBuildStatus returns a string denoting the status of the build based on the
+// state of its constituent tasks.
 func getBuildStatus(buildTasks []task.Task) buildStatus {
 	// Check if no tasks have started and if all tasks are blocked.
 	noStartedTasks := true
@@ -1214,25 +1218,34 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 		return buildStatus{status: evergreen.BuildCreated, allTasksBlocked: allTasksBlocked}
 	}
 
-	// Check if tasks are started but not finished.
+	var hasUnfinishedTask bool
+	var numUnfinishedEssentialTasks int
+	// Check if tasks will run or must run, but are not finished.
 	for _, t := range buildTasks {
-		if t.Status == evergreen.TaskStarted {
-			return buildStatus{status: evergreen.BuildStarted}
+		if t.WillRun() || t.IsInProgress() {
+			hasUnfinishedTask = true
 		}
-		if t.Activated && !t.Blocked() && !t.IsFinished() {
-			return buildStatus{status: evergreen.BuildStarted}
+		if t.IsEssentialToFinish && !t.IsFinished() {
+			numUnfinishedEssentialTasks++
 		}
 	}
+	if hasUnfinishedTask {
+		return buildStatus{status: evergreen.BuildStarted, numUnfinishedEssentialTasks: numUnfinishedEssentialTasks}
+	}
 
-	// Check if all tasks are finished but have failures.
+	// Check if tasks are finished but failed.
 	for _, t := range buildTasks {
 		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
-			return buildStatus{status: evergreen.BuildFailed}
+			return buildStatus{status: evergreen.BuildFailed, numUnfinishedEssentialTasks: numUnfinishedEssentialTasks}
 		}
 	}
-	return buildStatus{status: evergreen.BuildSucceeded}
+
+	return buildStatus{status: evergreen.BuildSucceeded, numUnfinishedEssentialTasks: numUnfinishedEssentialTasks}
 }
 
+// updateBuildGithubStatus updates the GitHub check status for a build. If the
+// build has no GitHub checks, then it is a no-op. Note that this is for GitHub
+// checks, which are *not* the same as GitHub PR statuses.
 func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	githubStatusTasks := make([]task.Task, 0, len(buildTasks))
 	for _, t := range buildTasks {
@@ -1257,9 +1270,14 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(buildStatus.status)
 }
 
+const (
+	patchStatusChangeDescription = "patch status change"
+	prTaskResetCaller            = "pr-task-reset"
+)
+
 // checkUpdateBuildPRStatusPending checks if the build is coming from a PR, and if so
 // sends a pending status to GitHub to reflect the status of the build.
-func checkUpdateBuildPRStatusPending(b *build.Build) error {
+func checkUpdateBuildPRStatusPending(b *build.Build, description, caller string) error {
 	if !evergreen.IsGitHubPatchRequester(b.Requester) {
 		return nil
 	}
@@ -1276,12 +1294,12 @@ func checkUpdateBuildPRStatusPending(b *build.Build) error {
 			Owner:     p.GithubPatchData.BaseOwner,
 			Repo:      p.GithubPatchData.BaseRepo,
 			Ref:       p.GithubPatchData.HeadHash,
-			Desc:      "patch status change",
-			Caller:    "pr-task-reset",
+			Desc:      description,
+			Caller:    caller,
 			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		}
 		if err = thirdparty.SendPendingStatusToGithub(input, ""); err != nil {
-			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+			return errors.Wrapf(err, "sending patch '%s' status to GitHub", p.Id.Hex())
 		}
 	}
 	return nil
@@ -1290,7 +1308,7 @@ func checkUpdateBuildPRStatusPending(b *build.Build) error {
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all the build's tasks become blocked / unscheduled.
 func updateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey)
+	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToFinishKey)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1302,6 +1320,25 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
 		}
 		return true, nil
+	}
+
+	if evergreen.IsFinishedBuildStatus(buildStatus.status) && buildStatus.numUnfinishedEssentialTasks > 0 {
+		// If a build has only finished/deactivated tasks but some of those
+		// deactivated tasks are essential, the build is not considered
+		// finished because they have to run.
+		buildStatus.status = evergreen.BuildStarted
+		// Update the build status so that it will send a pending status to
+		// GitHub. The status has to be reverted to the outdated status after
+		// sending the status though, because other logic needs to compare the
+		// build's old status and new status.
+		oldStatus := b.Status
+		b.Status = evergreen.BuildStarted
+		desc := build.UnscheduledEssentialTasksPRBuildDescription(buildStatus.numUnfinishedEssentialTasks)
+		grip.Error(message.WrapError(checkUpdateBuildPRStatusPending(b, desc, "update-build-status"), message.Fields{
+			"message": "could not update build PR status after finishing all scheduled tasks but some essential ones",
+			"status":  buildStatus.status,
+		}))
+		b.Status = oldStatus
 	}
 
 	blockedChanged := buildStatus.allTasksBlocked != b.AllTasksBlocked
@@ -1399,6 +1436,9 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 	return true, evergreen.VersionSucceeded
 }
 
+// updateVersionStatus updates the status of the version based on the status of
+// its constituent builds. It assumes that the build statuses have already
+// been updated prior to this.
 func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	githubStatusBuilds := make([]build.Build, 0, len(builds))
 	for _, b := range builds {
@@ -1420,7 +1460,9 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	return nil
 }
 
-// Update the status of the version based on its constituent builds
+// updateVersionStatus updates the status of the version based on the status of
+// its constituent builds. It assumes that the build statuses have already
+// been updated prior to this.
 func updateVersionStatus(v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
 		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey, build.AllTasksBlockedKey))
@@ -1549,7 +1591,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	}
 
 	if !evergreen.IsFinishedVersionStatus(newVersionStatus) && evergreen.IsFinishedVersionStatus(taskVersion.Status) {
-		if err = checkUpdateBuildPRStatusPending(taskBuild); err != nil {
+		if err = checkUpdateBuildPRStatusPending(taskBuild, patchStatusChangeDescription, prTaskResetCaller); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
 	}

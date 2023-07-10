@@ -472,7 +472,7 @@ func TestSetActiveState(t *testing.T) {
 			DistroId:          "arch",
 			Version:           v.Id,
 			Project:           "p",
-			Status:            evergreen.TaskDispatched,
+			Status:            evergreen.TaskUndispatched,
 			CommitQueueMerge:  true,
 			Requester:         evergreen.MergeTestRequester,
 			TaskGroup:         "tg",
@@ -1304,6 +1304,18 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			expectedVersionActivation: true,
 			expectedPatchActivation:   true,
 		},
+		"some unactivated but essential tasks": {
+			tasks: []task.Task{
+				{Status: evergreen.TaskSucceeded, Activated: true},
+				{Status: evergreen.TaskUndispatched, Activated: false, IsEssentialToFinish: true},
+			},
+			expectedBuildStatus:       evergreen.BuildStarted,
+			expectedVersionStatus:     evergreen.VersionStarted,
+			expectedPatchStatus:       evergreen.PatchStarted,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
+		},
 		"all blocked tasks": {
 			tasks: []task.Task{
 				{
@@ -1383,7 +1395,6 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			assert.Equal(t, test.expectedPatchActivation, p.Activated)
 		})
 	}
-
 }
 
 func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
