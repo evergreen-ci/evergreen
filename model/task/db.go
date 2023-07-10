@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -1820,31 +1821,48 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattainable bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
+
+	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
+	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
+	// impervious to races because updates to single documents are atomic.
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
-			IdKey: taskId,
+			IdKey: t.Id,
 		},
-		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable},
-		},
-		options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
-			bson.M{
-				bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId,
+		[]bson.M{
+			{
+				// Iterate over the DependsOn array and set unattainable for dependencies that
+				// match the dependencyID. Leave other dependencies untouched.
+				"$set": bson.M{DependsOnKey: bson.M{
+					"$map": bson.M{
+						"input": "$" + DependsOnKey,
+						"as":    "dependency",
+						"in": bson.M{
+							"$cond": bson.M{
+								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
+								"else": "$$dependency",
+							},
+						},
+					}},
+				},
 			},
-		}}),
+			{
+				// Cache whether any dependencies are unattainable.
+				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
+			},
+		},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
-	return res.Err()
-}
+	if res.Err() != nil {
+		return errors.Wrap(res.Err(), "updating matching dependencies")
+	}
 
-func updateUnattainableDependency(taskID string, unattainableDependency bool) error {
-	return UpdateOne(
-		bson.M{IdKey: taskID},
-		bson.M{"$set": bson.M{UnattainableDependencyKey: unattainableDependency}},
-	)
+	return res.Decode(t)
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
@@ -2028,6 +2046,8 @@ func recalculateTimeTaken() bson.M {
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTasksByVersion")})
+
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2135,6 +2155,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
 func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
 		IncludeBaseTasks:               false,
@@ -2183,6 +2204,9 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
+	if len(results) == 0 {
+		return nil, errors.Errorf("task statuses for version '%s' not found", versionID)
+	}
 	return results[0].Statuses, nil
 
 }
@@ -2204,6 +2228,8 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatsByVersion")})
+
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2287,6 +2313,7 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 }
 
 func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetGroupedTaskStatsByVersion")})
 	opts.IncludeBuildVariantDisplayName = true
 	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
@@ -2464,6 +2491,7 @@ type HasMatchingTasksOptions struct {
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "HasMatchingTasks")})
 	options := GetTasksByVersionOptions{
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
@@ -2746,6 +2774,8 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
 				ActivatedTimeKey: activationTime,
+				// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 			},
 		})
 	if err != nil {

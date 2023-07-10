@@ -8,6 +8,7 @@
       commitQueue {
         enabled
         mergeMethod
+        mergeQueue
       }
       periodicBuilds {
         alias

@@ -118,6 +118,7 @@ type taskContext struct {
 	project        *model.Project
 	taskModel      *task.Task
 	oomTracker     jasper.OOMTracker
+	traceID        string
 	sync.RWMutex
 }
 
@@ -573,11 +574,12 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		"task_secret": tc.task.Secret,
 	})
 
-	defer a.killProcs(ctx, tc, false)
+	defer a.killProcs(ctx, tc, false, "task is finished")
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
 	defer span.End()
+	tc.traceID = span.SpanContext().TraceID().String()
 
 	shutdown, err := a.startMetrics(tskCtx, tc.taskConfig)
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
@@ -705,7 +707,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Errorf("Programmer error: invalid task status '%s'.", detail.Status)
 	}
 
-	a.killProcs(ctx, tc, false)
+	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
@@ -771,6 +773,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		OOMTracker:      tc.getOomTrackerInfo(),
 		Status:          status,
 		Message:         message,
+		TraceID:         tc.traceID,
 	}
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
@@ -783,8 +786,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	defer span.End()
 
 	start := time.Now()
-	a.killProcs(ctx, tc, false)
-	defer a.killProcs(ctx, tc, false)
+	a.killProcs(ctx, tc, false, "post task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post task commands are finished")
 	tc.logger.Task().Info("Running post-task commands.")
 	opts := runCommandsOptions{}
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
@@ -821,7 +824,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runPostGroupCommands.
-	defer a.killProcs(ctx, tc, true)
+	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
 	defer func() {
 		if tc.logger != nil {
 			grip.Error(tc.logger.Close())
@@ -836,7 +839,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands.")
-		a.killProcs(ctx, tc, true)
+		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -879,38 +882,42 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	tc.logger.Task().Infof("Finished running task sync in %s.", time.Since(start))
 }
 
-func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool) {
+func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) {
 	logger := grip.NewJournaler("killProcs")
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
-	if a.shouldKill(tc, ignoreTaskGroupCheck) {
-		if tc.task.ID != "" && tc.taskConfig != nil {
-			logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
-			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
-				// If the host is in a state where ps is timing out we need human intervention.
-				if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
-					disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
-					logger.CriticalWhen(disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
-				}
-				logger.Critical(errors.Wrap(err, "cleaning up spawned processes"))
-			}
-			logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
-		}
+	if !a.shouldKill(tc, ignoreTaskGroupCheck) {
+		return
+	}
 
-		// Agents running in containers don't have Docker available, so skip
-		// Docker cleanup for them.
-		if a.opts.Mode != PodMode {
-			logger.Info("Cleaning up Docker artifacts.")
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
-			defer cancel()
-			if err := docker.Cleanup(ctx, logger); err != nil {
-				logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+	logger.Infof("Cleaning up task because %s", reason)
+
+	if tc.task.ID != "" && tc.taskConfig != nil {
+		logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
+		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
+			// If the host is in a state where ps is timing out we need human intervention.
+			if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
+				disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
+				logger.CriticalWhen(disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
 			}
-			logger.Info("Cleaned up Docker artifacts.")
+			logger.Critical(errors.Wrap(err, "cleaning up spawned processes"))
 		}
+		logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
+	}
+
+	// Agents running in containers don't have Docker available, so skip
+	// Docker cleanup for them.
+	if a.opts.Mode != PodMode {
+		logger.Info("Cleaning up Docker artifacts.")
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
+		defer cancel()
+		if err := docker.Cleanup(ctx, logger); err != nil {
+			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+		}
+		logger.Info("Cleaned up Docker artifacts.")
 	}
 }
 

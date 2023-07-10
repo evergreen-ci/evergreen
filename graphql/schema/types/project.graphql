@@ -69,13 +69,6 @@ input ParsleyFilterInput {
   exactMatch: Boolean!
 }
 
-enum BannerTheme {
-  ANNOUNCEMENT
-  INFORMATION
-  WARNING
-  IMPORTANT
-}
-
 input ProjectBannerInput {
   text: String!
   theme: BannerTheme!
@@ -140,6 +133,7 @@ input TaskSpecifierInput {
 input CommitQueueParamsInput {
   enabled: Boolean
   mergeMethod: String
+  mergeQueue: MergeQueue
   message: String
 }
 
@@ -174,9 +168,22 @@ type GithubProjectConflicts {
   prTestingIdentifiers: [String!]
 }
 
+###### ENUMS ######
+enum BannerTheme {
+  ANNOUNCEMENT
+  INFORMATION
+  WARNING
+  IMPORTANT
+}
+
 enum ProjectHealthView {
   ALL
   FAILED
+}
+
+enum MergeQueue {
+  EVERGREEN
+  GITHUB
 }
 
 """
@@ -235,6 +242,7 @@ type Project {
 type CommitQueueParams {
   enabled: Boolean
   mergeMethod: String!
+  mergeQueue: MergeQueue!
   message: String!
 }
 

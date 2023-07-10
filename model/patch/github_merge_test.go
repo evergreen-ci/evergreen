@@ -39,7 +39,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Error(t, err)
 		},
 		"MissingOrgErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
-			mge.Org.Name = nil
+			mge.Org.Login = nil
 			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
@@ -104,7 +104,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			p := intent.NewPatch()
 			assert.Equal(t, evergreen.CommitQueueAlias, p.Alias)
 			assert.Equal(t, *mge.MergeGroup.HeadSHA, p.GithubMergeData.HeadSHA)
-			assert.Equal(t, *mge.Org.Name, p.GithubMergeData.Org)
+			assert.Equal(t, *mge.Org.Login, p.GithubMergeData.Org)
 			assert.Equal(t, *mge.Repo.Name, p.GithubMergeData.Repo)
 			assert.Equal(t, "main", p.GithubMergeData.BaseBranch)
 			assert.Equal(t, "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056", p.GithubMergeData.HeadBranch)
@@ -117,7 +117,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			OrgName := "my_org"
 			RepoName := "my_repo"
 			org := github.Organization{
-				Name: &OrgName,
+				Login: &OrgName,
 			}
 			repo := github.Repository{
 				Name: &RepoName,
