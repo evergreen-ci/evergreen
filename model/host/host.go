@@ -2664,6 +2664,9 @@ func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 	if err = cur.All(ctx, &hostRes); err != nil {
 		return nil, errors.Wrap(err, "decoding spawn host usage data")
 	}
+	if len(hostRes) == 0 {
+		return nil, errors.New("no host results found")
+	}
 
 	volumePipeline := []bson.M{
 		{"$group": bson.M{
@@ -2688,8 +2691,8 @@ func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 		return nil, errors.Wrap(err, "decoding spawn host volume usage data")
 	}
 
-	if len(hostRes) == 0 || len(volRes) == 0 {
-		return nil, errors.New("no host/volume results found")
+	if len(volRes) == 0 {
+		return nil, errors.New("no volume results found")
 	}
 
 	instanceTypePipeline := []bson.M{
