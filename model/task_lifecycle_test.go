@@ -1535,7 +1535,89 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, events, 1)
 	assert.Equal(t, events[0].EventType, event.VersionGithubCheckFinished)
+}
 
+func TestUpdateVersionStatus(t *testing.T) {
+	type testCase struct {
+		builds []build.Build
+
+		expectedVersionStatus     string
+		expectedVersionAborted    bool
+		expectedVersionActivation bool
+	}
+
+	for name, test := range map[string]testCase{
+		"VersionCreatedForAllUnactivatedBuilds": {
+			builds: []build.Build{
+				{Status: evergreen.BuildCreated},
+				{Status: evergreen.BuildCreated},
+			},
+			expectedVersionStatus:     evergreen.VersionCreated,
+			expectedVersionAborted:    false,
+			expectedVersionActivation: false,
+		},
+		"VersionStartedForMixOfFinishedAndBuildsWithUnfinishedEssentialTasks": {
+			builds: []build.Build{
+				{Status: evergreen.BuildCreated, Activated: true, HasUnfinishedEssentialTask: true},
+				{Status: evergreen.BuildSucceeded, Activated: true},
+			},
+			expectedVersionStatus:     evergreen.VersionStarted,
+			expectedVersionAborted:    false,
+			expectedVersionActivation: true,
+		},
+		"VersionStartedForMixOfFinishedAndUnfinishedBuilds": {
+			builds: []build.Build{
+				{Status: evergreen.BuildStarted, Activated: true},
+				{Status: evergreen.BuildSucceeded, Activated: true},
+			},
+			expectedVersionStatus:     evergreen.VersionStarted,
+			expectedVersionAborted:    false,
+			expectedVersionActivation: true,
+		},
+		"VersionAbortedForAbortedBuild": {
+			builds: []build.Build{
+				{Status: evergreen.BuildFailed, Activated: true, Aborted: true},
+				{Status: evergreen.BuildSucceeded, Activated: true},
+			},
+			expectedVersionStatus:     evergreen.VersionFailed,
+			expectedVersionAborted:    true,
+			expectedVersionActivation: true,
+		},
+		"VersionFinishedForAllFinishedBuilds": {
+			builds: []build.Build{
+				{Status: evergreen.BuildFailed, Activated: true},
+				{Status: evergreen.BuildSucceeded, Activated: true},
+			},
+			expectedVersionStatus:     evergreen.VersionFailed,
+			expectedVersionAborted:    false,
+			expectedVersionActivation: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+			v := &Version{
+				Id:        bson.NewObjectId().Hex(),
+				Status:    evergreen.VersionCreated,
+				Activated: utility.TruePtr(),
+			}
+			require.NoError(t, v.Insert())
+			for i, b := range test.builds {
+				b.Id = strconv.Itoa(i)
+				b.Version = v.Id
+				require.NoError(t, b.Insert())
+			}
+
+			status, err := updateVersionStatus(v)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedVersionStatus, status)
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedVersionStatus, dbVersion.Status)
+			assert.Equal(t, test.expectedVersionAborted, dbVersion.Aborted)
+			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(dbVersion.Activated))
+		})
+	}
 }
 
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
