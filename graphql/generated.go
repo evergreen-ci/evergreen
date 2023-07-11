@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/plank"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -68,6 +69,7 @@ type ResolverRoot interface {
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
 	User() UserResolver
+	ValidationError() ValidationErrorResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
 	SubscriberInput() SubscriberInputResolver
@@ -563,6 +565,7 @@ type ComplexityRoot struct {
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions          func(childComplexity int) int
+		CopyDistro                    func(childComplexity int, opts data.CopyDistroOpts) int
 		CopyProject                   func(childComplexity int, project data.CopyProjectOpts, requestS3Creds *bool) int
 		CreateProject                 func(childComplexity int, project model.APIProjectRef, requestS3Creds *bool) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
@@ -609,6 +612,11 @@ type ComplexityRoot struct {
 		UpdateSpawnHostStatus         func(childComplexity int, hostID string, action SpawnHostStatusActions) int
 		UpdateUserSettings            func(childComplexity int, userSettings *model.APIUserSettings) int
 		UpdateVolume                  func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
+	}
+
+	NewDistroPayload struct {
+		Successful       func(childComplexity int) int
+		ValidationErrors func(childComplexity int) int
 	}
 
 	Note struct {
@@ -1354,6 +1362,11 @@ type ComplexityRoot struct {
 		UseSpruceOptions func(childComplexity int) int
 	}
 
+	ValidationError struct {
+		Level   func(childComplexity int) int
+		Message func(childComplexity int) int
+	}
+
 	VariantTask struct {
 		Name  func(childComplexity int) int
 		Tasks func(childComplexity int) int
@@ -1486,6 +1499,7 @@ type MutationResolver interface {
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
+	CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -1721,6 +1735,9 @@ type UserResolver interface {
 	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
 	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
 	Subscriptions(ctx context.Context, obj *model.APIDBUser) ([]*model.APISubscription, error)
+}
+type ValidationErrorResolver interface {
+	Level(ctx context.Context, obj *validator.ValidationError) (int, error)
 }
 type VersionResolver interface {
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -3851,6 +3868,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.ClearMySubscriptions(childComplexity), true
 
+	case "Mutation.copyDistro":
+		if e.complexity.Mutation.CopyDistro == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_copyDistro_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CopyDistro(childComplexity, args["opts"].(data.CopyDistroOpts)), true
+
 	case "Mutation.copyProject":
 		if e.complexity.Mutation.CopyProject == nil {
 			break
@@ -4402,6 +4431,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateVolume(childComplexity, args["updateVolumeInput"].(UpdateVolumeInput)), true
+
+	case "NewDistroPayload.successful":
+		if e.complexity.NewDistroPayload.Successful == nil {
+			break
+		}
+
+		return e.complexity.NewDistroPayload.Successful(childComplexity), true
+
+	case "NewDistroPayload.validationErrors":
+		if e.complexity.NewDistroPayload.ValidationErrors == nil {
+			break
+		}
+
+		return e.complexity.NewDistroPayload.ValidationErrors(childComplexity), true
 
 	case "Note.message":
 		if e.complexity.Note.Message == nil {
@@ -8247,6 +8290,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UserSettings.UseSpruceOptions(childComplexity), true
 
+	case "ValidationError.level":
+		if e.complexity.ValidationError.Level == nil {
+			break
+		}
+
+		return e.complexity.ValidationError.Level(childComplexity), true
+
+	case "ValidationError.message":
+		if e.complexity.ValidationError.Message == nil {
+			break
+		}
+
+		return e.complexity.ValidationError.Message(childComplexity), true
+
 	case "VariantTask.name":
 		if e.complexity.VariantTask.Name == nil {
 			break
@@ -8769,6 +8826,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBuildVariantOptions,
 		ec.unmarshalInputCommitQueueParamsInput,
 		ec.unmarshalInputContainerResourcesInput,
+		ec.unmarshalInputCopyDistroInput,
 		ec.unmarshalInputCopyProjectInput,
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputDisplayTask,
@@ -8881,7 +8939,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/validation.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -8921,6 +8979,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/task_queue_item.graphql", Input: sourceData("schema/types/task_queue_item.graphql"), BuiltIn: false},
 	{Name: "schema/types/ticket_fields.graphql", Input: sourceData("schema/types/ticket_fields.graphql"), BuiltIn: false},
 	{Name: "schema/types/user.graphql", Input: sourceData("schema/types/user.graphql"), BuiltIn: false},
+	{Name: "schema/types/validation.graphql", Input: sourceData("schema/types/validation.graphql"), BuiltIn: false},
 	{Name: "schema/types/version.graphql", Input: sourceData("schema/types/version.graphql"), BuiltIn: false},
 	{Name: "schema/types/volume.graphql", Input: sourceData("schema/types/volume.graphql"), BuiltIn: false},
 }
@@ -9115,6 +9174,40 @@ func (ec *executionContext) field_Mutation_bbCreateTicket_args(ctx context.Conte
 		}
 	}
 	args["execution"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_copyDistro_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 data.CopyDistroOpts
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		directive0 := func(ctx context.Context) (interface{}, error) {
+			return ec.unmarshalNCopyDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyDistroOpts(ctx, tmp)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "CREATE")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireDistroAccess == nil {
+				return nil, errors.New("directive requireDistroAccess is not implemented")
+			}
+			return ec.directives.RequireDistroAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(data.CopyDistroOpts); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/data.CopyDistroOpts`, tmp))
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -24741,6 +24834,67 @@ func (ec *executionContext) fieldContext_Mutation_setAnnotationMetadataLinks(ctx
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_copyDistro(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_copyDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CopyDistro(rctx, fc.Args["opts"].(data.CopyDistroOpts))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*NewDistroPayload)
+	fc.Result = res
+	return ec.marshalNNewDistroPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐNewDistroPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_copyDistro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "successful":
+				return ec.fieldContext_NewDistroPayload_successful(ctx, field)
+			case "validationErrors":
+				return ec.fieldContext_NewDistroPayload_validationErrors(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NewDistroPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_copyDistro_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_reprovisionToNew(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_reprovisionToNew(ctx, field)
 	if err != nil {
@@ -29489,6 +29643,100 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 	if fc.Args, err = ec.field_Mutation_restartVersions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NewDistroPayload_successful(ctx context.Context, field graphql.CollectedField, obj *NewDistroPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NewDistroPayload_successful(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Successful, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NewDistroPayload_successful(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NewDistroPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NewDistroPayload_validationErrors(ctx context.Context, field graphql.CollectedField, obj *NewDistroPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NewDistroPayload_validationErrors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ValidationErrors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*validator.ValidationError)
+	fc.Result = res
+	return ec.marshalNValidationError2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationErrorᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NewDistroPayload_validationErrors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NewDistroPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_ValidationError_level(ctx, field)
+			case "message":
+				return ec.fieldContext_ValidationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ValidationError", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -57417,6 +57665,94 @@ func (ec *executionContext) fieldContext_UserSettings_dateFormat(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ValidationError_level(ctx context.Context, field graphql.CollectedField, obj *validator.ValidationError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidationError_level(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ValidationError().Level(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ValidationError_level(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ValidationError",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ValidationError_message(ctx context.Context, field graphql.CollectedField, obj *validator.ValidationError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidationError_message(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ValidationError_message(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ValidationError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VariantTask_name(ctx context.Context, field graphql.CollectedField, obj *model.VariantTask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VariantTask_name(ctx, field)
 	if err != nil {
@@ -63147,6 +63483,44 @@ func (ec *executionContext) unmarshalInputContainerResourcesInput(ctx context.Co
 				return it, err
 			}
 			it.MemoryMB = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCopyDistroInput(ctx context.Context, obj interface{}) (data.CopyDistroOpts, error) {
+	var it data.CopyDistroOpts
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"newDistroId", "distroIdToCopy"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "newDistroId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newDistroId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NewDistroId = data
+		case "distroIdToCopy":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroIdToCopy"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DistroIdToCopy = data
 		}
 	}
 
@@ -70097,6 +70471,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "copyDistro":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_copyDistro(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "reprovisionToNew":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -70508,6 +70891,41 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 				return ec._Mutation_restartVersions(ctx, field)
 			})
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var newDistroPayloadImplementors = []string{"NewDistroPayload"}
+
+func (ec *executionContext) _NewDistroPayload(ctx context.Context, sel ast.SelectionSet, obj *NewDistroPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, newDistroPayloadImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NewDistroPayload")
+		case "successful":
+
+			out.Values[i] = ec._NewDistroPayload_successful(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "validationErrors":
+
+			out.Values[i] = ec._NewDistroPayload_validationErrors(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -76738,6 +77156,54 @@ func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var validationErrorImplementors = []string{"ValidationError"}
+
+func (ec *executionContext) _ValidationError(ctx context.Context, sel ast.SelectionSet, obj *validator.ValidationError) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, validationErrorImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ValidationError")
+		case "level":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ValidationError_level(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "message":
+
+			out.Values[i] = ec._ValidationError_message(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var variantTaskImplementors = []string{"VariantTask"}
 
 func (ec *executionContext) _VariantTask(ctx context.Context, sel ast.SelectionSet, obj *model.VariantTask) graphql.Marshaler {
@@ -78116,6 +78582,11 @@ func (ec *executionContext) unmarshalNContainerResourcesInput2githubᚗcomᚋeve
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCopyDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyDistroOpts(ctx context.Context, v interface{}) (data.CopyDistroOpts, error) {
+	res, err := ec.unmarshalInputCopyDistroInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx context.Context, v interface{}) (data.CopyProjectOpts, error) {
 	res, err := ec.unmarshalInputCopyProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -79323,6 +79794,20 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreen
 func (ec *executionContext) unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveProjectInput(ctx context.Context, v interface{}) (MoveProjectInput, error) {
 	res, err := ec.unmarshalInputMoveProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNNewDistroPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐNewDistroPayload(ctx context.Context, sel ast.SelectionSet, v NewDistroPayload) graphql.Marshaler {
+	return ec._NewDistroPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNNewDistroPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐNewDistroPayload(ctx context.Context, sel ast.SelectionSet, v *NewDistroPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NewDistroPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {
@@ -80941,6 +81426,60 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNValidationError2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*validator.ValidationError) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNValidationError2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationError(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNValidationError2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationError(ctx context.Context, sel ast.SelectionSet, v *validator.ValidationError) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ValidationError(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {

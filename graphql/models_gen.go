@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/validator"
 )
 
 type AbortInfo struct {
@@ -148,6 +149,12 @@ type MoveProjectInput struct {
 	NewOwner  string `json:"newOwner"`
 	NewRepo   string `json:"newRepo"`
 	ProjectID string `json:"projectId"`
+}
+
+// Return type representing whether a distro was created and any validation errors
+type NewDistroPayload struct {
+	Successful       bool                         `json:"successful"`
+	ValidationErrors []*validator.ValidationError `json:"validationErrors"`
 }
 
 // PatchConfigure is the input to the schedulePatch mutation.

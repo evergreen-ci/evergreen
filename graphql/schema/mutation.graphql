@@ -32,6 +32,9 @@ type Mutation {
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
 
+  # distros
+  copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
+
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!
   restartJasper(hostIds: [String!]!): Int!

@@ -1,13 +1,17 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -73,4 +77,45 @@ func DeleteDistroById(distroId string) error {
 		}
 	}
 	return nil
+}
+
+type CopyDistroOpts struct {
+	DistroIdToCopy string
+	NewDistroId    string
+}
+
+func CopyDistro(ctx context.Context, env evergreen.Environment, u *user.DBUser, opts CopyDistroOpts) (bool, validator.ValidationErrors, error) {
+	distroToCopy, err := distro.FindOneId(opts.DistroIdToCopy)
+	if err != nil {
+		return false, nil, errors.Wrapf(err, "finding distro '%s'", opts.DistroIdToCopy)
+	}
+	if distroToCopy == nil {
+		return false, nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro '%s' not found", opts.DistroIdToCopy),
+		}
+	}
+
+	// newDistro := distroToCopy.ToService()
+	distroToCopy.Id = opts.NewDistroId
+	return newDistro(ctx, env, distroToCopy, u)
+}
+
+func newDistro(ctx context.Context, env evergreen.Environment, d *distro.Distro, u *user.DBUser) (bool, validator.ValidationErrors, error) {
+
+	settings, err := evergreen.GetConfig()
+	vErrs, err := validator.CheckDistro(ctx, d, settings, true)
+	if err != nil {
+		return false, vErrs, errors.Wrapf(err, "validating distro '%s'", d.Id)
+	}
+
+	if err = d.Add(u); err != nil {
+		return false, vErrs, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "inserting distro '%s'", d.Id).Error(),
+		}
+	}
+
+	event.LogDistroAdded(d.Id, u.DisplayName(), d.NewDistroData())
+	return true, vErrs, nil
 }

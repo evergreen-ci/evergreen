@@ -123,6 +123,22 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 	return true, nil
 }
 
+// CopyDistro is the resolver for the copyDistro field.
+func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+
+	copied, vErrs, err := data.CopyDistro(ctx, env, usr, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("copying distro: %s", err.Error()))
+	}
+
+	return &NewDistroPayload{
+		Successful:       copied,
+		ValidationErrors: vErrs.Slice(),
+	}, nil
+}
+
 // ReprovisionToNew is the resolver for the reprovisionToNew field.
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)

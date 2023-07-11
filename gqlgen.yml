@@ -50,6 +50,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   CommitQueueParamsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  CopyDistroInput:
+    model: github.com/evergreen-ci/evergreen/rest/data.CopyDistroOpts
   CopyProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
   CreateProjectInput:
@@ -396,6 +398,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
   UseSpruceOptionsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
+  ValidationError:
+    model: github.com/evergreen-ci/evergreen/validator.ValidationError
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   VariantTaskInput:

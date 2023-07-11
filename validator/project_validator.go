@@ -78,6 +78,13 @@ func (v ValidationErrors) String() string {
 
 	return out
 }
+func (v ValidationErrors) Slice() []*ValidationError {
+	vErrs := []*ValidationError{}
+	for _, err := range v {
+		vErrs = append(vErrs, &err)
+	}
+	return vErrs
+}
 func (v ValidationErrors) Annotate(key string, value interface{}) error {
 	return nil
 }
