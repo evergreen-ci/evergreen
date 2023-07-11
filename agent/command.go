@@ -157,12 +157,8 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	}
 
 	tc.setCurrentCommand(cmd)
-	if options.isTaskCommands || options.failPreAndPost {
-		tc.setCurrentIdleTimeout(cmd)
-		a.comm.UpdateLastMessageTime()
-	} else {
-		tc.setCurrentIdleTimeout(nil)
-	}
+	tc.setCurrentIdleTimeout(cmd)
+	a.comm.UpdateLastMessageTime()
 
 	start := time.Now()
 	// We have seen cases where calling exec.*Cmd.Wait() waits for too long if

@@ -480,10 +480,7 @@ not appear to generate any output on `stdout`/`stderr` for more than a
 certain threshold, using the `timeout_secs` setting on the command. As
 long as the command does not appear to be idle it will be allowed to
 continue, but if it does not write any output for longer than
-`timeout_secs` then the timeout handler will be triggered. If timeout_secs
-is specified for a command that runs in a pre or post block, it will
-only be set in pre or post if pre_error_fails_task or post_error_fails_task
-respectively are set to true. Otherwise, the default will apply.
+`timeout_secs` then the timeout handler will be triggered. 
 This timeout defaults to 2 hours.
 
 Example:
@@ -519,7 +516,9 @@ and not run the main task commands, but it will still run the post block.
 
 If post_error_fails_task is set to true and both the main task and post 
 block fail, the failing command in the main task will be displayed as the 
-failing command, not the failing post command. 
+failing command, not the failing post command.  The value set for 
+pre_error_fails_task and post_error_fails_task has no effect on tasks run
+in task groups which instead use the settings defined for that task group.
 
 ```yaml
 exec_timeout_secs: 60
