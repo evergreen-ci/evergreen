@@ -152,10 +152,18 @@ type ExternalLink struct {
 	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
+type MergeQueue string
+
+const (
+	MergeQueueEvergreen MergeQueue = "EVERGREEN"
+	MergeQueueGitHub    MergeQueue = "GITHUB"
+)
+
 type CommitQueueParams struct {
-	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
-	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
+	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
+	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
+	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
 
@@ -56,7 +57,10 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 		return nil, errors.Errorf("upstream project '%s' not found", args.SourceVersion.Identifier)
 	}
 	for _, module := range projectInfo.Project.Modules {
-		owner, repo := module.GetRepoOwnerAndName()
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+		}
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
 			_, err = model.CreateManifest(v, projectInfo.Project, upstreamProject, settings)
 			if err != nil {
