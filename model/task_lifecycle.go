@@ -1232,10 +1232,6 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 			hasUnfinishedTask = true
 		}
 	}
-	// kim: TODO: verify in staging that unscheduling after one failure will
-	// show the # essential remaining, then re-scheduling, running, and
-	// finishing will still show failed. Then, running the one failure again
-	// will result in success.
 	if hasUnfinishedTask {
 		return buildStatus{
 			status:                     evergreen.BuildStarted,
