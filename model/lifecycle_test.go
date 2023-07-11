@@ -1326,14 +1326,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		Convey("all of the build's essential fields should be set correctly", func() {
 			creationInfo := TaskCreationInfo{
-				Project:                              project,
-				ProjectRef:                           pref,
-				Version:                              v,
-				TaskIDs:                              table,
-				BuildVariantName:                     buildVar1.Name,
-				ActivateBuild:                        false,
-				TaskNames:                            []string{},
-				ActivatedTasksAreEssentialToComplete: true,
+				Project:                             project,
+				ProjectRef:                          pref,
+				Version:                             v,
+				TaskIDs:                             table,
+				BuildVariantName:                    buildVar1.Name,
+				ActivateBuild:                       false,
+				TaskNames:                           []string{},
+				ActivatedTasksAreEssentialToSucceed: true,
 			}
 			build, _, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
@@ -1375,8 +1375,8 @@ func TestCreateBuildFromVersion(t *testing.T) {
 						},
 					},
 				},
-				TaskCreateTime:                       time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				ActivatedTasksAreEssentialToComplete: true,
+				TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				ActivatedTasksAreEssentialToSucceed: true,
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
@@ -1385,9 +1385,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 			So(len(tasks), ShouldEqual, 6)
 			for _, t := range tasks {
-				// Tasks that have specific activation conditions are not
-				// essential to finish.
-				So(t.IsEssentialToFinish, ShouldBeFalse)
+				// Tasks with specific activation conditions are not essential
+				// to succeed.
+				So(t.IsEssentialToSucceed, ShouldBeFalse)
 			}
 			So(tasks[2].Id, ShouldNotEqual, "")
 			So(tasks[2].Secret, ShouldNotEqual, "")
@@ -1461,15 +1461,15 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
 			func() {
 				creationInfo := TaskCreationInfo{
-					Project:                              project,
-					ProjectRef:                           pref,
-					Version:                              v,
-					TaskIDs:                              table,
-					BuildVariantName:                     buildVar1.Name,
-					ActivateBuild:                        true,
-					TaskNames:                            []string{},
-					TaskCreateTime:                       time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-					ActivatedTasksAreEssentialToComplete: true,
+					Project:                             project,
+					ProjectRef:                          pref,
+					Version:                             v,
+					TaskIDs:                             table,
+					BuildVariantName:                    buildVar1.Name,
+					ActivateBuild:                       true,
+					TaskNames:                           []string{},
+					TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					ActivatedTasksAreEssentialToSucceed: true,
 				}
 				build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
 				So(err, ShouldBeNil)
@@ -1479,9 +1479,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(build.HasUnfinishedEssentialTask, ShouldBeTrue)
 
 				for _, t := range tasks {
-					// Activated execution tasks are essential to finish.
 					if !t.DisplayOnly {
-						So(t.IsEssentialToFinish, ShouldBeTrue)
+						// Activated execution tasks are essential to succeed.
+						So(t.IsEssentialToSucceed, ShouldBeTrue)
 					}
 				}
 

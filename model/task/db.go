@@ -113,7 +113,7 @@ var (
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
-	IsEssentialToFinishKey      = bsonutil.MustHaveTag(Task{}, "IsEssentialToFinish")
+	IsEssentialToSucceedKey     = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
 )
 
 var (

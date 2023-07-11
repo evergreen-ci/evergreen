@@ -553,7 +553,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if t.IsGithubCheck {
 			hasGitHubCheck = true
 		}
-		if t.IsEssentialToFinish {
+		if t.IsEssentialToSucceed {
 			hasUnfinishedEssentialTask = true
 		}
 	}
@@ -684,7 +684,7 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 		if taskP.Activated {
 			containsActivatedTask = true
 		}
-		if taskP.IsEssentialToFinish {
+		if taskP.IsEssentialToSucceed {
 			hasUnfinishedEssentialTask = true
 		}
 		if taskP.IsPartOfDisplay() {
@@ -1224,7 +1224,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
 		IsGithubCheck:           isGithubCheck,
 		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
-		IsEssentialToFinish:     creationInfo.ActivatedTasksAreEssentialToComplete && activateTask,
+		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 	}
 
 	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
@@ -1574,19 +1574,19 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !creationInfo.ActivationInfo.variantHasSpecificActivation(pair.Variant)
 		buildCreationArgs := TaskCreationInfo{
-			Project:                              creationInfo.Project,
-			ProjectRef:                           creationInfo.ProjectRef,
-			Version:                              creationInfo.Version,
-			TaskIDs:                              taskIdTables,
-			BuildVariantName:                     pair.Variant,
-			ActivateBuild:                        activateVariant,
-			TaskNames:                            taskNames,
-			DisplayNames:                         displayNames,
-			ActivationInfo:                       creationInfo.ActivationInfo,
-			GeneratedBy:                          creationInfo.GeneratedBy,
-			TaskCreateTime:                       createTime,
-			SyncAtEndOpts:                        creationInfo.SyncAtEndOpts,
-			ActivatedTasksAreEssentialToComplete: creationInfo.ActivatedTasksAreEssentialToComplete,
+			Project:                             creationInfo.Project,
+			ProjectRef:                          creationInfo.ProjectRef,
+			Version:                             creationInfo.Version,
+			TaskIDs:                             taskIdTables,
+			BuildVariantName:                    pair.Variant,
+			ActivateBuild:                       activateVariant,
+			TaskNames:                           taskNames,
+			DisplayNames:                        displayNames,
+			ActivationInfo:                      creationInfo.ActivationInfo,
+			GeneratedBy:                         creationInfo.GeneratedBy,
+			TaskCreateTime:                      createTime,
+			SyncAtEndOpts:                       creationInfo.SyncAtEndOpts,
+			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
 		}
 
 		grip.Info(message.Fields{

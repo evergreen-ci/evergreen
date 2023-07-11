@@ -181,15 +181,58 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 	s.Equal("tasks are running", status.Description)
 }
 
-func (s *githubStatusRefreshSuite) TestStatusPendingDueToUnscheduledEssentialTasks() {
+func (s *githubStatusRefreshSuite) TestStatusPendingDueToEssentialTaskThatWillRun() {
 	tsk := task.Task{
-		Id:                  "t1",
-		BuildId:             "b1",
-		BuildVariant:        "myBuild",
-		Version:             s.patchDoc.Version,
-		Activated:           false,
-		Status:              evergreen.TaskUndispatched,
-		IsEssentialToFinish: true,
+		Id:                   "t1",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            true,
+		Status:               evergreen.TaskStarted,
+		IsEssentialToSucceed: true,
+	}
+	s.NoError(tsk.Insert())
+
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "myBuild",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildStarted,
+	}
+	s.NoError(b.Insert())
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().NotNil(job.patch)
+	job.env = s.env
+	job.Run(context.Background())
+	s.False(job.HasErrors())
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	// Patch status
+	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+
+	// Build status
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestStatusPendingDueToAllUnscheduledEssentialTasks() {
+	tsk := task.Task{
+		Id:                   "t1",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            false,
+		Status:               evergreen.TaskUndispatched,
+		IsEssentialToSucceed: true,
 	}
 	s.NoError(tsk.Insert())
 
@@ -221,7 +264,63 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToUnscheduledEssentialTas
 	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
-	s.Equal(build.UnscheduledEssentialTasksPRBuildDescription(1), status.Description)
+	s.Equal("1 essential task(s) not scheduled", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestStatusFailedDueToMixOfFailedAndUnscheduledEssentialTasks() {
+	failedTask := task.Task{
+		Id:                   "t1",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            true,
+		Status:               evergreen.TaskFailed,
+		IsEssentialToSucceed: true,
+	}
+	s.NoError(failedTask.Insert())
+	unscheduledEssentialTask := task.Task{
+		Id:                   "t2",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            false,
+		Status:               evergreen.TaskUndispatched,
+		IsEssentialToSucceed: true,
+	}
+	s.NoError(unscheduledEssentialTask.Insert())
+
+	startTime := time.Now()
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "myBuild",
+		StartTime:    startTime,
+		FinishTime:   startTime.Add(time.Minute),
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildFailed,
+	}
+	s.NoError(b.Insert())
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().NotNil(job.patch)
+	job.env = s.env
+	job.Run(context.Background())
+	s.False(job.HasErrors())
+
+	// Patch status
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+
+	// Build status
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStateFailure, status.State)
+	s.Equal("none succeeded, 1 failed, 1 essential task(s) not scheduled in 1m0s", status.Description)
 }
 
 func (s *githubStatusRefreshSuite) TestStatusSucceeded() {

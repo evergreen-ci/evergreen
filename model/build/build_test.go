@@ -545,25 +545,33 @@ func TestGetPRNotificationDescription(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskSucceeded},
 			{Status: evergreen.TaskFailed},
-			{Status: evergreen.TaskUndispatched, IsEssentialToFinish: true, Activated: false},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
 		}
-		assert.Equal(t, "build is incomplete - 1 required PR task(s) not scheduled", b.GetPRNotificationDescription(tasks))
+		assert.Equal(t, "1 succeeded, 1 failed, 1 essential task(s) not scheduled in 10s", b.GetPRNotificationDescription(tasks))
 	})
-	t.Run("MixOfUnscheduledEssentialTasksAndRunningTasksReturnsIncompleteBuild", func(t *testing.T) {
+	t.Run("MixOfUnscheduledEssentialTasksAndRunningTasksReturnsRunningBuild", func(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskStarted},
 			{Status: evergreen.TaskFailed},
-			{Status: evergreen.TaskUndispatched, IsEssentialToFinish: true, Activated: false},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
 		}
-		assert.Equal(t, "build is incomplete - 1 required PR task(s) not scheduled", b.GetPRNotificationDescription(tasks))
+		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
 	})
 	t.Run("RunningEssentialTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskSucceeded},
 			{Status: evergreen.TaskFailed},
-			{Status: evergreen.TaskUndispatched, IsEssentialToFinish: true, Activated: true},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: true},
 		}
 		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("MixOfSuccessfulAndFailedAndUnscheduledEssentialTasksReturnsFailedBuild", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskSucceeded},
+			{Status: evergreen.TaskFailed},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
+		}
+		assert.Equal(t, "1 succeeded, 1 failed, 1 essential task(s) not scheduled in 10s", b.GetPRNotificationDescription(tasks))
 	})
 	t.Run("ScheduledTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
 		tasks := []task.Task{

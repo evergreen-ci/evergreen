@@ -1194,7 +1194,7 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 	allTasksUnscheduled := true
 	var hasUnfinishedEssentialTask bool
 	for _, t := range buildTasks {
-		if t.IsEssentialToFinish && !t.IsFinished() {
+		if t.IsEssentialToSucceed && !t.IsFinished() {
 			hasUnfinishedEssentialTask = true
 		}
 		if !t.IsUnscheduled() {
@@ -1232,7 +1232,11 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 			hasUnfinishedTask = true
 		}
 	}
-	if hasUnfinishedTask || hasUnfinishedEssentialTask {
+	// kim: TODO: verify in staging that unscheduling after one failure will
+	// show the # essential remaining, then re-scheduling, running, and
+	// finishing will still show failed. Then, running the one failure again
+	// will result in success.
+	if hasUnfinishedTask {
 		return buildStatus{
 			status:                     evergreen.BuildStarted,
 			hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
@@ -1242,11 +1246,26 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 	// Check if tasks are finished but failed.
 	for _, t := range buildTasks {
 		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
-			return buildStatus{status: evergreen.BuildFailed}
+			return buildStatus{
+				status:                     evergreen.BuildFailed,
+				hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
+			}
 		}
 	}
 
-	return buildStatus{status: evergreen.BuildSucceeded}
+	if hasUnfinishedEssentialTask {
+		// If there are only successful and unfinished essential tasks, prevent
+		// the build from being marked successful because the essential tasks
+		// must run.
+		return buildStatus{
+			status:                     evergreen.BuildStarted,
+			hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
+		}
+	}
+
+	return buildStatus{
+		status: evergreen.BuildSucceeded,
+	}
 }
 
 // updateBuildGithubStatus updates the GitHub check status for a build. If the
@@ -1309,7 +1328,7 @@ func checkUpdateBuildPRStatusPending(b *build.Build) error {
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all the build's tasks become blocked / unscheduled.
 func updateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToFinishKey)
+	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToSucceedKey)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1405,15 +1424,14 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 		return versionActivated, evergreen.VersionCreated
 	}
 
+	var hasUnfinishedEssentialTask bool
 	// Check if builds are started but not finished.
 	for _, b := range builds {
 		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
 			return true, evergreen.VersionStarted
 		}
 		if b.HasUnfinishedEssentialTask {
-			// If a build contains any unfinished essential task, the version
-			// cannot be finished.
-			return true, evergreen.VersionStarted
+			hasUnfinishedEssentialTask = true
 		}
 	}
 
@@ -1422,6 +1440,13 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 		if b.Status == evergreen.BuildFailed || b.Aborted {
 			return true, evergreen.VersionFailed
 		}
+	}
+
+	if hasUnfinishedEssentialTask {
+		// If there are only successful and unfinished essential builds, prevent
+		// the version from being marked successful because the essential tasks
+		// must run.
+		return true, evergreen.VersionStarted
 	}
 
 	return true, evergreen.VersionSucceeded

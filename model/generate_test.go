@@ -786,14 +786,14 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(env.Configure(ctx))
 
 	genTask := &task.Task{
-		Id:                  "task_that_called_generate_task",
-		Project:             "proj",
-		Version:             "version_that_called_generate_task",
-		Priority:            10,
-		BuildId:             "sample_build",
-		Activated:           true,
-		DisplayName:         "task_that_called_generate_task",
-		IsEssentialToFinish: true,
+		Id:                   "task_that_called_generate_task",
+		Project:              "proj",
+		Version:              "version_that_called_generate_task",
+		Priority:             10,
+		BuildId:              "sample_build",
+		Activated:            true,
+		DisplayName:          "task_that_called_generate_task",
+		IsEssentialToSucceed: true,
 	}
 	s.NoError(genTask.Insert())
 	prevBatchTimeVersion := Version{
@@ -903,10 +903,10 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	for _, tsk := range tasksInExistingBV {
 		if tsk.DisplayName == "say-bye" {
 			s.False(tsk.Activated)
-			s.False(tsk.IsEssentialToFinish)
+			s.False(tsk.IsEssentialToSucceed)
 		} else {
 			s.True(tsk.Activated)
-			s.True(tsk.IsEssentialToFinish)
+			s.True(tsk.IsEssentialToSucceed)
 		}
 	}
 

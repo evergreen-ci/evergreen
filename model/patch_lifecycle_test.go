@@ -474,7 +474,7 @@ modules:
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 			for _, tsk := range tasks {
-				assert.True(t, tsk.IsEssentialToFinish, "tasks automatically selected when a GitHub PR patch is finalized should be essential to finish")
+				assert.True(t, tsk.IsEssentialToSucceed, "tasks automatically selected when a GitHub PR patch is finalized should be essential to succeed")
 			}
 		},
 	} {

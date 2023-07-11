@@ -283,7 +283,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		GeneratedBy:    g.Task.Id,
 		// If the parent generator is required to finish, then its generated
 		// tasks inherit that requirement.
-		ActivatedTasksAreEssentialToComplete: g.Task.IsEssentialToFinish,
+		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
 	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds)
 	if err != nil {

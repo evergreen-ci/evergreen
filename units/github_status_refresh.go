@@ -211,7 +211,7 @@ func (j *githubStatusRefreshJob) sendBuildStatuses() {
 			status.State = message.GithubStatePending
 		}
 
-		query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.IsEssentialToFinishKey, task.ActivatedKey)
+		query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.IsEssentialToSucceedKey, task.ActivatedKey)
 		tasks, err := task.FindAll(query)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding tasks in build '%s'", b.Id))

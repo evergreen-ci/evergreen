@@ -1287,11 +1287,23 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		"some unactivated but essential tasks": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskSucceeded, Activated: true},
-				{Status: evergreen.TaskUndispatched, Activated: false, IsEssentialToFinish: true},
+				{Status: evergreen.TaskUndispatched, Activated: false, IsEssentialToSucceed: true},
 			},
 			expectedBuildStatus:       evergreen.BuildStarted,
 			expectedVersionStatus:     evergreen.VersionStarted,
 			expectedPatchStatus:       evergreen.PatchStarted,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
+		},
+		"some failed tasks and some unfinished essential tasks": {
+			tasks: []task.Task{
+				{Status: evergreen.TaskFailed, Activated: true},
+				{Status: evergreen.TaskUndispatched, Activated: false, IsEssentialToSucceed: true},
+			},
+			expectedBuildStatus:       evergreen.BuildFailed,
+			expectedVersionStatus:     evergreen.VersionFailed,
+			expectedPatchStatus:       evergreen.PatchFailed,
 			expectedBuildActivation:   true,
 			expectedVersionActivation: true,
 			expectedPatchActivation:   true,
@@ -1556,12 +1568,21 @@ func TestUpdateVersionStatus(t *testing.T) {
 			expectedVersionAborted:    false,
 			expectedVersionActivation: false,
 		},
-		"VersionStartedForMixOfFinishedAndBuildsWithUnfinishedEssentialTasks": {
+		"VersionStartedForMixOfSucceededBuildAndBuildWithUnfinishedEssentialTasks": {
 			builds: []build.Build{
 				{Status: evergreen.BuildCreated, Activated: true, HasUnfinishedEssentialTask: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
 			expectedVersionStatus:     evergreen.VersionStarted,
+			expectedVersionAborted:    false,
+			expectedVersionActivation: true,
+		},
+		"VersionStartedForMixOfFailedBuildAndBuildWithUnfinishedEssentialTasks": {
+			builds: []build.Build{
+				{Status: evergreen.BuildCreated, HasUnfinishedEssentialTask: true},
+				{Status: evergreen.BuildFailed, Activated: true},
+			},
+			expectedVersionStatus:     evergreen.VersionFailed,
 			expectedVersionAborted:    false,
 			expectedVersionActivation: true,
 		},
@@ -1840,13 +1861,13 @@ func TestGetVersionStatus(t *testing.T) {
 		assert.True(t, activated)
 	})
 
-	t.Run("VersionStartedForMixOfFinishedBuildAndBuildsWithUnfinishedEssentialTasks", func(t *testing.T) {
+	t.Run("VersionFailedForMixOfFailedBuildAndBuildsWithUnfinishedEssentialTasks", func(t *testing.T) {
 		versionBuilds := []build.Build{
 			{Status: evergreen.BuildCreated, HasUnfinishedEssentialTask: true},
 			{Status: evergreen.BuildFailed, Activated: true},
 		}
 		activated, status := getVersionActivationAndStatus(versionBuilds)
-		assert.Equal(t, evergreen.VersionStarted, status)
+		assert.Equal(t, evergreen.VersionFailed, status)
 		assert.True(t, activated)
 	})
 

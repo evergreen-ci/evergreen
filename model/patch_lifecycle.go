@@ -643,7 +643,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			// When a GitHub PR patch is finalized with the PR alias, all of the
 			// tasks selected by the alias must finish in order for the
 			// build/version to be finished.
-			ActivatedTasksAreEssentialToComplete: requester == evergreen.GithubPRRequester,
+			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
 		}
 		var build *build.Build
 		var tasks task.Tasks
