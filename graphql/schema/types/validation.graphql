@@ -1,4 +1,0 @@
-type ValidationError {
-  level: Int!
-  message: String!
-}

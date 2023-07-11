@@ -84,38 +84,39 @@ type CopyDistroOpts struct {
 	NewDistroId    string
 }
 
-func CopyDistro(ctx context.Context, env evergreen.Environment, u *user.DBUser, opts CopyDistroOpts) (bool, validator.ValidationErrors, error) {
+func CopyDistro(ctx context.Context, env evergreen.Environment, u *user.DBUser, opts CopyDistroOpts) error {
 	distroToCopy, err := distro.FindOneId(opts.DistroIdToCopy)
 	if err != nil {
-		return false, nil, errors.Wrapf(err, "finding distro '%s'", opts.DistroIdToCopy)
+		return errors.Wrapf(err, "finding distro '%s'", opts.DistroIdToCopy)
 	}
 	if distroToCopy == nil {
-		return false, nil, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro '%s' not found", opts.DistroIdToCopy),
 		}
 	}
 
-	// newDistro := distroToCopy.ToService()
 	distroToCopy.Id = opts.NewDistroId
 	return newDistro(ctx, env, distroToCopy, u)
 }
 
-func newDistro(ctx context.Context, env evergreen.Environment, d *distro.Distro, u *user.DBUser) (bool, validator.ValidationErrors, error) {
-
+func newDistro(ctx context.Context, env evergreen.Environment, d *distro.Distro, u *user.DBUser) error {
 	settings, err := evergreen.GetConfig()
 	vErrs, err := validator.CheckDistro(ctx, d, settings, true)
 	if err != nil {
-		return false, vErrs, errors.Wrapf(err, "validating distro '%s'", d.Id)
+		return errors.Wrapf(err, "validating distro '%s'", d.Id)
+	}
+	if len(vErrs) != 0 {
+		return errors.Errorf("validator encountered errors: '%s'", vErrs.String())
 	}
 
 	if err = d.Add(u); err != nil {
-		return false, vErrs, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting distro '%s'", d.Id).Error(),
 		}
 	}
 
 	event.LogDistroAdded(d.Id, u.DisplayName(), d.NewDistroData())
-	return true, vErrs, nil
+	return nil
 }

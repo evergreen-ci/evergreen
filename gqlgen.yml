@@ -398,8 +398,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
   UseSpruceOptionsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
-  ValidationError:
-    model: github.com/evergreen-ci/evergreen/validator.ValidationError
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   VariantTaskInput:

@@ -23,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/plank"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -69,7 +68,6 @@ type ResolverRoot interface {
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
 	User() UserResolver
-	ValidationError() ValidationErrorResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
 	SubscriberInput() SubscriberInputResolver
@@ -615,8 +613,7 @@ type ComplexityRoot struct {
 	}
 
 	NewDistroPayload struct {
-		Successful       func(childComplexity int) int
-		ValidationErrors func(childComplexity int) int
+		NewDistroID func(childComplexity int) int
 	}
 
 	Note struct {
@@ -1362,11 +1359,6 @@ type ComplexityRoot struct {
 		UseSpruceOptions func(childComplexity int) int
 	}
 
-	ValidationError struct {
-		Level   func(childComplexity int) int
-		Message func(childComplexity int) int
-	}
-
 	VariantTask struct {
 		Name  func(childComplexity int) int
 		Tasks func(childComplexity int) int
@@ -1735,9 +1727,6 @@ type UserResolver interface {
 	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
 	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
 	Subscriptions(ctx context.Context, obj *model.APIDBUser) ([]*model.APISubscription, error)
-}
-type ValidationErrorResolver interface {
-	Level(ctx context.Context, obj *validator.ValidationError) (int, error)
 }
 type VersionResolver interface {
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -4432,19 +4421,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateVolume(childComplexity, args["updateVolumeInput"].(UpdateVolumeInput)), true
 
-	case "NewDistroPayload.successful":
-		if e.complexity.NewDistroPayload.Successful == nil {
+	case "NewDistroPayload.newDistroId":
+		if e.complexity.NewDistroPayload.NewDistroID == nil {
 			break
 		}
 
-		return e.complexity.NewDistroPayload.Successful(childComplexity), true
-
-	case "NewDistroPayload.validationErrors":
-		if e.complexity.NewDistroPayload.ValidationErrors == nil {
-			break
-		}
-
-		return e.complexity.NewDistroPayload.ValidationErrors(childComplexity), true
+		return e.complexity.NewDistroPayload.NewDistroID(childComplexity), true
 
 	case "Note.message":
 		if e.complexity.Note.Message == nil {
@@ -8290,20 +8272,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UserSettings.UseSpruceOptions(childComplexity), true
 
-	case "ValidationError.level":
-		if e.complexity.ValidationError.Level == nil {
-			break
-		}
-
-		return e.complexity.ValidationError.Level(childComplexity), true
-
-	case "ValidationError.message":
-		if e.complexity.ValidationError.Message == nil {
-			break
-		}
-
-		return e.complexity.ValidationError.Message(childComplexity), true
-
 	case "VariantTask.name":
 		if e.complexity.VariantTask.Name == nil {
 			break
@@ -8939,7 +8907,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/validation.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -8979,7 +8947,6 @@ var sources = []*ast.Source{
 	{Name: "schema/types/task_queue_item.graphql", Input: sourceData("schema/types/task_queue_item.graphql"), BuiltIn: false},
 	{Name: "schema/types/ticket_fields.graphql", Input: sourceData("schema/types/ticket_fields.graphql"), BuiltIn: false},
 	{Name: "schema/types/user.graphql", Input: sourceData("schema/types/user.graphql"), BuiltIn: false},
-	{Name: "schema/types/validation.graphql", Input: sourceData("schema/types/validation.graphql"), BuiltIn: false},
 	{Name: "schema/types/version.graphql", Input: sourceData("schema/types/version.graphql"), BuiltIn: false},
 	{Name: "schema/types/volume.graphql", Input: sourceData("schema/types/volume.graphql"), BuiltIn: false},
 }
@@ -24873,10 +24840,8 @@ func (ec *executionContext) fieldContext_Mutation_copyDistro(ctx context.Context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "successful":
-				return ec.fieldContext_NewDistroPayload_successful(ctx, field)
-			case "validationErrors":
-				return ec.fieldContext_NewDistroPayload_validationErrors(ctx, field)
+			case "newDistroId":
+				return ec.fieldContext_NewDistroPayload_newDistroId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NewDistroPayload", field.Name)
 		},
@@ -29647,8 +29612,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _NewDistroPayload_successful(ctx context.Context, field graphql.CollectedField, obj *NewDistroPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_NewDistroPayload_successful(ctx, field)
+func (ec *executionContext) _NewDistroPayload_newDistroId(ctx context.Context, field graphql.CollectedField, obj *NewDistroPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NewDistroPayload_newDistroId(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -29661,7 +29626,7 @@ func (ec *executionContext) _NewDistroPayload_successful(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Successful, nil
+		return obj.NewDistroID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -29673,69 +29638,19 @@ func (ec *executionContext) _NewDistroPayload_successful(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_NewDistroPayload_successful(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_NewDistroPayload_newDistroId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "NewDistroPayload",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NewDistroPayload_validationErrors(ctx context.Context, field graphql.CollectedField, obj *NewDistroPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_NewDistroPayload_validationErrors(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ValidationErrors, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*validator.ValidationError)
-	fc.Result = res
-	return ec.marshalNValidationError2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationErrorᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_NewDistroPayload_validationErrors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NewDistroPayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "level":
-				return ec.fieldContext_ValidationError_level(ctx, field)
-			case "message":
-				return ec.fieldContext_ValidationError_message(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ValidationError", field.Name)
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -57665,94 +57580,6 @@ func (ec *executionContext) fieldContext_UserSettings_dateFormat(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _ValidationError_level(ctx context.Context, field graphql.CollectedField, obj *validator.ValidationError) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ValidationError_level(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.ValidationError().Level(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ValidationError_level(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ValidationError",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ValidationError_message(ctx context.Context, field graphql.CollectedField, obj *validator.ValidationError) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ValidationError_message(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Message, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ValidationError_message(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ValidationError",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _VariantTask_name(ctx context.Context, field graphql.CollectedField, obj *model.VariantTask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VariantTask_name(ctx, field)
 	if err != nil {
@@ -70912,16 +70739,9 @@ func (ec *executionContext) _NewDistroPayload(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("NewDistroPayload")
-		case "successful":
+		case "newDistroId":
 
-			out.Values[i] = ec._NewDistroPayload_successful(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "validationErrors":
-
-			out.Values[i] = ec._NewDistroPayload_validationErrors(ctx, field, obj)
+			out.Values[i] = ec._NewDistroPayload_newDistroId(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -77156,54 +76976,6 @@ func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var validationErrorImplementors = []string{"ValidationError"}
-
-func (ec *executionContext) _ValidationError(ctx context.Context, sel ast.SelectionSet, obj *validator.ValidationError) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, validationErrorImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ValidationError")
-		case "level":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ValidationError_level(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
-		case "message":
-
-			out.Values[i] = ec._ValidationError_message(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var variantTaskImplementors = []string{"VariantTask"}
 
 func (ec *executionContext) _VariantTask(ctx context.Context, sel ast.SelectionSet, obj *model.VariantTask) graphql.Marshaler {
@@ -81426,60 +81198,6 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNValidationError2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*validator.ValidationError) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNValidationError2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationError(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNValidationError2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvalidatorᚐValidationError(ctx context.Context, sel ast.SelectionSet, v *validator.ValidationError) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ValidationError(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {

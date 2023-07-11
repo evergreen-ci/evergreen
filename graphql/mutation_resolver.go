@@ -128,14 +128,12 @@ func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroO
 	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
-	copied, vErrs, err := data.CopyDistro(ctx, env, usr, opts)
-	if err != nil {
+	if err := data.CopyDistro(ctx, env, usr, opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("copying distro: %s", err.Error()))
 	}
 
 	return &NewDistroPayload{
-		Successful:       copied,
-		ValidationErrors: vErrs.Slice(),
+		NewDistroID: opts.NewDistroId,
 	}, nil
 }
 

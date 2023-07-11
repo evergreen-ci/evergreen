@@ -18,8 +18,7 @@ input CopyDistroInput {
 Return type representing whether a distro was created and any validation errors
 """
 type NewDistroPayload {
-  successful: Boolean!
-  validationErrors: [ValidationError!]!
+  newDistroId: String!
 }
 
 """
