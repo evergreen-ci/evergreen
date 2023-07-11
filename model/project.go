@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -421,7 +422,10 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	}
 	projectModules := map[string]manifest.Module{}
 	for _, module := range *l {
-		owner, repo := module.GetRepoOwnerAndName()
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return false
+		}
 		projectModules[module.Name] = manifest.Module{
 			Branch: module.Branch,
 			Repo:   repo,
@@ -694,8 +698,6 @@ func (c *LoggerConfig) IsValid() error {
 		catcher.Wrap(opts.IsValid(), "invalid system logger config")
 		if opts.Type == FileLogSender {
 			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
-		} else if opts.Type == LogkeeperLogSender {
-			catcher.New("logkeeper is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
@@ -736,7 +738,6 @@ func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
 const (
 	EvergreenLogSender   = "evergreen"
 	FileLogSender        = "file"
-	LogkeeperLogSender   = "logkeeper"
 	BuildloggerLogSender = "buildlogger"
 	SplunkLogSender      = "splunk"
 )
@@ -762,7 +763,6 @@ var ValidDefaultLoggers = []string{
 var ValidLogSenders = []string{
 	EvergreenLogSender,
 	FileLogSender,
-	LogkeeperLogSender,
 	SplunkLogSender,
 	BuildloggerLogSender,
 }
@@ -1043,7 +1043,7 @@ var (
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1063,6 +1063,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
+	expansions.Put(evergreen.GithubAppToken, appToken)
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
 	expansions.Put("project_id", projectRef.Id)
@@ -1144,6 +1145,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		requesterExpansion = "commit_queue"
 	case evergreen.AdHocRequester:
 		requesterExpansion = "ad_hoc"
+	case evergreen.GithubMergeRequester:
+		requesterExpansion = "github_merge_queue"
 	default:
 		requesterExpansion = "unknown_requester"
 	}
@@ -1169,6 +1172,10 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		if v.Requester == evergreen.MergeTestRequester {
 			expansions.Put("is_commit_queue", "true")
 			expansions.Put("commit_message", p.Description)
+		}
+
+		if v.Requester == evergreen.GithubMergeRequester {
+			expansions.Put("is_commit_queue", "true")
 		}
 
 		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
@@ -1233,19 +1240,6 @@ func (p PluginCommandConf) GetType(prj *Project) string {
 		return prj.CommandType
 	}
 	return DefaultCommandType
-}
-
-// GetRepoOwnerAndName returns the owner and repo name (in that order) of a module
-func (m *Module) GetRepoOwnerAndName() (string, string) {
-	parts := strings.Split(m.Repo, ":")
-	basename := parts[len(parts)-1]
-	ownerAndName := strings.TrimSuffix(basename, ".git")
-	ownersplit := strings.Split(ownerAndName, "/")
-	if len(ownersplit) != 2 {
-		return "", ""
-	} else {
-		return ownersplit[0], ownersplit[1]
-	}
 }
 
 // FindTaskGroup returns a specific task group from a project

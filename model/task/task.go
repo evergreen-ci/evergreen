@@ -22,6 +22,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -123,7 +124,9 @@ type Task struct {
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
-	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	// UnattainableDependency caches the contents of DependsOn for more efficient querying.
+	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
+	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
 	// wait for its dependencies to finish before running.
 	OverrideDependencies bool `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
@@ -1628,6 +1631,8 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 			DeactivatedForDependencyKey: false,
 			ActivatedByKey:              caller,
 			ActivatedTimeKey:            time.Now(),
+			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 		}},
 	)
 	if err != nil {
@@ -1648,6 +1653,20 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 }
 
 func topologicalSort(tasks []Task) ([]Task, error) {
+	var fromTask, toTask string
+	defer func() {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.Id)
+		}
+		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
+		grip.Error(message.WrapError(panicErr, message.Fields{
+			"function":       "topologicalSort",
+			"from_task":      fromTask,
+			"to_task":        toTask,
+			"original_tasks": taskIds,
+		}))
+	}()
 	depGraph := simple.NewDirectedGraph()
 	taskNodeMap := make(map[string]graph.Node)
 	nodeTaskMap := make(map[int64]Task)
@@ -1661,10 +1680,12 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 
 	for _, task := range tasks {
 		for _, dep := range task.DependsOn {
-			if toNode, ok := taskNodeMap[dep.TaskId]; ok {
+			fromTask = dep.TaskId
+			if toNode, ok := taskNodeMap[fromTask]; ok {
+				toTask = task.Id
 				edge := simple.Edge{
 					F: simple.Node(toNode.ID()),
-					T: simple.Node(taskNodeMap[task.Id].ID()),
+					T: simple.Node(taskNodeMap[toTask].ID()),
 				}
 				depGraph.SetEdge(edge)
 			}
@@ -1716,6 +1737,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	if err != nil {
 		return errors.Wrap(err, "deactivating tasks")
 	}
+
 	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
@@ -1830,7 +1852,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				TimeTakenKey:          t.TimeTaken,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
-				LogsKey:               detail.Logs,
 				ContainerAllocatedKey: false,
 			},
 			"$unset": bson.M{
@@ -1996,6 +2017,8 @@ func resetTaskUpdate(t *Task) bson.M {
 			TimeTakenKey:                   0,
 			LastHeartbeatKey:               utility.ZeroTime,
 			ContainerAllocationAttemptsKey: 0,
+			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 		},
 		"$unset": bson.M{
 			DetailsKey:                 "",
@@ -2165,15 +2188,8 @@ func (t *Task) MarkUnscheduled() error {
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
 	wasBlocked := t.Blocked()
-	// Check all dependencies in case of erroneous duplicate
-	for i := range t.DependsOn {
-		if t.DependsOn[i].TaskId == dependencyId {
-			t.DependsOn[i].Unattainable = unattainable
-		}
-	}
-
-	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
-		return err
+	if err := t.updateAllMatchingDependenciesForTask(dependencyId, unattainable); err != nil {
+		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
 	}
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
@@ -2183,9 +2199,8 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 	return nil
 }
 
-// AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
-// state
-func AbortBuild(buildId string, reason AbortInfo) error {
+// AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
+func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
 		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
@@ -2193,46 +2208,23 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 	}
-	ids, err := findAllTaskIDs(db.Query(q))
-	if err != nil {
-		return errors.Wrapf(err, "finding tasks to abort from build '%s'", buildId)
-	}
-	if len(ids) == 0 {
-		grip.Info(message.Fields{
-			"message": "no tasks aborted for build",
-			"buildId": buildId,
-		})
-		return nil
-	}
-
-	_, err = UpdateAll(
-		bson.M{IdKey: bson.M{"$in": ids}},
-		bson.M{"$set": bson.M{
-			AbortedKey:   true,
-			AbortInfoKey: reason,
-		}},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "setting aborted statuses for tasks in build '%s'", buildId)
-	}
-
-	event.LogManyTaskAbortRequests(ids, reason.User)
-
-	return nil
+	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for build '%s'", buildId)
 }
 
-// AbortVersion sets the abort flag on all tasks associated with the version which are in an
+// AbortVersionTasks sets the abort flag on all tasks associated with the version which are in an
 // abortable state
-func AbortVersion(versionId string, reason AbortInfo) error {
-	q := bson.M{
-		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
-	}
+func AbortVersionTasks(versionId string, reason AbortInfo) error {
+	q := ByVersionWithChildTasks(versionId)
+	q[StatusKey] = bson.M{"$in": evergreen.TaskAbortableStatuses}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
 		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
+	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for version '%s'", versionId)
+}
+
+func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
 		return errors.Wrap(err, "finding updated tasks")
@@ -2240,9 +2232,8 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	if len(ids) == 0 {
 		return nil
 	}
-
 	_, err = UpdateAll(
-		bson.M{IdKey: bson.M{"$in": ids}},
+		ByIds(ids),
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,
 			AbortInfoKey: reason,
@@ -2251,7 +2242,6 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
 	}
-
 	event.LogManyTaskAbortRequests(ids, reason.User)
 	return nil
 }
@@ -2930,12 +2920,12 @@ func (t *Task) Blocked() bool {
 	if t.OverrideDependencies {
 		return false
 	}
+
 	for _, dependency := range t.DependsOn {
 		if dependency.Unattainable {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -3060,6 +3050,23 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	}
 
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
+}
+
+// GetFormattedTimeSpent returns the total time_taken and makespan of tasks as a formatted string
+func GetFormattedTimeSpent(tasks []Task) (string, string) {
+	timeTaken, makespan := GetTimeSpent(tasks)
+
+	t := timeTaken.Round(time.Second).String()
+	m := makespan.Round(time.Second).String()
+
+	return formatDuration(t), formatDuration(m)
+}
+
+func formatDuration(duration string) string {
+	regex := regexp.MustCompile(`\d*[dhms]`)
+	return strings.TrimSpace(regex.ReplaceAllStringFunc(duration, func(m string) string {
+		return m + " "
+	}))
 }
 
 type TasksSortOrder struct {

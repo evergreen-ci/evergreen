@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -60,6 +61,7 @@ var (
 	SecondaryDistrosKey            = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
 	BuildVariantKey                = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
+	UnattainableDependencyKey      = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDepsKey                     = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
@@ -88,6 +90,7 @@ var (
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
+	ParentPatchIDKey               = bsonutil.MustHaveTag(Task{}, "ParentPatchID")
 	TaskGroupKey                   = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	TaskGroupMaxHostsKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
 	TaskGroupOrderKey              = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
@@ -387,6 +390,7 @@ func ByBuildId(buildId string) bson.M {
 	}
 }
 
+// ByBuildIdAndGithubChecks creates a query to return github check tasks with a certain build ID.
 func ByBuildIdAndGithubChecks(buildId string) bson.M {
 	return bson.M{
 		BuildIdKey:       buildId,
@@ -415,10 +419,35 @@ func ByActivation(active bool) bson.M {
 	}
 }
 
-// ByVersion creates a query to return tasks with a certain build id
+// ByVersion creates a query to return tasks with a certain version id
 func ByVersion(version string) bson.M {
 	return bson.M{
 		VersionKey: version,
+	}
+}
+
+// ByVersionWithChildTasks creates a query to return tasks or child tasks associated with the given version.
+func ByVersionWithChildTasks(version string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			ByVersion(version),
+			{ParentPatchIDKey: version},
+		},
+	}
+}
+
+// ByVersions produces a query that returns tasks for the given version.
+func ByVersions(versionIDs []string) bson.M {
+	return bson.M{VersionKey: bson.M{"$in": versionIDs}}
+}
+
+// ByVersionsWithChildTasks produces a query that returns tasks and child tasks for the given version.
+func ByVersionsWithChildTasks(versionIDs []string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			ByVersions(versionIDs),
+			{ParentPatchIDKey: bson.M{"$in": versionIDs}},
+		},
 	}
 }
 
@@ -469,12 +498,7 @@ func FailedTasksByIds(taskIds []string) bson.M {
 	}
 }
 
-// ByVersion produces a query that returns tasks for the given version.
-func ByVersions(versions []string) bson.M {
-	return bson.M{VersionKey: bson.M{"$in": versions}}
-}
-
-// NonExecutionTasksByVersion will filter out newer execution tasks that store if they have a display task.
+// NonExecutionTasksByVersions will filter out newer execution tasks that store if they have a display task.
 // Old execution tasks without display task ID populated will still be returned.
 func NonExecutionTasksByVersions(versions []string) bson.M {
 	return bson.M{
@@ -1491,6 +1515,7 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 	return task, nil
 }
 
+// findAllTaskIDs returns a list of task IDs associated with the given query.
 func findAllTaskIDs(q db.Q) ([]string, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
@@ -1526,21 +1551,21 @@ func FindStuckDispatching() ([]Task, error) {
 	return tasks, nil
 }
 
+// FindAllTaskIDsFromVersion returns a list of task IDs associated with a version.
 func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
-	q := db.Query(bson.M{VersionKey: versionId}).WithFields(IdKey)
+	q := db.Query(ByVersion(versionId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
+// FindAllTaskIDsFromBuild returns a list of task IDs associated with a build.
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
-	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
+	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
 // FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
 func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
-	q := db.Query(bson.M{
-		VersionKey: versionId,
-	}).WithFields(IdKey, DependsOnKey)
+	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
 	if adb.ResultsNotFound(err) {
@@ -1552,6 +1577,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 	return tasks, nil
 }
 
+// FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
 func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 	return FindWithFields(ByVersions(versionIds),
 		IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey)
@@ -1562,6 +1588,17 @@ func CountActivatedTasksForVersion(versionId string) (int, error) {
 		VersionKey:   versionId,
 		ActivatedKey: true,
 	}))
+}
+
+// HasActivatedDependentTasks returns true if there are active tasks waiting on the given task.
+func HasActivatedDependentTasks(taskId string) (bool, error) {
+	numDependentTasks, err := Count(db.Query(bson.M{
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): taskId,
+		ActivatedKey:            true,
+		OverrideDependenciesKey: bson.M{"$ne": true},
+	}))
+
+	return numDependentTasks > 0, err
 }
 
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
@@ -1603,21 +1640,6 @@ func FindOld(filter bson.M) ([]Task, error) {
 	return tasks, err
 }
 
-func FindOldWithFields(filter bson.M, fields ...string) ([]Task, error) {
-	tasks := []Task{}
-	_, exists := filter[DisplayOnlyKey]
-	if !exists {
-		filter[DisplayOnlyKey] = bson.M{"$ne": true}
-	}
-	query := db.Query(filter).WithFields(fields...)
-	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
-	return tasks, err
-}
-
 // FindOldWithDisplayTasks returns all display and execution tasks from the old
 // collection that satisfy the given query.
 func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
@@ -1637,17 +1659,6 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	task, err := FindOneOldId(MakeOldID(id, execution))
 	if task == nil || err != nil {
 		return FindOneId(id)
-	}
-
-	return task, err
-}
-
-// FindOneIdNewOrOld returns a single task with the given ID and execution,
-// first looking in the tasks collection, then the old tasks collection.
-func FindOneIdNewOrOld(id string) (*Task, error) {
-	task, err := FindOneId(id)
-	if task == nil || err != nil {
-		return FindOneOldId(id)
 	}
 
 	return task, err
@@ -1810,24 +1821,48 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattainable bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
+
+	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
+	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
+	// impervious to races because updates to single documents are atomic.
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
-			IdKey: taskId,
+			IdKey: t.Id,
 		},
-		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable},
-		},
-		options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
-			bson.M{
-				bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId,
+		[]bson.M{
+			{
+				// Iterate over the DependsOn array and set unattainable for dependencies that
+				// match the dependencyID. Leave other dependencies untouched.
+				"$set": bson.M{DependsOnKey: bson.M{
+					"$map": bson.M{
+						"input": "$" + DependsOnKey,
+						"as":    "dependency",
+						"in": bson.M{
+							"$cond": bson.M{
+								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
+								"else": "$$dependency",
+							},
+						},
+					}},
+				},
 			},
-		}}),
+			{
+				// Cache whether any dependencies are unattainable.
+				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
+			},
+		},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
-	return res.Err()
+	if res.Err() != nil {
+		return errors.Wrap(res.Err(), "updating matching dependencies")
+	}
+
+	return res.Decode(t)
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
@@ -1868,7 +1903,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 	return err
 }
 
-// HasUnfinishedTaskForVersion returns true if there are any scheduled but
+// HasUnfinishedTaskForVersions returns true if there are any scheduled but
 // unfinished tasks matching the given conditions.
 func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
 	count, err := Count(
@@ -2011,6 +2046,8 @@ func recalculateTimeTaken() bson.M {
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTasksByVersion")})
+
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2116,6 +2153,64 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	return results, count, nil
 }
 
+// GetTaskStatusesByVersion gets all unique task display statuses for a specific version
+func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
+
+	opts := GetTasksByVersionOptions{
+		IncludeBaseTasks:               false,
+		FieldsToProject:                []string{DisplayStatusKey},
+		IncludeBuildVariantDisplayName: false,
+		IncludeNeverActivatedTasks:     true,
+		IncludeExecutionTasks:          false,
+	}
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "getting tasks by version pipeline")
+	}
+
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			"_id": nil,
+			"statuses": bson.M{
+				"$addToSet": "$" + DisplayStatusKey,
+			},
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			"_id": 0,
+			"statuses": bson.M{
+				"$sortArray": bson.M{
+					"input":  "$statuses",
+					"sortBy": 1,
+				},
+			},
+		},
+	})
+
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []struct {
+		Statuses []string `bson:"statuses"`
+	}
+	err = cursor.All(ctx, &results)
+
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, errors.Errorf("task statuses for version '%s' not found", versionID)
+	}
+	return results[0].Statuses, nil
+
+}
+
 type StatusCount struct {
 	Status string `bson:"status"`
 	Count  int    `bson:"count"`
@@ -2132,7 +2227,9 @@ type GroupedTaskStatusCount struct {
 	StatusCounts []*StatusCount `bson:"status_counts"`
 }
 
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatsByVersion")})
+
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
@@ -2198,7 +2295,12 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	}
 
 	taskStats := []taskStatsForQueryResult{}
-	if err := Aggregate(pipeline, &taskStats); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	if err := cursor.All(ctx, &taskStats); err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	result := TaskStats{}
@@ -2210,7 +2312,8 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	return &result, nil
 }
 
-func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetGroupedTaskStatsByVersion")})
 	opts.IncludeBuildVariantDisplayName = true
 	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
@@ -2297,15 +2400,21 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	pipeline = append(pipeline, groupByStatusPipeline...)
 	result := []*GroupedTaskStatusCount{}
 
-	if err := Aggregate(pipeline, &result); err != nil {
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats")
+	}
+	err = cursor.All(ctx, &result)
+	if err != nil {
+		return nil, err
 	}
 	return result, nil
 
 }
 
 // GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
-func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([]string, error) {
+func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, baseVersionID string) ([]string, error) {
 	pipeline := []bson.M{}
 	taskField := "tasks"
 
@@ -2357,7 +2466,12 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 	})
 
 	res := []map[string]string{}
-	err := Aggregate(pipeline, &res)
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &res)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating base task statuses")
 	}
@@ -2377,6 +2491,7 @@ type HasMatchingTasksOptions struct {
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "HasMatchingTasks")})
 	options := GetTasksByVersionOptions{
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
@@ -2659,6 +2774,8 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
 				ActivatedTimeKey: activationTime,
+				// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 			},
 		})
 	if err != nil {

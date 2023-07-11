@@ -12,7 +12,8 @@
               "restricted": true,
               "commitQueue": {
                 "enabled": true,
-                "mergeMethod": "squash"
+                "mergeMethod": "squash",
+                "mergeQueue": "EVERGREEN"
               },
               "periodicBuilds": null,
               "githubChecksEnabled": null,
@@ -20,7 +21,20 @@
               "prTestingEnabled": true,
               "stepbackDisabled": false,
               "batchTime": 2,
-              "projectHealthView": "failed",
+              "projectHealthView": "FAILED",
+              "parsleyFilters": [
+                {
+                  "expression": "filter1",
+                  "caseSensitive": false,
+                  "exactMatch": false
+                },
+                {
+                  "expression": "filter2",
+                  "caseSensitive": true,
+                  "exactMatch": true
+                }
+              ],
+
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
               "triggers": [
@@ -162,17 +176,6 @@
       "result": {
         "data": {
           "projectSettings": {
-            "projectSubscriptions": [
-              {
-                "id": "61326406a620e4737f57003e"
-              },
-              {
-                "id": "61326406a620e4737f57003f"
-              },
-              {
-                "id": "1234"
-              }
-            ],
             "subscriptions": [
               {
                 "id": "61326406a620e4737f57003e",

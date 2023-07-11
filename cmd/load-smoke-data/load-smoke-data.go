@@ -75,8 +75,9 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 			return errors.Wrap(err, "creating task indexes")
 		}
 	case host.Collection:
-		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-			Keys: host.StatusIndex,
+		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
+			{Keys: host.StatusIndex},
+			{Keys: host.StartedByStatusIndex},
 		}); err != nil {
 			return errors.Wrap(err, "creating host index")
 		}

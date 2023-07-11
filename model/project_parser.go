@@ -94,7 +94,7 @@ type ParserProject struct {
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
+	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"` // deprecated and currently no-ops, may be removed in future update
 	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	Containers         []Container                `yaml:"containers,omitempty" bson:"containers,omitempty"`
@@ -780,7 +780,10 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module for module name '%s'", moduleName)
 	}
-	repoOwner, repoName := module.GetRepoOwnerAndName()
+	repoOwner, repoName, err := thirdparty.ParseGitUrl(module.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+	}
 	moduleOpts := GetProjectOpts{
 		Ref: &ProjectRef{
 			Owner: repoOwner,
@@ -1116,7 +1119,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					if old, ok := existing[t.Name]; ok {
 						if !reflect.DeepEqual(t, *old) {
 							evalErrs = append(evalErrs, errors.Errorf(
-								"conflicting definitions of added tasks '%s': %v != %v", t.Name, t, old))
+								"conflicting definitions of added tasks '%s': %#v != %#v", t.Name, t, old))
 						}
 					} else {
 						bv.Tasks = append(bv.Tasks, t)
@@ -1259,7 +1262,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(t, old) {
 					evalErrs = append(evalErrs, errors.Errorf(
-						"conflicting definitions of build variant tasks '%s': %v != %v", name, t, old))
+						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbvt.Name, t, old))
 					continue
 				}
 			}
@@ -1429,7 +1432,7 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 					// it's already in the new list, so we check to make sure the status definitions match.
 					if !reflect.DeepEqual(newDep, oldDep) {
 						evalErrs = append(evalErrs, errors.Errorf(
-							"conflicting definitions of dependency '%s': %v != %v", name, newDep, oldDep))
+							"conflicting definitions of dependency '%s': %#v != %#v", name, newDep, oldDep))
 						continue
 					}
 				}

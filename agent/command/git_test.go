@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -31,15 +30,14 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 const (
 	globalGitHubToken  = "GLOBALTOKEN"
 	projectGitHubToken = "PROJECTTOKEN"
+	githubAppToken     = "APPTOKEN"
 )
 
 type GitGetProjectSuite struct {
@@ -55,7 +53,9 @@ type GitGetProjectSuite struct {
 	modelData5  *modelutil.TestModelData
 	taskConfig5 *internal.TaskConfig
 	modelData6  *modelutil.TestModelData
-	taskConfig6 *internal.TaskConfig // used for TestMergeMultiplePatches
+	taskConfig6 *internal.TaskConfig     // used for TestMergeMultiplePatches
+	modelData7  *modelutil.TestModelData // GitHub merge queue
+	taskConfig7 *internal.TaskConfig     // GitHub merge queue
 
 	comm   *client.Mock
 	jasper jasper.Manager
@@ -133,6 +133,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 		HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
 		Author:     "octocat",
 	}
+	s.taskConfig3.Task.Requester = evergreen.GithubPRRequester
 
 	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
 	s.Require().NoError(err)
@@ -156,6 +157,18 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig6.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
+
+	s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath3, modelutil.InlinePatch)
+	s.Require().NoError(err)
+	s.taskConfig7, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
+	s.Require().NoError(err)
+	s.taskConfig7.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
+	s.taskConfig7.BuildVariant.Modules = []string{"evergreen"}
+	s.taskConfig7.GithubMergeData = thirdparty.GithubMergeGroup{
+		HeadBranch: "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
+		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
+	}
+	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
@@ -278,7 +291,7 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, conf.Project, "")
+			pluginCmds, err := Render(command, conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
@@ -319,7 +332,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, conf.Project, "")
+			pluginCmds, err := Render(command, conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
@@ -362,7 +375,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, conf.Project, "")
+			pluginCmds, err := Render(command, conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
@@ -408,7 +421,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 
 	for _, task := range conf.Project.Tasks {
 		for _, command := range task.Commands {
-			pluginCmds, err = Render(command, conf.Project, "")
+			pluginCmds, err = Render(command, conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
@@ -588,6 +601,32 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
 	s.Equal("git log --oneline -n 10", cmds[8])
 }
+func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
+	conf := s.taskConfig7
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	s.NoError(err)
+
+	c := gitFetchProject{
+		Directory: "dir",
+	}
+
+	opts := cloneOpts{
+		method: evergreen.CloneMethodLegacySSH,
+		branch: conf.ProjectRef.Branch,
+		owner:  conf.ProjectRef.Owner,
+		repo:   conf.ProjectRef.Repo,
+		dir:    c.Directory,
+	}
+	s.Require().NoError(opts.setLocation())
+
+	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	s.NoError(err)
+	s.Len(cmds, 9)
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056/head:evg-mg-test-"))
+	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-mg-test-"))
+	s.Equal("git reset --hard d2a90288ad96adca4a7d0122d8d4fd1deb24db11", cmds[7])
+	s.Equal("git log --oneline -n 10", cmds[8])
+}
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	conf := s.taskConfig2
@@ -600,13 +639,12 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	}
 
 	opts := cloneOpts{
-		method:             evergreen.CloneMethodOAuth,
-		branch:             conf.ProjectRef.Branch,
-		owner:              conf.ProjectRef.Owner,
-		repo:               conf.ProjectRef.Repo,
-		dir:                c.Directory,
-		token:              c.Token,
-		mergeTestRequester: true,
+		method: evergreen.CloneMethodOAuth,
+		branch: conf.ProjectRef.Branch,
+		owner:  conf.ProjectRef.Owner,
+		repo:   conf.ProjectRef.Repo,
+		dir:    c.Directory,
+		token:  c.Token,
 	}
 	s.Require().NoError(opts.setLocation())
 
@@ -736,7 +774,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
-			pluginCmds, err = Render(command, conf.Project, "")
+			pluginCmds, err = Render(command, conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
@@ -778,7 +816,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
-			pluginCmds, err = Render(command, conf.Project, "")
+			pluginCmds, err = Render(command, conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
@@ -883,60 +921,60 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	var method string
 	var err error
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, githubAppToken, evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, githubAppToken, evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", "", evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken("", globalGitHubToken, evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken("", globalGitHubToken, githubAppToken, evergreen.CloneMethodOAuth)
 	s.NoError(err)
-	s.Equal(globalGitHubToken, token)
+	s.Equal(githubAppToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "")
+	method, token, err = getProjectMethodAndToken("", "", "", "")
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "foobar")
+	method, token, err = getProjectMethodAndToken("", "", "", "foobar")
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal("", method)
 
-	_, _, err = getProjectMethodAndToken("", "token this is an invalid token", evergreen.CloneMethodOAuth)
+	_, _, err = getProjectMethodAndToken("", "token this is an invalid token", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 
-	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", evergreen.CloneMethodOAuth)
+	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 }
 
@@ -986,7 +1024,7 @@ index edc0c34..8e82862 100644
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, conf.Project, "")
+			pluginCmds, err := Render(command, conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
@@ -1010,91 +1048,4 @@ index edc0c34..8e82862 100644
 		}
 	}
 	s.True(foundSuccessMessage, "did not see the following in task output: %s", successMessage)
-}
-
-func TestManifestLoad(t *testing.T) {
-	require.NoError(t, db.ClearCollections(manifest.Collection),
-		"error clearing test collections")
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	comm := client.NewMock("http://localhost.com")
-	env := testutil.NewEnvironment(ctx, t)
-	testConfig := env.Settings()
-
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
-
-	// Skipping: this test runs the manifest command and then
-	// checks that the database records were properly changed, and
-	// therefore it's impossible to separate these tests from the
-	// service/database.
-
-	SkipConvey("With a SimpleRegistry and test project file", t, func() {
-
-		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "manifest", "mongodb-mongo-master.yml")
-		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
-
-		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
-		require.NoError(t, err)
-		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
-		So(err, ShouldBeNil)
-
-		Convey("the manifest load command should execute successfully", func() {
-			for _, task := range taskConfig.Project.Tasks {
-				So(len(task.Commands), ShouldNotEqual, 0)
-				for _, command := range task.Commands {
-					pluginCmds, err := Render(command, taskConfig.Project, "")
-					require.NoError(t, err)
-					So(pluginCmds, ShouldNotBeNil)
-					So(err, ShouldBeNil)
-
-					err = pluginCmds[0].Execute(ctx, comm, logger, taskConfig)
-					So(err, ShouldBeNil)
-				}
-
-			}
-			Convey("the manifest should be inserted properly into the database", func() {
-				currentManifest, err := manifest.FindOne(manifest.ById(taskConfig.Task.Version))
-				So(err, ShouldBeNil)
-				So(currentManifest, ShouldNotBeNil)
-				So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Id)
-				So(currentManifest.Modules, ShouldNotBeNil)
-				So(len(currentManifest.Modules), ShouldEqual, 1)
-				for key := range currentManifest.Modules {
-					So(key, ShouldEqual, "sample")
-				}
-				So(taskConfig.Expansions.Get("sample_rev"), ShouldEqual, "3c7bfeb82d492dc453e7431be664539c35b5db4b")
-			})
-		})
-
-		Convey("with a manifest already in the database the manifest should not create a new manifest", func() {
-			for _, task := range taskConfig.Project.Tasks {
-				So(len(task.Commands), ShouldNotEqual, 0)
-				for _, command := range task.Commands {
-					pluginCmds, err := Render(command, taskConfig.Project, "")
-					require.NoError(t, err)
-					So(pluginCmds, ShouldNotBeNil)
-					So(err, ShouldBeNil)
-					err = pluginCmds[0].Execute(ctx, comm, logger, taskConfig)
-					So(err, ShouldBeNil)
-				}
-
-			}
-			Convey("the manifest should be inserted properly into the database", func() {
-				currentManifest, err := manifest.FindOne(manifest.ById(taskConfig.Task.Version))
-				So(err, ShouldBeNil)
-				So(currentManifest, ShouldNotBeNil)
-				So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Id)
-				So(currentManifest.Modules, ShouldNotBeNil)
-				So(len(currentManifest.Modules), ShouldEqual, 1)
-				for key := range currentManifest.Modules {
-					So(key, ShouldEqual, "sample")
-				}
-				So(currentManifest.Modules["sample"].Repo, ShouldEqual, "sample")
-				So(taskConfig.Expansions.Get("sample_rev"), ShouldEqual, "3c7bfeb82d492dc453e7431be664539c35b5db4b")
-				So(currentManifest.Id, ShouldEqual, taskConfig.Task.Version)
-			})
-		})
-	})
 }

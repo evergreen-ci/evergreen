@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 )
@@ -26,7 +27,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		select {
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
-			if signalBeat == evergreen.TaskConflict {
+			if signalBeat == client.TaskConflict {
 				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task.")
 				if err != nil {
 					tc.logger.Task().Error(err.Error())
@@ -58,7 +59,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 
 func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
 	resp, err := a.comm.Heartbeat(ctx, tc.task)
-	if resp == evergreen.TaskFailed || resp == evergreen.TaskConflict {
+	if resp == evergreen.TaskFailed || resp == client.TaskConflict {
 		return resp, err
 	}
 	return "", err
@@ -120,28 +121,4 @@ func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (conte
 		timeout = time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
 	}
 	return context.WithTimeout(ctx, timeout)
-}
-
-func (a *Agent) startEarlyTerminationWatcher(ctx context.Context, tc *taskContext, check func() bool, action func(), doneChan chan<- bool) {
-	defer recovery.LogStackTraceAndContinue("early termination watcher")
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			grip.Info("Early termination watcher canceled.")
-			return
-		case <-ticker.C:
-			if check() {
-				if tc != nil && tc.project != nil && tc.project.EarlyTermination != nil {
-					tc.logger.Execution().Error(a.runCommands(ctx, tc, tc.project.EarlyTermination.List(), runCommandsOptions{}, earlyTermBlock))
-				}
-				action()
-				if doneChan != nil {
-					doneChan <- true
-				}
-				return
-			}
-		}
-	}
 }

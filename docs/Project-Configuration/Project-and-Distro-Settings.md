@@ -219,8 +219,8 @@ Ambiguous behavior is outlined here:
 
 Users can specify that commits to another project (the "upstream"
 project) will trigger builds in their project (the "downstream"
-project). Configure triggers in the downstream project from the project
-configuration page. Click "NEW TRIGGER".
+project). Configure triggers in the downstream project from the Project Triggers
+section of the project configuration page. Click "Add Project Trigger".
 
 Options:
 
@@ -240,8 +240,9 @@ Options:
 
 Users can create aliases that can be used in patch builds (in the
 "upstream" project) to kick off a child patch (in the "downstream"
-project). Create aliases in the upstream project in the Patch Trigger
-Aliases section of the project configuration page. Click "NEW ALIAS".
+project). Create aliases in the upstream project in the Patch
+Aliases section of the project configuration page. Click "Add Patch Trigger
+Alias".
 
 Options:
 
@@ -280,7 +281,10 @@ Options:
 
 - Interval: (Interval or cron required) Evergreen will create a version and run the specified tasks every X hours, with
     X being specified by this field. Unless set to a future time, the first run will happen immediately after the settings are saved.
-- Cron: (Interval or cron required) Evergreen will create a version on the specified cron schedule.
+- Cron: (Interval or cron required) Evergreen will create a version on the specified [cron schedule](https://crontab.guru/)
+  (i.e. Min \| Hour \| DayOfMonth \| Month \| DayOfWeekOptional) in the user's timezone. This also accepts descriptors
+  such as `@daily` (reference [cron](https://godoc.org/github.com/robfig/cron) for more example),
+  but does not accept intervals. (i.e.`@every <duration>`).
 - Config File: The .yml file that defines tasks to run. This can be
     the same one that defines tasks for commits in the project, or a
     different one.
@@ -301,12 +305,24 @@ tasks for which you hope to use performance tooling, like performance
 monitoring charts. Use a cron to schedule your tasks if you'd like to
 use performance tooling.
 
+### Views and Filters
+#### Project Health View
+Customize the default behavior of the Project Health page by choosing to show failed task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
+
+![project_health_view.png](../images/project_health_view.png)
+
+#### Parsley Filters
+Define default filters for your project. Users can access these filters in Parsley and apply them directly to their logs.
+
+![parsley_filters.png](../images/parsley_filters.png)
+
+
 ### Task Sync
 
 Enabling this feature allows users to push and pull their task working
 directory to and from a remote store (S3). This can be done either using
 the
-[s3.push](Project-Commands.md#s3-push)
+[s3.push](Project-Commands.md#s3push)
 or
 [s3.pull](Project-Commands.md#s3pull)
 project commands, or using it from [the CLI](../CLI.md#task-sync).
@@ -359,6 +375,22 @@ Options:
     specifying an endpoint an optional secret.
 -   JIRA custom fields: Custom field and display test allowing for the
     creation of a specific field when displaying jira links.
+
+
+### Metadata Links
+
+Customize additional links to specify for your project under the Plugins section
+of the project page, by specifying a link and title. 
+
+Right now this is restricted to patches, but work is planned in
+EVG-16363 to extend this to other requesters.
+
+Special Fields:
+* `{version_id}` -- if this is included in the metadata link, we will sub in the ID when rendering the link
+
+This may also be added to individual tasks using `metadata_links` 
+for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations). 
+
 
 ## Distro Settings
 

@@ -50,6 +50,25 @@ func setupPermissions(t *testing.T) {
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
+	superUserDistroRole := gimlet.Role{
+		ID:    evergreen.SuperUserDistroAccessRole,
+		Name:  "admin access",
+		Scope: evergreen.AllDistrosScope,
+		Permissions: map[string]int{
+			"distro_settings": 30,
+			"distro_hosts":    20,
+		},
+	}
+	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
+
+	superUserDistroScope := gimlet.Scope{
+		ID:        evergreen.AllDistrosScope,
+		Name:      "all distros",
+		Type:      evergreen.DistroResourceType,
+		Resources: []string{"distro-id"},
+	}
+	require.NoError(t, roleManager.AddScope(superUserDistroScope))
+
 	projectAdminRole := gimlet.Role{
 		ID:          "admin_project",
 		Scope:       "project_scope",
@@ -74,9 +93,184 @@ func setupPermissions(t *testing.T) {
 	}
 	err = roleManager.AddScope(projectScope)
 	require.NoError(t, err)
+
+	distroAdminRole := gimlet.Role{
+		ID:          "admin_distro-id",
+		Scope:       "distro_distro-id",
+		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsAdmin.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(distroAdminRole))
+
+	distroEditRole := gimlet.Role{
+		ID:          "edit_distro-id",
+		Scope:       "distro_distro-id",
+		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsEdit.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(distroEditRole))
+
+	distroViewRole := gimlet.Role{
+		ID:          "view_distro-id",
+		Scope:       "distro_distro-id",
+		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsView.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(distroViewRole))
+
+	distroScope := gimlet.Scope{
+		ID:        "distro_distro-id",
+		Name:      "distro-id",
+		Type:      evergreen.DistroResourceType,
+		Resources: []string{"distro-id"},
+	}
+	require.NoError(t, roleManager.AddScope(distroScope))
 }
 
-func TestCanCreateProject(t *testing.T) {
+func TestRequireDistroAccess(t *testing.T) {
+	setupPermissions(t)
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+	dbUser := &user.DBUser{
+		Id: apiUser,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+		},
+	}
+	require.NoError(t, dbUser.Insert())
+
+	const email = "testuser@mongodb.com"
+	const accessToken = "access_token"
+	const refreshToken = "refresh_token"
+	config := New("/graphql")
+	require.NotNil(t, config)
+	ctx := context.Background()
+	obj := interface{}(nil)
+
+	// callCount keeps track of how many times the function is called
+	callCount := 0
+	next := func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		callCount++
+		return nil, nil
+	}
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
+	// Fails when distro is not specified
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.EqualError(t, err, "input: distro not specified")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
+	require.EqualError(t, err, "input: user 'testuser' does not have create distro permissions")
+
+	// superuser should be successful for create with no distro ID specified
+	require.NoError(t, usr.AddRole("superuser"))
+
+	res, err := config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
+
+	require.NoError(t, usr.RemoveRole("superuser"))
+
+	// superuser_distro_access is successful for admin, edit, view
+	require.NoError(t, usr.AddRole("superuser_distro_access"))
+
+	obj = interface{}(map[string]interface{}{"distroId": "distro-id"})
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 2, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 3, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 4, callCount)
+
+	require.NoError(t, usr.RemoveRole("superuser_distro_access"))
+
+	// admin access is successful for admin, edit, view
+	require.NoError(t, usr.AddRole("admin_distro-id"))
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 5, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 6, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 7, callCount)
+
+	require.NoError(t, usr.RemoveRole("admin_distro-id"))
+
+	// edit access fails for admin, is successful for edit & view
+	require.NoError(t, usr.AddRole("edit_distro-id"))
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.Nil(t, res)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	require.Equal(t, 7, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 8, callCount)
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 9, callCount)
+
+	require.NoError(t, usr.RemoveRole("edit_distro-id"))
+
+	// view access fails for admin & edit, is successful for view
+	require.NoError(t, usr.AddRole("view_distro-id"))
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.Equal(t, 9, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.Equal(t, 9, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 10, callCount)
+
+	require.NoError(t, usr.RemoveRole("view_distro-id"))
+
+	// no access fails all query attempts
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
+	require.Equal(t, 10, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
+	require.Equal(t, 10, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+
+	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
+	require.Equal(t, 10, callCount)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+}
+
+func TestRequireProjectAdmin(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
@@ -112,15 +306,11 @@ func TestCanCreateProject(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	res, err := config.Directives.CanCreateProject(ctx, obj, next)
-	require.Error(t, err, "user testuser does not have permission to access this resolver")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
-
+	// superuser should always be successful, no matter the resolver
 	err = usr.AddRole("superuser")
 	require.NoError(t, err)
 
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
@@ -128,40 +318,72 @@ func TestCanCreateProject(t *testing.T) {
 	err = usr.RemoveRole("superuser")
 	require.NoError(t, err)
 
-	err = usr.AddRole("admin_project")
-	require.NoError(t, err)
-
+	// CreateProject - permission denied
+	operationContext := &graphql.OperationContext{
+		OperationName: CreateProjectMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{
 		"project": map[string]interface{}{
 			"identifier": "anything",
 		},
 	}
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access the CreateProject resolver")
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
+
+	// CreateProject - successful
+	err = usr.AddRole("admin_project")
+	require.NoError(t, err)
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
-	// Should error if you are not an admin of project to copy
+	// CopyProject - permission denied
+	operationContext = &graphql.OperationContext{
+		OperationName: CopyProjectMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{
 		"project": map[string]interface{}{
 			"projectIdToCopy": "anything",
 		},
 	}
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
-	require.EqualError(t, err, "input: user testuser does not have permission to access this resolver")
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access the CopyProject resolver")
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
+	// CopyProject - successful
 	obj = map[string]interface{}{
 		"project": map[string]interface{}{
 			"projectIdToCopy": "project_id",
 		},
 	}
-	res, err = config.Directives.CanCreateProject(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
+	// DeleteProject - permission denied
+	operationContext = &graphql.OperationContext{
+		OperationName: DeleteProjectMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
+	obj = map[string]interface{}{"projectId": "anything"}
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access the DeleteProject resolver")
+	require.Nil(t, res)
+	require.Equal(t, 3, callCount)
+
+	// DeleteProject - successful
+	obj = map[string]interface{}{"projectId": "project_id"}
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 4, callCount)
 }
 
 func setupUser(t *testing.T) (*user.DBUser, error) {

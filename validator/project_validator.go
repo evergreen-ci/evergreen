@@ -343,9 +343,18 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateContainers(settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+func validateContainers(_ *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return ValidationErrors{
+			ValidationError{
+				Message: errors.Wrap(err, "getting evergreen settings").Error(),
+				Level:   Error,
+			},
+		}
+	}
 	errs := ValidationErrors{}
-	err := model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
+	err = model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
@@ -1202,18 +1211,23 @@ func validateCommands(section string, project *model.Project,
 	commands []model.PluginCommandConf) ValidationErrors {
 	errs := ValidationErrors{}
 
-	for _, cmd := range commands {
+	for i, cmd := range commands {
 		commandName := fmt.Sprintf("'%s' command", cmd.Command)
-		_, err := command.Render(cmd, project, "")
+		if cmd.Function != "" {
+			commandName = fmt.Sprintf("'%s' function", cmd.Function)
+		}
+		blockInfo := command.BlockInfo{
+			Block:     "",
+			CmdNum:    i + 1,
+			TotalCmds: len(commands),
+		}
+		_, err := command.Render(cmd, project, blockInfo)
 		if err != nil {
-			if cmd.Function != "" {
-				commandName = fmt.Sprintf("'%s' function", cmd.Function)
-			}
 			errs = append(errs, ValidationError{Message: fmt.Sprintf("%s section in %s: %s", section, commandName, err)})
 		}
 		if cmd.Type != "" {
 			if !utility.StringSliceContains(evergreen.ValidCommandTypes, cmd.Type) {
-				msg := fmt.Sprintf("%s section in '%s': invalid command type: '%s'", section, commandName, cmd.Type)
+				msg := fmt.Sprintf("%s section in %s: invalid command type: '%s'", section, commandName, cmd.Type)
 				errs = append(errs, ValidationError{Message: msg})
 			}
 		}
@@ -1290,7 +1304,10 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 	}
 
 	if project.EarlyTermination != nil {
-		errs = append(errs, validateCommands("early termination", project, project.EarlyTermination.List())...)
+		errs = append(errs, ValidationError{
+			Message: "early_termination block is deprecated and will be removed in the future",
+			Level:   Warning,
+		})
 	}
 
 	// validate project tasks section

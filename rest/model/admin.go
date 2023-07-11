@@ -879,11 +879,13 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 }
 
 type APIGithubAuthConfig struct {
+	AppId        int64     `json:"app_id"`
 	ClientId     *string   `json:"client_id"`
 	ClientSecret *string   `json:"client_secret"`
-	Users        []*string `json:"users"`
+	DefaultOwner *string   `json:"default_owner"`
+	DefaultRepo  *string   `json:"default_repo"`
 	Organization *string   `json:"organization"`
-	AppId        int64     `json:"app_id"`
+	Users        []*string `json:"users"`
 }
 
 func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
@@ -895,6 +897,8 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 		a.ClientId = utility.ToStringPtr(v.ClientId)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Organization = utility.ToStringPtr(v.Organization)
+		a.DefaultOwner = utility.ToStringPtr(v.DefaultOwner)
+		a.DefaultRepo = utility.ToStringPtr(v.DefaultRepo)
 		a.AppId = v.AppId
 		for _, u := range v.Users {
 			a.Users = append(a.Users, utility.ToStringPtr(u))
@@ -913,6 +917,8 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		ClientId:     utility.FromStringPtr(a.ClientId),
 		ClientSecret: utility.FromStringPtr(a.ClientSecret),
 		Organization: utility.FromStringPtr(a.Organization),
+		DefaultOwner: utility.FromStringPtr(a.DefaultOwner),
+		DefaultRepo:  utility.FromStringPtr(a.DefaultRepo),
 		AppId:        a.AppId,
 	}
 	for _, u := range a.Users {
@@ -1555,7 +1561,6 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
-	S3                   *APIS3Credentials         `json:"s3_credentials"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
@@ -1584,12 +1589,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
-
-		s3Creds := &APIS3Credentials{}
-		if err := s3Creds.BuildFromService(v.S3); err != nil {
-			return errors.Wrap(err, "converting S3 credentials to API model")
-		}
-		a.S3 = s3Creds
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
@@ -1635,19 +1634,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
-
-	i, err = a.S3.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting S3 credentials to service model")
-	}
-	var s3 evergreen.S3Credentials
-	if i != nil {
-		s3, ok = i.(evergreen.S3Credentials)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
-		}
-	}
-	config.S3 = s3
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {
@@ -2231,32 +2217,32 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled            bool `json:"task_dispatch_disabled"`
-	HostInitDisabled                bool `json:"host_init_disabled"`
-	PodInitDisabled                 bool `json:"pod_init_disabled"`
-	S3BinaryDownloadsDisabled       bool `json:"s3_binary_downloads_disabled"`
-	MonitorDisabled                 bool `json:"monitor_disabled"`
-	AlertsDisabled                  bool `json:"alerts_disabled"`
-	AgentStartDisabled              bool `json:"agent_start_disabled"`
-	RepotrackerDisabled             bool `json:"repotracker_disabled"`
-	SchedulerDisabled               bool `json:"scheduler_disabled"`
-	CheckBlockedTasksDisabled       bool `json:"check_blocked_tasks_disabled"`
-	GithubPRTestingDisabled         bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled              bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled         bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled             bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
-	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
-	CommitQueueDisabled             bool `json:"commit_queue_disabled"`
-	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
-	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
-	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
-	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
-	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
-	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
-	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
+	TaskDispatchDisabled           bool `json:"task_dispatch_disabled"`
+	HostInitDisabled               bool `json:"host_init_disabled"`
+	PodInitDisabled                bool `json:"pod_init_disabled"`
+	S3BinaryDownloadsDisabled      bool `json:"s3_binary_downloads_disabled"`
+	MonitorDisabled                bool `json:"monitor_disabled"`
+	AlertsDisabled                 bool `json:"alerts_disabled"`
+	AgentStartDisabled             bool `json:"agent_start_disabled"`
+	RepotrackerDisabled            bool `json:"repotracker_disabled"`
+	SchedulerDisabled              bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled      bool `json:"check_blocked_tasks_disabled"`
+	GithubPRTestingDisabled        bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled             bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled        bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled            bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled          bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled     bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled        bool `json:"task_reliability_disabled"`
+	CommitQueueDisabled            bool `json:"commit_queue_disabled"`
+	HostAllocatorDisabled          bool `json:"host_allocator_disabled"`
+	PodAllocatorDisabled           bool `json:"pod_allocator_disabled"`
+	UnrecognizedPodCleanupDisabled bool `json:"unrecognized_pod_cleanup_disabled"`
+	BackgroundReauthDisabled       bool `json:"background_reauth_disabled"`
+	BackgroundCleanupDisabled      bool `json:"background_cleanup_disabled"`
+	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
+	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
+	GlobalGitHubTokenDisabled      bool `json:"global_github_token_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2543,8 +2529,8 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
-		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
+		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2554,38 +2540,38 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
-		TaskDispatchDisabled:            as.TaskDispatchDisabled,
-		HostInitDisabled:                as.HostInitDisabled,
-		PodInitDisabled:                 as.PodInitDisabled,
-		S3BinaryDownloadsDisabled:       as.S3BinaryDownloadsDisabled,
-		MonitorDisabled:                 as.MonitorDisabled,
-		AlertsDisabled:                  as.AlertsDisabled,
-		AgentStartDisabled:              as.AgentStartDisabled,
-		RepotrackerDisabled:             as.RepotrackerDisabled,
-		SchedulerDisabled:               as.SchedulerDisabled,
-		CheckBlockedTasksDisabled:       as.CheckBlockedTasksDisabled,
-		GithubPRTestingDisabled:         as.GithubPRTestingDisabled,
-		CLIUpdatesDisabled:              as.CLIUpdatesDisabled,
-		EventProcessingDisabled:         as.EventProcessingDisabled,
-		JIRANotificationsDisabled:       as.JIRANotificationsDisabled,
-		SlackNotificationsDisabled:      as.SlackNotificationsDisabled,
-		EmailNotificationsDisabled:      as.EmailNotificationsDisabled,
-		WebhookNotificationsDisabled:    as.WebhookNotificationsDisabled,
-		GithubStatusAPIDisabled:         as.GithubStatusAPIDisabled,
-		BackgroundStatsDisabled:         as.BackgroundStatsDisabled,
-		TaskLoggingDisabled:             as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
-		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
-		CommitQueueDisabled:             as.CommitQueueDisabled,
-		HostAllocatorDisabled:           as.HostAllocatorDisabled,
-		PodAllocatorDisabled:            as.PodAllocatorDisabled,
-		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,
-		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
-		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
-		CloudCleanupDisabled:            as.CloudCleanupDisabled,
-		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
-		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
+		TaskDispatchDisabled:           as.TaskDispatchDisabled,
+		HostInitDisabled:               as.HostInitDisabled,
+		PodInitDisabled:                as.PodInitDisabled,
+		S3BinaryDownloadsDisabled:      as.S3BinaryDownloadsDisabled,
+		MonitorDisabled:                as.MonitorDisabled,
+		AlertsDisabled:                 as.AlertsDisabled,
+		AgentStartDisabled:             as.AgentStartDisabled,
+		RepotrackerDisabled:            as.RepotrackerDisabled,
+		SchedulerDisabled:              as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:      as.CheckBlockedTasksDisabled,
+		GithubPRTestingDisabled:        as.GithubPRTestingDisabled,
+		CLIUpdatesDisabled:             as.CLIUpdatesDisabled,
+		EventProcessingDisabled:        as.EventProcessingDisabled,
+		JIRANotificationsDisabled:      as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:     as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:     as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled:   as.WebhookNotificationsDisabled,
+		GithubStatusAPIDisabled:        as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:        as.BackgroundStatsDisabled,
+		TaskLoggingDisabled:            as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:          as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:     as.CacheStatsEndpointDisabled,
+		TaskReliabilityDisabled:        as.TaskReliabilityDisabled,
+		CommitQueueDisabled:            as.CommitQueueDisabled,
+		HostAllocatorDisabled:          as.HostAllocatorDisabled,
+		PodAllocatorDisabled:           as.PodAllocatorDisabled,
+		UnrecognizedPodCleanupDisabled: as.UnrecognizedPodCleanupDisabled,
+		BackgroundCleanupDisabled:      as.BackgroundCleanupDisabled,
+		BackgroundReauthDisabled:       as.BackgroundReauthDisabled,
+		CloudCleanupDisabled:           as.CloudCleanupDisabled,
+		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
+		GlobalGitHubTokenDisabled:      as.GlobalGitHubTokenDisabled,
 	}, nil
 }
 

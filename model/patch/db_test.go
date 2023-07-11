@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -97,7 +98,8 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 		Project:            utility.ToStringPtr("evergreen"),
 		IncludeCommitQueue: utility.TruePtr(),
 	}
-	patches, count, err := ByPatchNameStatusesCommitQueuePaginated(opts)
+	ctx := context.TODO()
+	patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
 	assert.Equal(t, 10, len(patches))
@@ -109,7 +111,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 		Limit:              5,
 		Page:               0,
 	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(opts)
+	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
 	assert.Equal(t, 5, len(patches))
@@ -121,7 +123,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 		Limit:              5,
 		Page:               1,
 	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(opts)
+	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
 	assert.Equal(t, 5, len(patches))
@@ -132,7 +134,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 		Project:            utility.ToStringPtr("evergreen"),
 		IncludeCommitQueue: utility.FalsePtr(),
 	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(opts)
+	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)
 	assert.Equal(t, 5, len(patches))
@@ -143,7 +145,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 		Project:         utility.ToStringPtr("evergreen"),
 		OnlyCommitQueue: utility.TruePtr(),
 	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(opts)
+	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)
 	assert.Equal(t, 5, len(patches))

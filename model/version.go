@@ -213,7 +213,8 @@ func setVersionStatus(versionId, newStatus string) error {
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
 func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
-	query := db.Query(task.ByVersion(v.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
+	query := db.Query(task.ByVersion(v.Id)).WithFields(
+		task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(query)
 	if err != nil {
 		return 0, 0, errors.Wrapf(err, "getting tasks for version '%s'", v.Id)
@@ -535,7 +536,8 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
-	StartAfter     int    `json:"start"`
+	Start          int    `json:"start"`
+	RevisionEnd    int    `json:"revision_end"`
 	Requester      string `json:"requester"`
 	Limit          int    `json:"limit"`
 	Skip           int    `json:"skip"`
@@ -564,9 +566,17 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
-	if opts.StartAfter > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
+	revisionFilter := bson.M{}
+	if opts.Start > 0 {
+		revisionFilter["$lt"] = opts.Start
+		match[VersionRevisionOrderNumberKey] = revisionFilter
 	}
+
+	if opts.RevisionEnd > 0 {
+		revisionFilter["$gte"] = opts.RevisionEnd
+		match[VersionRevisionOrderNumberKey] = revisionFilter
+	}
+
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
@@ -690,7 +700,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings, token string) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -701,14 +711,11 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		Branch:      projectRef.Branch,
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting github oauth token")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var baseManifest *manifest.Manifest
+	var err error
 	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
 	if isPatch {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
@@ -727,7 +734,10 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 			}
 		}
 		var sha, url string
-		owner, repo := module.GetRepoOwnerAndName()
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+		}
 		if module.Ref == "" {
 			var commit *github.RepositoryCommit
 			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
@@ -776,7 +786,11 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 
 // CreateManifest inserts a newly constructed manifest into the DB.
 func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings)
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting GitHub token")
+	}
+	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

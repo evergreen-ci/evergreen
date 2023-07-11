@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -16,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -120,6 +124,16 @@ func TestCreateHostsFromTask(t *testing.T) {
 	}
 	assert.NoError(t, pvars.Insert())
 
+	env := &mock.Environment{}
+	assert.NoError(t, env.Configure(ctx))
+	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
+	assert.NoError(t, err)
+
 	// Run tests
 	t.Run("Classic", func(t *testing.T) {
 		versionYaml := `
@@ -163,13 +177,8 @@ buildvariants:
 		pp.Id = "v1"
 		assert.NoError(t, pp.Insert())
 
-		settings := &evergreen.Settings{
-			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
-
-		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -184,6 +193,7 @@ buildvariants:
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+			assert.Equal(t, h.Distro.Id, "distro")
 		}
 	})
 
@@ -235,14 +245,9 @@ buildvariants:
 		pp.Id = "v2"
 		assert.NoError(t, pp.Insert())
 
-		settings := &evergreen.Settings{
-			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
-
-		err = CreateHostsFromTask(ctx, settings, &t2, user.DBUser{Id: "me"}, "")
+		err = CreateHostsFromTask(ctx, env, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
-		createdHosts, err := host.Find(host.IsUninitialized)
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -257,20 +262,27 @@ buildvariants:
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+			assert.Equal(t, h.Distro.Id, "distro")
 		}
 	})
 
-	t.Run("SecurityGroupNotProvided", func(t *testing.T) {
+	t.Run("WithCommandVars", func(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(host.Collection))
 		versionYaml := `
+functions:
+  make-host:
+    command: host.create
+    params:
+      distro: ${distro}
+      scope: task
+      num_hosts: 2
+      security_group_ids: [sg-provided]
 tasks:
 - name: t3
   commands:
-  - command: host.create
-    params:
+  - func: "make-host"
+    vars:
       distro: distro
-      scope: task
-      num_hosts: 3
 buildvariants:
 - name: "bv"
   tasks:
@@ -296,7 +308,6 @@ buildvariants:
 			RunningTask: t3.Id,
 		}
 		assert.NoError(t, h3.Insert())
-
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
@@ -308,10 +319,10 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t3, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, CreateHostsFromTask(ctx, env, &t3, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 		assert.NoError(t, err)
-		assert.Len(t, createdHosts, 3)
+		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
@@ -321,9 +332,78 @@ buildvariants:
 			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
 			assert.NotEmpty(t, ec2Settings.KeyName)
 			assert.InDelta(t, time.Now().Add(evergreen.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
+			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
+			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
+			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+			assert.Equal(t, h.Distro.Id, "distro")
+		}
+	})
+
+	t.Run("SecurityGroupNotProvided", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(host.Collection))
+		versionYaml := `
+tasks:
+- name: t4
+  commands:
+  - command: host.create
+    params:
+      distro: distro
+      scope: task
+      num_hosts: 3
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: t4
+`
+		v4 := model.Version{
+			Id:         "v4",
+			Identifier: "p",
+		}
+		assert.NoError(t, v4.Insert())
+		t4 := task.Task{
+			Id:           "t4",
+			DisplayName:  "t4",
+			Version:      "v4",
+			DistroId:     "distro",
+			Project:      "p",
+			BuildVariant: "bv",
+			HostId:       "h4",
+		}
+		assert.NoError(t, t4.Insert())
+		h4 := host.Host{
+			Id:          "h4",
+			RunningTask: t4.Id,
+		}
+		assert.NoError(t, h4.Insert())
+
+		pp := &model.ParserProject{}
+		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
+		assert.NoError(t, err)
+		pp.Id = "v4"
+		assert.NoError(t, pp.Insert())
+
+		settings := &evergreen.Settings{
+			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
+		}
+		assert.NoError(t, evergreen.UpdateConfig(settings))
+
+		assert.NoError(t, CreateHostsFromTask(ctx, env, &t4, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		assert.NoError(t, err)
+		assert.Len(t, createdHosts, 3)
+		for _, h := range createdHosts {
+			assert.Equal(t, "me", h.StartedBy)
+			assert.True(t, h.UserHost)
+			assert.Equal(t, t4.Id, h.ProvisionOptions.TaskId)
+			assert.Len(t, h.Distro.ProviderSettingsList, 1)
+			ec2Settings := &cloud.EC2ProviderSettings{}
+			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
+			assert.NotEmpty(t, ec2Settings.KeyName)
+			assert.InDelta(t, time.Now().Add(evergreen.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 2)
 			assert.Equal(t, "sg-distro", ec2Settings.SecurityGroupIDs[0]) // if not overridden, stick with ec2 security group
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+			assert.Equal(t, h.Distro.Id, "distro")
 		}
 	})
 }
@@ -394,11 +474,17 @@ buildvariants:
 	require.NoError(parent.Insert())
 
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
-	settings, err := evergreen.GetConfig()
+
+	env := &mock.Environment{}
+	assert.NoError(env.Configure(ctx))
+	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
 	assert.NoError(err)
-	settings.ContainerPools = poolConfig
-	assert.NoError(evergreen.UpdateConfig(settings))
+
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -426,9 +512,9 @@ buildvariants:
 	}
 	assert.NoError(pvars.Insert())
 
-	assert.NoError(CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
+	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 
-	createdHosts, err := host.Find(host.IsUninitialized)
+	createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
 	assert.NoError(err)
 	require.Len(createdHosts, 1)
 	h := createdHosts[0]

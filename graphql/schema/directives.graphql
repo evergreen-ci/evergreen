@@ -1,7 +1,7 @@
 """
-canCreateProject is used to restrict certain actions to admins.
+requireProjectAdmin is used to restrict certain actions to admins.
 """
-directive @canCreateProject on ARGUMENT_DEFINITION 
+directive @requireProjectAdmin on ARGUMENT_DEFINITION 
 
 """
 requireProjectAccess is used to restrict view and edit access for project settings.
@@ -12,3 +12,8 @@ directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFI
 requireProjectFieldAccess is used to restrict view access for certain project fields.
 """
 directive @requireProjectFieldAccess on FIELD_DEFINITION
+
+"""
+requireDistroAccess is used to restrict view, edit, admin, and create access for distros.
+"""
+directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION

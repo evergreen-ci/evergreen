@@ -29,6 +29,7 @@ func Agent() cli.Command {
 		hostIDFlagName           = "host_id"
 		hostSecretFlagName       = "host_secret"
 		workingDirectoryFlagName = "working_directory"
+		logOutputFlagName        = "log_output"
 		logPrefixFlagName        = "log_prefix"
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
@@ -72,9 +73,14 @@ func Agent() cli.Command {
 				Usage: "working directory for the agent",
 			},
 			cli.StringFlag{
+				Name:  logOutputFlagName,
+				Value: string(agent.LogOutputFile),
+				Usage: "location for the agent's log output (file, stdout)",
+			},
+			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: "evg.agent",
-				Usage: "prefix for the agent's log filename",
+				Usage: "prefix for the agent's log output",
 			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
@@ -140,6 +146,7 @@ func Agent() cli.Command {
 				Mode:             agent.Mode(c.String(modeFlagName)),
 				StatusPort:       c.Int(statusPortFlagName),
 				LogPrefix:        c.String(logPrefixFlagName),
+				LogOutput:        agent.LogOutputType(c.String(logOutputFlagName)),
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
 				CloudProvider:    c.String(agentCloudProviderFlagName),
@@ -164,11 +171,11 @@ func Agent() cli.Command {
 				return errors.Wrap(err, "constructing agent")
 			}
 
+			go hardShutdownForSignals(ctx, cancel, agt.Close)
+
 			defer agt.Close(ctx)
 
-			go hardShutdownForSignals(ctx, cancel)
-
-			sender, err := agt.GetSender(ctx, opts.LogPrefix)
+			sender, err := agt.GetSender(ctx, opts.LogOutput, opts.LogPrefix)
 			if err != nil {
 				return errors.Wrap(err, "configuring logger")
 			}
@@ -186,7 +193,7 @@ func Agent() cli.Command {
 	}
 }
 
-func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc) {
+func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc, closeAgent func(ctx context.Context)) {
 	defer recovery.LogStackTraceAndExit("agent signal handler")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -196,6 +203,11 @@ func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelF
 	case <-sigChan:
 		grip.Info("service exiting after receiving signal")
 	}
+
+	// Close may not succeed if the context is cancelled, but this is a
+	// best-effort attempt to clean up before imminent shutdown anyways.
+	closeAgent(ctx)
+
 	serviceCanceler()
 	os.Exit(2)
 }

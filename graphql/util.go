@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -425,22 +423,6 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
-
-	// Restart is handled through graphql because we need the user to specify
-	// which downstream tasks they want to restart.
-	if evergreen.IsPatchRequester(v.Requester) && modification.Action != evergreen.RestartAction {
-		// Only modify the child patch if it is finalized.
-		childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
-		if err != nil {
-			return ResourceNotFound.Send(ctx, err.Error())
-		}
-		for _, childPatchId := range childPatchIds {
-			if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
-				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -496,13 +478,6 @@ func getAllTaskStatuses(tasks []task.Task) []string {
 	return statusesArr
 }
 
-func formatDuration(duration string) string {
-	regex := regexp.MustCompile(`\d*[dhms]`)
-	return strings.TrimSpace(regex.ReplaceAllStringFunc(duration, func(m string) string {
-		return m + " "
-	}))
-}
-
 func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
 	filteredSubscriptions := make([]string, 0, len(subscriptions))
 	for _, subscription := range subscriptions {
@@ -512,6 +487,20 @@ func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscrip
 	}
 
 	return filteredSubscriptions
+}
+
+func makePatchDuration(timeTaken, makeSpan string) *PatchDuration {
+	res := &PatchDuration{}
+
+	if timeTaken != "0s" {
+		res.TimeTaken = &timeTaken
+	}
+
+	if makeSpan != "0s" {
+		res.Makespan = &makeSpan
+	}
+
+	return res
 }
 
 func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selectors []restModel.APISelector) (string, string, error) {
@@ -748,6 +737,12 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
 
 	for _, p := range projects {
+		// Do not include hidden projects in the final list of grouped projects, as they are considered
+		// "deleted" projects.
+		if p.IsHidden() {
+			continue
+		}
+
 		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
 		if onlyDefaultedToRepo && !p.UseRepoSettings() {
 			groupName = ""
@@ -931,7 +926,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment().Settings(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
+		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
 		}
 	}

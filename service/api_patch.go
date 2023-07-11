@@ -282,12 +282,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	githubOauthToken, err := as.Settings.GetGithubOauthToken()
-	if err != nil {
-		gimlet.WriteJSONError(w, err)
-		return
-	}
-
 	data := struct {
 		Module     string `json:"module"`
 		PatchBytes []byte `json:"patch_bytes"`
@@ -344,17 +338,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	repoOwner, repo := module.GetRepoOwnerAndName()
-
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, repoOwner, repo, githash)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	// write the patch content into a GridFS file under a new ObjectId.
 	patchFileId := mgobson.NewObjectId().Hex()
 	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
@@ -379,7 +362,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if p.IsCommitQueuePatch() {
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project)); err != nil {
+		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project, p.IsCommitQueuePatch())); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

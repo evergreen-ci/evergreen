@@ -86,8 +86,9 @@ func SetEnvironment(env Environment) {
 // Environment provides application-level services (e.g. databases,
 // configuration, queues.
 type Environment interface {
-	// Returns the settings object. The settings object is not
-	// necessarily safe for concurrent access.
+	// Settings returns the cached version of the admin settings as a settings object.
+	// The settings object is not necessarily safe for concurrent access.
+	// Use GetConfig() to access the settings object from the DB.
 	Settings() *Settings
 	Context() (context.Context, context.CancelFunc)
 
@@ -728,7 +729,14 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 
 	var sender send.Sender
-	githubToken, err := e.settings.GetGithubOauthToken()
+	githubToken, err := e.settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+	if err != nil || githubToken == "" {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error creating token",
+			"ticket":  "EVG-19966",
+		}))
+		githubToken, err = e.settings.GetGithubOauthToken()
+	}
 	if err == nil && len(githubToken) > 0 {
 		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
@@ -882,7 +890,11 @@ func (e *envState) initTracer(ctx context.Context) error {
 		trace.WithBatcher(exp),
 		trace.WithResource(resource),
 	)
+	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		grip.Error(errors.Wrap(err, "otel error"))
+	}))
 
 	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
 		catcher := grip.NewBasicCatcher()

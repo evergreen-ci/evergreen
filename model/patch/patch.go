@@ -179,14 +179,15 @@ type Patch struct {
 	// ProjectStorageMethod to decide where the parser project is persistently
 	// stored. This field is kept solely for backward compatibility with
 	// existing, unfinalized patches.
-	PatchedParserProject string                 `bson:"patched_config,omitempty"`
-	PatchedProjectConfig string                 `bson:"patched_project_config"`
-	Alias                string                 `bson:"alias"`
-	Triggers             TriggerInfo            `bson:"triggers"`
-	BackportOf           BackportInfo           `bson:"backport_of,omitempty"`
-	MergePatch           string                 `bson:"merge_patch"`
-	GithubPatchData      thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
-	GitInfo              *GitMetadata           `bson:"git_info,omitempty"`
+	PatchedParserProject string                      `bson:"patched_config,omitempty"`
+	PatchedProjectConfig string                      `bson:"patched_project_config"`
+	Alias                string                      `bson:"alias"`
+	Triggers             TriggerInfo                 `bson:"triggers"`
+	BackportOf           BackportInfo                `bson:"backport_of,omitempty"`
+	MergePatch           string                      `bson:"merge_patch"`
+	GithubPatchData      thirdparty.GithubPatch      `bson:"github_patch_data,omitempty"`
+	GithubMergeData      thirdparty.GithubMergeGroup `bson:"github_merge_data,omitempty"`
+	GitInfo              *GitMetadata                `bson:"git_info,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 	// MergeStatus is only used in gitServePatch to send the status of this
@@ -528,6 +529,35 @@ func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
 	return nil
 }
 
+// UpdateMergeCommitSHA updates the merge commit SHA for the patch.
+func (p *Patch) UpdateMergeCommitSHA(sha string) error {
+	if p.GithubPatchData.MergeCommitSHA == sha {
+		return nil
+	}
+	shaKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchMergeCommitSHAKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				shaKey: sha,
+			},
+		},
+	)
+}
+
+// UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
+func (p *Patch) UpdateRepeatPatchId(patchId string) error {
+	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				repeatKey: patchId,
+			},
+		},
+	)
+}
+
 func (p *Patch) FindModule(moduleName string) *ModulePatch {
 	for _, module := range p.Patches {
 		if module.ModuleName == moduleName {
@@ -771,8 +801,15 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+// IsCommitQueuePatch returns true if the the patch is part of any commit queue:
+// either Evergreen's commit queue or GitHub's merge queue.
 func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch()
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.IsGithubMergePatch()
+}
+
+// IsGithubMergePatch returns true if the patch is from the GitHub merge queue.
+func (p *Patch) IsGithubMergePatch() bool {
+	return p.GithubMergeData.HeadSHA != ""
 }
 
 func (p *Patch) IsBackport() bool {

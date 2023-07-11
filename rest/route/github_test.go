@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -177,6 +179,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	ctx := context.Background()
 	secret := []byte(s.conf.Api.GithubWebhookSecret)
 	req, err := makeRequest("1", "pull_request", s.prBody, secret)
+	req = setGitHubPayload(req, s.prBody)
 	s.NoError(err)
 
 	err = s.h.Parse(ctx, req)
@@ -186,6 +189,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	s.Equal("1", s.h.msgID)
 
 	req, err = makeRequest("2", "push", s.pushBody, secret)
+	req = setGitHubPayload(req, s.pushBody)
 	s.NoError(err)
 	s.NotNil(req)
 
@@ -196,6 +200,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	s.Equal("2", s.h.msgID)
 
 	req, err = makeRequest("3", "issue_comment", s.commitQueueCommentBody, secret)
+	req = setGitHubPayload(req, s.commitQueueCommentBody)
 	s.NoError(err)
 	s.NotNil(req)
 
@@ -503,4 +508,36 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 
 		t.Run(testCase, test)
 	}
+}
+
+func TestPRDef(t *testing.T) {
+	assert.NoError(t, db.Clear(patch.Collection))
+	owner := "owner"
+	repo := "repo"
+	patchId := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	p := &patch.Patch{
+		Id:      patchId,
+		Project: "mci",
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber:               5,
+			BaseOwner:              owner,
+			BaseRepo:               repo,
+			RepeatPatchIdNextPatch: patchId.Hex(),
+		},
+	}
+	assert.NoError(t, p.Insert())
+	err := keepPRPatchDefinition(owner, repo, 5)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOne(patch.ById(patchId))
+	assert.NoError(t, err)
+	assert.Equal(t, patchId.Hex(), p.GithubPatchData.RepeatPatchIdNextPatch)
+
+	err = resetPRPatchDefinition(owner, repo, 5)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOne(patch.ById(patchId))
+	assert.NoError(t, err)
+	assert.Equal(t, "", p.GithubPatchData.RepeatPatchIdNextPatch)
+
 }

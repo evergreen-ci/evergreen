@@ -227,7 +227,43 @@ func TestFailedTasksByVersion(t *testing.T) {
 	})
 }
 
+func TestFindTasksByVersionWithChildTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	mainVersion := "main_version"
+	mainVersionTaskIds := []string{"t1", "t3"}
+	tasks := []Task{
+		{
+			Id:      "t1",
+			Version: mainVersion,
+		},
+		{
+			Id:      "t2",
+			Version: "different_version",
+		},
+		{
+			Id:            "t3",
+			Version:       "different_version",
+			ParentPatchID: mainVersion,
+		},
+		{
+			Id:            "t4",
+			Version:       "different_version",
+			ParentPatchID: "different_parent",
+		},
+	}
+	for _, task := range tasks {
+		assert.NoError(t, task.Insert())
+	}
+
+	dbTasks, err := Find(ByVersionWithChildTasks(mainVersion))
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 2)
+	for _, dbTask := range dbTasks {
+		assert.Contains(t, mainVersionTaskIds, dbTask.Id)
+	}
+}
 func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{
 			Id:            "t1",
@@ -1063,6 +1099,60 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
 }
 
+func TestGetTaskStatusesByVersion(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:           "t1",
+		Version:      "v1",
+		BuildVariant: "bv_foo",
+		DisplayName:  "displayName_foo",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    time.Minute,
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v1",
+		BuildVariant: "bv_bar",
+		DisplayName:  "displayName_bar",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		BaseTask:     BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    25 * time.Minute,
+	}
+	t3 := Task{
+		Id:           "t3",
+		Version:      "v1",
+		BuildVariant: "bv_qux",
+		DisplayName:  "displayName_qux",
+		Execution:    0,
+		Status:       evergreen.TaskStarted,
+		BaseTask:     BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    0,
+	}
+	t4 := Task{
+		Id:           "t4",
+		Version:      "v1",
+		BuildVariant: "bv_baz",
+		DisplayName:  "displayName_baz",
+		Execution:    0,
+		Status:       evergreen.TaskSetupFailed,
+		BaseTask:     BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    2 * time.Hour,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	ctx := context.TODO()
+	tasks, err := GetTaskStatusesByVersion(ctx, "v1")
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 4)
+	assert.Equal(t, []string{evergreen.TaskFailed, evergreen.TaskSetupFailed, evergreen.TaskStarted, evergreen.TaskSucceeded}, tasks)
+
+}
+
 func TestGetTasksByVersionSorting(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -1229,15 +1319,16 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Status:    evergreen.TaskFailed,
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}
-	stats, err := GetTaskStatsByVersion("v1", opts)
+	stats, err := GetTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(stats.Counts))
 	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(Collection, t3, t4, t5, t6))
-	stats, err = GetTaskStatsByVersion("v1", opts)
+	stats, err = GetTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Nil(t, stats.ETA)
 }
@@ -1297,8 +1388,9 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 
 	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
 
+		ctx := context.TODO()
 		opts := GetTasksByVersionOptions{}
-		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(variants))
 		expectedValues := []*GroupedTaskStatusCount{
@@ -1339,8 +1431,8 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		opts := GetTasksByVersionOptions{
 			Variants: []string{"bv1"},
 		}
-
-		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		ctx := context.TODO()
+		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(variants))
 		expectedValues := []*GroupedTaskStatusCount{
@@ -1422,7 +1514,8 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		BuildVariant:  "bv_2",
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
-	statuses, err := GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	ctx := context.TODO()
+	statuses, err := GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(statuses))
 	assert.Equal(t, statuses[0], evergreen.TaskStarted)
@@ -1430,7 +1523,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
-	statuses, err = GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	statuses, err = GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(statuses))
 }
@@ -1766,4 +1859,49 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 	} {
 		t.Run(testName, test)
 	}
+}
+
+func TestHasActivatedDependentTasks(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	t1 := Task{
+		Id:        "activeDependent",
+		Activated: true,
+		DependsOn: []Dependency{
+			{TaskId: "current"},
+		},
+	}
+	t2 := Task{
+		Id: "inactiveDependent",
+		DependsOn: []Dependency{
+			{TaskId: "inactive"},
+		},
+	}
+	t3 := Task{
+		Id:        "manyDependencies",
+		Activated: true,
+		DependsOn: []Dependency{
+			{TaskId: "current"},
+			{TaskId: "secondTask"},
+		},
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+
+	hasDependentTasks, err := HasActivatedDependentTasks("current")
+	assert.NoError(t, err)
+	assert.True(t, hasDependentTasks)
+
+	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
+	assert.NoError(t, err)
+	assert.True(t, hasDependentTasks)
+
+	// Tasks overriding dependencies don't count as dependent.
+	assert.NoError(t, t3.SetOverrideDependencies("me"))
+	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
+	assert.NoError(t, err)
+	assert.False(t, hasDependentTasks)
+
+	hasDependentTasks, err = HasActivatedDependentTasks("inactive")
+	assert.NoError(t, err)
+	assert.False(t, hasDependentTasks)
+
 }

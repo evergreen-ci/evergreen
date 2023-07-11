@@ -168,13 +168,23 @@ func TestSetPriority(t *testing.T) {
 		Id:      "t1",
 		Version: "aabbccddeeff001122334455",
 	}
+	t2 := task.Task{
+		Id:            "t2",
+		Version:       "something_else",
+		ParentPatchID: t1.Version,
+	}
 	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t2.Insert())
 	for _, p := range patches {
 		assert.NoError(t, p.Insert())
 	}
 	err := SetVersionsPriority([]string{"aabbccddeeff001122334455"}, 7, "")
 	assert.NoError(t, err)
 	foundTask, err := task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(7), foundTask.Priority)
+
+	foundTask, err = task.FindOneId("t2")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7), foundTask.Priority)
 }
@@ -422,18 +432,17 @@ modules:
 			ppStorageMethod := evergreen.ProjectStorageMethodDB
 			p.ProjectStorageMethod = ppStorageMethod
 
-			//normal patch works
+			//normal patch should error
 			p.Tasks = []string{}
 			p.BuildVariants = []string{}
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert())
 
-			v, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
-			require.NoError(t, err)
-			assert.NotNil(t, v)
-			assert.Empty(t, v.BuildIds)
+			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
-			// commit queue patch should not
+			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
 			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
 			require.Error(t, err)
@@ -825,7 +834,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 
 	// no commits
 	patches := []patch.ModulePatch{}
-	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project, false))
 
 	// main repo commit
 	patches = []patch.ModulePatch{
@@ -834,7 +843,9 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Commit"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, false))
+
+	assert.Equal(t, "GitHub Merge Queue", MakeCommitQueueDescription(patches, projectRef, project, true))
 
 	// main repo + module commits
 	patches = []patch.ModulePatch{
@@ -848,7 +859,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false))
 
 	// module only commits
 	patches = []patch.ModulePatch{
@@ -860,7 +871,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Module Commit 1", "Module Commit 2"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false))
 }
 
 func TestRetryCommitQueueItems(t *testing.T) {

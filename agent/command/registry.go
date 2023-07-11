@@ -28,7 +28,6 @@ func init() {
 		evergreen.HostCreateCommandName:         createHostFactory,
 		"ec2.assume_role":                       ec2AssumeRoleFactory,
 		"host.list":                             listHostFactory,
-		"expansions.fetch_vars":                 fetchVarsFactory,
 		"expansions.update":                     updateExpansionsFactory,
 		"expansions.write":                      writeExpansionsFactory,
 		"generate.tasks":                        generateTaskFactory,
@@ -37,10 +36,9 @@ func init() {
 		"git.merge_pr":                          gitMergePRFactory,
 		"git.push":                              gitPushFactory,
 		"gotest.parse_files":                    goTestFactory,
-		"gotest.parse_json":                     goTest2JSONFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"mac.sign":                              macSignFactory,
-		evergreen.ManifestLoadCommandName:       manifestLoadFactory,
+		"manifest.load":                         manifestLoadFactory,
 		"perf.send":                             perfSendFactory,
 		"downstream_expansions.set":             setExpansionsFactory,
 		"s3.get":                                s3GetFactory,
@@ -48,9 +46,7 @@ func init() {
 		"s3Copy.copy":                           s3CopyFactory,
 		evergreen.S3PushCommandName:             s3PushFactory,
 		evergreen.S3PullCommandName:             s3PullFactory,
-		"shell.cleanup":                         shellCleanupFactory,
 		evergreen.ShellExecCommandName:          shellExecFactory,
-		"shell.track":                           shellTrackFactory,
 		"subprocess.exec":                       subprocessExecFactory,
 		"setup.initial":                         initialSetupFactory,
 		"timeout.update":                        timeoutUpdateFactory,
@@ -69,8 +65,12 @@ func GetCommandFactory(name string) (CommandFactory, bool) {
 	return evgRegistry.getCommandFactory(name)
 }
 
-func Render(c model.PluginCommandConf, project *model.Project, block string) ([]Command, error) {
-	return evgRegistry.renderCommands(c, project, block)
+// Render takes a command specification and returns the commands to actually
+// run. It resolves the command specification into either a single command (in
+// the case of standalone command) or a list of commands (in the case of a
+// function).
+func Render(c model.PluginCommandConf, project *model.Project, blockInfo BlockInfo) ([]Command, error) {
+	return evgRegistry.renderCommands(c, project, blockInfo)
 }
 
 func RegisteredCommandNames() []string { return evgRegistry.registeredCommandNames() }
@@ -131,7 +131,7 @@ func (r *commandRegistry) getCommandFactory(name string) (CommandFactory, bool) 
 }
 
 func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
-	project *model.Project, block string) ([]Command, error) {
+	project *model.Project, blockInfo BlockInfo) ([]Command, error) {
 
 	var (
 		parsed []model.PluginCommandConf
@@ -139,18 +139,15 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	)
 	catcher := grip.NewBasicCatcher()
 
-	if block != "" {
-		block = fmt.Sprintf(`in "%v"`, block)
-	}
-
-	if name := commandInfo.Function; name != "" {
-		cmds, ok := project.Functions[name]
+	if funcName := commandInfo.Function; funcName != "" {
+		cmds, ok := project.Functions[funcName]
 		if !ok {
-			catcher.Errorf("function '%s' not found in project functions", name)
+			catcher.Errorf("function '%s' not found in project functions", funcName)
 		} else if cmds != nil {
-			for i, c := range cmds.List() {
+			cmdsInFunc := cmds.List()
+			for i, c := range cmdsInFunc {
 				if c.Function != "" {
-					catcher.Errorf("cannot reference a function ('%s') within another function ('%s')", c.Function, name)
+					catcher.Errorf("cannot reference a function ('%s') within another function ('%s')", c.Function, funcName)
 					continue
 				}
 
@@ -160,7 +157,12 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 				}
 
 				if c.DisplayName == "" {
-					c.DisplayName = fmt.Sprintf(`'%v' in "%v" %s (#%d)`, c.Command, name, block, i+1)
+					funcInfo := FunctionInfo{
+						Function:     funcName,
+						SubCmdNum:    i + 1,
+						TotalSubCmds: len(cmdsInFunc),
+					}
+					c.DisplayName = GetDefaultDisplayName(c.Command, blockInfo, funcInfo)
 				}
 
 				if c.TimeoutSecs == 0 {
@@ -172,7 +174,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		}
 	} else {
 		if commandInfo.DisplayName == "" {
-			commandInfo.DisplayName = fmt.Sprintf(`'%v' %s `, commandInfo.Command, block)
+			commandInfo.DisplayName = GetDefaultDisplayName(commandInfo.Command, blockInfo, FunctionInfo{})
 		}
 		parsed = append(parsed, commandInfo)
 	}
@@ -188,7 +190,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		// Note: this parses the parameters before expansions are applied.
 		// Expansions are only available when the command is executed.
 		if err := cmd.ParseParams(c.Params); err != nil {
-			catcher.Wrapf(err, "parsing parameters for command '%s' ('%s')", c.Command, c.DisplayName)
+			catcher.Wrapf(err, "parsing parameters for command %s", c.DisplayName)
 			continue
 		}
 		cmd.SetType(c.GetType(project))
@@ -203,4 +205,51 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	}
 
 	return out, nil
+}
+
+// BlockInfo contains information about the enclosing block in which a function
+// or standalone command runs. For example, this would contain information about
+// the pre block that contains a particular shell.exec command.
+type BlockInfo struct {
+	// Block is the name of the block that the command is part of.
+	Block string
+	// CmdNum is the ordinal of a command in the block.
+	CmdNum int
+	// TotalCmds is the total number of commands in the block.
+	TotalCmds int
+}
+
+// FunctionInfo contains information about the enclosing function in which a
+// command runs. For example, this would contain information about the second
+// shell.exec that runs in a function.
+type FunctionInfo struct {
+	// Function is the name of the function that the command is part of.
+	Function string
+	// SubCmdNum is the ordinal of the command within the function.
+	SubCmdNum int
+	// TotalSubCmds is the total number of sub-commands within the function.
+	TotalSubCmds int
+}
+
+// GetDefaultDisplayName returns the default display name for a command.
+// cmdNum is command/function number, subCmdNum only applies for subcmds in
+// functions
+func GetDefaultDisplayName(commandName string, blockInfo BlockInfo, funcInfo FunctionInfo) string {
+	displayName := fmt.Sprintf("'%s'", commandName)
+	if funcInfo.Function != "" {
+		displayName = fmt.Sprintf("%s in function '%s'", displayName, funcInfo.Function)
+	}
+	if blockInfo.CmdNum > 0 && blockInfo.TotalCmds > 0 {
+		if funcInfo.SubCmdNum > 0 && funcInfo.TotalSubCmds > 1 {
+			// Include the function sub-command number only if the function runs
+			// more than one command.
+			displayName = fmt.Sprintf("%s (step %d.%d of %d)", displayName, blockInfo.CmdNum, funcInfo.SubCmdNum, blockInfo.TotalCmds)
+		} else {
+			displayName = fmt.Sprintf("%s (step %d of %d)", displayName, blockInfo.CmdNum, blockInfo.TotalCmds)
+		}
+	}
+	if blockInfo.Block != "" {
+		displayName = fmt.Sprintf("%s in block '%s'", displayName, blockInfo.Block)
+	}
+	return displayName
 }

@@ -3,7 +3,6 @@ input RepoRefInput {
   id: String! @requireProjectAccess(access: EDIT)
   admins: [String!]
   batchTime: Int
-  branch: String
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
@@ -51,7 +50,6 @@ type RepoRef {
   id: String!
   admins: [String!]! @requireProjectFieldAccess
   batchTime: Int! @requireProjectFieldAccess
-  branch: String!
   buildBaronSettings: BuildBaronSettings! @requireProjectFieldAccess
   commitQueue: RepoCommitQueueParams! @requireProjectFieldAccess
   containerSizeDefinitions: [ContainerResources!] @requireProjectFieldAccess
@@ -92,6 +90,7 @@ type RepoRef {
 type RepoCommitQueueParams {
   enabled: Boolean!
   mergeMethod: String!
+  mergeQueue: MergeQueue!
   message: String!
 }
 

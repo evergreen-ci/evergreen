@@ -6,7 +6,7 @@ Evergreen creates a temporary task directory for each task. Commands by default 
 
 ## subprocess.exec
 
-In general, use [subprocess.exec](Project-Commands.md#subprocess-exec) instead of shell.exec.
+In general, use [subprocess.exec](Project-Commands.md#subprocessexec) instead of shell.exec.
 
 The reasons to prefer subprocess.exec include:
 1. Evergreen uses expansions with the same syntax as shell expansions.
@@ -38,3 +38,7 @@ Evergreen will first look for an expansion called `foo` and will substitute that
 export foo=bar
 echo $foo
 ```
+
+## Distro Choice
+
+Tasks on more popular distros are often run quicker than tasks on less popular ones. Prefer more popular distros where possible.

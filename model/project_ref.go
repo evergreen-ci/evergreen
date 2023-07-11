@@ -138,8 +138,8 @@ type ParsleyFilter struct {
 type ProjectHealthView string
 
 const (
-	ProjectHealthViewFailed ProjectHealthView = "failed"
-	ProjectHealthViewAll    ProjectHealthView = "all"
+	ProjectHealthViewAll    ProjectHealthView = "ALL"
+	ProjectHealthViewFailed ProjectHealthView = "FAILED"
 )
 
 type ProjectBanner struct {
@@ -152,10 +152,18 @@ type ExternalLink struct {
 	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
+type MergeQueue string
+
+const (
+	MergeQueueEvergreen MergeQueue = "EVERGREEN"
+	MergeQueueGitHub    MergeQueue = "GITHUB"
+)
+
 type CommitQueueParams struct {
-	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
-	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
+	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
+	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
+	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
@@ -304,7 +312,7 @@ var (
 	ProjectRefDeactivatePreviousKey       = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey               = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefHiddenKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
-	ProjectRefRepotrackerError            = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefRepotrackerErrorKey         = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefDisabledStatsCacheKey       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
@@ -335,6 +343,8 @@ var (
 	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 	projectRefExternalLinksKey            = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 	projectRefBannerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
+	projectRefParsleyFiltersKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")
+	projectRefProjectHealthViewKey        = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -342,8 +352,9 @@ var (
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
 )
 
+// IsPrivate returns if this project requires the user to be authed to view it.
 func (p *ProjectRef) IsPrivate() bool {
-	return utility.FromBoolPtr(p.Private)
+	return utility.FromBoolTPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {
@@ -461,17 +472,18 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection        = "GENERAL"
-	ProjectPageAccessSection         = "ACCESS"
-	ProjectPageVariablesSection      = "VARIABLES"
-	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectPageNotificationsSection  = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection   = "WORKSTATION"
-	ProjectPageTriggersSection       = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
-	ProjectPagePluginSection         = "PLUGINS"
-	ProjectPageContainerSection      = "CONTAINERS"
+	ProjectPageGeneralSection         = "GENERAL"
+	ProjectPageAccessSection          = "ACCESS"
+	ProjectPageVariablesSection       = "VARIABLES"
+	ProjectPageGithubAndCQSection     = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection   = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection    = "WORKSTATION"
+	ProjectPageTriggersSection        = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
+	ProjectPagePluginSection          = "PLUGINS"
+	ProjectPageContainerSection       = "CONTAINERS"
+	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
 )
 
 const (
@@ -651,7 +663,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 
 	mergedProject.RepoRefId = ""
-	if err = mergedProject.Upsert(); err != nil {
+	if err := mergedProject.Upsert(); err != nil {
 		return errors.Wrap(err, "detaching project from repo")
 	}
 
@@ -708,7 +720,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
 
-	catcher.Add(GetAndLogProjectModified(p.Id, u.Id, false, before))
+	catcher.Add(GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
 	return catcher.Resolve()
 }
 
@@ -743,7 +755,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "attaching repo to scope")
 	}
 
-	return GetAndLogProjectModified(p.Id, u.Id, false, before)
+	return GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
@@ -784,7 +796,7 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
 
-	return GetAndLogProjectModified(p.Id, u.Id, false, before)
+	return GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // addGithubConflictsToUpdate turns off any settings that may introduce conflicts by
@@ -891,16 +903,6 @@ func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
 		}
 	}
 	return nil
-}
-
-func (projectRef *ProjectRef) Update() error {
-	return db.Update(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdKey: projectRef.Id,
-		},
-		projectRef,
-	)
 }
 
 func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
@@ -1083,6 +1085,13 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if err = repoRef.Add(u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
+	err = LogProjectAdded(repoRef.Id, u.DisplayName())
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":            "problem logging repo added",
+		"project_id":         repoRef.Id,
+		"project_identifier": repoRef.Identifier,
+		"user":               u.DisplayName(),
+	}))
 
 	enabledProjectIds := []string{}
 	for _, p := range allEnabledProjects {
@@ -1493,8 +1502,8 @@ func FindBranchAdminsForRepo(repoId string) ([]string, error) {
 	return utility.UniqueStrings(allBranchAdmins), nil
 }
 
-// Find repos that have that trigger / are enabled
-// find projects that have this repo ID and nil triggers,OR that have the trigger
+// FindDownstreamProjects finds projects that have that trigger enabled or
+// inherits it from the repo project.
 func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
@@ -1880,8 +1889,8 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
-	conflicts, err := projectRef.GetGithubProjectConflicts()
+func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
+	conflicts, err := p.GetGithubProjectConflicts()
 	if err != nil {
 		return false, errors.Wrap(err, "finding GitHub conflicts")
 	}
@@ -1892,14 +1901,41 @@ func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 }
 
 // Upsert updates the project ref in the db if an entry already exists,
-// overwriting the existing ref. If no project ref exists, one is created
-func (projectRef *ProjectRef) Upsert() error {
-	_, err := db.Upsert(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdKey: projectRef.Id,
-		}, projectRef)
+// overwriting the existing ref. If no project ref exists, a new one is created.
+func (p *ProjectRef) Upsert() error {
+	if p.Private == nil {
+		// Projects are private by default unless they've been specially made
+		// public.
+		p.Private = utility.TruePtr()
+	}
+	_, err := db.Upsert(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
+}
+
+// SetRepotrackerError updates the repotracker error for the project ref.
+func (p *ProjectRef) SetRepotrackerError(d *RepositoryErrorDetails) error {
+	if err := db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": bson.M{
+			ProjectRefRepotrackerErrorKey: d,
+		},
+	}); err != nil {
+		return err
+	}
+	p.RepotrackerError = d
+	return nil
+}
+
+// SetContainerSecrets updates the container secrets for the project ref.
+func (p *ProjectRef) SetContainerSecrets(secrets []ContainerSecret) error {
+	if err := db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": bson.M{
+			projectRefContainerSecretsKey: secrets,
+		},
+	}); err != nil {
+		return err
+	}
+	p.ContainerSecrets = secrets
+	return nil
 }
 
 // SaveProjectPageForSection updates the project or repo ref variables for the section (if no project is given, we unset to default to repo).
@@ -1946,6 +1982,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
+			setUpdate[ProjectRefBranchKey] = p.Branch
 			setUpdate[ProjectRefEnabledKey] = p.Enabled
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
@@ -2027,7 +2064,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2057,6 +2093,15 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
+			})
+	case ProjectPageViewsAndFiltersSection:
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefParsleyFiltersKey:    p.ParsleyFilters,
+					projectRefProjectHealthViewKey: p.ProjectHealthView,
+				},
 			})
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref
@@ -2522,7 +2567,7 @@ func (p *ProjectRef) removeFromAdminsList(user string) {
 	}
 }
 
-func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string, token string) bool {
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, token, owner, repo string) bool {
 	if utility.StringSliceContains(p.GitTagAuthorizedUsers, githubUser) {
 		return true
 	}
@@ -2546,7 +2591,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string,
 		}
 	}
 
-	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token)
+	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token, owner, repo)
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands
@@ -2728,6 +2773,9 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		return "", errors.Wrap(err, "getting project")
 	}
 
+	if pRef.SpawnHostScriptPath == "" {
+		return "", nil
+	}
 	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
@@ -2834,7 +2882,7 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
 		catcher.NewWhen(container.Name == "", "name must be defined")
-		catcher.ErrorfWhen(!utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
+		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
 
 	}
 	return catcher.Resolve()
@@ -3156,13 +3204,18 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 	combined := make([]ContainerSecret, len(original))
 	_ = copy(combined, original)
 
-	var numPodSecrets int
 	catcher := grip.NewBasicCatcher()
+	podSecrets := make(map[string]bool)
+	for _, originalSecret := range original {
+		if originalSecret.Type == ContainerSecretPodSecret {
+			podSecrets[originalSecret.Name] = true
+		}
+	}
 	for _, updatedSecret := range toUpdate {
 		name := updatedSecret.Name
 
 		if updatedSecret.Type == ContainerSecretPodSecret {
-			numPodSecrets++
+			podSecrets[name] = true
 		}
 
 		idx := -1
@@ -3199,9 +3252,37 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 		combined = append(combined, updatedSecret)
 	}
 
-	catcher.ErrorfWhen(numPodSecrets > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", numPodSecrets)
+	catcher.ErrorfWhen(len(podSecrets) > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", len(podSecrets))
 
 	return combined, catcher.Resolve()
+}
+
+// ValidateParsleyFilters checks that there are no duplicate expressions among the Parsley filters. It also validates
+// each individual Parsley filter.
+func ValidateParsleyFilters(parsleyFilters []ParsleyFilter) error {
+	catcher := grip.NewBasicCatcher()
+
+	filtersSet := make(map[string]bool)
+	for _, filter := range parsleyFilters {
+		if filtersSet[filter.Expression] {
+			catcher.Errorf("duplicate filter expression '%s'", filter.Expression)
+		}
+		filtersSet[filter.Expression] = true
+		catcher.Add(filter.validate())
+	}
+
+	return catcher.Resolve()
+}
+
+func (p ParsleyFilter) validate() error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.NewWhen(p.Expression == "", "filter expression must be non-empty")
+
+	if _, regexErr := regexp.Compile(p.Expression); regexErr != nil {
+		catcher.Wrapf(regexErr, "filter expression '%s' is invalid regexp", p.Expression)
+	}
+
+	return catcher.Resolve()
 }
 
 func newContainerSecretExternalName(smConf evergreen.SecretsManagerConfig, projectID string, secret ContainerSecret) (string, error) {

@@ -15,6 +15,12 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+const (
+	CreateProjectMutation = "CreateProject"
+	CopyProjectMutation   = "CopyProject"
+	DeleteProjectMutation = "DeleteProject"
+)
+
 type Resolver struct {
 	sc data.Connector
 }
@@ -25,8 +31,55 @@ func New(apiURL string) Config {
 			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
-	c.Directives.CanCreateProject = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
-		// Allow if user is superuser
+	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
+		user := mustHaveUser(ctx)
+
+		// If directive is checking for create permissions, no distro ID is required.
+		if access == DistroSettingsAccessCreate {
+			opts := gimlet.PermissionOpts{
+				Resource:      evergreen.SuperUserPermissionsID,
+				ResourceType:  evergreen.SuperUserResourceType,
+				Permission:    evergreen.PermissionDistroCreate,
+				RequiredLevel: evergreen.DistroCreate.Value,
+			}
+			if user.HasPermission(opts) {
+				return next(ctx)
+			}
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))
+		}
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "distro not specified")
+		}
+		distroId, hasDistroId := args["distroId"].(string)
+		if !hasDistroId {
+			return nil, ResourceNotFound.Send(ctx, "Distro not specified")
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:     distroId,
+			ResourceType: evergreen.DistroResourceType,
+			Permission:   evergreen.PermissionDistroSettings,
+		}
+
+		if access == DistroSettingsAccessAdmin {
+			opts.RequiredLevel = evergreen.DistroSettingsAdmin.Value
+		} else if access == DistroSettingsAccessEdit {
+			opts.RequiredLevel = evergreen.DistroSettingsEdit.Value
+		} else if access == DistroSettingsAccessView {
+			opts.RequiredLevel = evergreen.DistroSettingsView.Value
+		} else {
+			return nil, Forbidden.Send(ctx, "Permission not specified")
+		}
+
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access settings for the distro '%s'", user.Username(), distroId))
+	}
+	c.Directives.RequireProjectAdmin = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+		// Allow if user is superuser.
 		user := mustHaveUser(ctx)
 		opts := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
@@ -38,14 +91,28 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 
-		// Check if this call is for create or copy project
+		// Check for admin permissions for each of the resolvers.
 		args, isStringMap := obj.(map[string]interface{})
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "Project not specified")
 		}
-		projectIdToCopy, hasProjectId := args["project"].(map[string]interface{})["projectIdToCopy"].(string)
-		if hasProjectId {
-			// Check if the user has permission to copy the project
+		operationContext := graphql.GetOperationContext(ctx).OperationName
+
+		if operationContext == CreateProjectMutation {
+			canCreate, err := user.HasProjectCreatePermission()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking user permissions: %s", err.Error()))
+			}
+			if canCreate {
+				return next(ctx)
+			}
+		}
+
+		if operationContext == CopyProjectMutation {
+			projectIdToCopy, ok := args["project"].(map[string]interface{})["projectIdToCopy"].(string)
+			if !ok {
+				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
+			}
 			opts := gimlet.PermissionOpts{
 				Resource:      projectIdToCopy,
 				ResourceType:  evergreen.ProjectResourceType,
@@ -55,16 +122,25 @@ func New(apiURL string) Config {
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
-		} else {
-			canCreate, err := user.HasProjectCreatePermission()
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking user permissions: %s", err.Error()))
+		}
+
+		if operationContext == DeleteProjectMutation {
+			projectId, ok := args["projectId"].(string)
+			if !ok {
+				return nil, InternalServerError.Send(ctx, "finding projectId for delete project operation")
 			}
-			if canCreate {
+			opts := gimlet.PermissionOpts{
+				Resource:      projectId,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			}
+			if user.HasPermission(opts) {
 				return next(ctx)
 			}
 		}
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
+
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access the %s resolver", user.Username(), operationContext))
 	}
 	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
 		user := mustHaveUser(ctx)

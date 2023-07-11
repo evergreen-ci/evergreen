@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -21,18 +21,30 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHostPostHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection))
 
-	config, err := evergreen.GetConfig()
+	env := &mock.Environment{}
+	assert.NoError(env.Configure(ctx))
+	env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 4
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
 	assert.NoError(err)
-	config.Spawnhost.SpawnHostsPerUser = 4
+
 	doc := birch.NewDocument(
 		birch.EC.String("ami", "ami-123"),
 		birch.EC.String("region", evergreen.DefaultEC2Region),
@@ -46,14 +58,14 @@ func TestHostPostHandler(t *testing.T) {
 	require.NoError(d.Insert())
 	assert.NoError(err)
 	h := &hostPostHandler{
-		settings: config,
+		env: env,
 		options: &model.HostRequestOptions{
 			TaskID:   "task",
 			DistroID: "distro",
 			KeyName:  "ssh-rsa YWJjZDEyMzQK",
 		},
 	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	resp := h.Run(ctx)
 	assert.NotNil(resp)
@@ -106,7 +118,7 @@ func TestHostPostHandler(t *testing.T) {
 
 	d.Provider = evergreen.ProviderNameMock
 	assert.NoError(d.Update())
-	h.settings.Providers.AWS.AllowedInstanceTypes = append(h.settings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
+	env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes = append(env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
 	h.options.InstanceType = "test_instance_type"
 	h.options.UserData = ""
 	resp = h.Run(ctx)
@@ -269,14 +281,14 @@ func TestDeleteVolumeHandler(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	volumes := []host.Volume{
-		host.Volume{
+		{
 			ID:               "my-volume",
 			CreatedBy:        "user",
-			AvailabilityZone: utility.FromStringPtr(aws.String("us-east-1a")),
+			AvailabilityZone: "us-east-1a",
 		},
 	}
 	hosts := []host.Host{
-		host.Host{
+		{
 			Id:        "my-host",
 			UserHost:  true,
 			StartedBy: "user",
@@ -429,7 +441,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})
 	assert.NoError(t, h.Parse(context.Background(), r))
 	assert.Equal(t, "volume1", h.volumeID)
-	assert.Equal(t, 20, h.opts.Size)
+	assert.EqualValues(t, 20, h.opts.Size)
 	assert.Equal(t, "my-favorite-volume", h.opts.NewName)
 
 	h.provider = evergreen.ProviderNameMock

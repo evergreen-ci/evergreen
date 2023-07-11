@@ -218,7 +218,7 @@ Parameters:
 
 `expansions.write` writes the task's expansions to a file
 
-`global_github_oauth_token`, `AWS_ACCESS_KEY_ID`,
+`global_github_oauth_token`, `github_app_token`, `AWS_ACCESS_KEY_ID`,
 `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` are always redacted for
 security reasons
 
@@ -320,11 +320,6 @@ This command clones the tracked project repository into a given
 directory, and checks out the revision associated with the task. Also
 applies patches to the source after cloning it, if the task was created
 by a patch submission.
-
-**Note**: You likely want to call manifest.load prior to
-git.get_project. If you don't, you will always use the branch specified
-in the module section even if the module is pinned at a different commit
-for your version.
 
 ``` yaml
 - command: git.get_project
@@ -745,14 +740,6 @@ Parameters:
     missing/empty will run for all
 -   `working_directory`: local path to the working directory
 
-## manifest.load
-
-`manifest.load` updates the project's expansions with the manifest, if
-it exists.
-
-``` yaml
-- command: manifest.load
-```
 
 ## perf.send
 

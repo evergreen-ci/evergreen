@@ -294,16 +294,17 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Status: cloud.StatusRunning,
 			})
 
-			b := build.Build{
-				Id:     "build",
-				Status: evergreen.BuildStarted,
-			}
-			require.NoError(t, b.Insert())
-
 			v := model.Version{
 				Id:     "version",
 				Status: evergreen.VersionStarted,
 			}
+
+			b := build.Build{
+				Id:      "build",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert())
 
 			pRef := model.ProjectRef{
 				Id:      "project_id",

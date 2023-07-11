@@ -29,21 +29,21 @@ import (
 //
 // POST /rest/v2/hosts/{host_id}
 
-func makeSpawnHostCreateRoute(settings *evergreen.Settings) gimlet.RouteHandler {
+func makeSpawnHostCreateRoute(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostPostHandler{
-		settings: settings,
+		env: env,
 	}
 }
 
 type hostPostHandler struct {
-	settings *evergreen.Settings
+	env evergreen.Environment
 
 	options *model.HostRequestOptions
 }
 
 func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
 	return &hostPostHandler{
-		settings: hph.settings,
+		env: hph.env,
 	}
 }
 
@@ -55,12 +55,12 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	if hph.options.NoExpiration {
-		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
+		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.env.Settings().Spawnhost.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking expirable host limit"))
 		}
 	}
 
-	intentHost, err := data.NewIntentHost(ctx, hph.options, user, hph.settings)
+	intentHost, err := data.NewIntentHost(ctx, hph.options, user, hph.env)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
 	}
@@ -606,7 +606,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-	if err := checkVolumeLimitExceeded(u.Username(), h.volume.Size, maxVolumeFromSettings); err != nil {
+	if err := checkVolumeLimitExceeded(u.Username(), int(h.volume.Size), maxVolumeFromSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 	}
 
@@ -771,7 +771,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("volumes can only be sized up (current size is %d GiB)", volume.Size))
 		}
 		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-		if err = checkVolumeLimitExceeded(u.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
+		if err = checkVolumeLimitExceeded(u.Username(), int(sizeIncrease), maxVolumeFromSettings); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 		}
 	}

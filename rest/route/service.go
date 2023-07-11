@@ -34,6 +34,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	// Middleware
 	requireUser := gimlet.NewRequireAuthHandler()
+	requireValidGithubPayload := NewGithubAuthMiddleware()
+	requireValidSNSPayload := NewSNSAuthMiddleware()
 	requireTask := NewTaskAuthMiddleware()
 	requireTaskHost := NewTaskHostAuthMiddleware()
 	requireHost := NewHostAuthMiddleware()
@@ -135,16 +137,15 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	// client_urls is used by the agent monitor deploy job which does not pass in user info
 	app.AddRoute("/distros/{distro_id}/client_urls").Version(2).Get().RouteHandler(makeGetDistroClientURLs(env))
 
-	// Middleware is omitted for webhook routes because they cannot be called by users and validation occurs in Parse function.
-	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
-	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeEC2SNS(env, opts.APIQueue))
-	app.AddRoute("/hooks/aws/ecs").Version(2).Post().RouteHandler(makeECSSNS(env, opts.APIQueue))
+	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
+	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireValidSNSPayload).RouteHandler(makeEC2SNS(env, opts.APIQueue))
+	app.AddRoute("/hooks/aws/ecs").Version(2).Post().Wrap(requireValidSNSPayload).RouteHandler(makeECSSNS(env, opts.APIQueue))
 
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStartProcesses(env))
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostGetProcesses(env))
 	app.AddRoute("/hosts").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHosts(opts.URL))
-	app.AddRoute("/hosts").Version(2).Post().Wrap(requireUser).RouteHandler(makeSpawnHostCreateRoute(settings))
+	app.AddRoute("/hosts").Version(2).Post().Wrap(requireUser).RouteHandler(makeSpawnHostCreateRoute(env))
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(requireUser).RouteHandler(makeChangeHostsStatuses())
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetHostByID())
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(requireUser).RouteHandler(makeHostModifyRouteManager(env))
@@ -157,7 +158,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{host_id}/status").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerStatusManager())
 	app.AddRoute("/hosts/{host_id}/logs/output").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerLogsRouteManager(false))
 	app.AddRoute("/hosts/{host_id}/logs/error").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerLogsRouteManager(true))
-	app.AddRoute("/hosts/{task_id}/create").Version(2).Post().Wrap(requireTask).RouteHandler(makeHostCreateRouteManager())
+	app.AddRoute("/hosts/{task_id}/create").Version(2).Post().Wrap(requireTask).RouteHandler(makeHostCreateRouteManager(env))
 	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().Wrap(requireTask).RouteHandler(makeHostListRouteManager())
 	app.AddRoute("/hosts/{host_id}/attach").Version(2).Post().Wrap(requireUser).RouteHandler(makeAttachVolume(env))
 	app.AddRoute("/hosts/{host_id}/detach").Version(2).Post().Wrap(requireUser).RouteHandler(makeDetachVolume(env))
@@ -184,7 +185,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/pods/{pod_id}/provisioning_script").Version(2).Get().Wrap(requirePod).RouteHandler(makePodProvisioningScript(settings))
 	app.AddRoute("/projects").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchProjectsRoute(opts.URL))
 	app.AddRoute("/projects/test_alias").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetProjectAliasResultsHandler())
-	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(requireUser, requireProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject())
+	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject())
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(requireUser, addProject, viewProjectSettings).RouteHandler(makeGetProjectByID())
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makePatchProjectByID(settings))
 	app.AddRoute("/projects/{project_id}/attach_to_repo").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeAttachProjectToRepoHandler())

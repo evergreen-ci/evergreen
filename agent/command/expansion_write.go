@@ -16,6 +16,7 @@ import (
 var (
 	expansionsToRedact = []string{
 		evergreen.GlobalGitHubTokenExpansion,
+		evergreen.GithubAppToken,
 		AWSAccessKeyId,
 		AWSSecretAccessKey,
 		AWSSessionToken,

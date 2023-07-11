@@ -13,6 +13,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
@@ -34,10 +35,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-05-02"
+	ClientVersion = "2023-06-14"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-05-18"
+	AgentVersion = "2023-07-11"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -279,7 +280,7 @@ func (c *Settings) ValidateAndDefault() error {
 		c.ClientBinariesDir = ClientDirectory
 	}
 	if c.LogPath == "" {
-		c.LogPath = LocalLoggingOverride
+		c.LogPath = localLoggingOverride
 	}
 	if c.ShutdownWaitSeconds < 0 {
 		c.ShutdownWaitSeconds = DefaultShutdownWaitSeconds
@@ -303,8 +304,9 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig retrieves the Evergreen config document. If no document is
+// GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
+// Use Settings() to get the cached settings object.
 func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
 
 // Bootstrap config gets a config from the database defined in the environment.
@@ -480,11 +482,11 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	// setup the base/default logger (generally direct to systemd
 	// or standard output)
 	switch s.LogPath {
-	case LocalLoggingOverride:
+	case localLoggingOverride:
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-	case StandardOutputLoggingOverride, "":
+	case standardOutputLoggingOverride, "":
 		sender = send.MakeNative()
 	default:
 		sender, err = send.MakeFileLogger(s.LogPath)
@@ -578,19 +580,39 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
-		return "", errors.New("Github app settings are not set")
+		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "no auth",
+			"owner":   owner,
+			"repo":    repo,
+			"ticket":  "EVG-19966",
+		})
+
+		return "", nil
 	}
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
-	itr, err := ghinstallation.NewAppsTransport(httpClient.Transport, authFields.AppId, authFields.privateKey)
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
 	if err != nil {
-		return "", errors.Wrap(err, "creating transport with JWT")
+		return "", errors.Wrap(err, "parsing private key")
 	}
+
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppId, key)
 	httpClient.Transport = itr
 	client := github.NewClient(httpClient)
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
-		return "", errors.Wrapf(err, "finding installation token for '%s/%s'", owner, repo)
+		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "error finding installation id",
+			"owner":   owner,
+			"repo":    repo,
+			"error":   err.Error(),
+			"appId":   authFields.AppId,
+			"ticket":  "EVG-19966",
+		})
+		return "", errors.Wrap(err, "finding installation id")
 	}
 	if installationId == nil {
 		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
@@ -600,6 +622,17 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationId.GetID())
 	}
 	return token.GetToken(), nil
+}
+
+// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
+// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
+// It will use the default owner/repo specified in the admin settings and error if it's not set.
+func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
+		// TODO EVG-19966: Return error here
+		return "", nil
+	}
+	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
 }
 
 func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, levelInfo send.LevelInfo, fallback send.Sender) (send.Sender, error) {
@@ -662,9 +695,13 @@ func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	return tokens, nil
 }
 
+// TODO EVG-19966: Delete this function
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	if s == nil {
 		return "", errors.New("not defined")
+	}
+	if s.ServiceFlags.GlobalGitHubTokenDisabled {
+		return "", nil
 	}
 
 	oauthStrings, err := s.GetGithubOauthStrings()

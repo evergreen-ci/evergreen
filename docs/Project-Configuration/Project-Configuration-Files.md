@@ -194,6 +194,7 @@ and what expansions it uses.
 ``` yaml
 buildvariants:
 - name: osx-108
+  cron: 0 * * * *
   display_name: OSX
   run_on:
   - localtestdistro
@@ -202,6 +203,7 @@ buildvariants:
   tasks:
   - name: compile
   - name: passing_test
+    cron: @daily // overrides build variant cron
   - name: failing_test
   - name: timeout_test
 - name: ubuntu
@@ -226,7 +228,6 @@ buildvariants:
     activate: false
     tags: ["special"]
   - name: timeout_test
-    cron: @daily
     patchable: false
   - name: git_tag_release
     git_tag_only: true
@@ -274,8 +275,8 @@ Fields:
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
-    Month \| DayOfWeekOptional) when (in UTC) a variant should be activated
-    (Cannot be combined with batchtime). This also accepts descriptors
+    Month \| DayOfWeekOptional) when (in UTC) a task or variant should be activated
+    (cannot be combined with batchtime). This also accepts descriptors
     such as `@daily` (reference
     [cron](https://godoc.org/github.com/robfig/cron) for more example),
     but does not accept intervals. (i.e.
@@ -515,21 +516,6 @@ pre:
   - ...
 ```
 
-### Early Host Termination
-
-You can specify commands to be run in case that the host needs to be
-unexpectedly terminated. Currently, these commands are only called when
-AWS informs evergreen that a specific spot instance will be reclaimed.
-Commands specified here are not guaranteed to be run, and should
-complete well under 2 minutes.
-
-``` yaml
-early_termination:
-- command: shell.exec
-  params:
-    script: "echo 'spot instance is being taken away'"
-```
-
 ### Limiting When a Task Will Run
 
 To limit the conditions when a task will run, the following settings can be
@@ -585,6 +571,9 @@ level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
 including shell scripts.
 
+Expansions cannot be used recursively. In other words, you can't define an
+expansion whose value uses another expansion.
+
 ``` yaml
 command: s3.get
    params:
@@ -620,6 +609,18 @@ replaced with its default value. If there is no default value, the empty
 string will be used. If the default value is prepended with an asterisk
 and that expansion also does not exist, the empty string will also be
 used.
+
+
+Expansions are also case-sensitive.
+
+``` yaml
+command: shell.exec
+   params:
+      working_dir: src
+     script: |
+       echo ${HelloWorld}
+```
+
 
 #### Usage
 
@@ -685,6 +686,16 @@ Every task has some expansions available by default:
     task
 -   `${requester}` is what triggered the task: patch, `github_pr`,
     `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
+-   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
+    OTel collector. Tasks can send traces to this endpoint.
+-   `${otel_trace_id}` is the OTel trace ID this task is running under.
+    Include the trace ID in your task's spans so they'll be hooked
+    in under the task's trace.
+    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
+-   `${otel_parent_id}` is the OTel span ID of the current command.
+    Include this ID in your test's root spans so it'll be hooked
+    in under the command's trace.
+    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
 
 The following expansions are available if a task was triggered by an
 inter-project dependency:
@@ -874,7 +885,7 @@ This is set to true at the top level if you'd like to enable the OOM Tracker for
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](Project-Commands.md#generate-tasks)
+[generate.tasks](Project-Commands.md#generatetasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
@@ -1340,7 +1351,7 @@ parameters are available:
     not be automatically pulled in to the version.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
-    [`generate.tasks`](Project-Commands.md#generate-tasks) command), then generated tasks will not be included
+    [`generate.tasks`](Project-Commands.md#generatetasks) command), then generated tasks will not be included
     as dependencies.
 
 So, for example:
@@ -1376,6 +1387,20 @@ supported as a space-separated list. For example,
   depends_on:
   - name: test
     variant: "A B C D"
+```
+
+[Task/variant tags](#task-and-variant-tags) 
+can also be used to define dependencies.
+
+``` yaml
+- name: push
+  depends_on:
+  - name: test
+    variant: ".favorite"
+
+- name: push
+  depends_on:
+  - "!.favorite !.other" ## runs all tasks that don't match these tags
 ```
 
 ### Ignoring Changes to Certain Files
@@ -1419,8 +1444,6 @@ override this behavior at the project or command level by log type
     available on the task page. This option is not available to system
     logs for security reasons. The `log_directory` parameter may be
     specified to override the default storage directory for log files.
--   `logkeeper` - Output is sent to a Logkeeper instance. Links to the
-    logs will be available on the task page.
 -   `splunk` - Output is sent to Splunk. No links will be provided on
     the task page, but the logs can be searched using
     `metadata.context.task_id=<task_id>` as a Splunk query. Choosing

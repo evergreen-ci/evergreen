@@ -73,5 +73,6 @@ func (s *CommitQueueSuite) TestPreventMergeForItem() {
 
 	mergeTask, err = task.FindOneId("t1")
 	s.NoError(err)
-	s.Equal(int64(-1), mergeTask.Priority)
+	s.Equal(evergreen.DisabledTaskPriority, mergeTask.Priority)
+	s.False(mergeTask.Activated)
 }

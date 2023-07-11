@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -92,6 +93,20 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	}).Insert())
 
 	s.NoError((&model.ProjectRef{
+		Owner:            "evergreen-ci",
+		Repo:             "commit-queue-sandbox",
+		Id:               "commit-queue-sandbox",
+		Enabled:          true,
+		PatchingDisabled: utility.FalsePtr(),
+		Branch:           "main",
+		RemotePath:       "evergreen.yml",
+		PRTestingEnabled: utility.TruePtr(),
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+	}).Insert())
+
+	s.NoError((&model.ProjectRef{
 		Id:         "childProj",
 		Identifier: "childProj",
 		Owner:      "evergreen-ci",
@@ -126,6 +141,12 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Alias:     "doesntexist",
 		Variant:   "fake",
 		Task:      "fake",
+	}).Upsert())
+	s.NoError((&model.ProjectAlias{
+		ProjectID: "commit-queue-sandbox",
+		Alias:     evergreen.CommitQueueAlias,
+		Variant:   "^ubuntu2004$",
+		Task:      "^bynntask$",
 	}).Upsert())
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert())
@@ -907,6 +928,65 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	s.Equal([]string{"t1", "t2", "t3", "t4"}, currentPatchDoc.Tasks)
 }
 
+func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
+	s.NoError(evergreen.UpdateConfig(testutil.TestConfig()))
+	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	orgName := "evergreen-ci"
+	repoName := "commit-queue-sandbox"
+	headSHA := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+	org := github.Organization{
+		Login: &orgName,
+	}
+	repo := github.Repository{
+		Name: &repoName,
+	}
+	mg := github.MergeGroup{
+		HeadSHA: &headSHA,
+		HeadRef: &headRef,
+	}
+	mge := github.MergeGroupEvent{
+		MergeGroup: &mg,
+		Org:        &org,
+		Repo:       &repo,
+	}
+	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
+
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
+
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
+
+	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	s.NoError(err)
+	s.Require().NotNil(dbPatch)
+	s.True(patchDoc.Activated, "patch should be finalized")
+
+	variants := []string{"ubuntu2004"}
+	tasks := []string{"bynntask"}
+	s.verifyPatchDoc(dbPatch, j.PatchID, headSHA, false, variants, tasks)
+	s.projectExists(j.PatchID.Hex())
+
+	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
+	s.verifyParserProjectDoc(dbPatch, 4)
+
+	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, headSHA, 1)
+
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.Len(out, 2)
+	for _, subscription := range out {
+		s.Equal("github_check", subscription.Subscriber.Type)
+	}
+}
+
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
@@ -958,13 +1038,15 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(dbPatch)
 	s.True(patchDoc.Activated, "patch should be finalized")
 
-	s.verifyPatchDoc(dbPatch, j.PatchID)
+	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
+	tasks := []string{"dist", "dist-test"}
+	s.verifyPatchDoc(dbPatch, j.PatchID, s.hash, true, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
 
 	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
-	s.verifyParserProjectDoc(dbPatch)
+	s.verifyParserProjectDoc(dbPatch, 8)
 
-	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester)
+	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester, s.user, s.hash, 4)
 
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
@@ -1023,11 +1105,13 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.Require().NotNil(dbPatch)
 	s.False(patchDoc.Activated, "patch should not be finalized")
 
-	s.verifyPatchDoc(dbPatch, j.PatchID)
+	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
+	tasks := []string{"dist", "dist-test"}
+	s.verifyPatchDoc(dbPatch, j.PatchID, s.hash, true, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
 
 	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod, "unfinalized patch should have project storage method set")
-	s.verifyParserProjectDoc(dbPatch)
+	s.verifyParserProjectDoc(dbPatch, 8)
 
 	dbVersion, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
@@ -1063,41 +1147,52 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
-func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID mgobson.ObjectId) {
+func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
+	u, err := findEvergreenUserForGithubMergeGroup(123)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(evergreen.GithubMergeUser, u.Id)
+}
+
+func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID mgobson.ObjectId, hash string, verifyModules bool, variants []string, tasks []string) {
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
 	s.Equal(expectedPatchID, patchDoc.Id)
-	s.NotEmpty(patchDoc.Patches)
+	if verifyModules {
+		s.NotEmpty(patchDoc.Patches)
+	}
 	s.Empty(patchDoc.PatchedParserProject)
 	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)
-	s.Equal(s.hash, patchDoc.Githash)
+	s.Equal(hash, patchDoc.Githash)
 
-	s.Len(patchDoc.Patches, 1)
-	s.Empty(patchDoc.Patches[0].ModuleName)
-	s.Equal(s.hash, patchDoc.Patches[0].Githash)
-	s.Empty(patchDoc.Patches[0].PatchSet.Patch)
-	s.NotEmpty(patchDoc.Patches[0].PatchSet.PatchFileId)
-	s.Len(patchDoc.Patches[0].PatchSet.Summary, 2)
+	if verifyModules {
+		s.Len(patchDoc.Patches, 1)
+		s.Empty(patchDoc.Patches[0].ModuleName)
+		s.Equal(hash, patchDoc.Patches[0].Githash)
+		s.Empty(patchDoc.Patches[0].PatchSet.Patch)
+		s.NotEmpty(patchDoc.Patches[0].PatchSet.PatchFileId)
+		s.Len(patchDoc.Patches[0].PatchSet.Summary, 2)
+	}
 
-	s.Len(patchDoc.BuildVariants, 4)
-	s.Contains(patchDoc.BuildVariants, "ubuntu1604")
-	s.Contains(patchDoc.BuildVariants, "ubuntu1604-arm64")
-	s.Contains(patchDoc.BuildVariants, "ubuntu1604-debug")
-	s.Contains(patchDoc.BuildVariants, "race-detector")
-	s.Len(patchDoc.Tasks, 2)
-	s.Contains(patchDoc.Tasks, "dist")
-	s.Contains(patchDoc.Tasks, "dist-test")
+	s.Len(patchDoc.BuildVariants, len(variants))
+	for _, v := range variants {
+		s.Contains(patchDoc.BuildVariants, v)
+	}
+	s.Len(patchDoc.Tasks, len(tasks))
+	for _, t := range tasks {
+		s.Contains(patchDoc.Tasks, t)
+	}
 	s.NotZero(patchDoc.CreateTime)
 }
 
-func (s *PatchIntentUnitsSuite) verifyParserProjectDoc(p *patch.Patch) {
+func (s *PatchIntentUnitsSuite) verifyParserProjectDoc(p *patch.Patch, variants int) {
 	_, dbParserProject, err := model.FindAndTranslateProjectForPatch(s.ctx, s.env.Settings(), p)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbParserProject)
-	s.Len(dbParserProject.BuildVariants, 8)
+	s.Len(dbParserProject.BuildVariants, variants)
 }
 
 func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
@@ -1106,7 +1201,7 @@ func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
 	s.NotNil(pp)
 }
 
-func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester string) {
+func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester, expectedUser, hash string, builds int) {
 	versionDoc, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Require().NotNil(versionDoc)
@@ -1114,31 +1209,19 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 	s.NotZero(versionDoc.CreateTime)
 	s.Zero(versionDoc.StartTime)
 	s.Zero(versionDoc.FinishTime)
-	s.Equal(s.hash, versionDoc.Revision)
+	s.Equal(hash, versionDoc.Revision)
 	s.Equal(patchDoc.Description, versionDoc.Message)
-	s.Equal(s.user, versionDoc.Author)
-	s.Len(versionDoc.BuildIds, 4)
+	s.Equal(expectedUser, versionDoc.Author)
+	s.Len(versionDoc.BuildIds, builds)
 
-	s.Require().Len(versionDoc.BuildVariants, 4)
-	s.True(versionDoc.BuildVariants[0].Activated)
-	s.Zero(versionDoc.BuildVariants[0].ActivateAt)
-	s.NotEmpty(versionDoc.BuildVariants[0].BuildId)
-	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[0].BuildId)
+	s.Require().Len(versionDoc.BuildVariants, builds)
 
-	s.True(versionDoc.BuildVariants[1].Activated)
-	s.Zero(versionDoc.BuildVariants[1].ActivateAt)
-	s.NotEmpty(versionDoc.BuildVariants[1].BuildId)
-	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[1].BuildId)
-
-	s.True(versionDoc.BuildVariants[2].Activated)
-	s.Zero(versionDoc.BuildVariants[2].ActivateAt)
-	s.NotEmpty(versionDoc.BuildVariants[2].BuildId)
-	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[2].BuildId)
-
-	s.True(versionDoc.BuildVariants[3].Activated)
-	s.Zero(versionDoc.BuildVariants[3].ActivateAt)
-	s.NotEmpty(versionDoc.BuildVariants[3].BuildId)
-	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[3].BuildId)
+	for i := 0; i < builds; i++ {
+		s.True(versionDoc.BuildVariants[i].Activated)
+		s.Zero(versionDoc.BuildVariants[i].ActivateAt)
+		s.NotEmpty(versionDoc.BuildVariants[i].BuildId)
+		s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[i].BuildId)
+	}
 
 	s.Equal(expectedRequester, versionDoc.Requester)
 	s.Empty(versionDoc.Errors)

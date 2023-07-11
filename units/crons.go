@@ -3,12 +3,10 @@ package units
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -27,7 +25,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TSFormat = "2006-01-02.15-04-05"
+const (
+	TSFormat = "2006-01-02.15-04-05"
+
+	// CreateHostQueueGroup is the queue group for the provisioning-create-host job.
+	CreateHostQueueGroup            = "service.host.create"
+	commitQueueQueueGroup           = "service.commitqueue"
+	eventNotifierQueueGroup         = "service.event.notifier"
+	podAllocationQueueGroup         = "service.pod.allocate"
+	podDefinitionCreationQueueGroup = "service.pod.definition.create"
+	podCreationQueueGroup           = "service.pod.create"
+)
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
@@ -760,71 +768,13 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			"message": "uninitialized hosts",
 			"number":  len(hosts),
 			"runner":  "hostinit",
+			"source":  "PopulateHostCreationJobs",
 		})
 
-		runningHosts, err := host.Find(db.Query(host.IsLive()))
-		if err != nil {
-			return errors.Wrap(err, "getting live hosts")
-		}
-		runningDistroCount := make(map[string]int)
-		for _, h := range runningHosts {
-			runningDistroCount[h.Distro.Id] += 1
-		}
-
-		ts := utility.RoundPartOfHour(part).Format(TSFormat)
-		submitted := 0
-
-		// shuffle hosts because hosts will always come off the index in insertion order
-		// and we want all of them to get an equal chance at being created on this pass
-		// (Fisher-Yates shuffle)
-		rand.Seed(time.Now().UnixNano())
-		for i := len(hosts) - 1; i > 0; i-- {
-			j := rand.Intn(i + 1)
-			hosts[i], hosts[j] = hosts[j], hosts[i]
-		}
-
-		// refresh HostInit
-		if err := env.Settings().HostInit.Get(env); err != nil {
-			return errors.Wrap(err, "getting host init config")
-		}
-		throttleCount := 0
 		catcher := grip.NewBasicCatcher()
+		ts := utility.RoundPartOfHour(part).Format(TSFormat)
 		for _, h := range hosts {
-			if !h.IsSubjectToHostCreationThrottle() {
-				// pass:
-				//    always start spawn hosts asap
-
-			} else {
-				num := runningDistroCount[h.Distro.Id]
-				if num == 0 || num < len(runningHosts)/100 {
-					// if there aren't many of these hosts up, start them even
-					// if `submitted` exceeds the throttle, but increment each
-					// time so we only create hosts up to the threshold
-					runningDistroCount[h.Distro.Id] += 1
-				} else {
-					if submitted > env.Settings().HostInit.HostThrottle {
-						// throttle hosts, so that we're starting very
-						// few hosts on every pass. Hostinit runs very
-						// frequently, lets not start too many all at
-						// once.
-						throttleCount++
-						continue
-					}
-				}
-				// only increment for task hosts, since otherwise
-				// spawn hosts and hosts spawned by tasks could
-				// starve task hosts
-				submitted++
-			}
-
 			catcher.Wrapf(queue.Put(ctx, NewHostCreateJob(env, h, ts, 0, false)), "enqueueing host creation job for host '%s'", h.Id)
-		}
-
-		if throttleCount > 0 {
-			grip.Info(message.Fields{
-				"message":           "host creation rate was throttled",
-				"hosts_not_created": throttleCount,
-			})
 		}
 
 		return catcher.Resolve()
@@ -1402,22 +1352,6 @@ func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOpe
 // resources.
 func PopulatePodResourceCleanupJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
-
-		// TODO (EVG-17603): remove this flag once the necessary admin settings
-		// are populated to run the cleanup jobs.
-		if flags.ContainerConfigurationsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "pod resource cleanup disabled",
-				"impact":  "container tasks will not be allocated any pods to run them",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing pod definition cleanup job")
 		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewContainerSecretCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing container secret cleanup job")

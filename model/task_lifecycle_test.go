@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -986,8 +985,8 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		v := &Version{
 			Id: "testVersion",
 		}
-		previousTask := &task.Task{
-			Id:                  "one",
+		previouserTask := &task.Task{
+			Id:                  "zero",
 			DisplayName:         displayName,
 			RevisionOrderNumber: 1,
 			Priority:            1,
@@ -999,11 +998,56 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
+		activeDependentTask := &task.Task{
+			Id:                  "dependentOnZero",
+			DisplayName:         "something else",
+			RevisionOrderNumber: 1,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b.Id,
+			Version:             v.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			DependsOn: []task.Dependency{
+				{TaskId: "zero"},
+			},
+		}
+		previousTask := &task.Task{
+			Id:                  "one",
+			DisplayName:         displayName,
+			RevisionOrderNumber: 2,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b.Id,
+			Version:             v.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+		inactiveDependentTask := &task.Task{
+			Id:                  "dependentOnOne",
+			DisplayName:         "something else",
+			RevisionOrderNumber: 2,
+			Priority:            1,
+			Activated:           false,
+			ActivatedBy:         "user",
+			BuildId:             b.Id,
+			Version:             v.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			DependsOn: []task.Dependency{
+				{TaskId: "one"},
+			},
+		}
 		currentTask := &task.Task{
 			Id:                  "two",
 			DisplayName:         displayName,
-			RevisionOrderNumber: 2,
-			Status:              evergreen.TaskFailed,
+			RevisionOrderNumber: 3,
+			Status:              evergreen.TaskSucceeded,
 			Priority:            1,
 			Activated:           true,
 			BuildId:             b.Id,
@@ -1013,14 +1057,23 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		}
 		So(b.Insert(), ShouldBeNil)
 		So(v.Insert(), ShouldBeNil)
+		So(previouserTask.Insert(), ShouldBeNil)
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
-		Convey("activating a previous task should set the previous task's active field to true", func() {
+		So(activeDependentTask.Insert(), ShouldBeNil)
+		So(inactiveDependentTask.Insert(), ShouldBeNil)
+		Convey("should deactivate previous task", func() {
 			So(DeactivatePreviousTasks(currentTask, userName), ShouldBeNil)
 			var err error
+			// Deactivates this task even though it has a dependent task, because it's inactive.
 			previousTask, err = task.FindOne(db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(previousTask.Activated, ShouldBeFalse)
+
+			// Shouldn't deactivate this task because it has an active dependent task.
+			previouserTask, err = task.FindOne(db.Query(task.ById(previouserTask.Id)))
+			So(err, ShouldBeNil)
+			So(previouserTask.Activated, ShouldBeTrue)
 		})
 	})
 	Convey("With a display task", t, func() {
@@ -1179,10 +1232,15 @@ func TestDeactivatePreviousTask(t *testing.T) {
 
 func TestUpdateBuildStatusForTask(t *testing.T) {
 	type testCase struct {
-		tasks                 []task.Task
+		tasks []task.Task
+
 		expectedBuildStatus   string
 		expectedVersionStatus string
 		expectedPatchStatus   string
+
+		expectedBuildActivation   bool
+		expectedVersionActivation bool
+		expectedPatchActivation   bool
 	}
 
 	for name, test := range map[string]testCase{
@@ -1191,47 +1249,84 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 				{Status: evergreen.TaskUndispatched, Activated: true},
 				{Status: evergreen.TaskUndispatched, Activated: true},
 			},
-			expectedBuildStatus:   evergreen.BuildCreated,
-			expectedVersionStatus: evergreen.VersionCreated,
-			expectedPatchStatus:   evergreen.PatchCreated,
+			expectedBuildStatus:       evergreen.BuildCreated,
+			expectedVersionStatus:     evergreen.VersionCreated,
+			expectedPatchStatus:       evergreen.PatchCreated,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
+		},
+		"deactivated": {
+			tasks: []task.Task{
+				{Status: evergreen.TaskUndispatched, Activated: false},
+				{Status: evergreen.TaskUndispatched, Activated: false},
+			},
+			expectedBuildStatus:       evergreen.BuildCreated,
+			expectedVersionStatus:     evergreen.VersionCreated,
+			expectedPatchStatus:       evergreen.PatchCreated,
+			expectedBuildActivation:   false,
+			expectedVersionActivation: false,
+			expectedPatchActivation:   true, // patch activation is a bit different, since it indicates if the patch has been finalized.
 		},
 		"started": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskUndispatched, Activated: true},
 				{Status: evergreen.TaskStarted, Activated: true},
 			},
-			expectedBuildStatus:   evergreen.BuildStarted,
-			expectedVersionStatus: evergreen.VersionStarted,
-			expectedPatchStatus:   evergreen.PatchStarted,
+			expectedBuildStatus:       evergreen.BuildStarted,
+			expectedVersionStatus:     evergreen.VersionStarted,
+			expectedPatchStatus:       evergreen.PatchStarted,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 		"succeeded": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskSucceeded, Activated: true},
 				{Status: evergreen.TaskSucceeded, Activated: true},
 			},
-			expectedBuildStatus:   evergreen.BuildSucceeded,
-			expectedVersionStatus: evergreen.VersionSucceeded,
-			expectedPatchStatus:   evergreen.PatchSucceeded,
+			expectedBuildStatus:       evergreen.BuildSucceeded,
+			expectedVersionStatus:     evergreen.VersionSucceeded,
+			expectedPatchStatus:       evergreen.PatchSucceeded,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 		"some unactivated tasks": {
 			tasks: []task.Task{
 				{Status: evergreen.TaskSucceeded, Activated: true},
 				{Status: evergreen.TaskUndispatched, Activated: false},
 			},
-			expectedBuildStatus:   evergreen.BuildSucceeded,
-			expectedVersionStatus: evergreen.VersionSucceeded,
-			expectedPatchStatus:   evergreen.PatchSucceeded,
+			expectedBuildStatus:       evergreen.BuildSucceeded,
+			expectedVersionStatus:     evergreen.VersionSucceeded,
+			expectedPatchStatus:       evergreen.PatchSucceeded,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 		"all blocked tasks": {
 			tasks: []task.Task{
-				{Status: evergreen.TaskUndispatched,
-					DependsOn: []task.Dependency{{Unattainable: true}}},
-				{Status: evergreen.TaskUndispatched,
-					DependsOn: []task.Dependency{{Unattainable: true}}},
+				{
+					Status:    evergreen.TaskUndispatched,
+					Activated: true,
+					DependsOn: []task.Dependency{
+						{TaskId: "testDepends1", Status: "*", Unattainable: true},
+					},
+				},
+				{
+					Status:    evergreen.TaskUndispatched,
+					Activated: true,
+					DependsOn: []task.Dependency{
+						{TaskId: "testDepends1", Status: "*", Unattainable: true},
+					},
+				},
 			},
-			expectedBuildStatus:   evergreen.BuildCreated,
-			expectedVersionStatus: evergreen.VersionCreated,
-			expectedPatchStatus:   evergreen.PatchCreated,
+			expectedBuildStatus:       evergreen.BuildCreated,
+			expectedVersionStatus:     evergreen.VersionCreated,
+			expectedPatchStatus:       evergreen.PatchCreated,
+			expectedBuildActivation:   true,
+			expectedVersionActivation: true,
+			expectedPatchActivation:   true,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1247,10 +1342,12 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 				Id:        b.Version,
 				Status:    evergreen.VersionCreated,
 				Requester: evergreen.PatchVersionRequester,
+				Activated: utility.TruePtr(),
 			}
 			p := &patch.Patch{
-				Id:     patch.NewId(v.Id),
-				Status: evergreen.PatchCreated,
+				Id:        patch.NewId(v.Id),
+				Status:    evergreen.PatchCreated,
+				Activated: true,
 			}
 			require.NoError(t, b.Insert())
 			require.NoError(t, v.Insert())
@@ -1262,21 +1359,28 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 				tempTask.Version = v.Id
 				require.NoError(t, tempTask.Insert())
 			}
+			// Verify tasks are inserted and found correctly
+			tasks, err := task.FindWithFields(task.ByBuildId(b.Id))
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 2)
 
 			assert.NoError(t, UpdateBuildAndVersionStatusForTask(&task.Task{Version: v.Id, BuildId: b.Id}))
 
-			var err error
+			//var err error
 			b, err = build.FindOneId(b.Id)
 			require.NoError(t, err)
-			assert.Equal(t, b.Status, test.expectedBuildStatus)
+			assert.Equal(t, test.expectedBuildStatus, b.Status)
+			assert.Equal(t, test.expectedBuildActivation, b.Activated)
 
 			v, err = VersionFindOneId(v.Id)
 			require.NoError(t, err)
-			assert.Equal(t, v.Status, test.expectedVersionStatus)
+			assert.Equal(t, test.expectedVersionStatus, v.Status)
+			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(v.Activated))
 
 			p, err = patch.FindOneId(p.Id.Hex())
 			require.NoError(t, err)
-			assert.Equal(t, p.Status, test.expectedPatchStatus)
+			assert.Equal(t, test.expectedPatchStatus, p.Status)
+			assert.Equal(t, test.expectedPatchActivation, p.Activated)
 		})
 	}
 
@@ -1618,21 +1722,36 @@ func TestGetVersionStatus(t *testing.T) {
 		{Status: evergreen.BuildCreated},
 		{Status: evergreen.BuildCreated},
 	}
-	assert.Equal(t, evergreen.VersionCreated, getVersionStatus(versionBuilds))
+	activated, status := getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionCreated, status)
+	assert.False(t, activated) // false because no task is activated
+
+	// Any activated build implies that the version is activated
+	versionBuilds = []build.Build{
+		{Status: evergreen.BuildCreated, Activated: true},
+		{Status: evergreen.BuildCreated},
+	}
+	activated, status = getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionCreated, status)
+	assert.True(t, activated)
 
 	// any started builds will start the version
 	versionBuilds = []build.Build{
-		{Status: evergreen.BuildCreated, Activated: true},
-		{Status: evergreen.BuildStarted},
+		{Status: evergreen.BuildCreated},
+		{Status: evergreen.BuildStarted, Activated: true},
 	}
-	assert.Equal(t, evergreen.VersionStarted, getVersionStatus(versionBuilds))
+	activated, status = getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionStarted, status)
+	assert.True(t, activated)
 
 	// unactivated builds don't prevent the version from completing
 	versionBuilds = []build.Build{
 		{Status: evergreen.BuildCreated, Activated: false},
-		{Status: evergreen.BuildFailed},
+		{Status: evergreen.BuildFailed, Activated: true},
 	}
-	assert.Equal(t, evergreen.VersionFailed, getVersionStatus(versionBuilds))
+	activated, status = getVersionActivationAndStatus(versionBuilds)
+	assert.Equal(t, evergreen.VersionFailed, status)
+	assert.True(t, activated)
 }
 
 func TestUpdateVersionGithubStatus(t *testing.T) {
@@ -1727,11 +1846,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			detail = &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,
-				Logs: &apimodels.TaskLogs{
-					AgentLogURLs:  []apimodels.LogInfo{{Command: "foo1", URL: "agent"}},
-					TaskLogURLs:   []apimodels.LogInfo{{Command: "foo2", URL: "task"}},
-					SystemLogURLs: []apimodels.LogInfo{{Command: "foo3", URL: "system"}},
-				},
 			}
 			pRef := ProjectRef{Id: "p1"}
 			pConfig := ProjectConfig{Id: "p1"}
@@ -1746,7 +1860,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskHost.Insert(), ShouldBeNil)
 		}
 
-		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
+		Convey("task should not fail if there are no failed test", func() {
 			reset()
 			testTask.ResultsService = testresult.TestResultsServiceLocal
 			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
@@ -1762,8 +1876,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
-			So(reflect.DeepEqual(taskData.Logs, detail.Logs), ShouldBeTrue)
-
 		})
 
 		Convey("task should fail if there are failing tests", func() {
@@ -5953,18 +6065,34 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 
 func TestUpdateBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection, event.EventCollection))
+	require := require.New(t)
+	require.NoError(db.ClearCollections(VersionCollection, task.Collection, build.Collection, event.EventCollection))
 
-	b := build.Build{Id: "build0"}
+	v := Version{Id: "version0"}
+	require.NoError(v.Insert())
+	b0 := build.Build{
+		Id:      "build0",
+		Version: v.Id,
+		Status:  evergreen.BuildStarted,
+	}
+	require.NoError(b0.Insert())
+	b1 := build.Build{
+		Id:      "build1",
+		Version: v.Id,
+		Status:  evergreen.BuildCreated,
+	}
+	require.NoError(b1.Insert())
 	tasks := []task.Task{
 		{
 			Id:      "t0",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b0.Id,
 			Status:  evergreen.TaskFailed,
 		},
 		{
 			Id:      "t1",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b0.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId: "t0",
@@ -5979,7 +6107,8 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		},
 		{
 			Id:          "t2",
-			BuildId:     b.Id,
+			Version:     v.Id,
+			BuildId:     b0.Id,
 			Status:      evergreen.TaskUndispatched,
 			DisplayOnly: true,
 			DependsOn: []task.Dependency{
@@ -5992,7 +6121,8 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t3",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b0.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId:       "t2",
@@ -6004,23 +6134,27 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t4",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b1.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId: "t3",
 					Status: evergreen.TaskSucceeded,
 				},
 			},
+			Status: evergreen.TaskUndispatched,
 		},
 		{
 			Id:      "t5",
-			BuildId: b.Id,
+			Version: v.Id,
+			BuildId: b1.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId: "t0",
 					Status: evergreen.TaskSucceeded,
 				},
 			},
+			Status: evergreen.TaskUndispatched,
 		},
 	}
 	for _, t := range tasks {
@@ -6034,11 +6168,10 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 				Status: evergreen.TaskSucceeded,
 			},
 		},
-		BuildId:     b.Id,
+		BuildId:     b0.Id,
 		DisplayTask: &tasks[2],
 	}
 	assert.NoError(execTask.Insert())
-	assert.NoError(b.Insert())
 
 	assert.NoError(UpdateBlockedDependencies(&tasks[0]))
 
@@ -6070,22 +6203,41 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.NoError(err)
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
 
-	// one event inserted for every updated task
+	dbBuild0, err := build.FindOneId(b0.Id)
+	require.NoError(err)
+	require.NotZero(dbBuild0)
+	assert.Equal(evergreen.BuildFailed, dbBuild0.Status, "build status with failed and blocked tasks should be updated")
+
+	dbBuild1, err := build.FindOneId(b1.Id)
+	require.NoError(err)
+	require.NotZero(dbBuild1)
+	assert.Equal(evergreen.BuildCreated, dbBuild1.Status, "build status should not need to be updated")
+
+	dbVersion, err := VersionFindOneId(v.Id)
+	require.NoError(err)
+	require.NotZero(dbVersion)
+	assert.Equal(evergreen.VersionFailed, dbVersion.Status, "version status with all finished or blocked tasks should be updated")
+
+	// one event inserted for every updated task, one for the updated build, and
+	// one for the updated version.
 	events, err := event.Find(db.Q{})
 	assert.NoError(err)
-	assert.Len(events, 4)
+	assert.Len(events, 6)
 
 }
 
 func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection))
-	b := build.Build{Id: "build0"}
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+	v := Version{Id: "v"}
+	b := build.Build{Id: "build0", Version: v.Id}
+	b2 := build.Build{Id: "build2", Version: v.Id, AllTasksBlocked: true}
 	tasks := []task.Task{
-		{Id: "t0", BuildId: b.Id},
-		{Id: "t1", BuildId: b.Id, Status: evergreen.TaskFailed},
+		{Id: "t0", BuildId: b.Id, Version: v.Id},
+		{Id: "t1", BuildId: b.Id, Version: v.Id, Status: evergreen.TaskFailed},
 		{
 			Id:      "t2",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6101,6 +6253,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t3",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6112,6 +6265,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t4",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6123,6 +6277,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 		},
 		{
 			Id:      "t5",
+			Version: v.Id,
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
@@ -6132,12 +6287,33 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 			},
 			Status: evergreen.TaskUndispatched,
 		},
+		{
+			Id:      "t6",
+			Version: v.Id,
+			BuildId: b2.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t0",
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t7",
+			Version: v.Id,
+			BuildId: b2.Id,
+			Status:  evergreen.TaskDispatched,
+		},
 	}
 
 	for _, t := range tasks {
 		assert.NoError(t.Insert())
 	}
+
+	assert.NoError(v.Insert())
 	assert.NoError(b.Insert())
+	assert.NoError(b2.Insert())
 
 	assert.NoError(UpdateUnblockedDependencies(&tasks[0]))
 
@@ -6159,6 +6335,14 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	dbTask5, err := task.FindOneId(tasks[5].Id)
 	assert.NoError(err)
 	assert.True(dbTask5.DependsOn[0].Unattainable)
+
+	// Unblocking a dependent task should unblock its build
+	dbTask6, err := task.FindOneId(tasks[6].Id)
+	assert.NoError(err)
+	assert.False(dbTask6.DependsOn[0].Unattainable)
+	dbBuild2, err := build.FindOneId(b2.Id)
+	assert.NoError(err)
+	assert.False(dbBuild2.AllTasksBlocked)
 }
 
 type TaskConnectorAbortTaskSuite struct {

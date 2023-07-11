@@ -389,10 +389,10 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Container configurations</td>
+												<td>Public access for legacy UI</td>
 												<td colspan="2">
 													<md-radio-group
-															data-ng-model="Settings.service_flags.container_configurations_disabled"
+															data-ng-model="Settings.service_flags.legacy_ui_public_access_disabled"
 															layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
@@ -400,11 +400,9 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Public access for legacy UI</td>
+												<td>Global GitHub Token</td>
 												<td colspan="2">
-													<md-radio-group
-															data-ng-model="Settings.service_flags.legacy_ui_public_access_disabled"
-															layout="row">
+													<md-radio-group data-ng-model="Settings.service_flags.global_github_token_disabled" layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -1161,6 +1159,14 @@ Admin Settings
 									<md-input-container class="control" style="width:45%">
 										<label>Github App Id</label>
 										<input type="number" ng-model="Settings.auth.github.app_id">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Default Owner</label>
+										<input type="text" ng-model="Settings.auth.github.default_owner">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Default Repo</label>
+										<input type="text" ng-model="Settings.auth.github.default_repo">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

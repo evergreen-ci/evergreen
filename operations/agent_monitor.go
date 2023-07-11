@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -55,6 +55,7 @@ type monitor struct {
 	cloudProvider   string
 	distroID        string
 	shellPath       string
+	logOutput       agent.LogOutputType
 	logPrefix       string
 	jasperPort      int
 	port            int
@@ -88,6 +89,7 @@ func agentMonitor() cli.Command {
 		clientPathFlagName      = "client_path"
 		distroIDFlagName        = "distro"
 		shellPathFlagName       = "shell_path"
+		logOutputFlagName       = "log_output"
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
 		portFlagName            = "port"
@@ -120,9 +122,14 @@ func agentMonitor() cli.Command {
 				Usage: "the path to the shell for starting the agent",
 			},
 			cli.StringFlag{
+				Name:  logOutputFlagName,
+				Value: string(agent.LogOutputFile),
+				Usage: "location for the agent monitor's log output (file, stdout)",
+			},
+			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: monitorLoggerName,
-				Usage: "the prefix for the monitor's log name",
+				Usage: "the prefix for the monitor's log output",
 			},
 			cli.IntFlag{
 				Name:  jasperPortFlagName,
@@ -160,6 +167,7 @@ func agentMonitor() cli.Command {
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
+				logOutput:       agent.LogOutputType(c.String(logOutputFlagName)),
 				logPrefix:       c.String(logPrefixFlagName),
 			}
 
@@ -219,6 +227,7 @@ func getAgentArgs(c *cli.Context, args []string) ([]string, error) {
 // credentials are available, it logs to splunk. If the logging is set to log
 // locally, it will log to standard output; otherwise it logs to a file.
 func setupLogging(m *monitor) error {
+	senderOutput := m.logOutput
 	senderName := m.logPrefix
 	senders := []send.Sender{}
 
@@ -234,13 +243,14 @@ func setupLogging(m *monitor) error {
 		senders = append(senders, sender)
 	}
 
-	if senderName == evergreen.LocalLoggingOverride || senderName == evergreen.StandardOutputLoggingOverride {
+	switch senderOutput {
+	case agent.LogOutputStdout:
 		sender, err := send.NewNativeLogger(senderName, send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return errors.Wrap(err, "creating native console logger")
 		}
 		senders = append(senders, sender)
-	} else {
+	default:
 		logDir := filepath.Dir(senderName)
 		if err := os.MkdirAll(logDir, 0777); err != nil {
 			return errors.Wrapf(err, "creating log directory '%s'", logDir)
@@ -420,12 +430,6 @@ func (m *monitor) runAgent(ctx context.Context, retry utility.RetryOptions) erro
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := utility.Retry(ctx, func() (bool, error) {
-			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.cloudProvider) {
-				if agentutil.SpotHostWillTerminateSoon() {
-					return true, errors.New("spot host terminating soon, not starting a new agent")
-				}
-			}
-
 			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
 			if err != nil {
 				return true, errors.Wrap(err, "retrieving client URLs")

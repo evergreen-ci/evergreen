@@ -262,7 +262,6 @@ type projectIDPatchHandler struct {
 	apiNewProjectRef *model.APIProjectRef
 
 	settings *evergreen.Settings
-	vault    cocoa.Vault
 }
 
 func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
@@ -451,6 +450,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid triggers"))
 	}
 
+	// Validate Parsley filters before updating project.
+	err = dbModel.ValidateParsleyFilters(h.newProjectRef.ParsleyFilters)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))
+	}
+
 	err = dbModel.ValidateBbProject(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating build baron config"))
@@ -468,27 +473,25 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// TODO (PM-2950): remove this temporary conditional initialization for the
-	// vault once the AWS infrastructure is productionized and AWS admin
-	// settings are set.
-	if h.vault == nil && (len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0) {
+	var vault cocoa.Vault
+	if len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0 {
 		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
 		}
 		defer smClient.Close(ctx)
-		vault, err := cloud.MakeSecretsManagerVault(smClient)
+		v, err := cloud.MakeSecretsManagerVault(smClient)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
 		}
-		h.vault = vault
+		vault = v
 	}
 
 	// This intentionally deletes the container secrets from external storage
 	// before updating the project ref. Deleting the secrets before updating the
 	// project ref ensures that the cloud secrets are cleaned up before removing
 	// references to them in the project ref.
-	remainingSecretsAfterDeletion, err := data.DeleteContainerSecrets(ctx, h.vault, h.originalProject, h.apiNewProjectRef.DeleteContainerSecrets)
+	remainingSecretsAfterDeletion, err := data.DeleteContainerSecrets(ctx, vault, h.originalProject, h.apiNewProjectRef.DeleteContainerSecrets)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting container secrets"))
 	}
@@ -530,13 +533,14 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = h.newProjectRef.Update(); err != nil {
+	if err = h.newProjectRef.Upsert(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 
-	// This updates the container secrets in the DB project ref only, not the
-	// in-memory copy.
-	if err := data.UpsertContainerSecrets(ctx, h.vault, allContainerSecrets); err != nil {
+	// Under the hood, this is updating the container secrets in the DB project
+	// ref, but this function's copy of the in-memory project ref won't reflect
+	// those changes.
+	if err := data.UpsertContainerSecrets(ctx, vault, allContainerSecrets); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
 	}
 
@@ -758,58 +762,9 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := dbModel.FindBranchProjectRef(h.projectName)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
+	if err := data.HideBranch(h.projectName); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	if project == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", h.projectName))
-	}
-
-	if project.IsHidden() {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' is already hidden", h.projectName))
-	}
-
-	if !project.UseRepoSettings() {
-		return gimlet.MakeJSONErrorResponder(
-			errors.Errorf("project '%s' must be attached to a repo to be eligible for deletion", h.projectName))
-	}
-
-	skeletonProj := dbModel.ProjectRef{
-		Id:        project.Id,
-		Owner:     project.Owner,
-		Repo:      project.Repo,
-		Branch:    project.Branch,
-		RepoRefId: project.RepoRefId,
-		Enabled:   false,
-		Hidden:    utility.TruePtr(),
-	}
-	if err = skeletonProj.Update(); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", project.Id))
-	}
-	if err = dbModel.UpdateAdminRoles(project, nil, project.Admins); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project admin roles"))
-	}
-
-	projectAliases, err := dbModel.FindAliasesForProjectFromDb(project.Id)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for project '%s'", project.Id))
-	}
-
-	for _, alias := range projectAliases {
-		if err := dbModel.RemoveProjectAlias(alias.ID.Hex()); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(
-				errors.Wrapf(err, "removing project alias '%s' for project '%s'", alias.ID.Hex(), project.Id))
-		}
-	}
-
-	skeletonProjVars := dbModel.ProjectVars{
-		Id: project.Id,
-	}
-	if _, err := skeletonProjVars.Upsert(); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating vars for project '%s'", project.Id))
-	}
-
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -929,10 +884,14 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		if err != nil {
 			return errors.Wrap(err, "invalid start query parameter")
 		}
-		h.opts.StartAfter = startOrder
+		h.opts.Start = startOrder
 	}
-	if h.opts.StartAfter < 0 {
+	if h.opts.Start < 0 {
 		return errors.New("start must be a non-negative integer")
+	}
+
+	if h.opts.RevisionEnd < 0 {
+		return errors.New("revision_end must be a non-negative integer")
 	}
 
 	requester := params.Get("requester")
