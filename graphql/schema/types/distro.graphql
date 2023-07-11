@@ -1,3 +1,4 @@
+###### ENUMS ######
 enum DistroSettingsAccess {
   ADMIN
   CREATE
@@ -5,6 +6,130 @@ enum DistroSettingsAccess {
   VIEW
 }
 
+enum DistroSettingsSection {
+  GENERAL
+  PROVIDER
+  TASK
+  HOST
+  PROJECT
+}
+
+enum DistroOnSaveOperation {
+  DECOMMISSION
+  RESTART_JASPER
+  REPROVISION
+  NONE
+}
+
+###### INPUTS ######
+input DistroInput {
+  aliases: [String!]
+  arch: String
+  authorizedKeysFile: String
+  bootstrapSettings: BootstrapSettingsInput
+  cloneMethod: String
+  containerPool: String
+  disabled: Boolean
+  disableShallowClone: Boolean
+  dispatcherSettings: DispatcherSettingsInput
+  expansions: [ExpansionInput!]
+  finderSettings: FinderSettingsInput
+  homeVolumeSettings: HomeVolumeSettingsInput
+  hostAllocatorSettings: HostAllocatorSettingsInput
+  iceCreamSettings: IceCreamSettingsInput
+  isCluster: Boolean
+  isVirtualWorkStation: Boolean
+  name: String!
+  note: String
+  plannerSettings: PlannerSettingsInput
+  provider: String
+  providerSettingsList: [Map!]
+  setup: String
+  setupAsSudo: Boolean
+  sshKey: String
+  sshOptions: [String!]
+  user: String
+  userSpawnAllowed: Boolean
+  validProjects: [String]
+  workDir: String
+}
+
+input BootstrapSettingsInput {
+  clientDir: String
+  communication: String
+  env: [EnvVarInput!]
+  jasperBinaryDir: String
+  jasperCredentialsPath: String
+  method: String
+  preconditionScripts: [PreconditionScriptInput!]
+  resourceLimits: ResourceLimitsInput
+  rootDir: String
+  serviceUser: String
+  shellPath: String
+}
+
+input PreconditionScriptInput {
+  path: String
+  script: String
+}
+
+input ResourceLimitsInput {
+  lockedMemoryKb: Int
+  numFiles: Int
+  numProcesses: Int
+  numTasks: Int
+  virtualMemoryKb: Int
+}
+
+input EnvVarInput {
+  key: String
+  value: String
+}
+
+input DispatcherSettingsInput {
+  version: String
+}
+
+input ExpansionInput {
+  key: String
+  value: String
+}
+
+input FinderSettingsInput {
+  version: String
+}
+
+input HomeVolumeSettingsInput {
+  formatCommand: String
+}
+
+input HostAllocatorSettingsInput {
+  acceptableHostIdleTime: Duration
+  feedbackRule: String
+  hostsOverallocatedRule: String
+  maximumHosts: Int
+  minimumHosts: Int
+  roundingRule: String
+  version: String
+}
+
+input IceCreamSettingsInput {
+  configPath: String
+  schedulerHost: String
+}
+
+input PlannerSettingsInput {
+  expectedRuntimeFactor: Int
+  generateTaskFactor: Int
+  groupVersions: Boolean
+  mainlineTimeInQueueFactor: Int
+  patchFactor: Int
+  patchTimeInQueueFactor: Int
+  targetTime: Duration
+  version: String
+}
+
+###### TYPES ######
 """
 Distro models an environment configuration for a host.
 """
@@ -113,4 +238,9 @@ type ResourceLimits {
   numProcesses: Int
   numTasks: Int
   virtualMemoryKb: Int
+}
+
+type DistroWithHostCount {
+  distro: Distro!
+  hostCount: Int!
 }

@@ -54,6 +54,11 @@ type DisplayTask struct {
 	Name      string   `json:"Name"`
 }
 
+type DistroWithHostCount struct {
+	Distro    *model.APIDistro `json:"distro"`
+	HostCount int              `json:"hostCount"`
+}
+
 // EditSpawnHostInput is the input to the editSpawnHost mutation.
 // Its fields determine how a given host will be modified.
 type EditSpawnHostInput struct {
@@ -412,6 +417,51 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type DistroOnSaveOperation string
+
+const (
+	DistroOnSaveOperationDecommission  DistroOnSaveOperation = "DECOMMISSION"
+	DistroOnSaveOperationRestartJasper DistroOnSaveOperation = "RESTART_JASPER"
+	DistroOnSaveOperationReprovision   DistroOnSaveOperation = "REPROVISION"
+	DistroOnSaveOperationNone          DistroOnSaveOperation = "NONE"
+)
+
+var AllDistroOnSaveOperation = []DistroOnSaveOperation{
+	DistroOnSaveOperationDecommission,
+	DistroOnSaveOperationRestartJasper,
+	DistroOnSaveOperationReprovision,
+	DistroOnSaveOperationNone,
+}
+
+func (e DistroOnSaveOperation) IsValid() bool {
+	switch e {
+	case DistroOnSaveOperationDecommission, DistroOnSaveOperationRestartJasper, DistroOnSaveOperationReprovision, DistroOnSaveOperationNone:
+		return true
+	}
+	return false
+}
+
+func (e DistroOnSaveOperation) String() string {
+	return string(e)
+}
+
+func (e *DistroOnSaveOperation) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DistroOnSaveOperation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DistroOnSaveOperation", str)
+	}
+	return nil
+}
+
+func (e DistroOnSaveOperation) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type DistroSettingsAccess string
 
 const (
@@ -454,6 +504,53 @@ func (e *DistroSettingsAccess) UnmarshalGQL(v interface{}) error {
 }
 
 func (e DistroSettingsAccess) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type DistroSettingsSection string
+
+const (
+	DistroSettingsSectionGeneral  DistroSettingsSection = "GENERAL"
+	DistroSettingsSectionProvider DistroSettingsSection = "PROVIDER"
+	DistroSettingsSectionTask     DistroSettingsSection = "TASK"
+	DistroSettingsSectionHost     DistroSettingsSection = "HOST"
+	DistroSettingsSectionProject  DistroSettingsSection = "PROJECT"
+)
+
+var AllDistroSettingsSection = []DistroSettingsSection{
+	DistroSettingsSectionGeneral,
+	DistroSettingsSectionProvider,
+	DistroSettingsSectionTask,
+	DistroSettingsSectionHost,
+	DistroSettingsSectionProject,
+}
+
+func (e DistroSettingsSection) IsValid() bool {
+	switch e {
+	case DistroSettingsSectionGeneral, DistroSettingsSectionProvider, DistroSettingsSectionTask, DistroSettingsSectionHost, DistroSettingsSectionProject:
+		return true
+	}
+	return false
+}
+
+func (e DistroSettingsSection) String() string {
+	return string(e)
+}
+
+func (e *DistroSettingsSection) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DistroSettingsSection(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DistroSettingsSection", str)
+	}
+	return nil
+}
+
+func (e DistroSettingsSection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

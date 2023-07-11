@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -433,6 +434,8 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 	case http.StatusNotFound:
 		return ResourceNotFound.Send(ctx, err.Error())
 	case http.StatusUnauthorized:
+		return Forbidden.Send(ctx, err.Error())
+	case http.StatusForbidden:
 		return Forbidden.Send(ctx, err.Error())
 	case http.StatusBadRequest:
 		return InputValidationError.Send(ctx, err.Error())
@@ -1031,4 +1034,45 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	return taskOpts, nil
+}
+
+func handleOnSaveOperation(ctx context.Context, distroID string, userID string, onSave DistroOnSaveOperation) (int, error) {
+	if onSave == DistroOnSaveOperationNone {
+		return 0, nil
+	}
+
+	hosts, err := host.Find(db.Query(host.ByDistroIDs(distroID)))
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("finding hosts for distro with id '%s': %s", distroID, err))
+	}
+
+	switch onSave {
+	case DistroOnSaveOperationDecommission:
+		if err = host.DecommissionHostsWithDistroId(distroID); err != nil {
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("decommissioning hosts for distro with id '%s': %s", distroID, err))
+		}
+		for _, h := range hosts {
+			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
+		}
+	case DistroOnSaveOperationReprovision:
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			_, err = api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), userID)(&h)
+			catcher.Wrapf(err, "marking host '%s' as needing to reprovision", h.Id, distroID)
+		}
+		if catcher.HasErrors() {
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("marking hosts for reprovision for distro with id '%s': %s", distroID, err))
+		}
+	case DistroOnSaveOperationRestartJasper:
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			_, err = api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), userID)(&h)
+			catcher.Wrapf(err, "marking host '%s' as needing Jasper service restarted", h.Id)
+		}
+		if catcher.HasErrors() {
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("marking hosts as needing Jasper service restarted for distro with id '%s': %s", distroID, err))
+		}
+	}
+
+	return len(hosts), nil
 }

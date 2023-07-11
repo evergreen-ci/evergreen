@@ -98,6 +98,7 @@ func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request)
 
 // Run updates the setup script for the given distroId.
 func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
 	d, err := distro.FindOneId(h.distroID)
 	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -107,7 +108,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	d.Setup = h.Setup
-	if err = data.UpdateDistro(d, d); err != nil {
+	if err = data.UpdateDistro(d, d, user.Username()); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
 
@@ -189,24 +190,21 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	// Existing resource
 	if original != nil {
-		newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
+		newDistro, respErr := data.ValidateDistro(ctx, apiDistro, h.distroID, settings, false)
 		if respErr != nil {
-			return respErr
+			return gimlet.MakeJSONErrorResponder(respErr)
 		}
 
-		if err = data.UpdateDistro(original, newDistro); err != nil {
+		if err = data.UpdateDistro(original, newDistro, user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating existing distro '%s'", h.distroID))
 		}
-		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
-		if newDistro.GetDefaultAMI() != original.GetDefaultAMI() {
-			event.LogDistroAMIModified(h.distroID, user.Username())
-		}
+
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// New resource
-	newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, true)
+	newDistro, respErr := data.ValidateDistro(ctx, apiDistro, h.distroID, settings, true)
 	if respErr != nil {
-		return respErr
+		return gimlet.MakeJSONErrorResponder(respErr)
 	}
 
 	responder := gimlet.NewJSONResponse(struct{}{})
@@ -323,17 +321,13 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
-	d, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
+	d, respErr := data.ValidateDistro(ctx, apiDistro, h.distroID, settings, false)
 	if respErr != nil {
-		return respErr
+		return gimlet.MakeJSONErrorResponder(respErr)
 	}
 
-	if err = data.UpdateDistro(old, d); err != nil {
+	if err = data.UpdateDistro(old, d, user.Username()); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
-	}
-	event.LogDistroModified(h.distroID, user.Username(), d.NewDistroData())
-	if d.GetDefaultAMI() != old.GetDefaultAMI() {
-		event.LogDistroAMIModified(h.distroID, user.Username())
 	}
 	return gimlet.NewJSONResponse(apiDistro)
 }
@@ -629,36 +623,6 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-////////////////////////////////////////////////////////////////////////
-
-func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
-	d := apiDistro.ToService()
-
-	id := utility.FromStringPtr(apiDistro.Name)
-	if resourceID != id {
-		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to '%s'", id, resourceID),
-		})
-	}
-
-	vErrors, err := validator.CheckDistro(ctx, d, settings, isNewDistro)
-	if err != nil {
-		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		})
-	}
-	if len(vErrors) != 0 {
-		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    vErrors.String(),
-		})
-	}
-
-	return d, nil
 }
 
 ///////////////////////////////////////////////////////////////////////

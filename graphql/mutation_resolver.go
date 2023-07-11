@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -121,6 +122,45 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
 	}
 	return true, nil
+}
+
+// SaveDistroSection is the resolver for the saveDistroSection field.
+func (r *mutationResolver) SaveDistroSection(ctx context.Context, distroID string, changes *restModel.APIDistro, section DistroSettingsSection, onSave DistroOnSaveOperation) (*DistroWithHostCount, error) {
+	user := mustHaveUser(ctx)
+
+	updatedDistro, err := data.ValidateDistro(ctx, changes, distroID, evergreen.GetEnvironment().Settings(), false)
+	if err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", distroID, err.Error()))
+	}
+
+	originalDistro, err := distro.FindOneId(distroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distro '%s': %s", distroID, err.Error()))
+	}
+	if originalDistro == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", distroID))
+	}
+
+	if err = data.UpdateDistro(originalDistro, updatedDistro, user.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating existing distro '%s': %s", distroID, err.Error()))
+	}
+
+	numHostsUpdated, err := handleOnSaveOperation(ctx, distroID, user.Username(), onSave)
+	if err != nil {
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
+	}
+
+	apiDistro := &restModel.APIDistro{}
+	apiDistro.BuildFromService(*updatedDistro)
+
+	return &DistroWithHostCount{
+		Distro:    apiDistro,
+		HostCount: numHostsUpdated,
+	}, nil
 }
 
 // ReprovisionToNew is the resolver for the reprovisionToNew field.

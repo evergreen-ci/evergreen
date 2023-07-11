@@ -24,6 +24,8 @@ models:
     model: github.com/evergreen-ci/evergreen.BannerTheme
   BootstrapSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBootstrapSettings
+  BootstrapSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBootstrapSettings
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
   BuildBaronSettings:
@@ -56,7 +58,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   DispatcherSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
+  DispatcherSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
   Distro:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+  DistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   DistroInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
@@ -66,7 +72,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIECSConfig
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
+  EnvVarInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
   Expansion:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIExpansion
+  ExpansionInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExpansion
   ExternalLink:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
@@ -77,6 +87,8 @@ models:
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
   FinderSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
+  FinderSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
@@ -96,15 +108,21 @@ models:
     model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
   HomeVolumeSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
+  HomeVolumeSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHomeVolumeSettings
   Host:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHost
   HostAllocatorSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
+  HostAllocatorSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
   HostEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
   HostEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventLogEntry
   IceCreamSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
+  IceCreamSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
@@ -177,6 +195,8 @@ models:
         resolver: true
   PlannerSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
+  PlannerSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
   Pod:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPod
   PodEventLogEntry:
@@ -184,6 +204,8 @@ models:
   PodEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventData
   PreconditionScript:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
+  PreconditionScriptInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
@@ -258,6 +280,8 @@ models:
   RepoWorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
   ResourceLimits:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
+  ResourceLimitsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
   SearchReturnInfo:
     model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo

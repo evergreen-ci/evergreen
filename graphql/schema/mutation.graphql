@@ -32,6 +32,14 @@ type Mutation {
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
 
+  # distros
+   saveDistroSection(
+    distroId: String! @requireDistroAccess(access: EDIT), 
+    changes: DistroInput, 
+    section: DistroSettingsSection!, 
+    onSave: DistroOnSaveOperation!
+  ): DistroWithHostCount!
+
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!
   restartJasper(hostIds: [String!]!): Int!

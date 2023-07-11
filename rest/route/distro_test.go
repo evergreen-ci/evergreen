@@ -540,7 +540,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 	err := resp.Data().(gimlet.ErrorResponse)
-	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
+	s.Equal(fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to 'distro5'", h.distroID), err.Message)
 }
 
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
@@ -585,7 +585,7 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 	err := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
+	s.Equal(fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to 'distro5'", h.distroID), err.Message)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1457,7 +1457,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 	s.Equal(resp.Status(), http.StatusForbidden)
 
 	err := resp.Data().(gimlet.ErrorResponse)
-	s.Equal(fmt.Sprintf("distro name 'Updated distro name' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
+	s.Equal(fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to 'Updated distro name'", h.distroID), err.Message)
 }
 
 func getMockDistrosdata() error {
