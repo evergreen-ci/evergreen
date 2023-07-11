@@ -31,6 +31,7 @@ type ConfigSectionRegistry struct {
 
 func resetRegistry() error {
 	ConfigSections := []ConfigSection{
+		&AlertsConfig{},
 		&AmboyConfig{},
 		&APIConfig{},
 		&AuthConfig{},
