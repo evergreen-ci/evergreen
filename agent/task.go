@@ -75,20 +75,20 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	if ctx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution after setup: %s", ctx.Err())
+	if innerCtx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
 		return
 	}
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-	if err = a.comm.StartTask(ctx, tc.task); err != nil {
+	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return
 	}
 
-	a.killProcs(ctx, tc, false, "task is starting")
+	a.killProcs(innerCtx, tc, false, "task is starting")
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
 		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
