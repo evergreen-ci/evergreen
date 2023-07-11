@@ -7,8 +7,6 @@ updates:
       interval: monthly
       time: "06:00"
       timezone: "America/New_York"
-    open-pull-requests-limit: 99
+    open-pull-requests-limit: 5
     commit-message:
       prefix: "CHORE: "
-    reviewers:
-      - evergreen-ci/evg-app
