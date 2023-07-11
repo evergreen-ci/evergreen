@@ -249,6 +249,27 @@ func (s *AdminSuite) TestServiceFlags() {
 	})
 }
 
+func (s *AdminSuite) TestAlertsConfig() {
+	config := AlertsConfig{
+		SMTP: SMTPConfig{
+			Server:     "server",
+			Port:       2285,
+			UseSSL:     true,
+			Username:   "username",
+			Password:   "password",
+			From:       "from",
+			AdminEmail: []string{"email"},
+		},
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Alerts)
+}
+
 func (s *AdminSuite) TestAmboyConfig() {
 	config := AmboyConfig{
 		Name:       "amboy",
@@ -590,8 +611,14 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 
 func (s *AdminSuite) TestNotifyConfig() {
 	config := NotifyConfig{
-		SES: SESConfig{
-			SenderAddress: "from",
+		SMTP: SMTPConfig{
+			Server:     "server",
+			Port:       2285,
+			UseSSL:     true,
+			Username:   "username",
+			Password:   "password",
+			From:       "from",
+			AdminEmail: []string{"email"},
 		},
 	}
 
