@@ -16,8 +16,6 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-const ContextCanceledErrorMessage = "context canceled"
-
 // Handler returns a gimlet http handler func used as the gql route handler
 func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
@@ -57,7 +55,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
-		if err != nil && !strings.HasSuffix(err.Error(), ContextCanceledErrorMessage) {
+		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",
 				"query":   queryPath,
