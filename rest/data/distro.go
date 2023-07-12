@@ -121,6 +121,6 @@ func newDistro(ctx context.Context, env evergreen.Environment, d *distro.Distro,
 		}
 	}
 
-	event.LogDistroAdded(d.Id, u.DisplayName(), d.NewDistroData())
+	event.LogDistroAdded(d.Id, u.Username(), d.NewDistroData())
 	return nil
 }

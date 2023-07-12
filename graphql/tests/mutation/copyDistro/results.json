@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "copyDistro.graphql",
+      "query_file": "CopyDistro.graphql",
       "result": {
         "data": {
           "copyDistro": {
@@ -11,7 +11,7 @@
       }
     },
     {
-      "query_file": "duplicateId.graphql",
+      "query_file": "DuplicateId.graphql",
       "result": {
         "data": null,
         "errors": [
@@ -28,7 +28,7 @@
       }
     },
     {
-      "query_file": "nonexistentDistro.graphql",
+      "query_file": "NonexistentDistro.graphql",
       "result": {
         "data": null,
         "errors": [
