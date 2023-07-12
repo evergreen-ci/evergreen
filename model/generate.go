@@ -19,14 +19,6 @@ const (
 	maxGeneratedTasks         = 25000
 )
 
-const (
-	findTasksWithActivationSecondsAttribute  = "evergreen.find_tasks_with_activation.seconds"
-	getTasksWithDependenciesSecondsAttribute = "evergreen.get_tasks_with_dependencies.seconds"
-	addNewTasksSecondsAttribute              = "evergreen.add_new_tasks.seconds"
-	addNewBuildsSecondsAttribute             = "evergreen.add_new_builds.seconds"
-	addDependenciesSecondsAttribute          = "evergreen.add_dependencies.seconds"
-)
-
 var DependencyCycleError = errors.New("adding dependencies creates a dependency cycle")
 
 // GeneratedProject is a subset of the Project type, and is generated from the
@@ -320,7 +312,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, saveCtx co
 // adding the generated tasks, their dependencies, and dependencies on the generated tasks to the graph.
 // Returns a DependencyCycleError error if the resultant graph contains dependency cycles.
 func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Project, projectRef *ProjectRef) error {
-	ctx, span := tracer.Start(ctx, "simulate-dependencies")
+	ctx, span := tracer.Start(ctx, "check-for-cycles")
 	defer span.End()
 	existingTasksGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
 	if err != nil {

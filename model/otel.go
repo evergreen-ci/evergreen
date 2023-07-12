@@ -1,7 +1,12 @@
 package model
 
-import "go.opentelemetry.io/otel"
+import (
+	"fmt"
 
-const packageName = "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen"
+	"go.opentelemetry.io/otel"
+)
+
+var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/model")
 
 var tracer = otel.GetTracerProvider().Tracer(packageName)

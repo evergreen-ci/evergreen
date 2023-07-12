@@ -703,14 +703,14 @@ func TestAddNewPatch(t *testing.T) {
 		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
-	_, err := addNewBuilds(context.Background(), creationInfo, nil)
+	_, err := addNewBuilds(context.Background(), context.Background(), creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
+	_, err = addNewTasks(context.Background(), context.Background(), creationInfo, []build.Build{*dbBuild})
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -792,14 +792,14 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
-	_, err := addNewBuilds(context.Background(), creationInfo, nil)
+	_, err := addNewBuilds(context.Background(), context.Background(), creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
+	_, err = addNewTasks(context.Background(), context.Background(), creationInfo, []build.Build{*dbBuild})
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)

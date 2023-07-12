@@ -460,8 +460,10 @@ func PatchStatusToVersionStatus(patchStatus string) (string, error) {
 
 type ModificationAction string
 
-// Common OTEL attribute keys
+// Common OTEL constants and attribute keys
 const (
+	PackageName = "github.com/evergreen-ci/evergreen"
+
 	TaskIDOtelAttribute            = "evergreen.task.id"
 	TaskNameOtelAttribute          = "evergreen.task.name"
 	TaskExecutionOtelAttribute     = "evergreen.task.execution"

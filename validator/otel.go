@@ -1,7 +1,12 @@
 package validator
 
-import "go.opentelemetry.io/otel"
+import (
+	"fmt"
 
-const packageName = "github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/evergreen"
+	"go.opentelemetry.io/otel"
+)
+
+var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/validator")
 
 var tracer = otel.GetTracerProvider().Tracer(packageName)

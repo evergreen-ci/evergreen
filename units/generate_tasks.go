@@ -27,17 +27,6 @@ const (
 	generateTasksJobName = "generate-tasks"
 )
 
-const (
-	taskIdAttribute                        = "evergreen.task.id"
-	taskVersionAttribute                   = "evergreen.task.version"
-	parseProjectSecondsAttribute           = "evergreen.parse_project.seconds"
-	mergeGeneratedProjectsSecondsAttribute = "evergreen.merge_generated_projects.seconds"
-	createNewVersionSecondsAttribute       = "evergreen.create_new_version.seconds"
-	validateConfigSecondsAttribute         = "evergreen.validate_config.seconds"
-	simulateDependenciesSecondsAttribute   = "evergreen.simulate_dependencies.seconds"
-	saveTasksSecondsAttribute              = "evergreen.save_tasks.seconds"
-)
-
 func init() {
 	registry.AddJobType(generateTasksJobName, func() amboy.Job { return makeGenerateTaskJob() })
 }
@@ -80,8 +69,12 @@ func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
 
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	ctx, span := tracer.Start(ctx, "task-generation", trace.WithAttributes(
-		attribute.String(taskIdAttribute, t.Id),
-		attribute.String(taskVersionAttribute, t.Version),
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
+		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution),
+		attribute.String(evergreen.VersionIDOtelAttribute, t.Version),
+		attribute.String(evergreen.BuildIDOtelAttribute, t.BuildId),
+		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester),
 	))
 	defer span.End()
 	if t.GeneratedTasks {
