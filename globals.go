@@ -310,7 +310,7 @@ const (
 	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
-	githubAppPrivateKey        = "github_app_test_key"
+	githubAppPrivateKey        = "github_app_key"
 
 	VSCodePort = 2021
 
@@ -332,6 +332,10 @@ const (
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
 	ContainerHealthDashboard = "container task health dashboard"
+
+	// PRTasksRunningDescription is the description for a GitHub PR status
+	// indicating that there are still running tasks.
+	PRTasksRunningDescription = "tasks are running"
 )
 
 var TaskStatuses = []string{
@@ -473,6 +477,7 @@ const (
 	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
 const (
@@ -843,9 +848,9 @@ var (
 		HostsOverallocatedTerminate,
 	}
 
-	// TaskAbortableStatuses have been picked up by an agent but have not
+	// TaskInProgressStatuses have been picked up by an agent but have not
 	// finished running.
-	TaskAbortableStatuses = []string{TaskStarted, TaskDispatched}
+	TaskInProgressStatuses = []string{TaskStarted, TaskDispatched}
 	// TaskCompletedStatuses are statuses for tasks that have finished running.
 	// This does not include task display statuses.
 	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}

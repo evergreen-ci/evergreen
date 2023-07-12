@@ -51,7 +51,7 @@ func setupPermissions(t *testing.T) {
 	require.NoError(t, err)
 
 	superUserDistroRole := gimlet.Role{
-		ID:    "superuser_distro_access",
+		ID:    evergreen.SuperUserDistroAccessRole,
 		Name:  "admin access",
 		Scope: evergreen.AllDistrosScope,
 		Permissions: map[string]int{
@@ -62,7 +62,7 @@ func setupPermissions(t *testing.T) {
 	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
 
 	superUserDistroScope := gimlet.Scope{
-		ID:        "all_distros",
+		ID:        evergreen.AllDistrosScope,
 		Name:      "all distros",
 		Type:      evergreen.DistroResourceType,
 		Resources: []string{"distro-id"},

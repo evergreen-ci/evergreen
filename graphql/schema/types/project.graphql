@@ -60,6 +60,7 @@ input PeriodicBuildInput {
 
 input ExternalLinkInput {
   displayName: String!
+  requesters: [String!] # TODO EVG-16363: Make this field non-nullable after initial PRs are merged.
   urlTemplate: String!
 }
 
@@ -67,13 +68,6 @@ input ParsleyFilterInput {
   expression: String!
   caseSensitive: Boolean!
   exactMatch: Boolean!
-}
-
-enum BannerTheme {
-  ANNOUNCEMENT
-  INFORMATION
-  WARNING
-  IMPORTANT
 }
 
 input ProjectBannerInput {
@@ -140,6 +134,7 @@ input TaskSpecifierInput {
 input CommitQueueParamsInput {
   enabled: Boolean
   mergeMethod: String
+  mergeQueue: MergeQueue
   message: String
 }
 
@@ -174,9 +169,22 @@ type GithubProjectConflicts {
   prTestingIdentifiers: [String!]
 }
 
+###### ENUMS ######
+enum BannerTheme {
+  ANNOUNCEMENT
+  INFORMATION
+  WARNING
+  IMPORTANT
+}
+
 enum ProjectHealthView {
   ALL
   FAILED
+}
+
+enum MergeQueue {
+  EVERGREEN
+  GITHUB
 }
 
 """
@@ -235,6 +243,7 @@ type Project {
 type CommitQueueParams {
   enabled: Boolean
   mergeMethod: String!
+  mergeQueue: MergeQueue!
   message: String!
 }
 
@@ -250,6 +259,7 @@ type WorkstationConfig {
 
 type ExternalLink {
   displayName: String!
+  requesters: [String!]!
   urlTemplate: String!
 }
 

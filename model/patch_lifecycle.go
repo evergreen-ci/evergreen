@@ -591,9 +591,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}).TVPairsToVariantTasks()
 	}
 
-	// if variant tasks is still empty, then the patch is empty and we shouldn't add to commit queue
-	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
-		return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
+	// if variant tasks is still empty, then the patch is empty and we shouldn't finalize
+	if len(p.VariantsTasks) == 0 {
+		if p.IsCommitQueuePatch() {
+			return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
+		}
+		return nil, errors.New("cannot finalize patch with no tasks")
 	}
 	taskIds, err := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
 	if err != nil {
@@ -624,6 +627,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
+
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
 			ProjectRef:       creationInfo.ProjectRef,
@@ -636,6 +640,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
 			SyncAtEndOpts:    p.SyncAtEndOpts,
+			// When a GitHub PR patch is finalized with the PR alias, all of the
+			// tasks selected by the alias must finish in order for the
+			// build/version to be finished.
+			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
 		}
 		var build *build.Build
 		var tasks task.Tasks
@@ -959,7 +967,10 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 			if err != nil {
 				continue
 			}
-			owner, repo = module.GetRepoOwnerAndName()
+			owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
+			if err != nil {
+				continue
+			}
 			branch = module.Branch
 		}
 

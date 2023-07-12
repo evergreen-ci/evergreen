@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -112,6 +113,7 @@ var (
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
+	IsEssentialToSucceedKey     = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
 )
 
 var (
@@ -760,6 +762,15 @@ func needsContainerAllocation() bson.M {
 	return q
 }
 
+// IsContainerTaskScheduledQuery returns a query indicating if the container is
+// in a state where it is scheduled to run and is logically equivalent to
+// (Task).isContainerScheduled. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all tasks that could
+//     eventually run (i.e. evergreen.TaskWillRun from (Task).GetDisplayStatus),
+//     because a container task is not scheduled until all of its dependencies
+//     have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func IsContainerTaskScheduledQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
@@ -1868,7 +1879,7 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1891,7 +1902,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 		bson.M{
 			VersionKey: versionId, // Include to improve query.
 			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 		},
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,
@@ -2045,6 +2056,8 @@ func recalculateTimeTaken() bson.M {
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTasksByVersion")})
+
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
@@ -2148,6 +2161,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
 func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
 		IncludeBaseTasks:           false,
@@ -2219,6 +2233,7 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatsByVersion")})
 
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
@@ -2300,6 +2315,8 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 }
 
 func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetGroupedTaskStatsByVersion")})
+
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting tasks by version pipeline")
@@ -2475,6 +2492,7 @@ type HasMatchingTasksOptions struct {
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "HasMatchingTasks")})
 	options := GetTasksByVersionOptions{
 		TaskNames:                  opts.TaskNames,
 		Variants:                   opts.Variants,

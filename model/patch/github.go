@@ -90,6 +90,9 @@ type githubIntent struct {
 
 	// CalledBy indicates whether the intent was created automatically by Evergreen or by a user
 	CalledBy string `bson:"called_by"`
+
+	// RepeatPatchId uses the given patch to reuse the task/variant definitions
+	RepeatPatchId string `bson:"repeat_patch_id"`
 }
 
 // BSON fields for the patches
@@ -155,22 +158,43 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 		patchOwner = pr.User.GetLogin()
 	}
 
+	// get the patchId to repeat the definitions from
+	repeat, err := getRepeatPatchId(pr.Base.Repo.Owner.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting patch to repeat definitions from")
+	}
+
 	return &githubIntent{
-		DocumentID:   msgDeliveryID,
-		MsgID:        msgDeliveryID,
-		BaseRepoName: pr.Base.Repo.GetFullName(),
-		BaseBranch:   pr.Base.GetRef(),
-		HeadRepoName: pr.Head.Repo.GetFullName(),
-		PRNumber:     pr.GetNumber(),
-		User:         patchOwner,
-		UID:          int(pr.User.GetID()),
-		HeadHash:     pr.Head.GetSHA(),
-		BaseHash:     pr.Base.GetSHA(),
-		Title:        pr.GetTitle(),
-		IntentType:   GithubIntentType,
-		PushedAt:     pr.Head.Repo.PushedAt.Time.UTC(),
-		CalledBy:     calledBy,
+		DocumentID:    msgDeliveryID,
+		MsgID:         msgDeliveryID,
+		BaseRepoName:  pr.Base.Repo.GetFullName(),
+		BaseBranch:    pr.Base.GetRef(),
+		HeadRepoName:  pr.Head.Repo.GetFullName(),
+		PRNumber:      pr.GetNumber(),
+		User:          patchOwner,
+		UID:           int(pr.User.GetID()),
+		HeadHash:      pr.Head.GetSHA(),
+		BaseHash:      pr.Base.GetSHA(),
+		Title:         pr.GetTitle(),
+		IntentType:    GithubIntentType,
+		PushedAt:      pr.Head.Repo.PushedAt.Time.UTC(),
+		CalledBy:      calledBy,
+		RepeatPatchId: repeat,
 	}, nil
+}
+
+// getRepeatPatchId returns the patch id to repeat the definitions from
+// this information is found on the most recent pr patch
+func getRepeatPatchId(owner, repo string, prNumber int) (string, error) {
+	p, err := FindLatestGithubPRPatch(owner, repo, prNumber)
+	if err != nil {
+		return "", errors.Errorf("finding latest patch for PR '%s/%s:%d'", owner, repo, prNumber)
+	}
+	if p == nil {
+		// do not error, it may be the first patch for the PR
+		return "", nil
+	}
+	return p.GithubPatchData.RepeatPatchIdNextPatch, nil
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
@@ -226,7 +250,7 @@ func (g *githubIntent) ShouldFinalizePatch() bool {
 }
 
 func (g *githubIntent) RepeatPreviousPatchDefinition() (string, bool) {
-	return "", false
+	return g.RepeatPatchId, g.RepeatPatchId != ""
 }
 
 func (g *githubIntent) RepeatFailedTasksAndVariants() (string, bool) {

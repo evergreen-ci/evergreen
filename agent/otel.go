@@ -87,7 +87,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		grip.Error(errors.Wrap(err, "encountered otel error"))
+		grip.Error(errors.Wrap(err, "otel error"))
 	}))
 
 	a.tracer = tp.Tracer(packageName)

@@ -432,22 +432,50 @@ modules:
 			ppStorageMethod := evergreen.ProjectStorageMethodDB
 			p.ProjectStorageMethod = ppStorageMethod
 
-			//normal patch works
+			//normal patch should error
 			p.Tasks = []string{}
 			p.BuildVariants = []string{}
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert())
 
-			v, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
-			require.NoError(t, err)
-			assert.NotNil(t, v)
-			assert.Empty(t, v.BuildIds)
+			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
-			// commit queue patch should not
+			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
 			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no builds or tasks for commit queue version")
+		},
+		"GitHubPRPatchCreatesAllEssentialTasks": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
+			require.NoError(t, p.Insert())
+
+			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester, token)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
+			assert.Len(t, version.Parameters, 1)
+			assert.Equal(t, evergreen.ProjectStorageMethodDB, version.ProjectStorageMethod, "version's project storage method should be set")
+
+			dbPatch, err := patch.FindOneId(p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.True(t, dbPatch.Activated)
+
+			builds, err := build.Find(build.All)
+			require.NoError(t, err)
+			assert.Len(t, builds, 1)
+			assert.Len(t, builds[0].Tasks, 2)
+
+			tasks, err := task.Find(bson.M{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+			for _, tsk := range tasks {
+				assert.True(t, tsk.IsEssentialToSucceed, "tasks automatically selected when a GitHub PR patch is finalized should be essential to succeed")
+			}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
