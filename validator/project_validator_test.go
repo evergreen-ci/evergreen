@@ -3152,7 +3152,7 @@ func TestGetDistrosForProject(t *testing.T) {
 	}
 	require.NoError(d.Insert())
 
-	ids, aliases, err := getDistros()
+	ids, aliases, err := GetDistros()
 	require.NoError(err)
 	require.Len(ids, 3)
 	require.Len(aliases, 3)

@@ -39,7 +39,7 @@ input DistroInput {
   iceCreamSettings: IceCreamSettingsInput
   isCluster: Boolean
   isVirtualWorkStation: Boolean
-  name: String!
+  name: String
   note: String
   plannerSettings: PlannerSettingsInput
   provider: String

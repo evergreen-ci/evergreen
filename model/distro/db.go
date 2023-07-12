@@ -14,6 +14,7 @@ var (
 	// bson fields for the Distro struct
 	IdKey                    = bsonutil.MustHaveTag(Distro{}, "Id")
 	AliasesKey               = bsonutil.MustHaveTag(Distro{}, "Aliases")
+	NoteKey                  = bsonutil.MustHaveTag(Distro{}, "Note")
 	ArchKey                  = bsonutil.MustHaveTag(Distro{}, "Arch")
 	ProviderKey              = bsonutil.MustHaveTag(Distro{}, "Provider")
 	ProviderSettingsListKey  = bsonutil.MustHaveTag(Distro{}, "ProviderSettingsList")

@@ -162,7 +162,7 @@ func TestEnsureValidAliases(t *testing.T) {
 	Convey("When validating a distro's aliases...", t, func() {
 		d := distro.Distro{Id: "c", Aliases: []string{"c"}}
 		Convey("if a distro is declared as an alias of itself, an error should be returned", func() {
-			vErrors := ensureValidAliases(&d)
+			vErrors := EnsureValidAliases(&d)
 			So(vErrors, ShouldNotResemble, ValidationErrors{})
 			So(len(vErrors), ShouldEqual, 1)
 			So(vErrors[0].Message, ShouldEqual, "'c' cannot be an distro alias of itself")
@@ -193,7 +193,7 @@ func TestEnsureNoAliases(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureNoAliases(&testParams.distro, testParams.aliases)
+			errs := EnsureNoAliases(&testParams.distro, testParams.aliases)
 			if testParams.shouldPass {
 				assert.Empty(t, errs)
 			} else {

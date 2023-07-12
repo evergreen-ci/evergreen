@@ -7,6 +7,7 @@
         "rhel71-power8-build"
       ],
       "arch": "linux_ppc64le",
+      "disabled": false,
       "work_dir": "/data/mci",
       "provider": "static",
       "provider_settings": [

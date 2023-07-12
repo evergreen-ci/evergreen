@@ -12,34 +12,11 @@
               "disableShallowClone": true,
               "isCluster": true,
               "name": "rhel71-power8-large",
-              "note": "This is an updated note",
-              "providerSettingsList": [
-                { "number": 1  },
-                { "bool": false },
-                { "string": "new value" },
-                { "arr": ["item_1", "item_2"] }
-              ]
+              "note": "This is an updated note"
             },
             "hostCount": 2
           }
         }
-      }
-    },
-    {
-      "query_file": "distro_name_change.graphql",
-      "result": {
-        "data": null,
-        "errors": [
-          {
-            "message": "403 (Forbidden): distro name 'rhel71-power8-large' is immutable so it cannot be renamed to 'my-new-distro-name'",
-            "path": [
-              "saveDistroSection"
-            ],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
-          }
-        ]
       }
     }
   ]

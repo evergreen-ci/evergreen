@@ -127,15 +127,7 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 // SaveDistroSection is the resolver for the saveDistroSection field.
 func (r *mutationResolver) SaveDistroSection(ctx context.Context, distroID string, changes *restModel.APIDistro, section DistroSettingsSection, onSave DistroOnSaveOperation) (*DistroWithHostCount, error) {
 	user := mustHaveUser(ctx)
-
-	updatedDistro, err := data.ValidateDistro(ctx, changes, distroID, evergreen.GetEnvironment().Settings(), false)
-	if err != nil {
-		gimletErr, ok := err.(gimlet.ErrorResponse)
-		if ok {
-			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
-		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", distroID, err.Error()))
-	}
+	distroChanges := changes.ToService()
 
 	originalDistro, err := distro.FindOneId(distroID)
 	if err != nil {
@@ -145,17 +137,21 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, distroID strin
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", distroID))
 	}
 
-	if err = data.UpdateDistro(originalDistro, updatedDistro, user.Username()); err != nil {
+	if err = validateDistroSection(ctx, originalDistro, distroChanges, section, evergreen.GetEnvironment().Settings()); err != nil {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", distroID, err.Error()))
+	}
+
+	updatedDistro, err := updateDistroSection(ctx, originalDistro, distroChanges, section, user.Username())
+	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating existing distro '%s': %s", distroID, err.Error()))
 	}
+	apiDistro := &restModel.APIDistro{}
+	apiDistro.BuildFromService(*updatedDistro)
 
 	numHostsUpdated, err := handleOnSaveOperation(ctx, distroID, user.Username(), onSave)
 	if err != nil {
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
-
-	apiDistro := &restModel.APIDistro{}
-	apiDistro.BuildFromService(*updatedDistro)
 
 	return &DistroWithHostCount{
 		Distro:    apiDistro,

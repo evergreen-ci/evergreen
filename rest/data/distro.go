@@ -1,53 +1,19 @@
 package data
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
-// ValidateDistro checks that the changes being made to the distro with the given resourceID are valid.
-func ValidateDistro(ctx context.Context, apiDistro *restModel.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, error) {
-	d := apiDistro.ToService()
-
-	id := utility.FromStringPtr(apiDistro.Name)
-	if resourceID != id {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to '%s'", resourceID, id),
-		}
-	}
-
-	vErrors, err := validator.CheckDistro(ctx, d, settings, isNewDistro)
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}
-	}
-	if len(vErrors) != 0 {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    vErrors.String(),
-		}
-	}
-
-	return d, nil
-}
-
 // UpdateDistro updates the given distro.Distro.
-func UpdateDistro(old, new *distro.Distro, userID string) error {
+func UpdateDistro(old, new *distro.Distro) error {
 	if old.Id != new.Id {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -70,12 +36,6 @@ func UpdateDistro(old, new *distro.Distro, userID string) error {
 			Message:    errors.Wrapf(err, "updating distro '%s'", new.Id).Error(),
 		}
 	}
-
-	if old.GetDefaultAMI() != new.GetDefaultAMI() {
-		event.LogDistroAMIModified(old.Id, userID)
-	}
-	event.LogDistroModified(old.Id, userID, new.NewDistroData())
-
 	return nil
 }
 

@@ -20,6 +20,39 @@ const (
 
 type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) ValidationErrors
 
+// Functions used to validate the general section for distro.
+var ValidateGeneralSection = []distroValidator{
+	ensureHasNonZeroID,
+	ensureHasNoUnauthorizedCharacters,
+}
+
+var ValidateHostSection = []distroValidator{
+	ensureValidArch,
+	ensureValidBootstrapSettings,
+	ensureValidStaticBootstrapSettings,
+	ensureValidSSHOptions,
+	ensureValidSSHKeyName,
+	ensureStaticHasAuthorizedKeysFile,
+	ensureStaticHostsAreNotSpawnable,
+	ensureHasValidVirtualWorkstationSettings,
+	ensureHasValidHostAllocatorSettings,
+}
+
+var ValidateProjectSection = []distroValidator{
+	ensureValidCloneMethod,
+	ensureValidExpansions,
+}
+
+var ValidateTaskSection = []distroValidator{
+	ensureHasValidPlannerSettings,
+	ensureHasValidFinderSettings,
+	ensureHasValidDispatcherSettings,
+}
+
+var ValidateProviderSection = []distroValidator{
+	ensureValidContainerPool,
+}
+
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
@@ -49,7 +82,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	var allDistroIDs, allDistroAliases []string
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		allDistroIDs, allDistroAliases, err = getDistros()
+		allDistroIDs, allDistroAliases, err = GetDistros()
 		if err != nil {
 			return nil, err
 		}
@@ -57,14 +90,14 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 
 	// Parent and container distros do not support aliases.
 	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
-		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
+		validationErrs = append(validationErrs, EnsureNoAliases(d, allDistroAliases)...)
 	}
 
 	if newDistro {
 		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs)...)
 	}
 	if len(d.Aliases) > 0 {
-		validationErrs = append(validationErrs, ensureValidAliases(d)...)
+		validationErrs = append(validationErrs, EnsureValidAliases(d)...)
 	}
 
 	for _, v := range distroSyntaxValidators {
@@ -210,7 +243,7 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 	return nil
 }
 
-func ensureValidAliases(d *distro.Distro) ValidationErrors {
+func EnsureValidAliases(d *distro.Distro) ValidationErrors {
 	var errs ValidationErrors
 	for _, a := range d.Aliases {
 		if d.Id == a {
@@ -223,7 +256,7 @@ func ensureValidAliases(d *distro.Distro) ValidationErrors {
 	return errs
 }
 
-func ensureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors {
+func EnsureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors {
 	var errs ValidationErrors
 	if len(d.Aliases) != 0 {
 		errs = append(errs, ValidationError{

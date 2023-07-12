@@ -3,18 +3,11 @@ mutation {
       distroId: "rhel71-power8-large"
       changes: {
         aliases: ["new-alias"]
+        disabled: true
         disableShallowClone: true
         isCluster: true
-        note: "This is an updated note"
-        providerSettingsList: [{number: 1}, {bool: false}, {string: "new value"}, {arr: ["item_1","item_2"]}]
-
-        # Fields required by validation
-        arch: "linux_ppc64le",
         name: "rhel71-power8-large"
-        provider: "static",
-        sshKey: "mci",
-        user: "mci-exec",
-        workDir: "/data/mci",
+        note: "This is an updated note"
       },
       section: GENERAL,
       onSave: DECOMMISSION
@@ -26,7 +19,6 @@ mutation {
         isCluster
         name
         note
-        providerSettingsList
       }
       hostCount
     }
