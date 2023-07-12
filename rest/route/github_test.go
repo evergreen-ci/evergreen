@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -540,4 +542,60 @@ func TestPRDef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "", p.GithubPatchData.RepeatPatchIdNextPatch)
 
+}
+
+func TestHandleGitHubMergeGroup(t *testing.T) {
+	org := "evergreen-ci"
+	repo := "evergreen"
+	branch := "main"
+	baseRef := "refs/heads/main"
+	baseSha := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	trueBool := true
+	event := &github.MergeGroupEvent{
+		Org: &github.Organization{
+			Login: &org,
+		},
+		Repo: &github.Repository{
+			Name: &repo,
+		},
+		MergeGroup: &github.MergeGroup{
+			BaseRef: &baseRef,
+			BaseSHA: &baseSha,
+			HeadRef: &headRef,
+		},
+	}
+	gh := &githubHookApi{}
+	p := model.ProjectRef{
+		Owner:   org,
+		Repo:    repo,
+		Branch:  branch,
+		Enabled: true,
+		CommitQueue: model.CommitQueueParams{
+			Enabled: &trueBool,
+		},
+	}
+	for testCase, test := range map[string]func(*testing.T){
+		"githubMergeQueueSelected": func(t *testing.T) {
+			p.CommitQueue.MergeQueue = model.MergeQueueGitHub
+			require.NoError(t, p.Insert())
+			response := gh.handleMergeGroupEvent(event)
+			// check for error returned by GitHub merge queue handler
+			str := fmt.Sprintf("%#v", response)
+			assert.Contains(t, str, "message ID cannot be empty")
+			assert.NotContains(t, str, "200")
+		},
+		"evergreenMergeQueueSelected": func(t *testing.T) {
+			p.CommitQueue.MergeQueue = model.MergeQueueEvergreen
+			require.NoError(t, p.Insert())
+			response := gh.handleMergeGroupEvent(event)
+			// check for 200 returned in noop case
+			str := fmt.Sprintf("%#v", response)
+			assert.Contains(t, str, "200")
+			assert.NotContains(t, str, "message ID cannot be empty")
+		},
+	} {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		t.Run(testCase, test)
+	}
 }
