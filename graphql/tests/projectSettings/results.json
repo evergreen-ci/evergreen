@@ -34,7 +34,6 @@
                   "exactMatch": true
                 }
               ],
-
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
               "triggers": [
@@ -71,7 +70,6 @@
                 "bfSuggestionTimeoutSecs": 0,
                 "bfSuggestionUsername": ""
               },
-
               "taskAnnotationSettings": {
                 "jiraCustomFields": [
                   {
@@ -84,7 +82,6 @@
                   "secret": "shh"
                 }
               },
-
               "containerSizeDefinitions": [
                 {
                   "name": "size1",
@@ -97,7 +94,6 @@
                   "memoryMb": 2048
                 }
               ],
-
               "externalLinks": [
                 {
                   "displayName": "A link to somewhere",
