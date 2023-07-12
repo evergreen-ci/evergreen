@@ -40,28 +40,11 @@ type GetOptions struct {
 // TaskOptions represents the task-level information required to fetch logs
 // belonging to an Evergreen task run.
 type TaskOptions struct {
+	ProjectID string
 	TaskID    string
 	Execution int
 	// ServiceVersion is the version of the backing logger service.
 	ServiceVersion int
-}
-
-// TaskLogType represents the recognized log types collected during a task run.
-type TaskLogType string
-
-const (
-	// TaskLogTypeAll includes agent, task, and system logs.
-	TaskLogTypeAll    = "all"
-	TaskLogTypeAgent  = "agent"
-	TaskLogTypeTask   = "task"
-	TaskLogTypeSystem = "system"
-	TaskLogTypeTest   = "test"
-)
-
-// GetTaskLogTypePrefix returns the appropriate "path" prefix for the given log
-// type.
-func GetTaskLogTypePrefix(env evergreen.Environment, taskOpts TaskOptions, opts GetOptions) (string, error) {
-	return "", errors.New("not implemented")
 }
 
 // GetTaskLogs returns the logs from a task run specified by the options.
