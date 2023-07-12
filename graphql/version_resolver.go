@@ -305,15 +305,8 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
-	v, err := model.VersionFindOne(model.VersionById(versionId).WithFields(model.VersionRequesterKey))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id: '%s': %s", versionId, err.Error()))
-	}
-	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: '%s'", versionId))
-	}
 
-	baseVersionId, err := model.FindBaseVersionIDForVersion(v.Id)
+	baseVersionId, err := model.FindBaseVersionIDForVersion(utility.FromStringPtr(obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version id for version with id: '%s': %s", versionId, err.Error()))
 	}
@@ -327,7 +320,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Limit:        limitParam,
 		Sorts:        taskSorts,
 		// If the version is a patch, we want to exclude inactive tasks by default.
-		IncludeNeverActivatedTasks:     !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
+		IncludeNeverActivatedTasks:     !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
 		IncludeBuildVariantDisplayName: true,
 		BaseVersionID:                  baseVersionId,
 	}

@@ -419,8 +419,7 @@ func FindBaseVersionIDForVersion(versionID string) (string, error) {
 	}
 	baseVersionID := ""
 	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(v.Branch, v.Revision))
-
+		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
 		if err != nil {
 			return "", errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}
@@ -428,7 +427,7 @@ func FindBaseVersionIDForVersion(versionID string) (string, error) {
 			baseVersionID = baseVersion.Id
 		}
 	} else {
-		previousVersion, err := VersionFindOne(VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Branch), v.RevisionOrderNumber-1))
+		previousVersion, err := VersionFindOne(VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Identifier), v.RevisionOrderNumber-1))
 		if err != nil {
 			return "", errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}
