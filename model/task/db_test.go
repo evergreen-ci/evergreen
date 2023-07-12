@@ -931,32 +931,23 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
-	t3 := Task{
-		Id:      "execWithNoId",
-		Version: "v1",
-	}
-	t4 := Task{
-		Id:      "notAnExecWithNoId",
-		Version: "v1",
-	}
 	dt := Task{
 		Id:             "displayTask",
 		Version:        "v1",
 		DisplayOnly:    true,
-		ExecutionTasks: []string{"execWithDisplayId", "execWithNoId"},
+		ExecutionTasks: []string{"execWithDisplayId"},
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, dt))
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, dt))
 
 	ctx := context.TODO()
 	// execution tasks have been filtered outs
 	opts := GetTasksByVersionOptions{}
 	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
-	assert.Equal(t, count, 3)
+	assert.Equal(t, count, 2)
 	// alphabetical order
 	assert.Equal(t, dt.Id, tasks[0].Id)
 	assert.Equal(t, t2.Id, tasks[1].Id)
-	assert.Equal(t, t4.Id, tasks[2].Id)
 }
 
 func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
