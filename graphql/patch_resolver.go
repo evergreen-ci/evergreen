@@ -46,7 +46,7 @@ func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.API
 	}
 	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, *obj.Id, baseVersion.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
+		return nil, nil
 	}
 	return statuses, nil
 }
@@ -175,7 +175,7 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	statuses, err := task.GetTaskStatusesByVersion(ctx, utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task statuses for version with id '%s': %s", *obj.Id, err.Error()))
+		return nil, nil
 	}
 	return statuses, nil
 }
