@@ -195,6 +195,7 @@ type ComplexityRoot struct {
 	CommitQueueParams struct {
 		Enabled     func(childComplexity int) int
 		MergeMethod func(childComplexity int) int
+		MergeQueue  func(childComplexity int) int
 		Message     func(childComplexity int) int
 	}
 
@@ -274,6 +275,7 @@ type ComplexityRoot struct {
 
 	ExternalLink struct {
 		DisplayName func(childComplexity int) int
+		Requesters  func(childComplexity int) int
 		URLTemplate func(childComplexity int) int
 	}
 
@@ -941,6 +943,7 @@ type ComplexityRoot struct {
 	RepoCommitQueueParams struct {
 		Enabled     func(childComplexity int) int
 		MergeMethod func(childComplexity int) int
+		MergeQueue  func(childComplexity int) int
 		Message     func(childComplexity int) int
 	}
 
@@ -2254,6 +2257,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.CommitQueueParams.MergeMethod(childComplexity), true
 
+	case "CommitQueueParams.mergeQueue":
+		if e.complexity.CommitQueueParams.MergeQueue == nil {
+			break
+		}
+
+		return e.complexity.CommitQueueParams.MergeQueue(childComplexity), true
+
 	case "CommitQueueParams.message":
 		if e.complexity.CommitQueueParams.Message == nil {
 			break
@@ -2617,6 +2627,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ExternalLink.DisplayName(childComplexity), true
+
+	case "ExternalLink.requesters":
+		if e.complexity.ExternalLink.Requesters == nil {
+			break
+		}
+
+		return e.complexity.ExternalLink.Requesters(childComplexity), true
 
 	case "ExternalLink.urlTemplate":
 		if e.complexity.ExternalLink.URLTemplate == nil {
@@ -6210,6 +6227,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoCommitQueueParams.MergeMethod(childComplexity), true
+
+	case "RepoCommitQueueParams.mergeQueue":
+		if e.complexity.RepoCommitQueueParams.MergeQueue == nil {
+			break
+		}
+
+		return e.complexity.RepoCommitQueueParams.MergeQueue(childComplexity), true
 
 	case "RepoCommitQueueParams.message":
 		if e.complexity.RepoCommitQueueParams.Message == nil {
@@ -14226,6 +14250,50 @@ func (ec *executionContext) fieldContext_CommitQueueParams_mergeMethod(ctx conte
 	return fc, nil
 }
 
+func (ec *executionContext) _CommitQueueParams_mergeQueue(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommitQueueParams_mergeQueue(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MergeQueue, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model1.MergeQueue)
+	fc.Result = res
+	return ec.marshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommitQueueParams_mergeQueue(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommitQueueParams",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type MergeQueue does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CommitQueueParams_message(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommitQueueParams_message(ctx, field)
 	if err != nil {
@@ -16518,6 +16586,50 @@ func (ec *executionContext) _ExternalLink_displayName(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_ExternalLink_displayName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalLink_requesters(ctx context.Context, field graphql.CollectedField, obj *model.APIExternalLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLink_requesters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Requesters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalLink_requesters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExternalLink",
 		Field:      field,
@@ -35510,6 +35622,8 @@ func (ec *executionContext) fieldContext_Project_commitQueue(ctx context.Context
 				return ec.fieldContext_CommitQueueParams_enabled(ctx, field)
 			case "mergeMethod":
 				return ec.fieldContext_CommitQueueParams_mergeMethod(ctx, field)
+			case "mergeQueue":
+				return ec.fieldContext_CommitQueueParams_mergeQueue(ctx, field)
 			case "message":
 				return ec.fieldContext_CommitQueueParams_message(ctx, field)
 			}
@@ -35894,6 +36008,8 @@ func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Conte
 			switch field.Name {
 			case "displayName":
 				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "requesters":
+				return ec.fieldContext_ExternalLink_requesters(ctx, field)
 			case "urlTemplate":
 				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
 			}
@@ -42893,6 +43009,50 @@ func (ec *executionContext) fieldContext_RepoCommitQueueParams_mergeMethod(ctx c
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoCommitQueueParams_mergeQueue(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoCommitQueueParams_mergeQueue(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MergeQueue, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model1.MergeQueue)
+	fc.Result = res
+	return ec.marshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoCommitQueueParams_mergeQueue(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoCommitQueueParams",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type MergeQueue does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoCommitQueueParams_message(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoCommitQueueParams_message(ctx, field)
 	if err != nil {
@@ -43252,6 +43412,8 @@ func (ec *executionContext) fieldContext_RepoRef_commitQueue(ctx context.Context
 				return ec.fieldContext_RepoCommitQueueParams_enabled(ctx, field)
 			case "mergeMethod":
 				return ec.fieldContext_RepoCommitQueueParams_mergeMethod(ctx, field)
+			case "mergeQueue":
+				return ec.fieldContext_RepoCommitQueueParams_mergeQueue(ctx, field)
 			case "message":
 				return ec.fieldContext_RepoCommitQueueParams_message(ctx, field)
 			}
@@ -45285,6 +45447,8 @@ func (ec *executionContext) fieldContext_RepoRef_externalLinks(ctx context.Conte
 			switch field.Name {
 			case "displayName":
 				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "requesters":
+				return ec.fieldContext_ExternalLink_requesters(ctx, field)
 			case "urlTemplate":
 				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
 			}
@@ -63229,7 +63393,7 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "mergeMethod", "message"}
+	fieldsInOrder := [...]string{"enabled", "mergeMethod", "mergeQueue", "message"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63254,6 +63418,15 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 				return it, err
 			}
 			it.MergeMethod = data
+		case "mergeQueue":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mergeQueue"))
+			data, err := ec.unmarshalOMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MergeQueue = data
 		case "message":
 			var err error
 
@@ -63630,7 +63803,7 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"displayName", "urlTemplate"}
+	fieldsInOrder := [...]string{"displayName", "requesters", "urlTemplate"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63646,6 +63819,15 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 				return it, err
 			}
 			it.DisplayName = data
+		case "requesters":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requesters"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Requesters = data
 		case "urlTemplate":
 			var err error
 
@@ -67841,6 +68023,13 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "mergeQueue":
+
+			out.Values[i] = ec._CommitQueueParams_mergeQueue(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "message":
 
 			out.Values[i] = ec._CommitQueueParams_message(ctx, field, obj)
@@ -68337,6 +68526,13 @@ func (ec *executionContext) _ExternalLink(ctx context.Context, sel ast.Selection
 		case "displayName":
 
 			out.Values[i] = ec._ExternalLink_displayName(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "requesters":
+
+			out.Values[i] = ec._ExternalLink_requesters(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -73728,6 +73924,13 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 		case "mergeMethod":
 
 			out.Values[i] = ec._RepoCommitQueueParams_mergeMethod(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "mergeQueue":
+
+			out.Values[i] = ec._RepoCommitQueueParams_mergeQueue(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -79479,6 +79682,22 @@ func (ec *executionContext) marshalNMap2ᚕmapᚄ(ctx context.Context, sel ast.S
 	return ret
 }
 
+func (ec *executionContext) unmarshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, v interface{}) (model1.MergeQueue, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := model1.MergeQueue(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, sel ast.SelectionSet, v model1.MergeQueue) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, v interface{}) (MetStatus, error) {
 	var res MetStatus
 	err := res.UnmarshalGQL(v)
@@ -82890,6 +83109,17 @@ func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.Selecti
 		return graphql.Null
 	}
 	res := graphql.MarshalMap(v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, v interface{}) (model1.MergeQueue, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := model1.MergeQueue(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, sel ast.SelectionSet, v model1.MergeQueue) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
 	return res
 }
 

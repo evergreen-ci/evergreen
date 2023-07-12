@@ -8,6 +8,7 @@
       commitQueue {
         enabled
         mergeMethod
+        mergeQueue
       }
       periodicBuilds {
         alias
@@ -73,6 +74,12 @@
       taskSync {
         configEnabled
         patchEnabled
+      }
+
+      externalLinks {
+        displayName
+        requesters
+        urlTemplate
       }
     }
   }

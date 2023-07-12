@@ -34,7 +34,7 @@ type chunkIterator struct {
 type chunkIteratorOptions struct {
 	bucket    pail.Bucket
 	chunks    []chunkInfo
-	parser    lineParser
+	parser    LineParser
 	start     int64
 	end       int64
 	lineLimit int

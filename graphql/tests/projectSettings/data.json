@@ -99,7 +99,14 @@
         "git_clone": false
       },
       "hidden": false,
-      "repo_ref_id": "my_repo"
+      "repo_ref_id": "my_repo",
+      "external_links": [
+        {
+          "display_name": "A link to somewhere",
+          "requesters": ["gitter_request", "github_pull_request"],
+          "url_template": "https://a-fake-url-for-{version_id}.com/{version_id}"
+        }
+      ]
     },
     {
       "_id": "vars_test",
