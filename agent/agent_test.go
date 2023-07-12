@@ -652,32 +652,6 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.Equal("message", detail.Message)
 }
 
-func (s *AgentSuite) TestAbort() {
-	s.mockCommunicator.HeartbeatShouldAbort = true
-	s.a.opts.HeartbeatInterval = time.Nanosecond
-	// TODO (EVG-20390): potentially fix this test by splitting runTask.
-	// This is a little weird, but it's necessary for now because the test loads
-	// mock data, which changes the task ID.
-	// Once this is fixed, we should uncomment the assertion below about
-	// post-task commands running on abort.
-	originalTaskID := s.tc.taskConfig.Task.Id
-	_, err := s.a.runTask(s.ctx, s.tc)
-	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "aborting a task should send a failed status")
-
-	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, originalTaskID,
-		"Heartbeat received signal to abort task",
-		"Task completed - FAILURE",
-		"Sending final task status: 'failed'",
-	)
-
-	// for _, msg := range s.mockCommunicator.GetMockMessages()[originalTaskID] {
-	//     s.Contains(msg.Message, "Running post-task commands", "aborted task should not run post block")
-	// }
-}
-
 func (s *AgentSuite) TestOOMTracker() {
 	pids := []int{1, 2, 3}
 	lines := []string{"line 1", "line 2", "line 3"}
@@ -1128,4 +1102,56 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind ...s
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
+}
+
+func (s *AgentSuite) setupRunTask(projYml string) {
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "some_build_variant",
+		DisplayName:  "this_is_a_task_name",
+		Version:      "my_version",
+	}
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+}
+
+func (s *AgentSuite) TestAbort() {
+	s.mockCommunicator.HeartbeatShouldAbort = true
+	s.a.opts.HeartbeatInterval = time.Millisecond
+
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+tasks: 
+- name: this_is_a_task_name
+  commands: 
+   - command: shell.exec
+     params:
+       script: exit 0
+
+post:
+- command: shell.exec
+  params:
+    script: |
+      sleep 1
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+	s.NoError(err)
+
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	// The exact count is not of particular importance, we're only interested in
+	// knowing that the heartbeat is still going despite receiving an abort.
+	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running so count should be high")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Heartbeat received signal to abort task.",
+		"Task completed - FAILED",
+		"Running post-task commands.",
+	)
 }
