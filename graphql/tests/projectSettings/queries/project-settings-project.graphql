@@ -75,6 +75,12 @@
         configEnabled
         patchEnabled
       }
+
+      externalLinks {
+        displayName
+        requesters
+        urlTemplate
+      }
     }
   }
 }
