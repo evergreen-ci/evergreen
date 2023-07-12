@@ -114,8 +114,7 @@ func TestChunkIterator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tmpDir := t.TempDir()
-	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: tmpDir})
+	bucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: t.TempDir()})
 	require.NoError(t, err)
 
 	chunks, lines, parser, err := generateTestLog(ctx, bucket, 99, 30)
@@ -443,7 +442,7 @@ func TestMergingIterator(t *testing.T) {
 
 // generateTestLog is a convenience function to generate random logs with 100
 // character long lines of the given size and chunk size in the given bucket.
-func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize int) ([]chunkInfo, []LogLine, lineParser, error) {
+func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize int) ([]chunkInfo, []LogLine, LineParser, error) {
 	service := &logServiceV0{}
 
 	lines := make([]LogLine, size)
