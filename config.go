@@ -607,14 +607,13 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
 		// TODO EVG-19966: Return error here
-		grip.Debug(message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error finding installation id",
 			"owner":   owner,
 			"repo":    repo,
-			"error":   err.Error(),
 			"appId":   authFields.AppId,
 			"ticket":  "EVG-19966",
-		})
+		}))
 		return "", errors.Wrap(err, "finding installation id")
 	}
 	if installationId == nil {
