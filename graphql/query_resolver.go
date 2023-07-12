@@ -333,29 +333,20 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	}
 
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
-		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-		opts := task.GetTasksByVersionOptions{
-			Statuses:                       failedAndAbortedStatuses,
-			FieldsToProject:                []string{task.DisplayStatusKey},
-			IncludeBaseTasks:               false,
-			IncludeBuildVariantDisplayName: false,
-		}
-		tasks, _, err := task.GetTasksByVersion(ctx, id, opts)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, id)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for patch: %s ", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
-				// add the child patch tasks to tasks so that we can consider their status
-				childPatchTasks, _, err := task.GetTasksByVersion(ctx, *cp.Id, opts)
+				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for child patch: %s ", err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for child patch: %s ", err.Error()))
 				}
-				tasks = append(tasks, childPatchTasks...)
+				statuses = append(statuses, childPatchStatuses...)
 			}
 		}
-		statuses := getAllTaskStatuses(tasks)
 
 		// If theres an aborted task we should set the patch status to aborted if there are no other failures
 		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {

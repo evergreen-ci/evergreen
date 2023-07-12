@@ -33,11 +33,18 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	baseTasks, err := getVersionBaseTasks(*obj.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version base tasks: %s", err.Error()))
+	var baseVersion *model.Version
+	var err error
+	// Get base commit if patch or periodic build.
+	baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(obj.ProjectIdentifier), utility.FromStringPtr(obj.Githash)))
+	if baseVersion == nil || err != nil {
+		return nil, nil
 	}
-	return getAllTaskStatuses(baseTasks), nil
+	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, *obj.Id, baseVersion.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
+	}
+	return statuses, nil
 }
 
 // Builds is the resolver for the builds field.
@@ -162,19 +169,11 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 
 // TaskStatuses is the resolver for the taskStatuses field.
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(ctx, *obj.Id, opts)
+	statuses, err := task.GetTaskStatusesByVersion(ctx, utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task statuses for version with id '%s': %s", *obj.Id, err.Error()))
 	}
-	return getAllTaskStatuses(tasks), nil
+	return statuses, nil
 }
 
 // Time is the resolver for the time field.

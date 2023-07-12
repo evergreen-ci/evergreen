@@ -130,31 +130,6 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 	return &newTime, nil
 }
 
-func getVersionBaseTasks(versionID string) ([]task.Task, error) {
-	version, err := model.VersionFindOneId(versionID)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting version %s: %s", versionID, err.Error())
-	}
-	if version == nil {
-		return nil, fmt.Errorf("No version found for ID %s", versionID)
-	}
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(version.Identifier, version.Revision))
-	if err != nil {
-		return nil, fmt.Errorf("Error getting base version from version %s: %s", version.Id, err.Error())
-	}
-	if baseVersion == nil {
-		return nil, fmt.Errorf("No base version found from version %s", version.Id)
-	}
-	baseTasks, err := task.FindTasksFromVersions([]string{baseVersion.Id})
-	if err != nil {
-		return nil, fmt.Errorf("Error getting tasks from version %s: %s", baseVersion.Id, err.Error())
-	}
-	if baseTasks == nil {
-		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
-	}
-	return baseTasks, nil
-}
-
 // GetDisplayStatus considers both child patch statuses and
 // aborted status, and returns an overall patch status
 // (this is because success is different for version/patches,
