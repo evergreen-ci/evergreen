@@ -33,10 +33,14 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	var baseVersion *model.Version
-	var err error
-	// Get base commit if patch or periodic build.
-	baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(obj.ProjectIdentifier), utility.FromStringPtr(obj.Githash)))
+	v, err := model.VersionFindOne(model.VersionById(*obj.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version by ID %s: %s", *obj.Id, err.Error()))
+	}
+	if v == nil {
+		return nil, nil
+	}
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}

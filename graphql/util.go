@@ -438,21 +438,6 @@ func canScheduleTask(t *task.Task) bool {
 	return true
 }
 
-func getAllTaskStatuses(tasks []task.Task) []string {
-	statusesMap := map[string]bool{}
-	for _, task := range tasks {
-		statusesMap[task.GetDisplayStatus()] = true
-	}
-	statusesArr := []string{}
-	for key := range statusesMap {
-		statusesArr = append(statusesArr, key)
-	}
-	sort.SliceStable(statusesArr, func(i, j int) bool {
-		return statusesArr[i] < statusesArr[j]
-	})
-	return statusesArr
-}
-
 func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
 	filteredSubscriptions := make([]string, 0, len(subscriptions))
 	for _, subscription := range subscriptions {
