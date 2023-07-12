@@ -227,10 +227,29 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.MergeGroupEvent:
-		org := event.GetOrg().GetLogin()
-		repo := event.GetRepo().GetName()
-		branch := strings.TrimPrefix(event.MergeGroup.GetBaseRef(), "refs/heads")
-		grip.Info(message.Fields{
+		return gh.handleMergeGroupEvent(event)
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+func (gh *githubHookApi) handleMergeGroupEvent(event *github.MergeGroupEvent) gimlet.Responder {
+	org := event.GetOrg().GetLogin()
+	repo := event.GetRepo().GetName()
+	branch := strings.TrimPrefix(event.MergeGroup.GetBaseRef(), "refs/heads")
+	grip.Info(message.Fields{
+		"source":   "GitHub hook",
+		"msg_id":   gh.msgID,
+		"event":    gh.eventType,
+		"org":      org,
+		"repo":     repo,
+		"base_sha": event.GetMergeGroup().GetBaseSHA(),
+		"head_sha": event.GetMergeGroup().GetHeadSHA(),
+		"message":  "merge group received",
+	})
+	ref, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(org, repo, branch)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
 			"event":    gh.eventType,
@@ -238,55 +257,41 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"repo":     repo,
 			"base_sha": event.GetMergeGroup().GetBaseSHA(),
 			"head_sha": event.GetMergeGroup().GetHeadSHA(),
-			"message":  "merge group received",
-		})
-		ref, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(org, repo, branch)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"source":   "GitHub hook",
-				"msg_id":   gh.msgID,
-				"event":    gh.eventType,
-				"org":      org,
-				"repo":     repo,
-				"base_sha": event.GetMergeGroup().GetBaseSHA(),
-				"head_sha": event.GetMergeGroup().GetHeadSHA(),
-				"message":  "finding project ref",
-			}))
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
-		}
-		if ref == nil {
-			grip.Error(message.Fields{
-				"source":   "GitHub hook",
-				"msg_id":   gh.msgID,
-				"event":    gh.eventType,
-				"org":      org,
-				"repo":     repo,
-				"base_sha": event.GetMergeGroup().GetBaseSHA(),
-				"head_sha": event.GetMergeGroup().GetHeadSHA(),
-				"message":  "no matching project ref",
-			})
-		}
-		if ref.CommitQueue.MergeQueue == model.MergeQueueGitHub {
-			err = gh.AddIntentForGithubMerge(event)
-		} else {
-			return gimlet.NewJSONResponse(struct{}{})
-		}
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"source":   "GitHub hook",
-				"msg_id":   gh.msgID,
-				"event":    gh.eventType,
-				"org":      org,
-				"repo":     repo,
-				"base_sha": event.GetMergeGroup().GetBaseSHA(),
-				"head_sha": event.GetMergeGroup().GetHeadSHA(),
-				"message":  "adding project intent",
-			}))
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
-		}
+			"message":  "finding project ref",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
 	}
-
-	return gimlet.NewJSONResponse(struct{}{})
+	if ref == nil {
+		grip.Error(message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      org,
+			"repo":     repo,
+			"base_sha": event.GetMergeGroup().GetBaseSHA(),
+			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+			"message":  "no matching project ref",
+		})
+	}
+	if ref.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		err = gh.AddIntentForGithubMerge(event)
+	} else {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      org,
+			"repo":     repo,
+			"base_sha": event.GetMergeGroup().GetBaseSHA(),
+			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+			"message":  "adding project intent",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
+	}
+	return nil
 }
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
