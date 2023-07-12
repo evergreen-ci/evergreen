@@ -617,19 +617,6 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	if resp.ShouldExit {
 		return true, nil
 	}
-	return false, errors.WithStack(err)
-}
-
-func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
-	status := evergreen.TaskFailed
-	select {
-	case <-taskCtx.Done():
-		grip.Infof("Task canceled: '%s'.", tc.task.ID)
-	case status = <-complete:
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-	case status = <-heartbeat:
-		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
-	}
 
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
@@ -647,6 +634,19 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+	return false, errors.WithStack(err)
+}
+
+func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
+	status := evergreen.TaskFailed
+	select {
+	case <-taskCtx.Done():
+		grip.Infof("Task canceled: '%s'.", tc.task.ID)
+	case status = <-complete:
+		grip.Infof("Task complete: '%s'.", tc.task.ID)
+	case status = <-heartbeat:
+		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
 	}
 
 	return status
