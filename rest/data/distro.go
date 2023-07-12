@@ -102,6 +102,10 @@ func CopyDistro(ctx context.Context, env evergreen.Environment, u *user.DBUser, 
 
 func newDistro(ctx context.Context, env evergreen.Environment, d *distro.Distro, u *user.DBUser) error {
 	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+
 	vErrs, err := validator.CheckDistro(ctx, d, settings, true)
 	if err != nil {
 		return errors.Wrapf(err, "validating distro '%s'", d.Id)
