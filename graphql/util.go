@@ -1032,3 +1032,13 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 
 	return taskOpts, nil
 }
+
+func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
+	opts := gimlet.PermissionOpts{
+		Resource:      distroId,
+		ResourceType:  evergreen.DistroResourceType,
+		Permission:    evergreen.PermissionDistroSettings,
+		RequiredLevel: requiredLevel,
+	}
+	return u.HasPermission(opts)
+}

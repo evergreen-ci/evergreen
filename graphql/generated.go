@@ -258,6 +258,12 @@ type ComplexityRoot struct {
 		WorkDir              func(childComplexity int) int
 	}
 
+	DistroPermissions struct {
+		Admin func(childComplexity int) int
+		Edit  func(childComplexity int) int
+		View  func(childComplexity int) int
+	}
+
 	ECSConfig struct {
 		MaxCPU      func(childComplexity int) int
 		MaxMemoryMB func(childComplexity int) int
@@ -726,8 +732,10 @@ type ComplexityRoot struct {
 	}
 
 	Permissions struct {
-		CanCreateProject func(childComplexity int) int
-		UserID           func(childComplexity int) int
+		CanCreateDistro   func(childComplexity int) int
+		CanCreateProject  func(childComplexity int) int
+		DistroPermissions func(childComplexity int, options DistroPermissionsOptions) int
+		UserID            func(childComplexity int) int
 	}
 
 	PlannerSettings struct {
@@ -1561,7 +1569,9 @@ type PatchResolver interface {
 	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
 }
 type PermissionsResolver interface {
+	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
 	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
+	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
 }
 type PodResolver interface {
 	Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error)
@@ -2572,6 +2582,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DistroInfo.WorkDir(childComplexity), true
+
+	case "DistroPermissions.admin":
+		if e.complexity.DistroPermissions.Admin == nil {
+			break
+		}
+
+		return e.complexity.DistroPermissions.Admin(childComplexity), true
+
+	case "DistroPermissions.edit":
+		if e.complexity.DistroPermissions.Edit == nil {
+			break
+		}
+
+		return e.complexity.DistroPermissions.Edit(childComplexity), true
+
+	case "DistroPermissions.view":
+		if e.complexity.DistroPermissions.View == nil {
+			break
+		}
+
+		return e.complexity.DistroPermissions.View(childComplexity), true
 
 	case "ECSConfig.maxCPU":
 		if e.complexity.ECSConfig.MaxCPU == nil {
@@ -4952,12 +4983,31 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PeriodicBuild.NextRunTime(childComplexity), true
 
+	case "Permissions.canCreateDistro":
+		if e.complexity.Permissions.CanCreateDistro == nil {
+			break
+		}
+
+		return e.complexity.Permissions.CanCreateDistro(childComplexity), true
+
 	case "Permissions.canCreateProject":
 		if e.complexity.Permissions.CanCreateProject == nil {
 			break
 		}
 
 		return e.complexity.Permissions.CanCreateProject(childComplexity), true
+
+	case "Permissions.distroPermissions":
+		if e.complexity.Permissions.DistroPermissions == nil {
+			break
+		}
+
+		args, err := ec.field_Permissions_distroPermissions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Permissions.DistroPermissions(childComplexity, args["options"].(DistroPermissionsOptions)), true
 
 	case "Permissions.userId":
 		if e.complexity.Permissions.UserID == nil {
@@ -8796,6 +8846,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCopyProjectInput,
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputDisplayTask,
+		ec.unmarshalInputDistroPermissionsOptions,
 		ec.unmarshalInputEditSpawnHostInput,
 		ec.unmarshalInputExternalLinkInput,
 		ec.unmarshalInputGithubUserInput,
@@ -10263,6 +10314,21 @@ func (ec *executionContext) field_Mutation_updateVolume_args(ctx context.Context
 		}
 	}
 	args["updateVolumeInput"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Permissions_distroPermissions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 DistroPermissionsOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalNDistroPermissionsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroPermissionsOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
 	return args, nil
 }
 
@@ -16237,6 +16303,138 @@ func (ec *executionContext) fieldContext_DistroInfo_workDir(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroPermissions_admin(ctx context.Context, field graphql.CollectedField, obj *DistroPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroPermissions_admin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Admin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroPermissions_admin(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroPermissions_edit(ctx context.Context, field graphql.CollectedField, obj *DistroPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroPermissions_edit(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Edit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroPermissions_edit(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroPermissions_view(ctx context.Context, field graphql.CollectedField, obj *DistroPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroPermissions_view(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.View, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroPermissions_view(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33269,6 +33467,50 @@ func (ec *executionContext) fieldContext_PeriodicBuild_nextRunTime(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Permissions_canCreateDistro(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permissions_canCreateDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Permissions().CanCreateDistro(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permissions_canCreateDistro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Permissions_canCreateProject(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Permissions_canCreateProject(ctx, field)
 	if err != nil {
@@ -33309,6 +33551,69 @@ func (ec *executionContext) fieldContext_Permissions_canCreateProject(ctx contex
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Permissions_distroPermissions(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permissions_distroPermissions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Permissions().DistroPermissions(rctx, obj, fc.Args["options"].(DistroPermissionsOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*DistroPermissions)
+	fc.Result = res
+	return ec.marshalNDistroPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroPermissions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permissions_distroPermissions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "admin":
+				return ec.fieldContext_DistroPermissions_admin(ctx, field)
+			case "edit":
+				return ec.fieldContext_DistroPermissions_edit(ctx, field)
+			case "view":
+				return ec.fieldContext_DistroPermissions_view(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DistroPermissions", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Permissions_distroPermissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -56923,8 +57228,12 @@ func (ec *executionContext) fieldContext_User_permissions(ctx context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "canCreateDistro":
+				return ec.fieldContext_Permissions_canCreateDistro(ctx, field)
 			case "canCreateProject":
 				return ec.fieldContext_Permissions_canCreateProject(ctx, field)
+			case "distroPermissions":
+				return ec.fieldContext_Permissions_distroPermissions(ctx, field)
 			case "userId":
 				return ec.fieldContext_Permissions_userId(ctx, field)
 			}
@@ -63476,6 +63785,35 @@ func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj i
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDistroPermissionsOptions(ctx context.Context, obj interface{}) (DistroPermissionsOptions, error) {
+	var it DistroPermissionsOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"distroId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "distroId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DistroID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context, obj interface{}) (EditSpawnHostInput, error) {
 	var it EditSpawnHostInput
 	asMap := map[string]interface{}{}
@@ -68219,6 +68557,48 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var distroPermissionsImplementors = []string{"DistroPermissions"}
+
+func (ec *executionContext) _DistroPermissions(ctx context.Context, sel ast.SelectionSet, obj *DistroPermissions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, distroPermissionsImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DistroPermissions")
+		case "admin":
+
+			out.Values[i] = ec._DistroPermissions_admin(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "edit":
+
+			out.Values[i] = ec._DistroPermissions_edit(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "view":
+
+			out.Values[i] = ec._DistroPermissions_view(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var eCSConfigImplementors = []string{"ECSConfig"}
 
 func (ec *executionContext) _ECSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIECSConfig) graphql.Marshaler {
@@ -71582,6 +71962,26 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Permissions")
+		case "canCreateDistro":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Permissions_canCreateDistro(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "canCreateProject":
 			field := field
 
@@ -71592,6 +71992,26 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._Permissions_canCreateProject(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "distroPermissions":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Permissions_distroPermissions(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -78401,6 +78821,25 @@ func (ec *executionContext) marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 	wg.Wait()
 
 	return ret
+}
+
+func (ec *executionContext) marshalNDistroPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroPermissions(ctx context.Context, sel ast.SelectionSet, v DistroPermissions) graphql.Marshaler {
+	return ec._DistroPermissions(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDistroPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroPermissions(ctx context.Context, sel ast.SelectionSet, v *DistroPermissions) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DistroPermissions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDistroPermissionsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroPermissionsOptions(ctx context.Context, v interface{}) (DistroPermissionsOptions, error) {
+	res, err := ec.unmarshalInputDistroPermissionsOptions(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx context.Context, v interface{}) (DistroSettingsAccess, error) {
