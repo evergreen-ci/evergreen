@@ -435,8 +435,6 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 		return ResourceNotFound.Send(ctx, err.Error())
 	case http.StatusUnauthorized:
 		return Forbidden.Send(ctx, err.Error())
-	case http.StatusForbidden:
-		return Forbidden.Send(ctx, err.Error())
 	case http.StatusBadRequest:
 		return InputValidationError.Send(ctx, err.Error())
 	default:

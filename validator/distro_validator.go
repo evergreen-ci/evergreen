@@ -25,33 +25,6 @@ var validateGeneralSection = []distroValidator{
 	ensureHasNoUnauthorizedCharacters,
 }
 
-var validateProviderSection = []distroValidator{
-	ensureValidContainerPool,
-}
-
-var validateHostSection = []distroValidator{
-	ensureValidArch,
-	ensureValidBootstrapSettings,
-	ensureValidStaticBootstrapSettings,
-	ensureValidSSHOptions,
-	ensureValidSSHKeyName,
-	ensureStaticHasAuthorizedKeysFile,
-	ensureStaticHostsAreNotSpawnable,
-	ensureHasValidVirtualWorkstationSettings,
-	ensureHasValidHostAllocatorSettings,
-}
-
-var validateProjectSection = []distroValidator{
-	ensureValidCloneMethod,
-	ensureValidExpansions,
-}
-
-var validateTaskSection = []distroValidator{
-	ensureHasValidPlannerSettings,
-	ensureHasValidFinderSettings,
-	ensureHasValidDispatcherSettings,
-}
-
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
