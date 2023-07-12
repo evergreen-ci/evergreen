@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -660,4 +661,36 @@ func TestGetAuthorizedKeysFile(t *testing.T) {
 		}
 		assert.Equal(t, expected, d.GetAuthorizedKeysFile())
 	})
+}
+
+func TestUpdateDistroSection(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for name, test := range map[string]func(t *testing.T, originalDistro *Distro){
+		DistroSettingsGeneralSection: func(t *testing.T, originalDistro *Distro) {
+			updated, err := UpdateDistroSection(ctx, originalDistro, &Distro{
+				Id:      "distro_id",
+				Aliases: []string{"alias_1", "alias_2"},
+				Note:    "updated note",
+			}, DistroSettingsGeneralSection, "user")
+
+			assert.NoError(t, err)
+			require.NotNil(t, updated)
+			assert.Equal(t, updated.SSHKey, "this should be unchanged")
+			assert.Equal(t, updated.Aliases, []string{"alias_1", "alias_2"})
+			assert.Equal(t, updated.Note, "updated note")
+		},
+	} {
+		assert.NoError(t, db.ClearCollections(Collection))
+		originalDistro := &Distro{
+			Id:     "distro_id",
+			SSHKey: "this should be unchanged",
+		}
+		assert.Nil(t, originalDistro.Insert())
+
+		t.Run(name, func(t *testing.T) {
+			test(t, originalDistro)
+		})
+	}
 }

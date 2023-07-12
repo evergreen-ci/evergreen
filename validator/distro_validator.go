@@ -20,13 +20,16 @@ const (
 
 type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) ValidationErrors
 
-// Functions used to validate the general section for distro.
-var ValidateGeneralSection = []distroValidator{
+var validateGeneralSection = []distroValidator{
 	ensureHasNonZeroID,
 	ensureHasNoUnauthorizedCharacters,
 }
 
-var ValidateHostSection = []distroValidator{
+var validateProviderSection = []distroValidator{
+	ensureValidContainerPool,
+}
+
+var validateHostSection = []distroValidator{
 	ensureValidArch,
 	ensureValidBootstrapSettings,
 	ensureValidStaticBootstrapSettings,
@@ -38,19 +41,15 @@ var ValidateHostSection = []distroValidator{
 	ensureHasValidHostAllocatorSettings,
 }
 
-var ValidateProjectSection = []distroValidator{
+var validateProjectSection = []distroValidator{
 	ensureValidCloneMethod,
 	ensureValidExpansions,
 }
 
-var ValidateTaskSection = []distroValidator{
+var validateTaskSection = []distroValidator{
 	ensureHasValidPlannerSettings,
 	ensureHasValidFinderSettings,
 	ensureHasValidDispatcherSettings,
-}
-
-var ValidateProviderSection = []distroValidator{
-	ensureValidContainerPool,
 }
 
 // Functions used to validate the syntax of a distro object.
@@ -82,7 +81,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	var allDistroIDs, allDistroAliases []string
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		allDistroIDs, allDistroAliases, err = GetDistros()
+		allDistroIDs, allDistroAliases, err = getDistros()
 		if err != nil {
 			return nil, err
 		}
@@ -90,14 +89,14 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 
 	// Parent and container distros do not support aliases.
 	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
-		validationErrs = append(validationErrs, EnsureNoAliases(d, allDistroAliases)...)
+		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
 	}
 
 	if newDistro {
 		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs)...)
 	}
 	if len(d.Aliases) > 0 {
-		validationErrs = append(validationErrs, EnsureValidAliases(d)...)
+		validationErrs = append(validationErrs, ensureValidAliases(d)...)
 	}
 
 	for _, v := range distroSyntaxValidators {
@@ -243,7 +242,7 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 	return nil
 }
 
-func EnsureValidAliases(d *distro.Distro) ValidationErrors {
+func ensureValidAliases(d *distro.Distro) ValidationErrors {
 	var errs ValidationErrors
 	for _, a := range d.Aliases {
 		if d.Id == a {
@@ -256,7 +255,7 @@ func EnsureValidAliases(d *distro.Distro) ValidationErrors {
 	return errs
 }
 
-func EnsureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors {
+func ensureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors {
 	var errs ValidationErrors
 	if len(d.Aliases) != 0 {
 		errs = append(errs, ValidationError{
@@ -581,4 +580,31 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 		})
 	}
 	return errs
+}
+
+func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section distro.DistroSettingsSection, s *evergreen.Settings) error {
+	validationErrs := ValidationErrors{}
+
+	switch section {
+	case distro.DistroSettingsGeneralSection:
+		// Parent and container distros do not support aliases.
+		if originalDistro.ContainerPool != "" || originalDistro.Provider == evergreen.ProviderNameDocker {
+			_, allDistroAliases, err := getDistros()
+			if err != nil {
+				return errors.Wrap(err, "unable to fetch all distro aliases")
+			}
+			validationErrs = append(validationErrs, ensureNoAliases(changes, allDistroAliases)...)
+		}
+		if len(changes.Aliases) > 0 {
+			validationErrs = append(validationErrs, ensureValidAliases(changes)...)
+		}
+		for _, v := range validateGeneralSection {
+			validationErrs = append(validationErrs, v(ctx, changes, s)...)
+		}
+	}
+
+	if len(validationErrs) > 0 {
+		return errors.New(fmt.Sprintf("validating distro changes: %s", validationErrs.String()))
+	}
+	return nil
 }

@@ -31,6 +31,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -125,7 +126,7 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 }
 
 // SaveDistroSection is the resolver for the saveDistroSection field.
-func (r *mutationResolver) SaveDistroSection(ctx context.Context, distroID string, changes *restModel.APIDistro, section DistroSettingsSection, onSave DistroOnSaveOperation) (*DistroWithHostCount, error) {
+func (r *mutationResolver) SaveDistroSection(ctx context.Context, distroID string, changes *restModel.APIDistro, section distro.DistroSettingsSection, onSave DistroOnSaveOperation) (*DistroWithHostCount, error) {
 	user := mustHaveUser(ctx)
 	distroChanges := changes.ToService()
 
@@ -137,11 +138,11 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, distroID strin
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", distroID))
 	}
 
-	if err = validateDistroSection(ctx, originalDistro, distroChanges, section, evergreen.GetEnvironment().Settings()); err != nil {
+	if err = validator.ValidateDistroSection(ctx, originalDistro, distroChanges, section, evergreen.GetEnvironment().Settings()); err != nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", distroID, err.Error()))
 	}
 
-	updatedDistro, err := updateDistroSection(ctx, originalDistro, distroChanges, section, user.Username())
+	updatedDistro, err := distro.UpdateDistroSection(ctx, originalDistro, distroChanges, section, user.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating existing distro '%s': %s", distroID, err.Error()))
 	}

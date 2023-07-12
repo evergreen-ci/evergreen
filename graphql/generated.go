@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -596,7 +597,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
-		SaveDistroSection             func(childComplexity int, distroID string, changes *model.APIDistro, section DistroSettingsSection, onSave DistroOnSaveOperation) int
+		SaveDistroSection             func(childComplexity int, distroID string, changes *model.APIDistro, section distro.DistroSettingsSection, onSave DistroOnSaveOperation) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
@@ -1495,7 +1496,7 @@ type MutationResolver interface {
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
-	SaveDistroSection(ctx context.Context, distroID string, changes *model.APIDistro, section DistroSettingsSection, onSave DistroOnSaveOperation) (*DistroWithHostCount, error)
+	SaveDistroSection(ctx context.Context, distroID string, changes *model.APIDistro, section distro.DistroSettingsSection, onSave DistroOnSaveOperation) (*DistroWithHostCount, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -4207,7 +4208,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["distroId"].(string), args["changes"].(*model.APIDistro), args["section"].(DistroSettingsSection), args["onSave"].(DistroOnSaveOperation)), true
+		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["distroId"].(string), args["changes"].(*model.APIDistro), args["section"].(distro.DistroSettingsSection), args["onSave"].(DistroOnSaveOperation)), true
 
 	case "Mutation.saveProjectSettingsForSection":
 		if e.complexity.Mutation.SaveProjectSettingsForSection == nil {
@@ -9928,10 +9929,10 @@ func (ec *executionContext) field_Mutation_saveDistroSection_args(ctx context.Co
 		}
 	}
 	args["changes"] = arg1
-	var arg2 DistroSettingsSection
+	var arg2 distro.DistroSettingsSection
 	if tmp, ok := rawArgs["section"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg2, err = ec.unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsSection(ctx, tmp)
+		arg2, err = ec.unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -25071,7 +25072,7 @@ func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["distroId"].(string), fc.Args["changes"].(*model.APIDistro), fc.Args["section"].(DistroSettingsSection), fc.Args["onSave"].(DistroOnSaveOperation))
+		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["distroId"].(string), fc.Args["changes"].(*model.APIDistro), fc.Args["section"].(distro.DistroSettingsSection), fc.Args["onSave"].(DistroOnSaveOperation))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -79603,14 +79604,20 @@ func (ec *executionContext) marshalNDistroSettingsAccess2githubᚗcomᚋevergree
 	return v
 }
 
-func (ec *executionContext) unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsSection(ctx context.Context, v interface{}) (DistroSettingsSection, error) {
-	var res DistroSettingsSection
-	err := res.UnmarshalGQL(v)
+func (ec *executionContext) unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx context.Context, v interface{}) (distro.DistroSettingsSection, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := distro.DistroSettingsSection(tmp)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsSection(ctx context.Context, sel ast.SelectionSet, v DistroSettingsSection) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx context.Context, sel ast.SelectionSet, v distro.DistroSettingsSection) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNDistroWithHostCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroWithHostCount(ctx context.Context, sel ast.SelectionSet, v DistroWithHostCount) graphql.Marshaler {

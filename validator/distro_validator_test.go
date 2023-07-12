@@ -162,7 +162,7 @@ func TestEnsureValidAliases(t *testing.T) {
 	Convey("When validating a distro's aliases...", t, func() {
 		d := distro.Distro{Id: "c", Aliases: []string{"c"}}
 		Convey("if a distro is declared as an alias of itself, an error should be returned", func() {
-			vErrors := EnsureValidAliases(&d)
+			vErrors := ensureValidAliases(&d)
 			So(vErrors, ShouldNotResemble, ValidationErrors{})
 			So(len(vErrors), ShouldEqual, 1)
 			So(vErrors[0].Message, ShouldEqual, "'c' cannot be an distro alias of itself")
@@ -193,7 +193,7 @@ func TestEnsureNoAliases(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			errs := EnsureNoAliases(&testParams.distro, testParams.aliases)
+			errs := ensureNoAliases(&testParams.distro, testParams.aliases)
 			if testParams.shouldPass {
 				assert.Empty(t, errs)
 			} else {
@@ -726,4 +726,45 @@ func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
 	assert.NotNil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
 		IsVirtualWorkstation: true,
 	}, settings))
+}
+
+func TestValidateDistroSection(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for name, test := range map[string]func(t *testing.T, settings *evergreen.Settings){
+		distro.DistroSettingsGeneralSection: func(t *testing.T, settings *evergreen.Settings) {
+			assert.Nil(t, ValidateDistroSection(ctx, &distro.Distro{
+				Id:            "distro_id",
+				ContainerPool: "",
+				Provider:      evergreen.ProviderNameEc2Fleet,
+			},
+				&distro.Distro{
+					Id:                  "distro_id",
+					Aliases:             []string{"alias_1", "alias_2"},
+					DisableShallowClone: true,
+					Disabled:            true,
+				},
+				distro.DistroSettingsGeneralSection,
+				settings))
+
+			assert.NotNil(t, ValidateDistroSection(ctx, &distro.Distro{
+				Id:            "distro_id",
+				ContainerPool: "",
+				Provider:      evergreen.ProviderNameDocker,
+			},
+				&distro.Distro{
+					Id:      "distro_id",
+					Aliases: []string{"alias_1", "alias_2"},
+				},
+				distro.DistroSettingsGeneralSection,
+				settings))
+		},
+	} {
+		settings := &evergreen.Settings{}
+
+		t.Run(name, func(t *testing.T) {
+			test(t, settings)
+		})
+	}
 }

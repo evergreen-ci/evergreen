@@ -183,7 +183,7 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 }
 
 // getDistros creates a slice of all distro IDs and aliases.
-func GetDistros() (ids []string, aliases []string, err error) {
+func getDistros() (ids []string, aliases []string, err error) {
 	return getDistrosForProject("")
 }
 

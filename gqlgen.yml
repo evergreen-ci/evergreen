@@ -66,6 +66,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   DistroInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
+  DistroSettingsSection:
+    model: github.com/evergreen-ci/evergreen/model/distro.DistroSettingsSection
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   ECSConfig:

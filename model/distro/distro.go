@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -865,4 +867,49 @@ func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
 		evergreen.BuildRevision,
 		d.ExecutableSubPath(),
 	}, "/")
+}
+
+type DistroSettingsSection string
+
+const (
+	DistroSettingsGeneralSection  = "GENERAL"
+	DistroSettingsProviderSection = "PROVIDER"
+	DistroSettingsTaskSection     = "TASK"
+	DistroSettingsHostSection     = "HOST"
+	DistroSettingsProjectSection  = "PROJECT"
+)
+
+func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *Distro, section DistroSettingsSection, userID string) (*Distro, error) {
+	distroID := originalDistro.Id
+
+	var err error
+	switch section {
+	case DistroSettingsGeneralSection:
+		err = db.Update(Collection,
+			bson.M{IdKey: distroID},
+			bson.M{
+				"$set": bson.M{
+					AliasesKey:             changes.Aliases,
+					DisabledKey:            changes.Disabled,
+					DisableShallowCloneKey: changes.DisableShallowClone,
+					IsClusterKey:           changes.IsCluster,
+					NoteKey:                changes.Note,
+				},
+			})
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "saving section")
+	}
+
+	updatedDistro, err := FindOneId(distroID)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching updated distro")
+	}
+
+	if originalDistro.GetDefaultAMI() != updatedDistro.GetDefaultAMI() {
+		event.LogDistroAMIModified(originalDistro.Id, userID)
+	}
+	event.LogDistroModified(distroID, userID, updatedDistro.NewDistroData())
+
+	return updatedDistro, nil
 }

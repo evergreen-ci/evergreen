@@ -507,53 +507,6 @@ func (e DistroSettingsAccess) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type DistroSettingsSection string
-
-const (
-	DistroSettingsSectionGeneral  DistroSettingsSection = "GENERAL"
-	DistroSettingsSectionProvider DistroSettingsSection = "PROVIDER"
-	DistroSettingsSectionTask     DistroSettingsSection = "TASK"
-	DistroSettingsSectionHost     DistroSettingsSection = "HOST"
-	DistroSettingsSectionProject  DistroSettingsSection = "PROJECT"
-)
-
-var AllDistroSettingsSection = []DistroSettingsSection{
-	DistroSettingsSectionGeneral,
-	DistroSettingsSectionProvider,
-	DistroSettingsSectionTask,
-	DistroSettingsSectionHost,
-	DistroSettingsSectionProject,
-}
-
-func (e DistroSettingsSection) IsValid() bool {
-	switch e {
-	case DistroSettingsSectionGeneral, DistroSettingsSectionProvider, DistroSettingsSectionTask, DistroSettingsSectionHost, DistroSettingsSectionProject:
-		return true
-	}
-	return false
-}
-
-func (e DistroSettingsSection) String() string {
-	return string(e)
-}
-
-func (e *DistroSettingsSection) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = DistroSettingsSection(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid DistroSettingsSection", str)
-	}
-	return nil
-}
-
-func (e DistroSettingsSection) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 type HostSortBy string
 
 const (

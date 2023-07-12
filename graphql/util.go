@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -24,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -1036,72 +1034,6 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	return taskOpts, nil
-}
-
-func validateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section DistroSettingsSection, s *evergreen.Settings) error {
-	validationErrs := validator.ValidationErrors{}
-
-	switch section {
-	case DistroSettingsSectionGeneral:
-		// Parent and container distros do not support aliases.
-		if originalDistro.ContainerPool != "" || originalDistro.Provider == evergreen.ProviderNameDocker {
-			_, allDistroAliases, err := validator.GetDistros()
-			if err != nil {
-				return errors.Wrap(err, "unable to fetch all distro aliases")
-			}
-			validationErrs = append(validationErrs, validator.EnsureNoAliases(changes, allDistroAliases)...)
-		}
-		if len(changes.Aliases) > 0 {
-			validationErrs = append(validationErrs, validator.EnsureValidAliases(changes)...)
-		}
-		for _, v := range validator.ValidateGeneralSection {
-			validationErrs = append(validationErrs, v(ctx, changes, s)...)
-		}
-	}
-
-	if len(validationErrs) > 0 {
-		return InputValidationError.Send(ctx, fmt.Sprintf("validating distro changes: %s", validationErrs.String()))
-	}
-	return nil
-}
-
-func updateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section DistroSettingsSection, userID string) (*distro.Distro, error) {
-	coll := distro.Collection
-	distroID := originalDistro.Id
-
-	// i think it makes sense to move the actual update into the model/distro
-	// but i will need to define the enums again, which is annoying and seems incongruous bcus im not doing that above...
-	// otherwise it would be graphql.DistroSettingsSectionGeneral which we have never done...
-	var err error
-	switch section {
-	case DistroSettingsSectionGeneral:
-		err = db.Update(coll,
-			bson.M{distro.IdKey: distroID},
-			bson.M{
-				"$set": bson.M{
-					distro.AliasesKey:             changes.Aliases,
-					distro.DisabledKey:            changes.Disabled,
-					distro.DisableShallowCloneKey: changes.DisableShallowClone,
-					distro.IsClusterKey:           changes.IsCluster,
-					distro.NoteKey:                changes.Note,
-				},
-			})
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "saving section")
-	}
-
-	updatedDistro, err := distro.FindOneId(distroID)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting updated distro")
-	}
-
-	if originalDistro.GetDefaultAMI() != updatedDistro.GetDefaultAMI() {
-		event.LogDistroAMIModified(originalDistro.Id, userID)
-	}
-	event.LogDistroModified(distroID, userID, updatedDistro.NewDistroData())
-
-	return updatedDistro, nil
 }
 
 func handleOnSaveOperation(ctx context.Context, distroID string, userID string, onSave DistroOnSaveOperation) (int, error) {
