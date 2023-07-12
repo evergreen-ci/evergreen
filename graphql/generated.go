@@ -275,6 +275,7 @@ type ComplexityRoot struct {
 
 	ExternalLink struct {
 		DisplayName func(childComplexity int) int
+		Requesters  func(childComplexity int) int
 		URLTemplate func(childComplexity int) int
 	}
 
@@ -2620,6 +2621,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ExternalLink.DisplayName(childComplexity), true
+
+	case "ExternalLink.requesters":
+		if e.complexity.ExternalLink.Requesters == nil {
+			break
+		}
+
+		return e.complexity.ExternalLink.Requesters(childComplexity), true
 
 	case "ExternalLink.urlTemplate":
 		if e.complexity.ExternalLink.URLTemplate == nil {
@@ -16518,6 +16526,50 @@ func (ec *executionContext) _ExternalLink_displayName(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_ExternalLink_displayName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalLink_requesters(ctx context.Context, field graphql.CollectedField, obj *model.APIExternalLink) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalLink_requesters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Requesters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalLink_requesters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExternalLink",
 		Field:      field,
@@ -35793,6 +35845,8 @@ func (ec *executionContext) fieldContext_Project_externalLinks(ctx context.Conte
 			switch field.Name {
 			case "displayName":
 				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "requesters":
+				return ec.fieldContext_ExternalLink_requesters(ctx, field)
 			case "urlTemplate":
 				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
 			}
@@ -45230,6 +45284,8 @@ func (ec *executionContext) fieldContext_RepoRef_externalLinks(ctx context.Conte
 			switch field.Name {
 			case "displayName":
 				return ec.fieldContext_ExternalLink_displayName(ctx, field)
+			case "requesters":
+				return ec.fieldContext_ExternalLink_requesters(ctx, field)
 			case "urlTemplate":
 				return ec.fieldContext_ExternalLink_urlTemplate(ctx, field)
 			}
@@ -63546,7 +63602,7 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"displayName", "urlTemplate"}
+	fieldsInOrder := [...]string{"displayName", "requesters", "urlTemplate"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63562,6 +63618,15 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 				return it, err
 			}
 			it.DisplayName = data
+		case "requesters":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requesters"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Requesters = data
 		case "urlTemplate":
 			var err error
 
@@ -68260,6 +68325,13 @@ func (ec *executionContext) _ExternalLink(ctx context.Context, sel ast.Selection
 		case "displayName":
 
 			out.Values[i] = ec._ExternalLink_displayName(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "requesters":
+
+			out.Values[i] = ec._ExternalLink_requesters(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

@@ -342,6 +342,10 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
 	}
 
+	if projectRef.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		return nil, pr, errors.Wrapf(errors.New("project is using GitHub merge queue"), "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+
 	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))
 	if err != nil {
 		return nil, pr, errors.Wrap(err, "getting user info from GitHub API")

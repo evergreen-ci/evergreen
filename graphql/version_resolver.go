@@ -85,11 +85,10 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 // BuildVariantStats is the resolver for the buildVariantStats field.
 func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.APIVersion, options BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
 	opts := task.GetTasksByVersionOptions{
-		TaskNames:                      options.Tasks,
-		Variants:                       options.Variants,
-		Statuses:                       options.Statuses,
-		IncludeBuildVariantDisplayName: true,
-		IncludeNeverActivatedTasks:     !obj.IsPatchRequester(),
+		TaskNames:                  options.Tasks,
+		Variants:                   options.Variants,
+		Statuses:                   options.Statuses,
+		IncludeNeverActivatedTasks: !obj.IsPatchRequester(),
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(ctx, utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
@@ -159,13 +158,18 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
 	}
 	var externalLinks []*ExternalLinkForMetadata
+
 	for _, link := range pRef.ExternalLinks {
-		// replace {version_id} with the actual version id
-		formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
-		externalLinks = append(externalLinks, &ExternalLinkForMetadata{
-			URL:         formattedURL,
-			DisplayName: link.DisplayName,
-		})
+		// TODO EVG-16363: Remove the len check after initial PRs are merged and database updates are complete.
+		// Existing metadata links will have a requesters array of length 0 due to the field not existing before.
+		if len(link.Requesters) == 0 || utility.StringSliceContains(link.Requesters, utility.FromStringPtr(obj.Requester)) {
+			// replace {version_id} with the actual version id
+			formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
+			externalLinks = append(externalLinks, &ExternalLinkForMetadata{
+				URL:         formattedURL,
+				DisplayName: link.DisplayName,
+			})
+		}
 	}
 	return externalLinks, nil
 }
@@ -323,9 +327,8 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Sorts:            taskSorts,
 		IncludeBaseTasks: true,
 		// If the version is a patch, we want to exclude inactive tasks by default.
-		IncludeNeverActivatedTasks:     !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
-		IncludeBuildVariantDisplayName: true,
-		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
+		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
+		IsMainlineCommit:           !evergreen.IsPatchRequester(v.Requester),
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
@@ -368,9 +371,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 		// If the version is a patch, we don't want to include its never activated tasks.
 		IncludeNeverActivatedTasks: !obj.IsPatchRequester(),
 	}
-	if len(options.Variants) != 0 {
-		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
-	}
+
 	stats, err := task.GetTaskStatsByVersion(ctx, *obj.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))

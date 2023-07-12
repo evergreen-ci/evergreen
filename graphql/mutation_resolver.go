@@ -284,10 +284,9 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 // ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       evergreen.TaskFailureStatuses,
-		IncludeExecutionTasks:          true,
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
+		Statuses:              evergreen.TaskFailureStatuses,
+		IncludeExecutionTasks: true,
+		IncludeBaseTasks:      false,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, patchID, opts)
 	if err != nil {

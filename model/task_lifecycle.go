@@ -1170,7 +1170,8 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 	return nil
 }
 
-// updateMakespans
+// updateMakespans updates the predicted and actual makespans for the tasks in
+// the build.
 func updateMakespans(b *build.Build, buildTasks []task.Task) error {
 	depPath := FindPredictedMakespan(buildTasks)
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
@@ -1180,23 +1181,29 @@ type buildStatus struct {
 	status              string
 	allTasksBlocked     bool
 	allTasksUnscheduled bool
+	// hasUnfinishedEssentialTask indicates if the build has at least one
+	// essential tasks which is not finished. If so, the build is not finished.
+	hasUnfinishedEssentialTask bool
 }
 
-// getBuildStatus returns a string denoting the status of the build and
-// a boolean denoting if all tasks in the build are blocked.
+// getBuildStatus returns a string denoting the status of the build based on the
+// state of its constituent tasks.
 func getBuildStatus(buildTasks []task.Task) buildStatus {
 	// Check if no tasks have started and if all tasks are blocked.
 	noStartedTasks := true
 	allTasksBlocked := true
 	allTasksUnscheduled := true
+	var hasUnfinishedEssentialTask bool
 	for _, t := range buildTasks {
+		if t.IsEssentialToSucceed && !t.IsFinished() {
+			hasUnfinishedEssentialTask = true
+		}
 		if !t.IsUnscheduled() {
 			allTasksUnscheduled = false
 		}
 		if !evergreen.IsUnstartedTaskStatus(t.Status) {
 			noStartedTasks = false
 			allTasksBlocked = false
-			break
 		}
 		if !t.Blocked() {
 			allTasksBlocked = false
@@ -1205,35 +1212,62 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 
 	if allTasksUnscheduled {
 		return buildStatus{
-			status:              evergreen.BuildCreated,
-			allTasksBlocked:     allTasksBlocked,
-			allTasksUnscheduled: allTasksUnscheduled,
+			status:                     evergreen.BuildCreated,
+			allTasksBlocked:            allTasksBlocked,
+			allTasksUnscheduled:        allTasksUnscheduled,
+			hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
 		}
 	}
 
 	if noStartedTasks || allTasksBlocked {
-		return buildStatus{status: evergreen.BuildCreated, allTasksBlocked: allTasksBlocked}
+		return buildStatus{
+			status:                     evergreen.BuildCreated,
+			allTasksBlocked:            allTasksBlocked,
+			hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
+		}
 	}
 
-	// Check if tasks are started but not finished.
+	var hasUnfinishedTask bool
 	for _, t := range buildTasks {
-		if t.Status == evergreen.TaskStarted {
-			return buildStatus{status: evergreen.BuildStarted}
+		if t.WillRun() || t.IsInProgress() {
+			hasUnfinishedTask = true
 		}
-		if t.Activated && !t.Blocked() && !t.IsFinished() {
-			return buildStatus{status: evergreen.BuildStarted}
+	}
+	if hasUnfinishedTask {
+		return buildStatus{
+			status:                     evergreen.BuildStarted,
+			hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
 		}
 	}
 
-	// Check if all tasks are finished but have failures.
+	// Check if tasks are finished but failed.
 	for _, t := range buildTasks {
 		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
-			return buildStatus{status: evergreen.BuildFailed}
+			return buildStatus{
+				status:                     evergreen.BuildFailed,
+				hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
+			}
 		}
 	}
-	return buildStatus{status: evergreen.BuildSucceeded}
+
+	if hasUnfinishedEssentialTask {
+		// If there are only successful and unfinished essential tasks, prevent
+		// the build from being marked successful because the essential tasks
+		// must run.
+		return buildStatus{
+			status:                     evergreen.BuildStarted,
+			hasUnfinishedEssentialTask: hasUnfinishedEssentialTask,
+		}
+	}
+
+	return buildStatus{
+		status: evergreen.BuildSucceeded,
+	}
 }
 
+// updateBuildGithubStatus updates the GitHub check status for a build. If the
+// build has no GitHub checks, then it is a no-op. Note that this is for GitHub
+// checks, which are *not* the same as GitHub PR statuses.
 func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	githubStatusTasks := make([]task.Task, 0, len(buildTasks))
 	for _, t := range buildTasks {
@@ -1282,7 +1316,7 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		}
 		if err = thirdparty.SendPendingStatusToGithub(ctx, input, ""); err != nil {
-			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+			return errors.Wrapf(err, "sending patch '%s' status to GitHub", p.Id.Hex())
 		}
 	}
 	return nil
@@ -1291,7 +1325,7 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all the build's tasks become blocked / unscheduled.
 func updateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey)
+	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToSucceedKey)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1303,6 +1337,10 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
 		}
 		return true, nil
+	}
+
+	if err := b.SetHasUnfinishedEssentialTask(buildStatus.hasUnfinishedEssentialTask); err != nil {
+		return false, errors.Wrapf(err, "setting unfinished essential task state to %t for build '%s'", buildStatus.hasUnfinishedEssentialTask, b.Id)
 	}
 
 	blockedChanged := buildStatus.allTasksBlocked != b.AllTasksBlocked
@@ -1383,10 +1421,14 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 		return versionActivated, evergreen.VersionCreated
 	}
 
+	var hasUnfinishedEssentialTask bool
 	// Check if builds are started but not finished.
 	for _, b := range builds {
 		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
 			return true, evergreen.VersionStarted
+		}
+		if b.HasUnfinishedEssentialTask {
+			hasUnfinishedEssentialTask = true
 		}
 	}
 
@@ -1397,9 +1439,19 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 		}
 	}
 
+	if hasUnfinishedEssentialTask {
+		// If there are only successful and unfinished essential builds, prevent
+		// the version from being marked successful because the essential tasks
+		// must run.
+		return true, evergreen.VersionStarted
+	}
+
 	return true, evergreen.VersionSucceeded
 }
 
+// updateVersionStatus updates the status of the version based on the status of
+// its constituent builds. It assumes that the build statuses have already
+// been updated prior to this.
 func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	githubStatusBuilds := make([]build.Build, 0, len(builds))
 	for _, b := range builds {
@@ -1421,10 +1473,13 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	return nil
 }
 
-// Update the status of the version based on its constituent builds
+// updateVersionStatus updates the status of the version based on the status of
+// its constituent builds, as well as a boolean indicating if any of them have
+// unfinished essential tasks. It assumes that the build statuses have already
+// been updated prior to this.
 func updateVersionStatus(v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
-		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey, build.AllTasksBlockedKey))
+		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey, build.AllTasksBlockedKey, build.HasUnfinishedEssentialTaskKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
