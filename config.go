@@ -578,6 +578,9 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	if owner == "" || repo == "" {
+		return "", errors.New("owner and repo not specified")
+	}
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
 		// TODO EVG-19966: Return error here
@@ -630,6 +633,10 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
 		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "no default owner/repo",
+			"ticket":  "EVG-19966",
+		})
 		return "", nil
 	}
 	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
