@@ -132,13 +132,16 @@ func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, td 
 	if c.EndTaskShouldFail {
 		return nil, errors.New("end task should fail")
 	}
-	if c.EndTaskResponse != nil {
-		return c.EndTaskResponse, nil
-	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.EndTaskResult.Detail = detail
 	c.EndTaskResult.TaskData = td
+
+	if c.EndTaskResponse != nil {
+		return c.EndTaskResponse, nil
+	}
+
 	return &apimodels.EndTaskResponse{}, nil
 }
 

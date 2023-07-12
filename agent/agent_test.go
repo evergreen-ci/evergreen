@@ -241,12 +241,33 @@ func (s *AgentSuite) TestNextTaskConflict() {
 	}
 }
 
-func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
+func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
-	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	for _, status := range evergreen.TaskCompletedStatuses {
+		resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+		s.Equal(&apimodels.EndTaskResponse{}, resp)
+		s.NoError(err)
+		s.NoError(s.tc.logger.Flush(s.ctx))
+
+		s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "normal task completion should record the task status")
+		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+			"Running post-task commands.",
+		}, nil)
+	}
+}
+
+func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+
+	const status = evergreen.TaskSystemFailed
+	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
+	s.NoError(s.tc.logger.Flush(s.ctx))
+
+	s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{"Running post-task commands"})
 }
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
