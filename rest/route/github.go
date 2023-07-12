@@ -272,7 +272,6 @@ func (gh *githubHookApi) handleMergeGroupEvent(event *github.MergeGroupEvent) gi
 			"head_sha": event.GetMergeGroup().GetHeadSHA(),
 			"message":  "no matching project ref",
 		})
-		fmt.Println("org/repo/branch", org, repo, branch)
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "no matching project ref"))
 	}
 	if ref.CommitQueue.MergeQueue == model.MergeQueueGitHub {
