@@ -175,20 +175,23 @@ func (t *APIParsleyFilter) BuildFromService(h model.ParsleyFilter) {
 }
 
 type APIExternalLink struct {
-	URLTemplate *string `json:"url_template"`
-	DisplayName *string `json:"display_name"`
+	DisplayName *string   `json:"display_name"`
+	Requesters  []*string `json:"requesters"`
+	URLTemplate *string   `json:"url_template"`
 }
 
 func (t *APIExternalLink) ToService() model.ExternalLink {
 	return model.ExternalLink{
-		URLTemplate: utility.FromStringPtr(t.URLTemplate),
 		DisplayName: utility.FromStringPtr(t.DisplayName),
+		Requesters:  utility.FromStringPtrSlice(t.Requesters),
+		URLTemplate: utility.FromStringPtr(t.URLTemplate),
 	}
 }
 
 func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
-	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
 	t.DisplayName = utility.ToStringPtr(h.DisplayName)
+	t.Requesters = utility.ToStringPtrSlice(h.Requesters)
+	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
 }
 
 type APIProjectBanner struct {
