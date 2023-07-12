@@ -148,14 +148,23 @@ type ProjectBanner struct {
 }
 
 type ExternalLink struct {
-	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
+	DisplayName string   `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Requesters  []string `bson:"requesters,omitempty" json:"requesters,omitempty" yaml:"requesters,omitempty"`
+	URLTemplate string   `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
+type MergeQueue string
+
+const (
+	MergeQueueEvergreen MergeQueue = "EVERGREEN"
+	MergeQueueGitHub    MergeQueue = "GITHUB"
+)
+
 type CommitQueueParams struct {
-	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
-	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
+	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
+	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
+	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for

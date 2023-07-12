@@ -11,9 +11,12 @@ type Query {
   spruceConfig: SpruceConfig
   subnetAvailabilityZones: [String!]!
 
-  # hosts
+  # distros
+  distro(distroId: String! @requireDistroAccess(access: VIEW)): Distro
   distros(onlySpawnable: Boolean!): [Distro]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+
+  # hosts
   host(hostId: String!): Host
   hostEvents(
     hostId: String!

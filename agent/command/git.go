@@ -136,9 +136,13 @@ func (opts *cloneOpts) setLocation() error {
 
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over global settings.
-func getProjectMethodAndToken(projectToken, globalToken, globalCloneMethod string) (string, string, error) {
+func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMethod string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
+		return evergreen.CloneMethodOAuth, token, err
+	}
+	if appToken != "" {
+		token, err := parseToken(appToken)
 		return evergreen.CloneMethodOAuth, token, err
 	}
 	token, err := parseToken(globalToken)
@@ -492,7 +496,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
+	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Expansions.Get(evergreen.GithubAppToken), conf.GetCloneMethod())
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
@@ -617,7 +621,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
 	jpm jasper.Manager,
-	projectMethod string,
 	projectToken string,
 	p *patch.Patch,
 	moduleName string) error {
@@ -695,7 +698,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if strings.Contains(opts.location, "git@github.com:") {
 		opts.method = evergreen.CloneMethodLegacySSH
 	} else {
-		opts.method = projectMethod
+		opts.method = evergreen.CloneMethodOAuth
 		opts.token = projectToken
 	}
 	if err = opts.validate(); err != nil {
@@ -810,7 +813,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
 		}
-		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.method, opts.token, p, moduleName)
+		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.token, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
 		}
