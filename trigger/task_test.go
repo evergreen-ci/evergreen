@@ -1375,7 +1375,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		testresult.TestResult{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus},
 	))
 
-	tr := taskTriggers{event: &event.EventLogEntry{ID: "e0"}}
+	tr := taskTriggers{event: &event.EventLogEntry{ID: "e0"}, jiraMappings: &evergreen.JIRANotificationsConfig{}}
 	subscriber := event.Subscriber{Type: event.JIRAIssueSubscriberType, Target: &event.JIRAIssueSubscriber{}}
 
 	// don't alert for an execution task
