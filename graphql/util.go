@@ -316,12 +316,11 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	}
 
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
-		Variants:                       buildVariantOpts.Variants,
-		TaskNames:                      buildVariantOpts.Tasks,
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
-		IncludeBuildVariantDisplayName: true,
+		Statuses:         getValidTaskStatusesFilter(buildVariantOpts.Statuses),
+		Variants:         buildVariantOpts.Variants,
+		TaskNames:        buildVariantOpts.Tasks,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
 		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
 		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
 	}
@@ -619,9 +618,8 @@ func setVersionActivationStatus(ctx context.Context, version *model.Version) err
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, version.Id, opts)
 	if err != nil {

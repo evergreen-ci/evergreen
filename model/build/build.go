@@ -78,6 +78,10 @@ type Build struct {
 	// Set to true if all tasks in the build are blocked.
 	// Should not be exposed, only for internal use.
 	AllTasksBlocked bool `bson:"all_tasks_blocked"`
+	// HasUnfinishedEssentialTask tracks whether or not this build has at least
+	// one unfinished essential task. The build cannot be in a finished state
+	// until all of its essential tasks have finished.
+	HasUnfinishedEssentialTask bool `bson:"has_unfinished_essential_task"`
 }
 
 func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
@@ -240,6 +244,24 @@ func (b *Build) SetIsGithubCheck() error {
 	)
 }
 
+// SetHasUnfinishedEssentialTask sets whether or not the build has at least one
+// unfinished essential task.
+func (b *Build) SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask bool) error {
+	if b.HasUnfinishedEssentialTask == hasUnfinishedEssentialTask {
+		return nil
+	}
+	if err := UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{HasUnfinishedEssentialTaskKey: hasUnfinishedEssentialTask}},
+	); err != nil {
+		return err
+	}
+
+	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
+
+	return nil
+}
+
 // UpdateMakespans sets the builds predicted and actual makespans to given durations
 func (b *Build) UpdateMakespans(predictedMakespan, actualMakespan time.Duration) error {
 	b.PredictedMakespan = predictedMakespan
@@ -327,14 +349,15 @@ func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
 	return errors.Wrap(err, "bulk inserting builds")
 }
 
-// GetFinishedNotificationDescription returns a description of successful/failed tasks for the build,
-// to be used by jobs and notification processing.
-func (b *Build) GetFinishedNotificationDescription(tasks []task.Task) string {
+// GetPRNotificationDescription returns a GitHub PR status description based on
+// the statuses of tasks in the build, to be used by jobs and notification
+// processing.
+func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 	success := 0
 	failed := 0
-	systemError := 0
 	other := 0
-	noReport := 0
+	runningOrWillRun := 0
+	unscheduledEssential := 0
 	for _, t := range tasks {
 		switch {
 		case t.Status == evergreen.TaskSucceeded:
@@ -343,12 +366,13 @@ func (b *Build) GetFinishedNotificationDescription(tasks []task.Task) string {
 		case t.Status == evergreen.TaskFailed:
 			failed++
 
-		case evergreen.IsSystemFailedTaskStatus(t.Status):
-			systemError++
-
 		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
-			noReport++
-
+			if utility.StringSliceContains(evergreen.TaskInProgressStatuses, t.Status) || (t.Activated && !t.Blocked() && !t.IsFinished()) {
+				runningOrWillRun++
+			}
+			if t.IsUnscheduled() && t.IsEssentialToSucceed {
+				unscheduledEssential++
+			}
 		default:
 			other++
 		}
@@ -360,20 +384,34 @@ func (b *Build) GetFinishedNotificationDescription(tasks []task.Task) string {
 		"build_id": b.Id,
 	})
 
-	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
+	if runningOrWillRun > 0 {
+		return evergreen.PRTasksRunningDescription
+	}
+
+	if success == 0 && failed == 0 && other == 0 {
+		if unscheduledEssential > 0 {
+			return unscheduledEssentialTaskStatusSubformat(unscheduledEssential)
+		}
 		return "no tasks were run"
 	}
 
 	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
 		taskStatusSubformat(failed, "failed"))
-	if systemError > 0 {
-		desc += fmt.Sprintf(", %d internal errors", systemError)
+	if unscheduledEssential > 0 {
+		desc = fmt.Sprintf("%s, %s", desc, unscheduledEssentialTaskStatusSubformat(unscheduledEssential))
 	}
 	if other > 0 {
 		desc += fmt.Sprintf(", %d other", other)
 	}
 
 	return b.appendTime(desc)
+}
+
+// unscheduledEssentialTaskStatusSubformat returns a GitHub PR status
+// description indicating that the build has some essential tasks that are not
+// scheduled to run.
+func unscheduledEssentialTaskStatusSubformat(numEssentialTasksNeeded int) string {
+	return fmt.Sprintf("%d essential task(s) not scheduled", numEssentialTasksNeeded)
 }
 
 func taskStatusSubformat(n int, verb string) string {
