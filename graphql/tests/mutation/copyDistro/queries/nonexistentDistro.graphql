@@ -1,0 +1,10 @@
+mutation {
+    copyDistro(
+        opts: {
+            distroIdToCopy: "fake-distro",
+            newDistroId: "new-distro",
+        }
+    ) {
+      newDistroId
+    }
+}

@@ -1,0 +1,48 @@
+{
+  "tests": [
+    {
+      "query_file": "copyDistro.graphql",
+      "result": {
+        "data": {
+          "copyDistro": {
+            "newDistroId": "localhost-2"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "duplicateId.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "copying distro: validator encountered errors: 'ERROR: distro 'rhel71-power8-large' uses an existing identifier'",
+            "path": [
+              "copyDistro"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "nonexistentDistro.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "copying distro: 404 (Not Found): distro 'fake-distro' not found",
+            "path": [
+              "copyDistro"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
