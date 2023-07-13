@@ -62,6 +62,7 @@ func (s *AgentSuite) SetupTest() {
 	const bvName = "some_build_variant"
 	tsk := &task.Task{
 		Id:           "task_id",
+		DisplayName:  "some task",
 		BuildVariant: bvName,
 		Version:      versionID,
 	}
@@ -69,9 +70,15 @@ func (s *AgentSuite) SetupTest() {
 	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 
-	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, &model.Project{
+	project := &model.Project{
+		Tasks: []model.ProjectTask{
+			{
+				Name: tsk.DisplayName,
+			},
+		},
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
-	}, tsk, &model.ProjectRef{
+	}
+	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, project, tsk, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
@@ -83,6 +90,7 @@ func (s *AgentSuite) SetupTest() {
 			Secret: "task_secret",
 		},
 		taskConfig:    taskConfig,
+		project:       project,
 		taskModel:     tsk,
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
@@ -235,22 +243,15 @@ func (s *AgentSuite) TestNextTaskConflict() {
 
 func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-	s.setupRunTask("")
 
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
 }
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-	s.setupRunTask("")
-
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
 	s.Nil(resp)
 	s.Error(err)
 }
@@ -423,14 +424,6 @@ post:
 }
 
 func (s *AgentSuite) setupRunTask(projYml string) {
-	if projYml == "" {
-		projYml = `
-post:
-  - command: shell.exec
-    params:
-      script: "echo hi"
-`
-	}
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
@@ -619,40 +612,37 @@ post:
 }
 
 func (s *AgentSuite) TestEndTaskResponse() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.setupRunTask("")
-
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail := s.a.endTaskResponse(ctx, s.tc, evergreen.TaskSucceeded, "message")
+	detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskSucceeded, "message")
+	detail = s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
 }
 
 func (s *AgentSuite) TestOOMTracker() {
+	s.tc.project.OomTracker = true
 	pids := []int{1, 2, 3}
 	lines := []string{"line 1", "line 2", "line 3"}
 	s.tc.oomTracker = &mock.OOMTracker{
@@ -1104,22 +1094,6 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind ...s
 	}
 }
 
-func (s *AgentSuite) setupRunTask(projYml string) {
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
-	s.tc.project = p
-	t := &task.Task{
-		Id:           "task_id",
-		BuildVariant: "some_build_variant",
-		DisplayName:  "this_is_a_task_name",
-		Version:      "my_version",
-	}
-	s.tc.taskModel = t
-	s.tc.taskConfig.Task = t
-}
-
 func (s *AgentSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
@@ -1133,13 +1107,18 @@ tasks:
   commands:
    - command: shell.exec
      params:
-       script: exit 0
+       script: sleep 5
 
 post:
 - command: shell.exec
   params:
     script: |
       sleep 1
+
+timeout:
+- commands: shell.exec
+  params:
+    script: exit 0
 `
 	s.setupRunTask(projYml)
 	_, err := s.a.runTask(s.ctx, s.tc)
@@ -1148,12 +1127,13 @@ post:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
-	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running so count should be high")
+	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running even when abort signal is received, so count should be high")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
 		"Heartbeat received signal to abort task.",
-		"Task completed - FAILED",
+		"Task completed - FAILURE",
 		"Running post-task commands.",
 	)
 	// kim: TODO: make sure we don't run the task timeout commands because that
-	// shouldn't happen.
+	// shouldn't happen. May be easier to augment checkMockLogs to check some
+	// logs don't exist.
 }
