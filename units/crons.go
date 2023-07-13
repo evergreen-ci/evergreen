@@ -718,8 +718,10 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 
 }
 
-// PopulateGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
-func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
+// PopulateFallbackGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
+// Since the original generate.tasks request kicks off a job immediately, this function only serves as a fallback in case the
+// original job fails to run. If the original job succeeds, the jobs created here will no-op.
+func PopulateFallbackGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(_ context.Context, _ amboy.Queue) error {
 		ctx := context.Background()
 
