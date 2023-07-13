@@ -984,3 +984,27 @@ func (s *AdminSuite) TestDataPipesConfig() {
 	s.NotNil(settings)
 	s.Equal(config, settings.DataPipes)
 }
+
+func (s *AdminSuite) TestBucketConfig() {
+	config := BucketConfig{
+		AWSKey:        "access",
+		AWSSecret:     "secret",
+		LogBucket:     "logs",
+		LogBucketType: "s3",
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Bucket)
+
+	config.LogBucket = "logs-2"
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Bucket)
+}
