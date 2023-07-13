@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -34,7 +35,7 @@ type GeneratedProject struct {
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
 func MergeGeneratedProjects(ctx context.Context, projects []GeneratedProject) (*GeneratedProject, error) {
-	ctx, span := tracer.Start(ctx, "merge-generated-projects")
+	_, span := tracer.Start(ctx, "merge-generated-projects")
 	defer span.End()
 	catcher := grip.NewBasicCatcher()
 
@@ -122,7 +123,7 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config number.
 func (g *GeneratedProject) NewVersion(ctx context.Context, p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
-	ctx, span := tracer.Start(ctx, "create-generated-version")
+	_, span := tracer.Start(ctx, "create-generated-version")
 	defer span.End()
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)
@@ -149,7 +150,7 @@ func (g *GeneratedProject) NewVersion(ctx context.Context, p *Project, pp *Parse
 	return p, newPP, v, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, saveCtx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) error {
+func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) error {
 	ctx, span := tracer.Start(ctx, "save-generated-project")
 	defer span.End()
 	// Get task again, to exit early if another generator finished early.
@@ -171,13 +172,13 @@ func (g *GeneratedProject) Save(ctx context.Context, saveCtx context.Context, se
 		return mongo.ErrNoDocuments
 	}
 
-	ppCtx, ppCancel := context.WithTimeout(saveCtx, DefaultParserProjectAccessTimeout)
+	ppCtx, ppCancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
 	defer ppCancel()
 	if err := updateParserProject(ppCtx, settings, v, pp, t.Id); err != nil {
 		return errors.WithStack(err)
 	}
 
-	if err := g.saveNewBuildsAndTasks(ctx, saveCtx, v, p); err != nil {
+	if err := g.saveNewBuildsAndTasks(ctx, v, p); err != nil {
 		return errors.Wrap(err, "saving new builds and tasks")
 	}
 	return nil
@@ -223,7 +224,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, saveCtx context.Context, v *Version, p *Project) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project) error {
 	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
 	defer span.End()
 	// Inherit priority from the parent generator task.
@@ -289,13 +290,13 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, saveCtx co
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
 	}
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, saveCtx, creationInfo, existingBuilds)
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 
 	creationInfo.Pairs = newTVPairsForNewVariants
-	activatedTasksInNewBuilds, err := addNewBuilds(ctx, saveCtx, creationInfo, existingBuilds)
+	activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
@@ -319,7 +320,7 @@ func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Pr
 		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}
 
-	simulatedGraph, err := g.simulateNewTasks(existingTasksGraph, v, p, projectRef)
+	simulatedGraph, err := g.simulateNewTasks(ctx, existingTasksGraph, v, p, projectRef)
 	if err != nil {
 		return errors.Wrap(err, "simulating new tasks")
 	}
@@ -333,8 +334,8 @@ func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Pr
 
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
-func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
-	newTasks := g.getNewTasksWithDependencies(context.Background(), v, p, nil)
+func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
+	newTasks := g.getNewTasksWithDependencies(ctx, v, p, nil)
 
 	creationInfo := TaskCreationInfo{
 		Project:    p,

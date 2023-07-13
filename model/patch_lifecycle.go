@@ -96,11 +96,11 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return err
 	}
-	_, err = addNewBuilds(context.Background(), ctx, creationInfo, existingBuilds)
+	_, err = addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(context.Background(), ctx, creationInfo, existingBuilds)
+	_, err = addNewTasks(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}

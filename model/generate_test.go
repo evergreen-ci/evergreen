@@ -854,7 +854,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), s.ctx, s.env.Settings(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
@@ -960,7 +960,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
-	s.NoError(g.Save(context.Background(), s.ctx, s.env.Settings(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	tasks := []task.Task{}
 	taskQuery := db.Query(bson.M{task.GeneratedByKey: "generator"}).Sort([]string{task.CreateTimeKey})
@@ -1034,7 +1034,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), s.ctx, s.env.Settings(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
@@ -1141,7 +1141,7 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), s.ctx, s.env.Settings(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
@@ -1193,7 +1193,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), s.ctx, s.env.Settings(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)

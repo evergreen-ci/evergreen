@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/utility"
 	"strings"
 	"time"
 
@@ -68,14 +69,14 @@ func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
 }
 
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
-	ctx, span := tracer.Start(ctx, "task-generation", trace.WithAttributes(
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
 		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
 		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution),
 		attribute.String(evergreen.VersionIDOtelAttribute, t.Version),
 		attribute.String(evergreen.BuildIDOtelAttribute, t.BuildId),
 		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
-		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester),
-	))
+		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester)})
+	ctx, span := tracer.Start(ctx, "task-generation")
 	defer span.End()
 	if t.GeneratedTasks {
 		return mongo.ErrNoDocuments
@@ -159,7 +160,9 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	// exit early after a SIGTERM from app server shutdown.
 	saveCtx, saveCancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer saveCancel()
-	err = g.Save(ctx, saveCtx, j.env.Settings(), p, pp, v)
+	// Inject the span context into the saveCtx.
+	saveCtx = trace.ContextWithSpanContext(saveCtx, span.SpanContext())
+	err = g.Save(saveCtx, j.env.Settings(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
