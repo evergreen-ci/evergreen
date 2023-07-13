@@ -686,12 +686,14 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 			setEndTaskCommand(tc, detail, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
+		a.handleTimeoutAndOOM(ctx, tc, status)
 	case evergreen.TaskFailed:
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post task commands"))
 		}
 		a.runEndTaskSync(ctx, tc, detail)
+		a.handleTimeoutAndOOM(ctx, tc, status)
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
 	case client.TaskConflict:
@@ -773,7 +775,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
-	a.handleTimeoutAndOOM(ctx, tc, status)
 	return detail
 }
 
