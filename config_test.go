@@ -987,8 +987,6 @@ func (s *AdminSuite) TestDataPipesConfig() {
 
 func (s *AdminSuite) TestBucketConfig() {
 	config := BucketConfig{
-		AWSKey:        "access",
-		AWSSecret:     "secret",
 		LogBucket:     "logs",
 		LogBucketType: "s3",
 	}

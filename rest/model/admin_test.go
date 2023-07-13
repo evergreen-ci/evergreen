@@ -122,6 +122,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, utility.FromStringPtr(apiSettings.AuthConfig.Github.ClientId))
 	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], apiSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
+	assert.EqualValues(testSettings.Bucket.LogBucket, utility.FromStringPtr(apiSettings.Bucket.LogBucket))
+	assert.EqualValues(testSettings.Bucket.LogBucketType, utility.FromStringPtr(apiSettings.Bucket.LogBucketType))
 	assert.EqualValues(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
 	assert.EqualValues(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
 	assert.EqualValues(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))

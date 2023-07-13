@@ -16,6 +16,7 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
+		Bucket:            &APIBucketConfig{},
 		Cedar:             &APICedarConfig{},
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
@@ -57,6 +58,7 @@ type APIAdminSettings struct {
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
+	Bucket              *APIBucketConfig                  `json:"bucket,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
 	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
@@ -684,6 +686,29 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		PreferredType:           utility.FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 		AllowServiceUsers:       a.AllowServiceUsers,
+	}, nil
+}
+
+type APIBucketConfig struct {
+	LogBucket     *string `json:"log_bucket"`
+	LogBucketType *string `json:"log_bucket_type"`
+}
+
+func (a *APIBucketConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.BucketConfig:
+		a.LogBucket = utility.ToStringPtr(v.LogBucket)
+		a.LogBucketType = utility.ToStringPtr(v.LogBucketType)
+	default:
+		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIBucketConfig) ToService() (interface{}, error) {
+	return evergreen.BucketConfig{
+		LogBucket:     utility.FromStringPtr(a.LogBucket),
+		LogBucketType: utility.FromStringPtr(a.LogBucketType),
 	}, nil
 }
 

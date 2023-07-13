@@ -10,18 +10,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const (
+	BucketTypeLocal = "local"
+	BucketTypeS3    = "s3"
+)
+
 // BucketConfig represents the admin config section for bucket storage.
 type BucketConfig struct {
-	AWSKey    string `bson:"aws_key,omitempty" json:"aws_key,omitempty" yaml:"aws_key,omitempty"`
-	AWSSecret string `bson:"aws_secret,omitempty" json:"aws_secret,omitempty" yaml:"aws_secret,omitempty"`
-
 	LogBucket     string `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
 	LogBucketType string `bson:"log_bucket_type" json:"log_bucket_type" yaml:"log_bucket_type"`
 }
 
 var (
-	bucketConfigAWSKeyKey        = bsonutil.MustHaveTag(BucketConfig{}, "AWSKey")
-	bucketConfigAWSSecretKey     = bsonutil.MustHaveTag(BucketConfig{}, "AWSSecret")
 	bucketConfigLogBucketKey     = bsonutil.MustHaveTag(BucketConfig{}, "LogBucket")
 	bucketConfigLogBucketTypeKey = bsonutil.MustHaveTag(BucketConfig{}, "LogBucketType")
 )
@@ -58,8 +58,6 @@ func (c *BucketConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			bucketConfigAWSKeyKey:        c.AWSKey,
-			bucketConfigAWSSecretKey:     c.AWSSecret,
 			bucketConfigLogBucketKey:     c.LogBucket,
 			bucketConfigLogBucketTypeKey: c.LogBucketType,
 		},
@@ -68,4 +66,10 @@ func (c *BucketConfig) Set() error {
 	return errors.Wrapf(err, "updating section %s", c.SectionId())
 }
 
-func (c *BucketConfig) ValidateAndDefault() error { return nil }
+func (c *BucketConfig) ValidateAndDefault() error {
+	if c.LogBucketType == "" {
+		c.LogBucketType = BucketTypeS3
+	}
+
+	return nil
+}
