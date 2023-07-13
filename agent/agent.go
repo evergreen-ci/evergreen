@@ -617,7 +617,10 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	if resp.ShouldExit {
 		return true, nil
 	}
+	return false, errors.WithStack(err)
+}
 
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status string) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
@@ -635,7 +638,7 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
 	}
-	return false, errors.WithStack(err)
+	return
 }
 
 func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
@@ -673,7 +676,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, message string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, message)
+	detail := a.endTaskResponse(ctx, tc, status, message)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
@@ -732,7 +735,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var description string
 	var failureType string
 	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
@@ -770,6 +773,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
+	a.handleTimeoutAndOOM(ctx, tc, status)
 	return detail
 }
 
