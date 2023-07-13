@@ -638,7 +638,6 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
 	}
-	return
 }
 
 func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
