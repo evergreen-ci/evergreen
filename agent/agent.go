@@ -622,8 +622,6 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 
 func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status string) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
-		// kim: TODO: Timeout is likely not relevant for abort, but should
-		// double check and verify with test.
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
 	}

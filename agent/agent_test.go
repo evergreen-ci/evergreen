@@ -1128,9 +1128,9 @@ func (s *AgentSuite) TestAbort() {
 buildvariants:
 - name: some_build_variant
 
-tasks: 
+tasks:
 - name: this_is_a_task_name
-  commands: 
+  commands:
    - command: shell.exec
      params:
        script: exit 0
@@ -1154,4 +1154,6 @@ post:
 		"Task completed - FAILED",
 		"Running post-task commands.",
 	)
+	// kim: TODO: make sure we don't run the task timeout commands because that
+	// shouldn't happen.
 }

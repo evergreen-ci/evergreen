@@ -10,7 +10,6 @@ import (
 	"github.com/mongodb/grip/recovery"
 )
 
-// kim: NOTE: gotta ensure ctx cancels after EndTask to exit the thread
 func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, tc *taskContext, heartbeat chan<- string) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
@@ -33,18 +32,13 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 				continue
 			}
 			if signalBeat == client.TaskConflict {
-				// kim: NOTE: abort and restart case
 				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task.")
 				if err != nil {
 					tc.logger.Task().Error(err.Error())
 				}
-				// kim: Let's just ignore this because this will also stop the
-				// heartbeat but it's tricky to remove, so let's not for now
 				cancel()
 			}
 			if signalBeat == evergreen.TaskFailed {
-				// kim: NOTE: in this case, it's because the REST route had
-				// task.Aborted set.
 				tc.logger.Task().Error("Heartbeat received signal to abort task.")
 				heartbeat <- signalBeat
 				hasSentHeartbeat = true
