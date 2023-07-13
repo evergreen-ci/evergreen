@@ -237,6 +237,7 @@ func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
+	s.setupRunTask("")
 
 	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
@@ -246,6 +247,7 @@ func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
+	s.setupRunTask("")
 
 	s.mockCommunicator.EndTaskShouldFail = true
 	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
@@ -421,6 +423,14 @@ post:
 }
 
 func (s *AgentSuite) setupRunTask(projYml string) {
+	if projYml == "" {
+		projYml = `
+post:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	}
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
@@ -611,21 +621,7 @@ post:
 func (s *AgentSuite) TestEndTaskResponse() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	p := &model.Project{}
-	projYml := `
-buildvariants:
-- name: some_build_variant
-
-pre:
-  - command: shell.exec
-    params:
-      script: "echo hi"
-`
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
-	s.tc.project = p
+	s.setupRunTask("")
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
