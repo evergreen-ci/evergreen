@@ -609,30 +609,48 @@ post:
 }
 
 func (s *AgentSuite) TestEndTaskResponse() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	p := &model.Project{}
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+pre:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
+	detail := s.a.endTaskResponse(ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
+	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskFailed, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskFailed, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
