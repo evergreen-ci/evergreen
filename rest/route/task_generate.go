@@ -66,6 +66,12 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version))
 	}
+	grip.Info(message.Fields{
+		"message": "enqueueing generate tasks job",
+		"version": t.Version,
+		"task_id": t.Id,
+		"job_id":  j.ID(),
+	})
 	if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing catchup job"))
 	}
