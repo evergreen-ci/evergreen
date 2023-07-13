@@ -256,6 +256,9 @@ func (s *AdminSuite) TestServiceFlags() {
 }
 
 func (s *AdminSuite) TestAlertsConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := AlertsConfig{
 		SMTP: SMTPConfig{
 			Server:     "server",
@@ -268,7 +271,7 @@ func (s *AdminSuite) TestAlertsConfig() {
 		},
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
