@@ -543,8 +543,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		grip.Error(err)
 		grip.Infof("Task complete: '%s'.", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		// kim: TODO: this should probably be system-failed
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
 	}
 	tc.setTaskConfig(taskConfig)
 
@@ -553,8 +552,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		grip.Error(err)
 		grip.Infof("Task complete: '%s'.", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		// kim: TODO: this should probably be system-failed
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
 	}
 
 	if !tc.ranSetupGroup {
@@ -564,8 +562,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 			grip.Error(err)
 			grip.Infof("Task complete: '%s'.", tc.task.ID)
 			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory"))
-			// kim: TODO: this should probably be system-failed
-			return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
+			return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
 		}
 	}
 	tc.taskConfig.WorkDir = tc.taskDirectory
