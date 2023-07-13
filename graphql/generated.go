@@ -597,7 +597,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
-		SaveDistroSection             func(childComplexity int, distroID string, changes *model.APIDistro, section distro.DistroSettingsSection, onSave DistroOnSaveOperation) int
+		SaveDistroSection             func(childComplexity int, opts SaveDistroOpts) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
@@ -1496,7 +1496,7 @@ type MutationResolver interface {
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
-	SaveDistroSection(ctx context.Context, distroID string, changes *model.APIDistro, section distro.DistroSettingsSection, onSave DistroOnSaveOperation) (*DistroWithHostCount, error)
+	SaveDistroSection(ctx context.Context, opts SaveDistroOpts) (*DistroWithHostCount, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -4208,7 +4208,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["distroId"].(string), args["changes"].(*model.APIDistro), args["section"].(distro.DistroSettingsSection), args["onSave"].(DistroOnSaveOperation)), true
+		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["opts"].(SaveDistroOpts)), true
 
 	case "Mutation.saveProjectSettingsForSection":
 		if e.complexity.Mutation.SaveProjectSettingsForSection == nil {
@@ -8863,6 +8863,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputResourceLimitsInput,
+		ec.unmarshalInputSaveDistroOpts,
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputSortOrder,
 		ec.unmarshalInputSpawnHostInput,
@@ -9894,59 +9895,15 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_saveDistroSection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["distroId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireDistroAccess == nil {
-				return nil, errors.New("directive requireDistroAccess is not implemented")
-			}
-			return ec.directives.RequireDistroAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
-		}
-	}
-	args["distroId"] = arg0
-	var arg1 *model.APIDistro
-	if tmp, ok := rawArgs["changes"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("changes"))
-		arg1, err = ec.unmarshalODistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, tmp)
+	var arg0 SaveDistroOpts
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalNSaveDistroOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroOpts(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["changes"] = arg1
-	var arg2 distro.DistroSettingsSection
-	if tmp, ok := rawArgs["section"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg2, err = ec.unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["section"] = arg2
-	var arg3 DistroOnSaveOperation
-	if tmp, ok := rawArgs["onSave"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("onSave"))
-		arg3, err = ec.unmarshalNDistroOnSaveOperation2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroOnSaveOperation(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["onSave"] = arg3
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -25072,7 +25029,7 @@ func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["distroId"].(string), fc.Args["changes"].(*model.APIDistro), fc.Args["section"].(distro.DistroSettingsSection), fc.Args["onSave"].(DistroOnSaveOperation))
+		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["opts"].(SaveDistroOpts))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -66751,6 +66708,79 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSaveDistroOpts(ctx context.Context, obj interface{}) (SaveDistroOpts, error) {
+	var it SaveDistroOpts
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"distroId", "changes", "section", "onSave"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "distroId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroId"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireDistroAccess == nil {
+					return nil, errors.New("directive requireDistroAccess is not implemented")
+				}
+				return ec.directives.RequireDistroAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.DistroID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "changes":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("changes"))
+			data, err := ec.unmarshalODistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Changes = data
+		case "section":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
+			data, err := ec.unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Section = data
+		case "onSave":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("onSave"))
+			data, err := ec.unmarshalNDistroOnSaveOperation2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroOnSaveOperation(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OnSave = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSelectorInput(ctx context.Context, obj interface{}) (model.APISelector, error) {
 	var it model.APISelector
 	asMap := map[string]interface{}{}
@@ -81500,6 +81530,11 @@ func (ec *executionContext) unmarshalNRequiredStatus2githubᚗcomᚋevergreenᚑ
 
 func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v RequiredStatus) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNSaveDistroOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroOpts(ctx context.Context, v interface{}) (SaveDistroOpts, error) {
+	res, err := ec.unmarshalInputSaveDistroOpts(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, sel ast.SelectionSet, v model.APISelector) graphql.Marshaler {

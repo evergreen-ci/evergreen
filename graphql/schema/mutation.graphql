@@ -33,11 +33,8 @@ type Mutation {
   ): Boolean!
 
   # distros
-   saveDistroSection(
-    distroId: String! @requireDistroAccess(access: EDIT), 
-    changes: DistroInput, 
-    section: DistroSettingsSection!, 
-    onSave: DistroOnSaveOperation!
+  saveDistroSection(
+    opts: SaveDistroOpts!
   ): DistroWithHostCount!
 
   # hosts

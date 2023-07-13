@@ -872,11 +872,11 @@ func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
 type DistroSettingsSection string
 
 const (
-	DistroSettingsGeneralSection  = "GENERAL"
-	DistroSettingsProviderSection = "PROVIDER"
-	DistroSettingsTaskSection     = "TASK"
-	DistroSettingsHostSection     = "HOST"
-	DistroSettingsProjectSection  = "PROJECT"
+	DistroSettingsGeneral  DistroSettingsSection = "GENERAL"
+	DistroSettingsProvider DistroSettingsSection = "PROVIDER"
+	DistroSettingsTask     DistroSettingsSection = "TASK"
+	DistroSettingsHost     DistroSettingsSection = "HOST"
+	DistroSettingsProject  DistroSettingsSection = "PROJECT"
 )
 
 func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *Distro, section DistroSettingsSection, userID string) (*Distro, error) {
@@ -884,7 +884,7 @@ func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *D
 
 	var err error
 	switch section {
-	case DistroSettingsGeneralSection:
+	case DistroSettingsGeneral:
 		err = db.Update(Collection,
 			bson.M{IdKey: distroID},
 			bson.M{
@@ -898,7 +898,7 @@ func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *D
 			})
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "saving section")
+		return nil, errors.Wrap(err, fmt.Sprintf("saving %s section", section))
 	}
 
 	updatedDistro, err := FindOneId(distroID)

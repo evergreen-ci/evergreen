@@ -668,12 +668,12 @@ func TestUpdateDistroSection(t *testing.T) {
 	defer cancel()
 
 	for name, test := range map[string]func(t *testing.T, originalDistro *Distro){
-		DistroSettingsGeneralSection: func(t *testing.T, originalDistro *Distro) {
+		"General section": func(t *testing.T, originalDistro *Distro) {
 			updated, err := UpdateDistroSection(ctx, originalDistro, &Distro{
 				Id:      "distro_id",
 				Aliases: []string{"alias_1", "alias_2"},
 				Note:    "updated note",
-			}, DistroSettingsGeneralSection, "user")
+			}, DistroSettingsGeneral, "user")
 
 			assert.NoError(t, err)
 			require.NotNil(t, updated)

@@ -20,9 +20,11 @@ const (
 
 type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) ValidationErrors
 
-var validateGeneralSection = []distroValidator{
-	ensureHasNonZeroID,
-	ensureHasNoUnauthorizedCharacters,
+var validateSection = map[distro.DistroSettingsSection]([]distroValidator){
+	distro.DistroSettingsGeneral: []distroValidator{
+		ensureHasNonZeroID,
+		ensureHasNoUnauthorizedCharacters,
+	},
 }
 
 // Functions used to validate the syntax of a distro object.
@@ -60,17 +62,11 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 		}
 	}
 
-	// Parent and container distros do not support aliases.
-	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
-		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
-	}
-
 	if newDistro {
 		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs)...)
 	}
-	if len(d.Aliases) > 0 {
-		validationErrs = append(validationErrs, ensureValidAliases(d)...)
-	}
+
+	validationErrs = append(validationErrs, validateAliases(ctx, d, allDistroAliases)...)
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
@@ -555,25 +551,35 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 	return errs
 }
 
+func validateAliases(ctx context.Context, d *distro.Distro, allDistroAliases []string) ValidationErrors {
+	var validationErrs ValidationErrors
+	// Parent and container distros do not support aliases.
+	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
+		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
+	}
+	if len(d.Aliases) > 0 {
+		validationErrs = append(validationErrs, ensureValidAliases(d)...)
+	}
+	return validationErrs
+}
+
 func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section distro.DistroSettingsSection, s *evergreen.Settings) error {
 	validationErrs := ValidationErrors{}
 
 	switch section {
-	case distro.DistroSettingsGeneralSection:
-		// Parent and container distros do not support aliases.
-		if originalDistro.ContainerPool != "" || originalDistro.Provider == evergreen.ProviderNameDocker {
-			_, allDistroAliases, err := getDistros()
-			if err != nil {
-				return errors.Wrap(err, "unable to fetch all distro aliases")
-			}
-			validationErrs = append(validationErrs, ensureNoAliases(changes, allDistroAliases)...)
+	case distro.DistroSettingsGeneral:
+		changes.ContainerPool = originalDistro.ContainerPool
+		changes.Provider = originalDistro.Provider
+
+		_, allDistroAliases, err := getDistros()
+		if err != nil {
+			return errors.Wrap(err, "unable to fetch all distro aliases")
 		}
-		if len(changes.Aliases) > 0 {
-			validationErrs = append(validationErrs, ensureValidAliases(changes)...)
-		}
-		for _, v := range validateGeneralSection {
-			validationErrs = append(validationErrs, v(ctx, changes, s)...)
-		}
+		validationErrs = append(validationErrs, validateAliases(ctx, changes, allDistroAliases)...)
+	}
+
+	for _, v := range validateSection[section] {
+		validationErrs = append(validationErrs, v(ctx, changes, s)...)
 	}
 
 	if len(validationErrs) > 0 {

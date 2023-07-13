@@ -733,7 +733,7 @@ func TestValidateDistroSection(t *testing.T) {
 	defer cancel()
 
 	for name, test := range map[string]func(t *testing.T, settings *evergreen.Settings){
-		distro.DistroSettingsGeneralSection: func(t *testing.T, settings *evergreen.Settings) {
+		"General section": func(t *testing.T, settings *evergreen.Settings) {
 			assert.Nil(t, ValidateDistroSection(ctx, &distro.Distro{
 				Id:            "distro_id",
 				ContainerPool: "",
@@ -745,7 +745,7 @@ func TestValidateDistroSection(t *testing.T) {
 					DisableShallowClone: true,
 					Disabled:            true,
 				},
-				distro.DistroSettingsGeneralSection,
+				distro.DistroSettingsGeneral,
 				settings))
 
 			assert.NotNil(t, ValidateDistroSection(ctx, &distro.Distro{
@@ -757,7 +757,7 @@ func TestValidateDistroSection(t *testing.T) {
 					Id:      "distro_id",
 					Aliases: []string{"alias_1", "alias_2"},
 				},
-				distro.DistroSettingsGeneralSection,
+				distro.DistroSettingsGeneral,
 				settings))
 		},
 	} {

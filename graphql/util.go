@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1034,41 +1035,41 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	return taskOpts, nil
 }
 
-func handleOnSaveOperation(ctx context.Context, distroID string, userID string, onSave DistroOnSaveOperation) (int, error) {
+func handleDistroOnSaveOperation(ctx context.Context, distroID string, userID string, onSave DistroOnSaveOperation) (int, error) {
 	if onSave == DistroOnSaveOperationNone {
 		return 0, nil
 	}
 
 	hosts, err := host.Find(db.Query(host.ByDistroIDs(distroID)))
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("finding hosts for distro with id '%s': %s", distroID, err))
+		return 0, errors.Wrap(err, fmt.Sprintf("finding hosts for distro '%s'", distroID))
 	}
 
 	switch onSave {
 	case DistroOnSaveOperationDecommission:
 		if err = host.DecommissionHostsWithDistroId(distroID); err != nil {
-			return 0, InternalServerError.Send(ctx, fmt.Sprintf("decommissioning hosts for distro with id '%s': %s", distroID, err))
+			return 0, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
 		}
 		for _, h := range hosts {
 			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
 		}
 	case DistroOnSaveOperationReprovision:
-		catcher := grip.NewBasicCatcher()
+		failed := []string{}
 		for _, h := range hosts {
 			_, err = api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), userID)(&h)
-			catcher.Wrapf(err, "marking host '%s' as needing to reprovision", h.Id, distroID)
+			failed = append(failed, h.Id)
 		}
-		if catcher.HasErrors() {
-			return 0, InternalServerError.Send(ctx, fmt.Sprintf("marking hosts for reprovision for distro with id '%s': %s", distroID, err))
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for reprovision: %s", strings.Join(failed, ", ")))
 		}
 	case DistroOnSaveOperationRestartJasper:
-		catcher := grip.NewBasicCatcher()
+		failed := []string{}
 		for _, h := range hosts {
 			_, err = api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), userID)(&h)
-			catcher.Wrapf(err, "marking host '%s' as needing Jasper service restarted", h.Id)
+			failed = append(failed, h.Id)
 		}
-		if catcher.HasErrors() {
-			return 0, InternalServerError.Send(ctx, fmt.Sprintf("marking hosts as needing Jasper service restarted for distro with id '%s': %s", distroID, err))
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for Jasper service restart: %s", strings.Join(failed, ", ")))
 		}
 	}
 

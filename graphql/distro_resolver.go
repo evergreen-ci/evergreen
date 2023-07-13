@@ -6,10 +6,8 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
@@ -27,17 +25,12 @@ func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.AP
 func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error {
 	settings := []*birch.Document{}
 	for _, entry := range data {
-		bytes, err := bson.Marshal(entry)
+		doc, err := birch.DC.MapInterfaceErr(entry)
 		if err != nil {
-			return InternalServerError.Send(ctx, fmt.Sprintf("marshalling provider setting into BSON: %s", err))
+			return InternalServerError.Send(ctx, "converting provider settings list to birch documents")
 		}
-		doc := birch.Document{}
-		if err = doc.UnmarshalBSON(bytes); err != nil {
-			return InternalServerError.Send(ctx, fmt.Sprintf("umarshalling settings bytes into document: %s", err))
-		}
-		settings = append(settings, &doc)
+		settings = append(settings, doc)
 	}
-
 	obj.ProviderSettingsList = settings
 	return nil
 }

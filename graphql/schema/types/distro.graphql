@@ -22,6 +22,13 @@ enum DistroOnSaveOperation {
 }
 
 ###### INPUTS ######
+input SaveDistroOpts {
+  distroId: String! @requireDistroAccess(access: EDIT), 
+  changes: DistroInput, 
+  section: DistroSettingsSection!, 
+  onSave: DistroOnSaveOperation!
+}
+
 input DistroInput {
   aliases: [String!]
   arch: String

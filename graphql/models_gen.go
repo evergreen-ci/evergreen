@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -229,6 +230,13 @@ type ProjectEvents struct {
 type PublicKeyInput struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
+}
+
+type SaveDistroOpts struct {
+	DistroID string                       `json:"distroId"`
+	Changes  *model.APIDistro             `json:"changes,omitempty"`
+	Section  distro.DistroSettingsSection `json:"section"`
+	OnSave   DistroOnSaveOperation        `json:"onSave"`
 }
 
 // SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
