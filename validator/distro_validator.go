@@ -563,6 +563,7 @@ func validateAliases(ctx context.Context, d *distro.Distro, allDistroAliases []s
 	return validationErrs
 }
 
+// ValidateDistroSection validates that the incoming changes to a given section are valid.
 func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section distro.DistroSettingsSection, s *evergreen.Settings) error {
 	validationErrs := ValidationErrors{}
 

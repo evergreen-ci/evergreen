@@ -1056,8 +1056,9 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, userID st
 	case DistroOnSaveOperationReprovision:
 		failed := []string{}
 		for _, h := range hosts {
-			_, err = api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), userID)(&h)
-			failed = append(failed, h.Id)
+			if _, err = api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
 		}
 		if len(failed) > 0 {
 			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for reprovision: %s", strings.Join(failed, ", ")))
@@ -1065,8 +1066,9 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, userID st
 	case DistroOnSaveOperationRestartJasper:
 		failed := []string{}
 		for _, h := range hosts {
-			_, err = api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), userID)(&h)
-			failed = append(failed, h.Id)
+			if _, err = api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
 		}
 		if len(failed) > 0 {
 			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for Jasper service restart: %s", strings.Join(failed, ", ")))

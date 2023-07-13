@@ -879,6 +879,7 @@ const (
 	DistroSettingsProject  DistroSettingsSection = "PROJECT"
 )
 
+// UpdateDistroSection saves the changes for a given section and logs the events with the associated user.
 func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *Distro, section DistroSettingsSection, userID string) (*Distro, error) {
 	distroID := originalDistro.Id
 
@@ -907,7 +908,7 @@ func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *D
 	}
 
 	if originalDistro.GetDefaultAMI() != updatedDistro.GetDefaultAMI() {
-		event.LogDistroAMIModified(originalDistro.Id, userID)
+		event.LogDistroAMIModified(distroID, userID)
 	}
 	event.LogDistroModified(distroID, userID, updatedDistro.NewDistroData())
 
