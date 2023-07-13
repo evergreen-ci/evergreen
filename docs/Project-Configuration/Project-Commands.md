@@ -193,7 +193,8 @@ Parameters:
 
 ## expansions.update
 
-`expansions.update` updates the task's expansions at runtime.
+`expansions.update` updates the task's expansions at runtime. 
+Any updates to the expansions made with this command will only persist for the duration of the task.
 
 ``` yaml
 - command: expansions.update
@@ -211,7 +212,7 @@ Parameters:
 Parameters:
 
 -   `updates`: key-value pairs for updating the task's parameters
--   `file`: filename for a yaml file containing expansion updates
+-   `file`: filename for a YAML file containing expansion updates
 -   `ignore_missing_file`: do not error if the file is missing
 
 ## expansions.write
