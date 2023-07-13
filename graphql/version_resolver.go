@@ -43,10 +43,11 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.A
 
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision))
+	baseVersion, err := model.FindBaseVersionForVersion(*obj.Id)
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
+
 	apiVersion := restModel.APIVersion{}
 	apiVersion.BuildFromService(*baseVersion)
 	return &apiVersion, nil
