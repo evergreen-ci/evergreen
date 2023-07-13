@@ -91,7 +91,7 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts CopyDistroOpts) error 
 	if opts.DistroIdToCopy == opts.NewDistroId {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprint("new and existing distro IDs are identical"),
+			Message:    "new and existing distro IDs are identical",
 		}
 	}
 	distroToCopy, err := distro.FindOneId(opts.DistroIdToCopy)
