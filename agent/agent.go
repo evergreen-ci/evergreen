@@ -678,18 +678,17 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	detail := a.endTaskResponse(ctx, tc, status, message)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
-		tc.logger.Task().Info("Task completed - SUCCESS.")
 		a.handleTimeoutAndOOM(ctx, tc, status)
+		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed -- FAILURE. Overall task status changed to FAILED.")
 			detail.Status = evergreen.TaskFailed
 			setEndTaskCommand(tc, detail, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
-
 	case evergreen.TaskFailed:
-		tc.logger.Task().Info("Task completed - FAILURE.")
 		a.handleTimeoutAndOOM(ctx, tc, status)
+		tc.logger.Task().Info("Task completed - FAILURE.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post task commands"))
 		}
