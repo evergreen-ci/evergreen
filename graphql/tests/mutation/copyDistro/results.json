@@ -11,12 +11,12 @@
       }
     },
     {
-      "query_file": "duplicate_id.graphql",
+      "query_file": "existing_distro.graphql",
       "result": {
         "data": null,
         "errors": [
           {
-            "message": "copying distro: validator encountered errors: 'ERROR: distro 'rhel71-power8-large' uses an existing identifier'",
+            "message": "copying distro: validator encountered errors: 'ERROR: distro 'windows-64-vs2015-small' uses an existing identifier'",
             "path": [
               "copyDistro"
             ],
@@ -28,17 +28,34 @@
       }
     },
     {
+      "query_file": "duplicate_id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "400 (Bad Request): new and existing distro IDs are identical",
+            "path": [
+              "copyDistro"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
       "query_file": "nonexistent_distro.graphql",
       "result": {
         "data": null,
         "errors": [
           {
-            "message": "copying distro: 404 (Not Found): distro 'fake-distro' not found",
+            "message": "404 (Not Found): distro 'fake-distro' not found",
             "path": [
               "copyDistro"
             ],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]

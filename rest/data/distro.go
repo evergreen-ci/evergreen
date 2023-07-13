@@ -79,12 +79,21 @@ func DeleteDistroById(distroId string) error {
 	return nil
 }
 
+// CopyDistroOpts is input for the CopyDistro function. It includes the ID of the distro to be copied and the new distro's ID.
 type CopyDistroOpts struct {
 	DistroIdToCopy string
 	NewDistroId    string
 }
 
-func CopyDistro(ctx context.Context, env evergreen.Environment, u *user.DBUser, opts CopyDistroOpts) error {
+// CopyDistro duplicates a given distro in the database given options specifying the existing and new distro ID.
+// It returns an error if one is encountered.
+func CopyDistro(ctx context.Context, u *user.DBUser, opts CopyDistroOpts) error {
+	if opts.DistroIdToCopy == opts.NewDistroId {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprint("new and existing distro IDs are identical"),
+		}
+	}
 	distroToCopy, err := distro.FindOneId(opts.DistroIdToCopy)
 	if err != nil {
 		return errors.Wrapf(err, "finding distro '%s'", opts.DistroIdToCopy)
@@ -97,10 +106,10 @@ func CopyDistro(ctx context.Context, env evergreen.Environment, u *user.DBUser, 
 	}
 
 	distroToCopy.Id = opts.NewDistroId
-	return newDistro(ctx, env, distroToCopy, u)
+	return newDistro(ctx, distroToCopy, u)
 }
 
-func newDistro(ctx context.Context, env evergreen.Environment, d *distro.Distro, u *user.DBUser) error {
+func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")

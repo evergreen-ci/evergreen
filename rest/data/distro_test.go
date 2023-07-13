@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -56,15 +55,19 @@ func TestCopyDistro(t *testing.T) {
 	assert.NoError(t, err)
 	config.Keys = map[string]string{"abc": "123"}
 	assert.NoError(t, config.Set())
+	defer func() {
+		config.Keys = map[string]string{}
+		assert.NoError(t, config.Set())
+	}()
 
-	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, env *mock.Environment, u user.DBUser){
-		"Successfully copies distro": func(t *testing.T, ctx context.Context, env *mock.Environment, u user.DBUser) {
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
+		"Successfully copies distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
 
 			opts := CopyDistroOpts{
 				DistroIdToCopy: "distro",
 				NewDistroId:    "new-distro",
 			}
-			assert.NoError(t, CopyDistro(ctx, env, &u, opts))
+			assert.NoError(t, CopyDistro(ctx, &u, opts))
 
 			newDistro, err := distro.FindOneId("new-distro")
 			assert.NoError(t, err)
@@ -72,46 +75,56 @@ func TestCopyDistro(t *testing.T) {
 
 			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10)
 			assert.NoError(t, err)
-			require.Equal(t, len(events), 1)
+			assert.Equal(t, len(events), 1)
 		},
-		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, env *mock.Environment, u user.DBUser) {
+		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, u user.DBUser) {
+			opts := CopyDistroOpts{
+				DistroIdToCopy: "distro",
+				NewDistroId:    "distro2",
+			}
 
+			err := CopyDistro(ctx, &u, opts)
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), "validator encountered errors: 'ERROR: distro 'distro2' uses an existing identifier'")
+
+			events, err := event.FindLatestPrimaryDistroEvents("distro", 10)
+			assert.NoError(t, err)
+			assert.Equal(t, len(events), 0)
+		},
+		"Fails with 400 when providing the same ID for original and output": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			opts := CopyDistroOpts{
 				DistroIdToCopy: "distro",
 				NewDistroId:    "distro",
 			}
-			err := CopyDistro(ctx, env, &u, opts)
+			err := CopyDistro(ctx, &u, opts)
 			assert.Error(t, err)
-			assert.Equal(t, err.Error(), "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'")
+			assert.Equal(t, err.Error(), "400 (Bad Request): new and existing distro IDs are identical")
 
 			events, err := event.FindLatestPrimaryDistroEvents("distro", 10)
 			assert.NoError(t, err)
-			require.Equal(t, len(events), 0)
+			assert.Equal(t, len(events), 0)
 		},
-		"Fails when distro to copy does not exist": func(t *testing.T, ctx context.Context, env *mock.Environment, u user.DBUser) {
+		"Fails when distro to copy does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
 
 			opts := CopyDistroOpts{
 				DistroIdToCopy: "my-distro",
 				NewDistroId:    "new-distro",
 			}
-			err := CopyDistro(ctx, env, &u, opts)
+			err := CopyDistro(ctx, &u, opts)
 			assert.Error(t, err)
 			assert.Equal(t, err.Error(), "404 (Not Found): distro 'my-distro' not found")
 
 			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10)
 			assert.NoError(t, err)
-			require.Equal(t, len(events), 0)
+			assert.Equal(t, len(events), 0)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 
-			tctx, tcancel := context.WithCancel(context.Background())
+			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
 
 			assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection))
-
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
 
 			d := distro.Distro{
 				Id:                 "distro",
@@ -140,12 +153,15 @@ func TestCopyDistro(t *testing.T) {
 			}
 			assert.NoError(t, d.Insert())
 
+			d.Id = "distro2"
+			assert.NoError(t, d.Insert())
+
 			adminUser := user.DBUser{
 				Id: "admin",
 			}
-			require.NoError(t, adminUser.Insert())
+			assert.NoError(t, adminUser.Insert())
 
-			tCase(t, tctx, env, adminUser)
+			tCase(t, tctx, adminUser)
 		})
 	}
 }

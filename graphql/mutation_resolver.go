@@ -126,9 +126,13 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 // CopyDistro is the resolver for the copyDistro field.
 func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error) {
 	usr := mustHaveUser(ctx)
-	env := evergreen.GetEnvironment()
 
-	if err := data.CopyDistro(ctx, env, usr, opts); err != nil {
+	if err := data.CopyDistro(ctx, usr, opts); err != nil {
+
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("copying distro: %s", err.Error()))
 	}
 
