@@ -425,9 +425,9 @@ Fields:
 
 All projects can have a `pre` and `post` field which define a list of
 command to run at the start and end of every task that isn't in a task
-group. For task groups, setup_task and teardown_task will run instead.
-These are incredibly useful as a place for results commands or for
-cleanup and setup tasks.
+group. For task groups, `setup_task` and `teardown_task` will run instead of
+`pre` and `post`. These are incredibly useful as a place for results commands or
+for cleanup and setup tasks.
 
 **NOTE:** failures in `pre` and `post` commands will be ignored by
 default, so only use commands you know will succeed. See
@@ -463,6 +463,10 @@ timeout:
         echo "Calling the hang analyzer..."
         python buildscripts/hang_analyzer.py
 ```
+
+If a task is aborted, the task will stop running any `pre` or task commands
+early, but it still runs `post` (or the task group equivalent, `teardown_task`).
+This is done in order to perform any final cleanup for the task.
 
 **Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
@@ -1567,12 +1571,13 @@ Example in a command:
 
 ### Task Fields Override Hierarchy
 
-The task's specific fields will be taken into priority in the following
-order:
+Some fields can be specified at multiple levels in the YAML. The task's specific
+fields will be taken into priority in the following order (from highest to
+lowest):
 
--   The fields in the build variant definition
--   The fields in the task definition
--   The fields in the variant task definition
+- Tasks listed under a build variant.
+- The task definition.
+- The build variant definition.
 
 Example:
 

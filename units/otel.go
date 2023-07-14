@@ -1,4 +1,4 @@
-package thirdparty
+package units
 
 import (
 	"fmt"
@@ -7,6 +7,6 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/thirdparty")
+var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/units")
 
 var tracer = otel.GetTracerProvider().Tracer(packageName)
