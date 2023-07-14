@@ -72,7 +72,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := dbModel.SetVersionsPriority([]string{p.patchId}, priority, ""); err != nil {
+		if err := dbModel.SetVersionsPriority(ctx, []string{p.patchId}, priority, ""); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch priority"))
 		}
 	}
@@ -365,7 +365,7 @@ func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-	if err := dbModel.RestartTasksInVersion(p.patchId, true, usr.Id); err != nil {
+	if err := dbModel.RestartTasksInVersion(ctx, p.patchId, true, usr.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in patch '%s'", p.patchId))
 	}
 

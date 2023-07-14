@@ -150,6 +150,9 @@ func TestDistroByIDSuite(t *testing.T) {
 }
 
 func (s *DistroByIDSuite) SetupSuite() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(distro.Collection))
 	distros := []*distro.Distro{
 		{
@@ -182,7 +185,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 	}
 
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		s.NoError(err)
 	}
 }
@@ -231,6 +234,9 @@ func (s *DistroByIDSuite) TestFindByIdFail() {
 // Tests for GET /rest/v2/distros/{distro_id}/ami
 
 func TestDistroAMIHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(distro.Collection))
 	d := distro.Distro{
 		Id:       "d1",
@@ -246,7 +252,7 @@ func TestDistroAMIHandler(t *testing.T) {
 			),
 		},
 	}
-	assert.NoError(t, d.Insert())
+	assert.NoError(t, d.Insert(ctx))
 	h := makeGetDistroAMI().(*distroAMIHandler)
 
 	// default region
@@ -290,6 +296,9 @@ func TestDistroAMIHandler(t *testing.T) {
 // Tests for GET /rest/v2/distros/settings
 
 func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(distro.Collection))
 	d := distro.Distro{
 		Id:       "d1",
@@ -305,7 +314,7 @@ func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
 			),
 		},
 	}
-	assert.NoError(t, d.Insert())
+	assert.NoError(t, d.Insert(ctx))
 	h := makeModifyDistrosSettings().(*modifyDistrosSettingsHandler)
 
 	jsonChanges := `{"region": ""}`
@@ -373,7 +382,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 			MaximumHosts: 20,
 		},
 	}
-	assert.NoError(t, d.Insert())
+	assert.NoError(t, d.Insert(ctx))
 	h := makeModifyDistrosSettings().(*modifyDistrosSettingsHandler)
 
 	h.settings = birch.NewDocument(
@@ -386,7 +395,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	distroFromDB, err := distro.FindOneId("d1")
+	distroFromDB, err := distro.FindOneId(ctx, "d1")
 	assert.NoError(t, err)
 	assert.NotNil(t, distroFromDB)
 	assert.Len(t, distroFromDB.ProviderSettingsList, 2)
@@ -424,6 +433,9 @@ func TestDistroPutSuite(t *testing.T) {
 }
 
 func (s *DistroPutSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(distro.Collection))
 	distros := []*distro.Distro{
 		{
@@ -449,7 +461,7 @@ func (s *DistroPutSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
@@ -603,6 +615,9 @@ func TestDistroDeleteSuite(t *testing.T) {
 }
 
 func (s *DistroDeleteByIDSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(distro.Collection, model.TaskSecondaryQueuesCollection, model.TaskQueuesCollection))
 	distros := []*distro.Distro{
 		{
@@ -616,7 +631,7 @@ func (s *DistroDeleteByIDSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		s.NoError(err)
 	}
 	s.rm = makeDeleteDistroByID()
@@ -674,6 +689,9 @@ func TestDistroPatchSuite(t *testing.T) {
 }
 
 func (s *DistroPatchByIDSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sshKey := "SSH Key"
 	settingsList := []*birch.Document{birch.NewDocument(
 		birch.EC.Double("bid_price", 0.2),
@@ -741,7 +759,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
@@ -796,7 +814,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	allDistros, err := distro.Find(distro.All)
+	allDistros, err := distro.AllDistros(ctx)
 	s.NoError(err)
 	distro1 := allDistros[0]
 	s.Len(distro1.ProviderSettingsList, 1)
@@ -1461,6 +1479,9 @@ func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 }
 
 func getMockDistrosdata() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	distros := []*distro.Distro{
 		{
 			Id:      "fedora8",
@@ -1514,7 +1535,7 @@ func getMockDistrosdata() error {
 		},
 	}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		if err != nil {
 			return nil
 		}
@@ -1550,7 +1571,7 @@ func (s *distroExecuteSuite) SetupTest() {
 			Aliases: []string{"alias1"},
 		},
 	}
-	s.Require().NoError(hostToAdd.Insert())
+	s.Require().NoError(hostToAdd.Insert(ctx))
 	h := makeDistroExecute(s.env)
 	rh, ok := h.(*distroExecuteHandler)
 	s.Require().True(ok)
@@ -1643,12 +1664,13 @@ func TestDistroClientURLsGetSuite(t *testing.T) {
 }
 
 func (s *distroClientURLsGetSuite) SetupTest() {
-	d := distro.Distro{Id: "distroID"}
-	s.NoError(db.ClearCollections(distro.Collection))
-	err := d.Insert()
-	s.NoError(err)
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
+
+	d := distro.Distro{Id: "distroID"}
+	s.NoError(db.ClearCollections(distro.Collection))
+	err := d.Insert(ctx)
+	s.NoError(err)
 	s.env = testutil.NewEnvironment(ctx, s.T())
 	h := makeGetDistroClientURLs(s.env)
 	rh, ok := h.(*distroClientURLsGetHandler)

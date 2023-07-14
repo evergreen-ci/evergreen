@@ -87,7 +87,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
@@ -114,7 +114,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	if err = j.host.UpdateLastCommunicated(); err != nil {
+	if err = j.host.UpdateLastCommunicated(ctx); err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "setting last communication time on host '%s'", j.host.Id))
 	}
 
@@ -154,7 +154,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.AddError(j.host.SetNeedsNewAgent(false))
+	j.AddError(j.host.SetNeedsNewAgent(ctx, false))
 }
 
 func (j *agentDeployJob) getHostMessage() message.Fields {
@@ -201,7 +201,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 
 	// generate the host secret if none exists
 	if j.host.Secret == "" {
-		if err := j.host.CreateSecret(); err != nil {
+		if err := j.host.CreateSecret(ctx); err != nil {
 			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
 		}
 	}
@@ -230,7 +230,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		"job":      j.ID(),
 	})
 
-	if err := j.host.SetAgentRevision(evergreen.AgentVersion); err != nil {
+	if err := j.host.SetAgentRevision(ctx, evergreen.AgentVersion); err != nil {
 		return errors.Wrapf(err, "setting agent revision on host '%s'", j.host.Id)
 	}
 	return nil

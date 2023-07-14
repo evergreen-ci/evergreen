@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/utility"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"

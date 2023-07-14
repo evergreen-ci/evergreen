@@ -4,3 +4,129 @@ enum DistroSettingsAccess {
   EDIT
   VIEW
 }
+
+"""
+CopyDistroInput is the input to the copyDistro mutation.
+It contains information about a distro to be duplicated.
+"""
+input CopyDistroInput {
+  newDistroId: String!
+  distroIdToCopy: String!
+}
+
+"""
+Return type representing whether a distro was created and any validation errors
+"""
+type NewDistroPayload {
+  newDistroId: String!
+}
+
+"""
+Distro models an environment configuration for a host.
+"""
+type Distro {
+  aliases: [String!]!
+  arch: String
+  authorizedKeysFile: String
+  bootstrapSettings: BootstrapSettings!
+  cloneMethod: String
+  containerPool: String
+  disabled: Boolean!
+  disableShallowClone: Boolean!
+  dispatcherSettings: DispatcherSettings!
+  expansions: [Expansion!]!
+  finderSettings: FinderSettings!
+  homeVolumeSettings: HomeVolumeSettings!
+  hostAllocatorSettings: HostAllocatorSettings!
+  iceCreamSettings: IceCreamSettings!
+  isCluster: Boolean!
+  isVirtualWorkStation: Boolean!
+  name: String
+  note: String
+  plannerSettings: PlannerSettings!
+  provider: String
+  providerSettingsList: [Map!]!
+  setup: String
+  setupAsSudo: Boolean!
+  sshKey: String
+  sshOptions: [String!]!
+  user: String
+  userSpawnAllowed: Boolean!
+  validProjects: [String]!
+  workDir: String
+}
+
+type BootstrapSettings {
+  clientDir: String
+  communication: String
+  env: [EnvVar!]!
+  jasperBinaryDir: String
+  jasperCredentialsPath: String
+  method: String
+  preconditionScripts: [PreconditionScript!]!
+  resourceLimits: ResourceLimits
+  rootDir: String
+  serviceUser: String
+  shellPath: String
+}
+
+type DispatcherSettings {
+  version: String
+}
+
+type EnvVar {
+  key: String
+  value: String
+}
+
+type Expansion {
+  key: String
+  value: String
+}
+
+type FinderSettings {
+  version: String
+}
+
+type HomeVolumeSettings {
+  formatCommand: String
+}
+
+type HostAllocatorSettings {
+  acceptableHostIdleTime: Duration
+  feedbackRule: String
+  hostsOverallocatedRule: String
+  maximumHosts: Int!
+  minimumHosts: Int!
+  roundingRule: String
+  version: String
+}
+
+type IceCreamSettings {
+  configPath: String
+  schedulerHost: String
+}
+
+type PlannerSettings {
+  expectedRuntimeFactor: Int
+  generateTaskFactor: Int
+  groupVersions: Boolean
+  mainlineTimeInQueueFactor: Int
+  patchFactor: Int
+  patchTimeInQueueFactor: Int
+  targetTime: Duration
+  version: String
+}
+
+type PreconditionScript {
+  path: String
+  script: String
+}
+
+type ResourceLimits {
+  lockedMemoryKb: Int
+  numFiles: Int
+  numProcesses: Int
+  numTasks: Int
+  virtualMemoryKb: Int
+}

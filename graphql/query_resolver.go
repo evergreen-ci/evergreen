@@ -104,19 +104,34 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 	return zones, nil
 }
 
+// Distro is the resolver for the distro field.
+func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel.APIDistro, error) {
+	d, err := distro.FindOneId(ctx, distroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching distro '%s': %s", distroID, err.Error()))
+	}
+	if d == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", distroID))
+	}
+
+	apiDistro := restModel.APIDistro{}
+	apiDistro.BuildFromService(*d)
+	return &apiDistro, nil
+}
+
 // Distros is the resolver for the distros field.
 func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*restModel.APIDistro, error) {
 	apiDistros := []*restModel.APIDistro{}
 
 	var distros []distro.Distro
 	if onlySpawnable {
-		d, err := distro.Find(distro.BySpawnAllowed())
+		d, err := distro.Find(ctx, distro.BySpawnAllowed())
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching spawnable distros: %s", err.Error()))
 		}
 		distros = d
 	} else {
-		d, err := distro.FindAll()
+		d, err := distro.AllDistros(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching distros: %s", err.Error()))
 		}
@@ -168,7 +183,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 
 // HostEvents is the resolver for the hostEvents field.
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	h, err := host.FindOneByIdOrTag(hostID)
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", hostID, err.Error()))
 	}
@@ -281,7 +296,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	distros := []*TaskQueueDistro{}
 
 	for _, distro := range queues {
-		numHosts, err := host.CountRunningHosts(distro.Distro)
+		numHosts, err := host.CountRunningHosts(ctx, distro.Distro)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
 		}
@@ -318,29 +333,20 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	}
 
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
-		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-		opts := task.GetTasksByVersionOptions{
-			Statuses:                       failedAndAbortedStatuses,
-			FieldsToProject:                []string{task.DisplayStatusKey},
-			IncludeBaseTasks:               false,
-			IncludeBuildVariantDisplayName: false,
-		}
-		tasks, _, err := task.GetTasksByVersion(ctx, id, opts)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, id)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for patch: %s ", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
-				// add the child patch tasks to tasks so that we can consider their status
-				childPatchTasks, _, err := task.GetTasksByVersion(ctx, *cp.Id, opts)
+				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for child patch: %s ", err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for child patch: %s ", err.Error()))
 				}
-				tasks = append(tasks, childPatchTasks...)
+				statuses = append(statuses, childPatchStatuses...)
 			}
 		}
-		statuses := getAllTaskStatuses(tasks)
 
 		// If theres an aborted task we should set the patch status to aborted if there are no other failures
 		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
@@ -499,14 +505,14 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 // MyHosts is the resolver for the myHosts field.
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
-	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
+	hosts, err := host.Find(ctx, host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
 	}
 	duration := time.Duration(5) * time.Minute
 	timestamp := time.Now().Add(-duration) // within last 5 minutes
-	recentlyTerminatedHosts, err := host.Find(host.ByUserRecentlyTerminated(usr.Username(), timestamp))
+	recentlyTerminatedHosts, err := host.Find(ctx, host.ByUserRecentlyTerminated(usr.Username(), timestamp))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding recently terminated hosts for user %s : %s", usr.Username(), err))

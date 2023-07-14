@@ -57,7 +57,7 @@ type cliTestHarness struct {
 	settingsFilePath string
 }
 
-func setupCLITestHarness() cliTestHarness {
+func setupCLITestHarness(ctx context.Context) cliTestHarness {
 	// create a test API server
 	testServer, err := service.CreateTestServer(testConfig, nil, false)
 	So(err, ShouldBeNil)
@@ -106,9 +106,9 @@ func setupCLITestHarness() cliTestHarness {
 	So(pp.Insert(), ShouldBeNil)
 
 	d := distro.Distro{Id: "localtestdistro"}
-	So(d.Insert(), ShouldBeNil)
+	So(d.Insert(ctx), ShouldBeNil)
 	d = distro.Distro{Id: "ubuntu1404-test"}
-	So(d.Insert(), ShouldBeNil)
+	So(d.Insert(ctx), ShouldBeNil)
 
 	// create a settings file for the command line client
 	settings := ClientSettings{
@@ -128,18 +128,21 @@ func setupCLITestHarness() cliTestHarness {
 }
 
 func TestCLIFetchSource(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": manifest.Collection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": build.Collection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": task.Collection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.VersionCollection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": manifest.Collection})
 	require.NoError(t, evergreen.UpdateConfig(testConfig), ShouldBeNil)
 
 	Convey("with a task containing patches and modules", t, func() {
-		testSetup := setupCLITestHarness()
+		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
 		err := os.RemoveAll("source-patch-1_sample")
 		So(err, ShouldBeNil)
@@ -209,11 +212,14 @@ func TestCLIFetchSource(t *testing.T) {
 }
 
 func TestCLIFetchArtifacts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
 	Convey("with API test server running", t, func() {
-		testSetup := setupCLITestHarness()
+		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
 
 		err := os.RemoveAll("artifacts-abcdef-rest_task_variant_task_one")
@@ -288,7 +294,7 @@ func TestCLITestHistory(t *testing.T) {
 	}()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLITestHistory")
 	Convey("with API test server running", t, func() {
-		testSetup := setupCLITestHarness()
+		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
 
 		Convey("with a set of tasks being inserted into the database", func() {
@@ -356,6 +362,9 @@ func TestCLITestHistory(t *testing.T) {
 }
 
 func TestCLIFunctions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFunctions")
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
@@ -365,7 +374,7 @@ func TestCLIFunctions(t *testing.T) {
 	var patches []patch.Patch
 
 	Convey("with API test server running", t, func() {
-		testSetup := setupCLITestHarness()
+		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)

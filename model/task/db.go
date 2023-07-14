@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -112,6 +113,7 @@ var (
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
+	IsEssentialToSucceedKey     = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
 )
 
 var (
@@ -760,6 +762,15 @@ func needsContainerAllocation() bson.M {
 	return q
 }
 
+// IsContainerTaskScheduledQuery returns a query indicating if the container is
+// in a state where it is scheduled to run and is logically equivalent to
+// (Task).isContainerScheduled. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all tasks that could
+//     eventually run (i.e. evergreen.TaskWillRun from (Task).GetDisplayStatus),
+//     because a container task is not scheduled until all of its dependencies
+//     have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func IsContainerTaskScheduledQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
@@ -985,12 +996,12 @@ func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filter
 // FindHostRunnable finds all host tasks that can be scheduled for a distro with
 // an additional consideration for whether the task's dependencies are met. If
 // removeDeps is true, tasks with unmet dependencies are excluded.
-func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
+func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]Task, error) {
 	match := schedulableHostTasksQuery()
 	var d distro.Distro
 	var err error
 	if distroID != "" {
-		foundDistro, err := distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		foundDistro, err := distro.FindOne(ctx, distro.ById(distroID), options.FindOne().SetProjection(bson.M{distro.ValidProjectsKey: 1}))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}
@@ -999,7 +1010,7 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		}
 	}
 
-	if err = addApplicableDistroFilter(distroID, DistroIdKey, match); err != nil {
+	if err = addApplicableDistroFilter(ctx, distroID, DistroIdKey, match); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -1861,14 +1872,14 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 		return errors.Wrap(res.Err(), "updating matching dependencies")
 	}
 
-	return res.Decode(t)
+	return res.Decode(&t)
 }
 
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
 func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1891,7 +1902,7 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 		bson.M{
 			VersionKey: versionId, // Include to improve query.
 			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 		},
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,
@@ -2045,9 +2056,7 @@ func recalculateTimeTaken() bson.M {
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
-	if opts.IncludeBuildVariantDisplayName {
-		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
-	}
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTasksByVersion")})
 
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
@@ -2152,13 +2161,13 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
 func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
-		IncludeBaseTasks:               false,
-		FieldsToProject:                []string{DisplayStatusKey},
-		IncludeBuildVariantDisplayName: false,
-		IncludeNeverActivatedTasks:     true,
-		IncludeExecutionTasks:          false,
+		IncludeBaseTasks:           false,
+		FieldsToProject:            []string{DisplayStatusKey},
+		IncludeNeverActivatedTasks: true,
+		IncludeExecutionTasks:      false,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 
@@ -2224,9 +2233,8 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
-	if opts.IncludeBuildVariantDisplayName {
-		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
-	}
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatsByVersion")})
+
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting tasks by version pipeline")
@@ -2307,8 +2315,8 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 }
 
 func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
-	opts.IncludeBuildVariantDisplayName = true
-	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetGroupedTaskStatsByVersion")})
+
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting tasks by version pipeline")
@@ -2484,15 +2492,12 @@ type HasMatchingTasksOptions struct {
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "HasMatchingTasks")})
 	options := GetTasksByVersionOptions{
-		TaskNames:                      opts.TaskNames,
-		Variants:                       opts.Variants,
-		Statuses:                       opts.Statuses,
-		IncludeNeverActivatedTasks:     !opts.IncludeNeverActivatedTasks,
-		IncludeBuildVariantDisplayName: true,
-	}
-	if len(opts.Variants) > 0 {
-		options.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
+		TaskNames:                  opts.TaskNames,
+		Variants:                   opts.Variants,
+		Statuses:                   opts.Statuses,
+		IncludeNeverActivatedTasks: !opts.IncludeNeverActivatedTasks,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, options)
 	if err != nil {
@@ -2519,43 +2524,24 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 	return count[0].Count > 0, nil
 }
 
-// shouldUseLegacyAddBuildVariantDisplayName returns a boolean indicating whether the given version uses the buildVariantDisplayName field that was added in https://jira.mongodb.org/browse/EVG-16761
-// This is used to determine whether we should use the buildVariantDisplayName field in the task document or if we should use a $lookup to retrieve it
-func shouldUseLegacyAddBuildVariantDisplayName(versionID string) bool {
-	query := db.Query(ByVersion(versionID))
-	task, err := FindOne(query)
-	if err != nil {
-		return false
-	}
-	if task == nil {
-		return false
-	}
-
-	return task.BuildVariantDisplayName == ""
-}
-
 type GetTasksByVersionOptions struct {
-	Statuses                            []string
-	BaseStatuses                        []string
-	Variants                            []string
-	TaskNames                           []string
-	Page                                int
-	Limit                               int
-	FieldsToProject                     []string
-	Sorts                               []TasksSortOrder
-	IncludeExecutionTasks               bool
-	IncludeBaseTasks                    bool
-	IncludeNeverActivatedTasks          bool // NeverActivated tasks are tasks that lack an activation time
-	IncludeBuildVariantDisplayName      bool
-	IsMainlineCommit                    bool
-	UseLegacyAddBuildVariantDisplayName bool
+	Statuses                   []string
+	BaseStatuses               []string
+	Variants                   []string
+	TaskNames                  []string
+	Page                       int
+	Limit                      int
+	FieldsToProject            []string
+	Sorts                      []TasksSortOrder
+	IncludeExecutionTasks      bool
+	IncludeBaseTasks           bool
+	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
+	IsMainlineCommit           bool
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
 	match := bson.M{}
-	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
-		return nil, errors.New("should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName")
-	}
+
 	match[VersionKey] = versionID
 
 	// GeneratedJSON can often be large, so we filter it out by default
@@ -2576,13 +2562,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		{"$match": match},
 	}
 
-	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
-	// This is an expensive operation so we only want to do it if we have to
-	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
-		if opts.UseLegacyAddBuildVariantDisplayName {
-			pipeline = append(pipeline, AddBuildVariantDisplayName...)
-		}
-
+	// Filter on Build Variants matching on display name or variant name if it exists
+	if len(opts.Variants) > 0 {
 		// Allow searching by either variant name or variant display
 		variantsAsRegex := strings.Join(opts.Variants, "|")
 		match = bson.M{
@@ -2713,12 +2694,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		}...,
 		)
-	}
-	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
-		if opts.UseLegacyAddBuildVariantDisplayName {
-			pipeline = append(pipeline, AddBuildVariantDisplayName...)
-		}
 	}
 
 	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {

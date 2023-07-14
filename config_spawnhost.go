@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,12 +17,8 @@ type SpawnHostConfig struct {
 
 func (c *SpawnHostConfig) SectionId() string { return "spawnhost" }
 
-func (c *SpawnHostConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	coll := env.DB().Collection(ConfigCollection)
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *SpawnHostConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = SpawnHostConfig{}
@@ -29,21 +27,15 @@ func (c *SpawnHostConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
 }
 
-func (c *SpawnHostConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+func (c *SpawnHostConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			unexpirableHostsPerUserKey:   c.UnexpirableHostsPerUser,
 			unexpirableVolumesPerUserKey: c.UnexpirableVolumesPerUser,

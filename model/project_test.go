@@ -157,27 +157,6 @@ func TestGetVariantMappings(t *testing.T) {
 
 }
 
-func TestGetModuleRepoName(t *testing.T) {
-
-	Convey("With a module", t, func() {
-
-		Convey("getting the repo owner and name should return the repo"+
-			" field, split at the ':' and removing the .git from"+
-			" the end", func() {
-
-			module := &Module{
-				Repo: "blecch:owner/repo.git",
-			}
-
-			owner, name := module.GetRepoOwnerAndName()
-			So(owner, ShouldEqual, "owner")
-			So(name, ShouldEqual, "repo")
-
-		})
-
-	})
-}
-
 func TestPopulateBVT(t *testing.T) {
 
 	Convey("With a test Project and BuildVariantTaskUnit", t, func() {

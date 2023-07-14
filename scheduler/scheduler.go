@@ -249,7 +249,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting Docker options from distro '%s'", d.Id)
 		}
-		newContainers, newParents, err := host.MakeContainersAndParents(d, pool, newHostsNeeded, *hostOptions)
+		newContainers, newParents, err := host.MakeContainersAndParents(ctx, d, pool, newHostsNeeded, *hostOptions)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating container intents for distro '%s'", d.Id)
 		}
@@ -275,7 +275,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		}
 	}
 
-	if err := host.InsertMany(hostsSpawned); err != nil {
+	if err := host.InsertMany(ctx, hostsSpawned); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host documents")
 	}
 
@@ -320,8 +320,8 @@ func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.H
 }
 
 // pass the empty string to unschedule all distros.
-func underwaterUnschedule(distroID string) error {
-	num, err := task.UnscheduleStaleUnderwaterHostTasks(distroID)
+func underwaterUnschedule(ctx context.Context, distroID string) error {
+	num, err := task.UnscheduleStaleUnderwaterHostTasks(ctx, distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}

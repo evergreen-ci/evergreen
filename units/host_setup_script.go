@@ -84,7 +84,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 
 	if j.host == nil {
 		var err error
-		j.host, err = host.FindOneByIdOrTag(j.HostID)
+		j.host, err = host.FindOneByIdOrTag(ctx, j.HostID)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return

@@ -90,9 +90,9 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 
 		Convey("On storing a single repo revision, we expect a version to be created"+
 			" in the database for this project, which should be retrieved when we search"+
@@ -187,9 +187,9 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 
 		Convey("We should not fetch configs for versions we already have stored.",
 			func() {
@@ -330,9 +330,9 @@ tasks:
 
 	// insert distros used in testing.
 	d := distro.Distro{Id: "d1"}
-	assert.NoError(t, d.Insert())
+	assert.NoError(t, d.Insert(ctx))
 	d.Id = "d2"
-	assert.NoError(t, d.Insert())
+	assert.NoError(t, d.Insert(ctx))
 
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
@@ -446,9 +446,9 @@ func TestBatchTimes(t *testing.T) {
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 
 		Convey("If the project's batch time has not elapsed, and no buildvariants "+
 			"have overridden their batch times, no variants should be activated", func() {
@@ -606,9 +606,9 @@ func TestBatchTimes(t *testing.T) {
 		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
-		So(d.Insert(), ShouldBeNil)
+		So(d.Insert(ctx), ShouldBeNil)
 		zero := 0
 		project := createTestProject(&zero, nil)
 		revisions := []model.Revision{
@@ -793,6 +793,9 @@ func TestCreateVersionFromConfigSuite(t *testing.T) {
 }
 
 func (s *CreateVersionFromConfigSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection, model.ProjectAliasCollection))
 	s.ref = &model.ProjectRef{
 		Repo:       "evergreen",
@@ -816,7 +819,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Id:       "v",
 		Revision: "abc",
 	}
-	s.NoError(s.d.Insert())
+	s.NoError(s.d.Insert(ctx))
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(s.ctx))

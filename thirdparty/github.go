@@ -146,6 +146,8 @@ type GithubPatch struct {
 	MergeCommitSHA string `bson:"merge_commit_sha"`
 	CommitTitle    string `bson:"commit_title"`
 	CommitMessage  string `bson:"commit_message"`
+	// the patchId to copy the definitions for for the next patch the pr creates
+	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
 }
 
 // GithubMergeGroup stores patch data for patches created from GitHub merge groups
@@ -175,6 +177,7 @@ var (
 	GithubPatchBaseOwnerKey      = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
 	GithubPatchBaseRepoKey       = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
 	GithubPatchMergeCommitSHAKey = bsonutil.MustHaveTag(GithubPatch{}, "MergeCommitSHA")
+	RepeatPatchIdNextPatchKey    = bsonutil.MustHaveTag(GithubPatch{}, "RepeatPatchIdNextPatch")
 )
 
 type retryConfig struct {
@@ -494,7 +497,7 @@ func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github
 
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
-func SendPendingStatusToGithub(input SendGithubStatusInput, urlBase string) error {
+func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput, urlBase string) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
@@ -509,7 +512,7 @@ func SendPendingStatusToGithub(input SendGithubStatusInput, urlBase string) erro
 	env := evergreen.GetEnvironment()
 	if urlBase == "" {
 		uiConfig := evergreen.UIConfig{}
-		if err = uiConfig.Get(env); err != nil {
+		if err = uiConfig.Get(ctx); err != nil {
 			return errors.Wrap(err, "retrieving UI config")
 		}
 		urlBase := uiConfig.Url
@@ -1536,7 +1539,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 		return pr, nil
 	}
 	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
+	grip.DebugWhen(true, message.WrapError(err, message.Fields{
 		"ticket":  "EVG-19966",
 		"message": "failed to get PR from GitHub",
 		"caller":  "GetGithubPullRequest",
@@ -1705,7 +1708,7 @@ func missingHeadSHA(pr *github.PullRequest) bool {
 	return pr.Head == nil || pr.Head.GetSHA() == ""
 }
 
-func SendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
+func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
 	sender, err := env.GetSender(evergreen.SenderGithubStatus)
 	if err != nil {
 		return errors.Wrap(err, "can't get GitHub status sender")
@@ -1714,7 +1717,7 @@ func SendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	var url string
 	if versionID != "" {
 		uiConfig := evergreen.UIConfig{}
-		if err := uiConfig.Get(env); err == nil {
+		if err := uiConfig.Get(ctx); err == nil {
 			url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", uiConfig.Url, versionID)
 		}
 	}

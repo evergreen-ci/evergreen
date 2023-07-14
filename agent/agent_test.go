@@ -237,6 +237,7 @@ func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
+	s.setupRunTask("")
 
 	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
@@ -246,6 +247,7 @@ func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
+	s.setupRunTask("")
 
 	s.mockCommunicator.EndTaskShouldFail = true
 	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
@@ -420,6 +422,177 @@ post:
 	)
 }
 
+func (s *AgentSuite) setupRunTask(projYml string) {
+	if projYml == "" {
+		projYml = `
+post:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	}
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "some_build_variant",
+		DisplayName:  "this_is_a_task_name",
+		Version:      "my_version",
+	}
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+}
+
+func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 0"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 1"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	)
+}
+
+func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 0"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 1"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	)
+}
+
+func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 0"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 0"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	)
+}
+
+func (s *AgentSuite) TestFailingMainAndPostShowsMainInEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 1"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 1"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	)
+}
+
+func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+post_error_fails_task: true
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "exit 1"
+post:
+  - command: shell.exec
+    params:
+      script: "exit 0"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	)
+}
+
 func (s *AgentSuite) TestPostContinuesOnError() {
 	projYml := `
 post:
@@ -446,30 +619,34 @@ post:
 }
 
 func (s *AgentSuite) TestEndTaskResponse() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.setupRunTask("")
+
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
+	detail := s.a.endTaskResponse(ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
+	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskFailed, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(ctx, s.tc, evergreen.TaskFailed, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
@@ -478,11 +655,11 @@ func (s *AgentSuite) TestEndTaskResponse() {
 func (s *AgentSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Nanosecond
-	// TODO (EVG-19590): fix this test by splitting runTask.
+	// TODO (EVG-20390): potentially fix this test by splitting runTask.
 	// This is a little weird, but it's necessary for now because the test loads
 	// mock data, which changes the task ID.
 	// Once this is fixed, we should uncomment the assertion below about
-	// post-task commands (an aborted task should not run post).
+	// post-task commands running on abort.
 	originalTaskID := s.tc.taskConfig.Task.Id
 	_, err := s.a.runTask(s.ctx, s.tc)
 	s.NoError(err)
@@ -497,7 +674,7 @@ func (s *AgentSuite) TestAbort() {
 	)
 
 	// for _, msg := range s.mockCommunicator.GetMockMessages()[originalTaskID] {
-	//     s.NotContains(msg.Message, "Running post-task commands", "aborted task should not run post block")
+	//     s.Contains(msg.Message, "Running post-task commands", "aborted task should not run post block")
 	// }
 }
 
@@ -623,7 +800,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc.ranSetupGroup = false
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
 	s.False(tc.ranSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be false")
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("", tc.taskDirectory)

@@ -58,6 +58,8 @@ const (
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
+
+	otelAttributeMaxLength = 10000
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -193,9 +195,11 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
+		// Persist the environment early so the db will be available for initSettings.
+		SetEnvironment(e)
 	}
 
-	if err := e.initSettings(confPath); err != nil {
+	if err := e.initSettings(ctx, confPath); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -263,7 +267,7 @@ type closerOp struct {
 	closerFn   func(context.Context) error
 }
 
-func (e *envState) initSettings(path string) error {
+func (e *envState) initSettings(ctx context.Context, path string) error {
 	// read configuration from either the file or DB and validate
 	// if the file path is blank, the DB session must be configured already
 
@@ -277,7 +281,7 @@ func (e *envState) initSettings(path string) error {
 				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
-			e.settings, err = BootstrapConfig(e)
+			e.settings, err = BootstrapConfig(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting config settings from DB")
 			}
@@ -368,7 +372,7 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetReadPreference(readpref.Primary()).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
 	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
 		opts.SetAuth(options.Credential{
@@ -729,7 +733,14 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 
 	var sender send.Sender
-	githubToken, err := e.settings.GetGithubOauthToken()
+	githubToken, err := e.settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+	if err != nil || githubToken == "" {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error creating token",
+			"ticket":  "EVG-19966",
+		}))
+		githubToken, err = e.settings.GetGithubOauthToken()
+	}
 	if err == nil && len(githubToken) > 0 {
 		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
@@ -862,7 +873,6 @@ func (e *envState) initTracer(ctx context.Context) error {
 	}
 
 	resource, err := resource.New(ctx,
-		resource.WithProcess(),
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen")),
 		resource.WithAttributes(semconv.ServiceVersion(BuildRevision)),
@@ -879,12 +889,19 @@ func (e *envState) initTracer(ctx context.Context) error {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
 
+	spanLimits := trace.NewSpanLimits()
+	spanLimits.AttributeValueLengthLimit = otelAttributeMaxLength
+
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
 		trace.WithResource(resource),
+		trace.WithRawSpanLimits(spanLimits),
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		grip.Error(errors.Wrap(err, "otel error"))
+	}))
 
 	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
 		catcher := grip.NewBasicCatcher()

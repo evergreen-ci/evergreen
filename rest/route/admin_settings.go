@@ -99,7 +99,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "new settings are invalid"))
 	}
 
-	err = distro.ValidateContainerPoolDistros(newSettings)
+	err = distro.ValidateContainerPoolDistros(ctx, newSettings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "container pool distros are invalid"))
 	}

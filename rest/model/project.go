@@ -175,20 +175,23 @@ func (t *APIParsleyFilter) BuildFromService(h model.ParsleyFilter) {
 }
 
 type APIExternalLink struct {
-	URLTemplate *string `json:"url_template"`
-	DisplayName *string `json:"display_name"`
+	DisplayName *string   `json:"display_name"`
+	Requesters  []*string `json:"requesters"`
+	URLTemplate *string   `json:"url_template"`
 }
 
 func (t *APIExternalLink) ToService() model.ExternalLink {
 	return model.ExternalLink{
-		URLTemplate: utility.FromStringPtr(t.URLTemplate),
 		DisplayName: utility.FromStringPtr(t.DisplayName),
+		Requesters:  utility.FromStringPtrSlice(t.Requesters),
+		URLTemplate: utility.FromStringPtr(t.URLTemplate),
 	}
 }
 
 func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
-	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
 	t.DisplayName = utility.ToStringPtr(h.DisplayName)
+	t.Requesters = utility.ToStringPtrSlice(h.Requesters)
+	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
 }
 
 type APIProjectBanner struct {
@@ -206,12 +209,6 @@ func (t *APIProjectBanner) ToService() model.ProjectBanner {
 func (t *APIProjectBanner) BuildFromService(h model.ProjectBanner) {
 	t.Theme = h.Theme
 	t.Text = utility.ToStringPtr(h.Text)
-}
-
-type APICommitQueueParams struct {
-	Enabled     *bool   `json:"enabled"`
-	MergeMethod *string `json:"merge_method"`
-	Message     *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition {
@@ -236,10 +233,22 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 	bd.NextRunTime = utility.ToTimePtr(params.NextRunTime)
 }
 
+type APICommitQueueParams struct {
+	Enabled     *bool            `json:"enabled"`
+	MergeMethod *string          `json:"merge_method"`
+	MergeQueue  model.MergeQueue `json:"merge_queue"`
+	Message     *string          `json:"message"`
+}
+
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
+
+	if params.MergeQueue == "" {
+		params.MergeQueue = model.MergeQueueEvergreen
+	}
+	cqParams.MergeQueue = params.MergeQueue
 }
 
 func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
@@ -247,6 +256,11 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
+
+	if cqParams.MergeQueue == "" {
+		cqParams.MergeQueue = model.MergeQueueEvergreen
+	}
+	serviceParams.MergeQueue = cqParams.MergeQueue
 
 	return serviceParams
 }

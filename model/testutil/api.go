@@ -228,7 +228,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		AgentRevision: evergreen.AgentVersion,
 		Status:        evergreen.HostRunning,
 	}
-	if err = testHost.Insert(); err != nil {
+	if err = testHost.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting host")
 	}
 	modelData.Host = testHost

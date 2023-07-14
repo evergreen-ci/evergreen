@@ -277,7 +277,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	d := distro.Distro{
 		Id: "d",
 	}
-	assert.NoError(d.Insert())
+	assert.NoError(d.Insert(ctx))
 	u := user.DBUser{
 		Id:          "u",
 		PatchNumber: 5,

@@ -157,7 +157,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 
 	if containerPool != nil {
-		parentDistro, err := distro.FindOneId(containerPool.Distro)
+		parentDistro, err := distro.FindOneId(ctx, containerPool.Distro)
 		if err != nil {
 			return 0, 0, errors.Wrap(err, "error finding parent distros")
 		}

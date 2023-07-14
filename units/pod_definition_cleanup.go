@@ -67,7 +67,7 @@ func (j *podDefinitionCleanupJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
 		}
 	}()
-	if err := j.populate(); err != nil {
+	if err := j.populate(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -84,14 +84,14 @@ func (j *podDefinitionCleanupJob) Run(ctx context.Context) {
 	j.AddError(errors.Wrap(err, "cleaning up stale pod definitions"))
 }
 
-func (j *podDefinitionCleanupJob) populate() error {
+func (j *podDefinitionCleanupJob) populate(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	// Use the latest service flags instead of those cached in the environment.
 	settings := *j.env.Settings()
-	if err := settings.ServiceFlags.Get(j.env); err != nil {
+	if err := settings.ServiceFlags.Get(ctx); err != nil {
 		return errors.Wrap(err, "getting service flags")
 	}
 	j.settings = settings

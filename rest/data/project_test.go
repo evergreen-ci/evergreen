@@ -481,6 +481,9 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 }
 
 func TestRequestS3Creds(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
 	assert.Error(t, RequestS3Creds("", ""))
 	assert.NoError(t, RequestS3Creds("identifier", "user@email.com"))
@@ -490,7 +493,7 @@ func TestRequestS3Creds(t *testing.T) {
 	projectCreationConfig := evergreen.ProjectCreationConfig{
 		JiraProject: "BUILD",
 	}
-	assert.NoError(t, projectCreationConfig.Set())
+	assert.NoError(t, projectCreationConfig.Set(ctx))
 	assert.NoError(t, RequestS3Creds("identifier", "user@email.com"))
 	n, err = notification.FindUnprocessed()
 	assert.NoError(t, err)

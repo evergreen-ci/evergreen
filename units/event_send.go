@@ -54,7 +54,7 @@ func NewEventSendJob(id, ts string) amboy.Job {
 	return j
 }
 
-func (j *eventSendJob) setup() error {
+func (j *eventSendJob) setup(ctx context.Context) error {
 	if len(j.NotificationID) == 0 {
 		return errors.New("notification ID is not valid")
 	}
@@ -64,7 +64,7 @@ func (j *eventSendJob) setup() error {
 	}
 	if j.flags == nil {
 		j.flags = &evergreen.ServiceFlags{}
-		if err := j.flags.Get(j.env); err != nil {
+		if err := j.flags.Get(ctx); err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
 	}
@@ -72,10 +72,10 @@ func (j *eventSendJob) setup() error {
 	return nil
 }
 
-func (j *eventSendJob) Run(_ context.Context) {
+func (j *eventSendJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if err := j.setup(); err != nil {
+	if err := j.setup(ctx); err != nil {
 		j.AddError(err)
 		return
 	}

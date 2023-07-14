@@ -3,6 +3,15 @@
     displayName
     userId
     emailAddress
+    permissions {
+      canCreateDistro
+      canCreateProject
+      distroPermissions(options: {distroId: "rhel71-power8-large"}) {
+        admin
+        edit
+        view
+      }
+    }
     subscriptions {
       id
       resourceType

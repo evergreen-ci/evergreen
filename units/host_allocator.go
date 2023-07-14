@@ -88,7 +88,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	distro, err := distro.FindByIdWithDefaultSettings(j.DistroID)
+	distro, err := distro.FindByIdWithDefaultSettings(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroID))
 		return
@@ -102,7 +102,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = scheduler.UpdateStaticDistro(*distro); err != nil {
+	if err = scheduler.UpdateStaticDistro(ctx, *distro); err != nil {
 		j.AddError(errors.Wrapf(err, "updating static host in distro '%s'", j.DistroID))
 		return
 	}
@@ -116,11 +116,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	if err = host.RemoveStaleInitializing(j.DistroID); err != nil {
+	if err = host.RemoveStaleInitializing(ctx, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "removing stale initializing intent hosts"))
 		return
 	}
-	if err = host.MarkStaleBuildingAsFailed(j.DistroID); err != nil {
+	if err = host.MarkStaleBuildingAsFailed(ctx, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "marking building intent hosts as failed"))
 		return
 	}
@@ -133,7 +133,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// host-allocation phase
 	////////////////////////
 
-	existingHosts, err := host.AllActiveHosts(j.DistroID)
+	existingHosts, err := host.AllActiveHosts(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding active hosts"))
 		return

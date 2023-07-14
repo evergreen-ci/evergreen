@@ -116,8 +116,8 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 		Id:            "invalid-distro",
 		ContainerPool: "test-pool-1",
 	}
-	s.NoError(d1.Insert())
-	s.NoError(d2.Insert())
+	s.NoError(d1.Insert(ctx))
+	s.NoError(d2.Insert(ctx))
 
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
@@ -439,16 +439,18 @@ func (s *AdminRouteSuite) TestRestartVersionsRoute() {
 }
 
 func (s *AdminRouteSuite) TestAdminEventRoute() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, event.EventCollection, distro.Collection), "Error clearing collections")
 
 	// sd by test to have a valid distro in the collection
 	d1 := &distro.Distro{
 		Id: "valid-distro",
 	}
-	s.NoError(d1.Insert())
+	s.NoError(d1.Insert(ctx))
 
 	// log some changes in the event log with the /admin/settings route
-	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	routeManager := makeSetAdminSettings()
 

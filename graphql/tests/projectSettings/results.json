@@ -12,7 +12,8 @@
               "restricted": true,
               "commitQueue": {
                 "enabled": true,
-                "mergeMethod": "squash"
+                "mergeMethod": "squash",
+                "mergeQueue": "EVERGREEN"
               },
               "periodicBuilds": null,
               "githubChecksEnabled": null,
@@ -33,7 +34,6 @@
                   "exactMatch": true
                 }
               ],
-
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
               "triggers": [
@@ -70,7 +70,6 @@
                 "bfSuggestionTimeoutSecs": 0,
                 "bfSuggestionUsername": ""
               },
-
               "taskAnnotationSettings": {
                 "jiraCustomFields": [
                   {
@@ -83,7 +82,6 @@
                   "secret": "shh"
                 }
               },
-
               "containerSizeDefinitions": [
                 {
                   "name": "size1",
@@ -94,6 +92,13 @@
                   "name": "size2",
                   "cpu": 2,
                   "memoryMb": 2048
+                }
+              ],
+              "externalLinks": [
+                {
+                  "displayName": "A link to somewhere",
+                  "requesters": ["gitter_request", "github_pull_request"],
+                  "urlTemplate": "https://a-fake-url-for-{version_id}.com/{version_id}"
                 }
               ]
             }

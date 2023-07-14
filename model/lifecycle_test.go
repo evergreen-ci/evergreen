@@ -27,6 +27,8 @@ func taskIdInSlice(tasks []task.Task, id string) bool {
 }
 
 func TestTaskSetPriority(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("With a task", t, func() {
 
@@ -89,7 +91,7 @@ func TestTaskSetPriority(t *testing.T) {
 
 		Convey("setting its priority should update it and all dependencies in the database", func() {
 
-			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
+			So(SetTaskPriority(ctx, tasks[0], 1, "user"), ShouldBeNil)
 
 			t, err := task.FindOne(db.Query(task.ById("one")))
 			So(err, ShouldBeNil)
@@ -127,9 +129,9 @@ func TestTaskSetPriority(t *testing.T) {
 		})
 
 		Convey("decreasing priority should update the task and its execution tasks but not its dependencies", func() {
-			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
+			So(SetTaskPriority(ctx, tasks[0], 1, "user"), ShouldBeNil)
 			So(tasks[0].Activated, ShouldEqual, true)
-			So(SetTaskPriority(tasks[0], -1, "user"), ShouldBeNil)
+			So(SetTaskPriority(ctx, tasks[0], -1, "user"), ShouldBeNil)
 
 			t, err := task.FindOne(db.Query(task.ById("one")))
 			So(err, ShouldBeNil)
@@ -174,6 +176,8 @@ func TestTaskSetPriority(t *testing.T) {
 }
 
 func TestBuildSetPriority(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("With a build", t, func() {
 
@@ -197,7 +201,7 @@ func TestBuildSetPriority(t *testing.T) {
 		Convey("setting its priority should update the priority"+
 			" of all its tasks in the database", func() {
 
-			So(SetBuildPriority(b.Id, 42, ""), ShouldBeNil)
+			So(SetBuildPriority(ctx, b.Id, 42, ""), ShouldBeNil)
 
 			tasks, err := task.Find(task.ByBuildId(b.Id))
 			So(err, ShouldBeNil)
@@ -212,6 +216,9 @@ func TestBuildSetPriority(t *testing.T) {
 }
 
 func TestBuildRestart(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
 	}()
@@ -246,7 +253,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -281,7 +288,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -328,7 +335,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskSeven.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b, []string{"task5", "task6", "task7"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task5", "task6", "task7"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -369,7 +376,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskNine.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b, []string{"task8", "task9"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task8", "task9"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -1326,13 +1333,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		Convey("all of the build's essential fields should be set correctly", func() {
 			creationInfo := TaskCreationInfo{
-				Project:          project,
-				ProjectRef:       pref,
-				Version:          v,
-				TaskIDs:          table,
-				BuildVariantName: buildVar1.Name,
-				ActivateBuild:    false,
-				TaskNames:        []string{},
+				Project:                             project,
+				ProjectRef:                          pref,
+				Version:                             v,
+				TaskIDs:                             table,
+				BuildVariantName:                    buildVar1.Name,
+				ActivateBuild:                       false,
+				TaskNames:                           []string{},
+				ActivatedTasksAreEssentialToSucceed: true,
 			}
 			build, _, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
@@ -1352,6 +1360,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(build.DisplayName, ShouldEqual, buildVar1.DisplayName)
 			So(build.RevisionOrderNumber, ShouldEqual, v.RevisionOrderNumber)
 			So(build.Requester, ShouldEqual, v.Requester)
+			So(build.HasUnfinishedEssentialTask, ShouldBeFalse)
 		})
 
 		Convey("all of the tasks' essential fields should be set correctly", func() {
@@ -1373,13 +1382,20 @@ func TestCreateBuildFromVersion(t *testing.T) {
 						},
 					},
 				},
-				TaskCreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				ActivatedTasksAreEssentialToSucceed: true,
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
+			So(build.HasUnfinishedEssentialTask, ShouldBeFalse)
 
 			So(len(tasks), ShouldEqual, 6)
+			for _, t := range tasks {
+				// Tasks with specific activation conditions are not essential
+				// to succeed.
+				So(t.IsEssentialToSucceed, ShouldBeFalse)
+			}
 			So(tasks[2].Id, ShouldNotEqual, "")
 			So(tasks[2].Secret, ShouldNotEqual, "")
 			So(tasks[2].DisplayName, ShouldEqual, "taskA")
@@ -1452,20 +1468,29 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
 			func() {
 				creationInfo := TaskCreationInfo{
-					Project:          project,
-					ProjectRef:       pref,
-					Version:          v,
-					TaskIDs:          table,
-					BuildVariantName: buildVar1.Name,
-					ActivateBuild:    true,
-					TaskNames:        []string{},
-					TaskCreateTime:   time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					Project:                             project,
+					ProjectRef:                          pref,
+					Version:                             v,
+					TaskIDs:                             table,
+					BuildVariantName:                    buildVar1.Name,
+					ActivateBuild:                       true,
+					TaskNames:                           []string{},
+					TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					ActivatedTasksAreEssentialToSucceed: true,
 				}
 				build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
 				So(err, ShouldBeNil)
 				So(build.Id, ShouldNotEqual, "")
 				So(build.Activated, ShouldBeTrue)
 				So(build.ActivatedTime.Equal(utility.ZeroTime), ShouldBeFalse)
+				So(build.HasUnfinishedEssentialTask, ShouldBeTrue)
+
+				for _, t := range tasks {
+					if !t.DisplayOnly {
+						// Activated execution tasks are essential to succeed.
+						So(t.IsEssentialToSucceed, ShouldBeTrue)
+					}
+				}
 
 				So(len(tasks), ShouldEqual, 6)
 				So(tasks[2].Id, ShouldNotEqual, "")
@@ -2085,6 +2110,9 @@ func TestSortTasks(t *testing.T) {
 }
 
 func TestVersionRestart(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(resetTaskData())
@@ -2092,7 +2120,7 @@ func TestVersionRestart(t *testing.T) {
 	// test that restarting a version restarts its tasks
 	taskIds := []string{"task1", "task3", "task4"}
 	buildIds := []string{"build1", "build2"}
-	assert.NoError(RestartVersion("version", taskIds, false, "test"))
+	assert.NoError(RestartVersion(ctx, "version", taskIds, false, "test"))
 	tasks, err := task.Find(task.ByIds(taskIds))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
@@ -2126,7 +2154,7 @@ func TestVersionRestart(t *testing.T) {
 	// test that aborting in-progress tasks works correctly
 	assert.NoError(resetTaskData())
 	taskIds = []string{"task2"}
-	assert.NoError(RestartVersion("version", taskIds, true, "test"))
+	assert.NoError(RestartVersion(ctx, "version", taskIds, true, "test"))
 	dbTask, err := task.FindOne(db.Query(task.ById("task2")))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
@@ -2142,7 +2170,7 @@ func TestVersionRestart(t *testing.T) {
 	// test that not aborting in-progress tasks does not reset them
 	assert.NoError(resetTaskData())
 	taskIds = []string{"task2"}
-	assert.NoError(RestartVersion("version", taskIds, false, "test"))
+	assert.NoError(RestartVersion(ctx, "version", taskIds, false, "test"))
 	dbTask, err = task.FindOne(db.Query(task.ById("task2")))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
@@ -2155,13 +2183,16 @@ func TestVersionRestart(t *testing.T) {
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	displayTasks := []string{"displayTask"}
 	allTasks := []string{"displayTask", "task5", "task6"}
 
 	// test restarting a version
 	assert.NoError(resetTaskData())
-	assert.NoError(RestartVersion("version", displayTasks, false, "test"))
+	assert.NoError(RestartVersion(ctx, "version", displayTasks, false, "test"))
 	tasks, err := task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
@@ -2172,7 +2203,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test restarting a build
 	assert.NoError(resetTaskData())
-	assert.NoError(RestartBuild(&build.Build{Id: "build3", Version: "version"}, displayTasks, false, "test"))
+	assert.NoError(RestartBuild(ctx, &build.Build{Id: "build3", Version: "version"}, displayTasks, false, "test"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
@@ -2183,7 +2214,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
-	assert.NoError(resetTask("displayTask", "caller"))
+	assert.NoError(resetTask(ctx, "displayTask", "caller"))
 	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
@@ -2207,7 +2238,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(err)
 	assert.NoError(dt.SetResetFailedWhenFinished())
-	assert.NoError(resetTask(dt.Id, "caller"))
+	assert.NoError(resetTask(ctx, dt.Id, "caller"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
@@ -2226,11 +2257,11 @@ func TestDisplayTaskRestart(t *testing.T) {
 			MaxSystemFailedTaskRetries: 2,
 		},
 	}
-	assert.Error(TryResetTask(settings, "task5", "", "", nil))
+	assert.Error(TryResetTask(ctx, settings, "task5", "", "", nil))
 
 	// trying to restart execution tasks should restart the entire display task, if it's done
 	assert.NoError(resetTaskData())
-	assert.NoError(RestartVersion("version", allTasks, false, "test"))
+	assert.NoError(RestartVersion(ctx, "version", allTasks, false, "test"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
@@ -2241,6 +2272,9 @@ func TestDisplayTaskRestart(t *testing.T) {
 }
 
 func TestResetTaskOrDisplayTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	settings := &evergreen.Settings{
 		CommitQueue: evergreen.CommitQueueConfig{
 			MaxSystemFailedTaskRetries: 2,
@@ -2252,7 +2286,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	require.NotNil(t, et)
 
 	// restarting execution tasks should restart display task
-	assert.NoError(t, ResetTaskOrDisplayTask(settings, et, "me", evergreen.StepbackTaskActivator, false, nil))
+	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, et, "me", evergreen.StepbackTaskActivator, false, nil))
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
@@ -2262,7 +2296,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 
 	// restarting display task should mark the display task for restart if it's not complete
 	// ResetFailedWhenFinished should be set to true if failedOnly is passed in
-	assert.NoError(t, ResetTaskOrDisplayTask(settings, dt, "me", evergreen.StepbackTaskActivator, true, nil))
+	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "me", evergreen.StepbackTaskActivator, true, nil))
 	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
