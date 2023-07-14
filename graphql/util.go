@@ -765,14 +765,14 @@ func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res
 	if id, hasId := args["id"].(string); hasId {
 		pid, err := model.GetIdForProject(id)
 		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", id))
 		}
 		return pid, nil
 	}
 	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
 		pid, err := model.GetIdForProject(projectId)
 		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with projectId: %s", projectId))
 		}
 		return pid, nil
 	}
