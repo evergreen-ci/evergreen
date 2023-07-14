@@ -1328,6 +1328,10 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 		Project: s.project,
 		Githash: s.hash,
 		Alias:   evergreen.CommitQueueAlias,
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+		},
 		Patches: []patch.ModulePatch{
 			{
 				Githash: "revision",
