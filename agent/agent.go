@@ -256,7 +256,19 @@ func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 	a.ec2InstanceID = instanceID
 }
 
-func (a *Agent) loop(ctx context.Context) error {
+type loop struct {
+	tc                    *taskContext
+	needPostGroup         bool
+	jitteredSleep         time.Duration
+	taskCtx               context.Context
+	cancel                context.CancelFunc
+	timer                 *time.Timer
+	minAgentSleepInterval time.Duration
+	maxAgentSleepInterval time.Duration
+	agentSleepInterval    time.Duration
+}
+
+func (a *Agent) initLoop(ctx context.Context) *loop {
 	minAgentSleepInterval := defaultAgentSleepInterval
 	maxAgentSleepInterval := defaultMaxAgentSleepInterval
 	if a.opts.AgentSleepInterval != 0 {
@@ -265,20 +277,30 @@ func (a *Agent) loop(ctx context.Context) error {
 	if a.opts.MaxAgentSleepInterval != 0 {
 		maxAgentSleepInterval = a.opts.MaxAgentSleepInterval
 	}
-	agentSleepInterval := minAgentSleepInterval
+	taskCtx, cancel := context.WithCancel(ctx)
 
-	var jitteredSleep time.Duration
-	tskCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	lc := &loop{
+		tc:                    &taskContext{},
+		needPostGroup:         false,
+		taskCtx:               taskCtx,
+		cancel:                cancel,
+		timer:                 time.NewTimer(0),
+		minAgentSleepInterval: minAgentSleepInterval,
+		maxAgentSleepInterval: maxAgentSleepInterval,
+		agentSleepInterval:    minAgentSleepInterval,
+	}
 
-	timer := time.NewTimer(0)
-	defer timer.Stop()
+	return lc
+}
 
-	tc := &taskContext{}
-	needPostGroup := false
+func (a *Agent) loop(ctx context.Context) error {
+	l := a.initLoop(ctx)
+	defer l.cancel()
+	defer l.timer.Stop()
+
 	defer func() {
-		if tc.logger != nil {
-			grip.Error(errors.Wrap(tc.logger.Close(), "closing logger"))
+		if l.tc.logger != nil {
+			grip.Error(errors.Wrap(l.tc.logger.Close(), "closing logger"))
 		}
 	}()
 
@@ -287,14 +309,14 @@ func (a *Agent) loop(ctx context.Context) error {
 		case <-ctx.Done():
 			grip.Info("Agent loop canceled.")
 			return nil
-		case <-timer.C:
+		case <-l.timer.C:
 			a.endTaskResp = nil // reset this in case a previous task used this to trigger a response
 			// Check the cedar GRPC connection so we can fail early
 			// and avoid task system failures.
 			err := utility.Retry(ctx, func() (bool, error) {
 				_, err := a.comm.GetCedarGRPCConn(ctx)
 				return true, err
-			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: minAgentSleepInterval})
+			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: l.minAgentSleepInterval})
 			if err != nil {
 				if ctx.Err() != nil {
 					// We don't want to return an error if
@@ -306,15 +328,15 @@ func (a *Agent) loop(ctx context.Context) error {
 
 			a.populateEC2InstanceID(ctx)
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
-				TaskGroup:     tc.taskGroup,
+				TaskGroup:     l.tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,
 				EC2InstanceID: a.ec2InstanceID,
 			})
 			if err != nil {
 				// task secret doesn't match, get another task
 				if errors.Cause(err) == client.HTTPConflictError {
-					timer.Reset(0)
-					agentSleepInterval = minAgentSleepInterval
+					l.timer.Reset(0)
+					l.agentSleepInterval = l.minAgentSleepInterval
 					continue
 				}
 				return errors.Wrap(err, "getting next task")
@@ -325,69 +347,69 @@ func (a *Agent) loop(ctx context.Context) error {
 			}
 			// if the host's current task group is finished we teardown
 			if nextTask.ShouldTeardownGroup {
-				a.runPostGroupCommands(ctx, tc)
-				needPostGroup = false
+				a.runPostGroupCommands(ctx, l.tc)
+				l.needPostGroup = false
 				// Running the post group commands implies exiting the group, so
 				// destroy prior task information.
-				tc = &taskContext{}
-				timer.Reset(0)
-				agentSleepInterval = minAgentSleepInterval
+				l.tc = &taskContext{}
+				l.timer.Reset(0)
+				l.agentSleepInterval = l.minAgentSleepInterval
 				continue
 			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
 					grip.Critical(message.WrapError(err, message.Fields{
 						"message": "task response missing secret",
-						"task":    tc.task.ID,
+						"task":    l.tc.task.ID,
 					}))
-					timer.Reset(0)
-					agentSleepInterval = minAgentSleepInterval
+					l.timer.Reset(0)
+					l.agentSleepInterval = l.minAgentSleepInterval
 					continue
 				}
-				prevLogger := tc.logger
-				tc = a.prepareNextTask(ctx, nextTask, tc)
+				prevLogger := l.tc.logger
+				l.tc = a.prepareNextTask(ctx, nextTask, l.tc)
 				if prevLogger != nil {
 					grip.Error(errors.Wrap(prevLogger.Close(), "closing the previous logger producer"))
 				}
 
-				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
+				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, l.tc), message.Fields{
 					"message": "error fetching project config; will attempt at a later point",
-					"task":    tc.task.ID,
+					"task":    l.tc.task.ID,
 				}))
 
 				a.jasper.Clear(ctx)
-				tc.jasper = a.jasper
-				shouldExit, err := a.runTask(tskCtx, tc)
+				l.tc.jasper = a.jasper
+				shouldExit, err := a.runTask(l.taskCtx, l.tc)
 				if err != nil {
 					grip.Critical(message.WrapError(err, message.Fields{
 						"message": "error running task",
-						"task":    tc.task.ID,
+						"task":    l.tc.task.ID,
 					}))
-					timer.Reset(0)
-					agentSleepInterval = minAgentSleepInterval
+					l.timer.Reset(0)
+					l.agentSleepInterval = l.minAgentSleepInterval
 					continue
 				}
 				if shouldExit {
 					return nil
 				}
-				needPostGroup = true
-				timer.Reset(0)
-				agentSleepInterval = minAgentSleepInterval
+				l.needPostGroup = true
+				l.timer.Reset(0)
+				l.agentSleepInterval = l.minAgentSleepInterval
 				continue
-			} else if needPostGroup {
-				a.runPostGroupCommands(ctx, tc)
-				needPostGroup = false
+			} else if l.needPostGroup {
+				a.runPostGroupCommands(ctx, l.tc)
+				l.needPostGroup = false
 				// Running the post group commands implies exiting the group, so
 				// destroy prior task information.
-				tc = &taskContext{}
+				l.tc = &taskContext{}
 			}
 
-			jitteredSleep = utility.JitterInterval(agentSleepInterval)
-			grip.Debugf("Agent sleeping %s.", jitteredSleep)
-			timer.Reset(jitteredSleep)
-			agentSleepInterval = agentSleepInterval * 2
-			if agentSleepInterval > maxAgentSleepInterval {
-				agentSleepInterval = maxAgentSleepInterval
+			l.jitteredSleep = utility.JitterInterval(l.agentSleepInterval)
+			grip.Debugf("Agent sleeping %s.", l.jitteredSleep)
+			l.timer.Reset(l.jitteredSleep)
+			l.agentSleepInterval = l.agentSleepInterval * 2
+			if l.agentSleepInterval > l.maxAgentSleepInterval {
+				l.agentSleepInterval = l.maxAgentSleepInterval
 			}
 		}
 	}
