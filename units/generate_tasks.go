@@ -320,6 +320,17 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 }
 
+// GetGenerateTasksJobAndQueue returns a job and generate.tasks queue for the given task.
+func GetGenerateTasksJobAndQueue(ctx context.Context, env evergreen.Environment, t task.Task, ts string) (amboy.Job, amboy.Queue, error) {
+	j := NewGenerateTasksJob(t.Version, t.Id, ts)
+	queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
+	queue, err := env.RemoteQueueGroup().Get(ctx, queueName)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+	}
+	return j, queue, nil
+}
+
 func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, error) {
 	catcher := grip.NewBasicCatcher()
 	var projects []model.GeneratedProject

@@ -720,7 +720,8 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 
 // PopulateFallbackGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
 // Since the original generate.tasks request kicks off a job immediately, this function only serves as a fallback in case the
-// original job fails to run. If the original job succeeds, the jobs created here will no-op.
+// original job fails to run. If the original job has already completed, the job will not be created here. If the original job is in flight,
+// the job will be created here, but will no-op unless the original job fails to complete.
 func PopulateFallbackGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(_ context.Context, _ amboy.Queue) error {
 		ctx := context.Background()
@@ -733,13 +734,12 @@ func PopulateFallbackGenerateTasksJobs(env evergreen.Environment) amboy.QueueOpe
 
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 		for _, t := range tasks {
-			queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
-			queue, err := env.RemoteQueueGroup().Get(ctx, queueName)
+			j, queue, err := GetGenerateTasksJobAndQueue(ctx, env, t, ts)
 			if err != nil {
-				catcher.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+				catcher.Add(err)
 				continue
 			}
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts)), "enqueueing generate tasks job for task '%s'", t.Id)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing generate tasks job for task '%s'", t.Id)
 		}
 
 		return catcher.Resolve()

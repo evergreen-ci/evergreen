@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -60,21 +59,24 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("task '%s' not found", h.taskID))
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	j := units.NewGenerateTasksJob(t.Version, t.Id, ts)
-	queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
-	queue, err := evergreen.GetEnvironment().RemoteQueueGroup().Get(ctx, queueName)
+	j, queue, err := units.GetGenerateTasksJobAndQueue(ctx, evergreen.GetEnvironment(), *t, ts)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version))
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not enqueue generate tasks job",
+			"version": t.Version,
+			"task_id": t.Id,
+			"job_id":  j.ID(),
+		}))
 	}
 	grip.Info(message.Fields{
-		"message": "enqueueing generate tasks job",
+		"message": "enqueued generate tasks job",
 		"version": t.Version,
 		"task_id": t.Id,
 		"job_id":  j.ID(),
 	})
-	if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing catchup job"))
-	}
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
