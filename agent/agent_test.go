@@ -1052,7 +1052,7 @@ func (s *AgentSuite) TestFetchProjectConfig() {
 	s.True(s.tc.privateVars["some_private_var"], "should include mock communicator private variables")
 }
 
-func (s *AgentSuite) TestAbort() {
+func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
 
@@ -1063,15 +1063,14 @@ buildvariants:
 tasks:
 - name: this_is_a_task_name
   commands:
-   - command: shell.exec
-     params:
-       script: sleep 5
+  - command: shell.exec
+    params:
+      script: sleep 5
 
 post:
 - command: shell.exec
   params:
-    script: |
-      sleep 1
+    script: sleep 1
 
 timeout:
 - commands: shell.exec
@@ -1087,11 +1086,59 @@ timeout:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
-	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running even when abort signal is received, so count should be high")
+	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running for post block even when abort signal is received, so count should be high")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",
 		"Running post-task commands.",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+	}, []string{"Running task-timeout commands"})
+}
+
+func (s *AgentSuite) TestAbortExitsMainAndRunsTeardownTask() {
+	s.mockCommunicator.HeartbeatShouldAbort = true
+	s.a.opts.HeartbeatInterval = time.Millisecond
+
+	projYml := `
+buildvariants:
+- name: some_build_variant
+
+tasks:
+- name: this_is_a_task_name
+  commands:
+  - command: shell.exec
+    params:
+      script: sleep 5
+
+task_groups:
+- name: some_task_group
+  tasks:
+  - this_is_a_task_name
+  teardown_task:
+  - command: shell.exec
+    params:
+      script: sleep 1
+
+timeout:
+- commands: shell.exec
+  params:
+    script: exit 0
+`
+	s.setupRunTask(projYml)
+	s.tc.taskGroup = "some_task_group"
+	start := time.Now()
+	_, err := s.a.runTask(s.ctx, s.tc)
+	s.NoError(err)
+
+	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
+	// The exact count is not of particular importance, we're only interested in
+	// knowing that the heartbeat is still going despite receiving an abort.
+	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running for teardown_task block even when abort signal is received, so count should be high")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Heartbeat received signal to abort task.",
+		"Task completed - FAILURE",
+		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 	}, []string{"Running task-timeout commands"})
 }
 
