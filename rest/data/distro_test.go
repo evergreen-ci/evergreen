@@ -57,10 +57,10 @@ func TestCopyDistro(t *testing.T) {
 	config, err := evergreen.GetConfig()
 	assert.NoError(t, err)
 	config.Keys = map[string]string{"abc": "123"}
-	assert.NoError(t, config.Set())
+	assert.NoError(t, config.Set(ctx))
 	defer func() {
 		config.Keys = map[string]string{}
-		assert.NoError(t, config.Set())
+		assert.NoError(t, config.Set(ctx))
 	}()
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
@@ -72,7 +72,7 @@ func TestCopyDistro(t *testing.T) {
 			}
 			assert.NoError(t, CopyDistro(ctx, &u, opts))
 
-			newDistro, err := distro.FindOneId("new-distro")
+			newDistro, err := distro.FindOneId(ctx, "new-distro")
 			assert.NoError(t, err)
 			assert.NotNil(t, newDistro)
 
@@ -154,10 +154,10 @@ func TestCopyDistro(t *testing.T) {
 				WorkDir:  "/tmp",
 				User:     "admin",
 			}
-			assert.NoError(t, d.Insert())
+			assert.NoError(t, d.Insert(tctx))
 
 			d.Id = "distro2"
-			assert.NoError(t, d.Insert())
+			assert.NoError(t, d.Insert(tctx))
 
 			adminUser := user.DBUser{
 				Id: "admin",
