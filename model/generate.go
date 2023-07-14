@@ -357,7 +357,7 @@ func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.Depe
 
 // getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
 func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *Version, p *Project, activationInfo *specificActivationInfo) TaskVariantPairs {
-	ctx, span := tracer.Start(ctx, "get-new-tasks-with-dependencies")
+	_, span := tracer.Start(ctx, "get-new-tasks-with-dependencies")
 	defer span.End()
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -569,7 +569,7 @@ func isStepbackTask(generatorTask *task.Task, variant, taskName string) bool {
 }
 
 func (g *GeneratedProject) addDependencies(ctx context.Context, newTaskIds []string) error {
-	ctx, span := tracer.Start(ctx, "add-dependencies")
+	_, span := tracer.Start(ctx, "add-dependencies")
 	defer span.End()
 	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
 	for _, status := range statuses {
