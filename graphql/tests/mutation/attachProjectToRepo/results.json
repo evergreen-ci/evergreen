@@ -16,7 +16,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user testuser does not have permission to access settings for the project nonexistent",
+            "message": "Could not find project with projectId: nonexistent",
             "path": [
               "attachProjectToRepo",
               "projectId"
