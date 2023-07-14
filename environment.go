@@ -58,6 +58,8 @@ const (
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
+
+	otelAttributeMaxLength = 10000
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -871,7 +873,6 @@ func (e *envState) initTracer(ctx context.Context) error {
 	}
 
 	resource, err := resource.New(ctx,
-		resource.WithProcess(),
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen")),
 		resource.WithAttributes(semconv.ServiceVersion(BuildRevision)),
@@ -888,9 +889,13 @@ func (e *envState) initTracer(ctx context.Context) error {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
 
+	spanLimits := trace.NewSpanLimits()
+	spanLimits.AttributeValueLengthLimit = otelAttributeMaxLength
+
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
 		trace.WithResource(resource),
+		trace.WithRawSpanLimits(spanLimits),
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
