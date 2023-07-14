@@ -198,8 +198,8 @@ func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestE
 }
 
 type RawPatch struct {
-	Patch      RawModule
-	RawModules []RawModule
+	Patch      RawModule   `json:"patch"`
+	RawModules []RawModule `json:"raw_modules"`
 }
 type RawModule struct {
 	Name    string `json:"name"`
