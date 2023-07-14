@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -22,10 +23,12 @@ func TestPatchTriggers(t *testing.T) {
 }
 
 type patchSuite struct {
-	event event.EventLogEntry
-	data  *event.PatchEventData
-	patch patch.Patch
-	subs  []event.Subscription
+	event  event.EventLogEntry
+	data   *event.PatchEventData
+	patch  patch.Patch
+	subs   []event.Subscription
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	t *patchTriggers
 
@@ -37,6 +40,8 @@ func (s *patchSuite) SetupSuite() {
 }
 
 func (s *patchSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, dbModel.ProjectRefCollection, model.VersionCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
@@ -127,7 +132,7 @@ func (s *patchSuite) SetupTest() {
 	ui := &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	s.NoError(ui.Set())
+	s.NoError(ui.Set(s.ctx))
 
 	s.t = makePatchTriggers().(*patchTriggers)
 	s.t.event = &s.event
@@ -136,10 +141,14 @@ func (s *patchSuite) SetupTest() {
 	s.t.uiConfig = *ui
 }
 
+func (s *patchSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *patchSuite) TestFetch() {
 	t, ok := makePatchTriggers().(*patchTriggers)
 	s.Require().True(ok)
-	s.NoError(t.Fetch(&s.event))
+	s.NoError(t.Fetch(s.ctx, &s.event))
 	s.NotNil(t.event)
 	s.Equal(t.event, &s.event)
 	s.NotNil(t.data)
@@ -149,7 +158,7 @@ func (s *patchSuite) TestFetch() {
 }
 
 func (s *patchSuite) TestAllTriggers() {
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 0)
 
@@ -157,7 +166,7 @@ func (s *patchSuite) TestAllTriggers() {
 	s.data.Status = evergreen.PatchSucceeded
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 
@@ -165,7 +174,7 @@ func (s *patchSuite) TestAllTriggers() {
 	s.data.Status = evergreen.PatchFailed
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 }

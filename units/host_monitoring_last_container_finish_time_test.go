@@ -16,6 +16,9 @@ import (
 )
 
 func TestLastContainerFinishTimeJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	mockCloud := cloud.GetMockProvider()
@@ -33,7 +36,7 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 		Status:        evergreen.HostRunning,
 		HasContainers: true,
 	}
-	assert.NoError(p1.Insert())
+	assert.NoError(p1.Insert(ctx))
 
 	h1 := &host.Host{
 		Id:          "h1",
@@ -41,14 +44,14 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 		ParentID:    "p1",
 		RunningTask: "t1",
 	}
-	assert.NoError(h1.Insert())
+	assert.NoError(h1.Insert(ctx))
 	h2 := &host.Host{
 		Id:          "h2",
 		Status:      evergreen.HostRunning,
 		ParentID:    "p1",
 		RunningTask: "t2",
 	}
-	assert.NoError(h2.Insert())
+	assert.NoError(h2.Insert(ctx))
 
 	t1 := &task.Task{
 		Id: "t1",
@@ -75,7 +78,7 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	parent1, err := host.FindOne(host.ById("p1"))
+	parent1, err := host.FindOne(ctx, host.ById("p1"))
 	assert.NoError(err)
 	assert.WithinDuration(startTimeTwo.Add(durationTwo), parent1.LastContainerFinishTime, time.Millisecond, "parent host's last container finish time should be set to latest finish time")
 

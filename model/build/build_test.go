@@ -258,6 +258,57 @@ func TestBuildUpdateStatus(t *testing.T) {
 	})
 }
 
+func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, b Build){
+		"FailsWithNonexistentBuild": func(t *testing.T, b Build) {
+			assert.Error(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+		},
+		"NoopsWithSameValue": func(t *testing.T, b Build) {
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+		"SetsFlag": func(t *testing.T, b Build) {
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.True(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.True(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+		"ClearsFlag": func(t *testing.T, b Build) {
+			b.HasUnfinishedEssentialTask = true
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			tCase(t, Build{
+				Id:                         "build_id",
+				HasUnfinishedEssentialTask: false,
+			})
+		})
+	}
+}
+
 func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
@@ -457,7 +508,7 @@ func TestBulkInsert(t *testing.T) {
 	assert.Len(t, dbBuilds, 3)
 }
 
-func TestGetFinishedNotificationDescription(t *testing.T) {
+func TestGetPRNotificationDescription(t *testing.T) {
 	b := &Build{
 		Id:           mgobson.NewObjectId().Hex(),
 		BuildVariant: "testvariant",
@@ -467,26 +518,65 @@ func TestGetFinishedNotificationDescription(t *testing.T) {
 		FinishTime:   time.Time{}.Add(10 * time.Second),
 	}
 
-	assert.Equal(t, "no tasks were run", b.GetFinishedNotificationDescription(nil))
-
-	tasks := []task.Task{
-		{
-			Status: evergreen.TaskSucceeded,
-		},
-	}
-	assert.Equal(t, "1 succeeded, none failed in 10s", b.GetFinishedNotificationDescription(tasks))
-
-	tasks = []task.Task{
-		{
-			Status: evergreen.TaskSystemFailed,
-		},
-	}
-	assert.Equal(t, "none succeeded, none failed, 1 internal errors in 10s", b.GetFinishedNotificationDescription(tasks))
-
-	tasks = []task.Task{
-		{
-			Status: evergreen.TaskFailed,
-		},
-	}
-	assert.Equal(t, "none succeeded, 1 failed in 10s", b.GetFinishedNotificationDescription(tasks))
+	t.Run("NoTasksInBuildReturnsNoTasks", func(t *testing.T) {
+		assert.Equal(t, "no tasks were run", b.GetPRNotificationDescription(nil))
+	})
+	t.Run("UnscheduledTasksInBuildReturnsNoTasks", func(t *testing.T) {
+		tasks := []task.Task{{Status: evergreen.TaskUndispatched, Activated: false}}
+		assert.Equal(t, "no tasks were run", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("OneSuccessfulTaskReturnsOneSuccessAndNoFailures", func(t *testing.T) {
+		tasks := []task.Task{
+			{
+				Status: evergreen.TaskSucceeded,
+			},
+		}
+		assert.Equal(t, "1 succeeded, none failed in 10s", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("OneFailedTasksReturnsNoSuccessAndOneFailure", func(t *testing.T) {
+		tasks := []task.Task{
+			{
+				Status: evergreen.TaskFailed,
+			},
+		}
+		assert.Equal(t, "none succeeded, 1 failed in 10s", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("UnscheduledEssentialTasksThatWillNotRunReturnsIncompleteBuild", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskSucceeded},
+			{Status: evergreen.TaskFailed},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
+		}
+		assert.Equal(t, "1 succeeded, 1 failed, 1 essential task(s) not scheduled in 10s", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("MixOfUnscheduledEssentialTasksAndRunningTasksReturnsRunningBuild", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskStarted},
+			{Status: evergreen.TaskFailed},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
+		}
+		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("RunningEssentialTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskSucceeded},
+			{Status: evergreen.TaskFailed},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: true},
+		}
+		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("MixOfSuccessfulAndFailedAndUnscheduledEssentialTasksReturnsFailedBuild", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskSucceeded},
+			{Status: evergreen.TaskFailed},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
+		}
+		assert.Equal(t, "1 succeeded, 1 failed, 1 essential task(s) not scheduled in 10s", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("ScheduledTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskUndispatched, Activated: true},
+		}
+		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
+	})
 }

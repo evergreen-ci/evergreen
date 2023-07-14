@@ -76,12 +76,12 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 	}
 
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
-	existingHostCount, err := host.CountRunningHosts(j.DrawdownInfo.DistroID)
+	existingHostCount, err := host.CountRunningHosts(ctx, j.DrawdownInfo.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "counting running hosts in distro '%s'", j.DrawdownInfo.DistroID))
 		return
 	}
-	idleHosts, err := host.IdleHostsWithDistroID(j.DrawdownInfo.DistroID)
+	idleHosts, err := host.IdleHostsWithDistroID(ctx, j.DrawdownInfo.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding idle hosts in distro '%s'", j.DrawdownInfo.DistroID))
 		return
@@ -158,7 +158,7 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 		(*drawdownTarget)--
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		if err = h.SetDecommissioned(evergreen.User, true, "host decommissioned due to overallocation"); err != nil {
+		if err = h.SetDecommissioned(ctx, evergreen.User, true, "host decommissioned due to overallocation"); err != nil {
 			return errors.Wrapf(err, "decommissioning host '%s'", h.Id)
 		}
 		return nil

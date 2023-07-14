@@ -104,7 +104,7 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
-	err = activateExistingInactiveTasks(creationInfo, existingBuilds)
+	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds)
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
@@ -513,7 +513,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		config.Id = p.Id.Hex()
 	}
 
-	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving distro alias table for patch")
 	}
@@ -627,6 +627,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
+
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
 			ProjectRef:       creationInfo.ProjectRef,
@@ -639,6 +640,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
 			SyncAtEndOpts:    p.SyncAtEndOpts,
+			// When a GitHub PR patch is finalized with the PR alias, all of the
+			// tasks selected by the alias must finish in order for the
+			// build/version to be finished.
+			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
 		}
 		var build *build.Build
 		var tasks task.Tasks
@@ -891,7 +896,7 @@ func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 // affected. This function makes one exception for commit queue items so that if
 // the item is currently running the merge task, then that patch is not aborted
 // and is allowed to finish.
-func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
+func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
 		return errors.Wrap(err, "fetching initial patch")
@@ -924,7 +929,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				// already ongoing, so it's better to just let it complete.
 				continue
 			}
-			catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
+			catcher.Add(DequeueAndRestartForTask(ctx, nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
 		} else {
 			err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
 			msg := message.Fields{

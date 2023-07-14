@@ -354,7 +354,10 @@ func (s *HostSuite) TestFindByIdFail() {
 }
 
 func (s *HostSuite) TestBuildFromServiceHost() {
-	host, err := host.FindOneId("host1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	host, err := host.FindOneId(ctx, "host1")
 	s.NoError(err)
 	apiHost := model.APIHost{}
 	apiHost.BuildFromService(host, nil)
@@ -425,30 +428,34 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 
 	apiErr := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
-	foundHost, err := host.FindOneId("host1")
+	foundHost, err := host.FindOneId(ctx, "host1")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
-	foundHost, err := host.FindOneId("host3")
+	foundHost, err := host.FindOneId(ctx, "host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostUninitialized, foundHost.Status)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host3")
+	foundHost, err = host.FindOneId(ctx, "host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
@@ -457,53 +464,53 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 		Status: cloud.StatusRunning,
 	})
 
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host3")
+	foundHost, err = host.FindOneId(ctx, "host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	s.Equal(http.StatusUnauthorized, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 }
@@ -717,7 +724,10 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
-	foundHost, err := host.FindOneId("host2")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	foundHost, err := host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
@@ -725,18 +735,19 @@ func (s *hostExtendExpirationHandlerSuite) TestExecute() {
 	h.hostID = "host2"
 	h.addHours = 1 * time.Hour
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
-	foundHost, err := host.FindOneId("host1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	foundHost, err := host.FindOneId(ctx, "host1")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime
 
@@ -744,16 +755,19 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() 
 	h.hostID = "host1"
 	h.addHours = 1 * time.Hour
 
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, resp.Status())
-	foundHost, err = host.FindOneId("host1")
+	foundHost, err = host.FindOneId(ctx, "host1")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
-	foundHost, err := host.FindOneId("host2")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	foundHost, err := host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
@@ -761,19 +775,20 @@ func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	h.hostID = "host2"
 	h.addHours = 1 * time.Hour
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
-	foundHost, err := host.FindOneId("host2")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	foundHost, err := host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime
 
@@ -781,13 +796,11 @@ func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsers
 	h.hostID = "host2"
 	h.addHours = 1 * time.Hour
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = host.FindOneId(ctx, "host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
@@ -817,6 +830,9 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 }
 
 func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))
 	windowsDistro := distro.Distro{
 		Id:       "windows",
@@ -882,7 +898,7 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		grip.Error(hostToAdd.Insert())
+		grip.Error(hostToAdd.Insert(ctx))
 	}
 	for _, userToAdd := range users {
 		grip.Error(userToAdd.Insert())
@@ -905,6 +921,9 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 }
 
 func TestClearHostsHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, user.Collection))
 	h0 := host.Host{
 		Id:           "h0",
@@ -944,15 +963,15 @@ func TestClearHostsHandler(t *testing.T) {
 		CreatedBy:    "user0",
 		NoExpiration: true,
 	}
-	assert.NoError(t, h0.Insert())
-	assert.NoError(t, h1.Insert())
-	assert.NoError(t, h2.Insert())
-	assert.NoError(t, h3.Insert())
+	assert.NoError(t, h0.Insert(ctx))
+	assert.NoError(t, h1.Insert(ctx))
+	assert.NoError(t, h2.Insert(ctx))
+	assert.NoError(t, h3.Insert(ctx))
 	assert.NoError(t, v1.Insert())
 
 	handler := offboardUserHandler{}
 	json := []byte(`{"email": "user0@mongodb.com"}`)
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
 	assert.Error(t, handler.Parse(ctx, req)) // user not inserted
 
@@ -971,7 +990,7 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.Equal(t, "h1", res.TerminatedHosts[0])
 	require.Len(t, res.TerminatedVolumes, 1)
 	assert.Equal(t, "v1", res.TerminatedVolumes[0])
-	hostFromDB, err := host.FindOneByIdOrTag(h1.Id)
+	hostFromDB, err := host.FindOneByIdOrTag(ctx, h1.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, hostFromDB)
 	assert.True(t, hostFromDB.NoExpiration)
@@ -1032,6 +1051,9 @@ func TestRemoveAdminHandler(t *testing.T) {
 }
 
 func TestHostFilterGetHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	newHosts := []host.Host{
 		{
 			Id:           "h0",
@@ -1057,7 +1079,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	}
 
 	for _, hostToAdd := range newHosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 	handler := hostFilterGetHandler{
 		params: model.APIHostParams{Status: evergreen.HostTerminated},
@@ -1099,7 +1121,7 @@ func TestDisableHostHandler(t *testing.T) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert())
+		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -1110,7 +1132,7 @@ func TestDisableHostHandler(t *testing.T) {
 
 	responder := dh.Run(context.Background())
 	assert.Equal(t, http.StatusOK, responder.Status())
-	foundHost, err := host.FindOneId(hostID)
+	foundHost, err := host.FindOneId(ctx, hostID)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
 }
@@ -1131,7 +1153,7 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 			Arch: evergreen.ArchLinuxAmd64,
 		},
 	}
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	t.Run("SucceedsWithValidHostID", func(t *testing.T) {
 		rh := hostProvisioningOptionsGetHandler{

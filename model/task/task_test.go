@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -1245,6 +1247,10 @@ func TestBulkInsert(t *testing.T) {
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
@@ -1267,7 +1273,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("")
+	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "")
 	assert.NoError(err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
@@ -1382,6 +1388,9 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
@@ -1399,9 +1408,9 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	d := distro.Distro{
 		Id: "d0",
 	}
-	require.NoError(t, d.Insert())
+	require.NoError(t, d.Insert(ctx))
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1410,6 +1419,9 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
@@ -1428,9 +1440,9 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 		Id:      "d0",
 		Aliases: []string{"d0.0", "d0.1"},
 	}
-	require.NoError(t, d.Insert())
+	require.NoError(t, d.Insert(ctx))
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -4259,6 +4271,75 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			opts, err := test.tsk.CreateTestResultsTaskOptions()
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedOpts, opts)
+		})
+	}
+}
+
+func TestWillRun(t *testing.T) {
+	t.Run("TaskWillRunIfActivated", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskUndispatched,
+			Activated: true,
+		}
+		assert.True(t, tsk.WillRun())
+	})
+	t.Run("TaskWillNotRunIfDeactivated", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskUndispatched,
+			Activated: false,
+		}
+		assert.False(t, tsk.WillRun())
+	})
+	t.Run("TaskWillNotRunIfItIsAlreadyInProgress", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskStarted,
+			Activated: true,
+		}
+		assert.False(t, tsk.WillRun())
+	})
+	t.Run("TaskWillRunEvenIfDependenciesAreNotYetFinished", func(t *testing.T) {
+		tsk := Task{
+			Status:    evergreen.TaskUndispatched,
+			Activated: true,
+			DependsOn: []Dependency{{Finished: false}},
+		}
+		assert.True(t, tsk.WillRun())
+	})
+	t.Run("TaskWillRunIfAllDependenciesAreMet", func(t *testing.T) {
+		tsk := Task{
+			Status:            evergreen.TaskUndispatched,
+			Activated:         true,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			DependsOn:         []Dependency{{Finished: true, Unattainable: false}},
+		}
+		assert.True(t, tsk.WillRun())
+	})
+	t.Run("TaskWillNotRunIfDependenciesAreUnattainable", func(t *testing.T) {
+		tsk := Task{
+			Status:            evergreen.TaskUndispatched,
+			Activated:         true,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			DependsOn:         []Dependency{{Finished: true, Unattainable: true}},
+		}
+		assert.False(t, tsk.WillRun())
+	})
+}
+
+func TestIsInProgress(t *testing.T) {
+	for _, status := range evergreen.TaskCompletedStatuses {
+		t.Run(fmt.Sprintf("Status%sIsNotInProgress", cases.Title(language.AmericanEnglish).String(status)), func(t *testing.T) {
+			tsk := Task{
+				Status: status,
+			}
+			assert.False(t, tsk.IsInProgress())
+		})
+	}
+	for _, status := range evergreen.TaskInProgressStatuses {
+		t.Run(fmt.Sprintf("Status%sIsInProgress", cases.Title(language.AmericanEnglish).String(status)), func(t *testing.T) {
+			tsk := Task{
+				Status: status,
+			}
+			assert.True(t, tsk.IsInProgress())
 		})
 	}
 }

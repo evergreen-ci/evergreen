@@ -38,11 +38,11 @@ func TestPodProvisioningScript(t *testing.T) {
 	require.NoError(t, err)
 	if originalFlags.S3BinaryDownloadsDisabled {
 		defer func() {
-			assert.NoError(t, originalFlags.Set())
+			assert.NoError(t, originalFlags.Set(ctx))
 		}()
 		s3ClientDownloadsEnabled := *originalFlags
 		s3ClientDownloadsEnabled.S3BinaryDownloadsDisabled = false
-		require.NoError(t, s3ClientDownloadsEnabled.Set())
+		require.NoError(t, s3ClientDownloadsEnabled.Set(ctx))
 	}
 
 	getRoute := func(t *testing.T, settings *evergreen.Settings, podID string) *podProvisioningScript {

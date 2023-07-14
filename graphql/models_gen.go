@@ -55,6 +55,16 @@ type DisplayTask struct {
 	Name      string   `json:"Name"`
 }
 
+type DistroPermissions struct {
+	Admin bool `json:"admin"`
+	Edit  bool `json:"edit"`
+	View  bool `json:"view"`
+}
+
+type DistroPermissionsOptions struct {
+	DistroID string `json:"distroId"`
+}
+
 type DistroWithHostCount struct {
 	Distro    *model.APIDistro `json:"distro"`
 	HostCount int              `json:"hostCount"`
@@ -156,6 +166,11 @@ type MoveProjectInput struct {
 	ProjectID string `json:"projectId"`
 }
 
+// Return type representing whether a distro was created and any validation errors
+type NewDistroPayload struct {
+	NewDistroID string `json:"newDistroId"`
+}
+
 // PatchConfigure is the input to the schedulePatch mutation.
 // It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 type PatchConfigure struct {
@@ -200,8 +215,10 @@ type PatchesInput struct {
 }
 
 type Permissions struct {
-	CanCreateProject bool   `json:"canCreateProject"`
-	UserID           string `json:"userId"`
+	CanCreateDistro   bool               `json:"canCreateDistro"`
+	CanCreateProject  bool               `json:"canCreateProject"`
+	DistroPermissions *DistroPermissions `json:"distroPermissions"`
+	UserID            string             `json:"userId"`
 }
 
 // PodEvents is the return value for the events query.

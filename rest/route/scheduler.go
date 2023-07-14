@@ -34,7 +34,7 @@ func (p *compareTasksRoute) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *compareTasksRoute) Run(ctx context.Context) gimlet.Responder {
-	order, logic, err := data.CompareTasks(p.request.Tasks, p.request.UseLegacy)
+	order, logic, err := data.CompareTasks(ctx, p.request.Tasks, p.request.UseLegacy)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "comparing tasks"))
 	}

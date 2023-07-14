@@ -26,7 +26,7 @@ import (
 
 // setupJasperService creates a Jasper service with credentials for testing.
 func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jmock.Manager, h *host.Host) (jutil.CloseFunc, error) {
-	if _, err := h.Upsert(); err != nil {
+	if _, err := h.Upsert(ctx); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	port := testutil.NextPort()

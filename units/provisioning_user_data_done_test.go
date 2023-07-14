@@ -21,7 +21,7 @@ func TestUserDataDoneJob(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
 		"NewUserDataSpawnHostReadyJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			_, err := h.Upsert()
+			_, err := h.Upsert(ctx)
 			require.NoError(t, err)
 
 			j := NewUserDataDoneJob(env, h.Id, time.Now())
@@ -31,7 +31,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			assert.Equal(t, h.Id, readyJob.HostID)
 		},
 		"RunNoopsIfHostNotProvisioning": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			require.NoError(t, h.SetRunning(evergreen.User))
+			require.NoError(t, h.SetRunning(ctx, evergreen.User))
 
 			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			j.Run(ctx)
@@ -53,7 +53,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))
 			assert.Equal(t, expectedCmd, info.Options.Args)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},

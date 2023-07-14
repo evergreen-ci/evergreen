@@ -116,8 +116,8 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 		Id:            "invalid-distro",
 		ContainerPool: "test-pool-1",
 	}
-	s.NoError(d1.Insert())
-	s.NoError(d2.Insert())
+	s.NoError(d1.Insert(ctx))
+	s.NoError(d2.Insert(ctx))
 
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
@@ -143,6 +143,9 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
 
+	s.EqualValues(testSettings.Alerts.SMTP.From, settings.Alerts.SMTP.From)
+	s.EqualValues(testSettings.Alerts.SMTP.Port, settings.Alerts.SMTP.Port)
+	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settings.Alerts.SMTP.AdminEmail))
 	s.EqualValues(testSettings.Amboy.Name, settings.Amboy.Name)
 	s.EqualValues(testSettings.Amboy.LocalStorage, settings.Amboy.LocalStorage)
 	s.EqualValues(testSettings.Amboy.GroupDefaultWorkers, settings.Amboy.GroupDefaultWorkers)
@@ -172,7 +175,9 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settings.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settings.LoggerConfig.Buffer.IncomingBufferFactor)
-	s.EqualValues(testSettings.Notify.SES.SenderAddress, settings.Notify.SES.SenderAddress)
+	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
+	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
+	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settings.Notify.SMTP.AdminEmail))
 	s.EqualValues(testSettings.PodLifecycle.S3BaseURL, settings.PodLifecycle.S3BaseURL)
 	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settings.PodLifecycle.MaxParallelPodRequests)
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settings.PodLifecycle.MaxPodDefinitionCleanupRate)
@@ -434,16 +439,18 @@ func (s *AdminRouteSuite) TestRestartVersionsRoute() {
 }
 
 func (s *AdminRouteSuite) TestAdminEventRoute() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, event.EventCollection, distro.Collection), "Error clearing collections")
 
 	// sd by test to have a valid distro in the collection
 	d1 := &distro.Distro{
 		Id: "valid-distro",
 	}
-	s.NoError(d1.Insert())
+	s.NoError(d1.Insert(ctx))
 
 	// log some changes in the event log with the /admin/settings route
-	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	routeManager := makeSetAdminSettings()
 

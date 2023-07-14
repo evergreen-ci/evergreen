@@ -157,7 +157,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.NoError(t, v2.Insert())
 			require.NoError(t, pp1.Insert())
 			require.NoError(t, pp2.Insert())
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			r, ok := makeGetExpansionsAndVars(env.Settings()).(*getExpansionsAndVarsHandler)
 			require.True(t, ok)
@@ -440,7 +440,7 @@ func TestDownstreamParams(t *testing.T) {
 		AgentRevision:         evergreen.AgentVersion,
 		LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
 	}
-	require.NoError(t, sampleHost.Insert())
+	require.NoError(t, sampleHost.Insert(ctx))
 
 	q := queue.NewLocalLimitedSize(4, 2048)
 	require.NoError(t, q.Start(ctx))

@@ -52,12 +52,12 @@ func NewParentDecommissionJob(id, d string, maxContainers int) amboy.Job {
 
 func (j *parentDecommissionJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-	parents, err := host.FindAllRunningParentsByDistroID(j.DistroId)
+	parents, err := host.FindAllRunningParentsByDistroID(ctx, j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding container parents in distro '%s'", j.DistroId))
 		return
 	}
-	parentDistro, err := distro.FindOneId(j.DistroId)
+	parentDistro, err := distro.FindOneId(ctx, j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroId))
 		return
@@ -75,13 +75,13 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			return
 		}
 		// Decommission parent if its containers aren't running anymore
-		idle, err := h.IsIdleParent()
+		idle, err := h.IsIdleParent(ctx)
 		if err != nil {
 			j.AddError(err)
 			continue
 		}
 		if idle {
-			err = h.SetDecommissioned(evergreen.User, false, "container parent has no healthy containers and there is excess capacity")
+			err = h.SetDecommissioned(ctx, evergreen.User, false, "container parent has no healthy containers and there is excess capacity")
 			if err != nil {
 				j.AddError(err)
 				continue

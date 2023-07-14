@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Distro struct {
@@ -536,11 +537,11 @@ func (d *Distro) GetPoolSize() int {
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
-func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+func ValidateContainerPoolDistros(ctx context.Context, s *evergreen.Settings) error {
 	catcher := grip.NewSimpleCatcher()
 
 	for _, pool := range s.ContainerPools.Pools {
-		d, err := FindOneId(pool.Distro)
+		d, err := FindOneId(ctx, pool.Distro)
 		if err != nil {
 			catcher.Add(fmt.Errorf("error finding distro for container pool '%s'", pool.Id))
 		}
@@ -752,8 +753,8 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	return resolved, nil
 }
 
-func (d *Distro) Add(creator *user.DBUser) error {
-	err := d.Insert()
+func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
+	err := d.Insert(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error inserting distro")
 	}
@@ -869,6 +870,14 @@ func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
 	}, "/")
 }
 
+func AllDistros(ctx context.Context) ([]Distro, error) {
+	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}))
+}
+
+func AllDistroIDs(ctx context.Context) ([]Distro, error) {
+	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
+}
+
 type DistroSettingsSection string
 
 const (
@@ -902,7 +911,7 @@ func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *D
 		return nil, errors.Wrap(err, fmt.Sprintf("saving %s section", section))
 	}
 
-	updatedDistro, err := FindOneId(distroID)
+	updatedDistro, err := FindOneId(ctx, distroID)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching updated distro")
 	}

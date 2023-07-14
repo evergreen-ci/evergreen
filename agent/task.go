@@ -75,20 +75,20 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	if ctx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution after setup: %s", ctx.Err())
+	if innerCtx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
 		return
 	}
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-	if err = a.comm.StartTask(ctx, tc.task); err != nil {
+	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return
 	}
 
-	a.killProcs(ctx, tc, false, "task is starting")
+	a.killProcs(innerCtx, tc, false, "task is starting")
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
 		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
@@ -208,9 +208,7 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 	defer tc.Unlock()
 
 	var timeout time.Duration
-	if cmd == nil {
-		timeout = defaultIdleTimeout
-	} else if dynamicTimeout := tc.taskConfig.GetIdleTimeout(); dynamicTimeout != 0 {
+	if dynamicTimeout := tc.taskConfig.GetIdleTimeout(); dynamicTimeout != 0 {
 		timeout = time.Duration(dynamicTimeout) * time.Second
 	} else if cmd.IdleTimeout() > 0 {
 		timeout = cmd.IdleTimeout()
@@ -219,12 +217,10 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 	}
 
 	tc.setIdleTimeout(timeout)
-	if tc.currentCommand != nil {
-		tc.logger.Execution().Debugf("Set idle timeout for %s (%s) to %s.",
-			tc.currentCommand.DisplayName(), tc.currentCommand.Type(), tc.getIdleTimeout())
-	} else {
-		tc.logger.Execution().Debugf("Set current idle timeout to %s.", tc.getIdleTimeout())
-	}
+
+	tc.logger.Execution().Debugf("Set idle timeout for %s (%s) to %s.",
+		cmd.DisplayName(), cmd.Type(), tc.getIdleTimeout())
+
 }
 
 func (tc *taskContext) getCurrentTimeout() time.Duration {

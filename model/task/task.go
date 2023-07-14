@@ -180,7 +180,13 @@ type Task struct {
 	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
 	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
 
-	// Status represents the various stages the task could be in
+	// Status represents the various stages the task could be in. Note that this
+	// task status is distinct from the way a task status is displayed in the
+	// UI. For example, a task that has failed will have a status of
+	// evergreen.TaskFailed regardless of the specific cause of failure.
+	// However, in the UI, the displayed status supports more granular failure
+	// type such as system failed and setup failed by checking this status and
+	// the task status details.
 	Status    string                  `bson:"status" json:"status"`
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
@@ -251,6 +257,13 @@ type Task struct {
 
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
+
+	// IsEssentialToSucceed indicates that this task must finish in order for
+	// its build and version to be considered successful. For example, tasks
+	// selected by the GitHub PR alias must succeed for the GitHub PR requester
+	// before its build or version can be reported as successful, but tasks
+	// manually scheduled by the user afterwards are not required.
+	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -420,7 +433,7 @@ func (t *Task) IsDispatchable() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return t.IsHostTask() && t.Status == evergreen.TaskUndispatched && t.Activated
+	return t.IsHostTask() && t.WillRun()
 }
 
 // IsHostTask returns true if it's a task that runs on hosts.
@@ -466,8 +479,15 @@ func (t *Task) IsContainerDispatchable() bool {
 	return t.isContainerScheduled()
 }
 
-// isContainerTaskScheduled returns whether the task is in a state
-// where it should eventually dispatch to run on a container.
+// isContainerTaskScheduled returns whether the task is in a state where it
+// should eventually dispatch to run on a container and is logically equivalent
+// to IsContainerTaskScheduledQuery. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all container tasks that
+//     could eventually run (i.e. evergreen.TaskWillRun from
+//     (Task).GetDisplayStatus), because a container task is not scheduled until
+//     all of its dependencies have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func (t *Task) isContainerScheduled() bool {
 	if !t.IsContainerTask() {
 		return false
@@ -1230,10 +1250,10 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
-func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
+func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (int, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return 0, errors.WithStack(err)
 	}
 
@@ -2203,7 +2223,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2215,7 +2235,7 @@ func AbortBuildTasks(buildId string, reason AbortInfo) error {
 // abortable state
 func AbortVersionTasks(versionId string, reason AbortInfo) error {
 	q := ByVersionWithChildTasks(versionId)
-	q[StatusKey] = bson.M{"$in": evergreen.TaskAbortableStatuses}
+	q[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
@@ -2626,22 +2646,22 @@ func (t *Task) SetResetFailedWhenFinished() error {
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro
 // primary queue.
-func FindHostSchedulable(distroID string) ([]Task, error) {
+func FindHostSchedulable(ctx context.Context, distroID string) ([]Task, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	return Find(query)
 }
 
-func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
+func addApplicableDistroFilter(ctx context.Context, id string, fieldName string, query bson.M) error {
 	if id == "" {
 		return nil
 	}
 
-	aliases, err := distro.FindApplicableDistroIDs(id)
+	aliases, err := distro.FindApplicableDistroIDs(ctx, id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -2657,10 +2677,10 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 
 // FindHostSchedulableForAlias finds all tasks that can be scheduled for a
 // distro secondary queue.
-func FindHostSchedulableForAlias(id string) ([]Task, error) {
+func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error) {
 	q := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(id, SecondaryDistrosKey, q); err != nil {
+	if err := addApplicableDistroFilter(ctx, id, SecondaryDistrosKey, q); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -2929,9 +2949,24 @@ func (t *Task) Blocked() bool {
 	return false
 }
 
-// isUnscheduled returns true if a task is unscheduled and will not run
+// WillRun returns true if the task will run eventually, but has not started
+// running yet. This is logically equivalent to evergreen.TaskWillRun from
+// (Task).GetDisplayStatus.
+func (t *Task) WillRun() bool {
+	return t.Status == evergreen.TaskUndispatched && t.Activated && !t.Blocked()
+}
+
+// IsUnscheduled returns true if a task is unscheduled and will not run. This is
+// logically equivalent to evergreen.TaskUnscheduled from
+// (Task).GetDisplayStatus.
 func (t *Task) IsUnscheduled() bool {
 	return t.Status == evergreen.TaskUndispatched && !t.Activated
+}
+
+// IsInProgress returns true if the task has been dispatched and is about to
+// run, or is already running.
+func (t *Task) IsInProgress() bool {
+	return utility.StringSliceContains(evergreen.TaskInProgressStatuses, t.Status)
 }
 
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {

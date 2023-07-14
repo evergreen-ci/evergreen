@@ -42,13 +42,16 @@ func TestBadHostTaskRelationship(t *testing.T) {
 }
 
 func TestValidateHost(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	hostID := "host_id"
 	secret := "secret"
 	taskID := "task_id"
 
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header){
 		"PassesWithValidHostAndTask": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			req := &http.Request{Header: header}
 			req = req.WithContext(context.WithValue(context.Background(), ApiTaskKey, tsk))
@@ -60,7 +63,7 @@ func TestValidateHost(t *testing.T) {
 		},
 		"PassesIfHostHasValidTag": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
 			h.Id = ""
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			req := &http.Request{Header: header}
 			req = req.WithContext(context.WithValue(context.Background(), ApiTaskKey, tsk))
@@ -71,7 +74,7 @@ func TestValidateHost(t *testing.T) {
 			assert.Equal(t, h, validatedHost)
 		},
 		"FailsWithoutSecret": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			header.Del(evergreen.HostSecretHeader)
 			req := &http.Request{Header: header}
@@ -83,7 +86,7 @@ func TestValidateHost(t *testing.T) {
 			assert.Nil(t, validatedHost)
 		},
 		"FailsWithMismatchedSecret": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			header.Set(evergreen.HostSecretHeader, "invalid_secret")
 			req := &http.Request{Header: header}
@@ -95,7 +98,7 @@ func TestValidateHost(t *testing.T) {
 			assert.Nil(t, validatedHost)
 		},
 		"FailsWithoutMatchingID": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			header.Del(evergreen.HostHeader)
 			req := &http.Request{Header: header}
@@ -108,7 +111,7 @@ func TestValidateHost(t *testing.T) {
 		},
 		"FailsWithoutMatchingTask": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
 			h.RunningTask = "foo"
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			req := &http.Request{Header: header}
 			req = req.WithContext(context.WithValue(context.Background(), ApiTaskKey, tsk))

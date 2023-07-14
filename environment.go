@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -36,7 +35,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -60,6 +58,8 @@ const (
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
+
+	otelAttributeMaxLength = 10000
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -195,9 +195,11 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
+		// Persist the environment early so the db will be available for initSettings.
+		SetEnvironment(e)
 	}
 
-	if err := e.initSettings(confPath); err != nil {
+	if err := e.initSettings(ctx, confPath); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -265,7 +267,7 @@ type closerOp struct {
 	closerFn   func(context.Context) error
 }
 
-func (e *envState) initSettings(path string) error {
+func (e *envState) initSettings(ctx context.Context, path string) error {
 	// read configuration from either the file or DB and validate
 	// if the file path is blank, the DB session must be configured already
 
@@ -279,7 +281,7 @@ func (e *envState) initSettings(path string) error {
 				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
-			e.settings, err = BootstrapConfig(e)
+			e.settings, err = BootstrapConfig(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting config settings from DB")
 			}
@@ -370,7 +372,7 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetReadPreference(readpref.Primary()).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
 	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
 		opts.SetAuth(options.Credential{
@@ -698,24 +700,36 @@ func (e *envState) initSenders(ctx context.Context) error {
 		Threshold: level.Notice,
 	}
 
-	if e.settings.Notify.SES.SenderAddress != "" {
-		config, err := config.LoadDefaultConfig(ctx,
-			config.WithRegion(DefaultEC2Region),
-		)
-		if err != nil {
-			return errors.Wrap(err, "loading AWS config")
+	if e.settings.Notify.SMTP.From != "" {
+		smtp := e.settings.Notify.SMTP
+		opts := send.SMTPOptions{
+			Name:              "evergreen",
+			Server:            smtp.Server,
+			Port:              smtp.Port,
+			UseSSL:            smtp.UseSSL,
+			Username:          smtp.Username,
+			Password:          smtp.Password,
+			From:              smtp.From,
+			PlainTextContents: false,
+			NameAsSubject:     true,
 		}
-		otelaws.AppendMiddlewares(&config.APIOptions)
-		sesSender, err := send.NewSESLogger(ctx,
-			send.SESOptions{
-				Name:          "evergreen",
-				AWSConfig:     config,
-				SenderAddress: e.settings.Notify.SES.SenderAddress,
-			}, levelInfo)
+		if len(smtp.AdminEmail) == 0 {
+			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
+				return errors.Wrap(err, "adding email logger test recipient")
+			}
+
+		} else {
+			for i := range smtp.AdminEmail {
+				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
+					return errors.Wrap(err, "adding email logger recipient")
+				}
+			}
+		}
+		sender, err := send.NewSMTPLogger(&opts, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up email logger")
 		}
-		e.senders[SenderEmail] = sesSender
+		e.senders[SenderEmail] = sender
 	}
 
 	var sender send.Sender
@@ -859,7 +873,6 @@ func (e *envState) initTracer(ctx context.Context) error {
 	}
 
 	resource, err := resource.New(ctx,
-		resource.WithProcess(),
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen")),
 		resource.WithAttributes(semconv.ServiceVersion(BuildRevision)),
@@ -876,9 +889,13 @@ func (e *envState) initTracer(ctx context.Context) error {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
 
+	spanLimits := trace.NewSpanLimits()
+	spanLimits.AttributeValueLengthLimit = otelAttributeMaxLength
+
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
 		trace.WithResource(resource),
+		trace.WithRawSpanLimits(spanLimits),
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)

@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -73,13 +74,15 @@ func (s *AdminEventSuite) TestEventLogging2() {
 
 func (s *AdminEventSuite) TestEventLogging3() {
 	before := evergreen.NotifyConfig{
-		SES: evergreen.SESConfig{
-			SenderAddress: "evergreen@mongodb.com",
+		SMTP: evergreen.SMTPConfig{
+			Port:     10,
+			Password: "pass",
 		},
 	}
 	after := evergreen.NotifyConfig{
-		SES: evergreen.SESConfig{
-			SenderAddress: "evergreen2@mongodb.com",
+		SMTP: evergreen.SMTPConfig{
+			Port:     20,
+			Password: "nope",
 		},
 	}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
@@ -90,8 +93,10 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.NotifyConfig)
 	afterVal := eventData.Changes.After.(*evergreen.NotifyConfig)
-	s.Equal(before.SES.SenderAddress, beforeVal.SES.SenderAddress)
-	s.Equal(after.SES.SenderAddress, afterVal.SES.SenderAddress)
+	s.Equal(before.SMTP.Port, beforeVal.SMTP.Port)
+	s.Equal(before.SMTP.Password, beforeVal.SMTP.Password)
+	s.Equal(after.SMTP.Port, afterVal.SMTP.Port)
+	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
 }
 
 func (s *AdminEventSuite) TestNoSpuriousLogging() {
@@ -127,13 +132,16 @@ func (s *AdminEventSuite) TestNoChanges() {
 }
 
 func (s *AdminEventSuite) TestReverting() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	before := evergreen.SchedulerConfig{
 		TaskFinder: "legacy",
 	}
 	after := evergreen.SchedulerConfig{
 		TaskFinder: "alternate",
 	}
-	s.NoError(after.Set())
+	s.NoError(after.Set(ctx))
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
@@ -150,16 +158,19 @@ func (s *AdminEventSuite) TestReverting() {
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
 	s.Equal(after, settings.Scheduler)
-	s.NoError(RevertConfig(guid, "me"))
+	s.NoError(RevertConfig(ctx, guid, "me"))
 	settings, err = evergreen.GetConfig()
 	s.NoError(err)
 	s.Equal(before, settings.Scheduler)
 
 	// check that reverting a nonexistent guid errors
-	s.Error(RevertConfig("abcd", "me"))
+	s.Error(RevertConfig(ctx, "abcd", "me"))
 }
 
 func (s *AdminEventSuite) TestRevertingRoot() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// this verifies that reverting the root document does not revert other sections
 	before := evergreen.Settings{
 		Banner:      "before_banner",
@@ -191,7 +202,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	s.Equal(after.Banner, settings.Banner)
 	s.Equal(after.Credentials, settings.Credentials)
 	s.Equal(after.Ui, settings.Ui)
-	s.NoError(RevertConfig(guid, "me"))
+	s.NoError(RevertConfig(ctx, guid, "me"))
 	settings, err = evergreen.GetConfig()
 	s.NoError(err)
 	s.Equal(before.Banner, settings.Banner)

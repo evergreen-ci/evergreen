@@ -751,7 +751,7 @@ buildvariants:
 	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
-	require.NoError(t, settings.Set())
+	require.NoError(t, settings.Set(ctx))
 	projectRef := &serviceModel.ProjectRef{
 		Id:         "sample",
 		Owner:      "evergreen-ci",
@@ -1062,7 +1062,7 @@ tasks:
 	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
-	require.NoError(t, settings.Set())
+	require.NoError(t, settings.Set(ctx))
 	projectRef := &serviceModel.ProjectRef{
 		Id:         "sample",
 		Owner:      "evergreen-ci",

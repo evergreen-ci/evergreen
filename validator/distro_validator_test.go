@@ -81,7 +81,7 @@ func TestCheckDistro(t *testing.T) {
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
-			So(dupe.Insert(), ShouldBeNil)
+			So(dupe.Insert(ctx), ShouldBeNil)
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
 			So(verrs, ShouldNotResemble, ValidationErrors{})
@@ -480,10 +480,10 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	d4 := &distro.Distro{
 		Id: "d4",
 	}
-	assert.NoError(d1.Insert())
-	assert.NoError(d2.Insert())
-	assert.NoError(d3.Insert())
-	assert.NoError(d4.Insert())
+	assert.NoError(d1.Insert(ctx))
+	assert.NoError(d2.Insert(ctx))
+	assert.NoError(d3.Insert(ctx))
+	assert.NoError(d4.Insert(ctx))
 
 	err := ensureValidContainerPool(ctx, d1, conf)
 	assert.Equal(err, ValidationErrors{{Error,

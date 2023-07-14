@@ -33,6 +33,7 @@ type Mutation {
   ): Boolean!
 
   # distros
+  copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
   saveDistroSection(
     opts: SaveDistroOpts!
   ): DistroWithHostCount!

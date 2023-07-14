@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -36,9 +37,9 @@ func makeCommitQueueTriggers() eventHandler {
 	return t
 }
 
-func (t *commitQueueTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *commitQueueTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var err error
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 

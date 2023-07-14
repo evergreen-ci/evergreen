@@ -152,7 +152,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			"source":             "patch intents",
 		}))
 
-		j.AddError(model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
+		j.AddError(model.AbortPatchesWithGithubPatchData(ctx, patchDoc.CreateTime,
 			false, patchDoc.Id.Hex(), patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber))
 	}
@@ -284,7 +284,7 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	if errs := validator.CheckProjectErrors(patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectErrors(ctx, patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if errs := validator.CheckProjectSettings(j.env.Settings(), patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
@@ -395,7 +395,7 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 		catcher.Wrap(j.createGitHubSubscriptions(patchDoc), "creating GitHub PR patch subscriptions")
 	}
 	if patchDoc.IsGithubMergePatch() {
-		catcher.Wrap(j.createGitHubMergeSubscription(patchDoc), "creating GitHub PR patch subscriptions")
+		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub PR patch subscriptions")
 	}
 	if patchDoc.IsBackport() {
 		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
@@ -500,7 +500,7 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
 }
 
 // createGithubMergeSubscription creates a subscription on a commit for the GitHub merge queue.
-func (j *patchIntentProcessor) createGitHubMergeSubscription(p *patch.Patch) error {
+func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context, p *patch.Patch) error {
 	catcher := grip.NewBasicCatcher()
 	ghSub := event.NewGithubCheckAPISubscriber(event.GithubCheckSubscriber{
 		Owner: p.GithubMergeData.Org,
@@ -523,7 +523,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(p *patch.Patch) err
 		Caller:    j.Name,
 		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(input, j.env.Settings().Ui.Url)
+	err := thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url)
 	if err != nil {
 		catcher.Wrap(err, "failed to send patch status to GitHub")
 	}

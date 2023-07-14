@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -11,6 +12,9 @@ import (
 )
 
 func TestDistroAliases(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Run("OrderAliases", func(t *testing.T) {
 		t.Run("Containers", func(t *testing.T) {
 			distros := byPoolSize{
@@ -54,14 +58,14 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Constructor", func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection))
 			t.Run("Empty", func(t *testing.T) {
-				lt, err := NewDistroAliasesLookupTable()
+				lt, err := NewDistroAliasesLookupTable(ctx)
 				assert.NoError(t, err)
 				assert.NotNil(t, lt)
 			})
 			t.Run("Simple", func(t *testing.T) {
-				require.NoError(t, (&Distro{Id: "one", Aliases: []string{"foo", "bar"}}).Insert())
-				require.NoError(t, (&Distro{Id: "two", Aliases: []string{"baz", "bar"}}).Insert())
-				lt, err := NewDistroAliasesLookupTable()
+				require.NoError(t, (&Distro{Id: "one", Aliases: []string{"foo", "bar"}}).Insert(ctx))
+				require.NoError(t, (&Distro{Id: "two", Aliases: []string{"baz", "bar"}}).Insert(ctx))
+				lt, err := NewDistroAliasesLookupTable(ctx)
 				require.NoError(t, err)
 				require.NotNil(t, lt)
 

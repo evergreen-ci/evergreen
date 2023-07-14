@@ -75,7 +75,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	var err error
 	if j.parent == nil {
-		j.parent, err = host.FindOneByIdOrTag(j.ParentID)
+		j.parent, err = host.FindOneByIdOrTag(ctx, j.ParentID)
 		j.AddError(err)
 		if j.parent == nil {
 			j.AddError(errors.Errorf("parent '%s' not found", j.ParentID))
@@ -117,7 +117,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}()
 
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
-		err = j.parent.SetDecommissioned(evergreen.User, false, fmt.Sprintf("exceeded max container build retries (%d)", containerBuildRetries))
+		err = j.parent.SetDecommissioned(ctx, evergreen.User, false, fmt.Sprintf("exceeded max container build retries (%d)", containerBuildRetries))
 		j.AddError(errors.Wrapf(err, "setting parent '%s' to decommissioned", j.parent.Id))
 		err = errors.Errorf("failed %d times to build and download image '%s' on parent '%s'", containerBuildRetries, j.DockerOptions.Image, j.parent.Id)
 		j.AddError(err)
@@ -153,7 +153,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		j.parent.ContainerImages = make(map[string]bool)
 	}
 	j.parent.ContainerImages[j.DockerOptions.Image] = true
-	_, err = j.parent.Upsert()
+	_, err = j.parent.Upsert(ctx)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "upserting parent '%s'", j.parent.Id))
 		return

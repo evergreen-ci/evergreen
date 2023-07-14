@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"context"
+
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -36,6 +38,7 @@ var (
 	authConfigKey         = bsonutil.MustHaveTag(Settings{}, "AuthConfig")
 	repoTrackerConfigKey  = bsonutil.MustHaveTag(Settings{}, "RepoTracker")
 	apiKey                = bsonutil.MustHaveTag(Settings{}, "Api")
+	alertsConfigKey       = bsonutil.MustHaveTag(Settings{}, "Alerts")
 	uiKey                 = bsonutil.MustHaveTag(Settings{}, "Ui")
 	hostInitConfigKey     = bsonutil.MustHaveTag(Settings{}, "HostInit")
 	notifyKey             = bsonutil.MustHaveTag(Settings{}, "Notify")
@@ -151,7 +154,29 @@ func SetBannerTheme(theme BannerTheme) error {
 	return errors.WithStack(err)
 }
 
-// SetServiceFlags sets whether each of the runner/API server processes is enabled
+func GetServiceFlags() (*ServiceFlags, error) {
+	ctx, cancel := GetEnvironment().Context()
+	defer cancel()
+
+	return GetServiceFlagsContext(ctx)
+}
+
+func GetServiceFlagsContext(ctx context.Context) (*ServiceFlags, error) {
+	flags := &ServiceFlags{}
+	if err := flags.Get(ctx); err != nil {
+		return nil, errors.Wrapf(err, "getting section '%s'", flags.SectionId())
+	}
+	return flags, nil
+}
+
+// SetServiceFlags sets whether each of the runner/API server processes is enabled.
 func SetServiceFlags(flags ServiceFlags) error {
-	return flags.Set()
+	ctx, cancel := GetEnvironment().Context()
+	defer cancel()
+	return SetServiceFlagsContext(ctx, flags)
+}
+
+// SetServiceFlagsContext sets whether each of the runner/API server processes is enabled.
+func SetServiceFlagsContext(ctx context.Context, flags ServiceFlags) error {
+	return flags.Set(ctx)
 }

@@ -34,7 +34,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	t.Run("SuccessfullyModifiesHostStatusWithNote", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
 		h := host.Host{Id: "h1", Status: evergreen.HostRunning}
-		require.NoError(h.Insert())
+		require.NoError(h.Insert(ctx))
 		opts := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
 		result, httpStatus, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
@@ -61,7 +61,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 				},
 			},
 		}
-		require.NoError(h.Insert())
+		require.NoError(h.Insert(ctx))
 
 		_, httpStatus, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, evergreen.HostRunning, "", &user)
 		require.NoError(err)
@@ -90,25 +90,28 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 }
 
 func TestGetHostFromCache(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(host.Collection))
 	uis := UIServer{hostCache: make(map[string]hostCacheItem)}
 
 	// get a host that doesn't exist
-	h, err := uis.getHostFromCache("h1")
+	h, err := uis.getHostFromCache(ctx, "h1")
 	assert.NoError(t, err)
 	assert.Nil(t, h)
 
 	// get a host from the cache
 	uis.hostCache["h1"] = hostCacheItem{inserted: time.Now()}
-	h, err = uis.getHostFromCache("h1")
+	h, err = uis.getHostFromCache(ctx, "h1")
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 
 	// past the TTL fetches from the db
 	h1 := host.Host{Id: "h1", Host: "new_name"}
-	assert.NoError(t, h1.Insert())
+	assert.NoError(t, h1.Insert(ctx))
 	uis.hostCache["h1"] = hostCacheItem{dnsName: "old_name", inserted: time.Now().Add(-1 * (hostCacheTTL + time.Second))}
-	h, err = uis.getHostFromCache("h1")
+	h, err = uis.getHostFromCache(ctx, "h1")
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 	assert.Equal(t, "new_name", h.dnsName)
