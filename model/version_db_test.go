@@ -197,3 +197,63 @@ func TestFindLatestRevisionForProject(t *testing.T) {
 		t.Run(name, test)
 	}
 }
+
+func TestFindBaseVersionForVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+
+	patch0 := Version{
+		Id:                  "v0",
+		Identifier:          "project1",
+		Requester:           evergreen.PatchVersionRequester,
+		Revision:            "ghi",
+		RevisionOrderNumber: 1,
+	}
+	patch1 := Version{
+		Id:                  "v1",
+		Identifier:          "project1",
+		Requester:           evergreen.PatchVersionRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 2,
+	}
+	mainlineCommit1 := Version{
+		Id:                  "project1_v1",
+		Identifier:          "project1",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "abc",
+		RevisionOrderNumber: 1,
+	}
+	mainlineCommit2 := Version{
+		Id:                  "project1_v2",
+		Identifier:          "project1",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "def",
+		RevisionOrderNumber: 2,
+	}
+
+	assert.NoError(t, patch0.Insert())
+	assert.NoError(t, patch1.Insert())
+	assert.NoError(t, mainlineCommit1.Insert())
+	assert.NoError(t, mainlineCommit2.Insert())
+	// Test that it returns the base version mainline commit for a patch
+	version, err := FindBaseVersionForVersion("v1")
+	assert.NoError(t, err)
+	assert.NotNil(t, version)
+	assert.Equal(t, "project1_v1", version.Id)
+
+	// test that it returns the previous mainline commit for a mainline commit
+	version, err = FindBaseVersionForVersion("project1_v2")
+	assert.NoError(t, err)
+	assert.NotNil(t, version)
+	assert.Equal(t, "project1_v1", version.Id)
+
+	// Test that it returns an empty string if the previous version doesn't exist for a mainline commit
+	version, err = FindBaseVersionForVersion("project1_v1")
+	assert.NoError(t, err)
+	assert.Nil(t, version)
+
+	// Test that it returns an empty string if the base version doesn't exist for a patch
+	version, err = FindBaseVersionForVersion("v0")
+	assert.NoError(t, err)
+	assert.Nil(t, version)
+
+}

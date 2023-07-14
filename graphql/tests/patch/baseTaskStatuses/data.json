@@ -206,5 +206,15 @@
         "merge_commit_sha": ""
       }
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
   ]
 }
