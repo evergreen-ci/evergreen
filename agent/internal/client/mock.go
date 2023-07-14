@@ -54,6 +54,7 @@ type Mock struct {
 	HeartbeatShouldConflict     bool
 	HeartbeatShouldErr          bool
 	HeartbeatShouldSometimesErr bool
+	HeartbeatCount              int
 	TaskExecution               int
 	CreatedHost                 apimodels.CreateHost
 
@@ -230,6 +231,7 @@ func (c *Mock) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*ap
 }
 
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
+	c.HeartbeatCount++
 	if c.HeartbeatShouldAbort {
 		return evergreen.TaskFailed, nil
 	}
