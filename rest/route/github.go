@@ -168,7 +168,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"message": "pull request closed; aborting patch",
 			})
 
-			if err := data.AbortPatchesFromPullRequest(event); err != nil {
+			if err := data.AbortPatchesFromPullRequest(ctx, event); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "GitHub hook",
 					"msg_id":  gh.msgID,

@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -33,11 +34,15 @@ type TaskFinderSuite struct {
 	tasks             []task.Task
 	depTasks          []task.Task
 	distro            distro.Distro
+	ctx               context.Context
+	cancel            context.CancelFunc
 }
 
 func TestDBTaskFinder(t *testing.T) {
 	s := new(TaskFinderSuite)
-	s.FindRunnableTasks = func(d distro.Distro) ([]task.Task, error) { return task.FindHostRunnable(d.Id, true) }
+	s.FindRunnableTasks = func(ctx context.Context, d distro.Distro) ([]task.Task, error) {
+		return task.FindHostRunnable(ctx, d.Id, true)
+	}
 
 	suite.Run(t, s)
 }
@@ -87,10 +92,13 @@ func (s *TaskFinderSuite) SetupTest() {
 
 	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	s.NoError(ref.Insert())
+
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
 func (s *TaskFinderSuite) TearDownTest() {
 	s.NoError(db.ClearCollections(task.Collection, distro.Collection, model.ProjectRefCollection))
+	s.cancel()
 }
 
 func (s *TaskFinderSuite) insertTasks() {
@@ -104,7 +112,7 @@ func (s *TaskFinderSuite) insertTasks() {
 
 func (s *TaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
 	// XXX: collection is deliberately empty
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Empty(runnableTasks)
 }
@@ -115,7 +123,7 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	s.insertTasks()
 
 	// finding the runnable tasks should return four tasks
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 4)
 }
@@ -124,7 +132,7 @@ func (s *TaskFinderSuite) TestContainerTasksAreExcluded() {
 	s.tasks[3].ExecutionPlatform = task.ExecutionPlatformContainer
 	s.insertTasks()
 
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.Require().NoError(err)
 	s.Len(runnableTasks, 4)
 }
@@ -132,7 +140,7 @@ func (s *TaskFinderSuite) TestContainerTasksAreExcluded() {
 func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
 	// Validate our assumption that we find 5 tasks in the default case
 	s.insertTasks()
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 5)
 
@@ -141,8 +149,8 @@ func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
 	s.Require().NoError(db.Clear(distro.Collection))
 	s.distro.ValidProjects = []string{"exists"}
 	s.insertTasks()
-	s.Require().NoError(s.distro.Insert())
-	runnableTasks, err = s.FindRunnableTasks(s.distro)
+	s.Require().NoError(s.distro.Insert(s.ctx))
+	runnableTasks, err = s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 5)
 
@@ -152,7 +160,7 @@ func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
 	s.tasks[0].Project = "something_else"
 	s.tasks[1].Project = "something_else"
 	s.insertTasks()
-	runnableTasks, err = s.FindRunnableTasks(s.distro)
+	runnableTasks, err = s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 3)
 }
@@ -182,7 +190,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 
 	s.insertTasks()
 
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 4)
 	expectedRunnableTasks := []string{"t0", "t2", "t3", "t4"}
@@ -197,7 +205,7 @@ func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 		Enabled: false,
 	}
 	s.Require().NoError(ref.Upsert())
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 0)
 }
@@ -208,7 +216,7 @@ func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned()
 		DispatchingDisabled: utility.TruePtr(),
 	}
 	s.Require().NoError(ref.Upsert())
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 0)
 }
@@ -222,6 +230,9 @@ type TaskFinderComparisonSuite struct {
 	newRunnableTasks []task.Task
 	altRunnableTasks []task.Task
 	pllRunnableTasks []task.Task
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (s *TaskFinderComparisonSuite) SetupSuite() {
@@ -261,15 +272,15 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 
 func (s *TaskFinderComparisonSuite) TearDownSuite() {
 	s.NoError(db.Clear(model.ProjectRefCollection))
+	s.cancel()
 }
 
 func (s *TaskFinderComparisonSuite) SetupTest() {
 	s.NoError(db.Clear(task.Collection))
 
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	_, err := env.DB().Collection(task.Collection).Indexes().CreateMany(ctx, []mongo.IndexModel{
+	_, err := env.DB().Collection(task.Collection).Indexes().CreateMany(s.ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{{Key: task.ActivatedKey, Value: 1}, {Key: task.StatusKey, Value: 1}, {Key: task.PriorityKey, Value: 1}},
 		},
@@ -287,16 +298,16 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 		s.NoError(task.Insert())
 	}
 
-	s.newRunnableTasks, err = RunnableTasksPipeline(s.distro)
+	s.newRunnableTasks, err = RunnableTasksPipeline(s.ctx, s.distro)
 	s.NoError(err)
 
-	s.oldRunnableTasks, err = LegacyFindRunnableTasks(s.distro)
+	s.oldRunnableTasks, err = LegacyFindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 
-	s.altRunnableTasks, err = AlternateTaskFinder(s.distro)
+	s.altRunnableTasks, err = AlternateTaskFinder(s.ctx, s.distro)
 	s.NoError(err)
 
-	s.pllRunnableTasks, err = ParallelTaskFinder(s.distro)
+	s.pllRunnableTasks, err = ParallelTaskFinder(s.ctx, s.distro)
 	s.NoError(err)
 }
 

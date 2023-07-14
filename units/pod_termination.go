@@ -244,7 +244,7 @@ func (j *podTerminationJob) fixStrandedRunningTask(ctx context.Context) error {
 		}
 	}
 
-	if err := model.ClearAndResetStrandedContainerTask(j.env.Settings(), j.pod); err != nil {
+	if err := model.ClearAndResetStrandedContainerTask(ctx, j.env.Settings(), j.pod); err != nil {
 		return errors.Wrapf(err, "resetting stranded container task '%s' execution %d running on pod '%s'", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution, j.pod.ID)
 	}
 

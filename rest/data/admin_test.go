@@ -302,6 +302,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 }
 
 func (s *AdminDataSuite) TestRestart() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
 	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
 	userName := "user"
@@ -313,14 +316,14 @@ func (s *AdminDataSuite) TestRestart() {
 		EndTime:   endTime,
 		User:      userName,
 	}
-	dryRunResp, err := RestartFailedTasks(s.env.LocalQueue(), opts)
+	dryRunResp, err := RestartFailedTasks(ctx, s.env.LocalQueue(), opts)
 	s.NoError(err)
 	s.NotZero(len(dryRunResp.ItemsRestarted))
 	s.Nil(dryRunResp.ItemsErrored)
 
 	// test that restarting tasks successfully puts a job on the queue
 	opts.DryRun = false
-	_, err = RestartFailedTasks(s.env.LocalQueue(), opts)
+	_, err = RestartFailedTasks(ctx, s.env.LocalQueue(), opts)
 	s.NoError(err)
 }
 

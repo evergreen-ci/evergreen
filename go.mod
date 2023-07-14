@@ -39,7 +39,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20230524145255-082f8fd5857e
-	github.com/mongodb/anser v0.0.0-20230501213745-c62f11870fd4
+	github.com/mongodb/anser v0.0.0-20230703201237-774f6f436c11
 	github.com/mongodb/grip v0.0.0-20230613222924-83a1f3549da2
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.13.0

@@ -454,6 +454,9 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 }
 
 func TestAttachToNewRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, GithubHooksCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -461,7 +464,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 	pRef := ProjectRef{
 		Id:        "myProject",
 		Owner:     "evergreen-ci",
@@ -567,13 +570,16 @@ func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentTyp
 }
 
 func TestAttachToRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, GithubHooksCollection, event.EventCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 	pRef := ProjectRef{
 		Id:     "myProject",
 		Owner:  "evergreen-ci",
@@ -2850,6 +2856,9 @@ func TestMergeWithProjectConfig(t *testing.T) {
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
@@ -2873,7 +2882,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(settings.Set())
+	assert.NoError(settings.Set(ctx))
 
 	update := &ProjectRef{
 		Id:      "iden_",
@@ -2931,12 +2940,15 @@ func TestSaveProjectPageForSection(t *testing.T) {
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
 
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 
 	// a project with no owner should error
 	project := ProjectRef{

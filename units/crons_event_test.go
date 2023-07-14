@@ -112,17 +112,20 @@ func (s *cronsEventSuite) SetupTest() {
 }
 
 func (s *cronsEventSuite) TestDegradedMode() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Reset to original flags after the test finishes.
 	originalFlags, err := evergreen.GetServiceFlags()
 	s.Require().NoError(err)
 	defer func() {
-		s.NoError(originalFlags.Set())
+		s.NoError(originalFlags.Set(ctx))
 	}()
 
 	flags := evergreen.ServiceFlags{
 		EventProcessingDisabled: true,
 	}
-	s.NoError(flags.Set())
+	s.NoError(flags.Set(ctx))
 
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
@@ -176,6 +179,9 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 }
 
 func (s *cronsEventSuite) TestNotificationIsEnabled() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	flags := evergreen.ServiceFlags{}
 	for i := range s.n {
 		s.True(notificationIsEnabled(&flags, &s.n[i]))
@@ -185,7 +191,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 	originalFlags, err := evergreen.GetServiceFlags()
 	s.Require().NoError(err)
 	defer func() {
-		s.NoError(originalFlags.Set())
+		s.NoError(originalFlags.Set(ctx))
 	}()
 
 	flags = evergreen.ServiceFlags{
@@ -196,7 +202,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 		GithubStatusAPIDisabled:      true,
 		BackgroundStatsDisabled:      true,
 	}
-	s.Require().NoError(flags.Set())
+	s.Require().NoError(flags.Set(ctx))
 
 	for i := range s.n {
 		s.False(notificationIsEnabled(&flags, &s.n[i]))

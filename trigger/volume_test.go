@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -20,6 +21,9 @@ func TestVolumeTriggers(t *testing.T) {
 }
 
 func TestVolumeExpiration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.Implements(t, (*eventHandler)(nil), &volumeTriggers{})
 
 	require.NoError(t, db.ClearCollections(event.EventCollection, host.VolumesCollection, event.SubscriptionsCollection, alertrecord.Collection))
@@ -40,7 +44,7 @@ func TestVolumeExpiration(t *testing.T) {
 	uiConfig := &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	require.NoError(t, uiConfig.Set())
+	require.NoError(t, uiConfig.Set(ctx))
 
 	for name, test := range map[string]func(*testing.T){
 		"Email": func(*testing.T) {
@@ -55,7 +59,7 @@ func TestVolumeExpiration(t *testing.T) {
 		},
 		"Fetch": func(*testing.T) {
 			triggers := volumeTriggers{}
-			assert.NoError(t, triggers.Fetch(&event.EventLogEntry{ResourceId: "v0"}))
+			assert.NoError(t, triggers.Fetch(ctx, &event.EventLogEntry{ResourceId: "v0"}))
 			assert.Equal(t, "v0", triggers.templateData.ID)
 			assert.Equal(t, fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=v0", uiConfig.Url), triggers.templateData.URL)
 		},
@@ -69,7 +73,7 @@ func TestVolumeExpiration(t *testing.T) {
 			}
 			require.NoError(t, subscriptions[0].Upsert())
 
-			n, err := NotificationsFromEvent(&event.EventLogEntry{
+			n, err := NotificationsFromEvent(ctx, &event.EventLogEntry{
 				ResourceType: event.ResourceTypeHost,
 				EventType:    event.EventVolumeExpirationWarningSent,
 				ResourceId:   v.ID,

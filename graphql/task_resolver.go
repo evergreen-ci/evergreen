@@ -59,7 +59,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 
 // Ami is the resolver for the ami field.
 func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	err := obj.GetAMI()
+	err := obj.GetAMI(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -130,7 +130,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	err = apiTask.BuildFromService(baseTask, nil)
+	err = apiTask.BuildFromService(ctx, baseTask, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
 	}
@@ -325,7 +325,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	if err = apiTask.BuildFromService(dt, nil); err != nil {
+	if err = apiTask.BuildFromService(ctx, dt, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
 	}
 	return apiTask, nil
@@ -337,7 +337,7 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *obj.Id))
 	}
-	start, err := model.GetEstimatedStartTime(*t)
+	start, err := model.GetEstimatedStartTime(ctx, *t)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
 	}
@@ -357,7 +357,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
-		err = apiTask.BuildFromService(&t, nil)
+		err = apiTask.BuildFromService(ctx, &t, nil)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
 		}
@@ -495,7 +495,7 @@ func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.API
 
 // SpawnHostLink is the resolver for the spawnHostLink field.
 func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	host, err := host.FindOne(host.ById(*obj.HostId))
+	host, err := host.FindOne(ctx, host.ById(*obj.HostId))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *obj.Id))
 	}

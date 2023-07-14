@@ -620,17 +620,7 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	return false, errors.WithStack(err)
 }
 
-func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
-	status := evergreen.TaskFailed
-	select {
-	case <-taskCtx.Done():
-		grip.Infof("Task canceled: '%s'.", tc.task.ID)
-	case status = <-complete:
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-	case status = <-heartbeat:
-		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
-	}
-
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status string) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
@@ -647,6 +637,18 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+}
+
+func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
+	status := evergreen.TaskFailed
+	select {
+	case <-taskCtx.Done():
+		grip.Infof("Task canceled: '%s'.", tc.task.ID)
+	case status = <-complete:
+		grip.Infof("Task complete: '%s'.", tc.task.ID)
+	case status = <-heartbeat:
+		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
 	}
 
 	return status
@@ -673,16 +675,19 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, message string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, message)
+	detail := a.endTaskResponse(ctx, tc, status, message)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
+		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed -- FAILURE. Overall task status changed to FAILED.")
 			detail.Status = evergreen.TaskFailed
+			setEndTaskCommand(tc, detail, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
+		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post task commands"))
@@ -731,7 +736,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var description string
 	var failureType string
 	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
@@ -756,17 +761,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		}
 	}
 
-	if tc.getCurrentCommand() != nil {
-		if description == "" {
-			description = tc.getCurrentCommand().DisplayName()
-		}
-		if failureType == "" {
-			failureType = tc.getCurrentCommand().Type()
-		}
-	}
 	detail := &apimodels.TaskEndDetail{
-		Description:     description,
-		Type:            failureType,
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
@@ -775,10 +770,24 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		Message:         message,
 		TraceID:         tc.traceID,
 	}
+	setEndTaskCommand(tc, detail, description, failureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
+}
+
+func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, description, failureType string) {
+	if tc.getCurrentCommand() != nil {
+		if description == "" {
+			description = tc.getCurrentCommand().DisplayName()
+		}
+		if failureType == "" {
+			failureType = tc.getCurrentCommand().Type()
+		}
+	}
+	detail.Description = description
+	detail.Type = failureType
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {

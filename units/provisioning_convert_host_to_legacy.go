@@ -69,7 +69,7 @@ func NewConvertHostToLegacyProvisioningJob(env evergreen.Environment, h host.Hos
 func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if err := j.populateIfUnset(); err != nil {
+	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -83,7 +83,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 			// Static hosts should be quarantined if they've run out of attempts
 			// to reprovision.
 			if j.RetryInfo().GetRemainingAttempts() == 0 && j.host.Provider == evergreen.ProviderNameStatic {
-				if err := j.host.SetStatusAtomically(evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"); err != nil {
+				if err := j.host.SetStatusAtomically(ctx, evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"); err != nil {
 					j.AddError(errors.Wrap(err, "quarantining static host that could not reprovision"))
 				}
 			}
@@ -106,7 +106,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.UpdateLastCommunicated(); err != nil {
+	if err := j.host.UpdateLastCommunicated(ctx); err != nil {
 		j.AddError(errors.Wrapf(err, "updating last communication time for host '%s'", j.host.Id))
 	}
 
@@ -124,7 +124,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.MarkAsReprovisioned(); err != nil {
+	if err := j.host.MarkAsReprovisioned(ctx); err != nil {
 		j.AddRetryableError(errors.Wrap(err, "marking host as reprovisioned"))
 		return
 	}
@@ -139,13 +139,13 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	})
 }
 
-func (j *convertHostToLegacyProvisioningJob) populateIfUnset() error {
+func (j *convertHostToLegacyProvisioningJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}

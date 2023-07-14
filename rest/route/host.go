@@ -70,7 +70,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 
 	resp := gimlet.NewResponseBuilder()
 	for id, status := range h.HostToStatus {
-		foundHost, err := data.FindHostByIdWithOwner(id, user)
+		foundHost, err := data.FindHostByIdWithOwner(ctx, id, user)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
 		}
@@ -78,7 +78,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		case evergreen.HostTerminated:
 			err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API"))
 		default:
-			err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
+			err = foundHost.SetStatus(ctx, status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
@@ -120,7 +120,7 @@ func (h *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 // Execute calls the data FindHostById function and returns the host
 // from the provider.
 func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundHost, err := host.FindOneId(h.hostID)
+	foundHost, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s'", h.hostID))
 	}
@@ -188,7 +188,7 @@ func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := host.GetHostsByFromIDWithStatus(hgh.key, hgh.status, hgh.user, hgh.limit+1)
+	hosts, err := host.GetHostsByFromIDWithStatus(ctx, hgh.key, hgh.status, hgh.user, hgh.limit+1)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding hosts with filters"))
 	}
@@ -352,7 +352,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	opts := model.APIHostParams{
 		UserSpawned: true,
 	}
-	hosts, err := data.FindHostsInRange(opts, ch.user)
+	hosts, err := data.FindHostsInRange(ctx, opts, ch.user)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting user hosts from options"))
 	}
@@ -371,7 +371,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, h := range hosts {
 		if h.NoExpiration {
 			if !ch.dryRun {
-				catcher.Wrapf(h.MarkShouldExpire(""), "marking host '%s' expirable", h.Id)
+				catcher.Wrapf(h.MarkShouldExpire(ctx, ""), "marking host '%s' expirable", h.Id)
 			}
 			toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
 		}
@@ -474,7 +474,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 		username = dbUser.Username()
 	}
 
-	hosts, err := data.FindHostsInRange(h.params, username)
+	hosts, err := data.FindHostsInRange(ctx, h.params, username)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding hosts matching parameters"))
 	}
@@ -570,7 +570,7 @@ func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOneId(h.hostID)
+	host, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
 	}
@@ -618,7 +618,7 @@ func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOne(host.ByIPAndRunning(h.IP))
+	host, err := host.FindOne(ctx, host.ByIPAndRunning(h.IP))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host with IP '%s'", h.IP))
 	}

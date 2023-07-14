@@ -1,6 +1,8 @@
 package data
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/scheduler"
@@ -8,7 +10,7 @@ import (
 )
 
 // CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
-func CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
+func CompareTasks(ctx context.Context, taskIds []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
 	if len(taskIds) == 0 {
 		return nil, nil, nil
 	}
@@ -42,7 +44,7 @@ func CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[st
 			prioritizedIds = append(prioritizedIds, t.Id)
 		}
 	} else { // this is temporary: logic should be added in EVG-13795
-		d, err := distro.FindOneId(distroId)
+		d, err := distro.FindOneId(ctx, distroId)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding distro '%s'", distroId)
 		}

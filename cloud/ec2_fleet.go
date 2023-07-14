@@ -325,7 +325,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	return errors.Wrap(h.Terminate(user, reason), "terminating instance in DB")
+	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating instance in DB")
 }
 
 // StopInstance should do nothing for EC2 Fleet.

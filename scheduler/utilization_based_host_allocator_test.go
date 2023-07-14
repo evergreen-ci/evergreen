@@ -1066,7 +1066,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 			MaximumHosts: 50,
 		},
 	}
-	s.NoError(parentDistro.Insert())
+	s.NoError(parentDistro.Insert(s.ctx))
 
 	h1 := host.Host{
 		Id:            "h1",
@@ -1181,7 +1181,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 			MaximumHosts: 50,
 		},
 	}
-	s.NoError(parentDistro.Insert())
+	s.NoError(parentDistro.Insert(s.ctx))
 
 	h1 := host.Host{
 		Id:            "h1",

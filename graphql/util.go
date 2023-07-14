@@ -89,7 +89,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
 		}
 	}
-	if err = model.SetActiveState(usr.Username(), isActive, tasks...); err != nil {
+	if err = model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
@@ -101,7 +101,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+		err = apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: url,
 		})
 		if err != nil {
@@ -128,31 +128,6 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 	newTime := fmt.Sprintf("%s %d, %d, %s", timeInUserTimezone.Month(), timeInUserTimezone.Day(), timeInUserTimezone.Year(), timeInUserTimezone.Format(time.Kitchen))
 
 	return &newTime, nil
-}
-
-func getVersionBaseTasks(versionID string) ([]task.Task, error) {
-	version, err := model.VersionFindOneId(versionID)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting version %s: %s", versionID, err.Error())
-	}
-	if version == nil {
-		return nil, fmt.Errorf("No version found for ID %s", versionID)
-	}
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(version.Identifier, version.Revision))
-	if err != nil {
-		return nil, fmt.Errorf("Error getting base version from version %s: %s", version.Id, err.Error())
-	}
-	if baseVersion == nil {
-		return nil, fmt.Errorf("No base version found from version %s", version.Id)
-	}
-	baseTasks, err := task.FindTasksFromVersions([]string{baseVersion.Id})
-	if err != nil {
-		return nil, fmt.Errorf("Error getting tasks from version %s: %s", baseVersion.Id, err.Error())
-	}
-	if baseTasks == nil {
-		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
-	}
-	return baseTasks, nil
 }
 
 // GetDisplayStatus considers both child patch statuses and
@@ -304,7 +279,7 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 // getAPITaskFromTask builds an APITask from the given task
 func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromService(&task, &restModel.APITaskArgs{
+	err := apiTask.BuildFromService(ctx, &task, &restModel.APITaskArgs{
 		LogURL: url,
 	})
 	if err != nil {
@@ -359,7 +334,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+		err := apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: logURL,
 		})
 		if err != nil {
@@ -418,7 +393,7 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
 	}
 	user := mustHaveUser(ctx)
-	httpStatus, err := model.ModifyVersion(*v, *user, modification)
+	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -460,21 +435,6 @@ func canScheduleTask(t *task.Task) bool {
 		return false
 	}
 	return true
-}
-
-func getAllTaskStatuses(tasks []task.Task) []string {
-	statusesMap := map[string]bool{}
-	for _, task := range tasks {
-		statusesMap[task.GetDisplayStatus()] = true
-	}
-	statusesArr := []string{}
-	for key := range statusesMap {
-		statusesArr = append(statusesArr, key)
-	}
-	sort.SliceStable(statusesArr, func(i, j int) bool {
-		return statusesArr[i] < statusesArr[j]
-	})
-	return statusesArr
 }
 
 func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
@@ -866,7 +826,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			return nil, err
 		}
 	}
-	dist, err := distro.FindOneId(spawnHostInput.DistroID)
+	dist, err := distro.FindOneId(ctx, spawnHostInput.DistroID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
 	}
@@ -1029,4 +989,14 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	return taskOpts, nil
+}
+
+func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
+	opts := gimlet.PermissionOpts{
+		Resource:      distroId,
+		ResourceType:  evergreen.DistroResourceType,
+		Permission:    evergreen.PermissionDistroSettings,
+		RequiredLevel: requiredLevel,
+	}
+	return u.HasPermission(opts)
 }

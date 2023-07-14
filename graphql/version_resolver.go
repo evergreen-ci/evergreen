@@ -27,22 +27,16 @@ import (
 
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
-	var baseVersion *model.Version
-	var err error
-
-	if obj.IsPatchRequester() || utility.FromStringPtr(obj.Requester) == evergreen.AdHocRequester {
-		// Get base commit if patch or periodic build.
-		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(obj.Project), utility.FromStringPtr(obj.Revision)))
-	} else {
-		// Get previous commit if mainline commit.
-		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
+	baseVersion, err := model.FindBaseVersionForVersion(*obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base version for version '%s': %s", *obj.Id, err.Error()))
 	}
-	if baseVersion == nil || err != nil {
+	if baseVersion == nil {
 		return nil, nil
 	}
 	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, *obj.Id, baseVersion.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base statuses for version '%s': %s", *obj.Id, err.Error()))
 	}
 	return statuses, nil
 }
@@ -53,6 +47,7 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
+
 	apiVersion := restModel.APIVersion{}
 	apiVersion.BuildFromService(*baseVersion)
 	return &apiVersion, nil
@@ -336,7 +331,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	var apiTasks []*restModel.APITask
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t, nil)
+		err := apiTask.BuildFromService(ctx, &t, nil)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task item db model to api model: %s", err.Error()))
 		}
@@ -402,7 +397,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 		}
 
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromService(upstreamTask, nil); err != nil {
+		if err = apiTask.BuildFromService(ctx, upstreamTask, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
 		}
 

@@ -42,7 +42,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	}
 
 	// get parent of host
-	parentHost, err := h.GetParent()
+	parentHost, err := h.GetParent(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding parent of host '%s'", h.Id)
 	}
@@ -61,12 +61,12 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, err
 	}
 
-	if err = h.SetAgentRevision(evergreen.AgentVersion); err != nil {
+	if err = h.SetAgentRevision(ctx, evergreen.AgentVersion); err != nil {
 		return nil, errors.Wrapf(err, "setting agent revision on host '%s' to '%s'", h.Id, evergreen.AgentVersion)
 	}
 
 	// The setup was successful. Update the container host accordingly in the database.
-	if err := h.MarkAsProvisioned(); err != nil {
+	if err := h.MarkAsProvisioned(ctx); err != nil {
 		return nil, errors.Wrapf(err, "marking host '%s' as provisioned", h.Id)
 	}
 
@@ -101,7 +101,7 @@ func (m *dockerManager) ModifyHost(context.Context, *host.Host, host.HostModifyO
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	// get parent of container host
-	parent, err := h.GetParent()
+	parent, err := h.GetParent(ctx)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "retrieving parent of host '%s'", h.Id)
 	}
@@ -132,7 +132,7 @@ func (m *dockerManager) SetPortMappings(ctx context.Context, h, parent *host.Hos
 
 	}
 
-	if err = h.SetPortMapping(host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
+	if err = h.SetPortMapping(ctx, host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
 		return errors.Wrapf(err, "saving ports to host '%s", h.Id)
 	}
 	return nil
@@ -149,7 +149,7 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
 
-	parent, err := h.GetParent()
+	parent, err := h.GetParent(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "retrieving parent for host '%s'", h.Id)
 	}
@@ -164,7 +164,7 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 	})
 
 	// Set the host status as terminated and update its termination time
-	return h.Terminate(user, reason)
+	return h.Terminate(ctx, user, reason)
 }
 
 func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {

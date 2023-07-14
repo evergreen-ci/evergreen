@@ -345,11 +345,14 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 
 func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	persistTestSettings := func(t *testing.T) {
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
-		require.NoError(t, state.Settings.Set())
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": build.Collection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": task.Collection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.VersionCollection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
+		require.NoError(t, state.Settings.Set(ctx))
 
 	}
 	type setupFn func(*testing.T)
@@ -383,6 +386,9 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 }
 
 func spawnTestHostAndVolume(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Initialize Spawn Host and Spawn Volume used in tests
 	volExp, err := time.Parse(time.RFC3339, "2020-06-06T14:43:06.287Z")
 	require.NoError(t, err)
@@ -427,8 +433,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 		Zone:               "us-east-1a",
 		Provisioned:        true,
 	}
-	require.NoError(t, h.Insert())
-	ctx := context.Background()
+	require.NoError(t, h.Insert(ctx))
 	err = spawnHostForTestCode(ctx, &mountedVolume, &h)
 	require.NoError(t, err)
 }

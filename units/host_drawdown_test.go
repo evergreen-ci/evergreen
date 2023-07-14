@@ -57,7 +57,7 @@ func TestTerminatingHosts(t *testing.T) {
 				MinimumHosts: 2,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(ctx))
 
 		// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
 		host1 := host.Host{
@@ -102,11 +102,11 @@ func TestTerminatingHosts(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert())
-		require.NoError(t, host2.Insert())
-		require.NoError(t, host3.Insert())
-		require.NoError(t, host4.Insert())
-		require.NoError(t, host5.Insert())
+		require.NoError(t, host1.Insert(ctx))
+		require.NoError(t, host2.Insert(ctx))
+		require.NoError(t, host3.Insert(ctx))
+		require.NoError(t, host4.Insert(ctx))
+		require.NoError(t, host5.Insert(ctx))
 
 		// If we encounter missing distros, we decommission hosts from those
 		// distros.

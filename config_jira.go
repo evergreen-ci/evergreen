@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"strings"
 
 	"github.com/mongodb/grip/send"
@@ -32,12 +33,8 @@ type JiraOAuth1Config struct {
 
 func (c *JiraConfig) SectionId() string { return "jira" }
 
-func (c *JiraConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *JiraConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = JiraConfig{}
@@ -46,20 +43,15 @@ func (c *JiraConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
 }
 
-func (c *JiraConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+func (c *JiraConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"host":            c.Host,
 			"basic_auth":      c.BasicAuthConfig,

@@ -35,7 +35,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			config, err := evergreen.GetConfig()
 			assert.NoError(t, err)
 			config.GithubOrgs = []string{ref.Owner}
-			assert.NoError(t, config.Set())
+			assert.NoError(t, config.Set(ctx))
 
 			assert.Empty(t, ref.SpawnHostScriptPath)
 			ref.SpawnHostScriptPath = "my script path"
@@ -56,7 +56,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.Nil(t, settings)
 
 			config.GithubOrgs = append(config.GithubOrgs, ref.Owner) // Add the new owner
-			assert.NoError(t, config.Set())
+			assert.NoError(t, config.Set(ctx))
 
 			// Ensure that we're saving settings without a special case
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
@@ -268,7 +268,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			config, err := evergreen.GetConfig()
 			assert.NoError(t, err)
 			config.GithubOrgs = []string{ref.Owner}
-			assert.NoError(t, config.Set())
+			assert.NoError(t, config.Set(ctx))
 			ref.SpawnHostScriptPath = "my script path"
 			ref.Owner = "something different"
 			apiProjectRef := restModel.APIProjectRef{}
@@ -282,7 +282,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Nil(t, settings)
 
 			config.GithubOrgs = append(config.GithubOrgs, ref.Owner) // Add the new owner
-			assert.NoError(t, config.Set())
+			assert.NoError(t, config.Set(ctx))
 
 			// Ensure that we're saving settings without a special case
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")

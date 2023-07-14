@@ -11,6 +11,9 @@ import (
 )
 
 func TestOldestImageJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	assert.NoError(db.Clear(host.Collection))
@@ -30,9 +33,9 @@ func TestOldestImageJob(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		ParentID: "parent-1",
 	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
 
 	j := NewOldestImageRemovalJob(h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)

@@ -263,7 +263,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	httpStatus, err := model.ModifyVersion(*projCtx.Version, *user, modification)
+	httpStatus, err := model.ModifyVersion(r.Context(), *projCtx.Version, *user, modification)
 	if err != nil {
 		http.Error(w, err.Error(), httpStatus)
 		return

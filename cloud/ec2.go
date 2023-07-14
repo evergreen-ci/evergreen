@@ -445,7 +445,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 		return errors.Wrap(err, "convert provider settings to document")
 	}
 
-	return h.UpdateCachedDistroProviderSettings([]*birch.Document{newSettingsDocument})
+	return h.UpdateCachedDistroProviderSettings(ctx, []*birch.Document{newSettingsDocument})
 }
 
 // SpawnHost spawns a new host.
@@ -538,7 +538,7 @@ func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag)
 	}
 	h.AddTags(tags)
 
-	return errors.Wrapf(h.SetTags(), "creating tags in DB for host '%s'", h.Id)
+	return errors.Wrapf(h.SetTags(ctx), "creating tags in DB for host '%s'", h.Id)
 }
 
 // deleteTags removes the specified tags by their keys in the client and db
@@ -560,7 +560,7 @@ func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys []string
 	}
 	h.DeleteTags(keys)
 
-	return errors.Wrapf(h.SetTags(), "deleting tags in DB for host '%s'", h.Id)
+	return errors.Wrapf(h.SetTags(ctx), "deleting tags in DB for host '%s'", h.Id)
 }
 
 // setInstanceType changes the instance type in the client and db
@@ -575,7 +575,7 @@ func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instance
 		return errors.Wrapf(err, "changing instance type using client for host '%s'", h.Id)
 	}
 
-	return errors.Wrapf(h.SetInstanceType(instanceType), "changing instance type in DB for host '%s'", h.Id)
+	return errors.Wrapf(h.SetInstanceType(ctx, instanceType), "changing instance type in DB for host '%s'", h.Id)
 }
 
 func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string) error {
@@ -618,14 +618,14 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
-		return errors.Wrapf(h.MarkShouldNotExpire(expireOnValue), "marking host should not expire in DB for host '%s'", h.Id)
+		return errors.Wrapf(h.MarkShouldNotExpire(ctx, expireOnValue), "marking host should not expire in DB for host '%s'", h.Id)
 	}
-	return errors.Wrapf(h.MarkShouldExpire(expireOnValue), "marking host should in DB for host '%s'", h.Id)
+	return errors.Wrapf(h.MarkShouldExpire(ctx, expireOnValue), "marking host should in DB for host '%s'", h.Id)
 }
 
 // extendExpiration extends a host's expiration time by the number of hours specified
 func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extension time.Duration) error {
-	return errors.Wrapf(h.SetExpirationTime(h.ExpirationTime.Add(extension)), "extending expiration time in DB for host '%s'", h.Id)
+	return errors.Wrapf(h.SetExpirationTime(ctx, h.ExpirationTime.Add(extension)), "extending expiration time in DB for host '%s'", h.Id)
 }
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
@@ -662,10 +662,10 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		}
 	}
 	if opts.NewName != "" {
-		catcher.Add(h.SetDisplayName(opts.NewName))
+		catcher.Add(h.SetDisplayName(ctx, opts.NewName))
 	}
 	if opts.AttachVolume != "" {
-		volume, err := host.ValidateVolumeCanBeAttached(opts.AttachVolume)
+		volume, err := host.ValidateVolumeCanBeAttached(ctx, opts.AttachVolume)
 		if err != nil {
 			catcher.Add(err)
 			return catcher.Resolve()
@@ -807,7 +807,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	defer m.client.Close()
 
 	if !IsEC2InstanceID(h.Id) {
-		return errors.Wrap(h.Terminate(user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
+		return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
@@ -865,7 +865,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}
 	}
 
-	return errors.Wrap(h.Terminate(user, reason), "terminating host in DB")
+	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating host in DB")
 }
 
 // StopInstance stops a running EC2 instance.
@@ -893,13 +893,13 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		status := ec2StatusToEvergreenStatus(instance.CurrentState.Name)
 		switch status {
 		case StatusStopping:
-			grip.Error(message.WrapError(h.SetStopping(user), message.Fields{
+			grip.Error(message.WrapError(h.SetStopping(ctx, user), message.Fields{
 				"message": "could not mark host as stopping, continuing to poll instance status anyways",
 				"host_id": h.Id,
 				"user":    user,
 			}))
 		case StatusStopped:
-			return errors.Wrap(h.SetStopped(user), "marking DB host as stopped")
+			return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
 		default:
 			return errors.Errorf("instance is in unexpected state '%s'", status)
 		}
@@ -944,7 +944,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		"distro":        h.Distro.Id,
 	})
 
-	return errors.Wrap(h.SetStopped(user), "marking DB host as stopped")
+	return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
 }
 
 // StartInstance starts a stopped EC2 instance.
@@ -1001,7 +1001,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		"distro":        h.Distro.Id,
 	})
 
-	return errors.Wrap(h.SetRunning(user), "failed to mark instance as running in DB")
+	return errors.Wrap(h.SetRunning(ctx, user), "failed to mark instance as running in DB")
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
@@ -1034,7 +1034,7 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	if volume != nil && volume.Device != nil {
 		attachment.DeviceName = *volume.Device
 	}
-	return errors.Wrapf(h.AddVolumeToHost(attachment), "attaching volume '%s' to host '%s' in DB", attachment.VolumeID, h.Id)
+	return errors.Wrapf(h.AddVolumeToHost(ctx, attachment), "attaching volume '%s' to host '%s' in DB", attachment.VolumeID, h.Id)
 }
 
 func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
@@ -1065,7 +1065,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		}
 	}
 
-	return errors.Wrapf(h.RemoveVolumeFromHost(volumeID), "detaching volume '%s' from host '%s' in DB", volumeID, h.Id)
+	return errors.Wrapf(h.RemoveVolumeFromHost(ctx, volumeID), "detaching volume '%s' from host '%s' in DB", volumeID, h.Id)
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
