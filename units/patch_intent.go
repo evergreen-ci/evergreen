@@ -160,7 +160,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
 	// Add owner and repo for child patches
-	if patchDoc.Author == evergreen.ParentPatchUser {
+	if patchDoc.IsChild() {
 		p, err := model.FindBranchProjectRef(patchDoc.Project)
 		if err != nil {
 			return errors.Wrapf(err, "finding project '%s'", patchDoc.Project)
