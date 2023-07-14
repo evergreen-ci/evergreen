@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -35,7 +36,7 @@ type volumeTriggers struct {
 	base
 }
 
-func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *volumeTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var err error
 	t.volume, err = host.FindVolumeByID(e.ResourceId)
 	if err != nil {
@@ -45,7 +46,7 @@ func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Errorf("volume '%s' not found", e.ResourceId)
 	}
 
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 

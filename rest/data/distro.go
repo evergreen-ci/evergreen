@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -13,7 +14,7 @@ import (
 )
 
 // UpdateDistro updates the given distro.Distro.
-func UpdateDistro(old, new *distro.Distro) error {
+func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 	if old.Id != new.Id {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -29,8 +30,7 @@ func UpdateDistro(old, new *distro.Distro) error {
 			}
 		}
 	}
-	err := new.Update()
-	if err != nil {
+	if err := new.ReplaceOne(ctx); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "updating distro '%s'", new.Id).Error(),
@@ -40,8 +40,8 @@ func UpdateDistro(old, new *distro.Distro) error {
 }
 
 // DeleteDistroById removes a given distro from the database based on its id.
-func DeleteDistroById(distroId string) error {
-	d, err := distro.FindOneId(distroId)
+func DeleteDistroById(ctx context.Context, distroId string) error {
+	d, err := distro.FindOneId(ctx, distroId)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -54,13 +54,13 @@ func DeleteDistroById(distroId string) error {
 			Message:    fmt.Sprintf("distro '%s' not found", distroId),
 		}
 	}
-	if err = host.MarkInactiveStaticHosts([]string{}, d); err != nil {
+	if err = host.MarkInactiveStaticHosts(ctx, []string{}, d); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "terminating inactive static hosts in distro '%s'", distroId).Error(),
 		}
 	}
-	if err = distro.Remove(distroId); err != nil {
+	if err = distro.Remove(ctx, distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "deleting distro '%s'", distroId).Error(),

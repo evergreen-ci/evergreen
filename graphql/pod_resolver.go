@@ -51,7 +51,7 @@ func (r *podResolver) Task(ctx context.Context, obj *model.APIPod) (*model.APITa
 		return nil, nil
 	}
 	apiTask := &model.APITask{}
-	err = apiTask.BuildFromService(task, &model.APITaskArgs{
+	err = apiTask.BuildFromService(ctx, task, &model.APITaskArgs{
 		LogURL: r.sc.GetURL(),
 	})
 	if err != nil {

@@ -37,7 +37,7 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(mgr clou
 
 	var err error
 	if m.host == nil {
-		m.host, err = host.FindOneByIdOrTag(m.HostID)
+		m.host, err = host.FindOneByIdOrTag(ctx, m.HostID)
 		if err != nil {
 			return errors.Wrap(err, "finding host")
 		}

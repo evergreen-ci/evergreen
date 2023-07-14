@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -49,6 +50,9 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 }
 
 func TestRestartVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Insert data for the test paths
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
 	versions := []*Version{
@@ -71,7 +75,7 @@ func TestRestartVersion(t *testing.T) {
 	}
 
 	versionId := "version3"
-	err := RestartTasksInVersion(versionId, true, "caller3")
+	err := RestartTasksInVersion(ctx, versionId, true, "caller3")
 	assert.NoError(t, err)
 
 	// When a version is restarted, all of its completed tasks should be reset.

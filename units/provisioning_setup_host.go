@@ -85,7 +85,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
@@ -135,7 +135,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 				"host_tag":        j.host.Tag,
 			})
 
-			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(ctx), message.Fields{
 				"operation":       "setting host unprovisioned",
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 				"distro":          j.host.Distro.Id,
@@ -306,7 +306,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 		return nil
 	}
 
-	cmds, err := h.SetupServiceUserCommands()
+	cmds, err := h.SetupServiceUserCommands(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting command to set up service user")
 	}
@@ -448,7 +448,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(err, "attaching volume")
-			if err := j.host.SetUnprovisioned(); err != nil {
+			if err := j.host.SetUnprovisioned(ctx); err != nil {
 				catcher.Wrap(err, "setting host unprovisioned after volume failed to attach")
 			}
 			return catcher.Resolve()
@@ -468,7 +468,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		if err := j.setupSpawnHost(ctx, settings); err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(err, "setting up spawn host")
-			catcher.Wrap(j.host.SetUnprovisioned(), "setting host unprovisioned after spawn host setup failed")
+			catcher.Wrap(j.host.SetUnprovisioned(ctx), "setting host unprovisioned after spawn host setup failed")
 			return catcher.Resolve()
 		}
 
@@ -481,7 +481,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrapf(err, "running distro setup script on remote host: %s", logs)
-			catcher.Wrap(j.host.SetUnprovisioned(), "setting host unprovisioned after distro setup script failed")
+			catcher.Wrap(j.host.SetUnprovisioned(ctx), "setting host unprovisioned after distro setup script failed")
 			event.LogHostProvisionFailed(j.host.Id, logs)
 			grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 				"message":         "provisioning failed",
@@ -529,7 +529,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		"job":      j.ID(),
 	})
 
-	if err := j.host.MarkAsProvisioned(); err != nil {
+	if err := j.host.MarkAsProvisioned(ctx); err != nil {
 		return errors.Wrapf(err, "marking host '%s' as provisioned", j.host.Id)
 	}
 
@@ -639,7 +639,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 
 		var volume *host.Volume
 		if h.HomeVolumeID != "" {
-			volume, err = host.ValidateVolumeCanBeAttached(h.HomeVolumeID)
+			volume, err = host.ValidateVolumeCanBeAttached(ctx, h.HomeVolumeID)
 			if err != nil {
 				return err
 			}
@@ -660,7 +660,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 			if err != nil {
 				return errors.Wrapf(err, "creating new volume for host '%s'", h.Id)
 			}
-			if err = h.SetHomeVolumeID(volume.ID); err != nil {
+			if err = h.SetHomeVolumeID(ctx, volume.ID); err != nil {
 				return errors.Wrapf(err, "setting home volume ID for host")
 			}
 		}

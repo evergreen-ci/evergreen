@@ -91,7 +91,7 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 			"host_id":  host.Id,
 			"hostname": host.Host,
 		})
-		if err := host.Remove(); err != nil {
+		if err := host.Remove(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not remove decommissioned static host",
 				"host_id": host.Id,

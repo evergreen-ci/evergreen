@@ -65,7 +65,7 @@ func NewHostExecuteJob(env evergreen.Environment, h host.Host, script string, su
 func (j *hostExecuteJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if err := j.populateIfUnset(); err != nil {
+	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -140,9 +140,9 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 }
 
 // populateIfUnset populates the unset job fields.
-func (j *hostExecuteJob) populateIfUnset() error {
+func (j *hostExecuteJob) populateIfUnset(ctx context.Context) error {
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}

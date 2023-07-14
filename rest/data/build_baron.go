@@ -26,7 +26,7 @@ type FailingTaskData struct {
 }
 
 // BbFileTicket creates a JIRA ticket for a task with the given test failures.
-func BbFileTicket(context context.Context, taskId string, execution int) (int, error) {
+func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error) {
 	// Find information about the task
 	t, err := task.FindOneIdAndExecution(taskId, execution)
 	if err != nil {
@@ -49,17 +49,17 @@ func BbFileTicket(context context.Context, taskId string, execution int) (int, e
 	}
 	if ok && webHook.Endpoint != "" {
 		var resp *http.Response
-		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
+		resp, err = fileTicketCustomHook(ctx, taskId, execution, webHook)
 		return resp.StatusCode, err
 	}
 
 	//if there is no custom web-hook, use the build baron
-	n, err := makeNotification(settings, bbProject.TicketCreateProject, t)
+	n, err := makeNotification(ctx, settings, bbProject.TicketCreateProject, t)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	err = queue.Put(context, units.NewEventSendJob(n.ID, ts))
+	err = queue.Put(ctx, units.NewEventSendJob(n.ID, ts))
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "inserting notification job")
 
@@ -103,8 +103,17 @@ func fileTicketCustomHook(context context.Context, taskId string, execution int,
 	return resp, nil
 }
 
-func makeNotification(settings *evergreen.Settings, project string, t *task.Task) (*notification.Notification, error) {
-	payload, err := trigger.JIRATaskPayload("", project, settings.Ui.Url, "", "", t)
+func makeNotification(ctx context.Context, settings *evergreen.Settings, project string, t *task.Task) (*notification.Notification, error) {
+	mappings := &evergreen.JIRANotificationsConfig{}
+	if err := mappings.Get(ctx); err != nil {
+		return nil, errors.Wrap(err, "getting Jira mappings")
+	}
+	payload, err := trigger.JIRATaskPayload(trigger.JiraIssueParameters{
+		Project:  project,
+		UiURL:    settings.Ui.Url,
+		Mappings: mappings,
+		Task:     t,
+	})
 	if err != nil {
 		return nil, err
 	}

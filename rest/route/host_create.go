@@ -165,7 +165,7 @@ func (h *containerLogsHandler) Factory() gimlet.RouteHandler {
 
 func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["host_id"]
-	host, err := host.FindOneId(id)
+	host, err := host.FindOneId(ctx, id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -205,7 +205,7 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	parent, err := h.host.GetParent()
+	parent, err := h.host.GetParent(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding parent for container '%s'", h.host.Id))
 	}
@@ -249,7 +249,7 @@ func (h *containerStatusHandler) Factory() gimlet.RouteHandler {
 
 func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["host_id"]
-	host, err := host.FindOneId(id)
+	host, err := host.FindOneId(ctx, id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -267,7 +267,7 @@ func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
-	parent, err := h.host.GetParent()
+	parent, err := h.host.GetParent(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding parent for container '%s'", h.host.Id))
 	}

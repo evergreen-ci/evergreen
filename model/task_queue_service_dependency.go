@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"time"
@@ -251,7 +252,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 }
 
 // FindNextTask returns the next dispatchable task in the queue, and returns the tasks that need to be checked for dependencies.
-func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec, amiUpdatedTime time.Time) *TaskQueueItem {
+func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec TaskSpec, amiUpdatedTime time.Time) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	// If the host just ran a task group, give it one back.
@@ -383,7 +384,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec, amiUpdatedTim
 		}
 
 		if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
-			numHosts, err := host.NumHostsByTaskSpec(item.Group, item.BuildVariant, item.Project, item.Version)
+			numHosts, err := host.NumHostsByTaskSpec(ctx, item.Group, item.BuildVariant, item.Project, item.Version)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,

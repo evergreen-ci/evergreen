@@ -193,9 +193,11 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
+		// Persist the environment early so the db will be available for initSettings.
+		SetEnvironment(e)
 	}
 
-	if err := e.initSettings(confPath); err != nil {
+	if err := e.initSettings(ctx, confPath); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -263,7 +265,7 @@ type closerOp struct {
 	closerFn   func(context.Context) error
 }
 
-func (e *envState) initSettings(path string) error {
+func (e *envState) initSettings(ctx context.Context, path string) error {
 	// read configuration from either the file or DB and validate
 	// if the file path is blank, the DB session must be configured already
 
@@ -277,7 +279,7 @@ func (e *envState) initSettings(path string) error {
 				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
-			e.settings, err = BootstrapConfig(e)
+			e.settings, err = BootstrapConfig(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting config settings from DB")
 			}
@@ -368,7 +370,7 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetReadPreference(readpref.Primary()).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
 	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
 		opts.SetAuth(options.Credential{

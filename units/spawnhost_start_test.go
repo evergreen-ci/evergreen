@@ -15,6 +15,9 @@ import (
 )
 
 func TestSpawnhostStartJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
 	mock := cloud.GetMockProvider()
 	t.Run("NewSpawnhostStartJobHostNotStopped", func(t *testing.T) {
@@ -24,7 +27,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			Provider: evergreen.ProviderNameMock,
 			Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
 		}
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 		mock.Set(h.Id, cloud.MockInstance{
 			Status: cloud.StatusRunning,
 		})
@@ -44,7 +47,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			Provider: evergreen.ProviderNameMock,
 			Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
 		}
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 		mock.Set(h.Id, cloud.MockInstance{
 			Status: cloud.StatusStopped,
 		})
@@ -56,7 +59,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 		assert.NoError(t, j.Error())
 		assert.True(t, j.Status().Completed)
 
-		startedHost, err := host.FindOneId(h.Id)
+		startedHost, err := host.FindOneId(ctx, h.Id)
 		assert.NoError(t, err)
 		assert.Equal(t, evergreen.HostRunning, startedHost.Status)
 

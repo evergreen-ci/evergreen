@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -26,6 +27,8 @@ type VersionSuite struct {
 	data    *event.VersionEventData
 	version model.Version
 	subs    []event.Subscription
+	ctx     context.Context
+	cancel  context.CancelFunc
 
 	t *versionTriggers
 
@@ -33,6 +36,8 @@ type VersionSuite struct {
 }
 
 func (s *VersionSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(event.EventCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection, patch.Collection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
@@ -122,7 +127,7 @@ func (s *VersionSuite) SetupTest() {
 	ui := &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	s.NoError(ui.Set())
+	s.NoError(ui.Set(s.ctx))
 
 	s.t = makeVersionTriggers().(*versionTriggers)
 	s.t.event = &s.event
@@ -131,12 +136,16 @@ func (s *VersionSuite) SetupTest() {
 	s.t.uiConfig = *ui
 }
 
+func (s *VersionSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *VersionSuite) TearDownSuite() {
 	s.NoError(db.ClearCollections(event.EventCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection, patch.Collection))
 }
 
 func (s *VersionSuite) TestAllTriggers() {
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 0)
 
@@ -144,7 +153,7 @@ func (s *VersionSuite) TestAllTriggers() {
 	s.data.Status = evergreen.VersionSucceeded
 	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 3)
 
@@ -152,7 +161,7 @@ func (s *VersionSuite) TestAllTriggers() {
 	s.data.Status = evergreen.VersionFailed
 	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 3)
 
@@ -160,7 +169,7 @@ func (s *VersionSuite) TestAllTriggers() {
 	s.data.Status = evergreen.VersionCreated
 	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 0)
 }

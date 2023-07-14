@@ -35,7 +35,7 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-06-14"
+	ClientVersion = "2023-07-06"
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2023-07-12b"
@@ -47,9 +47,9 @@ type ConfigSection interface {
 	// SectionId returns the ID of the section to be used in the database document and struct tag
 	SectionId() string
 	// Get populates the section from the DB
-	Get(Environment) error
+	Get(context.Context) error
 	// Set upserts the section document into the DB
-	Set() error
+	Set(context.Context) error
 	// ValidateAndDefault validates input and sets defaults
 	ValidateAndDefault() error
 }
@@ -114,12 +114,8 @@ type Settings struct {
 
 func (c *Settings) SectionId() string { return ConfigDocID }
 
-func (c *Settings) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *Settings) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = Settings{}
@@ -127,7 +123,7 @@ func (c *Settings) Get(env Environment) error {
 		}
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
@@ -136,13 +132,8 @@ func (c *Settings) Get(env Environment) error {
 
 // Set saves the global fields in the configuration (i.e. those that are not
 // ConfigSections).
-func (c *Settings) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+func (c *Settings) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
 			awsInstanceRoleKey:    c.AWSInstanceRole,
@@ -307,14 +298,24 @@ func NewSettings(filename string) (*Settings, error) {
 // GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
 // Use Settings() to get the cached settings object.
-func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
+func GetConfig() (*Settings, error) {
+	ctx, cancel := GetEnvironment().Context()
+	defer cancel()
+
+	return GetConfigContext(ctx)
+}
+
+// GetConfigContext returns the Evergreen config document. If no document is
+// present in the DB, it will return the defaults.
+// Use Settings() to get the cached settings object.
+func GetConfigContext(ctx context.Context) (*Settings, error) { return BootstrapConfig(ctx) }
 
 // Bootstrap config gets a config from the database defined in the environment.
-func BootstrapConfig(env Environment) (*Settings, error) {
+func BootstrapConfig(ctx context.Context) (*Settings, error) {
 	config := &Settings{}
 
 	// retrieve the root config document
-	if err := config.Get(env); err != nil {
+	if err := config.Get(ctx); err != nil {
 		return nil, err
 	}
 
@@ -339,7 +340,7 @@ func BootstrapConfig(env Environment) (*Settings, error) {
 		}
 
 		// retrieve the section's document from the db
-		if err := section.Get(env); err != nil {
+		if err := section.Get(ctx); err != nil {
 			catcher.Add(errors.Wrapf(err, "populating section '%s'", sectionId))
 			continue
 		}
@@ -361,10 +362,18 @@ func BootstrapConfig(env Environment) (*Settings, error) {
 
 }
 
-// UpdateConfig updates all evergreen settings documents in DB
+// UpdateConfig updates all evergreen settings documents in the DB.
 func UpdateConfig(config *Settings) error {
+	ctx, cancel := GetEnvironment().Context()
+	defer cancel()
+
+	return UpdateConfigContext(ctx, config)
+}
+
+// UpdateConfigContext updates all evergreen settings documents in the DB.
+func UpdateConfigContext(ctx context.Context, config *Settings) error {
 	// update the root config document
-	if err := config.Set(); err != nil {
+	if err := config.Set(ctx); err != nil {
 		return err
 	}
 
@@ -398,7 +407,7 @@ func UpdateConfig(config *Settings) error {
 			continue
 		}
 
-		catcher.Add(section.Set())
+		catcher.Add(section.Set(ctx))
 	}
 
 	return errors.WithStack(catcher.Resolve())
@@ -731,13 +740,6 @@ func splitToken(oauthString string) (string, error) {
 		return "", errors.New("token format was invalid, expected 'token [token]'")
 	}
 	return splitToken[1], nil
-}
-func GetServiceFlags() (*ServiceFlags, error) {
-	flags := &ServiceFlags{}
-	if err := flags.Get(GetEnvironment()); err != nil {
-		return nil, errors.Wrapf(err, "getting section '%s'", flags.SectionId())
-	}
-	return flags, nil
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

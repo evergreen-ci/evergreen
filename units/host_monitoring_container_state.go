@@ -65,7 +65,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 
 	var err error
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		j.AddError(err)
 		if j.host == nil {
 			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
@@ -83,7 +83,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	}
 
 	// get containers on parent
-	containersFromDB, err := j.host.GetContainers()
+	containersFromDB, err := j.host.GetContainers(ctx)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding containers on parent host '%s'", j.HostID))
 		return
@@ -119,7 +119,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 			if !container.SpawnOptions.SpawnedByTask && !isRunningInDocker[container.Id] {
 				if err := containerMgr.TerminateInstance(ctx, &container, evergreen.User, "container is not actually running"); err != nil {
 					j.AddError(errors.Wrap(err, "terminating Docker instance"))
-					j.AddError(container.SetTerminated(evergreen.User, "container is not actually running"))
+					j.AddError(container.SetTerminated(ctx, evergreen.User, "container is not actually running"))
 				}
 			}
 		}

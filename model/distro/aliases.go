@@ -1,15 +1,18 @@
 package distro
 
 import (
+	"context"
 	"sort"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func FindApplicableDistroIDs(id string) ([]string, error) {
-	d, err := FindOne(ById(id).WithFields(AliasesKey))
+func FindApplicableDistroIDs(ctx context.Context, id string) ([]string, error) {
+	d, err := FindOne(ctx, ById(id), options.FindOne().SetProjection(bson.M{AliasesKey: 1}))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -52,8 +55,8 @@ func (ps byPoolSize) Less(i, j int) bool {
 
 type AliasLookupTable map[string][]string
 
-func NewDistroAliasesLookupTable() (AliasLookupTable, error) {
-	all, err := FindAll()
+func NewDistroAliasesLookupTable(ctx context.Context) (AliasLookupTable, error) {
+	all, err := AllDistros(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all distros")
 	}

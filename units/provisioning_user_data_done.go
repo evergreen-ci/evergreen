@@ -89,7 +89,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if err := j.populateIfUnset(); err != nil {
+	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -128,7 +128,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				"job":     j.ID(),
 			}))
 			j.AddError(err)
-			j.AddError(j.host.SetStatus(evergreen.HostProvisionFailed, evergreen.User, "decommissioning host after failing to mount volume"))
+			j.AddError(j.host.SetStatus(ctx, evergreen.HostProvisionFailed, evergreen.User, "decommissioning host after failing to mount volume"))
 
 			terminateJob := NewHostTerminationJob(j.env, j.host, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -155,11 +155,11 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host)))
 	}
 
-	j.finishJob()
+	j.finishJob(ctx)
 }
 
-func (j *userDataDoneJob) finishJob() {
-	if err := j.host.SetUserDataHostProvisioned(); err != nil {
+func (j *userDataDoneJob) finishJob(ctx context.Context) {
+	if err := j.host.SetUserDataHostProvisioned(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host that has finished running user data as done provisioning",
 			"host_id": j.host.Id,
@@ -171,9 +171,9 @@ func (j *userDataDoneJob) finishJob() {
 	}
 }
 
-func (j *userDataDoneJob) populateIfUnset() error {
+func (j *userDataDoneJob) populateIfUnset(ctx context.Context) error {
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}

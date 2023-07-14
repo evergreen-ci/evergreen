@@ -1250,10 +1250,10 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
-func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
+func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (int, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return 0, errors.WithStack(err)
 	}
 
@@ -2646,22 +2646,22 @@ func (t *Task) SetResetFailedWhenFinished() error {
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro
 // primary queue.
-func FindHostSchedulable(distroID string) ([]Task, error) {
+func FindHostSchedulable(ctx context.Context, distroID string) ([]Task, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	return Find(query)
 }
 
-func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
+func addApplicableDistroFilter(ctx context.Context, id string, fieldName string, query bson.M) error {
 	if id == "" {
 		return nil
 	}
 
-	aliases, err := distro.FindApplicableDistroIDs(id)
+	aliases, err := distro.FindApplicableDistroIDs(ctx, id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -2677,10 +2677,10 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 
 // FindHostSchedulableForAlias finds all tasks that can be scheduled for a
 // distro secondary queue.
-func FindHostSchedulableForAlias(id string) ([]Task, error) {
+func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error) {
 	q := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(id, SecondaryDistrosKey, q); err != nil {
+	if err := addApplicableDistroFilter(ctx, id, SecondaryDistrosKey, q); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

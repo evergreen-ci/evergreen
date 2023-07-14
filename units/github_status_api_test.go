@@ -27,6 +27,7 @@ type githubStatusUpdateSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
 	buildDoc *build.Build
+	ctx      context.Context
 	cancel   context.CancelFunc
 
 	suite.Suite
@@ -37,17 +38,15 @@ func TestGithubStatusUpdate(t *testing.T) {
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.NoError(db.ClearCollections(patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
 	uiConfig := evergreen.UIConfig{}
 	uiConfig.Url = "https://example.com"
-	s.Require().NoError(uiConfig.Set())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
+	s.Require().NoError(uiConfig.Set(s.ctx))
 
 	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(ctx))
+	s.Require().NoError(s.env.Configure(s.ctx))
 
 	startTime := time.Now().Truncate(time.Millisecond)
 	id := mgobson.NewObjectId()
@@ -228,16 +227,16 @@ func (s *githubStatusUpdateSuite) TestPreamble() {
 	j := makeGithubStatusUpdateJob()
 	j.env = s.env
 	s.Require().NotNil(j)
-	s.NoError(j.preamble())
+	s.NoError(j.preamble(s.ctx))
 	s.NotNil(j.env)
 	s.NotEmpty(j.urlBase)
 	s.NotNil(j.sender)
 	s.Equal(s.env, j.env)
 
 	uiConfig := evergreen.UIConfig{}
-	s.NoError(uiConfig.Set())
+	s.NoError(uiConfig.Set(s.ctx))
 
-	s.EqualError(j.preamble(), "UI URL is empty")
+	s.EqualError(j.preamble(s.ctx), "UI URL is empty")
 }
 
 func (s *githubStatusUpdateSuite) TestWithGithub() {

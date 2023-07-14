@@ -95,7 +95,7 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (int, err
 	if hostId == "" {
 		return http.StatusBadRequest, errors.New("must specify host ID")
 	}
-	h, err := host.FindOneId(hostId)
+	h, err := host.FindOneId(ctx, hostId)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "getting host '%s'", vol.Host)
 	}
@@ -130,7 +130,7 @@ func DetachVolume(ctx context.Context, volumeId string) (int, error) {
 	if vol.Host == "" {
 		return http.StatusBadRequest, errors.Errorf("volume '%s' is not attached", vol.ID)
 	}
-	h, err := host.FindOneId(vol.Host)
+	h, err := host.FindOneId(ctx, vol.Host)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "can't get host '%s' for volume '%s'", vol.Host, vol.ID)
 	}

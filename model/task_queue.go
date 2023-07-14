@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -186,9 +187,9 @@ func (tq *TaskQueue) NextTask() *TaskQueueItem {
 }
 
 // shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
-func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
+func shouldRunTaskGroup(ctx context.Context, taskId string, spec TaskSpec) bool {
 	// Get number of hosts running this spec.
-	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
+	numHosts, err := host.NumHostsByTaskSpec(ctx, spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "error finding hosts for spec",
@@ -244,7 +245,7 @@ func (tq *TaskQueue) Save() error {
 	return updateTaskQueue(tq.Distro, tq.Queue, tq.DistroQueueInfo)
 }
 
-func (tq *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
+func (tq *TaskQueue) FindNextTask(ctx context.Context, spec TaskSpec) (*TaskQueueItem, []string) {
 	if tq.Length() == 0 {
 		return nil, nil
 	}
@@ -295,7 +296,7 @@ func (tq *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
 			Version:       it.Version,
 			GroupMaxHosts: it.GroupMaxHosts,
 		}
-		if shouldRun := shouldRunTaskGroup(it.Id, spec); shouldRun {
+		if shouldRun := shouldRunTaskGroup(ctx, it.Id, spec); shouldRun {
 			return &it, nil
 		}
 	}

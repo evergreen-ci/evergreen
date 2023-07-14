@@ -529,7 +529,7 @@ func TestGenerateTasks(t *testing.T) {
 		},
 	}
 	for _, d := range sampleDistros {
-		require.NoError(d.Insert())
+		require.NoError(d.Insert(ctx))
 	}
 	require.NoError(sampleTask.Insert())
 	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
@@ -764,6 +764,9 @@ func TestParseProjects(t *testing.T) {
 }
 
 func TestGenerateSkipsInvalidDependency(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var sampleBaseProject = `
 tasks:
   - name: generator
@@ -853,7 +856,7 @@ buildvariants:
 	require.NoError(sampleParserProject.Insert())
 
 	for _, d := range sampleDistros {
-		require.NoError(d.Insert())
+		require.NoError(d.Insert(ctx))
 	}
 	require.NoError(sampleTask.Insert())
 	projectRef := model.ProjectRef{Id: "mci"}

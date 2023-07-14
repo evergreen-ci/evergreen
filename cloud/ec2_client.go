@@ -934,7 +934,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 	}
 
 	// Push instance tag changes to database
-	if err := h.SetTags(); err != nil {
+	if err := h.SetTags(ctx); err != nil {
 		return errors.Wrap(err, "updating instance tags in the database")
 	}
 
@@ -964,7 +964,7 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 		if err != nil {
 			return nil, errors.Wrap(err, "getting devices")
 		}
-		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
+		if err := h.SetVolumes(ctx, makeVolumeAttachments(devices)); err != nil {
 			return nil, errors.Wrap(err, "saving host volumes")
 		}
 	}
@@ -1362,7 +1362,7 @@ func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 		if err != nil {
 			return nil, errors.Wrap(err, "getting devices")
 		}
-		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
+		if err := h.SetVolumes(ctx, makeVolumeAttachments(devices)); err != nil {
 			return nil, errors.Wrap(err, "setting host volumes")
 		}
 	}
