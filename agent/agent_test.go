@@ -248,7 +248,7 @@ func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 		resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 		s.Equal(&apimodels.EndTaskResponse{}, resp)
 		s.NoError(err)
-		s.NoError(s.tc.logger.Flush(s.ctx))
+		s.NoError(s.tc.logger.Close())
 
 		s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "normal task completion should record the task status")
 		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -264,7 +264,7 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
-	s.NoError(s.tc.logger.Flush(s.ctx))
+	s.NoError(s.tc.logger.Close())
 
 	s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{"Running post-task commands"})
