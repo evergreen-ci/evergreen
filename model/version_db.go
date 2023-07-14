@@ -407,33 +407,27 @@ func FindProjectForVersion(versionID string) (string, error) {
 	return v.Identifier, nil
 }
 
-// FindBaseVersionIDForVersion finds the base version ID for a given version ID. If the version is a patch, it will
-// return the base version ID. If the version is a mainline commit, it will return the previous version ID for the last run mainline commit.
-func FindBaseVersionIDForVersion(versionID string) (string, error) {
+// FindBaseVersionForVersion finds the base version  for a given version ID. If the version is a patch, it will
+// return the base version. If the version is a mainline commit, it will return the previously run mainline commit.
+func FindBaseVersionForVersion(versionID string) (*Version, error) {
 	v, err := VersionFindOne(VersionById(versionID))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if v == nil {
-		return "", errors.New("version not found")
+		return nil, errors.New("version not found")
 	}
-	baseVersionID := ""
 	if evergreen.IsPatchRequester(v.Requester) {
 		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
 		if err != nil {
-			return "", errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}
-		if baseVersion != nil {
-			baseVersionID = baseVersion.Id
-		}
+		return baseVersion, nil
 	} else {
 		previousVersion, err := VersionFindOne(VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Identifier), v.RevisionOrderNumber-1))
 		if err != nil {
-			return "", errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}
-		if previousVersion != nil {
-			baseVersionID = previousVersion.Id
-		}
+		return previousVersion, nil
 	}
-	return baseVersionID, nil
 }
