@@ -763,10 +763,18 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 // getProjectIdFromArgs extracts a project ID from the requireProjectAccess directive args.
 func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
 	if id, hasId := args["id"].(string); hasId {
-		return id, nil
+		pid, err := model.GetIdForProject(id)
+		if err != nil {
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+		}
+		return pid, nil
 	}
 	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-		return projectId, nil
+		pid, err := model.GetIdForProject(projectId)
+		if err != nil {
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+		}
+		return pid, nil
 	}
 	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
 		pid, err := model.GetIdForProject(identifier)
