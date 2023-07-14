@@ -54,6 +54,16 @@ type DisplayTask struct {
 	Name      string   `json:"Name"`
 }
 
+type DistroPermissions struct {
+	Admin bool `json:"admin"`
+	Edit  bool `json:"edit"`
+	View  bool `json:"view"`
+}
+
+type DistroPermissionsOptions struct {
+	DistroID string `json:"distroId"`
+}
+
 // EditSpawnHostInput is the input to the editSpawnHost mutation.
 // Its fields determine how a given host will be modified.
 type EditSpawnHostInput struct {
@@ -194,8 +204,10 @@ type PatchesInput struct {
 }
 
 type Permissions struct {
-	CanCreateProject bool   `json:"canCreateProject"`
-	UserID           string `json:"userId"`
+	CanCreateDistro   bool               `json:"canCreateDistro"`
+	CanCreateProject  bool               `json:"canCreateProject"`
+	DistroPermissions *DistroPermissions `json:"distroPermissions"`
+	UserID            string             `json:"userId"`
 }
 
 // PodEvents is the return value for the events query.

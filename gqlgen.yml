@@ -173,7 +173,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
   Permissions:
     fields:
+      canCreateDistro:
+        resolver: true
       canCreateProject:
+        resolver: true
+      distroPermissions:
         resolver: true
   PlannerSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
