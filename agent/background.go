@@ -23,12 +23,25 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
 
-	var hasSentHeartbeat bool
+	var hasSentAbort bool
 	for {
 		select {
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
-			if hasSentHeartbeat {
+			if err != nil {
+				failures++
+			} else {
+				failures = 0
+			}
+			if hasSentAbort {
+				// Once abort has been received and passed along to the task
+				// running in the foreground, the heartbeat should continue to
+				// signal to the app server that post tasks are still running.
+				// This is a best-effort attempt, since there's no graceful way
+				// to handle heartbeat failures when abort was already sent.
+				if failures == maxHeartbeats {
+					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted, task is at risk of timing out if it runs for much longer.")
+				}
 				continue
 			}
 			if signalBeat == client.TaskConflict {
@@ -37,25 +50,22 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 					tc.logger.Task().Error(err.Error())
 				}
 				cancel()
+				continue
 			}
 			if signalBeat == evergreen.TaskFailed {
 				tc.logger.Task().Error("Heartbeat received signal to abort task.")
 				heartbeat <- signalBeat
-				hasSentHeartbeat = true
-			}
-			if err != nil {
-				failures++
-			} else {
-				failures = 0
+				hasSentAbort = true
+				continue
 			}
 			if failures == maxHeartbeats {
 				// Presumably this won't work, but we should try to notify the user anyway
 				tc.logger.Task().Error("Hit max heartbeat attempts, aborting task.")
 				heartbeat <- evergreen.TaskFailed
-				hasSentHeartbeat = true
+				hasSentAbort = true
 			}
 		case <-ctx.Done():
-			if !hasSentHeartbeat {
+			if !hasSentAbort {
 				heartbeat <- evergreen.TaskFailed
 			}
 			return
