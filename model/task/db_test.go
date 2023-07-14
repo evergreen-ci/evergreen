@@ -957,6 +957,7 @@ func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 		Id:            "inactiveTask",
 		Version:       "v1",
 		ActivatedTime: utility.ZeroTime,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
 	assert.NoError(t, inactiveTask.Insert())
@@ -978,22 +979,25 @@ func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 func TestGetTasksByVersionAnnotations(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
-		Id:        "t1",
-		Version:   "v1",
-		Execution: 2,
-		Status:    evergreen.TaskSucceeded,
+		Id:            "t1",
+		Version:       "v1",
+		Execution:     2,
+		Status:        evergreen.TaskSucceeded,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t2 := Task{
-		Id:        "t2",
-		Version:   "v1",
-		Execution: 3,
-		Status:    evergreen.TaskFailed,
+		Id:            "t2",
+		Version:       "v1",
+		Execution:     3,
+		Status:        evergreen.TaskFailed,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t3 := Task{
-		Id:        "t3",
-		Version:   "v1",
-		Execution: 1,
-		Status:    evergreen.TaskFailed,
+		Id:            "t3",
+		Version:       "v1",
+		Execution:     1,
+		Status:        evergreen.TaskFailed,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
 
