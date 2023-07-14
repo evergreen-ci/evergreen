@@ -579,7 +579,11 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 // and uses that id to create an installation token.
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	if owner == "" || repo == "" {
-		return "", errors.New("owner and repo not specified")
+		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "no owner repo",
+			"ticket":  "EVG-19966",
+		})
 	}
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
