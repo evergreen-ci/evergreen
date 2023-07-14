@@ -154,13 +154,12 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	// kim: TODO: should wait for EVG-20286 since it improves checkMockLogs.
-	checkMockLogs(s.T(), s.mockCommunicator, taskID,
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
 		"Task completed - FAILURE.",
 		"Hit exec timeout (1s).",
 		"Running task-timeout commands.",
 		"Finished 'shell.exec' in block 'timeout'",
-	)
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -206,13 +205,12 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	// kim: TODO: should wait for EVG-20286 since it improves checkMockLogs.
-	checkMockLogs(s.T(), s.mockCommunicator, taskID,
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
 		"Task completed - FAILURE.",
 		"Hit idle timeout (no message on stdout for more than 1s).",
 		"Running task-timeout commands.",
 		"Finished 'shell.exec' in block 'timeout'.",
-	)
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -258,13 +256,12 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	// kim: TODO: should wait for EVG-20286 since it improves checkMockLogs.
-	checkMockLogs(s.T(), s.mockCommunicator, taskID,
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
 		"Task completed - FAILURE.",
 		"Hit idle timeout (no message on stdout for more than 1s).",
 		"Running task-timeout commands.",
 		"Finished 'shell.exec' in block 'timeout'.",
-	)
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -310,12 +307,11 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	// kim: TODO: should wait for EVG-20286 since it improves checkMockLogs.
-	checkMockLogs(s.T(), s.mockCommunicator, taskID,
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
 		"Hit idle timeout (no message on stdout for more than 2s).",
 		"Running task-timeout commands.",
 		"Finished 'shell.exec' in block 'timeout'.",
-	)
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
