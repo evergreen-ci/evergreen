@@ -123,6 +123,24 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 	return true, nil
 }
 
+// CopyDistro is the resolver for the copyDistro field.
+func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	if err := data.CopyDistro(ctx, usr, opts); err != nil {
+
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("copying distro: %s", err.Error()))
+	}
+
+	return &NewDistroPayload{
+		NewDistroID: opts.NewDistroId,
+	}, nil
+}
+
 // ReprovisionToNew is the resolver for the reprovisionToNew field.
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)

@@ -160,6 +160,11 @@ type MoveProjectInput struct {
 	ProjectID string `json:"projectId"`
 }
 
+// Return type representing whether a distro was created and any validation errors
+type NewDistroPayload struct {
+	NewDistroID string `json:"newDistroId"`
+}
+
 // PatchConfigure is the input to the schedulePatch mutation.
 // It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 type PatchConfigure struct {

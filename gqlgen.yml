@@ -50,6 +50,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   CommitQueueParamsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  CopyDistroInput:
+    model: github.com/evergreen-ci/evergreen/rest/data.CopyDistroOpts
   CopyProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
   CreateProjectInput:
