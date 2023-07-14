@@ -16,7 +16,7 @@
         "data": null,
         "errors": [
           {
-            "message": "Could not find project with projectId: repo_id",
+            "message": "Could not find project with projectId: nonexistent",
             "path": [
               "detachProjectFromRepo",
               "projectId"

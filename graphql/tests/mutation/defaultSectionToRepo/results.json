@@ -18,7 +18,8 @@
           {
             "message": "Could not find project with projectId: repo_id",
             "path": [
-              "defaultSectionToRepo"
+              "defaultSectionToRepo",
+              "projectId"
             ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
