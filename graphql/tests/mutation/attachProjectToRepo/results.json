@@ -22,7 +22,7 @@
               "projectId"
             ],
             "extensions": {
-              "code": "FORBIDDEN"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]
