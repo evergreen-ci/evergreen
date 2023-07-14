@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"fmt"
 	"text/template"
 
@@ -28,12 +29,8 @@ type JIRANotificationsCustomField struct {
 
 func (c *JIRANotificationsConfig) SectionId() string { return "jira_notifications" }
 
-func (c *JIRANotificationsConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *JIRANotificationsConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = JIRANotificationsConfig{}
@@ -42,20 +39,15 @@ func (c *JIRANotificationsConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
 }
 
-func (c *JIRANotificationsConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.ReplaceOne(ctx, byId(c.SectionId()), c, options.Replace().SetUpsert(true))
+func (c *JIRANotificationsConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).ReplaceOne(ctx, byId(c.SectionId()), c, options.Replace().SetUpsert(true))
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 

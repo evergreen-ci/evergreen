@@ -57,23 +57,18 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "Distro not specified")
 		}
 
-		opts := gimlet.PermissionOpts{
-			Resource:     distroId,
-			ResourceType: evergreen.DistroResourceType,
-			Permission:   evergreen.PermissionDistroSettings,
-		}
-
+		var requiredLevel int
 		if access == DistroSettingsAccessAdmin {
-			opts.RequiredLevel = evergreen.DistroSettingsAdmin.Value
+			requiredLevel = evergreen.DistroSettingsAdmin.Value
 		} else if access == DistroSettingsAccessEdit {
-			opts.RequiredLevel = evergreen.DistroSettingsEdit.Value
+			requiredLevel = evergreen.DistroSettingsEdit.Value
 		} else if access == DistroSettingsAccessView {
-			opts.RequiredLevel = evergreen.DistroSettingsView.Value
+			requiredLevel = evergreen.DistroSettingsView.Value
 		} else {
 			return nil, Forbidden.Send(ctx, "Permission not specified")
 		}
 
-		if user.HasPermission(opts) {
+		if userHasDistroPermission(user, distroId, requiredLevel) {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access settings for the distro '%s'", user.Username(), distroId))

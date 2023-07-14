@@ -17,7 +17,7 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 	if obj.HostID == nil || *obj.HostID == "" {
 		return nil, nil
 	}
-	h, err := host.FindOneId(*obj.HostID)
+	h, err := host.FindOneId(ctx, *obj.HostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", *obj.HostID, err.Error()))
 	}

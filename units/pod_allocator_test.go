@@ -33,24 +33,24 @@ func TestPodAllocatorJob(t *testing.T) {
 	}()
 
 	var originalPodLifecycleConf evergreen.PodLifecycleConfig
-	require.NoError(t, originalPodLifecycleConf.Get(evergreen.GetEnvironment()))
+	require.NoError(t, originalPodLifecycleConf.Get(ctx))
 	originalFlags, err := evergreen.GetServiceFlags()
 	require.NoError(t, err)
 	// Since the tests depend on modifying the global environment, reset it to
 	// its initial state afterwards.
 	defer func() {
-		require.NoError(t, originalPodLifecycleConf.Set())
-		require.NoError(t, originalFlags.Set())
+		require.NoError(t, originalPodLifecycleConf.Set(ctx))
+		require.NoError(t, originalFlags.Set(ctx))
 	}()
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
 	env.EvergreenSettings.ServiceFlags.PodAllocatorDisabled = false
-	require.NoError(t, env.EvergreenSettings.ServiceFlags.Set())
+	require.NoError(t, env.EvergreenSettings.ServiceFlags.Set(ctx))
 	env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 10
-	require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
-	require.NoError(t, env.EvergreenSettings.Providers.Set())
+	require.NoError(t, env.EvergreenSettings.PodLifecycle.Set(ctx))
+	require.NoError(t, env.EvergreenSettings.Providers.Set(ctx))
 
 	// Pod allocation uses a multi-document transaction, which requires the
 	// collections to exist first before any documents can be inserted.
@@ -202,10 +202,10 @@ func TestPodAllocatorJob(t *testing.T) {
 		"RunNoopsWhenPodAllocationIsDisabled": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
 			originalFlags := env.EvergreenSettings.ServiceFlags
 			defer func() {
-				assert.NoError(t, originalFlags.Set())
+				assert.NoError(t, originalFlags.Set(ctx))
 			}()
 			env.EvergreenSettings.ServiceFlags.PodAllocatorDisabled = true
-			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set())
+			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set(ctx))
 
 			require.NoError(t, tsk.Insert())
 
@@ -220,10 +220,10 @@ func TestPodAllocatorJob(t *testing.T) {
 		"RunNoopsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
 			originalPodLifecycle := env.EvergreenSettings.PodLifecycle
 			defer func() {
-				assert.NoError(t, originalPodLifecycle.Set())
+				assert.NoError(t, originalPodLifecycle.Set(ctx))
 			}()
 			env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 1
-			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
+			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set(ctx))
 
 			initializing := getInitializingPod(t)
 			require.NoError(t, initializing.Insert())
@@ -305,7 +305,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			env.EvergreenSettings.Providers.AWS.Pod.ECS.AllowedImages = []string{
 				"rhel",
 			}
-			require.NoError(t, env.EvergreenSettings.Providers.Set())
+			require.NoError(t, env.EvergreenSettings.Providers.Set(tctx))
 			tCase(tctx, t, allocatorJob, mv, tsk, pRef)
 		})
 	}
@@ -332,14 +332,14 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 	}()
 
 	var originalPodLifecycleConf evergreen.PodLifecycleConfig
-	require.NoError(t, originalPodLifecycleConf.Get(evergreen.GetEnvironment()))
+	require.NoError(t, originalPodLifecycleConf.Get(ctx))
 	originalFlags, err := evergreen.GetServiceFlags()
 	require.NoError(t, err)
 	// Since the tests depend on modifying the global environment, reset it to
 	// its initial state afterwards.
 	defer func() {
-		require.NoError(t, originalPodLifecycleConf.Set())
-		require.NoError(t, originalFlags.Set())
+		require.NoError(t, originalPodLifecycleConf.Set(ctx))
+		require.NoError(t, originalFlags.Set(ctx))
 	}()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
@@ -374,10 +374,10 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 		"StopsEnqueueingJobsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			originalPodLifecycleConf := env.EvergreenSettings.PodLifecycle
 			defer func() {
-				require.NoError(t, originalPodLifecycleConf.Set())
+				require.NoError(t, originalPodLifecycleConf.Set(ctx))
 			}()
 			env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 1
-			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
+			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set(ctx))
 
 			initializing := getInitializingPod(t)
 			require.NoError(t, initializing.Insert())
@@ -395,10 +395,10 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 		"DoesNotEnqueueJobsWhenDisabled": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			originalFlags := env.EvergreenSettings.ServiceFlags
 			defer func() {
-				assert.NoError(t, originalFlags.Set())
+				assert.NoError(t, originalFlags.Set(ctx))
 			}()
 			env.EvergreenSettings.ServiceFlags.PodAllocatorDisabled = true
-			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set())
+			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set(ctx))
 
 			ref := getProjectRef()
 			require.NoError(t, ref.Insert())
@@ -419,9 +419,9 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			require.NoError(t, env.Configure(tctx))
 
 			env.EvergreenSettings.ServiceFlags.PodAllocatorDisabled = false
-			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set())
+			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set(tctx))
 			env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 100
-			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
+			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set(tctx))
 
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection))
 

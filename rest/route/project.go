@@ -1021,7 +1021,7 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 	for _, v := range versions {
 		versionIds = append(versionIds, v.Id)
 	}
-	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
+	if err = dbModel.SetVersionsPriority(ctx, versionIds, priority, user.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
@@ -1076,7 +1076,7 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := data.GetProjectTasksWithOptions(h.projectName, h.taskName, h.opts)
+	versions, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, h.opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s' and task '%s'", h.projectName, h.taskName))
 	}

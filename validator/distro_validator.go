@@ -49,7 +49,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	var allDistroIDs, allDistroAliases []string
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		allDistroIDs, allDistroAliases, err = getDistros()
+		allDistroIDs, allDistroAliases, err = getDistros(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +366,7 @@ func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergree
 			return ValidationErrors{{Error, "distro container pool does not exist"}}
 		}
 		// warn if container pool exists without valid distro
-		err := distro.ValidateContainerPoolDistros(s)
+		err := distro.ValidateContainerPoolDistros(ctx, s)
 		if err != nil {
 			return ValidationErrors{{Error, "error in container pool settings: " + err.Error()}}
 		}

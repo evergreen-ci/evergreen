@@ -2250,6 +2250,9 @@ tasks:
 }
 
 func TestCheckProjectWarnings(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When validating a project's semantics", t, func() {
 		Convey("if the project passes all of the validation funcs, no errors"+
 			" should be returned", func() {
@@ -2259,7 +2262,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 			}
 
 			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
+				So(d.Insert(ctx), ShouldBeNil)
 			}
 
 			projectRef := &model.ProjectRef{
@@ -2757,11 +2760,14 @@ task_groups:
 }
 
 func TestTaskNotInTaskGroupDependsOnTaskInTaskGroup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 exec_timeout_secs: 100
 tasks:
@@ -2800,7 +2806,6 @@ buildvariants:
   - name: example_task_group
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
@@ -2811,18 +2816,21 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	errors := CheckProjectErrors(&proj, false)
+	errors := CheckProjectErrors(ctx, &proj, false)
 	assert.Len(errors, 0)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Len(warnings, 0)
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 tasks:
 - name: one
@@ -2858,7 +2866,6 @@ buildvariants:
     - two
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
@@ -2867,7 +2874,7 @@ buildvariants:
 	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
 
-	errors := CheckProjectErrors(&proj, false)
+	errors := CheckProjectErrors(ctx, &proj, false)
 	assert.Len(errors, 1)
 	assert.Equal(errors[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
@@ -3066,11 +3073,14 @@ tasks:
 }
 
 func TestCheckProjectConfigurationIsValid(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 tasks:
 - name: one
@@ -3100,16 +3110,15 @@ buildvariants:
   - name: two
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
-	errs := CheckProjectErrors(&proj, false)
+	errs := CheckProjectErrors(ctx, &proj, false)
 	assert.Len(errs, 0, "no errors were found")
 	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")
-	assert.NoError(CheckProjectConfigurationIsValid(&evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
+	assert.NoError(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 
 	exampleYml = `
 tasks:
@@ -3128,10 +3137,13 @@ buildvariants:
 	require.NoError(err)
 	assert.NotNil(pp)
 	assert.NotEmpty(proj)
-	assert.Error(CheckProjectConfigurationIsValid(&evergreen.Settings{}, &proj, &model.ProjectRef{}))
+	assert.Error(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}))
 }
 
 func TestGetDistrosForProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
@@ -3140,32 +3152,32 @@ func TestGetDistrosForProject(t *testing.T) {
 		Aliases:       []string{"distro1-alias", "distro1and2-alias"},
 		ValidProjects: []string{"project1", "project2"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	d = distro.Distro{
 		Id:      "distro2",
 		Aliases: []string{"distro2-alias", "distro1and2-alias"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	d = distro.Distro{
 		Id:            "distro3",
 		ValidProjects: []string{"project5"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
-	ids, aliases, err := getDistros()
+	ids, aliases, err := getDistros(ctx)
 	require.NoError(err)
 	require.Len(ids, 3)
 	require.Len(aliases, 3)
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
 	assert.Contains(aliases, "distro2-alias")
-	ids, aliases, err = getDistrosForProject("project1")
+	ids, aliases, err = getDistrosForProject(ctx, "project1")
 	require.NoError(err)
 	require.Len(ids, 2)
 	assert.Contains(ids, "distro1")
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
-	ids, aliases, err = getDistrosForProject("project3")
+	ids, aliases, err = getDistrosForProject(ctx, "project3")
 	require.NoError(err)
 	require.Len(ids, 1)
 	assert.Contains(ids, "distro2")

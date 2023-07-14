@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,12 +34,8 @@ type SchedulerConfig struct {
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
 
-func (c *SchedulerConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *SchedulerConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = SchedulerConfig{}
@@ -46,20 +44,15 @@ func (c *SchedulerConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
 }
 
-func (c *SchedulerConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+func (c *SchedulerConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"task_finder":                       c.TaskFinder,
 			"host_allocator":                    c.HostAllocator,

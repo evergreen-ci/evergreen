@@ -1,13 +1,16 @@
 package distro
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -74,108 +77,120 @@ var (
 
 const Collection = "distro"
 
-// All is a query that returns all distros.
-var All = db.Query(nil).Sort([]string{IdKey})
-
-// FindOne gets one Distro for the given query.
-func FindOne(query db.Q) (*Distro, error) {
-	d := &Distro{}
-	err := db.FindOneQ(Collection, query, d)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return d, err
-}
-
 // FindOneId returns one Distro by Id.
-func FindOneId(id string) (*Distro, error) {
-	return FindOne(ById(id))
+func FindOneId(ctx context.Context, id string) (*Distro, error) {
+	return FindOne(ctx, ById(id))
 }
 
-// Find gets every Distro matching the given query.
-func Find(query db.Q) ([]Distro, error) {
-	distros := []Distro{}
-	err := db.FindAllQ(Collection, query, &distros)
-	return distros, err
+func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
+	if err := res.Err(); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(res.Err(), "finding distro")
+	}
+	d := &Distro{}
+	if err := res.Decode(&d); err != nil {
+		return nil, errors.Wrap(err, "decoding distro")
+	}
+
+	return d, nil
 }
 
-func FindAll() ([]Distro, error) {
-	return Find(db.Query(nil))
+func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Distro, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding distros")
+	}
+	var distros []Distro
+	if err := cur.All(ctx, &distros); err != nil {
+		return nil, errors.Wrap(err, "decoding distros")
+	}
+
+	return distros, nil
 }
 
 // Insert writes the distro to the database.
-func (d *Distro) Insert() error {
-	return db.Insert(Collection, d)
+func (d *Distro) Insert(ctx context.Context) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, d)
+	return errors.Wrap(err, "inserting distro")
 }
 
-// Update updates one distro.
-func (d *Distro) Update() error {
-	return db.UpdateId(Collection, d.Id, d)
+// ReplaceOne replaces one distro.
+func (d *Distro) ReplaceOne(ctx context.Context) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).ReplaceOne(ctx, bson.M{IdKey: d.Id}, d)
+	if err != nil {
+		return errors.Wrapf(err, "updating distro ID '%s'", d.Id)
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	return nil
 }
 
 // Remove removes one distro.
-func Remove(id string) error {
-	return db.Remove(Collection, bson.M{IdKey: id})
+func Remove(ctx context.Context, ID string) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: ID})
+	if err != nil {
+		return errors.Wrapf(err, "deleting distro ID '%s'", ID)
+	}
+
+	return nil
 }
 
 // ById returns a query that contains an Id selector on the string, id.
-func ById(id string) db.Q {
-	return db.Query(bson.M{IdKey: id})
+func ById(id string) bson.M {
+	return bson.M{IdKey: id}
 }
 
 // ByProvider returns a query that contains a Provider selector on the string, p.
-func ByProvider(p string) db.Q {
-	return db.Query(bson.M{ProviderKey: p})
+func ByProvider(p string) bson.M {
+	return bson.M{ProviderKey: p}
 }
 
 // BySpawnAllowed returns a query that contains the SpawnAllowed selector.
-func BySpawnAllowed() db.Q {
-	return db.Query(bson.M{SpawnAllowedKey: true})
+func BySpawnAllowed() bson.M {
+	return bson.M{SpawnAllowedKey: true}
 }
 
 // ByNeedsPlanning returns a query that selects only active or static distros that don't run containers
-func ByNeedsPlanning(containerPools []evergreen.ContainerPool) db.Q {
+func ByNeedsPlanning(containerPools []evergreen.ContainerPool) bson.M {
 	poolDistros := []string{}
 	for _, pool := range containerPools {
 		poolDistros = append(poolDistros, pool.Distro)
 	}
-	return db.Query(bson.M{
+	return bson.M{
 		"_id": bson.M{
 			"$nin": poolDistros,
 		},
 		"$or": []bson.M{
-			bson.M{DisabledKey: bson.M{"$exists": false}},
-			bson.M{ProviderKey: evergreen.HostTypeStatic},
-		}})
+			{DisabledKey: bson.M{"$exists": false}},
+			{ProviderKey: evergreen.HostTypeStatic},
+		}}
 }
 
 // ByNeedsHostsPlanning returns a query that selects distros that don't run containers
-func ByNeedsHostsPlanning(containerPools []evergreen.ContainerPool) db.Q {
+func ByNeedsHostsPlanning(containerPools []evergreen.ContainerPool) bson.M {
 	poolDistros := []string{}
 	for _, pool := range containerPools {
 		poolDistros = append(poolDistros, pool.Distro)
 	}
-	return db.Query(bson.M{
+	return bson.M{
 		"_id": bson.M{
 			"$nin": poolDistros,
-		}})
-}
-
-// ByIsDisabled returns a query that selects distros that are disabled
-func ByIsDisabled(containerPools []evergreen.ContainerPool) db.Q {
-	return db.Query(bson.M{
-		DisabledKey: true,
-	})
+		}}
 }
 
 // ByIds creates a query that finds all distros for the given ids and implicitly
 // returns them ordered by {"_id": 1}
-func ByIds(ids []string) db.Q {
-	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
+func ByIds(ids []string) bson.M {
+	return bson.M{IdKey: bson.M{"$in": ids}}
 }
 
-func FindByIdWithDefaultSettings(id string) (*Distro, error) {
-	d, err := FindOneId(id)
+func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error) {
+	d, err := FindOneId(ctx, id)
 	if err != nil {
 		return d, errors.WithStack(err)
 	}

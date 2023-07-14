@@ -148,8 +148,9 @@ type ProjectBanner struct {
 }
 
 type ExternalLink struct {
-	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
+	DisplayName string   `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Requesters  []string `bson:"requesters,omitempty" json:"requesters,omitempty" yaml:"requesters,omitempty"`
+	URLTemplate string   `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
 type MergeQueue string

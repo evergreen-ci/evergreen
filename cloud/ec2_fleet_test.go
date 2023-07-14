@@ -21,6 +21,9 @@ import (
 )
 
 func TestFleet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var h *host.Host
 	var m *ec2FleetManager
 	for name, test := range map[string]func(*testing.T){
@@ -44,7 +47,7 @@ func TestFleet(t *testing.T) {
 			assert.Len(t, mockClient.DescribeInstancesInput.InstanceIds, 1)
 			assert.Equal(t, "h1", mockClient.DescribeInstancesInput.InstanceIds[0])
 
-			hDb, err := host.FindOneId("h1")
+			hDb, err := host.FindOneId(ctx, "h1")
 			assert.NoError(t, err)
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
@@ -54,7 +57,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, StatusRunning, status)
 
 			assert.Equal(t, "us-east-1a", h.Zone)
-			hDb, err := host.FindOneId("h1")
+			hDb, err := host.FindOneId(ctx, "h1")
 			assert.NoError(t, err)
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
@@ -84,7 +87,7 @@ func TestFleet(t *testing.T) {
 			assert.Len(t, mockClient.TerminateInstancesInput.InstanceIds, 1)
 			assert.Equal(t, "h1", mockClient.TerminateInstancesInput.InstanceIds[0])
 
-			hDb, err := host.FindOneId("h1")
+			hDb, err := host.FindOneId(ctx, "h1")
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, hDb.Status)
 		},
@@ -171,7 +174,7 @@ func TestFleet(t *testing.T) {
 		}
 
 		require.NoError(t, db.Clear(host.Collection))
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 		t.Run(name, test)
 	}
 }

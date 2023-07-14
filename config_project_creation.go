@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"context"
+
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -36,12 +38,8 @@ var (
 
 func (*ProjectCreationConfig) SectionId() string { return "project_creation" }
 
-func (c *ProjectCreationConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *ProjectCreationConfig) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = ProjectCreationConfig{}
@@ -50,19 +48,17 @@ func (c *ProjectCreationConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
 }
 
-func (c *ProjectCreationConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{"$set": c}, options.Update().SetUpsert(true))
+func (c *ProjectCreationConfig) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+		"$set": c,
+	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 

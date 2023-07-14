@@ -1,5 +1,17 @@
+input DistroPermissionsOptions {
+  distroId: String!
+}
+
+type DistroPermissions {
+  admin: Boolean!
+  edit: Boolean!
+  view: Boolean!
+}
+
 ###### TYPES ######
 type Permissions {
+  canCreateDistro: Boolean!
   canCreateProject: Boolean!
+  distroPermissions(options: DistroPermissionsOptions!): DistroPermissions!
   userId: String!
 }

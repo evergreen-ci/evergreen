@@ -72,7 +72,7 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
-	startingHostsByClient, err := host.StartingHostsByClient(settings.HostInit.CloudStatusBatchSize)
+	startingHostsByClient, err := host.StartingHostsByClient(ctx, settings.HostInit.CloudStatusBatchSize)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting starting hosts"))
 		return
@@ -156,7 +156,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 	instanceIDs := strings.Split(pieces[1], ",")
 	catcher := grip.NewBasicCatcher()
 	for _, hostID := range instanceIDs {
-		h, err := host.FindOneId(hostID)
+		h, err := host.FindOneId(ctx, hostID)
 		if err != nil {
 			catcher.Wrapf(err, "finding host '%s'", h.Id)
 			continue
@@ -227,14 +227,14 @@ func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) erro
 		// From the app server's perspective, it is done provisioning a user
 		// data host once the instance is running. The user data script will
 		// handle the rest of host provisioning.
-		return errors.Wrap(h.SetProvisionedNotRunning(), "marking host as provisioned but not yet running")
+		return errors.Wrap(h.SetProvisionedNotRunning(ctx), "marking host as provisioned but not yet running")
 	case distro.BootstrapMethodNone:
 		// A host created by a task goes through no further provisioning, so we
 		// can just set it as running.
-		return errors.Wrap(h.MarkAsProvisioned(), "marking host as running")
+		return errors.Wrap(h.MarkAsProvisioned(ctx), "marking host as running")
 	default:
 		// All other host types must be manually provisioned by the app server.
-		if err := h.SetProvisioning(); err != nil {
+		if err := h.SetProvisioning(ctx); err != nil {
 			return errors.Wrap(err, "marking host as provisioning")
 		}
 
@@ -308,8 +308,8 @@ func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.
 	event.LogHostTerminatedExternally(h.Id, h.Status)
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Wrap(handleTerminatedHostSpawnedByTask(h), "handling host.create host that was terminating before it was running")
-	catcher.Wrap(h.SetDecommissioned(evergreen.User, false, terminationReason), "decommissioning host")
+	catcher.Wrap(handleTerminatedHostSpawnedByTask(ctx, h), "handling host.create host that was terminating before it was running")
+	catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, terminationReason), "decommissioning host")
 	terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
 		TerminateIfBusy:          true,
 		TerminationReason:        terminationReason,

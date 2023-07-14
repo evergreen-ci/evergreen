@@ -1,6 +1,8 @@
 package trigger
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 )
@@ -12,7 +14,7 @@ type eventHandlerFactory func() eventHandler
 type eventHandler interface {
 	// Fetch retrieves the event's underlying document from the
 	// EventLogEntry
-	Fetch(*event.EventLogEntry) error
+	Fetch(context.Context, *event.EventLogEntry) error
 
 	// Attributes returns Attributes for this event
 	// suitable for matching with subscription filters.

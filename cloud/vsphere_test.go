@@ -94,14 +94,14 @@ func (s *VSphereSuite) TestTerminateInstanceAPICall() {
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
-	err = hostA.Insert()
+	err = hostA.Insert(ctx)
 	s.NoError(err)
 
 	hostB := host.NewIntent(s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
-	err = hostB.Insert()
+	err = hostB.Insert(ctx)
 	s.NoError(err)
 
 	mock, ok := s.client.(*vsphereClientMock)
@@ -120,13 +120,13 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 
 	// Spawn the instance - check the host is not terminated in DB.
 	myHost := host.NewIntent(s.hostOpts)
-	err := myHost.Insert()
+	err := myHost.Insert(ctx)
 	s.NoError(err)
 	myHost, err = s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
 
-	dbHost, err := host.FindOne(host.ById(myHost.Id))
+	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))
 	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 
@@ -134,7 +134,7 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.NoError(err)
 
-	dbHost, err = host.FindOne(host.ById(myHost.Id))
+	dbHost, err = host.FindOne(ctx, host.ById(myHost.Id))
 	s.Equal(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 

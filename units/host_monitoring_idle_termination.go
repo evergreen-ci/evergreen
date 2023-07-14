@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
@@ -76,7 +75,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	}
 
 	// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
-	distroHosts, err := host.IdleEphemeralGroupedByDistroID()
+	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, j.env)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding idle ephemeral hosts grouped by distro ID"))
 		return
@@ -86,7 +85,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	for _, info := range distroHosts {
 		distroIDsToFind = append(distroIDsToFind, info.DistroID)
 	}
-	distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
+	distrosFound, err := distro.Find(ctx, distro.ByIds(distroIDsToFind))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding distros"))
 		return
@@ -98,13 +97,13 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			distroIDsFound = append(distroIDsFound, d.Id)
 		}
 		missingDistroIDs := utility.GetSetDifference(distroIDsToFind, distroIDsFound)
-		hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
+		hosts, err := host.Find(ctx, host.ByDistroIDs(missingDistroIDs...))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding hosts in missing distros: %s", strings.Join(missingDistroIDs, ", ")))
 			return
 		}
 		for _, h := range hosts {
-			j.AddError(errors.Wrapf(h.SetDecommissioned(evergreen.User, false, "host's distro not found"), "could not set host '%s' as decommissioned", h.Id))
+			j.AddError(errors.Wrapf(h.SetDecommissioned(ctx, evergreen.User, false, "host's distro not found"), "could not set host '%s' as decommissioned", h.Id))
 		}
 
 		if j.HasErrors() {
@@ -163,7 +162,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 
 	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
 	if idleThreshold == 0 {
-		conf, err := evergreen.GetConfig()
+		conf, err := evergreen.GetConfigContext(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting evergreen configuration")
 		}

@@ -1,11 +1,11 @@
 package host
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -21,7 +21,7 @@ import (
 //
 // If the distro is the empty string ("") then this operation affects all distros.
 // If distro aliases are included, then this operation affects also hosts with the alias.
-func MarkInactiveStaticHosts(activeStaticHosts []string, d *distro.Distro) error {
+func MarkInactiveStaticHosts(ctx context.Context, activeStaticHosts []string, d *distro.Distro) error {
 	query := bson.M{
 		IdKey:       bson.M{"$nin": activeStaticHosts},
 		ProviderKey: evergreen.HostTypeStatic,
@@ -35,16 +35,13 @@ func MarkInactiveStaticHosts(activeStaticHosts []string, d *distro.Distro) error
 		}
 	}
 
-	toTerminate, err := Find(db.Query(query))
-	if adb.ResultsNotFound(err) {
-		return nil
-	}
+	toTerminate, err := Find(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "getting inactive static hosts for termination")
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, h := range toTerminate {
-		catcher.Wrapf(h.SetStatus(evergreen.HostTerminated, evergreen.User, "static host removed from distro"), "terminating host '%s'", h.Id)
+		catcher.Wrapf(h.SetStatus(ctx, evergreen.HostTerminated, evergreen.User, "static host removed from distro"), "terminating host '%s'", h.Id)
 	}
 
 	return errors.Wrap(catcher.Resolve(), "terminating inactive static hosts")

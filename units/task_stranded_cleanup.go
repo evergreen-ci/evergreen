@@ -52,12 +52,12 @@ func NewStrandedTaskCleanupJob(id string) amboy.Job {
 }
 
 func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
-	j.AddError(errors.Wrap(j.fixTasksStrandedOnTerminatedHosts(), "fixing tasks stranded on already-terminated hosts"))
-	j.AddError(errors.Wrap(j.fixTasksStuckDispatching(), "fixing tasks that are stuck dispatching"))
+	j.AddError(errors.Wrap(j.fixTasksStrandedOnTerminatedHosts(ctx), "fixing tasks stranded on already-terminated hosts"))
+	j.AddError(errors.Wrap(j.fixTasksStuckDispatching(ctx), "fixing tasks that are stuck dispatching"))
 }
 
-func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts() error {
-	hosts, err := host.FindTerminatedHostsRunningTasks()
+func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.Context) error {
+	hosts, err := host.FindTerminatedHostsRunningTasks(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding already-terminated hosts running tasks")
 	}
@@ -74,7 +74,7 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts() error {
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
-		catcher.Wrapf(model.ClearAndResetStrandedHostTask(evergreen.GetEnvironment().Settings(), &h), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
+		catcher.Wrapf(model.ClearAndResetStrandedHostTask(ctx, evergreen.GetEnvironment().Settings(), &h), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 	}
 
 	grip.Info(message.Fields{
@@ -90,7 +90,7 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts() error {
 	return catcher.Resolve()
 }
 
-func (j *taskStrandedCleanupJob) fixTasksStuckDispatching() error {
+func (j *taskStrandedCleanupJob) fixTasksStuckDispatching(ctx context.Context) error {
 	tasks, err := task.FindStuckDispatching()
 	if err != nil {
 		return errors.Wrap(err, "finding tasks that are stuck dispatching")
@@ -108,7 +108,7 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching() error {
 				Status:      evergreen.TaskFailed,
 				Description: evergreen.TaskDescriptionStranded,
 			}
-			catcher.Wrapf(model.TryResetTask(evergreen.GetEnvironment().Settings(), t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
+			catcher.Wrapf(model.TryResetTask(ctx, evergreen.GetEnvironment().Settings(), t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
 			tasksReset = append(tasksReset, t)
 		}
 	}

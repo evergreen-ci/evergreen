@@ -65,7 +65,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 
 	// If the host was provisioned through user data, the host will be started
 	// with the intent host ID instead of the _id.
-	h, err := host.FindOneByIdOrTag(hostId)
+	h, err := host.FindOneByIdOrTag(r.Context(), hostId)
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding host '%s'", hostId)
 	}

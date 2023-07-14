@@ -574,7 +574,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		"task_secret": tc.task.Secret,
 	})
 
-	defer a.killProcs(ctx, tc, false)
+	defer a.killProcs(ctx, tc, false, "task is finished")
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
@@ -620,17 +620,7 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	return false, errors.WithStack(err)
 }
 
-func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
-	status := evergreen.TaskFailed
-	select {
-	case <-taskCtx.Done():
-		grip.Infof("Task canceled: '%s'.", tc.task.ID)
-	case status = <-complete:
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-	case status = <-heartbeat:
-		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
-	}
-
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status string) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
@@ -647,6 +637,18 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+}
+
+func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
+	status := evergreen.TaskFailed
+	select {
+	case <-taskCtx.Done():
+		grip.Infof("Task canceled: '%s'.", tc.task.ID)
+	case status = <-complete:
+		grip.Infof("Task complete: '%s'.", tc.task.ID)
+	case status = <-heartbeat:
+		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
 	}
 
 	return status
@@ -673,16 +675,19 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, message string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, message)
+	detail := a.endTaskResponse(ctx, tc, status, message)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
+		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed -- FAILURE. Overall task status changed to FAILED.")
 			detail.Status = evergreen.TaskFailed
+			setEndTaskCommand(tc, detail, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
+		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post task commands"))
@@ -707,7 +712,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Errorf("Programmer error: invalid task status '%s'.", detail.Status)
 	}
 
-	a.killProcs(ctx, tc, false)
+	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
@@ -731,7 +736,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var description string
 	var failureType string
 	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
@@ -756,17 +761,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		}
 	}
 
-	if tc.getCurrentCommand() != nil {
-		if description == "" {
-			description = tc.getCurrentCommand().DisplayName()
-		}
-		if failureType == "" {
-			failureType = tc.getCurrentCommand().Type()
-		}
-	}
 	detail := &apimodels.TaskEndDetail{
-		Description:     description,
-		Type:            failureType,
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
@@ -775,10 +770,24 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		Message:         message,
 		TraceID:         tc.traceID,
 	}
+	setEndTaskCommand(tc, detail, description, failureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
+}
+
+func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, description, failureType string) {
+	if tc.getCurrentCommand() != nil {
+		if description == "" {
+			description = tc.getCurrentCommand().DisplayName()
+		}
+		if failureType == "" {
+			failureType = tc.getCurrentCommand().Type()
+		}
+	}
+	detail.Description = description
+	detail.Type = failureType
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
@@ -786,8 +795,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	defer span.End()
 
 	start := time.Now()
-	a.killProcs(ctx, tc, false)
-	defer a.killProcs(ctx, tc, false)
+	a.killProcs(ctx, tc, false, "post task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post task commands are finished")
 	tc.logger.Task().Info("Running post-task commands.")
 	opts := runCommandsOptions{}
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
@@ -824,7 +833,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runPostGroupCommands.
-	defer a.killProcs(ctx, tc, true)
+	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
 	defer func() {
 		if tc.logger != nil {
 			grip.Error(tc.logger.Close())
@@ -839,7 +848,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands.")
-		a.killProcs(ctx, tc, true)
+		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -882,38 +891,42 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	tc.logger.Task().Infof("Finished running task sync in %s.", time.Since(start))
 }
 
-func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool) {
+func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) {
 	logger := grip.NewJournaler("killProcs")
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
-	if a.shouldKill(tc, ignoreTaskGroupCheck) {
-		if tc.task.ID != "" && tc.taskConfig != nil {
-			logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
-			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
-				// If the host is in a state where ps is timing out we need human intervention.
-				if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
-					disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
-					logger.CriticalWhen(disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
-				}
-				logger.Critical(errors.Wrap(err, "cleaning up spawned processes"))
-			}
-			logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
-		}
+	if !a.shouldKill(tc, ignoreTaskGroupCheck) {
+		return
+	}
 
-		// Agents running in containers don't have Docker available, so skip
-		// Docker cleanup for them.
-		if a.opts.Mode != PodMode {
-			logger.Info("Cleaning up Docker artifacts.")
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
-			defer cancel()
-			if err := docker.Cleanup(ctx, logger); err != nil {
-				logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+	logger.Infof("Cleaning up task because %s", reason)
+
+	if tc.task.ID != "" && tc.taskConfig != nil {
+		logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
+		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
+			// If the host is in a state where ps is timing out we need human intervention.
+			if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
+				disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
+				logger.CriticalWhen(disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
 			}
-			logger.Info("Cleaned up Docker artifacts.")
+			logger.Critical(errors.Wrap(err, "cleaning up spawned processes"))
 		}
+		logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
+	}
+
+	// Agents running in containers don't have Docker available, so skip
+	// Docker cleanup for them.
+	if a.opts.Mode != PodMode {
+		logger.Info("Cleaning up Docker artifacts.")
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
+		defer cancel()
+		if err := docker.Cleanup(ctx, logger); err != nil {
+			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
+		}
+		logger.Info("Cleaned up Docker artifacts.")
 	}
 }
 
