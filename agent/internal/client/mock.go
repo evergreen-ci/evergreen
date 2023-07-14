@@ -191,6 +191,11 @@ func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, 
 	return "ami-mock", nil
 }
 
+// GetProject returns the mock project. If an explicit GetProjectResponse is
+// specified, it will return that. Otherwise, by default, it will load data from
+// the agent's testdata directory, which contains project YAML files for
+// testing. The task ID is used to identify the name of the YAML file it will
+// load.
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
 	if c.GetProjectResponse != nil {
 		return c.GetProjectResponse, nil
