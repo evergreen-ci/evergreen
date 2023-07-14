@@ -63622,7 +63622,7 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requesters"))
-			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			data, err := ec.unmarshalNString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}

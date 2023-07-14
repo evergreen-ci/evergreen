@@ -160,9 +160,7 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 	var externalLinks []*ExternalLinkForMetadata
 
 	for _, link := range pRef.ExternalLinks {
-		// TODO EVG-16363: Remove the len check after initial PRs are merged and database updates are complete.
-		// Existing metadata links will have a requesters array of length 0 due to the field not existing before.
-		if len(link.Requesters) == 0 || utility.StringSliceContains(link.Requesters, utility.FromStringPtr(obj.Requester)) {
+		if utility.StringSliceContains(link.Requesters, utility.FromStringPtr(obj.Requester)) {
 			// replace {version_id} with the actual version id
 			formattedURL := strings.Replace(link.URLTemplate, "{version_id}", *obj.Id, -1)
 			externalLinks = append(externalLinks, &ExternalLinkForMetadata{
