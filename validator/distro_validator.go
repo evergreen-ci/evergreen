@@ -572,7 +572,7 @@ func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, c
 		changes.ContainerPool = originalDistro.ContainerPool
 		changes.Provider = originalDistro.Provider
 
-		_, allDistroAliases, err := getDistros()
+		_, allDistroAliases, err := getDistros(ctx)
 		if err != nil {
 			return errors.Wrap(err, "unable to fetch all distro aliases")
 		}
