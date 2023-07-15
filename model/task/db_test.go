@@ -1038,16 +1038,18 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Revision:            "abc123",
+		DisplayTaskId:       utility.ToStringPtr(""),
 	}
 	t2 := Task{
-		Id:           "t2",
-		Version:      "v2",
-		BuildVariant: "bv",
-		DisplayName:  "displayName",
-		Execution:    0,
-		Status:       evergreen.TaskFailed,
-		Requester:    evergreen.GithubPRRequester,
-		Revision:     "abc123",
+		Id:            "t2",
+		Version:       "v2",
+		BuildVariant:  "bv",
+		DisplayName:   "displayName",
+		Execution:     0,
+		Status:        evergreen.TaskFailed,
+		Requester:     evergreen.GithubPRRequester,
+		Revision:      "abc123",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
 	t3 := Task{
@@ -1060,6 +1062,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		RevisionOrderNumber: 2,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Revision:            "abc125",
+		DisplayTaskId:       utility.ToStringPtr(""),
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
 
