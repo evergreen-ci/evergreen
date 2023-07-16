@@ -154,6 +154,9 @@ func (s *eventNotificationSuite) notificationHasError(id string, pattern string)
 }
 
 func (s *eventNotificationSuite) TestDegradedMode() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	flags := evergreen.ServiceFlags{
 		JIRANotificationsDisabled:    true,
 		SlackNotificationsDisabled:   true,
@@ -163,7 +166,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 		CommitQueueDisabled:          true,
 		BackgroundStatsDisabled:      true,
 	}
-	s.NoError(flags.Set())
+	s.NoError(flags.Set(ctx))
 
 	for i := range s.notifications {
 		job := NewEventSendJob(s.notifications[i].ID, "").(*eventSendJob)

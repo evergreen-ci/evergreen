@@ -330,7 +330,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	var apiTasks []*restModel.APITask
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t, nil)
+		err := apiTask.BuildFromService(ctx, &t, nil)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task item db model to api model: %s", err.Error()))
 		}
@@ -395,7 +395,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 		}
 
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromService(upstreamTask, nil); err != nil {
+		if err = apiTask.BuildFromService(ctx, upstreamTask, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
 		}
 

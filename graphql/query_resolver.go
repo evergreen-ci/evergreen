@@ -106,7 +106,7 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 
 // Distro is the resolver for the distro field.
 func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel.APIDistro, error) {
-	d, err := distro.FindOneId(distroID)
+	d, err := distro.FindOneId(ctx, distroID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching distro '%s': %s", distroID, err.Error()))
 	}
@@ -125,13 +125,13 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 
 	var distros []distro.Distro
 	if onlySpawnable {
-		d, err := distro.Find(distro.BySpawnAllowed())
+		d, err := distro.Find(ctx, distro.BySpawnAllowed())
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching spawnable distros: %s", err.Error()))
 		}
 		distros = d
 	} else {
-		d, err := distro.FindAll()
+		d, err := distro.AllDistros(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching distros: %s", err.Error()))
 		}
@@ -183,7 +183,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 
 // HostEvents is the resolver for the hostEvents field.
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	h, err := host.FindOneByIdOrTag(hostID)
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", hostID, err.Error()))
 	}
@@ -296,7 +296,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	distros := []*TaskQueueDistro{}
 
 	for _, distro := range queues {
-		numHosts, err := host.CountRunningHosts(distro.Distro)
+		numHosts, err := host.CountRunningHosts(ctx, distro.Distro)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
 		}
@@ -505,14 +505,14 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 // MyHosts is the resolver for the myHosts field.
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
-	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
+	hosts, err := host.Find(ctx, host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
 	}
 	duration := time.Duration(5) * time.Minute
 	timestamp := time.Now().Add(-duration) // within last 5 minutes
-	recentlyTerminatedHosts, err := host.Find(host.ByUserRecentlyTerminated(usr.Username(), timestamp))
+	recentlyTerminatedHosts, err := host.Find(ctx, host.ByUserRecentlyTerminated(usr.Username(), timestamp))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding recently terminated hosts for user %s : %s", usr.Username(), err))

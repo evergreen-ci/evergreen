@@ -353,7 +353,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 		if ref.IsGithubChecksEnabled() {
-			if err = addGithubCheckSubscriptions(v); err != nil {
+			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":            "error adding github check subscriptions",
 					"runner":             RunnerName,
@@ -461,7 +461,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 }
 
 // addGithubCheckSubscriptions adds subscriptions to send the status of the version to Github.
-func addGithubCheckSubscriptions(v *model.Version) error {
+func addGithubCheckSubscriptions(ctx context.Context, v *model.Version) error {
 	catcher := grip.NewBasicCatcher()
 	ghSub := event.NewGithubCheckAPISubscriber(event.GithubCheckSubscriber{
 		Owner: v.Owner,
@@ -486,7 +486,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 		Caller:    RunnerName,
 		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(input, "")
+	err := thirdparty.SendPendingStatusToGithub(ctx, input, "")
 	if err != nil {
 		catcher.Wrap(err, "failed to send version status to GitHub")
 	}
@@ -623,7 +623,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	settings := evergreen.GetEnvironment().Settings()
 	// validate the project
 	isConfigDefined := projectInfo.Config != nil
-	verrs := validator.CheckProjectErrors(projectInfo.Project, true)
+	verrs := validator.CheckProjectErrors(ctx, projectInfo.Project, true)
 	verrs = append(verrs, validator.CheckProjectSettings(settings, projectInfo.Project, projectInfo.Ref, isConfigDefined)...)
 	verrs = append(verrs, validator.CheckProjectConfigErrors(projectInfo.Config)...)
 	verrs = append(verrs, validator.CheckProjectWarnings(projectInfo.Project)...)
@@ -793,7 +793,7 @@ func verifyOrderNum(revOrderNum int, projectId, revision string) error {
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
 func createVersionItems(ctx context.Context, v *model.Version, metadata model.VersionMetadata, projectInfo *model.ProjectInfo, aliases model.ProjectAliases) error {
-	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}

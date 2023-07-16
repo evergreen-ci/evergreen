@@ -312,7 +312,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	settings, err := evergreen.GetConfig()
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{branchProject.Owner}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 	attachProjectHandler := attachProjectToRepoHandler{}
 	// Test that turning on repo settings doesn't impact existing restricted values
 	req, _ := http.NewRequest(http.MethodPost, "rest/v2/projects/branch2/attach_to_repo", nil)

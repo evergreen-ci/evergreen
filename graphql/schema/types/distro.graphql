@@ -6,6 +6,22 @@ enum DistroSettingsAccess {
 }
 
 """
+CopyDistroInput is the input to the copyDistro mutation.
+It contains information about a distro to be duplicated.
+"""
+input CopyDistroInput {
+  newDistroId: String!
+  distroIdToCopy: String!
+}
+
+"""
+Return type representing whether a distro was created and any validation errors
+"""
+type NewDistroPayload {
+  newDistroId: String!
+}
+
+"""
 Distro models an environment configuration for a host.
 """
 type Distro {

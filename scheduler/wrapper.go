@@ -29,7 +29,7 @@ type Configuration struct {
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
 	schedulerInstanceID := utility.RandomString()
 
-	distro, err := distro.FindOneId(conf.DistroID)
+	distro, err := distro.FindOneId(ctx, conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
@@ -37,7 +37,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return errors.Errorf("distro '%s' not found", conf.DistroID)
 	}
 
-	if err = underwaterUnschedule(distro.Id); err != nil {
+	if err = underwaterUnschedule(ctx, distro.Id); err != nil {
 		return errors.Wrap(err, "problem unscheduling underwater tasks")
 	}
 
@@ -84,7 +84,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	taskFindingBegins := time.Now()
 	finder := GetTaskFinder(conf.TaskFinder)
-	tasks, err := finder(*distro)
+	tasks, err := finder(ctx, *distro)
 	if err != nil {
 		return errors.Wrapf(err, "problem while running task finder for distro '%s'", distro.Id)
 	}
@@ -127,12 +127,12 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	return nil
 }
 
-func UpdateStaticDistro(d distro.Distro) error {
+func UpdateStaticDistro(ctx context.Context, d distro.Distro) error {
 	if d.Provider != evergreen.ProviderNameStatic {
 		return nil
 	}
 
-	hosts, err := doStaticHostUpdate(d)
+	hosts, err := doStaticHostUpdate(ctx, d)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -140,10 +140,10 @@ func UpdateStaticDistro(d distro.Distro) error {
 	if d.Id == "" && len(d.Aliases) == 0 {
 		return nil
 	}
-	return host.MarkInactiveStaticHosts(hosts, &d)
+	return host.MarkInactiveStaticHosts(ctx, hosts, &d)
 }
 
-func doStaticHostUpdate(d distro.Distro) ([]string, error) {
+func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) {
 	settings := &cloud.StaticSettings{}
 	if err := settings.FromDistroSettings(d, ""); err != nil {
 		return nil, errors.Wrapf(err, "invalid static settings for '%s'", d.Id)
@@ -151,7 +151,7 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 
 	staticHosts := []string{}
 	for _, h := range settings.Hosts {
-		dbHost, err := host.FindOneId(h.Name)
+		dbHost, err := host.FindOneId(ctx, h.Name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
 		}
@@ -216,7 +216,7 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 		}
 
 		// upsert the host
-		_, err = staticHost.Upsert()
+		_, err = staticHost.Upsert(ctx)
 		if err != nil {
 			return nil, err
 		}

@@ -296,14 +296,14 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 	h.IPv4 = *instance.PrivateIpAddress
 
-	if err := h.CacheHostData(); err != nil {
+	if err := h.CacheHostData(ctx); err != nil {
 		return errors.Wrap(err, "updating host document in DB")
 	}
 
 	// set IPv6 address, if applicable
 	for _, networkInterface := range instance.NetworkInterfaces {
 		if len(networkInterface.Ipv6Addresses) > 0 {
-			if err := h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address); err != nil {
+			if err := h.SetIPv6Address(ctx, *networkInterface.Ipv6Addresses[0].Ipv6Address); err != nil {
 				return errors.Wrap(err, "setting IPv6 address")
 			}
 			break

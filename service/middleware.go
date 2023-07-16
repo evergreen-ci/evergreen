@@ -181,7 +181,7 @@ func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
 		user := gimlet.GetUser(r.Context())
 		hostID := gimlet.GetVars(r)["host_id"]
 
-		h, err := uis.getHostFromCache(hostID)
+		h, err := uis.getHostFromCache(r.Context(), hostID)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("can't get host '%s'", hostID))
 			return
@@ -202,7 +202,7 @@ func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
 func (uis *UIServer) vsCodeRunning(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hostID := gimlet.GetVars(r)["host_id"]
-		h, err := uis.getHostFromCache(hostID)
+		h, err := uis.getHostFromCache(r.Context(), hostID)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("can't get host '%s'", hostID))
 			return

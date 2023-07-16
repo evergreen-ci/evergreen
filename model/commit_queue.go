@@ -54,12 +54,12 @@ func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitq
 // CommitQueueRemoveItem dequeues an item from the commit queue and returns the
 // removed item. If the item is already being tested in a batch, later items in
 // the batch are restarted.
-func CommitQueueRemoveItem(cq *commitqueue.CommitQueue, item commitqueue.CommitQueueItem, user, reason string) (*commitqueue.CommitQueueItem, error) {
+func CommitQueueRemoveItem(ctx context.Context, cq *commitqueue.CommitQueue, item commitqueue.CommitQueueItem, user, reason string) (*commitqueue.CommitQueueItem, error) {
 	if item.Version != "" {
 		// If the patch has been finalized, it may already be running in a
 		// batch, so it has to restart later items that are running in its
 		// batch.
-		removed, err := DequeueAndRestartForVersion(cq, cq.ProjectID, item.Version, user, reason)
+		removed, err := DequeueAndRestartForVersion(ctx, cq, cq.ProjectID, item.Version, user, reason)
 		if err != nil {
 			return nil, errors.Wrap(err, "dequeueing and restarting finalized commit queue item")
 		}

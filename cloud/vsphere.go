@@ -107,7 +107,7 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 
 	// Start the instance, and remove the intent host document if unsuccessful.
 	if _, err := m.client.CreateInstance(ctx, h, s); err != nil {
-		if rmErr := h.Remove(); rmErr != nil {
+		if rmErr := h.Remove(ctx); rmErr != nil {
 			grip.Errorf("Could not remove intent host '%s': %+v", h.Id, rmErr)
 		}
 		grip.Error(err)
@@ -157,7 +157,7 @@ func (m *vsphereManager) TerminateInstance(ctx context.Context, host *host.Host,
 	}
 
 	// Set the host status as terminated and update its termination time
-	if err := host.Terminate(user, reason); err != nil {
+	if err := host.Terminate(ctx, user, reason); err != nil {
 		return errors.Wrapf(err, "could not terminate host %s in db", host.Id)
 	}
 

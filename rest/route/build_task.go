@@ -94,7 +94,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	for i := range tasks {
 		taskModel := &model.APITask{}
 
-		if err = taskModel.BuildFromService(&tasks[i], &model.APITaskArgs{
+		if err = taskModel.BuildFromService(ctx, &tasks[i], &model.APITaskArgs{
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
 			IncludeProjectIdentifier: true,
@@ -112,7 +112,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived task '%s'", tasks[i].Id))
 			}
 
-			if err = taskModel.BuildPreviousExecutions(oldTasks, tbh.url, tbh.parsleyURL); err != nil {
+			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, tbh.url, tbh.parsleyURL); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
 			}
 		}

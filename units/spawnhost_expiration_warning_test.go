@@ -26,6 +26,9 @@ func (s *spawnHostExpirationSuite) SetupSuite() {
 }
 
 func (s *spawnHostExpirationSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(event.EventCollection, host.Collection, alertrecord.Collection))
 	now := time.Now()
 	h1 := host.Host{
@@ -40,9 +43,9 @@ func (s *spawnHostExpirationSuite) SetupTest() {
 		Id:             "h3",
 		ExpirationTime: now.Add(1 * time.Hour),
 	}
-	s.NoError(h1.Insert())
-	s.NoError(h2.Insert())
-	s.NoError(h3.Insert())
+	s.NoError(h1.Insert(ctx))
+	s.NoError(h2.Insert(ctx))
+	s.NoError(h3.Insert(ctx))
 }
 
 func (s *spawnHostExpirationSuite) TestAlerts() {

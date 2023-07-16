@@ -40,7 +40,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host){
 		"TerminatesRunningHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			mcp.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
 			})
@@ -53,7 +53,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -65,7 +65,7 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 		},
 		"SkipsCloudHostTermination": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			mcp.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
 			})
@@ -79,7 +79,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -93,7 +93,7 @@ func TestHostTerminationJob(t *testing.T) {
 		"NoopsForStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Provider = evergreen.ProviderNameStatic
 			h.Distro.Provider = evergreen.ProviderNameStatic
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -102,7 +102,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
@@ -121,7 +121,7 @@ func TestHostTerminationJob(t *testing.T) {
 		},
 		"ReterminatesCloudHostIfAlreadyMarkedTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			mcp.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
 			})
@@ -141,7 +141,7 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, cloud.StatusTerminated, mockInstance.Status)
 		},
 		"TerminatesDBHostWithoutCloudHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -153,14 +153,14 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.NotEqual(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"MarksUninitializedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostUninitialized
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -172,14 +172,14 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"MarksBuildingIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostBuilding
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -191,14 +191,14 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"MarksBuildingFailedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostBuildingFailed
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -210,7 +210,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -219,7 +219,7 @@ func TestHostTerminationJob(t *testing.T) {
 			// The ID must be a valid intent host ID.
 			h.Id = h.Distro.GenerateName()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -228,7 +228,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)

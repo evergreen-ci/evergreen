@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -240,6 +241,9 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 }
 
 func TestProjectTriggerIntegration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
@@ -248,7 +252,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
-	assert.NoError(config.Set())
+	assert.NoError(config.Set(ctx))
 	e := event.EventLogEntry{
 		ID:           "event1",
 		ResourceId:   "upstreamTask",
