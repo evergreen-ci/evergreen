@@ -304,12 +304,14 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
-
-	baseVersionId, err := model.FindBaseVersionIDForVersion(utility.FromStringPtr(obj.Id))
+	baseVersionID := ""
+	baseVersion, err := model.FindBaseVersionForVersion(utility.FromStringPtr(obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version id for version with id: '%s': %s", versionId, err.Error()))
 	}
-
+	if baseVersion != nil {
+		baseVersionID = baseVersion.Id
+	}
 	opts := task.GetTasksByVersionOptions{
 		Statuses:     getValidTaskStatusesFilter(options.Statuses),
 		BaseStatuses: getValidTaskStatusesFilter(options.BaseStatuses),
@@ -320,7 +322,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Sorts:        taskSorts,
 		// If the version is a patch, we want to exclude inactive tasks by default.
 		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
-		BaseVersionID:              baseVersionId,
+		BaseVersionID:              baseVersionID,
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {

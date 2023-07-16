@@ -317,9 +317,12 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	}
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
 		var err error
-		baseVersionID, err = model.FindBaseVersionIDForVersion(versionId)
+		baseVersion, err := model.FindBaseVersionForVersion(versionId)
 		if err != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Error getting base version for version `%s`", versionId))
+		}
+		if baseVersion != nil {
+			baseVersionID = baseVersion.Id
 		}
 	}
 	opts := task.GetTasksByVersionOptions{
