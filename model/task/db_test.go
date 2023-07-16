@@ -1100,47 +1100,51 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 func TestGetTaskStatusesByVersion(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
-		Id:           "t1",
-		Version:      "v1",
-		BuildVariant: "bv_foo",
-		DisplayName:  "displayName_foo",
-		Execution:    0,
-		Status:       evergreen.TaskSucceeded,
-		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    time.Minute,
+		Id:            "t1",
+		Version:       "v1",
+		BuildVariant:  "bv_foo",
+		DisplayName:   "displayName_foo",
+		Execution:     0,
+		Status:        evergreen.TaskSucceeded,
+		StartTime:     time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     time.Minute,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t2 := Task{
-		Id:           "t2",
-		Version:      "v1",
-		BuildVariant: "bv_bar",
-		DisplayName:  "displayName_bar",
-		Execution:    0,
-		Status:       evergreen.TaskFailed,
-		BaseTask:     BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
-		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    25 * time.Minute,
+		Id:            "t2",
+		Version:       "v1",
+		BuildVariant:  "bv_bar",
+		DisplayName:   "displayName_bar",
+		Execution:     0,
+		Status:        evergreen.TaskFailed,
+		BaseTask:      BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
+		StartTime:     time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     25 * time.Minute,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t3 := Task{
-		Id:           "t3",
-		Version:      "v1",
-		BuildVariant: "bv_qux",
-		DisplayName:  "displayName_qux",
-		Execution:    0,
-		Status:       evergreen.TaskStarted,
-		BaseTask:     BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
-		StartTime:    time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    0,
+		Id:            "t3",
+		Version:       "v1",
+		BuildVariant:  "bv_qux",
+		DisplayName:   "displayName_qux",
+		Execution:     0,
+		Status:        evergreen.TaskStarted,
+		BaseTask:      BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
+		StartTime:     time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     0,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t4 := Task{
-		Id:           "t4",
-		Version:      "v1",
-		BuildVariant: "bv_baz",
-		DisplayName:  "displayName_baz",
-		Execution:    0,
-		Status:       evergreen.TaskSetupFailed,
-		BaseTask:     BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
-		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    2 * time.Hour,
+		Id:            "t4",
+		Version:       "v1",
+		BuildVariant:  "bv_baz",
+		DisplayName:   "displayName_baz",
+		Execution:     0,
+		Status:        evergreen.TaskSetupFailed,
+		BaseTask:      BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
+		StartTime:     time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     2 * time.Hour,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
 	ctx := context.TODO()
@@ -1155,48 +1159,53 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := Task{
-		Id:           "t1",
-		Version:      "v1",
-		BuildVariant: "bv_foo",
-		DisplayName:  "displayName_foo",
-		Execution:    0,
-		Status:       evergreen.TaskSucceeded,
-		BaseTask:     BaseTaskInfo{Id: "t1_base", Status: evergreen.TaskSucceeded},
-		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    time.Minute,
+		Id:            "t1",
+		Version:       "v1",
+		BuildVariant:  "bv_foo",
+		DisplayName:   "displayName_foo",
+		Execution:     0,
+		Status:        evergreen.TaskSucceeded,
+		BaseTask:      BaseTaskInfo{Id: "t1_base", Status: evergreen.TaskSucceeded},
+		StartTime:     time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     time.Minute,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
+
 	t2 := Task{
-		Id:           "t2",
-		Version:      "v1",
-		BuildVariant: "bv_bar",
-		DisplayName:  "displayName_bar",
-		Execution:    0,
-		Status:       evergreen.TaskFailed,
-		BaseTask:     BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
-		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    25 * time.Minute,
+		Id:            "t2",
+		Version:       "v1",
+		BuildVariant:  "bv_bar",
+		DisplayName:   "displayName_bar",
+		Execution:     0,
+		Status:        evergreen.TaskFailed,
+		BaseTask:      BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
+		StartTime:     time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     25 * time.Minute,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t3 := Task{
-		Id:           "t3",
-		Version:      "v1",
-		BuildVariant: "bv_qux",
-		DisplayName:  "displayName_qux",
-		Execution:    0,
-		Status:       evergreen.TaskStarted,
-		BaseTask:     BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
-		StartTime:    time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    0,
+		Id:            "t3",
+		Version:       "v1",
+		BuildVariant:  "bv_qux",
+		DisplayName:   "displayName_qux",
+		Execution:     0,
+		Status:        evergreen.TaskStarted,
+		BaseTask:      BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
+		StartTime:     time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     0,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t4 := Task{
-		Id:           "t4",
-		Version:      "v1",
-		BuildVariant: "bv_baz",
-		DisplayName:  "displayName_baz",
-		Execution:    0,
-		Status:       evergreen.TaskSetupFailed,
-		BaseTask:     BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
-		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    2 * time.Hour,
+		Id:            "t4",
+		Version:       "v1",
+		BuildVariant:  "bv_baz",
+		DisplayName:   "displayName_baz",
+		Execution:     0,
+		Status:        evergreen.TaskSetupFailed,
+		BaseTask:      BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
+		StartTime:     time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:     2 * time.Hour,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
@@ -1283,6 +1292,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Status:           evergreen.TaskStarted,
 		ExpectedDuration: time.Minute,
 		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
+		DisplayTaskId:    utility.ToStringPtr(""),
 	}
 	t2 := Task{
 		Id:               "t2",
@@ -1291,30 +1301,35 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Status:           evergreen.TaskStarted,
 		ExpectedDuration: 150 * time.Minute,
 		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
+		DisplayTaskId:    utility.ToStringPtr(""),
 	}
 	t3 := Task{
-		Id:        "t3",
-		Version:   "v1",
-		Execution: 1,
-		Status:    evergreen.TaskSucceeded,
+		Id:            "t3",
+		Version:       "v1",
+		Execution:     1,
+		Status:        evergreen.TaskSucceeded,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t4 := Task{
-		Id:        "t4",
-		Version:   "v1",
-		Execution: 1,
-		Status:    evergreen.TaskFailed,
+		Id:            "t4",
+		Version:       "v1",
+		Execution:     1,
+		Status:        evergreen.TaskFailed,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t5 := Task{
-		Id:        "t5",
-		Version:   "v1",
-		Execution: 2,
-		Status:    evergreen.TaskStatusPending,
+		Id:            "t5",
+		Version:       "v1",
+		Execution:     2,
+		Status:        evergreen.TaskStatusPending,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t6 := Task{
-		Id:        "t6",
-		Version:   "v1",
-		Execution: 2,
-		Status:    evergreen.TaskFailed,
+		Id:            "t6",
+		Version:       "v1",
+		Execution:     2,
+		Status:        evergreen.TaskFailed,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 	ctx := context.TODO()
@@ -1341,6 +1356,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		Status:                  evergreen.TaskSucceeded,
 		BuildVariant:            "bv1",
 		BuildVariantDisplayName: "Build Variant 1",
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t2 := Task{
 		Id:                      "t2",
@@ -1349,6 +1365,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		Status:                  evergreen.TaskFailed,
 		BuildVariant:            "bv1",
 		BuildVariantDisplayName: "Build Variant 1",
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t3 := Task{
 		Id:                      "t3",
@@ -1357,6 +1374,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		Status:                  evergreen.TaskSucceeded,
 		BuildVariant:            "bv1",
 		BuildVariantDisplayName: "Build Variant 1",
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t4 := Task{
 		Id:                      "t4",
@@ -1365,6 +1383,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		Status:                  evergreen.TaskFailed,
 		BuildVariant:            "bv2",
 		BuildVariantDisplayName: "Build Variant 2",
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t5 := Task{
 		Id:                      "t5",
@@ -1373,6 +1392,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		Status:                  evergreen.TaskStatusPending,
 		BuildVariant:            "bv2",
 		BuildVariantDisplayName: "Build Variant 2",
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t6 := Task{
 		Id:                      "t6",
@@ -1381,6 +1401,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		Status:                  evergreen.TaskFailed,
 		BuildVariant:            "bv2",
 		BuildVariantDisplayName: "Build Variant 2",
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 
@@ -1478,6 +1499,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		ActivatedTime: time.Time{},
 		DisplayName:   "task_1",
 		BuildVariant:  "bv_1",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t2 := Task{
 		Id:            "t2",
@@ -1486,6 +1508,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		ActivatedTime: time.Time{},
 		DisplayName:   "task_2",
 		BuildVariant:  "bv_2",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t3 := Task{
 		Id:            "t1_base",
@@ -1494,6 +1517,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		ActivatedTime: time.Time{},
 		DisplayName:   "task_1",
 		BuildVariant:  "bv_1",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t4 := Task{
 		Id:            "t2_base",
@@ -1502,6 +1526,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		ActivatedTime: time.Time{},
 		DisplayName:   "task_2",
 		BuildVariant:  "bv_2",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t5 := Task{
 		Id:            "only_on_base",
@@ -1510,6 +1535,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		ActivatedTime: time.Time{},
 		DisplayName:   "only_on_base",
 		BuildVariant:  "bv_2",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
 	ctx := context.TODO()
@@ -1529,64 +1555,62 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 func TestHasMatchingTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
-		Id:           "t1",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		Execution:    0,
-		Status:       evergreen.TaskSucceeded,
+		Id:                      "t1",
+		Version:                 "v1",
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+		Execution:               0,
+		Status:                  evergreen.TaskSucceeded,
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t2 := Task{
-		Id:           "t2",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		Execution:    0,
-		Status:       evergreen.TaskFailed,
+		Id:                      "t2",
+		Version:                 "v1",
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+		Execution:               0,
+		Status:                  evergreen.TaskFailed,
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
-	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
-	// bv1 := build.Build{
-	// 	Id:           "bv1",
-	// 	BuildVariant: "bv1",
-	// 	DisplayName:  "Build Variant 1",
-	// }
+
 	t3 := Task{
-		Id:           "t3",
-		Version:      "v1",
-		BuildVariant: "bv2",
-		Execution:    1,
-		Status:       evergreen.TaskSucceeded,
+		Id:                      "t3",
+		Version:                 "v1",
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+		Execution:               1,
+		Status:                  evergreen.TaskSucceeded,
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t4 := Task{
-		Id:           "t4",
-		Version:      "v1",
-		BuildVariant: "bv2",
-		Execution:    1,
-		Status:       evergreen.TaskFailed,
+		Id:                      "t4",
+		Version:                 "v1",
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+		Execution:               1,
+		Status:                  evergreen.TaskFailed,
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
-	// bv2 := build.Build{
-	// 	Id:           "bv2",
-	// 	BuildVariant: "bv2",
-	// 	DisplayName:  "Build Variant 2",
-	// }
+
 	t5 := Task{
-		Id:           "t5",
-		Version:      "v1",
-		BuildVariant: "bv3",
-		Execution:    2,
-		Status:       evergreen.TaskStatusPending,
+		Id:                      "t5",
+		Version:                 "v1",
+		BuildVariant:            "bv3",
+		BuildVariantDisplayName: "Build Variant 3",
+		Execution:               2,
+		Status:                  evergreen.TaskStatusPending,
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t6 := Task{
-		Id:           "t6",
-		Version:      "v1",
-		BuildVariant: "bv3",
-		Execution:    2,
-		Status:       evergreen.TaskFailed,
+		Id:                      "t6",
+		Version:                 "v1",
+		BuildVariant:            "bv3",
+		BuildVariantDisplayName: "Build Variant 3",
+		Execution:               2,
+		Status:                  evergreen.TaskFailed,
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
-	// bv3 := build.Build{
-	// 	Id:           "bv3",
-	// 	BuildVariant: "bv3",
-	// 	DisplayName:  "Build Variant 3",
-	// }
-	// assert.NoError(t, db.InsertMany("build", bv1, bv2, bv3))
+
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 	opts := HasMatchingTasksOptions{
 		Statuses: []string{evergreen.TaskFailed},
@@ -1609,11 +1633,10 @@ func TestHasMatchingTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, hasMatchingTasks)
 
-	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
-	// opts.Variants = []string{"Build Variant 2"}
-	// hasMatchingTasks, err = HasMatchingTasks("v1", opts)
-	// assert.NoError(t, err)
-	// assert.True(t, hasMatchingTasks)
+	opts.Variants = []string{"Build Variant 2"}
+	hasMatchingTasks, err = HasMatchingTasks(ctx, "v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
 
 	opts.Variants = []string{"DNE"}
 	hasMatchingTasks, err = HasMatchingTasks(ctx, "v1", opts)
