@@ -254,6 +254,14 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 	return "", nil
 }
 
+// GetHeartbeatCount returns the current number of recorded heartbeats. This is
+// thread-safe.
+func (c *Mock) GetHeartbeatCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.HeartbeatCount
+}
+
 // GetNextTask returns a mock NextTaskResponse.
 func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	if c.NextTaskIsNil {
