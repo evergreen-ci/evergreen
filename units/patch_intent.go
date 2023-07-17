@@ -169,16 +169,6 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 }
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
-	// // Add owner and repo for child patches
-	// if patchDoc.IsChild() {
-	// 	p, err := model.FindBranchProjectRef(patchDoc.Project)
-	// 	if err != nil {
-	// 		return errors.Wrapf(err, "finding project '%s'", patchDoc.Project)
-	// 	}
-	// 	patchDoc.GithubPatchData.BaseOwner = p.Owner
-	// 	patchDoc.GithubPatchData.BaseRepo = p.Repo
-	// }
-
 	// TODO EVG-19966 Delete fallback
 	appToken, err := j.env.Settings().CreateInstallationToken(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, nil)
 	if err != nil {
