@@ -231,6 +231,8 @@ func (c *Mock) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*ap
 }
 
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.HeartbeatCount++
 	if c.HeartbeatShouldAbort {
 		return evergreen.TaskFailed, nil
