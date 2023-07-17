@@ -1545,6 +1545,8 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
 // Returns activated task IDs.
 func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
+	ctx, span := tracer.Start(ctx, "add-new-builds")
+	defer span.End()
 	taskIdTables, err := getTaskIdTables(creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task ID table")
@@ -1677,6 +1679,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns activated task IDs.
 func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
+	ctx, span := tracer.Start(ctx, "add-new-tasks")
+	defer span.End()
 	if creationInfo.Version.BuildIds == nil {
 		return nil, nil
 	}
