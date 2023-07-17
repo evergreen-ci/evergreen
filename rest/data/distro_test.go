@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,7 +51,6 @@ func TestDeleteDistroById(t *testing.T) {
 func TestCopyDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "oldAdmin"})
 
 	config, err := evergreen.GetConfig()
 	assert.NoError(t, err)
@@ -163,6 +161,85 @@ func TestCopyDistro(t *testing.T) {
 				Id: "admin",
 			}
 			assert.NoError(t, adminUser.Insert())
+
+			tCase(t, tctx, adminUser)
+		})
+	}
+}
+
+func TestCreateDistro(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config, err := evergreen.GetConfig()
+	assert.NoError(t, err)
+	config.Keys = map[string]string{"abc": "123"}
+	assert.NoError(t, config.Set(ctx))
+	defer func() {
+		config.Keys = map[string]string{}
+		assert.NoError(t, config.Set(ctx))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
+		"Successfully creates distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
+			assert.NoError(t, CreateDistro(ctx, &u, "new-distro"))
+
+			newDistro, err := distro.FindOneId(ctx, "new-distro")
+			assert.NoError(t, err)
+			assert.NotNil(t, newDistro)
+
+			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10)
+			assert.NoError(t, err)
+			assert.Equal(t, len(events), 1)
+		},
+		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, u user.DBUser) {
+			err := CreateDistro(ctx, &u, "distro")
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'")
+
+			events, err := event.FindLatestPrimaryDistroEvents("distro", 10)
+			assert.NoError(t, err)
+			assert.Equal(t, len(events), 0)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection))
+
+			adminUser := user.DBUser{
+				Id: "admin",
+			}
+			assert.NoError(t, adminUser.Insert())
+
+			d := distro.Distro{
+				Id:                 "distro",
+				Arch:               "linux_amd64",
+				AuthorizedKeysFile: "keys.txt",
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodNone,
+				},
+				CloneMethod: evergreen.CloneMethodLegacySSH,
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevised,
+				},
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionParallel,
+				},
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					Version: evergreen.HostAllocatorUtilization,
+				},
+				PlannerSettings: distro.PlannerSettings{
+					Version: evergreen.PlannerVersionTunable,
+				},
+				Provider: evergreen.ProviderNameStatic,
+				SSHKey:   "abc",
+				WorkDir:  "/tmp",
+				User:     "admin",
+			}
+			assert.NoError(t, d.Insert(tctx))
 
 			tCase(t, tctx, adminUser)
 		})

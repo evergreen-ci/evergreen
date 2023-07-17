@@ -6,6 +6,13 @@ enum DistroSettingsAccess {
 }
 
 """
+CreateDistroInput is the input to the createDistro mutation.
+"""
+input CreateDistroInput {
+  newDistroId: String!
+}
+
+"""
 CopyDistroInput is the input to the copyDistro mutation.
 It contains information about a distro to be duplicated.
 """

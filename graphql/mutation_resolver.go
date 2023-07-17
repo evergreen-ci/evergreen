@@ -141,6 +141,24 @@ func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroO
 	}, nil
 }
 
+// CreateDistro is the resolver for the createDistro field.
+func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	if err := data.CreateDistro(ctx, usr, opts.NewDistroID); err != nil {
+
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating distro: %s", err.Error()))
+	}
+
+	return &NewDistroPayload{
+		NewDistroID: opts.NewDistroID,
+	}, nil
+}
+
 // ReprovisionToNew is the resolver for the reprovisionToNew field.
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)

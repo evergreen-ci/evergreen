@@ -573,6 +573,7 @@ type ComplexityRoot struct {
 		ClearMySubscriptions          func(childComplexity int) int
 		CopyDistro                    func(childComplexity int, opts data.CopyDistroOpts) int
 		CopyProject                   func(childComplexity int, project data.CopyProjectOpts, requestS3Creds *bool) int
+		CreateDistro                  func(childComplexity int, opts CreateDistroInput) int
 		CreateProject                 func(childComplexity int, project model.APIProjectRef, requestS3Creds *bool) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
@@ -1503,6 +1504,7 @@ type MutationResolver interface {
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error)
+	CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -3928,6 +3930,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CopyProject(childComplexity, args["project"].(data.CopyProjectOpts), args["requestS3Creds"].(*bool)), true
+
+	case "Mutation.createDistro":
+		if e.complexity.Mutation.CreateDistro == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createDistro_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateDistro(childComplexity, args["opts"].(CreateDistroInput)), true
 
 	case "Mutation.createProject":
 		if e.complexity.Mutation.CreateProject == nil {
@@ -8870,6 +8884,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputContainerResourcesInput,
 		ec.unmarshalInputCopyDistroInput,
 		ec.unmarshalInputCopyProjectInput,
+		ec.unmarshalInputCreateDistroInput,
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputDisplayTask,
 		ec.unmarshalInputDistroPermissionsOptions,
@@ -9289,6 +9304,40 @@ func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context,
 		}
 	}
 	args["requestS3Creds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createDistro_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 CreateDistroInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		directive0 := func(ctx context.Context) (interface{}, error) {
+			return ec.unmarshalNCreateDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCreateDistroInput(ctx, tmp)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "CREATE")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireDistroAccess == nil {
+				return nil, errors.New("directive requireDistroAccess is not implemented")
+			}
+			return ec.directives.RequireDistroAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(CreateDistroInput); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/graphql.CreateDistroInput`, tmp))
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -25164,6 +25213,65 @@ func (ec *executionContext) fieldContext_Mutation_copyDistro(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_copyDistro_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createDistro(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateDistro(rctx, fc.Args["opts"].(CreateDistroInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*NewDistroPayload)
+	fc.Result = res
+	return ec.marshalNNewDistroPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐNewDistroPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createDistro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "newDistroId":
+				return ec.fieldContext_NewDistroPayload_newDistroId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NewDistroPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createDistro_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -63883,6 +63991,35 @@ func (ec *executionContext) unmarshalInputCopyProjectInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateDistroInput(ctx context.Context, obj interface{}) (CreateDistroInput, error) {
+	var it CreateDistroInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"newDistroId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "newDistroId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newDistroId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NewDistroID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
 	var it model.APIProjectRef
 	asMap := map[string]interface{}{}
@@ -70878,6 +71015,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_copyDistro(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createDistro":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createDistro(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -78984,6 +79130,11 @@ func (ec *executionContext) unmarshalNCopyDistroInput2githubᚗcomᚋevergreen�
 
 func (ec *executionContext) unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx context.Context, v interface{}) (data.CopyProjectOpts, error) {
 	res, err := ec.unmarshalInputCopyProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCreateDistroInput(ctx context.Context, v interface{}) (CreateDistroInput, error) {
+	res, err := ec.unmarshalInputCreateDistroInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
