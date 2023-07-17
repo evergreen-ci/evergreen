@@ -2601,6 +2601,12 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		baseVersionMatch := bson.M{
 			"$match": bson.M{
 				VersionKey: opts.BaseVersionID,
+				"$expr": bson.M{
+					"$and": []bson.M{
+						{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+						{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+					},
+				},
 			},
 		}
 		pipeline = append(pipeline, []bson.M{
@@ -2608,6 +2614,10 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			{"$lookup": bson.M{
 				"from": Collection,
 				"as":   BaseTaskKey,
+				"let": bson.M{
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
+				},
 				"pipeline": []bson.M{
 					baseVersionMatch,
 					{"$project": bson.M{
