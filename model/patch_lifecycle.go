@@ -525,13 +525,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			return nil, errors.Wrap(err, "getting parameters from parent patch")
 		}
 		parentPatchNumber = parentPatch.PatchNumber
-
-		pRef, err := FindBranchProjectRef(p.Project)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
-		}
-		p.GithubPatchData.BaseOwner = pRef.Owner
-		p.GithubPatchData.BaseRepo = pRef.Repo
 	}
 
 	params, err := getFullPatchParams(p)
