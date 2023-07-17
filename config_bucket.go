@@ -1,8 +1,6 @@
 package evergreen
 
 import (
-	"fmt"
-
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -36,7 +34,6 @@ func (c *BucketConfig) Get(env Environment) error {
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
-			fmt.Println("HERE")
 			*c = BucketConfig{}
 			return nil
 		}
