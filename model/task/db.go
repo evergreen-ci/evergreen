@@ -2692,13 +2692,15 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 		bson.M{
 			IdKey: bson.M{"$in": taskIDs},
 		},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     true,
-				ActivatedByKey:   caller,
-				ActivatedTimeKey: activationTime,
-				// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-				UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:     true,
+					ActivatedByKey:   caller,
+					ActivatedTimeKey: activationTime,
+					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+					UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+				},
 			},
 		})
 	if err != nil {
