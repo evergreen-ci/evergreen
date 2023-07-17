@@ -1779,6 +1779,21 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func UpdateOneContext(ctx context.Context, query interface{}, update interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
+		query,
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	return nil
+}
+
 func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	return db.UpdateAll(
 		Collection,

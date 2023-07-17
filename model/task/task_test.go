@@ -1972,8 +1972,8 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 		{Id: "t0"},
 		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
 		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
-		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
-		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0", Unattainable: true}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0", Unattainable: true}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())
@@ -1991,6 +1991,7 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.True(t, task.Activated)
 			assert.False(t, task.DeactivatedForDependency)
+			assert.True(t, task.UnattainableDependency)
 		} else {
 			for _, origTask := range tasks {
 				if origTask.Id == task.Id {
@@ -4360,4 +4361,132 @@ func TestIsInProgress(t *testing.T) {
 			assert.True(t, tsk.IsInProgress())
 		})
 	}
+}
+
+func TestReset(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		require.NoError(t, db.Clear(Collection))
+	}()
+
+	t.Run("NoDependencies", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id:       "t0",
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+		}
+		assert.NoError(t, t0.Insert())
+
+		assert.NoError(t, t0.Reset(ctx))
+		dbTask, err := FindOneId(t0.Id)
+		assert.NoError(t, err)
+		assert.False(t, dbTask.UnattainableDependency)
+	})
+
+	t.Run("UnattainableDependency", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{TaskId: "t1", Unattainable: true},
+				{TaskId: "t2", Unattainable: false},
+			},
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+		}
+		assert.NoError(t, t0.Insert())
+
+		assert.NoError(t, t0.Reset(ctx))
+		dbTask, err := FindOneId(t0.Id)
+		assert.NoError(t, err)
+		assert.True(t, dbTask.UnattainableDependency)
+	})
+
+	t.Run("AttainableDependencies", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{TaskId: "t1", Unattainable: false},
+				{TaskId: "t2", Unattainable: false},
+			},
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+		}
+		assert.NoError(t, t0.Insert())
+
+		assert.NoError(t, t0.Reset(ctx))
+		dbTask, err := FindOneId(t0.Id)
+		assert.NoError(t, err)
+		assert.False(t, dbTask.UnattainableDependency)
+	})
+
+}
+
+func TestResetTasks(t *testing.T) {
+	defer func() {
+		require.NoError(t, db.Clear(Collection))
+	}()
+
+	t.Run("NoDependencies", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id:       "t0",
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+		}
+		assert.NoError(t, t0.Insert())
+
+		assert.NoError(t, ResetTasks([]Task{t0}))
+		dbTask, err := FindOneId(t0.Id)
+		assert.NoError(t, err)
+		assert.False(t, dbTask.UnattainableDependency)
+	})
+
+	t.Run("UnattainableDependency", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{TaskId: "t1", Unattainable: true},
+				{TaskId: "t2", Unattainable: false},
+			},
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+		}
+		assert.NoError(t, t0.Insert())
+
+		assert.NoError(t, ResetTasks([]Task{t0}))
+		dbTask, err := FindOneId(t0.Id)
+		assert.NoError(t, err)
+		assert.True(t, dbTask.UnattainableDependency)
+	})
+
+	t.Run("AttainableDependencies", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id: "t0",
+			DependsOn: []Dependency{
+				{TaskId: "t1", Unattainable: false},
+				{TaskId: "t2", Unattainable: false},
+			},
+			Status:   evergreen.TaskSucceeded,
+			CanReset: true,
+		}
+		assert.NoError(t, t0.Insert())
+
+		assert.NoError(t, ResetTasks([]Task{t0}))
+		dbTask, err := FindOneId(t0.Id)
+		assert.NoError(t, err)
+		assert.False(t, dbTask.UnattainableDependency)
+	})
 }
