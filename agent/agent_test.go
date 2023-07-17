@@ -251,9 +251,7 @@ func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 		s.NoError(s.tc.logger.Close())
 
 		s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "normal task completion should record the task status")
-		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-			"Running post-task commands.",
-		}, nil)
+		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{"Running post-task commands"}, nil)
 	}
 }
 
@@ -920,7 +918,7 @@ task_groups:
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running post-task commands.",
+		"Running post-task commands",
 	}, []string{panicLog})
 }
 
@@ -1111,7 +1109,7 @@ timeout:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",
-		"Running post-task commands.",
+		"Running post-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 	}, []string{"Running task-timeout commands"})
 }
