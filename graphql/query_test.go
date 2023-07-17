@@ -71,9 +71,10 @@ func populateMainlineCommits(t *testing.T) {
 			hasFailure := i%3 == 0
 			for j := 0; j < 10; j++ {
 				aTask := &task.Task{
-					Id:          fmt.Sprintf("t%d_%s", j, versionId),
-					Version:     versionId,
-					DisplayName: fmt.Sprintf("%s_%d", "lint", j),
+					Id:            fmt.Sprintf("t%d_%s", j, versionId),
+					Version:       versionId,
+					DisplayName:   fmt.Sprintf("%s_%d", "lint", j),
+					DisplayTaskId: utility.ToStringPtr(""),
 				}
 				if hasFailure {
 					aTask.Status = evergreen.TaskFailed

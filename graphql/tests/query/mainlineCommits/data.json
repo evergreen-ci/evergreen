@@ -59,7 +59,8 @@
             "activated": true,
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version1_build"
+            "build_id": "evergreen_version1_build",
+            "display_task_id": ""
         },
         {
             "_id": "task_2",
@@ -69,7 +70,8 @@
             "activated": true,
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version1_build"
+            "build_id": "evergreen_version1_build",
+            "display_task_id": ""
         },
         {
             "_id": "task_3",
@@ -79,7 +81,8 @@
             "activated": true,
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version2_build"
+            "build_id": "evergreen_version2_build",
+            "display_task_id": ""
         },
         {
             "_id": "task_4",
@@ -89,7 +92,8 @@
             "activated": true,
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version2_build"
+            "build_id": "evergreen_version2_build",
+            "display_task_id": ""
         },
         {
             "_id": "task_5",
@@ -99,7 +103,8 @@
             "activated": true,
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version5_build"
+            "build_id": "evergreen_version5_build",
+            "display_task_id": ""
         }
     ],
     "project_ref": [
