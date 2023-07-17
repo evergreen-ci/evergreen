@@ -196,7 +196,8 @@
         }
       ],
       "build_id": "ubuntu_build",
-      "time_taken": 42167575851
+      "time_taken": 42167575851,
+      "display_task_id": ""
     },
     {
       "_id": "2",
@@ -216,7 +217,8 @@
         "type": "system"
       },
       "build_id": "windows_build",
-      "time_taken": 8519029001
+      "time_taken": 8519029001,
+      "display_task_id": ""
     },
     {
       "_id": "3",
@@ -228,7 +230,8 @@
       "r": "github_pull_request",
       "status": "failed",
       "build_id": "ubuntu_build",
-      "time_taken": 71999882894
+      "time_taken": 71999882894,
+      "display_task_id": ""
     },
     {
       "_id": "4",
@@ -240,7 +243,8 @@
       "r": "github_pull_request",
       "status": "success",
       "build_id": "windows_build",
-      "time_taken": 10003174082
+      "time_taken": 10003174082,
+      "display_task_id": ""
     },
     {
       "_id": "5",
@@ -257,7 +261,8 @@
         "type": "test"
       },
       "build_id": "windows_build",
-      "time_taken": 21789175592
+      "time_taken": 21789175592,
+      "display_task_id": ""
     },
     {
       "_id": "6",
@@ -273,7 +278,8 @@
         "type": "system"
       },
       "build_id": "windows_build",
-      "time_taken": 43598100357
+      "time_taken": 43598100357,
+      "display_task_id": ""
     },
     {
       "_id": "7",
@@ -286,7 +292,8 @@
       "status": "failed",
       "abort": true,
       "build_id": "ubuntu_build",
-      "time_taken": 298882894
+      "time_taken": 298882894,
+      "display_task_id": ""
     },
     {
       "_id": "execution_task",
@@ -298,7 +305,8 @@
       "r": "github_pull_request",
       "status": "failed",
       "build_id": "bv_build",
-      "time_taken": 31120678285
+      "time_taken": 31120678285,
+      "display_task_id": "2"
     },
     {
       "_id": "base-task-1",
@@ -309,7 +317,8 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
-      "build_id": "ubuntu_build"
+      "build_id": "ubuntu_build",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-2",
@@ -320,7 +329,8 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-3",
@@ -331,7 +341,8 @@
       "display_name": "test-cloud",
       "r": "gitter_request",
       "status": "failed",
-      "build_id": "ubuntu_build"
+      "build_id": "ubuntu_build",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-4",
@@ -346,7 +357,8 @@
         "status": "failed",
         "type": "test"
       },
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-5",
@@ -357,7 +369,8 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-6",
@@ -368,7 +381,8 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-7",
@@ -380,7 +394,8 @@
       "r": "gitter_request",
       "status": "failed",
       "abort": true,
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "display_task_id": ""
     }
   ],
   "builds": [
