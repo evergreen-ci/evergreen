@@ -231,6 +231,8 @@ func (c *Mock) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*ap
 }
 
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.HeartbeatCount++
 	if c.HeartbeatShouldAbort {
 		return evergreen.TaskFailed, nil
@@ -250,6 +252,14 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 		return "", errors.New("mock heartbeat error")
 	}
 	return "", nil
+}
+
+// GetHeartbeatCount returns the current number of recorded heartbeats. This is
+// thread-safe.
+func (c *Mock) GetHeartbeatCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.HeartbeatCount
 }
 
 // GetNextTask returns a mock NextTaskResponse.
