@@ -1,0 +1,9 @@
+mutation {
+  deleteDistro(
+    opts: {
+      distroId: "localhost",
+    }
+  ) {
+    deletedDistroId
+  }
+}
