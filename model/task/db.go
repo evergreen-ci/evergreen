@@ -2538,9 +2538,14 @@ type GetTasksByVersionOptions struct {
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
+	shouldPopulateBaseTask := opts.BaseVersionID != ""
 	match := bson.M{}
 
-	match[VersionKey] = versionID
+	if shouldPopulateBaseTask {
+		match[VersionKey] = bson.M{"$in": []string{versionID, opts.BaseVersionID}}
+	} else {
+		match[VersionKey] = versionID
+	}
 
 	// GeneratedJSON can often be large, so we filter it out by default
 	projectOut := bson.M{
@@ -2597,45 +2602,82 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
-	if len(opts.BaseVersionID) > 0 {
-		baseVersionMatch := bson.M{
-			"$match": bson.M{
-				VersionKey: opts.BaseVersionID,
-				"$expr": bson.M{
-					"$and": []bson.M{
-						{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-						{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-					},
-				},
-			},
-		}
-		pipeline = append(pipeline, []bson.M{
-			// Add data about the base task
-			{"$lookup": bson.M{
-				"from": Collection,
-				"as":   BaseTaskKey,
-				"let": bson.M{
+	if shouldPopulateBaseTask {
+		// First group by variant and task name to group all tasks and their base tasks together
+		pipeline = append(pipeline, bson.M{
+			"$group": bson.M{
+				"_id": bson.M{
 					BuildVariantKey: "$" + BuildVariantKey,
 					DisplayNameKey:  "$" + DisplayNameKey,
 				},
-				"pipeline": []bson.M{
-					baseVersionMatch,
-					{"$project": bson.M{
-						IdKey:     1,
-						StatusKey: displayStatusExpression,
-					}},
-					{"$limit": 1},
-				},
-			}},
-			{
-				"$unwind": bson.M{
-					"path":                       "$" + BaseTaskKey,
-					"preserveNullAndEmptyArrays": true,
+				"tasks": bson.M{
+					"$push": "$$ROOT",
 				},
 			},
-		}...,
-		)
+		})
+		// Base tasks are the elemnt of the tasks array that have the base version ID
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"base_task": bson.M{
+					"$filter": bson.M{
+						"input": "$tasks",
+						"as":    "task",
+						"cond": bson.M{
+							"$eq": []string{"$$task." + VersionKey, opts.BaseVersionID},
+						},
+					},
+				},
+			},
+		})
+		// Replace the root document with the task that has the current version ID
+
+		pipeline = append(pipeline, bson.M{
+			"$replaceRoot": bson.M{
+				"newRoot": bson.M{
+					"$arrayElemAt": []interface{}{"$tasks", 0},
+				},
+			},
+		})
 	}
+	// if len(opts.BaseVersionID) > 0 {
+	// 	baseVersionMatch := bson.M{
+	// 		"$match": bson.M{
+	// 			VersionKey: opts.BaseVersionID,
+	// 			"$expr": bson.M{
+	// 				"$and": []bson.M{
+	// 					{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+	// 					{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+	// 				},
+	// 			},
+	// 		},
+	// 	}
+	// 	pipeline = append(pipeline, []bson.M{
+	// 		// Add data about the base task
+	// 		{"$lookup": bson.M{
+	// 			"from": Collection,
+	// 			"as":   BaseTaskKey,
+	// 			"let": bson.M{
+	// 				BuildVariantKey: "$" + BuildVariantKey,
+	// 				DisplayNameKey:  "$" + DisplayNameKey,
+	// 			},
+	// 			"pipeline": []bson.M{
+	// 				baseVersionMatch,
+	// 				{"$project": bson.M{
+	// 					IdKey:     1,
+	// 					StatusKey: displayStatusExpression,
+	// 				}},
+	// 				{"$limit": 1},
+	// 			},
+	// 		}},
+	// 		{
+	// 			"$unwind": bson.M{
+	// 				"path":                       "$" + BaseTaskKey,
+	// 				"preserveNullAndEmptyArrays": true,
+	// 			},
+	// 		},
+	// 	}...,
+	// 	)
+	// }
 
 	if len(opts.BaseVersionID) > 0 && len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
