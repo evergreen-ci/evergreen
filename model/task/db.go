@@ -2618,6 +2618,15 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		// Base tasks are the elemnt of the tasks array that have the base version ID
 		pipeline = append(pipeline, bson.M{
 			"$addFields": bson.M{
+				"root_task": bson.M{
+					"$filter": bson.M{
+						"input": "$tasks",
+						"as":    "task",
+						"cond": bson.M{
+							"$eq": []string{"$$task." + VersionKey, versionID},
+						},
+					},
+				},
 				"base_task": bson.M{
 					"$filter": bson.M{
 						"input": "$tasks",
@@ -2629,15 +2638,46 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				},
 			},
 		})
-		// Replace the root document with the task that has the current version ID
-
+		// Unwind the root task and base task arrays
 		pipeline = append(pipeline, bson.M{
-			"$replaceRoot": bson.M{
-				"newRoot": bson.M{
-					"$arrayElemAt": []interface{}{"$tasks", 0},
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"$first": "$root_task",
+				},
+				"base_task": bson.M{
+					"$first": "$base_task",
 				},
 			},
 		})
+		// Replace the root task with the base task if it exists
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"base_task": "$base_task",
+				},
+			},
+		})
+
+		// Project out the base task and the tasks array
+		pipeline = append(pipeline, bson.M{
+			"$project": bson.M{
+				"base_task": 0,
+				"tasks":     0,
+			},
+		})
+		// Replace the root document with the task
+		pipeline = append(pipeline, bson.M{
+			"$replaceRoot": bson.M{
+				"newRoot": "$root_task",
+			},
+		})
+		// Project out the root task
+		pipeline = append(pipeline, bson.M{
+			"$project": bson.M{
+				"root_task": 0,
+			},
+		})
+
 	}
 	// if len(opts.BaseVersionID) > 0 {
 	// 	baseVersionMatch := bson.M{
