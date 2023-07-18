@@ -2649,6 +2649,15 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				},
 			},
 		})
+
+		// Ensure that the root task is not nil
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				"root_task": bson.M{
+					"$exists": true,
+				},
+			},
+		})
 		// Replace the root task with the base task if it exists
 		pipeline = append(pipeline, bson.M{
 			"$addFields": bson.M{
@@ -2679,45 +2688,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 
 	}
-	// if len(opts.BaseVersionID) > 0 {
-	// 	baseVersionMatch := bson.M{
-	// 		"$match": bson.M{
-	// 			VersionKey: opts.BaseVersionID,
-	// 			"$expr": bson.M{
-	// 				"$and": []bson.M{
-	// 					{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-	// 					{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-	// 				},
-	// 			},
-	// 		},
-	// 	}
-	// 	pipeline = append(pipeline, []bson.M{
-	// 		// Add data about the base task
-	// 		{"$lookup": bson.M{
-	// 			"from": Collection,
-	// 			"as":   BaseTaskKey,
-	// 			"let": bson.M{
-	// 				BuildVariantKey: "$" + BuildVariantKey,
-	// 				DisplayNameKey:  "$" + DisplayNameKey,
-	// 			},
-	// 			"pipeline": []bson.M{
-	// 				baseVersionMatch,
-	// 				{"$project": bson.M{
-	// 					IdKey:     1,
-	// 					StatusKey: displayStatusExpression,
-	// 				}},
-	// 				{"$limit": 1},
-	// 			},
-	// 		}},
-	// 		{
-	// 			"$unwind": bson.M{
-	// 				"path":                       "$" + BaseTaskKey,
-	// 				"preserveNullAndEmptyArrays": true,
-	// 			},
-	// 		},
-	// 	}...,
-	// 	)
-	// }
 
 	if len(opts.BaseVersionID) > 0 && len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
