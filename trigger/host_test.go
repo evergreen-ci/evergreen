@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -22,6 +23,8 @@ type hostSuite struct {
 	t        *hostTriggers
 	testData hostTemplateData
 	uiConfig *evergreen.UIConfig
+	ctx      context.Context
+	cancel   context.CancelFunc
 
 	suite.Suite
 }
@@ -31,6 +34,8 @@ func (s *hostSuite) SetupSuite() {
 }
 
 func (s *hostSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(event.EventCollection, host.Collection, event.SubscriptionsCollection, alertrecord.Collection))
 
 	s.t = makeHostTriggers().(*hostTriggers)
@@ -38,7 +43,7 @@ func (s *hostSuite) SetupTest() {
 		Id:             "host",
 		ExpirationTime: time.Now().Add(12 * time.Hour),
 	}
-	s.NoError(s.t.host.Insert())
+	s.NoError(s.t.host.Insert(s.ctx))
 
 	s.t.event = &event.EventLogEntry{
 		ResourceType: event.ResourceTypeHost,
@@ -61,7 +66,7 @@ func (s *hostSuite) SetupTest() {
 	s.uiConfig = &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	s.NoError(s.uiConfig.Set())
+	s.NoError(s.uiConfig.Set(s.ctx))
 
 	s.testData = hostTemplateData{
 		ID:     "myHost",
@@ -69,6 +74,10 @@ func (s *hostSuite) SetupTest() {
 		Distro: "myDistro",
 		URL:    "idk",
 	}
+}
+
+func (s *hostSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *hostSuite) TestEmailMessage() {
@@ -86,14 +95,14 @@ func (s *hostSuite) TestSlackMessage() {
 
 func (s *hostSuite) TestFetch() {
 	triggers := hostTriggers{}
-	s.NoError(triggers.Fetch(s.t.event))
+	s.NoError(triggers.Fetch(s.ctx, s.t.event))
 	s.Equal(s.t.host.Id, triggers.templateData.ID)
 	s.Equal(fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", s.uiConfig.Url, s.t.host.Id), triggers.templateData.URL)
 }
 
 func (s *hostSuite) TestAllTriggers() {
 	// valid event should trigger a notification
-	n, err := NotificationsFromEvent(s.t.event)
+	n, err := NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
 	s.Len(n, 1)
 }

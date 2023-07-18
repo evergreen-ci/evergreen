@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -198,7 +199,7 @@ func FindSortedVolumesByUser(userID string) ([]Volume, error) {
 	return volumes, nil
 }
 
-func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
+func ValidateVolumeCanBeAttached(ctx context.Context, volumeID string) (*Volume, error) {
 	volume, err := FindVolumeByID(volumeID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting volume '%s'", volumeID)
@@ -207,7 +208,7 @@ func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
 		return nil, errors.Errorf("volume '%s' does not exist", volumeID)
 	}
 	var sourceHost *Host
-	sourceHost, err = FindHostWithVolume(volumeID)
+	sourceHost, err = FindHostWithVolume(ctx, volumeID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting host with volume '%s' attached", volumeID)
 	}

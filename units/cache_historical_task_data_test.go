@@ -16,6 +16,9 @@ import (
 )
 
 func TestCacheHistoricalTaskDataJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, taskstats.DailyTaskStatsCollection, taskstats.DailyStatsStatusCollection))
 	}()
@@ -34,13 +37,13 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				flags, err := evergreen.GetServiceFlags()
 				require.NoError(t, err)
 				flags.CacheStatsJobDisabled = true
-				require.NoError(t, flags.Set())
+				require.NoError(t, flags.Set(ctx))
 			},
 			post: func(t *testing.T) {
 				flags, err := evergreen.GetServiceFlags()
 				require.NoError(t, err)
 				flags.CacheStatsJobDisabled = false
-				require.NoError(t, flags.Set())
+				require.NoError(t, flags.Set(ctx))
 			},
 			hasErr: true,
 		},

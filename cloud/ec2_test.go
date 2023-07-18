@@ -329,7 +329,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 			)),
 		)),
 	)}
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
@@ -377,7 +377,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 			)),
 		)),
 	)}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
@@ -425,7 +425,7 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 			)),
 		)),
 	)}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
@@ -464,7 +464,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h.SpawnOptions.TaskID = "task_1"
 	h.StartedBy = "task_1"
 	h.SpawnOptions.SpawnedByTask = true
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 	s.Require().NoError(t.Insert())
 	newVars := &model.ProjectVars{
 		Id: project,
@@ -517,19 +517,19 @@ func (s *EC2Suite) TestModifyHost() {
 	defer cancel()
 
 	s.h.Status = evergreen.HostRunning
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	s.Require().NoError(s.h.Remove())
+	s.Require().NoError(s.h.Remove(ctx))
 
 	s.h.CreationTime = time.Now()
 	s.h.ExpirationTime = s.h.CreationTime.Add(time.Hour * 24 * 7)
 	s.h.NoExpiration = false
 	s.h.Status = evergreen.HostStopped
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 
 	// updating instance tags and instance type
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	found, err := host.FindOne(host.ById(s.h.Id))
+	found, err := host.FindOne(ctx, host.ById(s.h.Id))
 	s.NoError(err)
 	s.Equal([]host.Tag{{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
 	s.Equal(changes.InstanceType, found.InstanceType)
@@ -540,7 +540,7 @@ func (s *EC2Suite) TestModifyHost() {
 		AddHours: time.Hour * 24,
 	}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	found, err = host.FindOne(host.ById(s.h.Id))
+	found, err = host.FindOne(ctx, host.ById(s.h.Id))
 	s.NoError(err)
 	s.True(found.ExpirationTime.Equal(prevExpirationTime.Add(changes.AddHours)))
 
@@ -554,7 +554,7 @@ func (s *EC2Suite) TestModifyHost() {
 	noExpiration := true
 	changes = host.HostModifyOptions{NoExpiration: &noExpiration}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	found, err = host.FindOne(host.ById(s.h.Id))
+	found, err = host.FindOne(ctx, host.ById(s.h.Id))
 	s.NoError(err)
 	s.True(found.NoExpiration)
 
@@ -565,21 +565,21 @@ func (s *EC2Suite) TestModifyHost() {
 	}
 	s.Require().NoError(volumeToMount.Insert())
 	s.h.Zone = "us-east-1a"
-	s.Require().NoError(s.h.Remove())
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Remove(ctx))
+	s.Require().NoError(s.h.Insert(ctx))
 	changes = host.HostModifyOptions{
 		AttachVolume: "thang",
 	}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	_, err = host.FindOne(host.ById(s.h.Id))
+	_, err = host.FindOne(ctx, host.ById(s.h.Id))
 	s.NoError(err)
-	s.Require().NoError(s.h.Remove())
+	s.Require().NoError(s.h.Remove(ctx))
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	status, err := s.onDemandManager.GetInstanceStatus(ctx, s.h)
@@ -598,9 +598,9 @@ func (s *EC2Suite) TestTerminateInstance() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	s.NoError(s.h.Insert())
+	s.NoError(s.h.Insert(ctx))
 	s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
-	found, err := host.FindOne(host.ById("h1"))
+	found, err := host.FindOne(ctx, host.ById("h1"))
 	s.Equal(evergreen.HostTerminated, found.Status)
 	s.NoError(err)
 }
@@ -615,7 +615,7 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 	}()
 
 	s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-	s.NoError(s.h.Insert())
+	s.NoError(s.h.Insert(ctx))
 
 	creds, err := s.h.GenerateJasperCredentials(ctx, s.env)
 	s.Require().NoError(err)
@@ -646,7 +646,7 @@ func (s *EC2Suite) TestStopInstance() {
 	}
 	for _, h := range unstoppableHosts {
 		h.Distro = s.distro
-		s.Require().NoError(h.Insert())
+		s.Require().NoError(h.Insert(ctx))
 	}
 	for _, h := range unstoppableHosts {
 		s.Error(s.onDemandManager.StopInstance(ctx, h, evergreen.User))
@@ -664,12 +664,12 @@ func (s *EC2Suite) TestStopInstance() {
 	}
 	for _, h := range stoppableHosts {
 		h.Distro = s.distro
-		s.Require().NoError(h.Insert())
+		s.Require().NoError(h.Insert(ctx))
 	}
 
 	for _, h := range stoppableHosts {
 		s.NoError(s.onDemandManager.StopInstance(ctx, h, evergreen.User))
-		found, err := host.FindOne(host.ById(h.Id))
+		found, err := host.FindOne(ctx, host.ById(h.Id))
 		s.NoError(err)
 		s.Equal(evergreen.HostStopped, found.Status)
 	}
@@ -693,12 +693,12 @@ func (s *EC2Suite) TestStartInstance() {
 	}
 	for _, h := range hosts {
 		h.Distro = s.distro
-		s.NoError(h.Insert())
+		s.NoError(h.Insert(ctx))
 	}
 
 	s.Error(s.onDemandManager.StartInstance(ctx, hosts[0], evergreen.User))
 	s.NoError(s.onDemandManager.StartInstance(ctx, hosts[1], evergreen.User))
-	found, err := host.FindOne(host.ById("host-stopped"))
+	found, err := host.FindOne(ctx, host.ById("host-stopped"))
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, found.Status)
 	s.Equal("public_dns_name", found.Host)
@@ -970,7 +970,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		},
 	}
 	for _, h := range hosts {
-		s.NoError(h.Insert())
+		s.NoError(h.Insert(s.ctx))
 	}
 
 	manager := s.onDemandManager.(*ec2Manager)
@@ -1030,9 +1030,12 @@ func (s *EC2Suite) TestUserDataExpand() {
 }
 
 func (s *EC2Suite) TestCacheHostData() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ec2m := s.onDemandManager.(*ec2Manager)
 
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 
 	instance := &types.Instance{Placement: &types.Placement{}}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
@@ -1069,7 +1072,7 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}, s.h.Volumes)
 
-	h, err := host.FindOneId("h1")
+	h, err := host.FindOneId(ctx, "h1")
 	s.Require().NoError(err)
 	s.Require().NotNil(h)
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
@@ -1196,7 +1199,7 @@ func (s *EC2Suite) TestSetNextSubnet() {
 			},
 		},
 	}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(h.Insert(s.ctx))
 	s.impl.region = evergreen.DefaultEC2Region
 
 	// set to the first supporting subnet
@@ -1259,7 +1262,7 @@ func (s *EC2Suite) TestAttachVolume() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	newAttachment := host.VolumeAttachment{
 		VolumeID:   "test-volume",
 		DeviceName: "test-device-name",
@@ -1276,7 +1279,7 @@ func (s *EC2Suite) TestAttachVolume() {
 	s.Equal("test-volume", *input.VolumeId)
 	s.Equal("test-device-name", *input.Device)
 
-	host, err := host.FindOneId(s.h.Id)
+	host, err := host.FindOneId(ctx, s.h.Id)
 	s.NotNil(host)
 	s.NoError(err)
 	s.Contains(host.Volumes, newAttachment)
@@ -1285,7 +1288,7 @@ func (s *EC2Suite) TestAttachVolume() {
 func (s *EC2Suite) TestAttachVolumeGenerateDeviceName() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	newAttachment := &host.VolumeAttachment{
 		VolumeID: "test-volume",
 	}
@@ -1306,7 +1309,7 @@ func (s *EC2Suite) TestDetachVolume() {
 		DeviceName: "test-device-name",
 	}
 	s.h.Volumes = []host.VolumeAttachment{oldAttachment}
-	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.h.Insert(ctx))
 	s.Require().NoError(s.volume.Insert())
 
 	s.NoError(s.onDemandManager.DetachVolume(ctx, s.h, "test-volume"))
@@ -1320,7 +1323,7 @@ func (s *EC2Suite) TestDetachVolume() {
 	s.Equal("h1", *input.InstanceId)
 	s.Equal("test-volume", *input.VolumeId)
 
-	host, err := host.FindOneId(s.h.Id)
+	host, err := host.FindOneId(ctx, s.h.Id)
 	s.NotNil(host)
 	s.NoError(err)
 	s.NotContains(host.Volumes, oldAttachment)

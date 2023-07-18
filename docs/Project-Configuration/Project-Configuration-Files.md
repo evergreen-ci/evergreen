@@ -425,9 +425,9 @@ Fields:
 
 All projects can have a `pre` and `post` field which define a list of
 command to run at the start and end of every task that isn't in a task
-group. For task groups, setup_task and teardown_task will run instead.
-These are incredibly useful as a place for results commands or for
-cleanup and setup tasks.
+group. For task groups, `setup_task` and `teardown_task` will run instead of
+`pre` and `post`. These are incredibly useful as a place for results commands or
+for cleanup and setup tasks.
 
 **NOTE:** failures in `pre` and `post` commands will be ignored by
 default, so only use commands you know will succeed. See
@@ -464,6 +464,11 @@ timeout:
         python buildscripts/hang_analyzer.py
 ```
 
+If a task is aborted, the task will stop running any `pre` or task commands
+early, but it still runs `post` (or the task group equivalent, `teardown_task`).
+This is done in order to perform any final cleanup for the task.
+
+**Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
 within an allotted time, set the key `exec_timeout_secs` on the project
@@ -471,15 +476,16 @@ or task to the maximum allowed length of execution time. This timeout
 defaults to 6 hours. `exec_timeout_secs` can only be set on the project
 or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](Project-Commands.md#timeoutupdate). 
+You can also set exec_timeout_secs using [timeout.update](Project-Commands.md#timeoutupdate).
 
+**Idle timeout: timeout_secs**
 You may also force a specific command to trigger a failure if it does
 not appear to generate any output on `stdout`/`stderr` for more than a
 certain threshold, using the `timeout_secs` setting on the command. As
 long as the command does not appear to be idle it will be allowed to
 continue, but if it does not write any output for longer than
-`timeout_secs` then the timeout handler will be triggered. This timeout
-defaults to 2 hours.
+`timeout_secs` then the timeout handler will be triggered. 
+This timeout defaults to 2 hours.
 
 Example:
 
@@ -509,7 +515,16 @@ cause the task to fail, set the field `pre_error_fails_task` to true.
 Likewise, setting the field `post_error_fails_task` to true will enforce
 that failures in `post` cause the task to fail.
 
-``` yaml
+If pre_error_fails_task is set to true and pre fails, it will exit early 
+and not run the main task commands, but it will still run the post block.
+
+If post_error_fails_task is set to true and both the main task and post 
+block fail, the failing command in the main task will be displayed as the 
+failing command, not the failing post command.  The value set for 
+pre_error_fails_task and post_error_fails_task has no effect on tasks run
+in task groups which instead use the settings defined for that task group.
+
+```yaml
 exec_timeout_secs: 60
 pre_error_fails_task: true
 pre:
@@ -1556,12 +1571,13 @@ Example in a command:
 
 ### Task Fields Override Hierarchy
 
-The task's specific fields will be taken into priority in the following
-order:
+Some fields can be specified at multiple levels in the YAML. The task's specific
+fields will be taken into priority in the following order (from highest to
+lowest):
 
--   The fields in the build variant definition
--   The fields in the task definition
--   The fields in the variant task definition
+- Tasks listed under a build variant.
+- The task definition.
+- The build variant definition.
 
 Example:
 

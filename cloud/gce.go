@@ -158,7 +158,7 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 
 	// Start the instance, and remove the intent host document if unsuccessful.
 	if _, err := m.client.CreateInstance(h, s); err != nil {
-		if rmErr := h.Remove(); rmErr != nil {
+		if rmErr := h.Remove(ctx); rmErr != nil {
 			grip.Error(message.WrapError(rmErr, message.Fields{
 				"message": "could not remove intent host",
 				"host_id": h.Id,
@@ -201,7 +201,7 @@ func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, use
 	}
 
 	// Set the host status as terminated and update its termination time
-	return host.Terminate(user, reason)
+	return host.Terminate(ctx, user, reason)
 }
 
 func (m *gceManager) StopInstance(ctx context.Context, host *host.Host, user string) error {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -39,7 +40,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 
 	id := gimlet.GetVars(r)["host_id"]
 
-	h, err := host.FindOneByIdOrTag(id)
+	h, err := host.FindOneByIdOrTag(r.Context(), id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -81,7 +82,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 
 	var containers []host.Host
 	if h.HasContainers {
-		containers, err = h.GetContainers()
+		containers, err = h.GetContainers(r.Context())
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -119,7 +120,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	includeSpawnedHosts, _ := strconv.ParseBool(r.FormValue(IncludeSpawnedHosts))
-	hosts, err := getHostsData(includeSpawnedHosts)
+	hosts, err := getHostsData(r.Context(), includeSpawnedHosts)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -153,7 +154,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
 	id := gimlet.GetVars(r)["host_id"]
 
-	h, err := host.FindOne(host.ById(id))
+	h, err := host.FindOne(r.Context(), host.ById(id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -228,7 +229,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, opts.HostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(r.Context(), user, opts.HostIds)
 	if err != nil {
 		http.Error(w, err.Error(), httpStatus)
 		return
@@ -271,7 +272,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {
 	hostID := gimlet.GetVars(r)["host_id"]
-	h, err := uis.getHostFromCache(hostID)
+	h, err := uis.getHostFromCache(r.Context(), hostID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get host '%s'", hostID)
 	}
@@ -282,10 +283,10 @@ func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {
 	return []string{fmt.Sprintf("%s:%d", h.dnsName, evergreen.VSCodePort)}, nil
 }
 
-func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
+func (uis *UIServer) getHostFromCache(ctx context.Context, hostID string) (*hostCacheItem, error) {
 	h, ok := uis.hostCache[hostID]
 	if !ok || time.Since(h.inserted) > hostCacheTTL {
-		hDb, err := host.FindOneId(hostID)
+		hDb, err := host.FindOneId(ctx, hostID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't get host id '%s'", hostID)
 		}

@@ -370,7 +370,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 	var foundHost *host.Host
 	if h.hostID != "" {
-		foundHost, err = host.FindOneId(h.hostID)
+		foundHost, err = host.FindOneId(ctx, h.hostID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting host '%s'", h.hostID))
 		}
@@ -589,7 +589,7 @@ func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOneId(h.hostID)
+	host, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
 	}
@@ -951,7 +951,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var msg string
 	if h.hostID != "" {
-		host, err := host.FindOneByTaskIdAndExecution(t.Id, t.Execution)
+		host, err := host.FindOneByTaskIdAndExecution(ctx, t.Id, t.Execution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host running task %s", t.Id))
 		}

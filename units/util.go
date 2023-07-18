@@ -19,12 +19,12 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 	}
 	catcher := grip.NewBasicCatcher()
 	if h.ParentID != "" {
-		parent, err := host.FindOneId(h.ParentID)
+		parent, err := host.FindOneId(ctx, h.ParentID)
 		if err != nil {
 			return errors.Wrapf(err, "finding parent host for container '%s'", h.Id)
 		}
 		if parent != nil {
-			containers, err := parent.GetActiveContainers()
+			containers, err := parent.GetActiveContainers(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "getting containers under parent container '%s'", h.ParentID)
 			}
@@ -46,7 +46,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return nil
 	}
 
-	err := h.DisablePoisonedHost(reason)
+	err := h.DisablePoisonedHost(ctx, reason)
 	if err != nil {
 		return errors.Wrap(err, "disabling poisoned host")
 	}
@@ -55,7 +55,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "enqueueing decohost notify job")
 	}
 
-	return model.ClearAndResetStrandedHostTask(env.Settings(), h)
+	return model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

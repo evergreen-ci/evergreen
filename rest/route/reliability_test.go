@@ -30,12 +30,15 @@ const (
 )
 
 func configureTaskReliability(disabled bool) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var err error
 	flags := &evergreen.ServiceFlags{}
-	err = flags.Get(evergreen.GetEnvironment())
+	err = flags.Get(ctx)
 	if err == nil {
 		flags.TaskReliabilityDisabled = disabled
-		err = flags.Set()
+		err = flags.Set(ctx)
 	}
 	return err
 }

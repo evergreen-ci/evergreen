@@ -32,7 +32,7 @@ func (h *flagsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting service flags to service model"))
 	}
 
-	err = evergreen.SetServiceFlags(flags.(evergreen.ServiceFlags))
+	err = evergreen.SetServiceFlagsContext(ctx, flags.(evergreen.ServiceFlags))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting service flags"))
 	}

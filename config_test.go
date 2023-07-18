@@ -170,6 +170,9 @@ func (s *AdminSuite) TestBanner() {
 }
 
 func (s *AdminSuite) TestBaseConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := Settings{
 		ApiUrl:              "api",
 		AWSInstanceRole:     "role",
@@ -191,7 +194,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		ShutdownWaitSeconds: 15,
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -223,6 +226,9 @@ func (s *AdminSuite) TestBaseConfig() {
 }
 
 func (s *AdminSuite) TestServiceFlags() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testFlags := ServiceFlags{}
 	s.NotPanics(func() {
 		v := reflect.ValueOf(&testFlags).Elem()
@@ -232,7 +238,7 @@ func (s *AdminSuite) TestServiceFlags() {
 		}
 	})
 
-	err := testFlags.Set()
+	err := testFlags.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -250,6 +256,9 @@ func (s *AdminSuite) TestServiceFlags() {
 }
 
 func (s *AdminSuite) TestAlertsConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := AlertsConfig{
 		SMTP: SMTPConfig{
 			Server:     "server",
@@ -262,7 +271,7 @@ func (s *AdminSuite) TestAlertsConfig() {
 		},
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -271,6 +280,9 @@ func (s *AdminSuite) TestAlertsConfig() {
 }
 
 func (s *AdminSuite) TestAmboyConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := AmboyConfig{
 		Name:       "amboy",
 		SingleName: "single",
@@ -291,7 +303,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 		SampleSize:                            200,
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -300,12 +312,15 @@ func (s *AdminSuite) TestAmboyConfig() {
 }
 
 func (s *AdminSuite) TestApiConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := APIConfig{
 		HttpListenAddr:      "addr",
 		GithubWebhookSecret: "secret",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -314,6 +329,9 @@ func (s *AdminSuite) TestApiConfig() {
 }
 
 func (s *AdminSuite) TestAuthConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := AuthConfig{
 		LDAP: &LDAPConfig{
 			URL:                "url",
@@ -352,7 +370,7 @@ func (s *AdminSuite) TestAuthConfig() {
 		BackgroundReauthMinutes: 60,
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -361,11 +379,14 @@ func (s *AdminSuite) TestAuthConfig() {
 }
 
 func (s *AdminSuite) TestHostinitConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := HostInitConfig{
 		HostThrottle: 64,
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -374,6 +395,9 @@ func (s *AdminSuite) TestHostinitConfig() {
 }
 
 func (s *AdminSuite) TestJiraConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := JiraConfig{
 		Host: "host",
 		BasicAuthConfig: JiraBasicAuthConfig{
@@ -387,7 +411,7 @@ func (s *AdminSuite) TestJiraConfig() {
 		DefaultProject: "proj",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -396,6 +420,9 @@ func (s *AdminSuite) TestJiraConfig() {
 }
 
 func (s *AdminSuite) TestPodLifecycleConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := PodLifecycleConfig{
 		S3BaseURL:                   "s3_base_url",
 		MaxParallelPodRequests:      1000,
@@ -403,7 +430,7 @@ func (s *AdminSuite) TestPodLifecycleConfig() {
 		MaxSecretCleanupRate:        100,
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.Require().NoError(err)
 	settings, err := GetConfig()
 	s.Require().NoError(err)
@@ -412,6 +439,9 @@ func (s *AdminSuite) TestPodLifecycleConfig() {
 }
 
 func (s *AdminSuite) TestProvidersConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := CloudProviders{
 		AWS: AWSConfig{
 			EC2Keys: []EC2Key{
@@ -446,7 +476,7 @@ func (s *AdminSuite) TestProvidersConfig() {
 		},
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -455,13 +485,16 @@ func (s *AdminSuite) TestProvidersConfig() {
 }
 
 func (s *AdminSuite) TestRepotrackerConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := RepoTrackerConfig{
 		NumNewRepoRevisionsToFetch: 10,
 		MaxRepoRevisionsToSearch:   20,
 		MaxConcurrentRequests:      30,
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -470,11 +503,14 @@ func (s *AdminSuite) TestRepotrackerConfig() {
 }
 
 func (s *AdminSuite) TestSchedulerConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := SchedulerConfig{
 		TaskFinder: "task_finder",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -483,6 +519,9 @@ func (s *AdminSuite) TestSchedulerConfig() {
 }
 
 func (s *AdminSuite) TestSlackConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := SlackConfig{
 		Options: &send.SlackOptions{
 			Channel:   "channel",
@@ -493,7 +532,7 @@ func (s *AdminSuite) TestSlackConfig() {
 		Level: "info",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -502,6 +541,9 @@ func (s *AdminSuite) TestSlackConfig() {
 }
 
 func (s *AdminSuite) TestSplunkConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := SplunkConfig{
 		SplunkConnectionInfo: send.SplunkConnectionInfo{
 			ServerURL: "splunk_url",
@@ -510,7 +552,7 @@ func (s *AdminSuite) TestSplunkConfig() {
 		},
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -519,6 +561,9 @@ func (s *AdminSuite) TestSplunkConfig() {
 }
 
 func (s *AdminSuite) TestUiConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := UIConfig{
 		Url:            "url",
 		HelpUrl:        "helpurl",
@@ -529,7 +574,7 @@ func (s *AdminSuite) TestUiConfig() {
 		CsrfKey:        "csrf",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -575,6 +620,9 @@ func (s *AdminSuite) TestConfigDefaults() {
 }
 
 func (s *AdminSuite) TestKeyValPairsToMap() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := Settings{
 		ApiUrl:    "foo",
 		ConfigDir: "foo",
@@ -594,9 +642,9 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 		},
 	}
 	s.NoError(config.ValidateAndDefault())
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 	dbConfig := Settings{}
-	s.NoError(dbConfig.Get(s.env))
+	s.NoError(dbConfig.Get(ctx))
 	s.Len(dbConfig.CredentialsNew, 1)
 	s.Len(dbConfig.ExpansionsNew, 1)
 	s.Len(dbConfig.KeysNew, 1)
@@ -610,6 +658,9 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 }
 
 func (s *AdminSuite) TestNotifyConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := NotifyConfig{
 		SMTP: SMTPConfig{
 			Server:     "server",
@@ -622,7 +673,7 @@ func (s *AdminSuite) TestNotifyConfig() {
 		},
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -631,7 +682,7 @@ func (s *AdminSuite) TestNotifyConfig() {
 
 	config.BufferIntervalSeconds = 1
 	config.BufferTargetPerInterval = 2
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig()
 	s.NoError(err)
@@ -640,6 +691,8 @@ func (s *AdminSuite) TestNotifyConfig() {
 }
 
 func (s *AdminSuite) TestContainerPoolsConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	invalidConfig := ContainerPoolsConfig{
 		Pools: []ContainerPool{
@@ -669,7 +722,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 		},
 	}
 
-	err = validConfig.Set()
+	err = validConfig.Set(ctx)
 	s.NoError(err)
 
 	settings, err := GetConfig()
@@ -678,7 +731,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	s.Equal(validConfig, settings.ContainerPools)
 
 	validConfig.Pools[0].MaxContainers = 50
-	s.NoError(validConfig.Set())
+	s.NoError(validConfig.Set(ctx))
 
 	settings, err = GetConfig()
 	s.NoError(err)
@@ -698,6 +751,9 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 }
 
 func (s *AdminSuite) TestJIRANotificationsConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	c := JIRANotificationsConfig{
 		CustomFields: []JIRANotificationsProject{
 			{
@@ -711,7 +767,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	s.NoError(c.Get(s.env))
+	s.NoError(c.Get(ctx))
 	s.NotNil(c)
 	s.Nil(c.CustomFields)
 	s.NotPanics(func() {
@@ -729,15 +785,15 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	s.Require().NoError(c.Set())
+	s.Require().NoError(c.Set(ctx))
 
 	c = JIRANotificationsConfig{}
-	s.Require().NoError(c.Get(s.env))
+	s.Require().NoError(c.Get(ctx))
 	s.NoError(c.ValidateAndDefault())
 	s.Len(c.CustomFields, 1)
 
 	c = JIRANotificationsConfig{}
-	s.NoError(c.Set())
+	s.NoError(c.Set(ctx))
 	s.NoError(c.ValidateAndDefault())
 	c.CustomFields = []JIRANotificationsProject{
 		{
@@ -754,6 +810,9 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 }
 
 func (s *AdminSuite) TestCommitQueueConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := CommitQueueConfig{
 		MergeTaskDistro: "distro",
 		CommitterName:   "Evergreen",
@@ -761,7 +820,7 @@ func (s *AdminSuite) TestCommitQueueConfig() {
 	}
 
 	s.NoError(config.ValidateAndDefault())
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -771,6 +830,9 @@ func (s *AdminSuite) TestCommitQueueConfig() {
 }
 
 func (s *AdminSuite) TestHostJasperConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	emptyConfig := HostJasperConfig{}
 	s.NoError(emptyConfig.ValidateAndDefault())
 	s.Equal(DefaultJasperPort, emptyConfig.Port)
@@ -784,7 +846,7 @@ func (s *AdminSuite) TestHostJasperConfig() {
 	}
 
 	s.NoError(config.ValidateAndDefault())
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 
 	settings, err := GetConfig()
 	s.Require().NoError(err)
@@ -915,6 +977,9 @@ func (s *AdminSuite) TestSSHKeysAppendOnly() {
 }
 
 func (s *AdminSuite) TestCedarConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := CedarConfig{
 		BaseURL: "url.com",
 		RPCPort: "9090",
@@ -922,7 +987,7 @@ func (s *AdminSuite) TestCedarConfig() {
 		APIKey:  "key",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -930,7 +995,7 @@ func (s *AdminSuite) TestCedarConfig() {
 	s.Equal(config, settings.Cedar)
 
 	config.RPCPort = "7070"
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig()
 	s.NoError(err)
@@ -939,12 +1004,15 @@ func (s *AdminSuite) TestCedarConfig() {
 }
 
 func (s *AdminSuite) TestTracerConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := TracerConfig{
 		Enabled:           true,
 		CollectorEndpoint: "localhost:4316",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -952,7 +1020,7 @@ func (s *AdminSuite) TestTracerConfig() {
 	s.Equal(config, settings.Tracer)
 
 	config.Enabled = false
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig()
 	s.NoError(err)
@@ -961,6 +1029,9 @@ func (s *AdminSuite) TestTracerConfig() {
 }
 
 func (s *AdminSuite) TestDataPipesConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := DataPipesConfig{
 		Host:         "https://url.com",
 		Region:       "us-east-1",
@@ -969,7 +1040,7 @@ func (s *AdminSuite) TestDataPipesConfig() {
 		AWSToken:     "token",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -977,7 +1048,7 @@ func (s *AdminSuite) TestDataPipesConfig() {
 	s.Equal(config, settings.DataPipes)
 
 	config.Region = "us-west-1"
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig()
 	s.NoError(err)

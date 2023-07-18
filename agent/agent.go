@@ -80,7 +80,7 @@ const (
 	// PodMode indicates that the agent will run in a pod's container.
 	PodMode Mode = "pod"
 
-	MessageLimit = 500
+	endTaskMessageLimit = 500
 
 	taskTimeoutBlock   = "timeout"
 	preBlock           = "pre"
@@ -282,7 +282,6 @@ func (a *Agent) loop(ctx context.Context) error {
 		}
 	}()
 
-LOOP:
 	for {
 		select {
 		case <-ctx.Done():
@@ -316,7 +315,7 @@ LOOP:
 				if errors.Cause(err) == client.HTTPConflictError {
 					timer.Reset(0)
 					agentSleepInterval = minAgentSleepInterval
-					continue LOOP
+					continue
 				}
 				return errors.Wrap(err, "getting next task")
 			}
@@ -333,7 +332,7 @@ LOOP:
 				tc = &taskContext{}
 				timer.Reset(0)
 				agentSleepInterval = minAgentSleepInterval
-				continue LOOP
+				continue
 			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
@@ -343,7 +342,7 @@ LOOP:
 					}))
 					timer.Reset(0)
 					agentSleepInterval = minAgentSleepInterval
-					continue LOOP
+					continue
 				}
 				prevLogger := tc.logger
 				tc = a.prepareNextTask(ctx, nextTask, tc)
@@ -366,7 +365,7 @@ LOOP:
 					}))
 					timer.Reset(0)
 					agentSleepInterval = minAgentSleepInterval
-					continue LOOP
+					continue
 				}
 				if shouldExit {
 					return nil
@@ -374,7 +373,7 @@ LOOP:
 				needPostGroup = true
 				timer.Reset(0)
 				agentSleepInterval = minAgentSleepInterval
-				continue LOOP
+				continue
 			} else if needPostGroup {
 				a.runPostGroupCommands(ctx, tc)
 				needPostGroup = false
@@ -543,7 +542,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		grip.Error(err)
 		grip.Infof("Task complete: '%s'.", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
 	}
 	tc.setTaskConfig(taskConfig)
 
@@ -552,7 +551,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		grip.Error(err)
 		grip.Infof("Task complete: '%s'.", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
 	}
 
 	if !tc.ranSetupGroup {
@@ -562,7 +561,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 			grip.Error(err)
 			grip.Infof("Task complete: '%s'.", tc.task.ID)
 			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory"))
-			return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, err.Error())
+			return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
 		}
 	}
 	tc.taskConfig.WorkDir = tc.taskDirectory
@@ -620,17 +619,7 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	return false, errors.WithStack(err)
 }
 
-func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
-	status := evergreen.TaskFailed
-	select {
-	case <-taskCtx.Done():
-		grip.Infof("Task canceled: '%s'.", tc.task.ID)
-	case status = <-complete:
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-	case status = <-heartbeat:
-		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
-	}
-
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status string) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
@@ -647,6 +636,18 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+}
+
+func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
+	status := evergreen.TaskFailed
+	select {
+	case <-taskCtx.Done():
+		grip.Infof("Task canceled: '%s'.", tc.task.ID)
+	case status = <-complete:
+		grip.Infof("Task complete: '%s'.", tc.task.ID)
+	case status = <-heartbeat:
+		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
 	}
 
 	return status
@@ -673,27 +674,24 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, message string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, message)
+	detail := a.endTaskResponse(ctx, tc, status, message)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
+		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
-			tc.logger.Task().Info("Post task completed -- FAILURE. Overall task status changed to FAILED.")
+			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			detail.Status = evergreen.TaskFailed
+			setEndTaskCommand(tc, detail, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
+		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post task commands"))
 		}
 		a.runEndTaskSync(ctx, tc, detail)
-	case evergreen.TaskUndispatched:
-		tc.logger.Task().Info("Task completed - ABORTED.")
-	case client.TaskConflict:
-		tc.logger.Task().Error("Task completed - CANCELED.")
-		// If we receive a 409, return control to the loop (ask for a new task)
-		return nil, nil
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
 		// outside of a task's control (e.g. due to a panic). Therefore, it
@@ -731,19 +729,19 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var description string
 	var failureType string
 	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
-		tc.logger.Task().Infof("Task status set with HTTP endpoint.")
+		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", a.endTaskResp.Status)
 		if !evergreen.IsValidTaskEndStatus(a.endTaskResp.Status) {
-			tc.logger.Task().Errorf("'%s' is not a valid task status.", a.endTaskResp.Status)
+			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", a.endTaskResp.Status)
 			status = evergreen.TaskFailed
 			failureType = evergreen.CommandTypeSystem
 		} else {
 			status = a.endTaskResp.Status
-			if len(a.endTaskResp.Description) > MessageLimit {
-				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), defaulting to command display name.", MessageLimit)
+			if len(a.endTaskResp.Description) > endTaskMessageLimit {
+				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), defaulting to command display name.", endTaskMessageLimit)
 			} else {
 				description = a.endTaskResp.Description
 			}
@@ -756,17 +754,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		}
 	}
 
-	if tc.getCurrentCommand() != nil {
-		if description == "" {
-			description = tc.getCurrentCommand().DisplayName()
-		}
-		if failureType == "" {
-			failureType = tc.getCurrentCommand().Type()
-		}
-	}
 	detail := &apimodels.TaskEndDetail{
-		Description:     description,
-		Type:            failureType,
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
@@ -775,10 +763,24 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		Message:         message,
 		TraceID:         tc.traceID,
 	}
+	setEndTaskCommand(tc, detail, description, failureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
+}
+
+func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, description, failureType string) {
+	if tc.getCurrentCommand() != nil {
+		if description == "" {
+			description = tc.getCurrentCommand().DisplayName()
+		}
+		if failureType == "" {
+			failureType = tc.getCurrentCommand().Type()
+		}
+	}
+	detail.Description = description
+	detail.Type = failureType
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {

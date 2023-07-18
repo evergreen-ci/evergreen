@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +13,8 @@ import (
 )
 
 func TestDecommissionInactiveStaticHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When decommissioning unused static hosts", t, func() {
 
@@ -25,46 +28,46 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 				Status:   evergreen.HostRunning,
 				Provider: evergreen.HostTypeStatic,
 			}
-			So(activeOne.Insert(), ShouldBeNil)
+			So(activeOne.Insert(ctx), ShouldBeNil)
 
 			activeTwo := &Host{
 				Id:       "activeStaticTwo",
 				Status:   evergreen.HostRunning,
 				Provider: evergreen.HostTypeStatic,
 			}
-			So(activeTwo.Insert(), ShouldBeNil)
+			So(activeTwo.Insert(ctx), ShouldBeNil)
 
 			inactiveOne := &Host{
 				Id:       "inactiveStaticOne",
 				Status:   evergreen.HostRunning,
 				Provider: evergreen.HostTypeStatic,
 			}
-			So(inactiveOne.Insert(), ShouldBeNil)
+			So(inactiveOne.Insert(ctx), ShouldBeNil)
 
 			inactiveTwo := &Host{
 				Id:       "inactiveStaticTwo",
 				Status:   evergreen.HostRunning,
 				Provider: evergreen.HostTypeStatic,
 			}
-			So(inactiveTwo.Insert(), ShouldBeNil)
+			So(inactiveTwo.Insert(ctx), ShouldBeNil)
 
 			inactiveEC2One := &Host{
 				Id:       "inactiveEC2One",
 				Status:   evergreen.HostRunning,
 				Provider: "ec2-ondemand",
 			}
-			So(inactiveEC2One.Insert(), ShouldBeNil)
+			So(inactiveEC2One.Insert(ctx), ShouldBeNil)
 
 			inactiveUnknownTypeOne := &Host{
 				Id:     "inactiveUnknownTypeOne",
 				Status: evergreen.HostRunning,
 			}
-			So(inactiveUnknownTypeOne.Insert(), ShouldBeNil)
+			So(inactiveUnknownTypeOne.Insert(ctx), ShouldBeNil)
 
 			activeStaticHosts := []string{"activeStaticOne", "activeStaticTwo"}
-			So(MarkInactiveStaticHosts(activeStaticHosts, nil), ShouldBeNil)
+			So(MarkInactiveStaticHosts(ctx, activeStaticHosts, nil), ShouldBeNil)
 
-			found, err := Find(IsTerminated)
+			found, err := Find(ctx, IsTerminated)
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 2)
 			So(hostIdInSlice(found, inactiveOne.Id), ShouldBeTrue)
@@ -74,6 +77,9 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 }
 
 func TestTerminateStaticHostsForDistro(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
 		{
@@ -117,24 +123,27 @@ func TestTerminateStaticHostsForDistro(t *testing.T) {
 		},
 	}
 	for _, h := range hosts {
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 	}
-	found, err := Find(IsTerminated)
+	found, err := Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 0)
 	d := &distro.Distro{Id: "d1"}
-	assert.NoError(t, MarkInactiveStaticHosts([]string{}, d))
-	found, err = Find(IsTerminated)
+	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{}, d))
+	found, err = Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 	d2 := &distro.Distro{Id: "d2"}
-	assert.NoError(t, MarkInactiveStaticHosts([]string{}, d2))
-	found, err = Find(IsTerminated)
+	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{}, d2))
+	found, err = Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 4)
 }
 
 func TestTerminateStaticHostsForDistroAliases(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
 		{
@@ -172,14 +181,14 @@ func TestTerminateStaticHostsForDistroAliases(t *testing.T) {
 	}
 
 	for _, h := range hosts {
-		assert.NoError(t, h.Insert())
+		assert.NoError(t, h.Insert(ctx))
 	}
 	d := &distro.Distro{
 		Id:      "d1",
 		Aliases: []string{"dAlias"},
 	}
-	assert.NoError(t, MarkInactiveStaticHosts([]string{"h1"}, d))
-	found, err := Find(IsTerminated)
+	assert.NoError(t, MarkInactiveStaticHosts(ctx, []string{"h1"}, d))
+	found, err := Find(ctx, IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 }

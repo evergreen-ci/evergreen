@@ -1250,10 +1250,10 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
-func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
+func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (int, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return 0, errors.WithStack(err)
 	}
 
@@ -1646,14 +1646,22 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	}
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
-		bson.M{"$set": bson.M{
-			ActivatedKey:                true,
-			DeactivatedForDependencyKey: false,
-			ActivatedByKey:              caller,
-			ActivatedTimeKey:            time.Now(),
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-		}},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:                true,
+					DeactivatedForDependencyKey: false,
+					ActivatedByKey:              caller,
+					ActivatedTimeKey:            time.Now(),
+					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+					UnattainableDependencyKey: bson.M{"$cond": bson.M{
+						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"else": false,
+					}},
+				},
+			},
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating activation for dependencies")
@@ -1958,8 +1966,8 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
-func (t *Task) Reset() error {
-	return UpdateOne(
+func (t *Task) Reset(ctx context.Context) error {
+	return UpdateOneContext(ctx,
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -1994,7 +2002,7 @@ func ResetTasks(tasks []Task) error {
 	return nil
 }
 
-func resetTaskUpdate(t *Task) bson.M {
+func resetTaskUpdate(t *Task) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
@@ -2023,36 +2031,44 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
 	}
-	update := bson.M{
-		"$set": bson.M{
-			ActivatedKey:                   true,
-			ActivatedTimeKey:               now,
-			SecretKey:                      newSecret,
-			StatusKey:                      evergreen.TaskUndispatched,
-			DispatchTimeKey:                utility.ZeroTime,
-			StartTimeKey:                   utility.ZeroTime,
-			ScheduledTimeKey:               utility.ZeroTime,
-			FinishTimeKey:                  utility.ZeroTime,
-			DependenciesMetTimeKey:         utility.ZeroTime,
-			TimeTakenKey:                   0,
-			LastHeartbeatKey:               utility.ZeroTime,
-			ContainerAllocationAttemptsKey: 0,
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+	update := []bson.M{
+		{
+			"$set": bson.M{
+				ActivatedKey:                   true,
+				ActivatedTimeKey:               now,
+				SecretKey:                      newSecret,
+				StatusKey:                      evergreen.TaskUndispatched,
+				DispatchTimeKey:                utility.ZeroTime,
+				StartTimeKey:                   utility.ZeroTime,
+				ScheduledTimeKey:               utility.ZeroTime,
+				FinishTimeKey:                  utility.ZeroTime,
+				DependenciesMetTimeKey:         utility.ZeroTime,
+				TimeTakenKey:                   0,
+				LastHeartbeatKey:               utility.ZeroTime,
+				ContainerAllocationAttemptsKey: 0,
+				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$cond": bson.M{
+					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"else": false,
+				}},
+			},
 		},
-		"$unset": bson.M{
-			DetailsKey:                 "",
-			ResultsServiceKey:          "",
-			ResultsFailedKey:           "",
-			HasCedarResultsKey:         "",
-			ResetWhenFinishedKey:       "",
-			ResetFailedWhenFinishedKey: "",
-			AgentVersionKey:            "",
-			HostIdKey:                  "",
-			PodIDKey:                   "",
-			HostCreateDetailsKey:       "",
-			OverrideDependenciesKey:    "",
-			CanResetKey:                "",
+		{
+			"$unset": []string{
+				DetailsKey,
+				ResultsServiceKey,
+				ResultsFailedKey,
+				HasCedarResultsKey,
+				ResetWhenFinishedKey,
+				ResetFailedWhenFinishedKey,
+				AgentVersionKey,
+				HostIdKey,
+				PodIDKey,
+				HostCreateDetailsKey,
+				OverrideDependenciesKey,
+				CanResetKey,
+			},
 		},
 	}
 	return update
@@ -2646,22 +2662,22 @@ func (t *Task) SetResetFailedWhenFinished() error {
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro
 // primary queue.
-func FindHostSchedulable(distroID string) ([]Task, error) {
+func FindHostSchedulable(ctx context.Context, distroID string) ([]Task, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	return Find(query)
 }
 
-func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
+func addApplicableDistroFilter(ctx context.Context, id string, fieldName string, query bson.M) error {
 	if id == "" {
 		return nil
 	}
 
-	aliases, err := distro.FindApplicableDistroIDs(id)
+	aliases, err := distro.FindApplicableDistroIDs(ctx, id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -2677,10 +2693,10 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 
 // FindHostSchedulableForAlias finds all tasks that can be scheduled for a
 // distro secondary queue.
-func FindHostSchedulableForAlias(id string) ([]Task, error) {
+func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error) {
 	q := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(id, SecondaryDistrosKey, q); err != nil {
+	if err := addApplicableDistroFilter(ctx, id, SecondaryDistrosKey, q); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

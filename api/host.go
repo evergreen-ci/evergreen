@@ -43,12 +43,12 @@ var (
 	}
 )
 
-func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Host, map[string]gimlet.Permissions, int, error) {
+func GetHostsAndUserPermissions(ctx context.Context, user *user.DBUser, hostIds []string) ([]host.Host, map[string]gimlet.Permissions, int, error) {
 	if len(hostIds) == 0 {
 		return nil, nil, http.StatusBadRequest, errors.New("hostIds cannot be empty")
 	}
 
-	hosts, err := host.Find(host.ByIds(hostIds))
+	hosts, err := host.Find(ctx, host.ByIds(hostIds))
 	if err != nil {
 		return nil, nil, http.StatusInternalServerError, errors.New("Error getting hosts to update")
 	}
@@ -119,7 +119,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), http.StatusOK, nil
 	}
 
-	err := h.SetStatus(newStatus, u.Id, notes)
+	err := h.SetStatus(ctx, newStatus, u.Id, notes)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 	}
@@ -140,7 +140,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 
 func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
-		modifyErr := h.SetNeedsToRestartJasper(username)
+		modifyErr := h.SetNeedsToRestartJasper(ctx, username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}
@@ -164,7 +164,7 @@ func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, us
 
 func GetReprovisionToNewCallback(ctx context.Context, env evergreen.Environment, username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
-		modifyErr := h.SetNeedsReprovisionToNew(username)
+		modifyErr := h.SetNeedsReprovisionToNew(ctx, username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}

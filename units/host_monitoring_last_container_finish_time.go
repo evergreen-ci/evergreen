@@ -49,18 +49,18 @@ func (j *lastContainerFinishTimeJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	// get pairs of host ID and finish time for each host with containers
-	times, err := host.AggregateLastContainerFinishTimes()
+	times, err := host.AggregateLastContainerFinishTimes(ctx)
 	j.AddError(errors.Wrap(err, "getting container parents and their last container finish times"))
 
 	// update last container finish time for each host with containers
 	for _, time := range times {
-		h, err := host.FindOneByIdOrTag(time.Id)
+		h, err := host.FindOneByIdOrTag(ctx, time.Id)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", time.Id))
 			continue
 		} else if h == nil {
 			continue
 		}
-		j.AddError(errors.Wrapf(h.UpdateLastContainerFinishTime(time.FinishTime), "updating last container finish time for container parent '%s'", h.Id))
+		j.AddError(errors.Wrapf(h.UpdateLastContainerFinishTime(ctx, time.FinishTime), "updating last container finish time for container parent '%s'", h.Id))
 	}
 }

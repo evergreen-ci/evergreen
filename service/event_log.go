@@ -31,7 +31,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var h *host.Host
-		h, err = host.FindOneByIdOrTag(resourceID)
+		h, err = host.FindOneByIdOrTag(ctx, resourceID)
 		if err != nil {
 			http.Error(w, errors.Wrap(err, "error finding host '%s'").Error(), http.StatusInternalServerError)
 			return

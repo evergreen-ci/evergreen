@@ -135,12 +135,12 @@ func SetBannerTheme(themeString string, u *user.DBUser) error {
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
+func RestartFailedTasks(ctx context.Context, queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	var results model.RestartResults
 	var err error
 
 	if opts.DryRun {
-		results, err = model.RestartFailedTasks(opts)
+		results, err = model.RestartFailedTasks(ctx, opts)
 		if err != nil {
 			return nil, err
 		}

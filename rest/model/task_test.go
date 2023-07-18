@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,6 +17,9 @@ type taskCompare struct {
 }
 
 func TestTaskBuildFromService(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("With a list of models to compare", t, func() {
 		timeNow := time.Now()
 		cTime := timeNow.Add(10 * time.Minute)
@@ -181,31 +185,31 @@ func TestTaskBuildFromService(t *testing.T) {
 		Convey("running BuildFromService(), should populate mainline and blocked dependencies", func() {
 			for _, tc := range modelPairs {
 				apiTask := &APITask{}
-				err := apiTask.BuildFromService(&tc.st, nil)
+				err := apiTask.BuildFromService(ctx, &tc.st, nil)
 				So(err, ShouldBeNil)
 				So(true, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.PatchVersionRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st, nil)
+				err = apiTask.BuildFromService(ctx, &tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.GithubPRRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st, nil)
+				err = apiTask.BuildFromService(ctx, &tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.TriggerRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st, nil)
+				err = apiTask.BuildFromService(ctx, &tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.AdHocRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st, nil)
+				err = apiTask.BuildFromService(ctx, &tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
@@ -214,7 +218,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					{Unattainable: true},
 				}
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st, nil)
+				err = apiTask.BuildFromService(ctx, &tc.st, nil)
 				So(err, ShouldBeNil)
 				So(apiTask.Blocked, ShouldBeTrue)
 			}
@@ -222,7 +226,7 @@ func TestTaskBuildFromService(t *testing.T) {
 		Convey("running BuildFromService(), should produce an equivalent model", func() {
 			for _, tc := range modelPairs {
 				apiTask := &APITask{}
-				err := apiTask.BuildFromService(&tc.st, &APITaskArgs{LogURL: "url", ParsleyLogURL: "parsley"})
+				err := apiTask.BuildFromService(ctx, &tc.st, &APITaskArgs{LogURL: "url", ParsleyLogURL: "parsley"})
 				So(err, ShouldBeNil)
 				So(utility.FromStringPtr(apiTask.Id), ShouldEqual, utility.FromStringPtr(tc.at.Id))
 				So(apiTask.Execution, ShouldEqual, tc.at.Execution)
