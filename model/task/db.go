@@ -1878,7 +1878,11 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 			},
 			{
 				// Cache whether any dependencies are unattainable.
-				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
+				"$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
+					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"else": false,
+				}}},
 			},
 		},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
@@ -2714,7 +2718,11 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 					ActivatedByKey:   caller,
 					ActivatedTimeKey: activationTime,
 					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-					UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					UnattainableDependencyKey: bson.M{"$cond": bson.M{
+						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"else": false,
+					}},
 				},
 			},
 		})
