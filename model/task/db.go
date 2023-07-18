@@ -277,22 +277,6 @@ var (
 		},
 	}
 
-	AddBuildVariantDisplayName = []bson.M{
-		{"$lookup": bson.M{
-			"from":         "builds",
-			"localField":   BuildIdKey,
-			"foreignField": "_id",
-			"as":           BuildVariantDisplayNameKey,
-		}},
-		{"$unwind": bson.M{
-			"path":                       "$" + BuildVariantDisplayNameKey,
-			"preserveNullAndEmptyArrays": true,
-		}},
-		{"$addFields": bson.M{
-			BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
-		}},
-	}
-
 	// AddAnnotations adds the annotations to the task document.
 	AddAnnotations = []bson.M{
 		{
@@ -1222,7 +1206,7 @@ const VersionLimit = 50
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int, legacyLookup bool) ([]*BuildVariantTuple, error) {
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
 	query := bson.M{
 		ProjectKey:     projectId,
 		DisplayNameKey: taskName,
@@ -1232,9 +1216,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 			{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 		},
 	}
-	if !legacyLookup {
-		query[BuildVariantDisplayNameKey] = bson.M{"$exists": true, "$ne": ""}
-	}
+	query[BuildVariantDisplayNameKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": query}}
 
 	// group the build variants by unique build variant names and get a build id for each
@@ -1261,13 +1243,6 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 		},
 	}
 	pipeline = append(pipeline, projectBuildIdAndVariant)
-
-	// legacy tasks do not have variant display name directly set on them
-	// so need to lookup from builds collection
-	if legacyLookup {
-		// get the display name for each build variant
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
-	}
 
 	// cleanup the results
 	projectBvResults := bson.M{
