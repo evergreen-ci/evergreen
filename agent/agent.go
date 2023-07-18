@@ -282,7 +282,6 @@ func (a *Agent) loop(ctx context.Context) error {
 		}
 	}()
 
-LOOP:
 	for {
 		select {
 		case <-ctx.Done():
@@ -316,7 +315,7 @@ LOOP:
 				if errors.Cause(err) == client.HTTPConflictError {
 					timer.Reset(0)
 					agentSleepInterval = minAgentSleepInterval
-					continue LOOP
+					continue
 				}
 				return errors.Wrap(err, "getting next task")
 			}
@@ -333,7 +332,7 @@ LOOP:
 				tc = &taskContext{}
 				timer.Reset(0)
 				agentSleepInterval = minAgentSleepInterval
-				continue LOOP
+				continue
 			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
@@ -343,7 +342,7 @@ LOOP:
 					}))
 					timer.Reset(0)
 					agentSleepInterval = minAgentSleepInterval
-					continue LOOP
+					continue
 				}
 				prevLogger := tc.logger
 				tc = a.prepareNextTask(ctx, nextTask, tc)
@@ -366,7 +365,7 @@ LOOP:
 					}))
 					timer.Reset(0)
 					agentSleepInterval = minAgentSleepInterval
-					continue LOOP
+					continue
 				}
 				if shouldExit {
 					return nil
@@ -374,7 +373,7 @@ LOOP:
 				needPostGroup = true
 				timer.Reset(0)
 				agentSleepInterval = minAgentSleepInterval
-				continue LOOP
+				continue
 			} else if needPostGroup {
 				a.runPostGroupCommands(ctx, tc)
 				needPostGroup = false

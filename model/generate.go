@@ -34,7 +34,9 @@ type GeneratedProject struct {
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
-func MergeGeneratedProjects(projects []GeneratedProject) (*GeneratedProject, error) {
+func MergeGeneratedProjects(ctx context.Context, projects []GeneratedProject) (*GeneratedProject, error) {
+	_, span := tracer.Start(ctx, "merge-generated-projects")
+	defer span.End()
 	catcher := grip.NewBasicCatcher()
 
 	bvs := map[string]*parserBV{}
@@ -120,7 +122,9 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config number.
-func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
+func (g *GeneratedProject) NewVersion(ctx context.Context, p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
+	_, span := tracer.Start(ctx, "create-generated-version")
+	defer span.End()
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)
 
@@ -147,6 +151,8 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) error {
+	ctx, span := tracer.Start(ctx, "save-generated-project")
+	defer span.End()
 	// Get task again, to exit early if another generator finished early.
 	t, err := task.FindOneId(g.Task.Id)
 	if err != nil {
@@ -219,6 +225,8 @@ func cacheProjectData(p *Project) projectMaps {
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
 func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project) error {
+	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
+	defer span.End()
 	// Inherit priority from the parent generator task.
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
@@ -228,7 +236,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
 	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 
-	newTVPairs := g.getNewTasksWithDependencies(v, p, &activationInfo)
+	newTVPairs := g.getNewTasksWithDependencies(ctx, v, p, &activationInfo)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -297,7 +305,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	// only want to add dependencies to activated tasks
-	if err = g.addDependencies(append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
+	if err = g.addDependencies(ctx, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "adding dependencies")
 	}
 
@@ -307,13 +315,15 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 // CheckForCycles builds a dependency graph from the existing tasks in the version and simulates
 // adding the generated tasks, their dependencies, and dependencies on the generated tasks to the graph.
 // Returns a DependencyCycleError error if the resultant graph contains dependency cycles.
-func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *ProjectRef) error {
+func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Project, projectRef *ProjectRef) error {
+	ctx, span := tracer.Start(ctx, "check-for-cycles")
+	defer span.End()
 	existingTasksGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
 	if err != nil {
 		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}
 
-	simulatedGraph, err := g.simulateNewTasks(existingTasksGraph, v, p, projectRef)
+	simulatedGraph, err := g.simulateNewTasks(ctx, existingTasksGraph, v, p, projectRef)
 	if err != nil {
 		return errors.Wrap(err, "simulating new tasks")
 	}
@@ -327,8 +337,8 @@ func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *Pr
 
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
-func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
-	newTasks := g.getNewTasksWithDependencies(v, p, nil)
+func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
+	newTasks := g.getNewTasksWithDependencies(ctx, v, p, nil)
 
 	creationInfo := TaskCreationInfo{
 		Project:    p,
@@ -346,7 +356,9 @@ func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Versi
 }
 
 // getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
-func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project, activationInfo *specificActivationInfo) TaskVariantPairs {
+func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *Version, p *Project, activationInfo *specificActivationInfo) TaskVariantPairs {
+	_, span := tracer.Start(ctx, "get-new-tasks-with-dependencies")
+	defer span.End()
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
@@ -556,7 +568,9 @@ func isStepbackTask(generatorTask *task.Task, variant, taskName string) bool {
 	return false
 }
 
-func (g *GeneratedProject) addDependencies(newTaskIds []string) error {
+func (g *GeneratedProject) addDependencies(ctx context.Context, newTaskIds []string) error {
+	_, span := tracer.Start(ctx, "add-dependencies")
+	defer span.End()
 	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
 	for _, status := range statuses {
 		if err := g.Task.UpdateDependsOn(status, newTaskIds); err != nil {

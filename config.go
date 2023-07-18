@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-07-06"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-07-17"
+	AgentVersion = "2023-07-18"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -588,11 +588,7 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 // and uses that id to create an installation token.
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	if owner == "" || repo == "" {
-		// TODO EVG-19966: Return error here
-		grip.Debug(message.Fields{
-			"message": "no owner repo",
-			"ticket":  "EVG-19966",
-		})
+		return "", errors.New("no owner/repo specified to create installation token")
 	}
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {

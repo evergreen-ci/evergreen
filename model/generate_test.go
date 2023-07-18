@@ -853,7 +853,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	p, pp, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
@@ -963,13 +963,13 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 
 	g := partiallyGeneratedProject
 	g.Task = generatorTask
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
 	s.NoError(ParserProjectUpsertOne(ctx, s.env.Settings(), v.ProjectStorageMethod, pp))
 
 	// Shouldn't error trying to add the same generated project.
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
@@ -1045,7 +1045,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	g.Task = &tasksThatExist[0]
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
@@ -1152,7 +1152,7 @@ buildvariants:
 
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
@@ -1204,7 +1204,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	g.Task = &taskThatExists
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
@@ -1237,7 +1237,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 func (s *GenerateSuite) TestMergeGeneratedProjects() {
 	projects := []GeneratedProject{sampleGeneratedProjectWithAllMultiFields}
-	merged, err := MergeGeneratedProjects(projects)
+	merged, err := MergeGeneratedProjects(context.Background(), projects)
 	s.Require().NoError(err)
 
 	expectedBVs := map[string]struct {
@@ -1324,7 +1324,7 @@ func (s *GenerateSuite) TestMergeGeneratedProjects() {
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	projects := []GeneratedProject{smallGeneratedProject}
-	merged, err := MergeGeneratedProjects(projects)
+	merged, err := MergeGeneratedProjects(context.Background(), projects)
 	s.Require().NoError(err)
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
@@ -1368,7 +1368,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.Error(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("CreatesLoop", func(t *testing.T) {
@@ -1397,7 +1397,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		assert.Error(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("NoCycles", func(t *testing.T) {
@@ -1430,7 +1430,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("InactiveBuild", func(t *testing.T) {
@@ -1464,7 +1464,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }
 
@@ -1606,7 +1606,7 @@ func TestAddDependencies(t *testing.T) {
 	}
 
 	g := GeneratedProject{Task: &task.Task{Id: "generator"}}
-	assert.NoError(t, g.addDependencies([]string{"t3"}))
+	assert.NoError(t, g.addDependencies(context.Background(), []string{"t3"}))
 
 	t1, err := task.FindOneId("t1")
 	assert.NoError(t, err)
