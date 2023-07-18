@@ -366,10 +366,7 @@ pre:
     params:
       script: "echo hi"
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
@@ -443,6 +440,22 @@ post:
 }
 
 func (s *AgentSuite) setupRunTask(projYml string) {
+	if projYml == "" {
+		projYml = `
+buildvariants:
+- name: some_build_variant
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "echo hi"
+post:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	}
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
@@ -660,6 +673,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 }
 
 func (s *AgentSuite) TestOOMTracker() {
+	s.setupRunTask("")
 	s.tc.project.OomTracker = true
 	pids := []int{1, 2, 3}
 	lines := []string{"line 1", "line 2", "line 3"}
@@ -831,11 +845,9 @@ task_groups:
     params:
       script: "echo hi"
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
+
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
@@ -909,10 +921,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))

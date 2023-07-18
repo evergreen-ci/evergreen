@@ -133,39 +133,79 @@ func (c *TaskConfig) GetCloneMethod() string {
 }
 
 func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
-	if tc == nil {
-		return nil, errors.New("unable to get task group because task config is nil")
-	}
-	if tc.Task == nil {
-		return nil, errors.New("unable to get task group because task is nil")
-	}
-	if tc.Task.Version == "" {
-		return nil, errors.New("task has no version")
-	}
-	if tc.Project == nil {
-		return nil, errors.New("project is nil")
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
 	}
 
-	var tg *model.TaskGroup
 	if taskGroup == "" {
-		// if there is no named task group, fall back to project definitions
-		tg = &model.TaskGroup{
-			SetupTask:               tc.Project.Pre,
-			TeardownTask:            tc.Project.Post,
-			Timeout:                 tc.Project.Timeout,
-			SetupGroupFailTask:      tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
-			TeardownTaskCanFailTask: tc.Project.Post == nil || tc.Project.PostErrorFailsTask,
-		}
-	} else {
-		tg = tc.Project.FindTaskGroup(taskGroup)
-		if tg == nil {
-			return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
-		}
+		return nil, nil
 	}
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
+	}
+
 	if tg.Timeout == nil {
 		tg.Timeout = tc.Project.Timeout
 	}
 	return tg, nil
+}
+
+func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error) {
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
+	}
+
+	if taskGroup == "" {
+		return tc.Project.Timeout, nil
+	}
+
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil || tg.Timeout == nil {
+		return tc.Project.Timeout, nil
+	}
+
+	return tg.Timeout, nil
+}
+
+type commandBlock struct {
+	Name       string
+	Commands   *model.YAMLCommandSet
+	ShouldFail bool
+}
+
+func (tc *TaskConfig) GetPre(taskGroup string) (*commandBlock, error) {
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
+	}
+
+	shouldFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
+	if taskGroup == "" {
+		return &commandBlock{Commands: tc.Project.Pre, ShouldFail: shouldFailTask}, nil
+	}
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
+	}
+
+	return &commandBlock{Commands: tg.SetupTask, ShouldFail: tg.SetupGroupFailTask, Name: tg.Name}, nil
+}
+
+func (tc *TaskConfig) GetPost(taskGroup string) (*commandBlock, error) {
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
+	}
+
+	shouldFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
+	if taskGroup == "" {
+		return &commandBlock{Commands: tc.Project.Post, ShouldFail: shouldFailTask}, nil
+	}
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
+	}
+	return &commandBlock{Commands: tg.TeardownTask, ShouldFail: tg.TeardownTaskCanFailTask, Name: tg.Name}, nil
+
 }
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
@@ -207,4 +247,20 @@ func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
 	}
 
 	return attributes
+}
+
+func (tc *TaskConfig) validateTaskConfig() error {
+	if tc == nil {
+		return errors.New("unable to get task setup because task config is nil")
+	}
+	if tc.Task == nil {
+		return errors.New("unable to get task setup because task is nil")
+	}
+	if tc.Task.Version == "" {
+		return errors.New("task has no version")
+	}
+	if tc.Project == nil {
+		return errors.New("project is nil")
+	}
+	return nil
 }
