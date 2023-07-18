@@ -2615,7 +2615,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				},
 			},
 		})
-		// Base tasks are the elemnt of the tasks array that have the base version ID
+		// Separate the root task and base task into separate arrays
 		pipeline = append(pipeline, bson.M{
 			"$addFields": bson.M{
 				"root_task": bson.M{
@@ -2638,7 +2638,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				},
 			},
 		})
-		// Unwind the root task and base task arrays
+		// Unwind the root task and base task arrays so that each document is a single task
 		pipeline = append(pipeline, bson.M{
 			"$addFields": bson.M{
 				"root_task": bson.M{
@@ -2650,7 +2650,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Ensure that the root task is not nil
+		// Ensure that the root task is not nil if it is the task does not exist in the current version
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
 				"root_task": bson.M{
@@ -2658,7 +2658,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				},
 			},
 		})
-		// Replace the root task with the base task if it exists
+
+		// Include the base task in the root task
 		pipeline = append(pipeline, bson.M{
 			"$addFields": bson.M{
 				"root_task": bson.M{
@@ -2667,7 +2668,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Project out the base task and the tasks array
+		// Project out the base task and the tasks array since they are no longer needed
 		pipeline = append(pipeline, bson.M{
 			"$project": bson.M{
 				"base_task": 0,
@@ -2680,13 +2681,18 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				"newRoot": "$root_task",
 			},
 		})
-		// Project out the root task
+		// Project out the root task since it is no longer needed
 		pipeline = append(pipeline, bson.M{
 			"$project": bson.M{
 				"root_task": 0,
 			},
 		})
-
+		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
+		pipeline = append(pipeline, bson.M{
+			"$sort": bson.M{
+				"_id": 1,
+			},
+		})
 	}
 
 	if len(opts.BaseVersionID) > 0 && len(opts.BaseStatuses) > 0 {
