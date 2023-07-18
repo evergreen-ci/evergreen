@@ -1646,14 +1646,22 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	}
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
-		bson.M{"$set": bson.M{
-			ActivatedKey:                true,
-			DeactivatedForDependencyKey: false,
-			ActivatedByKey:              caller,
-			ActivatedTimeKey:            time.Now(),
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-		}},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:                true,
+					DeactivatedForDependencyKey: false,
+					ActivatedByKey:              caller,
+					ActivatedTimeKey:            time.Now(),
+					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+					UnattainableDependencyKey: bson.M{"$cond": bson.M{
+						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"else": false,
+					}},
+				},
+			},
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating activation for dependencies")
@@ -1958,8 +1966,8 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
-func (t *Task) Reset() error {
-	return UpdateOne(
+func (t *Task) Reset(ctx context.Context) error {
+	return UpdateOneContext(ctx,
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -1994,7 +2002,7 @@ func ResetTasks(tasks []Task) error {
 	return nil
 }
 
-func resetTaskUpdate(t *Task) bson.M {
+func resetTaskUpdate(t *Task) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
@@ -2023,36 +2031,44 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
 	}
-	update := bson.M{
-		"$set": bson.M{
-			ActivatedKey:                   true,
-			ActivatedTimeKey:               now,
-			SecretKey:                      newSecret,
-			StatusKey:                      evergreen.TaskUndispatched,
-			DispatchTimeKey:                utility.ZeroTime,
-			StartTimeKey:                   utility.ZeroTime,
-			ScheduledTimeKey:               utility.ZeroTime,
-			FinishTimeKey:                  utility.ZeroTime,
-			DependenciesMetTimeKey:         utility.ZeroTime,
-			TimeTakenKey:                   0,
-			LastHeartbeatKey:               utility.ZeroTime,
-			ContainerAllocationAttemptsKey: 0,
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+	update := []bson.M{
+		{
+			"$set": bson.M{
+				ActivatedKey:                   true,
+				ActivatedTimeKey:               now,
+				SecretKey:                      newSecret,
+				StatusKey:                      evergreen.TaskUndispatched,
+				DispatchTimeKey:                utility.ZeroTime,
+				StartTimeKey:                   utility.ZeroTime,
+				ScheduledTimeKey:               utility.ZeroTime,
+				FinishTimeKey:                  utility.ZeroTime,
+				DependenciesMetTimeKey:         utility.ZeroTime,
+				TimeTakenKey:                   0,
+				LastHeartbeatKey:               utility.ZeroTime,
+				ContainerAllocationAttemptsKey: 0,
+				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$cond": bson.M{
+					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"else": false,
+				}},
+			},
 		},
-		"$unset": bson.M{
-			DetailsKey:                 "",
-			ResultsServiceKey:          "",
-			ResultsFailedKey:           "",
-			HasCedarResultsKey:         "",
-			ResetWhenFinishedKey:       "",
-			ResetFailedWhenFinishedKey: "",
-			AgentVersionKey:            "",
-			HostIdKey:                  "",
-			PodIDKey:                   "",
-			HostCreateDetailsKey:       "",
-			OverrideDependenciesKey:    "",
-			CanResetKey:                "",
+		{
+			"$unset": []string{
+				DetailsKey,
+				ResultsServiceKey,
+				ResultsFailedKey,
+				HasCedarResultsKey,
+				ResetWhenFinishedKey,
+				ResetFailedWhenFinishedKey,
+				AgentVersionKey,
+				HostIdKey,
+				PodIDKey,
+				HostCreateDetailsKey,
+				OverrideDependenciesKey,
+				CanResetKey,
+			},
 		},
 	}
 	return update
