@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -59,11 +58,8 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("task '%s' not found", h.taskID))
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	j, queue, err := units.GetGenerateTasksJobAndQueue(ctx, evergreen.GetEnvironment(), *t, ts)
+	j, err := units.CreateAndEnqueueGenerateTasks(ctx, evergreen.GetEnvironment(), *t, ts)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not enqueue generate tasks job",
 			"version": t.Version,
@@ -71,12 +67,6 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 			"job_id":  j.ID(),
 		}))
 	}
-	grip.Info(message.Fields{
-		"message": "enqueued generate tasks job",
-		"version": t.Version,
-		"task_id": t.Id,
-		"job_id":  j.ID(),
-	})
 
 	return gimlet.NewJSONResponse(struct{}{})
 }

@@ -276,15 +276,18 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 }
 
-// GetGenerateTasksJobAndQueue returns a job and generate.tasks queue for the given task.
-func GetGenerateTasksJobAndQueue(ctx context.Context, env evergreen.Environment, t task.Task, ts string) (amboy.Job, amboy.Queue, error) {
+// CreateAndEnqueueGenerateTasks returns a job and enqueues it into the generate.tasks queue for the given task.
+func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environment, t task.Task, ts string) (amboy.Job, error) {
 	j := NewGenerateTasksJob(t.Version, t.Id, ts)
 	queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
 	queue, err := env.RemoteQueueGroup().Get(ctx, queueName)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+		return nil, errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
 	}
-	return j, queue, nil
+	if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+		return nil, errors.Wrapf(err, "enqueueing generate tasks job '%s' for version '%s'", j.ID(), t.Version)
+	}
+	return j, nil
 }
 
 func parseProjectsAsString(ctx context.Context, jsonStrings []string) ([]model.GeneratedProject, error) {

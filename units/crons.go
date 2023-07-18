@@ -734,12 +734,10 @@ func PopulateFallbackGenerateTasksJobs(env evergreen.Environment) amboy.QueueOpe
 
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 		for _, t := range tasks {
-			j, queue, err := GetGenerateTasksJobAndQueue(ctx, env, t, ts)
-			if err != nil {
+			if _, err = CreateAndEnqueueGenerateTasks(ctx, env, t, ts); err != nil {
 				catcher.Add(err)
 				continue
 			}
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing generate tasks job for task '%s'", t.Id)
 		}
 
 		return catcher.Resolve()
