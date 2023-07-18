@@ -293,6 +293,78 @@ func (a *Agent) initLoop(ctx context.Context) *loop {
 	return lc
 }
 
+func (a *Agent) processNextTask(ctx context.Context, l *loop, nextTask *apimodels.NextTaskResponse) (shouldContinue bool, shouldExit bool) {
+	if nextTask.ShouldExit {
+		grip.Notice("Next task response indicates agent should exit.")
+		shouldExit = true
+		return
+	}
+	// if the host's current task group is finished we teardown
+	if nextTask.ShouldTeardownGroup {
+		a.runPostGroupCommands(ctx, l.tc)
+		l.needPostGroup = false
+		// Running the post group commands implies exiting the group, so
+		// destroy prior task information.
+		l.tc = &taskContext{}
+		l.timer.Reset(0)
+		l.agentSleepInterval = l.minAgentSleepInterval
+		shouldContinue = true
+		return
+	}
+	if nextTask.TaskId != "" {
+		if nextTask.TaskSecret == "" {
+			grip.Critical(message.Fields{
+				"message": "task response missing secret",
+				"task":    l.tc.task.ID,
+			})
+			l.timer.Reset(0)
+			l.agentSleepInterval = l.minAgentSleepInterval
+			shouldContinue = true
+			return
+		}
+		prevLogger := l.tc.logger
+		l.tc = a.prepareNextTask(ctx, nextTask, l.tc)
+		if prevLogger != nil {
+			grip.Error(errors.Wrap(prevLogger.Close(), "closing the previous logger producer"))
+		}
+
+		grip.Error(message.WrapError(a.fetchProjectConfig(ctx, l.tc), message.Fields{
+			"message": "error fetching project config; will attempt at a later point",
+			"task":    l.tc.task.ID,
+		}))
+
+		a.jasper.Clear(ctx)
+		l.tc.jasper = a.jasper
+		taskShouldExit, err := a.runTask(l.taskCtx, l.tc)
+		shouldExit = taskShouldExit
+		if err != nil {
+			grip.Critical(message.WrapError(err, message.Fields{
+				"message": "error running task",
+				"task":    l.tc.task.ID,
+			}))
+			l.timer.Reset(0)
+			l.agentSleepInterval = l.minAgentSleepInterval
+			shouldContinue = true
+			return
+		}
+		if shouldExit {
+			return
+		}
+		l.needPostGroup = true
+		l.timer.Reset(0)
+		l.agentSleepInterval = l.minAgentSleepInterval
+		shouldContinue = true
+		return
+	} else if l.needPostGroup {
+		a.runPostGroupCommands(ctx, l.tc)
+		l.needPostGroup = false
+		// Running the post group commands implies exiting the group, so
+		// destroy prior task information.
+		l.tc = &taskContext{}
+	}
+	return
+}
+
 func (a *Agent) loop(ctx context.Context) error {
 	l := a.initLoop(ctx)
 	defer l.cancel()
@@ -341,67 +413,12 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				return errors.Wrap(err, "getting next task")
 			}
-			if nextTask.ShouldExit {
-				grip.Notice("Next task response indicates agent should exit.")
+			shouldContinue, shouldExit := a.processNextTask(ctx, l, nextTask)
+			if shouldContinue {
+				continue
+			}
+			if shouldExit {
 				return nil
-			}
-			// if the host's current task group is finished we teardown
-			if nextTask.ShouldTeardownGroup {
-				a.runPostGroupCommands(ctx, l.tc)
-				l.needPostGroup = false
-				// Running the post group commands implies exiting the group, so
-				// destroy prior task information.
-				l.tc = &taskContext{}
-				l.timer.Reset(0)
-				l.agentSleepInterval = l.minAgentSleepInterval
-				continue
-			}
-			if nextTask.TaskId != "" {
-				if nextTask.TaskSecret == "" {
-					grip.Critical(message.WrapError(err, message.Fields{
-						"message": "task response missing secret",
-						"task":    l.tc.task.ID,
-					}))
-					l.timer.Reset(0)
-					l.agentSleepInterval = l.minAgentSleepInterval
-					continue
-				}
-				prevLogger := l.tc.logger
-				l.tc = a.prepareNextTask(ctx, nextTask, l.tc)
-				if prevLogger != nil {
-					grip.Error(errors.Wrap(prevLogger.Close(), "closing the previous logger producer"))
-				}
-
-				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, l.tc), message.Fields{
-					"message": "error fetching project config; will attempt at a later point",
-					"task":    l.tc.task.ID,
-				}))
-
-				a.jasper.Clear(ctx)
-				l.tc.jasper = a.jasper
-				shouldExit, err := a.runTask(l.taskCtx, l.tc)
-				if err != nil {
-					grip.Critical(message.WrapError(err, message.Fields{
-						"message": "error running task",
-						"task":    l.tc.task.ID,
-					}))
-					l.timer.Reset(0)
-					l.agentSleepInterval = l.minAgentSleepInterval
-					continue
-				}
-				if shouldExit {
-					return nil
-				}
-				l.needPostGroup = true
-				l.timer.Reset(0)
-				l.agentSleepInterval = l.minAgentSleepInterval
-				continue
-			} else if l.needPostGroup {
-				a.runPostGroupCommands(ctx, l.tc)
-				l.needPostGroup = false
-				// Running the post group commands implies exiting the group, so
-				// destroy prior task information.
-				l.tc = &taskContext{}
 			}
 
 			l.jitteredSleep = utility.JitterInterval(l.agentSleepInterval)
