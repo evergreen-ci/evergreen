@@ -682,8 +682,8 @@ func TestUpdateDistroSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for name, test := range map[string]func(t *testing.T, originalDistro *Distro){
-		"General section": func(t *testing.T, originalDistro *Distro) {
+	for name, test := range map[string]func(t *testing.T, ctx context.Context, originalDistro *Distro){
+		"General section": func(t *testing.T, ctx context.Context, originalDistro *Distro) {
 			updated, err := UpdateDistroSection(ctx, originalDistro, &Distro{
 				Id:      "distro_id",
 				Aliases: []string{"alias_1", "alias_2"},
@@ -697,15 +697,18 @@ func TestUpdateDistroSection(t *testing.T) {
 			assert.Equal(t, updated.Note, "updated note")
 		},
 	} {
-		assert.NoError(t, db.ClearCollections(Collection))
-		originalDistro := &Distro{
-			Id:     "distro_id",
-			SSHKey: "this should be unchanged",
-		}
-		assert.Nil(t, originalDistro.Insert())
-
 		t.Run(name, func(t *testing.T) {
-			test(t, originalDistro)
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			assert.NoError(t, db.ClearCollections(Collection))
+			originalDistro := &Distro{
+				Id:     "distro_id",
+				SSHKey: "this should be unchanged",
+			}
+			assert.Nil(t, originalDistro.Insert(tctx))
+
+			test(t, tctx, originalDistro)
 		})
 	}
 }
