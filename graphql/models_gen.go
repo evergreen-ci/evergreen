@@ -46,7 +46,7 @@ type DeleteDistroInput struct {
 	DistroID string `json:"distroId"`
 }
 
-// Return type representing whether a distro was deleted
+// Return type representing whether a distro was deleted.
 type DeleteDistroPayload struct {
 	DeletedDistroID string `json:"deletedDistroId"`
 }

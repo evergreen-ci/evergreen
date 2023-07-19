@@ -67,21 +67,21 @@ func TestDeleteDistroById(t *testing.T) {
 			}
 			assert.NoError(t, d.Insert(tctx))
 
+			host := host.Host{
+				Id:     "host",
+				Status: evergreen.HostRunning,
+				Distro: distro.Distro{
+					Id: d.Id,
+				},
+				Provider: evergreen.HostTypeStatic,
+			}
+			assert.NoError(t, host.Insert(tctx))
+
 			queue := model.TaskQueue{
 				Distro: d.Id,
 				Queue:  []model.TaskQueueItem{{Id: "task"}},
 			}
 			assert.NoError(t, queue.Save())
-
-			host := host.Host{
-				Id:     "host",
-				Status: evergreen.HostRunning,
-				Distro: distro.Distro{
-					Id: "distro",
-				},
-				Provider: evergreen.HostTypeStatic,
-			}
-			assert.NoError(t, host.Insert(tctx))
 
 			d.Id = "distro-no-task-queue"
 			assert.NoError(t, d.Insert(tctx))

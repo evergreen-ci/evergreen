@@ -30,7 +30,7 @@ type NewDistroPayload {
 }
 
 """
-Return type representing whether a distro was deleted
+Return type representing whether a distro was deleted.
 """
 type DeleteDistroPayload {
   deletedDistroId: String!
