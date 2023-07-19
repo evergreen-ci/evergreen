@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-07-06"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-07-14"
+	AgentVersion = "2023-07-18"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -66,6 +66,7 @@ type Settings struct {
 	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
+	Buckets             BucketConfig            `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
 	ClientBinariesDir   string                  `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue         CommitQueueConfig       `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
@@ -588,11 +589,7 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 // and uses that id to create an installation token.
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	if owner == "" || repo == "" {
-		// TODO EVG-19966: Return error here
-		grip.Debug(message.Fields{
-			"message": "no owner repo",
-			"ticket":  "EVG-19966",
-		})
+		return "", errors.New("no owner/repo specified to create installation token")
 	}
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {

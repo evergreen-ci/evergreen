@@ -244,6 +244,7 @@ func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
 	d, err := distro.FindOneId(ctx, h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
@@ -254,8 +255,7 @@ func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
-	err = data.DeleteDistroById(ctx, h.distroID)
-	if err != nil {
+	if err = data.DeleteDistroById(ctx, user, h.distroID); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting distro '%s'", h.distroID))
 	}
 

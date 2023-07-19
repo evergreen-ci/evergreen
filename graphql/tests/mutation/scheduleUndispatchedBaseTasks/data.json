@@ -296,7 +296,8 @@
       "r": "gitter_request",
       "branch":"spruce",
       "generate_task": true,
-      "generated_tasks": true
+      "generated_tasks": true,
+      "activated": false
     },
     {
       "_id": "base_generated_task",
@@ -310,7 +311,8 @@
       "branch":"spruce",
       "generate_task": false,
       "generated_by": "base_generator_task",
-      "r": "gitter_request"
+      "r": "gitter_request",
+      "activated": false
     },
     {
       "_id": "some_task_2",
@@ -322,7 +324,8 @@
       "r": "github_pull_request",
       "status": "undispatched",
       "branch": "spruce",
-      "host_id": "host1"
+      "host_id": "host1",
+      "activated": false
     },
     {
       "_id": "2",
@@ -358,7 +361,8 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "branch": "spruce",
-      "build_id": "5"
+      "build_id": "5",
+      "activated": false
     }
   ],
   "hosts": [
