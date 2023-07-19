@@ -6,13 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection, build.Collection))
+	assert.NoError(t, db.ClearCollections(task.Collection))
 	t1 := task.Task{
 		Id:                      "t1",
 		Status:                  evergreen.TaskSucceeded,

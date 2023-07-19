@@ -1216,7 +1216,6 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 			{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 		},
 	}
-	query[BuildVariantDisplayNameKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": query}}
 
 	// group the build variants by unique build variant names and get a build id for each
