@@ -202,7 +202,7 @@ func waitForRepotracker(projectName, username, key string, client *http.Client) 
 
 		latestVersion := latestVersions[0]
 		latestVersionID := utility.FromStringPtr(latestVersion.Id)
-		if createTime := utility.FromTimePtr(latestVersion.CreateTime); time.Now().Sub(createTime) > 365*24*time.Hour {
+		if createTime := utility.FromTimePtr(latestVersion.CreateTime); time.Since(createTime) > 365*24*time.Hour {
 			grip.Infof("Found latest version '%s' for project '%s', but it was created at %s, which was a long time ago, waiting for repotracker to pick up newer commit.", latestVersionID, projectName, createTime)
 			continue
 		}
@@ -269,7 +269,7 @@ func getSmokeTestPatch(projectName, username, key string, client *http.Client) (
 
 		latestPatch := latestPatches[0]
 		latestPatchID := utility.FromStringPtr(latestPatch.Id)
-		if createTime := utility.FromTimePtr(latestPatch.CreateTime); time.Now().Sub(createTime) > time.Hour {
+		if createTime := utility.FromTimePtr(latestPatch.CreateTime); time.Since(createTime) > time.Hour {
 			grip.Infof("Found latest patch '%s' in project '%s', but it was created at %s, waiting for patch that was just submitted", latestPatchID, utility.FromStringPtr(latestPatch.ProjectId), createTime)
 			continue
 		}
