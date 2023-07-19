@@ -2054,7 +2054,7 @@ func TestActivateTasks(t *testing.T) {
 		assert.Len(t, dbTasks, 6)
 
 		for _, task := range dbTasks {
-			assert.Equal(t, task.Priority, int64(0))
+			assert.EqualValues(t, 0, task.Priority)
 			if utility.StringSliceContains(updatedIDs, task.Id) {
 				assert.True(t, task.Activated)
 				events, err := event.FindAllByResourceID(task.Id)
