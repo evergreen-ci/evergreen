@@ -86,28 +86,11 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundShellLogMessage := false
-	foundTimeoutMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - FAILURE." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Hit exec timeout (1s).") {
-			foundTimeoutMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
-			foundShellLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
-			foundShellLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundShellLogMessage)
-	s.True(foundTimeoutMessage)
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
+		"Hit exec timeout (1s)",
+		"Running task-timeout commands",
+		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -154,28 +137,12 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundShellLogMessage := false
-	foundTimeoutMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - FAILURE." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Hit exec timeout (1s).") {
-			foundTimeoutMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
-			foundShellLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
-			foundShellLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundShellLogMessage)
-	s.True(foundTimeoutMessage)
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
+		"Task completed - FAILURE.",
+		"Hit exec timeout (1s).",
+		"Running task-timeout commands.",
+		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -221,28 +188,12 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundShellLogMessage := false
-	foundTimeoutMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - FAILURE." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 1s).") {
-			foundTimeoutMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
-			foundShellLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
-			foundShellLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundShellLogMessage)
-	s.True(foundTimeoutMessage)
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
+		"Task completed - FAILURE.",
+		"Hit idle timeout (no message on stdout for more than 1s).",
+		"Running task-timeout commands.",
+		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -288,28 +239,12 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundShellLogMessage := false
-	foundTimeoutMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - FAILURE." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 1s).") {
-			foundTimeoutMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
-			foundShellLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
-			foundShellLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundShellLogMessage)
-	s.True(foundTimeoutMessage)
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
+		"Task completed - FAILURE.",
+		"Hit idle timeout (no message on stdout for more than 1s).",
+		"Running task-timeout commands.",
+		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -355,28 +290,11 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundShellLogMessage := false
-	foundTimeoutMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - FAILURE." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 2s).") {
-			foundTimeoutMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
-			foundShellLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
-			foundShellLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundShellLogMessage)
-	s.True(foundTimeoutMessage)
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
+		"Hit idle timeout (no message on stdout for more than 2s).",
+		"Running task-timeout commands",
+		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -422,28 +340,12 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundShellLogMessage := false
-	foundTimeoutMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - FAILURE." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Hit exec timeout (2s).") {
-			foundTimeoutMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
-			foundShellLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
-			foundShellLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundShellLogMessage)
-	s.True(foundTimeoutMessage)
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
+		"Hit exec timeout (2s)",
+		"Task completed - FAILURE",
+		"Running task-timeout commands",
+		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)

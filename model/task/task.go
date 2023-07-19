@@ -1519,8 +1519,14 @@ func (t *Task) ActivateTask(caller string) error {
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		// Activating an activated task is a noop.
+		if t.Activated {
+			continue
+		}
+		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
 	}
 	err := activateTasks(taskIDs, caller, activationTime)
@@ -1528,7 +1534,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		return errors.Wrap(err, "activating tasks")
 	}
 	logs := []event.EventLogEntry{}
-	for _, t := range tasks {
+	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
 	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
@@ -1550,7 +1556,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		StatusKey: evergreen.TaskUndispatched,
 	})
 
-	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey))
+	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}
@@ -1646,14 +1652,22 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	}
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
-		bson.M{"$set": bson.M{
-			ActivatedKey:                true,
-			DeactivatedForDependencyKey: false,
-			ActivatedByKey:              caller,
-			ActivatedTimeKey:            time.Now(),
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-		}},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:                true,
+					DeactivatedForDependencyKey: false,
+					ActivatedByKey:              caller,
+					ActivatedTimeKey:            time.Now(),
+					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+					UnattainableDependencyKey: bson.M{"$cond": bson.M{
+						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"else": false,
+					}},
+				},
+			},
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating activation for dependencies")
@@ -1958,8 +1972,8 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
-func (t *Task) Reset() error {
-	return UpdateOne(
+func (t *Task) Reset(ctx context.Context) error {
+	return UpdateOneContext(ctx,
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -1994,7 +2008,7 @@ func ResetTasks(tasks []Task) error {
 	return nil
 }
 
-func resetTaskUpdate(t *Task) bson.M {
+func resetTaskUpdate(t *Task) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
@@ -2023,36 +2037,44 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
 	}
-	update := bson.M{
-		"$set": bson.M{
-			ActivatedKey:                   true,
-			ActivatedTimeKey:               now,
-			SecretKey:                      newSecret,
-			StatusKey:                      evergreen.TaskUndispatched,
-			DispatchTimeKey:                utility.ZeroTime,
-			StartTimeKey:                   utility.ZeroTime,
-			ScheduledTimeKey:               utility.ZeroTime,
-			FinishTimeKey:                  utility.ZeroTime,
-			DependenciesMetTimeKey:         utility.ZeroTime,
-			TimeTakenKey:                   0,
-			LastHeartbeatKey:               utility.ZeroTime,
-			ContainerAllocationAttemptsKey: 0,
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+	update := []bson.M{
+		{
+			"$set": bson.M{
+				ActivatedKey:                   true,
+				ActivatedTimeKey:               now,
+				SecretKey:                      newSecret,
+				StatusKey:                      evergreen.TaskUndispatched,
+				DispatchTimeKey:                utility.ZeroTime,
+				StartTimeKey:                   utility.ZeroTime,
+				ScheduledTimeKey:               utility.ZeroTime,
+				FinishTimeKey:                  utility.ZeroTime,
+				DependenciesMetTimeKey:         utility.ZeroTime,
+				TimeTakenKey:                   0,
+				LastHeartbeatKey:               utility.ZeroTime,
+				ContainerAllocationAttemptsKey: 0,
+				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$cond": bson.M{
+					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"else": false,
+				}},
+			},
 		},
-		"$unset": bson.M{
-			DetailsKey:                 "",
-			ResultsServiceKey:          "",
-			ResultsFailedKey:           "",
-			HasCedarResultsKey:         "",
-			ResetWhenFinishedKey:       "",
-			ResetFailedWhenFinishedKey: "",
-			AgentVersionKey:            "",
-			HostIdKey:                  "",
-			PodIDKey:                   "",
-			HostCreateDetailsKey:       "",
-			OverrideDependenciesKey:    "",
-			CanResetKey:                "",
+		{
+			"$unset": []string{
+				DetailsKey,
+				ResultsServiceKey,
+				ResultsFailedKey,
+				HasCedarResultsKey,
+				ResetWhenFinishedKey,
+				ResetFailedWhenFinishedKey,
+				AgentVersionKey,
+				HostIdKey,
+				PodIDKey,
+				HostCreateDetailsKey,
+				OverrideDependenciesKey,
+				CanResetKey,
+			},
 		},
 	}
 	return update
@@ -2111,7 +2133,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey)
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}

@@ -33,6 +33,7 @@ type Mutation {
   ): Boolean!
 
   # distros
+  deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload!
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
   saveDistroSection(
     opts: SaveDistroOpts!

@@ -60,7 +60,7 @@ input PeriodicBuildInput {
 
 input ExternalLinkInput {
   displayName: String!
-  requesters: [String!] # TODO EVG-16363: Make this field non-nullable after initial PRs are merged.
+  requesters: [String!]!
   urlTemplate: String!
 }
 
