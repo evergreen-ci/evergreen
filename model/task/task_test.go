@@ -2027,39 +2027,76 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestActivateTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+	}()
 
-	tasks := []Task{
-		{Id: "t0", Priority: evergreen.DisabledTaskPriority},
-		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
-		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
-		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
-		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
-	}
-	for _, task := range tasks {
-		require.NoError(t, task.Insert())
-	}
+	t.Run("DependencyChain", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+		tasks := []Task{
+			{Id: "t0", Priority: evergreen.DisabledTaskPriority},
+			{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
+			{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t5", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: true, DeactivatedForDependency: true},
+		}
+		for _, task := range tasks {
+			require.NoError(t, task.Insert())
+		}
 
-	updatedIDs := []string{"t0", "t3", "t4"}
-	err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, "")
-	assert.NoError(t, err)
+		updatedIDs := []string{"t0", "t3", "t4"}
+		err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, "")
+		assert.NoError(t, err)
 
-	dbTasks, err := FindAll(All)
-	assert.NoError(t, err)
-	assert.Len(t, dbTasks, 5)
+		dbTasks, err := FindAll(All)
+		assert.NoError(t, err)
+		assert.Len(t, dbTasks, 6)
 
-	for _, task := range dbTasks {
-		assert.Equal(t, task.Priority, int64(0))
-		if utility.StringSliceContains(updatedIDs, task.Id) {
-			assert.True(t, task.Activated)
-		} else {
-			for _, origTask := range tasks {
-				if origTask.Id == task.Id {
-					assert.Equal(t, origTask.Activated, task.Activated, fmt.Sprintf("task '%s' mismatch", task.Id))
+		for _, task := range dbTasks {
+			assert.EqualValues(t, 0, task.Priority)
+			if utility.StringSliceContains(updatedIDs, task.Id) {
+				assert.True(t, task.Activated)
+				events, err := event.FindAllByResourceID(task.Id)
+				require.NoError(t, err)
+				assert.Len(t, events, 1)
+			} else {
+				for _, origTask := range tasks {
+					if origTask.Id == task.Id {
+						assert.Equal(t, origTask.Activated, task.Activated, fmt.Sprintf("task '%s' mismatch", task.Id))
+					}
 				}
+				events, err := event.FindAllByResourceID(task.Id)
+				require.NoError(t, err)
+				assert.Empty(t, events)
 			}
 		}
-	}
+	})
+
+	t.Run("NoopActivatedTask", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+		task := Task{
+			Id:            "t0",
+			Activated:     true,
+			ActivatedTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			ActivatedBy:   "octocat",
+		}
+		require.NoError(t, task.Insert())
+
+		err := ActivateTasks([]Task{task}, time.Now(), true, "abyssinian")
+		assert.NoError(t, err)
+
+		events, err := event.FindAllByResourceID(task.Id)
+		require.NoError(t, err)
+		assert.Empty(t, events)
+
+		dbTask, err := FindOneId(task.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, task.Activated)
+		assert.True(t, task.ActivatedTime.Equal(dbTask.ActivatedTime))
+		assert.Equal(t, task.ActivatedBy, dbTask.ActivatedBy)
+	})
 }
 
 func TestDeactivateTasks(t *testing.T) {

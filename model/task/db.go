@@ -2683,7 +2683,8 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
 	_, err := UpdateAll(
 		bson.M{
-			IdKey: bson.M{"$in": taskIDs},
+			IdKey:        bson.M{"$in": taskIDs},
+			ActivatedKey: false,
 		},
 		[]bson.M{
 			{
