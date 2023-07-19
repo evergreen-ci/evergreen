@@ -2675,18 +2675,28 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				"tasks":     0,
 			},
 		})
+
+		// Use display status from the base task as its status
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				bsonutil.GetDottedKeyName("root_task", BaseTaskKey, StatusKey): "$" + bsonutil.GetDottedKeyName("root_task", BaseTaskKey, DisplayStatusKey),
+			},
+		})
+
 		// Replace the root document with the task
 		pipeline = append(pipeline, bson.M{
 			"$replaceRoot": bson.M{
 				"newRoot": "$root_task",
 			},
 		})
+
 		// Project out the root task since it is no longer needed
 		pipeline = append(pipeline, bson.M{
 			"$project": bson.M{
 				"root_task": 0,
 			},
 		})
+
 		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
 		pipeline = append(pipeline, bson.M{
 			"$sort": bson.M{
