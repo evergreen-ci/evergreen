@@ -205,6 +205,10 @@ type ComplexityRoot struct {
 		Name     func(childComplexity int) int
 	}
 
+	DeleteDistroPayload struct {
+		DeletedDistroID func(childComplexity int) int
+	}
+
 	Dependency struct {
 		BuildVariant   func(childComplexity int) int
 		MetStatus      func(childComplexity int) int
@@ -577,6 +581,7 @@ type ComplexityRoot struct {
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
 		DefaultSectionToRepo          func(childComplexity int, projectID string, section ProjectSettingsSection) int
+		DeleteDistro                  func(childComplexity int, opts DeleteDistroInput) int
 		DeleteProject                 func(childComplexity int, projectID string) int
 		DeleteSubscriptions           func(childComplexity int, subscriptionIds []string) int
 		DetachProjectFromRepo         func(childComplexity int, projectID string) int
@@ -1502,6 +1507,7 @@ type MutationResolver interface {
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
+	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
@@ -2301,6 +2307,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ContainerResources.Name(childComplexity), true
+
+	case "DeleteDistroPayload.deletedDistroId":
+		if e.complexity.DeleteDistroPayload.DeletedDistroID == nil {
+			break
+		}
+
+		return e.complexity.DeleteDistroPayload.DeletedDistroID(childComplexity), true
 
 	case "Dependency.buildVariant":
 		if e.complexity.Dependency.BuildVariant == nil {
@@ -3976,6 +3989,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DefaultSectionToRepo(childComplexity, args["projectId"].(string), args["section"].(ProjectSettingsSection)), true
+
+	case "Mutation.deleteDistro":
+		if e.complexity.Mutation.DeleteDistro == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteDistro_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteDistro(childComplexity, args["opts"].(DeleteDistroInput)), true
 
 	case "Mutation.deleteProject":
 		if e.complexity.Mutation.DeleteProject == nil {
@@ -8871,6 +8896,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCopyDistroInput,
 		ec.unmarshalInputCopyProjectInput,
 		ec.unmarshalInputCreateProjectInput,
+		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDisplayTask,
 		ec.unmarshalInputDistroPermissionsOptions,
 		ec.unmarshalInputEditSpawnHostInput,
@@ -9434,6 +9460,21 @@ func (ec *executionContext) field_Mutation_defaultSectionToRepo_args(ctx context
 		}
 	}
 	args["section"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteDistro_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 DeleteDistroInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalNDeleteDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteDistroInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -14531,6 +14572,50 @@ func (ec *executionContext) fieldContext_ContainerResources_memoryMb(ctx context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeleteDistroPayload_deletedDistroId(ctx context.Context, field graphql.CollectedField, obj *DeleteDistroPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DeleteDistroPayload_deletedDistroId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DeletedDistroID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DeleteDistroPayload_deletedDistroId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeleteDistroPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -25105,6 +25190,65 @@ func (ec *executionContext) fieldContext_Mutation_setAnnotationMetadataLinks(ctx
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setAnnotationMetadataLinks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteDistro(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteDistro(rctx, fc.Args["opts"].(DeleteDistroInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*DeleteDistroPayload)
+	fc.Result = res
+	return ec.marshalNDeleteDistroPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteDistroPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteDistro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "deletedDistroId":
+				return ec.fieldContext_DeleteDistroPayload_deletedDistroId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DeleteDistroPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteDistro_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -63948,6 +64092,52 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDeleteDistroInput(ctx context.Context, obj interface{}) (DeleteDistroInput, error) {
+	var it DeleteDistroInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"distroId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "distroId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroId"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "ADMIN")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireDistroAccess == nil {
+					return nil, errors.New("directive requireDistroAccess is not implemented")
+				}
+				return ec.directives.RequireDistroAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.DistroID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
 	var it DisplayTask
 	asMap := map[string]interface{}{}
@@ -64161,7 +64351,7 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requesters"))
-			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			data, err := ec.unmarshalNString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -68428,6 +68618,34 @@ func (ec *executionContext) _ContainerResources(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var deleteDistroPayloadImplementors = []string{"DeleteDistroPayload"}
+
+func (ec *executionContext) _DeleteDistroPayload(ctx context.Context, sel ast.SelectionSet, obj *DeleteDistroPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deleteDistroPayloadImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeleteDistroPayload")
+		case "deletedDistroId":
+
+			out.Values[i] = ec._DeleteDistroPayload_deletedDistroId(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var dependencyImplementors = []string{"Dependency"}
 
 func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSet, obj *Dependency) graphql.Marshaler {
@@ -70869,6 +71087,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setAnnotationMetadataLinks(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "deleteDistro":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteDistro(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -78990,6 +79217,25 @@ func (ec *executionContext) unmarshalNCopyProjectInput2githubᚗcomᚋevergreen�
 func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
 	res, err := ec.unmarshalInputCreateProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDeleteDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteDistroInput(ctx context.Context, v interface{}) (DeleteDistroInput, error) {
+	res, err := ec.unmarshalInputDeleteDistroInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDeleteDistroPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteDistroPayload(ctx context.Context, sel ast.SelectionSet, v DeleteDistroPayload) graphql.Marshaler {
+	return ec._DeleteDistroPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeleteDistroPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteDistroPayload(ctx context.Context, sel ast.SelectionSet, v *DeleteDistroPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DeleteDistroPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNDependency2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependency(ctx context.Context, sel ast.SelectionSet, v *Dependency) graphql.Marshaler {

@@ -40,7 +40,8 @@
       "r": "github_pull_request",
       "status": "success",
       "branch": "evergreen",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": ""
     },
     {
       "_id": "2",
@@ -50,7 +51,8 @@
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "status": "failed",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": ""
     },
     {
       "_id": "3",
@@ -60,7 +62,8 @@
       "display_name": "generate-lint",
       "r": "github_pull_request",
       "status": "success",
-      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": ""
     },
     {
       "_id": "4",
@@ -70,7 +73,8 @@
       "display_name": "lint-service",
       "r": "github_pull_request",
       "status": "failed",
-      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": ""
     },
     {
       "_id": "5",
@@ -80,7 +84,8 @@
       "display_name": "test-db",
       "r": "github_pull_request",
       "status": "setup-failed",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": ""
     },
     {
       "_id": "6",
@@ -90,7 +95,8 @@
       "display_name": "test-agent",
       "r": "github_pull_request",
       "status": "undispatched",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": ""
     }
   ]
 }

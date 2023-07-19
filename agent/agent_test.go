@@ -241,12 +241,31 @@ func (s *AgentSuite) TestNextTaskConflict() {
 	}
 }
 
-func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
+func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
-	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	for _, status := range evergreen.TaskCompletedStatuses {
+		resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+		s.Equal(&apimodels.EndTaskResponse{}, resp)
+		s.NoError(err)
+		s.NoError(s.tc.logger.Close())
+
+		s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "normal task completion should record the task status")
+		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{"Running post-task commands"}, nil)
+	}
+}
+
+func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+
+	const status = evergreen.TaskSystemFailed
+	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
+	s.NoError(s.tc.logger.Close())
+
+	s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{"Running post-task commands"})
 }
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
@@ -899,7 +918,7 @@ task_groups:
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running post-task commands.",
+		"Running post-task commands",
 	}, []string{panicLog})
 }
 
@@ -1086,11 +1105,11 @@ timeout:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
-	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running for post block even when abort signal is received, so count should be high")
+	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 10, "heartbeat should be still running for post block even when abort signal is received, so count should be high")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",
-		"Running post-task commands.",
+		"Running post-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 	}, []string{"Running task-timeout commands"})
 }
@@ -1134,7 +1153,7 @@ timeout:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
-	s.GreaterOrEqual(s.mockCommunicator.HeartbeatCount, 10, "heartbeat should be still running for teardown_task block even when abort signal is received, so count should be high")
+	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 10, "heartbeat should be still running for teardown_task block even when abort signal is received, so count should be high")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",
