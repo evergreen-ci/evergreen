@@ -7,10 +7,13 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +53,31 @@ func (s *CommandSuite) SetupTest() {
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
 
+	const bvName = "some_build_variant"
+	tsk := &task.Task{
+		Id:           "task_id",
+		DisplayName:  "some task",
+		BuildVariant: bvName,
+		Version:      "v1",
+	}
+
+	project := &model.Project{
+		Tasks: []model.ProjectTask{
+			{
+				Name: tsk.DisplayName,
+			},
+		},
+		BuildVariants: []model.BuildVariant{{Name: bvName}},
+	}
+
+	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, project, tsk, &model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}, &patch.Patch{}, util.Expansions{})
+	s.Require().NoError(err)
+
 	s.tc = &taskContext{
+		taskConfig: taskConfig,
 		task: client.TaskData{
 			Secret: "mock_task_secret",
 		},
@@ -167,4 +194,47 @@ func TestEndTaskSyncCommands(t *testing.T) {
 			testCase(t, tc, detail)
 		})
 	}
+}
+
+func (s *CommandSuite) TestVarsAreUnsetAfterRunning() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cmd := model.PluginCommandConf{
+		Command: "shell.exec",
+		Params: map[string]interface{}{
+			"script": "echo hi",
+		},
+		Function: "my-func",
+	}
+
+	exp := util.NewExpansions(map[string]string{
+		"globalVar": "expansionVar",
+	})
+
+	s.tc.expansions = *exp
+	p := &model.Project{
+		Functions: map[string]*model.YAMLCommandSet{
+			"my-func": {
+				MultiCommand: []model.PluginCommandConf{
+					{
+						Vars:    map[string]string{"globalVar": "functionVar"},
+						Command: "shell.exec",
+						Params: map[string]interface{}{
+							"script": "echo hi",
+						},
+					},
+				},
+			},
+		},
+	}
+	s.tc.project = p
+	s.tc.taskConfig.Project = p
+	var err error
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.NoError(err)
+	cmds := []model.PluginCommandConf{cmd}
+	err = s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+	s.NoError(err)
+	s.Equal("expansionVar", s.tc.expansions["globalVar"], "globalVar should be set back to what it was before the function ran")
+
 }

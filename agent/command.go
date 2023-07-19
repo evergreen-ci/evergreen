@@ -146,15 +146,20 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
 	cmd command.Command, displayName string, options runCommandsOptions) error {
-
+	prevDef := map[string]string{}
 	for key, val := range commandInfo.Vars {
 		var newVal string
 		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
+		prevDef[key] = val
 		if err != nil {
 			return errors.Wrapf(err, "expanding '%s'", val)
 		}
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
+	// unset the function vars once the function finished running
+	defer func() {
+		tc.taskConfig.Expansions.Update(prevDef)
+	}()
 
 	tc.setCurrentCommand(cmd)
 	tc.setCurrentIdleTimeout(cmd)
