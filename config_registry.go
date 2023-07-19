@@ -35,6 +35,7 @@ func resetRegistry() error {
 		&AmboyConfig{},
 		&APIConfig{},
 		&AuthConfig{},
+		&BucketConfig{},
 		&CedarConfig{},
 		&CloudProviders{},
 		&CommitQueueConfig{},

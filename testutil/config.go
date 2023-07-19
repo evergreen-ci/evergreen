@@ -180,6 +180,12 @@ func MockConfig() *evergreen.Settings {
 		AWSInstanceRole: "role",
 		Banner:          "banner",
 		BannerTheme:     "important",
+		Buckets: evergreen.BucketConfig{
+			LogBucket: evergreen.Bucket{
+				Name: "logs",
+				Type: evergreen.BucketTypeS3,
+			},
+		},
 		Cedar: evergreen.CedarConfig{
 			BaseURL: "url.com",
 			RPCPort: "7070",
