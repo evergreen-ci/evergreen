@@ -2690,13 +2690,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Project out the root task since it is no longer needed
-		pipeline = append(pipeline, bson.M{
-			"$project": bson.M{
-				"root_task": 0,
-			},
-		})
-
 		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
 		pipeline = append(pipeline, bson.M{
 			"$sort": bson.M{
@@ -2705,7 +2698,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	if len(opts.BaseVersionID) > 0 && len(opts.BaseStatuses) > 0 {
+	if shouldPopulateBaseTask && len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
 				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
