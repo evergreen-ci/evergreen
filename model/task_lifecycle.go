@@ -409,7 +409,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
-	if err = MarkOneTaskReset(t); err != nil {
+	if err = MarkOneTaskReset(ctx, t); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
@@ -1757,7 +1757,7 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	return nil
 }
 
-func MarkOneTaskReset(t *task.Task) error {
+func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 	if t.DisplayOnly {
 		if !t.ResetFailedWhenFinished {
 			if err := MarkTasksReset(t.ExecutionTasks); err != nil {
@@ -1778,7 +1778,7 @@ func MarkOneTaskReset(t *task.Task) error {
 		}
 	}
 
-	if err := t.Reset(); err != nil && !adb.ResultsNotFound(err) {
+	if err := t.Reset(ctx); err != nil && !adb.ResultsNotFound(err) {
 		return errors.Wrap(err, "resetting task in database")
 	}
 

@@ -277,22 +277,6 @@ var (
 		},
 	}
 
-	AddBuildVariantDisplayName = []bson.M{
-		{"$lookup": bson.M{
-			"from":         "builds",
-			"localField":   BuildIdKey,
-			"foreignField": "_id",
-			"as":           BuildVariantDisplayNameKey,
-		}},
-		{"$unwind": bson.M{
-			"path":                       "$" + BuildVariantDisplayNameKey,
-			"preserveNullAndEmptyArrays": true,
-		}},
-		{"$addFields": bson.M{
-			BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
-		}},
-	}
-
 	// AddAnnotations adds the annotations to the task document.
 	AddAnnotations = []bson.M{
 		{
@@ -1222,7 +1206,7 @@ const VersionLimit = 50
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int, legacyLookup bool) ([]*BuildVariantTuple, error) {
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
 	query := bson.M{
 		ProjectKey:     projectId,
 		DisplayNameKey: taskName,
@@ -1231,9 +1215,6 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 			{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
 			{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 		},
-	}
-	if !legacyLookup {
-		query[BuildVariantDisplayNameKey] = bson.M{"$exists": true, "$ne": ""}
 	}
 	pipeline := []bson.M{{"$match": query}}
 
@@ -1261,13 +1242,6 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 		},
 	}
 	pipeline = append(pipeline, projectBuildIdAndVariant)
-
-	// legacy tasks do not have variant display name directly set on them
-	// so need to lookup from builds collection
-	if legacyLookup {
-		// get the display name for each build variant
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
-	}
 
 	// cleanup the results
 	projectBvResults := bson.M{
@@ -1779,6 +1753,21 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func UpdateOneContext(ctx context.Context, query interface{}, update interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
+		query,
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	return nil
+}
+
 func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	return db.UpdateAll(
 		Collection,
@@ -1863,7 +1852,11 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 			},
 			{
 				// Cache whether any dependencies are unattainable.
-				"$set": bson.M{UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)}},
+				"$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
+					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"else": false,
+				}}},
 			},
 		},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
@@ -2692,13 +2685,19 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 		bson.M{
 			IdKey: bson.M{"$in": taskIDs},
 		},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     true,
-				ActivatedByKey:   caller,
-				ActivatedTimeKey: activationTime,
-				// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-				UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:     true,
+					ActivatedByKey:   caller,
+					ActivatedTimeKey: activationTime,
+					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+					UnattainableDependencyKey: bson.M{"$cond": bson.M{
+						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"else": false,
+					}},
+				},
 			},
 		})
 	if err != nil {

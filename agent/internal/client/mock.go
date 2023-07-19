@@ -132,13 +132,16 @@ func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, td 
 	if c.EndTaskShouldFail {
 		return nil, errors.New("end task should fail")
 	}
-	if c.EndTaskResponse != nil {
-		return c.EndTaskResponse, nil
-	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.EndTaskResult.Detail = detail
 	c.EndTaskResult.TaskData = td
+
+	if c.EndTaskResponse != nil {
+		return c.EndTaskResponse, nil
+	}
+
 	return &apimodels.EndTaskResponse{}, nil
 }
 
@@ -188,6 +191,11 @@ func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, 
 	return "ami-mock", nil
 }
 
+// GetProject returns the mock project. If an explicit GetProjectResponse is
+// specified, it will return that. Otherwise, by default, it will load data from
+// the agent's testdata directory, which contains project YAML files for
+// testing. The task ID is used to identify the name of the YAML file it will
+// load.
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
 	if c.GetProjectResponse != nil {
 		return c.GetProjectResponse, nil
