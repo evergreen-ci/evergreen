@@ -296,7 +296,8 @@
       "r": "gitter_request",
       "branch":"spruce",
       "generate_task": true,
-      "generated_tasks": true
+      "generated_tasks": true,
+      "activated": false
     },
     {
       "_id": "base_generated_task",
@@ -358,7 +359,8 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "branch": "spruce",
-      "build_id": "5"
+      "build_id": "5",
+      "activated": false
     }
   ],
   "hosts": [
