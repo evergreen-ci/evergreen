@@ -2035,6 +2035,7 @@ func TestActivateTasks(t *testing.T) {
 		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
 		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t5", Activated: true},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())
@@ -2046,18 +2047,24 @@ func TestActivateTasks(t *testing.T) {
 
 	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
-	assert.Len(t, dbTasks, 5)
+	assert.Len(t, dbTasks, 6)
 
 	for _, task := range dbTasks {
 		assert.Equal(t, task.Priority, int64(0))
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.True(t, task.Activated)
+			events, err := event.FindAllByResourceID(task.Id)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
 		} else {
 			for _, origTask := range tasks {
 				if origTask.Id == task.Id {
 					assert.Equal(t, origTask.Activated, task.Activated, fmt.Sprintf("task '%s' mismatch", task.Id))
 				}
 			}
+			events, err := event.FindAllByResourceID(task.Id)
+			require.NoError(t, err)
+			require.Empty(t, events)
 		}
 	}
 }
