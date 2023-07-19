@@ -17,16 +17,18 @@ const (
 
 // BucketConfig represents the admin config section for bucket storage.
 type BucketConfig struct {
-	LogBucket     string `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
-	LogBucketType string `bson:"log_bucket_type" json:"log_bucket_type" yaml:"log_bucket_type"`
+	LogBucket Bucket `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
 }
 
-var (
-	bucketConfigLogBucketKey     = bsonutil.MustHaveTag(BucketConfig{}, "LogBucket")
-	bucketConfigLogBucketTypeKey = bsonutil.MustHaveTag(BucketConfig{}, "LogBucketType")
-)
+var bucketConfigLogBucketKey = bsonutil.MustHaveTag(BucketConfig{}, "LogBucket")
 
-func (*BucketConfig) SectionId() string { return "bucket" }
+// Bucket represents the admin config for an individual bucket.
+type Bucket struct {
+	Name string `bson:"name" json:"name" yaml:"name"`
+	Type string `bson:"type" json:"type" yaml:"type"`
+}
+
+func (*BucketConfig) SectionId() string { return "buckets" }
 
 func (c *BucketConfig) Get(ctx context.Context) error {
 	coll := GetEnvironment().DB().Collection(ConfigCollection)
@@ -52,8 +54,7 @@ func (c *BucketConfig) Set(ctx context.Context) error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			bucketConfigLogBucketKey:     c.LogBucket,
-			bucketConfigLogBucketTypeKey: c.LogBucketType,
+			bucketConfigLogBucketKey: c.LogBucket,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -61,8 +62,8 @@ func (c *BucketConfig) Set(ctx context.Context) error {
 }
 
 func (c *BucketConfig) ValidateAndDefault() error {
-	if c.LogBucketType == "" {
-		c.LogBucketType = BucketTypeS3
+	if c.LogBucket.Type == "" {
+		c.LogBucket.Type = BucketTypeS3
 	}
 
 	return nil

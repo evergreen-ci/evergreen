@@ -181,8 +181,10 @@ func MockConfig() *evergreen.Settings {
 		Banner:          "banner",
 		BannerTheme:     "important",
 		Buckets: evergreen.BucketConfig{
-			LogBucket:     "logs",
-			LogBucketType: evergreen.BucketTypeS3,
+			LogBucket: evergreen.Bucket{
+				Name: "logs",
+				Type: evergreen.BucketTypeS3,
+			},
 		},
 		Cedar: evergreen.CedarConfig{
 			BaseURL: "url.com",

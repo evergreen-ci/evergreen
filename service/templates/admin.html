@@ -97,7 +97,7 @@ Admin Settings
 						<div>Other</div>
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
-						<li class="link" ng-click="scrollTo('bucket')">Bucket Config</li>
+						<li class="link" ng-click="scrollTo('buckets')">Bucket Config</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
@@ -2324,7 +2324,7 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="bucket">
+							<md-card flex=50 id="buckets">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Bucket Config</span>
@@ -2333,7 +2333,7 @@ Admin Settings
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
 										<label>Log Bucket</label>
-										<input type="text" ng-model="Settings.buckets.log_bucket">
+										<input type="text" ng-model="Settings.buckets.log_bucket.name">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

@@ -1061,8 +1061,10 @@ func (s *AdminSuite) TestBucketConfig() {
 	defer cancel()
 
 	config := BucketConfig{
-		LogBucket:     "logs",
-		LogBucketType: "s3",
+		LogBucket: Bucket{
+			Name: "logs",
+			Type: "s3",
+		},
 	}
 
 	err := config.Set(ctx)
@@ -1072,7 +1074,7 @@ func (s *AdminSuite) TestBucketConfig() {
 	s.NotNil(settings)
 	s.Equal(config, settings.Buckets)
 
-	config.LogBucket = "logs-2"
+	config.LogBucket.Name = "logs-2"
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig()
