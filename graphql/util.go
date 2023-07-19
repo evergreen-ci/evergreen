@@ -999,19 +999,20 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 }
 
 func handleDistroOnSaveOperation(ctx context.Context, distroID string, userID string, onSave DistroOnSaveOperation) (int, error) {
+	noHostsUpdated := 0
 	if onSave == DistroOnSaveOperationNone {
-		return 0, nil
+		return noHostsUpdated, nil
 	}
 
 	hosts, err := host.Find(ctx, host.ByDistroIDs(distroID))
 	if err != nil {
-		return 0, errors.Wrap(err, fmt.Sprintf("finding hosts for distro '%s'", distroID))
+		return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("finding hosts for distro '%s'", distroID))
 	}
 
 	switch onSave {
 	case DistroOnSaveOperationDecommission:
 		if err = host.DecommissionHostsWithDistroId(ctx, distroID); err != nil {
-			return 0, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
+			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
 		}
 		for _, h := range hosts {
 			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
