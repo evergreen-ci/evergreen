@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "delete_distro.graphql",
+      "result": {
+        "data": {
+          "deleteDistro": {
+            "deletedDistroId": "localhost"
+          }
+        }
+      }
+    }
+  ]
+}
