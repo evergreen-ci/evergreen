@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"context"
+
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -26,10 +28,8 @@ var (
 
 func (*BucketConfig) SectionId() string { return "bucket" }
 
-func (c *BucketConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
+func (c *BucketConfig) Get(ctx context.Context) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
@@ -47,11 +47,8 @@ func (c *BucketConfig) Get(env Environment) error {
 	return nil
 }
 
-func (c *BucketConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
+func (c *BucketConfig) Set(ctx context.Context) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{

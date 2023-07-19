@@ -16,7 +16,7 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
-		Bucket:            &APIBucketConfig{},
+		Buckets:           &APIBucketConfig{},
 		Cedar:             &APICedarConfig{},
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
@@ -58,7 +58,7 @@ type APIAdminSettings struct {
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
-	Bucket              *APIBucketConfig                  `json:"bucket,omitempty"`
+	Buckets             *APIBucketConfig                  `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
 	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`

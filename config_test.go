@@ -1057,23 +1057,26 @@ func (s *AdminSuite) TestDataPipesConfig() {
 }
 
 func (s *AdminSuite) TestBucketConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := BucketConfig{
 		LogBucket:     "logs",
 		LogBucketType: "s3",
 	}
 
-	err := config.Set()
+	err := config.Set(ctx)
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(config, settings.Bucket)
+	s.Equal(config, settings.Buckets)
 
 	config.LogBucket = "logs-2"
-	s.NoError(config.Set())
+	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig()
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(config, settings.Bucket)
+	s.Equal(config, settings.Buckets)
 }
