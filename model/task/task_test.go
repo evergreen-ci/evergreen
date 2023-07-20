@@ -4542,7 +4542,6 @@ func TestGenerateNotRun(t *testing.T) {
 
 			tasks, err := GenerateNotRun()
 			require.NoError(t, err)
-			assert.Empty(t, tasks)
 			require.Len(t, tasks, 1)
 			assert.Equal(t, tsk.Id, tasks[0].Id)
 		},
