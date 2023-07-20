@@ -160,14 +160,14 @@ func (s *AdminSuite) TestBanner() {
 
 	const bannerText = "hello evergreen users!"
 
-	err := SetBanner(bannerText)
+	err := SetBanner(ctx, bannerText)
 	s.NoError(err)
 	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(bannerText, settings.Banner)
 
-	err = SetBannerTheme(Important)
+	err = SetBannerTheme(ctx, Important)
 	s.NoError(err)
 	settings, err = GetConfig(ctx)
 	s.NoError(err)

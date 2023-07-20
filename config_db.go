@@ -126,12 +126,8 @@ func byId(id string) bson.M {
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
-func SetBanner(bannerText string) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
+func SetBanner(ctx context.Context, bannerText string) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerKey: bannerText},
 	}, options.Update().SetUpsert(true))
@@ -141,12 +137,8 @@ func SetBanner(bannerText string) error {
 
 // SetBannerTheme sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
-func SetBannerTheme(theme BannerTheme) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
+func SetBannerTheme(ctx context.Context, theme BannerTheme) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerThemeKey: theme},
 	}, options.Update().SetUpsert(true))

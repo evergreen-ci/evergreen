@@ -335,8 +335,8 @@ func (s *AdminDataSuite) TestGetBanner() {
 	defer cancel()
 
 	u := &user.DBUser{Id: "me"}
-	s.NoError(evergreen.SetBanner("banner text"))
-	s.NoError(SetBannerTheme(evergreen.Important, u))
+	s.NoError(evergreen.SetBanner(ctx, "banner text"))
+	s.NoError(SetBannerTheme(ctx, evergreen.Important, u))
 	text, theme, err := GetBanner(ctx)
 	s.NoError(err)
 	s.Equal("banner text", text)
