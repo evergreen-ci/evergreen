@@ -1,9 +1,11 @@
 package evergreen
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/pkg/errors"
 
 	"github.com/mongodb/grip"
@@ -76,6 +78,39 @@ func newConfigSectionRegistry() *ConfigSectionRegistry {
 	return &ConfigSectionRegistry{
 		sections: map[string]ConfigSection{},
 	}
+}
+
+func (r *ConfigSectionRegistry) populateSections(ctx context.Context) error {
+	var sectionIDs = make([]string, 0, len(r.sections))
+	for sectionID := range r.sections {
+		sectionIDs = append(sectionIDs, sectionID)
+	}
+
+	rawSections, err := getSectionsBSON(ctx, sectionIDs)
+	if err != nil {
+		return errors.Wrap(err, "getting raw sections")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, rawSection := range rawSections {
+		id, err := rawSection.LookupErr("_id")
+		if err != nil {
+			continue
+		}
+		idString, ok := id.StringValueOK()
+		if !ok {
+			continue
+		}
+		section, ok := r.sections[idString]
+		if !ok {
+			continue
+		}
+		if err = bson.Unmarshal(rawSection, section); err != nil {
+			catcher.Add(errors.Wrapf(err, "unmarshaling section '%s'", idString))
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 func (r *ConfigSectionRegistry) registerSection(id string, section ConfigSection) error {

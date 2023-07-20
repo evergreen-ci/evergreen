@@ -309,20 +309,15 @@ func GetConfig() (*Settings, error) {
 // GetConfigContext returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
 // Use Settings() to get the cached settings object.
-func GetConfigContext(ctx context.Context) (*Settings, error) { return BootstrapConfig(ctx) }
-
-// Bootstrap config gets a config from the database defined in the environment.
-func BootstrapConfig(ctx context.Context) (*Settings, error) {
-	config := &Settings{}
-
-	// retrieve the root config document
-	if err := config.Get(ctx); err != nil {
-		return nil, err
+func GetConfigContext(ctx context.Context) (*Settings, error) {
+	if err := ConfigRegistry.populateSections(ctx); err != nil {
+		return nil, errors.Wrap(err, "populating sections")
 	}
 
 	// retrieve the other config sub-documents and form the whole struct
 	catcher := grip.NewSimpleCatcher()
 	sections := ConfigRegistry.GetSections()
+	config := sections[ConfigDocID].(*Settings)
 	valConfig := reflect.ValueOf(*config)
 	//iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
@@ -337,12 +332,6 @@ func BootstrapConfig(ctx context.Context) (*Settings, error) {
 		section, ok := sections[sectionId]
 		if !ok {
 			catcher.Add(fmt.Errorf("config section '%s' not found in registry", sectionId))
-			continue
-		}
-
-		// retrieve the section's document from the db
-		if err := section.Get(ctx); err != nil {
-			catcher.Add(errors.Wrapf(err, "populating section '%s'", sectionId))
 			continue
 		}
 
