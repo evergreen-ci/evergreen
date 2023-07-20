@@ -123,7 +123,7 @@ type Task struct {
 	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options,omitempty"`
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
-	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
+	DependsOn               []Dependency     `bson:"depends_on,omitempty" json:"depends_on,omitempty"`
 	// UnattainableDependency caches the contents of DependsOn for more efficient querying.
 	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
 	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
