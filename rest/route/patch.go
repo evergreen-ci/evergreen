@@ -142,9 +142,15 @@ func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchRawHandler) Run(ctx context.Context) gimlet.Responder {
-	rawPatches, err := data.GetPatchRawPatches(p.patchID)
+	rawPatches, err := data.GetRawPatches(p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting raw patches for patch '%s'", p.patchID))
+	}
+	if rawPatches == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("raw patch not found for '%s'", p.patchID),
+		})
 	}
 
 	if p.moduleName == "" {
@@ -184,10 +190,9 @@ func (p *moduleRawHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *moduleRawHandler) Run(ctx context.Context) gimlet.Responder {
-
-	rawPatches, err := data.GetPatchRawPatches(p.patchID)
+	rawPatches, err := data.GetRawPatches(p.patchID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting raw patches for patch '%s'", p.patchID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting raw patches for patch '%s'", p.patchID))
 	}
 	return gimlet.NewJSONResponse(rawPatches)
 }

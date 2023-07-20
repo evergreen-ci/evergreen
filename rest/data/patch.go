@@ -197,41 +197,43 @@ func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestE
 	return nil
 }
 
+// RawPatch contains a patch diff along with its module diffs.
 type RawPatch struct {
 	Patch      RawModule   `json:"patch"`
 	RawModules []RawModule `json:"raw_modules"`
 }
+
+// RawModule contains a module diff.
 type RawModule struct {
 	Name    string `json:"name"`
 	Diff    string `json:"diff"`
 	Githash string `json:"githash"`
 }
 
-// GetPatchRawPatches fetches the raw patches for a patch
-func GetPatchRawPatches(patchID string) (RawPatch, error) {
+// GetRawPatches fetches the raw patches for a patch.
+func GetRawPatches(patchID string) (*RawPatch, error) {
 	var rawPatch RawPatch
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {
-		return rawPatch, gimlet.ErrorResponse{
+		return &rawPatch, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "finding patch '%s'", patchID).Error(),
 		}
 	}
 	if patchDoc == nil {
-		return rawPatch, gimlet.ErrorResponse{
+		return &rawPatch, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch '%s' not found", patchID),
 		}
 	}
 
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
-		return rawPatch, gimlet.ErrorResponse{
+		return &rawPatch, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "getting patch contents").Error(),
 		}
 	}
 
-	var rawModules []RawModule
 	for _, raw := range patchDoc.Patches {
 		module := RawModule{
 			Name:    raw.ModuleName,
@@ -241,12 +243,11 @@ func GetPatchRawPatches(patchID string) (RawPatch, error) {
 		if raw.ModuleName == "" {
 			rawPatch.Patch = module
 		} else {
-			rawModules = append(rawModules, module)
+			rawPatch.RawModules = append(rawPatch.RawModules, module)
 		}
 	}
-	rawPatch.RawModules = rawModules
 
-	return rawPatch, nil
+	return &rawPatch, nil
 }
 
 func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, string, error) {

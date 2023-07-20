@@ -303,16 +303,13 @@ func PatchFile() cli.Command {
 			mutuallyExclusiveArgs(false, baseFlagName, diffFromPatchFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			println("Hi 307")
-
 			diffFromPatch := c.String(diffFromPatchFlagName)
-			if diffFromPatch == "" {
-				path := c.String(diffPathFlagName)
-				if _, err := os.Stat(path); os.IsNotExist(err) {
-					return errors.Errorf("file '%s' does not exist %s ", path, diffFromPatch)
+			diffFilePath := c.String(diffPathFlagName)
+			if diffFromPatch == "" && diffFilePath != "" {
+				if _, err := os.Stat(diffFilePath); os.IsNotExist(err) {
+					return errors.Errorf("file '%s' does not exist", diffFilePath)
 				}
 			}
-			println("Hi 316")
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
 				Project:         c.String(projectFlagName),
@@ -328,7 +325,6 @@ func PatchFile() cli.Command {
 				SyncTasks:       utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 				PatchAuthor:     c.String(patchAuthorFlag),
 			}
-			println("Hi 332")
 			var err error
 			diffPath := c.String(diffPathFlagName)
 			base := c.String(baseFlagName)
@@ -364,7 +360,7 @@ func PatchFile() cli.Command {
 			params.Description = params.getDescription()
 
 			var diffData localDiff
-			var rp data.RawPatch
+			var rp *data.RawPatch
 			if diffFromPatch == "" {
 				fullPatch, err := os.ReadFile(diffPath)
 				if err != nil {
@@ -376,6 +372,9 @@ func PatchFile() cli.Command {
 				rp, err = ac.GetRawPatchWithModules(diffFromPatch)
 				if err != nil {
 					return errors.Wrap(err, "getting raw patch with modules")
+				}
+				if rp == nil {
+					return errors.Wrap(err, "patch not found")
 				}
 				diffData.fullPatch = rp.Patch.Diff
 				diffData.base = rp.Patch.Githash
@@ -390,7 +389,6 @@ func PatchFile() cli.Command {
 			}
 
 			if len(rp.RawModules) > 0 {
-
 				for _, module := range rp.RawModules {
 					moduleParams := UpdatePatchModuleParams{
 						patchID: newPatch.Id.Hex(),
@@ -398,9 +396,7 @@ func PatchFile() cli.Command {
 						patch:   module.Diff,
 						base:    module.Githash,
 					}
-					//todo: write a route to take in all module params
-					err = ac.UpdatePatchModule(moduleParams)
-					if err != nil {
+					if err = ac.UpdatePatchModule(moduleParams); err != nil {
 						return err
 					}
 					grip.Infof("Module '%s' updated.", module.Name)

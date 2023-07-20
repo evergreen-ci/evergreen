@@ -583,9 +583,9 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
 	patchString = `module2 diff`
 	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module2Patch", strings.NewReader(patchString)))
-	patchId := "aabbccddeeff001122334455"
+	patchId := mgobson.NewObjectId()
 	patchToInsert := patch.Patch{
-		Id: patch.NewId(patchId),
+		Id: patchId,
 		Patches: []patch.ModulePatch{
 			{
 				ModuleName: "",
@@ -613,12 +613,16 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	assert.NoError(t, patchToInsert.Insert())
 
 	route := &moduleRawHandler{
-		patchID: patchId,
+		patchID: patchId.Hex(),
 	}
 
-	response := route.Run(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	response := route.Run(ctx)
 
-	rawModulesResponse := response.Data().(data.RawPatch)
+	rawModulesResponse, ok := response.Data().(data.RawPatch)
+	require.True(t, ok)
+
 	rp := rawModulesResponse.Patch
 	modules := rawModulesResponse.RawModules
 	assert.Equal(t, rp.Diff, "main diff")
