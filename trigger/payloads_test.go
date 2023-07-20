@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -159,6 +160,9 @@ func (s *payloadSuite) TestSlack() {
 }
 
 func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	test1 := testresult.TestResult{
 		TestName: "test1",
 		LogURL:   "http://www.something.com/absolute",
@@ -181,7 +185,7 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 		},
 		LocalTestResults: []testresult.TestResult{test1, test2, test3},
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	s.Require().NotNil(settings)
 

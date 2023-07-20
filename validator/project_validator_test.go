@@ -3229,6 +3229,9 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 }
 
 func TestValidateVersionControl(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ref := &model.ProjectRef{
 		Identifier:            "proj",
 		VersionControlEnabled: utility.FalsePtr(),
@@ -3243,16 +3246,19 @@ func TestValidateVersionControl(t *testing.T) {
 		},
 	}
 	isConfigDefined := &projectConfig != nil
-	verrs := validateVersionControl(&evergreen.Settings{}, &model.Project{}, ref, isConfigDefined)
+	verrs := validateVersionControl(ctx, &evergreen.Settings{}, &model.Project{}, ref, isConfigDefined)
 	assert.Equal(t, "version control is disabled for project 'proj'; the currently defined project config fields will not be picked up", verrs[0].Message)
 
 	ref.VersionControlEnabled = utility.TruePtr()
-	verrs = validateVersionControl(&evergreen.Settings{}, &model.Project{}, ref, false)
+	verrs = validateVersionControl(ctx, &evergreen.Settings{}, &model.Project{}, ref, false)
 	assert.Equal(t, "version control is enabled for project 'proj' but no project config fields have been set.", verrs[0].Message)
 
 }
 
 func TestValidateContainers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s := &evergreen.Settings{
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
@@ -3272,31 +3278,31 @@ func TestValidateContainers(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
 		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			assert.Len(t, verrs, 0)
 		},
 		"FailsWithoutContainerName": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Name = ""
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "name must be defined")
 		},
 		"FailsWithoutContainerImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Image = ""
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "image must be defined")
 		},
 		"FailsWithNotAllowedImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Image = "not_allowed"
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "image 'not_allowed' not allowed")
 		},
 		"MustSpecifyEitherContainerSizeOrResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Size = ""
 			p.Containers[0].Resources = nil
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
 		},
@@ -3305,19 +3311,19 @@ func TestValidateContainers(t *testing.T) {
 				MemoryMB: 100,
 				CPU:      1,
 			}
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
 		},
 		"FailsWithNonexistentContainerSize": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Size = "s2"
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
 		},
 		"FailsWithNonexistentRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Credential = "nonexistent"
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "credential 'nonexistent' is not defined in project settings")
 		},
@@ -3326,7 +3332,7 @@ func TestValidateContainers(t *testing.T) {
 				OperatingSystem: "oops",
 				CPUArchitecture: "oops",
 			}
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
 			assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
@@ -3336,14 +3342,14 @@ func TestValidateContainers(t *testing.T) {
 				MemoryMB: 0,
 				CPU:      -1,
 			}
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
 			assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
 		},
 		"FailsWithPodSecretAsReferencedRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			ref.ContainerSecrets[0].Type = model.ContainerSecretPodSecret
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container credential named 'c1' exists but is not valid for use as a repository credential")
 		},
@@ -3393,6 +3399,9 @@ func TestValidateContainers(t *testing.T) {
 }
 
 func TestValidateTaskSyncSettings(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testParams := range map[string]struct {
 		tasks                    []model.ProjectTask
 		taskSyncEnabledForConfig bool
@@ -3450,7 +3459,7 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 				},
 			}
 			p := &model.Project{Tasks: testParams.tasks}
-			errs := validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false)
+			errs := validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false)
 			if testParams.expectError {
 				assert.NotEmpty(t, errs)
 			} else {
@@ -3470,13 +3479,13 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEmpty(t, validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false))
+	assert.NotEmpty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
 
 	ref.TaskSync.ConfigEnabled = utility.TruePtr()
-	assert.Empty(t, validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false))
+	assert.Empty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
 
 	p.Tasks = []model.ProjectTask{}
-	assert.Empty(t, validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false))
+	assert.Empty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
 }
 
 func TestTVToTaskUnit(t *testing.T) {

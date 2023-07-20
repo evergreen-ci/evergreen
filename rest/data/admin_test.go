@@ -86,6 +86,9 @@ func (s *AdminDataSuite) SetupSuite() {
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	u := &user.DBUser{Id: "user"}
 	testSettings := testutil.MockConfig()
 	// convert the DB model to an API model
@@ -94,13 +97,13 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Require().NoError(err)
 
 	// try to set the DB model with this API model
-	oldSettings, err := evergreen.GetConfig()
+	oldSettings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	_, err = SetEvergreenSettings(restSettings, oldSettings, u, true)
 	s.Require().NoError(err)
 
 	// read the settings and spot check values
-	settingsFromConnector, err := evergreen.GetConfig()
+	settingsFromConnector, err := evergreen.GetConfig(ctx)
 	s.Require().NoError(err)
 	s.EqualValues(testSettings.DisabledGQLQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
@@ -228,11 +231,11 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		HostInit:           &newHostInit,
 		DisabledGQLQueries: newDisabledQueries,
 	}
-	oldSettings, err = evergreen.GetConfig()
+	oldSettings, err = evergreen.GetConfig(ctx)
 	s.NoError(err)
 	_, err = SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
 	s.NoError(err)
-	settingsFromConnector, err = evergreen.GetConfig()
+	settingsFromConnector, err = evergreen.GetConfig(ctx)
 	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
@@ -328,10 +331,13 @@ func (s *AdminDataSuite) TestRestart() {
 }
 
 func (s *AdminDataSuite) TestGetBanner() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	u := &user.DBUser{Id: "me"}
 	s.NoError(evergreen.SetBanner("banner text"))
 	s.NoError(SetBannerTheme(evergreen.Important, u))
-	text, theme, err := GetBanner()
+	text, theme, err := GetBanner(ctx)
 	s.NoError(err)
 	s.Equal("banner text", text)
 	s.Equal(evergreen.Important, theme)

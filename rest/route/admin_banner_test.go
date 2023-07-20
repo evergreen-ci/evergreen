@@ -47,7 +47,7 @@ func TestSetBanner(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	assert.NoError(err)
 	assert.Equal(utility.FromStringPtr(body.Text), settings.Banner)
 
@@ -68,7 +68,7 @@ func TestSetBanner(t *testing.T) {
 	resp = routeManager.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
-	settings, err = evergreen.GetConfig()
+	settings, err = evergreen.GetConfig(ctx)
 	assert.NoError(err)
 	assert.Equal(utility.FromStringPtr(body.Theme), string(settings.BannerTheme))
 

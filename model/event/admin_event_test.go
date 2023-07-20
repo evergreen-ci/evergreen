@@ -155,11 +155,11 @@ func (s *AdminEventSuite) TestReverting() {
 	guid := eventData.GUID
 	s.NotEmpty(guid)
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	s.Equal(after, settings.Scheduler)
 	s.NoError(RevertConfig(ctx, guid, "me"))
-	settings, err = evergreen.GetConfig()
+	settings, err = evergreen.GetConfig(ctx)
 	s.NoError(err)
 	s.Equal(before, settings.Scheduler)
 
@@ -197,13 +197,13 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	guid := eventData.GUID
 	s.NotEmpty(guid)
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	s.Equal(after.Banner, settings.Banner)
 	s.Equal(after.Credentials, settings.Credentials)
 	s.Equal(after.Ui, settings.Ui)
 	s.NoError(RevertConfig(ctx, guid, "me"))
-	settings, err = evergreen.GetConfig()
+	settings, err = evergreen.GetConfig(ctx)
 	s.NoError(err)
 	s.Equal(before.Banner, settings.Banner)
 	s.Equal(before.Credentials, settings.Credentials)

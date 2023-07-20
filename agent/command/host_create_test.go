@@ -56,8 +56,11 @@ func (s *createHostSuite) SetupTest() {
 }
 
 func (s *createHostSuite) TestParamDefaults() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 	s.Equal(apimodels.ProviderEC2, s.cmd.CreateHost.CloudProvider)
 	s.Equal(apimodels.DefaultSetupTimeoutSecs, s.cmd.CreateHost.SetupTimeoutSecs)
 	s.Equal(apimodels.DefaultTeardownTimeoutSecs, s.cmd.CreateHost.TeardownTimeoutSecs)
@@ -66,12 +69,15 @@ func (s *createHostSuite) TestParamDefaults() {
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 	s.True(s.cmd.CreateHost.Background)
 	s.Equal(apimodels.DefaultContainerWaitTimeoutSecs, s.cmd.CreateHost.ContainerWaitTimeoutSecs)
 }
 
 func (s *createHostSuite) TestParseFromFile() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	//file for testing parsing from a json file
 	tmpdir := s.T().TempDir()
 	ebsDevice := []map[string]interface{}{
@@ -96,7 +102,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	}
 
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 	s.True(s.cmd.CreateHost.Background)
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
@@ -113,7 +119,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	}
 
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 	s.True(s.cmd.CreateHost.Background)
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
@@ -132,10 +138,13 @@ func (s *createHostSuite) TestParseFromFile() {
 }
 
 func (s *createHostSuite) TestParamValidation() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// having no ami or distro is an error
 	s.params["distro"] = ""
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "must set exactly one of AMI or distro")
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "must set exactly one of AMI or distro")
 
 	// verify errors if missing required info for ami
 	s.params["ami"] = "ami"
@@ -143,7 +152,7 @@ func (s *createHostSuite) TestParamValidation() {
 	delete(s.params, "subnet_id")
 	delete(s.params, "instance_type")
 	s.NoError(s.cmd.ParseParams(s.params))
-	err := s.cmd.expandAndValidate(s.conf)
+	err := s.cmd.expandAndValidate(ctx, s.conf)
 	s.Contains(err.Error(), "must specify security group IDs if AMI is set")
 	s.Contains(err.Error(), "subnet ID must be set if AMI is set")
 	s.Contains(err.Error(), "instance type must be set if AMI is set")
@@ -153,52 +162,52 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["security_group_ids"] = []string{"foo"}
 	s.params["subnet_id"] = "subnet"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 
 	// having a key id but nothing else is an error
 	s.params["aws_access_key_id"] = "keyid"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "AWS access key ID, AWS secret access key, and key name must all be set or unset")
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "AWS access key ID, AWS secret access key, and key name must all be set or unset")
 	s.params["aws_secret_access_key"] = "secret"
 	s.params["key_name"] = "key"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 
 	// verify errors for things controlled by the agent
 	s.params["num_hosts"] = "11"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num hosts must be between 1 and 10")
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "num hosts must be between 1 and 10")
 	s.params["scope"] = "idk"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "scope must be build or task")
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "scope must be build or task")
 	s.params["timeout_teardown_secs"] = 55
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "timeout teardown (seconds) must be between 60 and 604800")
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "timeout teardown (seconds) must be between 60 and 604800")
 
 	// Validate num_hosts can be an int
 	s.params["timeout_teardown_secs"] = 60
 	s.params["scope"] = "task"
 	s.params["num_hosts"] = 2
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 
 	// Validate docker requirements
 	s.params["provider"] = apimodels.ProviderDocker
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.params["distro"] = ""
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	settings.Providers.Docker.DefaultDistro = "my-default-distro"
 	s.NoError(evergreen.UpdateConfig(settings))
 
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "Docker image must be set")
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num hosts cannot be greater than 1")
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "Docker image must be set")
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "num hosts cannot be greater than 1")
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.params["num_hosts"] = 1
 	s.params["distro"] = "my-default-distro"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 }
 
 func (s *createHostSuite) TestPopulateUserdata() {
