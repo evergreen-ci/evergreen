@@ -69,7 +69,7 @@ func NewPodHealthCheckJob(podID string, ts time.Time) amboy.Job {
 func (j *podHealthCheckJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return

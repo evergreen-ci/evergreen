@@ -73,7 +73,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	// stop if degraded
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting service flags"))
 		return

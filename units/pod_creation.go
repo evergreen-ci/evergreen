@@ -101,7 +101,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 	settings := *j.env.Settings()
 	// Use the latest service flags instead of those cached in the environment.
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
 		return

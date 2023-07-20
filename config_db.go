@@ -154,14 +154,7 @@ func SetBannerTheme(theme BannerTheme) error {
 	return errors.WithStack(err)
 }
 
-func GetServiceFlags() (*ServiceFlags, error) {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-
-	return GetServiceFlagsContext(ctx)
-}
-
-func GetServiceFlagsContext(ctx context.Context) (*ServiceFlags, error) {
+func GetServiceFlags(ctx context.Context) (*ServiceFlags, error) {
 	flags := &ServiceFlags{}
 	if err := flags.Get(ctx); err != nil {
 		return nil, errors.Wrapf(err, "getting section '%s'", flags.SectionId())
@@ -170,13 +163,6 @@ func GetServiceFlagsContext(ctx context.Context) (*ServiceFlags, error) {
 }
 
 // SetServiceFlags sets whether each of the runner/API server processes is enabled.
-func SetServiceFlags(flags ServiceFlags) error {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-	return SetServiceFlagsContext(ctx, flags)
-}
-
-// SetServiceFlagsContext sets whether each of the runner/API server processes is enabled.
-func SetServiceFlagsContext(ctx context.Context, flags ServiceFlags) error {
+func SetServiceFlags(ctx context.Context, flags ServiceFlags) error {
 	return flags.Set(ctx)
 }

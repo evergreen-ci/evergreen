@@ -872,7 +872,7 @@ func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projec
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "checking if GitHub PR testing is disabled")
 	}

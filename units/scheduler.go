@@ -53,7 +53,7 @@ func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.T
 func (j *distroSchedulerJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

@@ -50,10 +50,10 @@ func makeHostStatsCollector() *hostStatsCollector {
 	return j
 }
 
-func (j *hostStatsCollector) Run(_ context.Context) {
+func (j *hostStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

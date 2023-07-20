@@ -872,7 +872,7 @@ func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}

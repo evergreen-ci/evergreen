@@ -70,7 +70,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 		j.q = j.env.RemoteQueue()
 	}
 	var err error
-	j.flags, err = evergreen.GetServiceFlags()
+	j.flags, err = evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return

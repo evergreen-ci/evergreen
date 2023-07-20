@@ -74,7 +74,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting service flags"))
 		return

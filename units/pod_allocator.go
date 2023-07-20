@@ -175,7 +175,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 }
 
 func (j *podAllocatorJob) systemCanAllocate(ctx context.Context) (canAllocate bool, err error) {
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
 	}

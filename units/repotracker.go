@@ -62,7 +62,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
