@@ -148,9 +148,11 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	cmd command.Command, displayName string, options runCommandsOptions) error {
 	prevDef := map[string]string{}
 	for key, val := range commandInfo.Vars {
+		prevVal := tc.taskConfig.Expansions.Get(key)
+		prevDef[key] = prevVal
+
 		var newVal string
 		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
-		prevDef[key] = val
 		if err != nil {
 			return errors.Wrapf(err, "expanding '%s'", val)
 		}

@@ -199,42 +199,52 @@ func TestEndTaskSyncCommands(t *testing.T) {
 func (s *CommandSuite) TestVarsAreUnsetAfterRunning() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cmd := model.PluginCommandConf{
-		Command: "shell.exec",
-		Params: map[string]interface{}{
-			"script": "echo hi",
+
+	var err error
+	config := &internal.TaskConfig{
+		Expansions: &util.Expansions{"globalVar": "expansionVar"},
+		BuildVariant: &model.BuildVariant{
+			Name: "some_build_variant",
 		},
-		Function: "my-func",
+		Task: &task.Task{
+			Id:           "task_id",
+			DisplayName:  "some task",
+			BuildVariant: "some_build_variant",
+			Version:      "v1",
+		},
+		Timeout: &internal.Timeout{},
 	}
-
-	exp := util.NewExpansions(map[string]string{
-		"globalVar": "expansionVar",
-	})
-
-	s.tc.expansions = *exp
+	s.tc.taskConfig = config
 	p := &model.Project{
 		Functions: map[string]*model.YAMLCommandSet{
-			"my-func": {
+			"yes": {
 				MultiCommand: []model.PluginCommandConf{
 					{
 						Vars:    map[string]string{"globalVar": "functionVar"},
 						Command: "shell.exec",
 						Params: map[string]interface{}{
-							"script": "echo hi",
+							"script": "echo in the function",
 						},
 					},
 				},
 			},
 		},
 	}
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, s.tc.task, nil)
 	s.tc.project = p
 	s.tc.taskConfig.Project = p
-	var err error
-	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, s.tc.task, nil)
-	s.NoError(err)
-	cmds := []model.PluginCommandConf{cmd}
+
+	func1 := model.PluginCommandConf{
+		Function:    "yes",
+		DisplayName: "function",
+		Vars:        map[string]string{"globalVar": "functionVar"},
+	}
+
+	cmds := []model.PluginCommandConf{func1}
 	err = s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
-	s.Equal("expansionVar", s.tc.expansions["globalVar"], "globalVar should be set back to what it was before the function ran")
 
+	globalVarValue := s.tc.taskConfig.Expansions.Get("globalVar")
+	s.Equal("expansionVar", globalVarValue, "globalVar should be set back to what it was before the function ran")
+	s.NoError(s.tc.logger.Close())
 }
