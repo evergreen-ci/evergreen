@@ -43,7 +43,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 }
 
 // DeleteDistroById removes a given distro from the database based on its id.
-func DeleteDistroById(ctx context.Context, distroId string) error {
+func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) error {
 	d, err := distro.FindOneId(ctx, distroId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -75,6 +75,8 @@ func DeleteDistroById(ctx context.Context, distroId string) error {
 			Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
 		}
 	}
+
+	event.LogDistroRemoved(d.Id, u.Username(), d.NewDistroData())
 	return nil
 }
 
@@ -93,7 +95,7 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts CopyDistroOpts) error 
 			Message:    "new and existing distro IDs are identical",
 		}
 	}
-	distroToCopy, err := distro.FindOneId(opts.DistroIdToCopy)
+	distroToCopy, err := distro.FindOneId(ctx, opts.DistroIdToCopy)
 	if err != nil {
 		return errors.Wrapf(err, "finding distro '%s'", opts.DistroIdToCopy)
 	}
@@ -122,7 +124,7 @@ func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 		return errors.Errorf("validator encountered errors: '%s'", vErrs.String())
 	}
 
-	if err = d.Add(u); err != nil {
+	if err = d.Add(ctx, u); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting distro '%s'", d.Id).Error(),

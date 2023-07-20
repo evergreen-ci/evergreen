@@ -104,10 +104,10 @@ func (s *CommandSuite) TestShellExec() {
 
 	s.Require().NoError(s.tc.logger.Close())
 
-	checkMockLogs(s.T(), s.mockCommunicator, taskID,
+	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
 		"Task completed - SUCCESS",
 		"Finished command 'shell.exec' in function 'foo' (step 1 of 1)",
-	)
+	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal("success", detail.Status)

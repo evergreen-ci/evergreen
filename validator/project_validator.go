@@ -22,6 +22,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type projectValidator func(*model.Project) ValidationErrors
@@ -299,8 +301,13 @@ func CheckProjectSettings(settings *evergreen.Settings, p *model.Project, ref *m
 	return errs
 }
 
-// checks if the project configuration has errors
+// CheckProjectConfigurationIsValid checks if the project configuration has errors
 func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
+	_, span := tracer.Start(ctx, "check-configuration", trace.WithAttributes(
+		attribute.String(evergreen.ProjectIDOtelAttribute, pref.Id),
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, pref.Identifier),
+	))
+	defer span.End()
 	catcher := grip.NewBasicCatcher()
 	projectErrors := CheckProjectErrors(ctx, project, false)
 	if len(projectErrors) != 0 {
