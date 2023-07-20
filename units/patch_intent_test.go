@@ -994,7 +994,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
 	s.Require().NoError(err)
@@ -1062,7 +1062,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
 	s.Require().NoError(err)
@@ -1241,7 +1241,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
@@ -1272,7 +1272,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
 	}
-	s.Require().NoError(evergreen.SetServiceFlags(flags))
+	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
