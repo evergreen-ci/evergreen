@@ -99,7 +99,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// try to set the DB model with this API model
 	oldSettings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
-	_, err = SetEvergreenSettings(restSettings, oldSettings, u, true)
+	_, err = SetEvergreenSettings(ctx, restSettings, oldSettings, u, true)
 	s.Require().NoError(err)
 
 	// read the settings and spot check values
@@ -233,7 +233,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	}
 	oldSettings, err = evergreen.GetConfig(ctx)
 	s.NoError(err)
-	_, err = SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
+	_, err = SetEvergreenSettings(ctx, &updatedSettings, oldSettings, u, true)
 	s.NoError(err)
 	settingsFromConnector, err = evergreen.GetConfig(ctx)
 	s.Require().NoError(err)

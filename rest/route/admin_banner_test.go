@@ -145,7 +145,7 @@ func TestFetchBanner(t *testing.T) {
 			},
 		},
 	}
-	_, err := data.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
+	_, err := data.SetEvergreenSettings(ctx, newSettings, &evergreen.Settings{}, u, true)
 	require.NoError(t, err)
 	routeManager := makeFetchAdminBanner()
 	assert.NotNil(routeManager)

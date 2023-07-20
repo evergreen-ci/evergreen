@@ -32,10 +32,13 @@ func TestPayloads(t *testing.T) {
 }
 
 func (s *payloadSuite) SetupSuite() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(s.T(), settings, "TestPayloads")
 	s.Require().NoError(db.Clear(evergreen.ConfigCollection))
-	s.Require().NoError(evergreen.UpdateConfig(settings))
+	s.Require().NoError(evergreen.UpdateConfig(ctx, settings))
 }
 
 func (s *payloadSuite) SetupTest() {

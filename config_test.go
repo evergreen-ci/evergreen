@@ -145,10 +145,13 @@ func (s *AdminSuite) SetupTest() {
 }
 
 func (s *AdminSuite) TearDownTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Reset the global env and admin settings after modifications to avoid
 	// affecting other tests that depend on the global test env.
 	SetEnvironment(s.originalEnv)
-	s.NoError(UpdateConfig(s.originalSettings))
+	s.NoError(UpdateConfig(ctx, s.originalSettings))
 }
 
 func (s *AdminSuite) TestBanner() {

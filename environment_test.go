@@ -102,7 +102,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	s.env = env.(*envState)
 	s.Equal("http://localhost:9090", s.env.Settings().ApiUrl)
 	// persist to db
-	s.NoError(s.env.SaveConfig())
+	s.NoError(s.env.SaveConfig(ctx))
 
 	// then test loading it from the db
 	s.env.settings = nil

@@ -3272,7 +3272,7 @@ func TestValidateContainers(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, evergreen.UpdateConfig(testutil.TestConfig()))
+	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
 	defer func() {
 		assert.NoError(t, db.Clear(model.ProjectRefCollection))
 	}()

@@ -198,7 +198,7 @@ func (s *createHostSuite) TestParamValidation() {
 	settings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	settings.Providers.Docker.DefaultDistro = "my-default-distro"
-	s.NoError(evergreen.UpdateConfig(settings))
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
 	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "Docker image must be set")
 	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "num hosts cannot be greater than 1")

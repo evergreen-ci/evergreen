@@ -187,7 +187,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 			CacheTemplates: true,
 		},
 	}
-	s.NoError(evergreen.UpdateConfig(&after))
+	s.NoError(evergreen.UpdateConfig(ctx, &after))
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
