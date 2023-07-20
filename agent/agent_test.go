@@ -27,6 +27,21 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+const defaultProjYml = `
+buildvariants:
+- name: some_build_variant
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "echo hi"
+post:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+
 type AgentSuite struct {
 	suite.Suite
 	a                *Agent
@@ -440,22 +455,6 @@ post:
 }
 
 func (s *AgentSuite) setupRunTask(projYml string) {
-	if projYml == "" {
-		projYml = `
-buildvariants:
-- name: some_build_variant
-tasks: 
- - name: this_is_a_task_name
-   commands: 
-    - command: shell.exec
-      params:
-        script: "echo hi"
-post:
-  - command: shell.exec
-    params:
-      script: "echo hi"
-`
-	}
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
@@ -673,7 +672,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 }
 
 func (s *AgentSuite) TestOOMTracker() {
-	s.setupRunTask("")
+	s.setupRunTask(defaultProjYml)
 	s.tc.project.OomTracker = true
 	pids := []int{1, 2, 3}
 	lines := []string{"line 1", "line 2", "line 3"}

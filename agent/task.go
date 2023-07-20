@@ -168,8 +168,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if pre.Commands != nil {
-		tc.logger.Task().Infof("Running setup task for task group '%s'.", pre.Name)
-		opts.failPreAndPost = pre.ShouldFail
+		opts.failPreAndPost = pre.CanFailTask
 		block := preBlock
 		if tc.taskGroup != "" {
 			block = setupTaskBlock

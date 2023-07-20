@@ -801,7 +801,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 		return nil
 	}
 	if post.Commands != nil {
-		opts.failPreAndPost = post.ShouldFail
+		opts.failPreAndPost = post.CanFailTask
 		block := postBlock
 		if tc.taskGroup != "" {
 			block = teardownTaskBlock
@@ -809,7 +809,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 		err = a.runCommandsInBlock(postCtx, tc, post.Commands.List(), opts, block)
 		if err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
-			if post.ShouldFail {
+			if post.CanFailTask {
 				return err
 			}
 		}

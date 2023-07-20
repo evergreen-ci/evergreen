@@ -142,7 +142,7 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 	}
 	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
 	}
 
 	if tg.Timeout == nil {
@@ -151,6 +151,7 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 	return tg, nil
 }
 
+// GetTimeout returns the timeout defined on the taskGroup or project
 func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error) {
 	if err := tc.validateTaskConfig(); err != nil {
 		return nil, err
@@ -161,50 +162,55 @@ func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error
 	}
 
 	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil || tg.Timeout == nil {
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
+	}
+	if tg.Timeout == nil {
 		return tc.Project.Timeout, nil
 	}
 
 	return tg.Timeout, nil
 }
 
-type commandBlock struct {
-	Name       string
-	Commands   *model.YAMLCommandSet
-	ShouldFail bool
+// CommandBlock contains information for a block of commands
+type CommandBlock struct {
+	Commands    *model.YAMLCommandSet
+	CanFailTask bool
 }
 
-func (tc *TaskConfig) GetPre(taskGroup string) (*commandBlock, error) {
+// GetPre returns a command block containing the pre task commands
+func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
 	if err := tc.validateTaskConfig(); err != nil {
 		return nil, err
 	}
 
-	shouldFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
+	canFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
 	if taskGroup == "" {
-		return &commandBlock{Commands: tc.Project.Pre, ShouldFail: shouldFailTask}, nil
+		return &CommandBlock{Commands: tc.Project.Pre, CanFailTask: canFailTask}, nil
 	}
 	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
 	}
 
-	return &commandBlock{Commands: tg.SetupTask, ShouldFail: tg.SetupGroupFailTask, Name: tg.Name}, nil
+	return &CommandBlock{Commands: tg.SetupTask, CanFailTask: tg.SetupGroupFailTask}, nil
 }
 
-func (tc *TaskConfig) GetPost(taskGroup string) (*commandBlock, error) {
+// GetPost returns a command block containing the post task commands
+func (tc *TaskConfig) GetPost(taskGroup string) (*CommandBlock, error) {
 	if err := tc.validateTaskConfig(); err != nil {
 		return nil, err
 	}
 
-	shouldFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
+	canFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
 	if taskGroup == "" {
-		return &commandBlock{Commands: tc.Project.Post, ShouldFail: shouldFailTask}, nil
+		return &CommandBlock{Commands: tc.Project.Post, CanFailTask: canFailTask}, nil
 	}
 	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
 	}
-	return &commandBlock{Commands: tg.TeardownTask, ShouldFail: tg.TeardownTaskCanFailTask, Name: tg.Name}, nil
+	return &CommandBlock{Commands: tg.TeardownTask, CanFailTask: tg.TeardownTaskCanFailTask}, nil
 
 }
 
