@@ -1055,3 +1055,30 @@ func (s *AdminSuite) TestDataPipesConfig() {
 	s.NotNil(settings)
 	s.Equal(config, settings.DataPipes)
 }
+
+func (s *AdminSuite) TestBucketConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := BucketConfig{
+		LogBucket: Bucket{
+			Name: "logs",
+			Type: "s3",
+		},
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Buckets)
+
+	config.LogBucket.Name = "logs-2"
+	s.NoError(config.Set(ctx))
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Buckets)
+}

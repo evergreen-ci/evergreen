@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -31,7 +31,7 @@ func (h *getManifestHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Execute returns the manifest for the given task.
 func (h *getManifestHandler) Run(ctx context.Context) gimlet.Responder {
-	manifest, err := manifest.GetManifestByTask(h.taskID)
+	manifest, err := data.GetManifestByTask(h.taskID)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting manifest using task '%s'", h.taskID))
 	}

@@ -6,6 +6,13 @@ enum DistroSettingsAccess {
 }
 
 """
+DeleteDistroInput is the input to the deleteDistro mutation.
+"""
+input DeleteDistroInput {
+  distroId: String! @requireDistroAccess(access: ADMIN)
+}
+
+"""
 CreateDistroInput is the input to the createDistro mutation.
 """
 input CreateDistroInput {
@@ -27,6 +34,14 @@ Return type representing whether a distro was created and any validation errors
 type NewDistroPayload {
   newDistroId: String!
 }
+
+"""
+Return type representing whether a distro was deleted.
+"""
+type DeleteDistroPayload {
+  deletedDistroId: String!
+}
+
 
 """
 Distro models an environment configuration for a host.

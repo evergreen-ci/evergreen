@@ -43,7 +43,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 }
 
 // DeleteDistroById removes a given distro from the database based on its id.
-func DeleteDistroById(ctx context.Context, distroId string) error {
+func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) error {
 	d, err := distro.FindOneId(ctx, distroId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -75,6 +75,8 @@ func DeleteDistroById(ctx context.Context, distroId string) error {
 			Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
 		}
 	}
+
+	event.LogDistroRemoved(d.Id, u.Username(), d.NewDistroData())
 	return nil
 }
 

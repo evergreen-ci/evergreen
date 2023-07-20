@@ -38,7 +38,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_task_id": ""
     },
     {
       "_id": "2",
@@ -47,7 +48,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "display_task_id": ""
     },
     {
       "_id": "XYZ",
@@ -56,7 +58,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "silver",
       "r": "github_pull_request",
-      "status": "setup-failed"
+      "status": "setup-failed",
+      "display_task_id": ""
     },
     {
       "_id": "X",
@@ -65,7 +68,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "gold",
       "r": "github_pull_request",
-      "status": "undispatched"
+      "status": "undispatched",
+      "display_task_id": ""
     },
     {
       "_id": "3",
@@ -74,7 +78,8 @@
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_task_id": ""
     },
     {
       "_id": "4",
@@ -83,7 +88,8 @@
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "display_task_id": ""
     }
   ],
   "patches": [
