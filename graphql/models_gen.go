@@ -259,7 +259,7 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
-type SaveDistroOpts struct {
+type SaveDistroInput struct {
 	DistroID string                       `json:"distroId"`
 	Changes  *model.APIDistro             `json:"changes,omitempty"`
 	Section  distro.DistroSettingsSection `json:"section"`

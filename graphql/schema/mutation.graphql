@@ -36,7 +36,7 @@ type Mutation {
   deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload!
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
   saveDistroSection(
-    opts: SaveDistroOpts!
+    opts: SaveDistroInput!
   ): DistroWithHostCount!
 
   # hosts

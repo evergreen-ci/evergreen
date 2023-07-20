@@ -22,7 +22,7 @@ enum DistroOnSaveOperation {
 }
 
 ###### INPUTS ######
-input SaveDistroOpts {
+input SaveDistroInput {
   distroId: String! @requireDistroAccess(access: EDIT), 
   changes: DistroInput, 
   section: DistroSettingsSection!, 

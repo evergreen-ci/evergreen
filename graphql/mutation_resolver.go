@@ -158,7 +158,7 @@ func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroO
 }
 
 // SaveDistroSection is the resolver for the saveDistroSection field.
-func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroOpts) (*DistroWithHostCount, error) {
+func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*DistroWithHostCount, error) {
 	user := mustHaveUser(ctx)
 	distroChanges := opts.Changes.ToService()
 
@@ -170,7 +170,7 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", opts.DistroID))
 	}
 
-	if err = validator.ValidateDistroSection(ctx, originalDistro, distroChanges, opts.Section, evergreen.GetEnvironment().Settings()); err != nil {
+	if err = validator.ValidateDistroSection(ctx, originalDistro, distroChanges, opts.Section); err != nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", opts.DistroID, err.Error()))
 	}
 

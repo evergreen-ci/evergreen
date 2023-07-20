@@ -728,12 +728,52 @@ func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
 	}, settings))
 }
 
+func TestValidateAliases(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameDocker,
+		ContainerPool: "",
+		Aliases:       []string{"alias_1", "alias_2"},
+	}, []string{}))
+
+	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "container_pool",
+		Aliases:       []string{"alias_1", "alias_2"},
+	}, []string{}))
+
+	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "container_pool",
+		Aliases:       []string{},
+	}, []string{"distro"}))
+
+	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "",
+		Aliases:       []string{"distro"},
+	}, []string{"distro"}))
+
+	assert.Nil(t, validateAliases(ctx, &distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "",
+		Aliases:       []string{"alias_1", "alias_2"},
+	}, []string{"distro"}))
+}
+
 func TestValidateDistroSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for name, test := range map[string]func(t *testing.T, settings *evergreen.Settings){
-		"General section": func(t *testing.T, settings *evergreen.Settings) {
+	for name, test := range map[string]func(t *testing.T, ctx context.Context){
+		"General section": func(t *testing.T, ctx context.Context) {
 			assert.Nil(t, ValidateDistroSection(ctx, &distro.Distro{
 				Id:            "distro_id",
 				ContainerPool: "",
@@ -745,8 +785,7 @@ func TestValidateDistroSection(t *testing.T) {
 					DisableShallowClone: true,
 					Disabled:            true,
 				},
-				distro.DistroSettingsGeneral,
-				settings))
+				distro.DistroSettingsGeneral))
 
 			assert.NotNil(t, ValidateDistroSection(ctx, &distro.Distro{
 				Id:            "distro_id",
@@ -757,14 +796,14 @@ func TestValidateDistroSection(t *testing.T) {
 					Id:      "distro_id",
 					Aliases: []string{"alias_1", "alias_2"},
 				},
-				distro.DistroSettingsGeneral,
-				settings))
+				distro.DistroSettingsGeneral))
 		},
 	} {
-		settings := &evergreen.Settings{}
-
 		t.Run(name, func(t *testing.T) {
-			test(t, settings)
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			test(t, tctx)
 		})
 	}
 }

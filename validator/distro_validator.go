@@ -564,7 +564,8 @@ func validateAliases(ctx context.Context, d *distro.Distro, allDistroAliases []s
 }
 
 // ValidateDistroSection validates that the incoming changes to a given section are valid.
-func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section distro.DistroSettingsSection, s *evergreen.Settings) error {
+func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section distro.DistroSettingsSection) error {
+	settings := evergreen.GetEnvironment().Settings()
 	validationErrs := ValidationErrors{}
 
 	switch section {
@@ -580,7 +581,7 @@ func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, c
 	}
 
 	for _, v := range validateSection[section] {
-		validationErrs = append(validationErrs, v(ctx, changes, s)...)
+		validationErrs = append(validationErrs, v(ctx, changes, settings)...)
 	}
 
 	if len(validationErrs) > 0 {

@@ -610,7 +610,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
-		SaveDistroSection             func(childComplexity int, opts SaveDistroOpts) int
+		SaveDistroSection             func(childComplexity int, opts SaveDistroInput) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
@@ -1517,7 +1517,7 @@ type MutationResolver interface {
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error)
-	SaveDistroSection(ctx context.Context, opts SaveDistroOpts) (*DistroWithHostCount, error)
+	SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*DistroWithHostCount, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -4290,7 +4290,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["opts"].(SaveDistroOpts)), true
+		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["opts"].(SaveDistroInput)), true
 
 	case "Mutation.saveProjectSettingsForSection":
 		if e.complexity.Mutation.SaveProjectSettingsForSection == nil {
@@ -8974,7 +8974,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputResourceLimitsInput,
-		ec.unmarshalInputSaveDistroOpts,
+		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputSortOrder,
 		ec.unmarshalInputSpawnHostInput,
@@ -10055,10 +10055,10 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_saveDistroSection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 SaveDistroOpts
+	var arg0 SaveDistroInput
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg0, err = ec.unmarshalNSaveDistroOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroOpts(ctx, tmp)
+		arg0, err = ec.unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -25542,7 +25542,7 @@ func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["opts"].(SaveDistroOpts))
+		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["opts"].(SaveDistroInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -67502,8 +67502,8 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputSaveDistroOpts(ctx context.Context, obj interface{}) (SaveDistroOpts, error) {
-	var it SaveDistroOpts
+func (ec *executionContext) unmarshalInputSaveDistroInput(ctx context.Context, obj interface{}) (SaveDistroInput, error) {
+	var it SaveDistroInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -82546,8 +82546,8 @@ func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑci
 	return v
 }
 
-func (ec *executionContext) unmarshalNSaveDistroOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroOpts(ctx context.Context, v interface{}) (SaveDistroOpts, error) {
-	res, err := ec.unmarshalInputSaveDistroOpts(ctx, v)
+func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v interface{}) (SaveDistroInput, error) {
+	res, err := ec.unmarshalInputSaveDistroInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
