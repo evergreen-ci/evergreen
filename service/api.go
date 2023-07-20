@@ -247,7 +247,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 			errs = append(errs, validationErr)
 		} else {
 			isConfigDefined := projectConfig != nil
-			errs = append(errs, validator.CheckProjectSettings(evergreen.GetEnvironment().Settings(), project, projectRef, isConfigDefined)...)
+			errs = append(errs, validator.CheckProjectSettings(ctx, evergreen.GetEnvironment().Settings(), project, projectRef, isConfigDefined)...)
 		}
 	} else {
 		validationErr = validator.ValidationError{

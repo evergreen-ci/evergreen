@@ -13,7 +13,7 @@ import (
 
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version
-func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
+func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.Version, error) {
 	if args.SourceVersion == nil {
 		return nil, errors.Errorf("unable to find source version in downstream project '%s'", args.DownstreamProject.Id)
 	}
@@ -27,7 +27,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	// get the downstream config
 	projectInfo := model.ProjectInfo{}
 	if args.ConfigFile != "" {
-		projectInfo, err = makeDownstreamProjectFromFile(args.DownstreamProject, args.ConfigFile)
+		projectInfo, err = makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -45,7 +45,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if err != nil {
 		return nil, err
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting Evergreen settings")
 	}
@@ -112,13 +112,13 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (model.ProjectInfo, error) {
+func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &ref,
 		RemotePath: file,
 		Revision:   ref.Branch,
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return model.ProjectInfo{}, errors.Wrap(err, "getting Evergreen settings")
 	}

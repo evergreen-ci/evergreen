@@ -111,7 +111,7 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts CopyDistroOpts) error 
 }
 
 func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}

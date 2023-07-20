@@ -77,7 +77,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		}
 	}()
 
-	canAllocate, err := j.systemCanAllocate()
+	canAllocate, err := j.systemCanAllocate(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "checking allocation attempt against max parallel pod request limit"))
 		return
@@ -174,7 +174,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *podAllocatorJob) systemCanAllocate() (canAllocate bool, err error) {
+func (j *podAllocatorJob) systemCanAllocate(ctx context.Context) (canAllocate bool, err error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
@@ -183,7 +183,7 @@ func (j *podAllocatorJob) systemCanAllocate() (canAllocate bool, err error) {
 		return false, nil
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting admin settings")
 	}
@@ -203,7 +203,7 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 		j.env = evergreen.GetEnvironment()
 	}
 	// Retrieve the latest settings rather than the cached ones.
-	settings, err := evergreen.GetConfigContext(ctx)
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}

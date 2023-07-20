@@ -483,7 +483,7 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 }
 
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}
@@ -757,7 +757,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	if remotePath != "" {
 		// run everything in the yaml that's provided
 		if gh.settings == nil {
-			gh.settings, err = evergreen.GetConfig()
+			gh.settings, err = evergreen.GetConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting admin settings")
 			}

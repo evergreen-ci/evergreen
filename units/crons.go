@@ -309,7 +309,7 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -407,7 +407,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -443,7 +443,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			})
 			return nil
 		}
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -474,7 +474,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}))
 
 		ts := utility.RoundPartOfMinute(0)
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			grip.Critical(message.WrapError(err, message.Fields{
 				"cron":      schedulerJobName,
@@ -518,7 +518,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 			})
 			return nil
 		}
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -571,7 +571,7 @@ func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 			return nil
 		}
 
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -1260,7 +1260,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			"num_initializing": numInitializing,
 		})
 
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}

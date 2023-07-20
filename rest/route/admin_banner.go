@@ -68,7 +68,7 @@ func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {
-	banner, theme, err := data.GetBanner()
+	banner, theme, err := data.GetBanner(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting banner"))
 	}

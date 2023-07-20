@@ -459,7 +459,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
-	if err = pRef.AttachToRepo(usr); err != nil {
+	if err = pRef.AttachToRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
 	}
 
@@ -504,7 +504,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	if utility.FromBoolPtr(requestS3Creds) {
-		if err = data.RequestS3Creds(*apiProjectRef.Identifier, u.EmailAddress); err != nil {
+		if err = data.RequestS3Creds(ctx, *apiProjectRef.Identifier, u.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
 		}
 	}
@@ -533,7 +533,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	}
 	if utility.FromBoolPtr(requestS3Creds) {
 		usr := mustHaveUser(ctx)
-		if err = data.RequestS3Creds(*projectRef.Identifier, usr.EmailAddress); err != nil {
+		if err = data.RequestS3Creds(ctx, *projectRef.Identifier, usr.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
 	}
@@ -699,7 +699,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 	if spawnHost.InstanceType != nil {
 		var config *evergreen.Settings
-		config, err = evergreen.GetConfig()
+		config, err = evergreen.GetConfig(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
 		}

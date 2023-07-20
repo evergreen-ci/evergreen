@@ -28,7 +28,7 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
@@ -57,7 +57,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
@@ -85,7 +85,7 @@ func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	oldSettings, err := evergreen.GetConfig()
+	oldSettings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting existing admin settings"))
 	}

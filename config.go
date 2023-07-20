@@ -299,17 +299,7 @@ func NewSettings(filename string) (*Settings, error) {
 // GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
 // Use Settings() to get the cached settings object.
-func GetConfig() (*Settings, error) {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-
-	return GetConfigContext(ctx)
-}
-
-// GetConfigContext returns the Evergreen config document. If no document is
-// present in the DB, it will return the defaults.
-// Use Settings() to get the cached settings object.
-func GetConfigContext(ctx context.Context) (*Settings, error) { return BootstrapConfig(ctx) }
+func GetConfig(ctx context.Context) (*Settings, error) { return BootstrapConfig(ctx) }
 
 // Bootstrap config gets a config from the database defined in the environment.
 func BootstrapConfig(ctx context.Context) (*Settings, error) {

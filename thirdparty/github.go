@@ -299,7 +299,7 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 // getInstallationToken creates an installation token using Github app auth.
 // If creating a token fails it will return the legacyToken.
 func getInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "getting config")
 	}
@@ -323,7 +323,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 }
 
 func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "getting evergreen settings")
 	}

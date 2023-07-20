@@ -17,8 +17,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GetBanner() (string, string, error) {
-	settings, err := evergreen.GetConfig()
+func GetBanner(ctx context.Context) (string, string, error) {
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", "", errors.Wrap(err, "retrieving admin settings from DB")
 	}

@@ -182,7 +182,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into API distro model"))
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
@@ -318,7 +318,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		apiDistro.ProviderSettingsList = oldSettingsList
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
@@ -494,7 +494,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	}
 	modifiedDistros := []distro.Distro{}
 	modifiedAMIDistroIds := []string{}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}

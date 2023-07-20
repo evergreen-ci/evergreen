@@ -243,7 +243,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		// Validate owner/repo if the project is enabled or owner/repo is populated.
 		// This validation is cheap so it makes sense to be strict about this.
 		if mergedSection.Enabled || (mergedSection.Owner != "" && mergedSection.Repo != "") {
-			config, err := evergreen.GetConfig()
+			config, err := evergreen.GetConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")
 			}
@@ -280,7 +280,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.New("branch not set on enabled project")
 			}
 
-			config, err := evergreen.GetConfig()
+			config, err := evergreen.GetConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")
 			}

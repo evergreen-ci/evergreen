@@ -126,7 +126,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"message":                 "found item at the front of commit queue",
 	})
 
-	conf, err := evergreen.GetConfig()
+	conf, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
@@ -575,7 +575,7 @@ func validateBranch(branch *github.Branch) error {
 // and the merge build variant to the project and returns the modified parser
 // project.
 func AddMergeTaskAndVariant(ctx context.Context, patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) (*model.ParserProject, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving admin settings")
 	}
@@ -638,7 +638,7 @@ func AddMergeTaskAndVariant(ctx context.Context, patchDoc *patch.Patch, project 
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectErrors(ctx, project, true)
-	validationErrors = append(validationErrors, validator.CheckProjectSettings(settings, project, projectRef, false)...)
+	validationErrors = append(validationErrors, validator.CheckProjectSettings(ctx, settings, project, projectRef, false)...)
 	validationErrors = append(validationErrors, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range validationErrors.AtLevel(validator.Error) {

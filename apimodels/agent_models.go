@@ -1,6 +1,7 @@
 package apimodels
 
 import (
+	"context"
 	"strconv"
 	"time"
 
@@ -186,7 +187,7 @@ func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
 
-func (ch *CreateHost) ValidateDocker() error {
+func (ch *CreateHost) ValidateDocker(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -196,7 +197,7 @@ func (ch *CreateHost) ValidateDocker() error {
 		catcher.New("Docker image must be set")
 	}
 	if ch.Distro == "" {
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			catcher.New("error getting config to set default distro")
 		} else {
@@ -304,14 +305,14 @@ func (ch *CreateHost) setNumHosts() error {
 	return nil
 }
 
-func (ch *CreateHost) Validate() error {
+func (ch *CreateHost) Validate(ctx context.Context) error {
 	if ch.CloudProvider == ProviderEC2 || ch.CloudProvider == "" { //default
 		ch.CloudProvider = ProviderEC2
 		return ch.ValidateEC2()
 	}
 
 	if ch.CloudProvider == ProviderDocker {
-		return ch.ValidateDocker()
+		return ch.ValidateDocker(ctx)
 	}
 
 	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)

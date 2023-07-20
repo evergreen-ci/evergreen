@@ -60,7 +60,7 @@ func (c *createHost) parseParamsFromFile(fn string, conf *internal.TaskConfig) e
 	return errors.Wrapf(utility.ReadYAMLFile(fn, &c.CreateHost), "reading YAML from file '%s'", fn)
 }
 
-func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
+func (c *createHost) expandAndValidate(ctx context.Context, conf *internal.TaskConfig) error {
 	// if a filename is defined, then parseParams has not parsed the parameters yet,
 	// since the file was not yet available. it therefore needs to be parsed now.
 	if c.File != "" {
@@ -73,7 +73,7 @@ func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
 		return err
 	}
 
-	if err := c.CreateHost.Validate(); err != nil {
+	if err := c.CreateHost.Validate(ctx); err != nil {
 		return errors.Wrap(err, "invalid command options")
 	}
 	return nil
@@ -81,7 +81,7 @@ func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
 
 func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if err := c.expandAndValidate(conf); err != nil {
+	if err := c.expandAndValidate(ctx, conf); err != nil {
 		return err
 	}
 

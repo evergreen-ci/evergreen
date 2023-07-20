@@ -498,7 +498,7 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 		return []string{}, errors.New("no task secret sent to CreateHost")
 	}
 	c.CreatedHost = options
-	return []string{"id"}, options.Validate()
+	return []string{"id"}, options.Validate(ctx)
 }
 
 func (c *Mock) ListHosts(_ context.Context, _ TaskData) (model.HostListResults, error) {

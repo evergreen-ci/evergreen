@@ -69,7 +69,7 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting scheduler settings"))
 		return
