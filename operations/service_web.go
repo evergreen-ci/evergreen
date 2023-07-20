@@ -38,7 +38,7 @@ func startWebService() cli.Command {
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
-				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "saving config"))
+				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(ctx), "saving config"))
 			}
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "starting remote queue"))
 

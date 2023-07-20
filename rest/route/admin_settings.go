@@ -91,7 +91,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// validate the changes
-	newSettings, err := data.SetEvergreenSettings(h.model, oldSettings, u, false)
+	newSettings, err := data.SetEvergreenSettings(ctx, h.model, oldSettings, u, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "dry run applying new settings"))
 	}
@@ -104,7 +104,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "container pool distros are invalid"))
 	}
 
-	_, err = data.SetEvergreenSettings(h.model, oldSettings, u, true)
+	_, err = data.SetEvergreenSettings(ctx, h.model, oldSettings, u, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "applying new settings"))
 	}

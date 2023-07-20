@@ -26,7 +26,7 @@ func GetBanner(ctx context.Context) (string, string, error) {
 }
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
-func SetEvergreenSettings(changes *restModel.APIAdminSettings,
+func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
 
 	settingsAPI := restModel.NewConfigModel()
@@ -61,7 +61,7 @@ func SetEvergreenSettings(changes *restModel.APIAdminSettings,
 		if err = newSettings.Validate(); err != nil {
 			return nil, errors.Wrap(err, "new admin settings are invalid")
 		}
-		err = evergreen.UpdateConfig(&newSettings)
+		err = evergreen.UpdateConfig(ctx, &newSettings)
 		if err != nil {
 			return nil, errors.Wrap(err, "saving new admin settings")
 		}

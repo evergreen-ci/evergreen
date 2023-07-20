@@ -354,15 +354,7 @@ func BootstrapConfig(ctx context.Context) (*Settings, error) {
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
-func UpdateConfig(config *Settings) error {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-
-	return UpdateConfigContext(ctx, config)
-}
-
-// UpdateConfigContext updates all evergreen settings documents in the DB.
-func UpdateConfigContext(ctx context.Context, config *Settings) error {
+func UpdateConfig(ctx context.Context, config *Settings) error {
 	// update the root config document
 	if err := config.Set(ctx); err != nil {
 		return err
