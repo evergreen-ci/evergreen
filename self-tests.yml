@@ -601,6 +601,22 @@ tasks:
           AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
+  - name: kim-test
+    commands:
+      - func: get-project-and-modules
+      - command: timeout.update
+        params:
+          exec_timeout_secs: 5
+      # Should time out and run generate.tasks.
+      - command: shell.exec
+        params:
+          script: sleep 500
+
+timeout:
+- command: generate.tasks
+  params:
+    files:
+      - evergreen/generate-timeout.json
 
 task_groups:
   - name: dist-and-upload-clis
@@ -640,6 +656,7 @@ buildvariants:
       - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
+      - name: kim-test
 
   - name: race-detector
     display_name: Race Detector

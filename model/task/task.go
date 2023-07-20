@@ -233,7 +233,9 @@ type Task struct {
 	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
-	// scheduler will use to prioritize this task.
+	// scheduler will use to prioritize this task. This will not be set for
+	// tasks where the generate.task command runs outside of the main task block
+	// (e.g. pre, timeout).
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
 	// GeneratedTasks indicates that the task has already generated other tasks. This fields
 	// allows us to noop future requests, since a task should only generate others once.
@@ -1163,13 +1165,13 @@ func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 	return errors.Wrap(err, "setting generate.tasks error")
 }
 
+// GenerateNotRun returns tasks that have requested to generate tasks.
 func GenerateNotRun() ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(db.Query(bson.M{
 		StatusKey:                evergreen.TaskStarted,                              // task is running
 		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GenerateTaskKey:          true,                                               // task contains generate.tasks command
-		GeneratedTasksKey:        bson.M{"$exists": false},                           // generate.tasks has not yet run
+		GeneratedTasksKey:        bson.M{"$ne": true},                                // generate.tasks has not yet run
 		GeneratedJSONAsStringKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
 }

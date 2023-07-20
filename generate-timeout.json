@@ -1,0 +1,25 @@
+{
+    "buildvariants": [
+        {
+            "name": "ubuntu2204",
+            "tasks": [
+                {
+                    "name": "test-generated"
+                }
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "name": "test-generated",
+            "commands": [
+                {
+                    "command": "shell.exec",
+                    "params": {
+                        "script": "echo generate worked!"
+                    }
+                }
+            ]
+        }
+    ]
+}

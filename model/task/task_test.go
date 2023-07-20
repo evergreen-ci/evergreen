@@ -4530,3 +4530,65 @@ func TestResetTasks(t *testing.T) {
 		assert.False(t, dbTask.UnattainableDependency)
 	})
 }
+
+func TestGenerateNotRun(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
+		"ReturnsTaskThatNeedsGeneration": func(t *testing.T, tsk *Task) {
+			require.NoError(t, tsk.Insert())
+
+			tasks, err := GenerateNotRun()
+			require.NoError(t, err)
+			assert.Empty(t, tasks)
+			require.Len(t, tasks, 1)
+			assert.Equal(t, tsk.Id, tasks[0].Id)
+		},
+		"IgnoresFinishedTasks": func(t *testing.T, tsk *Task) {
+			tsk.Status = evergreen.TaskFailed
+			require.NoError(t, tsk.Insert())
+
+			tasks, err := GenerateNotRun()
+			require.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"IgnoresTasksThatAlreadyFinishedGenerating": func(t *testing.T, tsk *Task) {
+			tsk.GeneratedTasks = true
+			require.NoError(t, tsk.Insert())
+
+			tasks, err := GenerateNotRun()
+			require.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"IgnoresTasksThatHaveNothingToGenerate": func(t *testing.T, tsk *Task) {
+			tsk.GeneratedJSONAsString = nil
+			require.NoError(t, tsk.Insert())
+
+			tasks, err := GenerateNotRun()
+			require.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"IgnoresTasksWhoseGenerationRequestIsStale": func(t *testing.T, tsk *Task) {
+			tsk.StartTime = time.Now().Add(-100000 * time.Hour)
+			require.NoError(t, tsk.Insert())
+
+			tasks, err := GenerateNotRun()
+			require.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+
+			tCase(t, &Task{
+				Id:                    "task_id",
+				Status:                evergreen.TaskStarted,
+				StartTime:             time.Now(),
+				GeneratedTasks:        false,
+				GeneratedJSONAsString: []string{"some_generated_json"},
+			})
+		})
+	}
+}
