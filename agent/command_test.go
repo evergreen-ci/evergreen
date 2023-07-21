@@ -28,13 +28,20 @@ type CommandSuite struct {
 	mockCommunicator *client.Mock
 	tmpDirName       string
 	tc               *taskContext
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 func TestCommandSuite(t *testing.T) {
 	suite.Run(t, new(CommandSuite))
 }
 
+func (s *CommandSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *CommandSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
@@ -197,10 +204,6 @@ func TestEndTaskSyncCommands(t *testing.T) {
 }
 
 func (s *CommandSuite) TestVarsAreUnsetAfterRunning() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var err error
 	config := &internal.TaskConfig{
 		Expansions: &util.Expansions{"globalVar": "expansionVar"},
 		BuildVariant: &model.BuildVariant{
@@ -230,7 +233,8 @@ func (s *CommandSuite) TestVarsAreUnsetAfterRunning() {
 			},
 		},
 	}
-	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, s.tc.task, nil)
+	var err error
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.tc.project = p
 	s.tc.taskConfig.Project = p
 
@@ -241,10 +245,9 @@ func (s *CommandSuite) TestVarsAreUnsetAfterRunning() {
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err = s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err = s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
 
 	globalVarValue := s.tc.taskConfig.Expansions.Get("globalVar")
 	s.Equal("expansionVar", globalVarValue, "globalVar should be set back to what it was before the function ran")
-	s.NoError(s.tc.logger.Close())
 }
