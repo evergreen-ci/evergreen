@@ -2,7 +2,6 @@ package evergreen
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -21,8 +20,9 @@ import (
 var ConfigRegistry *ConfigSectionRegistry
 
 func init() {
-	if err := resetRegistry(); err != nil {
-		panic(errors.Wrap(err, "registering config sections").Error())
+	ConfigRegistry = &ConfigSectionRegistry{}
+	if err := ConfigRegistry.reset(); err != nil {
+		panic(errors.Wrap(err, "resetting registry"))
 	}
 }
 
@@ -31,7 +31,10 @@ type ConfigSectionRegistry struct {
 	sections map[string]ConfigSection
 }
 
-func resetRegistry() error {
+func (r *ConfigSectionRegistry) reset() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	ConfigSections := []ConfigSection{
 		&AlertsConfig{},
 		&AmboyConfig{},
@@ -64,23 +67,31 @@ func resetRegistry() error {
 		&TracerConfig{},
 	}
 
-	ConfigRegistry = newConfigSectionRegistry()
 	catcher := grip.NewSimpleCatcher()
-
+	r.sections = make(map[string]ConfigSection)
 	for _, section := range ConfigSections {
-		catcher.Add(ConfigRegistry.registerSection(section.SectionId(), section))
+		catcher.Add(r.registerSection(section.SectionId(), section))
 	}
-
 	return catcher.Resolve()
 }
 
-func newConfigSectionRegistry() *ConfigSectionRegistry {
-	return &ConfigSectionRegistry{
-		sections: map[string]ConfigSection{},
+func (r *ConfigSectionRegistry) registerSection(id string, section ConfigSection) error {
+	if id == "" {
+		return errors.New("cannot register a section with no ID")
 	}
+	if _, exists := r.sections[id]; exists {
+		return errors.Errorf("section '%s' is already registered", id)
+	}
+
+	r.sections[id] = section
+	return nil
 }
 
 func (r *ConfigSectionRegistry) populateSections(ctx context.Context) error {
+	if err := r.reset(); err != nil {
+		return errors.Wrap(err, "resetting registry")
+	}
+
 	var sectionIDs = make([]string, 0, len(r.sections))
 	for sectionID := range r.sections {
 		sectionIDs = append(sectionIDs, sectionID)
@@ -90,42 +101,31 @@ func (r *ConfigSectionRegistry) populateSections(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting raw sections")
 	}
-
 	catcher := grip.NewBasicCatcher()
 	for _, rawSection := range rawSections {
-		id, err := rawSection.LookupErr("_id")
-		if err != nil {
-			continue
-		}
-		idString, ok := id.StringValueOK()
-		if !ok {
-			continue
-		}
-		section, ok := r.sections[idString]
-		if !ok {
-			continue
-		}
-		if err = bson.Unmarshal(rawSection, section); err != nil {
-			catcher.Add(errors.Wrapf(err, "unmarshaling section '%s'", idString))
-		}
+		catcher.Add(r.unmarshalSection(rawSection))
 	}
 
 	return catcher.Resolve()
 }
 
-func (r *ConfigSectionRegistry) registerSection(id string, section ConfigSection) error {
+func (r *ConfigSectionRegistry) unmarshalSection(rawSection bson.Raw) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if id == "" {
-		return errors.New("cannot register a section with no ID")
+	id, err := rawSection.LookupErr("_id")
+	if err != nil {
+		return nil
 	}
-	if _, exists := r.sections[id]; exists {
-		return fmt.Errorf("section '%s' is already registered", id)
+	idString, ok := id.StringValueOK()
+	if !ok {
+		return nil
 	}
-
-	r.sections[id] = section
-	return nil
+	section, ok := r.sections[idString]
+	if !ok {
+		return nil
+	}
+	return errors.Wrapf(bson.Unmarshal(rawSection, section), "unmarshaling section '%s'", idString)
 }
 
 func (r *ConfigSectionRegistry) GetSections() map[string]ConfigSection {
