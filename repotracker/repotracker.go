@@ -723,7 +723,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {
-		v.Id = MakeVersionIdWithTriggerId(ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID)
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
@@ -775,11 +775,6 @@ func makeVersionId(project, revision string) string {
 
 func makeVersionIdWithTag(project, tag, id string) string {
 	return util.CleanName(fmt.Sprintf("%s_%s_%s", project, tag, id))
-}
-
-// MakeVersionIdWithTriggerId creates a version id with the given trigger id.
-func MakeVersionIdWithTriggerId(project, revision, triggerID string) string {
-	return util.CleanName(fmt.Sprintf("%s_%s_%s", project, revision, triggerID))
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
