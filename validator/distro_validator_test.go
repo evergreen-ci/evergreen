@@ -729,43 +729,47 @@ func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
 }
 
 func TestValidateAliases(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+	assert.NotNil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameDocker,
 		ContainerPool: "",
 		Aliases:       []string{"alias_1", "alias_2"},
 	}, []string{}))
 
-	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+	assert.NotNil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "container_pool",
 		Aliases:       []string{"alias_1", "alias_2"},
 	}, []string{}))
 
-	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+	assert.NotNil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "container_pool",
 		Aliases:       []string{},
 	}, []string{"distro"}))
 
-	assert.NotNil(t, validateAliases(ctx, &distro.Distro{
+	assert.NotNil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "",
 		Aliases:       []string{"distro"},
-	}, []string{""}))
+	}, []string{}))
 
-	assert.Nil(t, validateAliases(ctx, &distro.Distro{
+	assert.Nil(t, validateAliases(&distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameDocker,
+		ContainerPool: "container_pool",
+		Aliases:       []string{},
+	}, []string{"something_else"}))
+
+	assert.Nil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "",
 		Aliases:       []string{"alias_1", "alias_2"},
-	}, []string{""}))
+	}, []string{}))
 }
 
 func TestValidateDistroSection(t *testing.T) {
@@ -776,7 +780,7 @@ func TestValidateDistroSection(t *testing.T) {
 		"General section": func(t *testing.T, ctx context.Context) {
 			assert.NotNil(t, ValidateDistroSection(ctx, &distro.Distro{
 				Id:            "distro_id",
-				ContainerPool: "",
+				ContainerPool: "container_pool",
 				Provider:      evergreen.ProviderNameDocker,
 			},
 				&distro.Distro{

@@ -22,6 +22,29 @@ enum DistroOnSaveOperation {
 }
 
 ###### INPUTS ######
+"""
+CopyDistroInput is the input to the copyDistro mutation.
+It contains information about a distro to be duplicated.
+"""
+input CopyDistroInput {
+  newDistroId: String!
+  distroIdToCopy: String!
+}
+
+"""
+CreateDistroInput is the input to the createDistro mutation.
+"""
+input CreateDistroInput {
+  newDistroId: String!
+}
+
+"""
+DeleteDistroInput is the input to the deleteDistro mutation.
+"""
+input DeleteDistroInput {
+  distroId: String! @requireDistroAccess(access: ADMIN)
+}
+
 input SaveDistroInput {
   distroId: String! @requireDistroAccess(access: EDIT), 
   changes: DistroInput, 
@@ -137,29 +160,6 @@ input ResourceLimitsInput {
 }
 
 ###### TYPES ######
-"""
-DeleteDistroInput is the input to the deleteDistro mutation.
-"""
-input DeleteDistroInput {
-  distroId: String! @requireDistroAccess(access: ADMIN)
-}
-
-"""
-CreateDistroInput is the input to the createDistro mutation.
-"""
-input CreateDistroInput {
-  newDistroId: String!
-}
-
-"""
-CopyDistroInput is the input to the copyDistro mutation.
-It contains information about a distro to be duplicated.
-"""
-input CopyDistroInput {
-  newDistroId: String!
-  distroIdToCopy: String!
-}
-
 """
 Return type representing whether a distro was created and any validation errors
 """

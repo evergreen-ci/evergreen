@@ -194,12 +194,12 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 
 	updatedDistro, err := distro.UpdateDistroSection(ctx, originalDistro, distroChanges, opts.Section, usr.Username())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating existing distro '%s': %s", opts.DistroID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating distro '%s': %s", opts.DistroID, err.Error()))
 	}
 	apiDistro := &restModel.APIDistro{}
 	apiDistro.BuildFromService(*updatedDistro)
 
-	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, opts.DistroID, usr.Username(), opts.OnSave)
+	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, opts.DistroID, opts.OnSave, usr.Username())
 	if err != nil {
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}

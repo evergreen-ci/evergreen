@@ -1006,7 +1006,7 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	return taskOpts, nil
 }
 
-func handleDistroOnSaveOperation(ctx context.Context, distroID string, userID string, onSave DistroOnSaveOperation) (int, error) {
+func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave DistroOnSaveOperation, userID string) (int, error) {
 	noHostsUpdated := 0
 	if onSave == DistroOnSaveOperationNone {
 		return noHostsUpdated, nil

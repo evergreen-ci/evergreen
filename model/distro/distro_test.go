@@ -688,8 +688,7 @@ func TestUpdateDistroSection(t *testing.T) {
 				Id:      originalDistro.Id,
 				Aliases: []string{"alias_1", "alias_2"},
 				Note:    "updated note",
-			}, DistroSettingsGeneral, "user")
-
+			}, DistroSettingsGeneral, "admin")
 			assert.NoError(t, err)
 			require.NotNil(t, updated)
 			assert.Equal(t, updated.SSHKey, "this should be unchanged")
