@@ -621,7 +621,7 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	defer cancel()
 	response := route.Run(ctx)
 
-	rawModulesResponse, ok := response.Data().(restmodel.APIRawPatch)
+	rawModulesResponse, ok := response.Data().(*restmodel.APIRawPatch)
 	require.True(t, ok)
 
 	rp := rawModulesResponse.Patch
