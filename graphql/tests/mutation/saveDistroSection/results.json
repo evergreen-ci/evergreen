@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "save_distro_section.graphql",
+      "query_file": "general_section.graphql",
       "result": {
         "data": {
           "saveDistroSection": {

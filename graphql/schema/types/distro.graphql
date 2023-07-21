@@ -57,7 +57,7 @@ input DistroInput {
   sshOptions: [String!]
   user: String
   userSpawnAllowed: Boolean
-  validProjects: [String]
+  validProjects: [String!]
   workDir: String
 }
 
@@ -75,26 +75,13 @@ input BootstrapSettingsInput {
   shellPath: String
 }
 
-input PreconditionScriptInput {
-  path: String
-  script: String
-}
-
-input ResourceLimitsInput {
-  lockedMemoryKb: Int
-  numFiles: Int
-  numProcesses: Int
-  numTasks: Int
-  virtualMemoryKb: Int
+input DispatcherSettingsInput {
+  version: String
 }
 
 input EnvVarInput {
   key: String
   value: String
-}
-
-input DispatcherSettingsInput {
-  version: String
 }
 
 input ExpansionInput {
@@ -136,6 +123,19 @@ input PlannerSettingsInput {
   version: String
 }
 
+input PreconditionScriptInput {
+  path: String
+  script: String
+}
+
+input ResourceLimitsInput {
+  lockedMemoryKb: Int
+  numFiles: Int
+  numProcesses: Int
+  numTasks: Int
+  virtualMemoryKb: Int
+}
+
 ###### TYPES ######
 """
 DeleteDistroInput is the input to the deleteDistro mutation.
@@ -168,6 +168,13 @@ type DeleteDistroPayload {
   deletedDistroId: String!
 }
 
+"""
+Return type representing the updated distro and the number of hosts that were updated.
+"""
+type SaveDistroSectionPayload {
+  distro: Distro!
+  hostCount: Int!
+}
 
 """
 Distro models an environment configuration for a host.
@@ -279,7 +286,3 @@ type ResourceLimits {
   virtualMemoryKb: Int
 }
 
-type DistroWithHostCount {
-  distro: Distro!
-  hostCount: Int!
-}

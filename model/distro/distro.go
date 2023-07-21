@@ -888,11 +888,11 @@ const (
 	DistroSettingsProject  DistroSettingsSection = "PROJECT"
 )
 
-// UpdateDistroSection saves the changes for a given section and logs the events with the associated user.
+// UpdateDistroSection saves the changes for a given distro settings section.
 func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *Distro, section DistroSettingsSection, userID string) (*Distro, error) {
 	distroID := originalDistro.Id
-
 	var err error
+
 	switch section {
 	case DistroSettingsGeneral:
 		err = db.Update(Collection,

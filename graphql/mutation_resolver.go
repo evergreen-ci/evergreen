@@ -158,8 +158,8 @@ func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroO
 }
 
 // SaveDistroSection is the resolver for the saveDistroSection field.
-func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*DistroWithHostCount, error) {
-	user := mustHaveUser(ctx)
+func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error) {
+	usr := mustHaveUser(ctx)
 	distroChanges := opts.Changes.ToService()
 
 	originalDistro, err := distro.FindOneId(ctx, opts.DistroID)
@@ -174,19 +174,19 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", opts.DistroID, err.Error()))
 	}
 
-	updatedDistro, err := distro.UpdateDistroSection(ctx, originalDistro, distroChanges, opts.Section, user.Username())
+	updatedDistro, err := distro.UpdateDistroSection(ctx, originalDistro, distroChanges, opts.Section, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating existing distro '%s': %s", opts.DistroID, err.Error()))
 	}
 	apiDistro := &restModel.APIDistro{}
 	apiDistro.BuildFromService(*updatedDistro)
 
-	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, opts.DistroID, user.Username(), opts.OnSave)
+	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, opts.DistroID, usr.Username(), opts.OnSave)
 	if err != nil {
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 
-	return &DistroWithHostCount{
+	return &SaveDistroSectionPayload{
 		Distro:    apiDistro,
 		HostCount: numHostsUpdated,
 	}, nil

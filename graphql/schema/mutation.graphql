@@ -37,7 +37,7 @@ type Mutation {
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
   saveDistroSection(
     opts: SaveDistroInput!
-  ): DistroWithHostCount!
+  ): SaveDistroSectionPayload!
 
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!

@@ -75,11 +75,6 @@ type DistroPermissionsOptions struct {
 	DistroID string `json:"distroId"`
 }
 
-type DistroWithHostCount struct {
-	Distro    *model.APIDistro `json:"distro"`
-	HostCount int              `json:"hostCount"`
-}
-
 // EditSpawnHostInput is the input to the editSpawnHost mutation.
 // Its fields determine how a given host will be modified.
 type EditSpawnHostInput struct {
@@ -264,6 +259,12 @@ type SaveDistroInput struct {
 	Changes  *model.APIDistro             `json:"changes,omitempty"`
 	Section  distro.DistroSettingsSection `json:"section"`
 	OnSave   DistroOnSaveOperation        `json:"onSave"`
+}
+
+// Return type representing the updated distro and the number of hosts that were updated.
+type SaveDistroSectionPayload struct {
+	Distro    *model.APIDistro `json:"distro"`
+	HostCount int              `json:"hostCount"`
 }
 
 // SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.

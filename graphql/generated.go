@@ -270,11 +270,6 @@ type ComplexityRoot struct {
 		View  func(childComplexity int) int
 	}
 
-	DistroWithHostCount struct {
-		Distro    func(childComplexity int) int
-		HostCount func(childComplexity int) int
-	}
-
 	ECSConfig struct {
 		MaxCPU      func(childComplexity int) int
 		MaxMemoryMB func(childComplexity int) int
@@ -1035,6 +1030,11 @@ type ComplexityRoot struct {
 		VirtualMemoryKB func(childComplexity int) int
 	}
 
+	SaveDistroSectionPayload struct {
+		Distro    func(childComplexity int) int
+		HostCount func(childComplexity int) int
+	}
+
 	SearchReturnInfo struct {
 		FeaturesURL func(childComplexity int) int
 		Issues      func(childComplexity int) int
@@ -1517,7 +1517,7 @@ type MutationResolver interface {
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error)
-	SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*DistroWithHostCount, error)
+	SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -2634,20 +2634,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DistroPermissions.View(childComplexity), true
-
-	case "DistroWithHostCount.distro":
-		if e.complexity.DistroWithHostCount.Distro == nil {
-			break
-		}
-
-		return e.complexity.DistroWithHostCount.Distro(childComplexity), true
-
-	case "DistroWithHostCount.hostCount":
-		if e.complexity.DistroWithHostCount.HostCount == nil {
-			break
-		}
-
-		return e.complexity.DistroWithHostCount.HostCount(childComplexity), true
 
 	case "ECSConfig.maxCPU":
 		if e.complexity.ECSConfig.MaxCPU == nil {
@@ -6718,6 +6704,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ResourceLimits.VirtualMemoryKB(childComplexity), true
+
+	case "SaveDistroSectionPayload.distro":
+		if e.complexity.SaveDistroSectionPayload.Distro == nil {
+			break
+		}
+
+		return e.complexity.SaveDistroSectionPayload.Distro(childComplexity), true
+
+	case "SaveDistroSectionPayload.hostCount":
+		if e.complexity.SaveDistroSectionPayload.HostCount == nil {
+			break
+		}
+
+		return e.complexity.SaveDistroSectionPayload.HostCount(childComplexity), true
 
 	case "SearchReturnInfo.featuresURL":
 		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
@@ -16651,154 +16651,6 @@ func (ec *executionContext) fieldContext_DistroPermissions_view(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _DistroWithHostCount_distro(ctx context.Context, field graphql.CollectedField, obj *DistroWithHostCount) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DistroWithHostCount_distro(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Distro, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIDistro)
-	fc.Result = res
-	return ec.marshalNDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DistroWithHostCount_distro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroWithHostCount",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "aliases":
-				return ec.fieldContext_Distro_aliases(ctx, field)
-			case "arch":
-				return ec.fieldContext_Distro_arch(ctx, field)
-			case "authorizedKeysFile":
-				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
-			case "bootstrapSettings":
-				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "cloneMethod":
-				return ec.fieldContext_Distro_cloneMethod(ctx, field)
-			case "containerPool":
-				return ec.fieldContext_Distro_containerPool(ctx, field)
-			case "disabled":
-				return ec.fieldContext_Distro_disabled(ctx, field)
-			case "disableShallowClone":
-				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
-			case "dispatcherSettings":
-				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
-			case "expansions":
-				return ec.fieldContext_Distro_expansions(ctx, field)
-			case "finderSettings":
-				return ec.fieldContext_Distro_finderSettings(ctx, field)
-			case "homeVolumeSettings":
-				return ec.fieldContext_Distro_homeVolumeSettings(ctx, field)
-			case "hostAllocatorSettings":
-				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
-			case "iceCreamSettings":
-				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
-			case "isCluster":
-				return ec.fieldContext_Distro_isCluster(ctx, field)
-			case "isVirtualWorkStation":
-				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
-			case "name":
-				return ec.fieldContext_Distro_name(ctx, field)
-			case "note":
-				return ec.fieldContext_Distro_note(ctx, field)
-			case "plannerSettings":
-				return ec.fieldContext_Distro_plannerSettings(ctx, field)
-			case "provider":
-				return ec.fieldContext_Distro_provider(ctx, field)
-			case "providerSettingsList":
-				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
-			case "setup":
-				return ec.fieldContext_Distro_setup(ctx, field)
-			case "setupAsSudo":
-				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
-			case "sshKey":
-				return ec.fieldContext_Distro_sshKey(ctx, field)
-			case "sshOptions":
-				return ec.fieldContext_Distro_sshOptions(ctx, field)
-			case "user":
-				return ec.fieldContext_Distro_user(ctx, field)
-			case "userSpawnAllowed":
-				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
-			case "validProjects":
-				return ec.fieldContext_Distro_validProjects(ctx, field)
-			case "workDir":
-				return ec.fieldContext_Distro_workDir(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DistroWithHostCount_hostCount(ctx context.Context, field graphql.CollectedField, obj *DistroWithHostCount) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DistroWithHostCount_hostCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.HostCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DistroWithHostCount_hostCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DistroWithHostCount",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ECSConfig_maxCPU(ctx context.Context, field graphql.CollectedField, obj *model.APIECSConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ECSConfig_maxCPU(ctx, field)
 	if err != nil {
@@ -25554,9 +25406,9 @@ func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*DistroWithHostCount)
+	res := resTmp.(*SaveDistroSectionPayload)
 	fc.Result = res
-	return ec.marshalNDistroWithHostCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroWithHostCount(ctx, field.Selections, res)
+	return ec.marshalNSaveDistroSectionPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_saveDistroSection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25568,11 +25420,11 @@ func (ec *executionContext) fieldContext_Mutation_saveDistroSection(ctx context.
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "distro":
-				return ec.fieldContext_DistroWithHostCount_distro(ctx, field)
+				return ec.fieldContext_SaveDistroSectionPayload_distro(ctx, field)
 			case "hostCount":
-				return ec.fieldContext_DistroWithHostCount_hostCount(ctx, field)
+				return ec.fieldContext_SaveDistroSectionPayload_hostCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type DistroWithHostCount", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type SaveDistroSectionPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -46898,6 +46750,154 @@ func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _SaveDistroSectionPayload_distro(ctx context.Context, field graphql.CollectedField, obj *SaveDistroSectionPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveDistroSectionPayload_distro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Distro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIDistro)
+	fc.Result = res
+	return ec.marshalNDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SaveDistroSectionPayload_distro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SaveDistroSectionPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aliases":
+				return ec.fieldContext_Distro_aliases(ctx, field)
+			case "arch":
+				return ec.fieldContext_Distro_arch(ctx, field)
+			case "authorizedKeysFile":
+				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "bootstrapSettings":
+				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
+			case "cloneMethod":
+				return ec.fieldContext_Distro_cloneMethod(ctx, field)
+			case "containerPool":
+				return ec.fieldContext_Distro_containerPool(ctx, field)
+			case "disabled":
+				return ec.fieldContext_Distro_disabled(ctx, field)
+			case "disableShallowClone":
+				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
+			case "dispatcherSettings":
+				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "expansions":
+				return ec.fieldContext_Distro_expansions(ctx, field)
+			case "finderSettings":
+				return ec.fieldContext_Distro_finderSettings(ctx, field)
+			case "homeVolumeSettings":
+				return ec.fieldContext_Distro_homeVolumeSettings(ctx, field)
+			case "hostAllocatorSettings":
+				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
+			case "iceCreamSettings":
+				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "isCluster":
+				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isVirtualWorkStation":
+				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "name":
+				return ec.fieldContext_Distro_name(ctx, field)
+			case "note":
+				return ec.fieldContext_Distro_note(ctx, field)
+			case "plannerSettings":
+				return ec.fieldContext_Distro_plannerSettings(ctx, field)
+			case "provider":
+				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerSettingsList":
+				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
+			case "setup":
+				return ec.fieldContext_Distro_setup(ctx, field)
+			case "setupAsSudo":
+				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "sshKey":
+				return ec.fieldContext_Distro_sshKey(ctx, field)
+			case "sshOptions":
+				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "user":
+				return ec.fieldContext_Distro_user(ctx, field)
+			case "userSpawnAllowed":
+				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
+			case "validProjects":
+				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "workDir":
+				return ec.fieldContext_Distro_workDir(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SaveDistroSectionPayload_hostCount(ctx context.Context, field graphql.CollectedField, obj *SaveDistroSectionPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveDistroSectionPayload_hostCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HostCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SaveDistroSectionPayload_hostCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SaveDistroSectionPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SearchReturnInfo_featuresURL(ctx, field)
 	if err != nil {
@@ -64862,7 +64862,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("validProjects"))
-			data, err := ec.unmarshalOString2ᚕᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -70232,41 +70232,6 @@ func (ec *executionContext) _DistroPermissions(ctx context.Context, sel ast.Sele
 		case "view":
 
 			out.Values[i] = ec._DistroPermissions_view(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var distroWithHostCountImplementors = []string{"DistroWithHostCount"}
-
-func (ec *executionContext) _DistroWithHostCount(ctx context.Context, sel ast.SelectionSet, obj *DistroWithHostCount) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, distroWithHostCountImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DistroWithHostCount")
-		case "distro":
-
-			out.Values[i] = ec._DistroWithHostCount_distro(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "hostCount":
-
-			out.Values[i] = ec._DistroWithHostCount_hostCount(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -76343,6 +76308,41 @@ func (ec *executionContext) _ResourceLimits(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var saveDistroSectionPayloadImplementors = []string{"SaveDistroSectionPayload"}
+
+func (ec *executionContext) _SaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, obj *SaveDistroSectionPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, saveDistroSectionPayloadImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SaveDistroSectionPayload")
+		case "distro":
+
+			out.Values[i] = ec._SaveDistroSectionPayload_distro(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "hostCount":
+
+			out.Values[i] = ec._SaveDistroSectionPayload_hostCount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var searchReturnInfoImplementors = []string{"SearchReturnInfo"}
 
 func (ec *executionContext) _SearchReturnInfo(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.SearchReturnInfo) graphql.Marshaler {
@@ -80650,20 +80650,6 @@ func (ec *executionContext) marshalNDistroSettingsSection2githubᚗcomᚋevergre
 	return res
 }
 
-func (ec *executionContext) marshalNDistroWithHostCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroWithHostCount(ctx context.Context, sel ast.SelectionSet, v DistroWithHostCount) graphql.Marshaler {
-	return ec._DistroWithHostCount(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNDistroWithHostCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroWithHostCount(ctx context.Context, sel ast.SelectionSet, v *DistroWithHostCount) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._DistroWithHostCount(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
 	res, err := model.UnmarshalAPIDuration(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -82549,6 +82535,20 @@ func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑci
 func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v interface{}) (SaveDistroInput, error) {
 	res, err := ec.unmarshalInputSaveDistroInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSaveDistroSectionPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, v SaveDistroSectionPayload) graphql.Marshaler {
+	return ec._SaveDistroSectionPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSaveDistroSectionPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, v *SaveDistroSectionPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SaveDistroSectionPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, sel ast.SelectionSet, v model.APISelector) graphql.Marshaler {
