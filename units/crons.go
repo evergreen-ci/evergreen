@@ -445,7 +445,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
 		if err != nil {
 			return errors.Wrap(err, "finding distros that need planning")
 		}
@@ -480,7 +480,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
 		if err != nil {
 			return errors.Wrap(err, "finding distros that need planning")
 		}
