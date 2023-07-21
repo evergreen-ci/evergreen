@@ -141,7 +141,8 @@ func TestAdminSuite(t *testing.T) {
 
 func (s *AdminSuite) SetupTest() {
 	SetEnvironment(s.env)
-	s.NoError(resetRegistry())
+	ConfigRegistry = &ConfigSectionRegistry{}
+	s.NoError(ConfigRegistry.reset())
 }
 
 func (s *AdminSuite) TearDownTest() {
