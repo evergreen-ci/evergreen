@@ -768,6 +768,188 @@ Parameters:
 -   `bucket`: the S3 bucket to use.
 -   `prefix`: prefix, if any, within the s3 bucket.
 
+Example dummy content of a test results JSON file:
+
+```json
+[
+    {
+        "info": {
+            "test_name": "foo",
+            "trial": 0,
+            "tags": [],
+            "args": {
+                "mongod": 0,
+                "genny_phase_id": 1
+            }
+        },
+        "created_at": "2023-01-01T00:00:14.993882+00:00",
+        "completed_at": "2023-01-01T00:03:15+00:00",
+        "artifacts": [],
+        "metrics": [
+            {
+                "name": "lorem",
+                "type": "COUNT",
+                "value": 12345.0,
+                "user_submitted": false
+            },
+            {
+                "name": "ipsum",
+                "type": "PERCENTILE_99TH",
+                "value": 6.78910,
+                "user_submitted": false
+            },
+            {
+                "name": "dolor",
+                "type": "MIN",
+                "value": 1.11213,
+                "user_submitted": false
+            }
+        ],
+        "sub_tests": []
+    },
+    {
+        "info": {
+            "test_name": "bar",
+            "trial": 0,
+            "tags": [],
+            "args": {}
+        },
+        "created_at": "2023-01-01T09:50:01.720954+00:00",
+        "completed_at": "2023-01-01T10:04:37.015088+00:00",
+        "artifacts": [],
+        "metrics": [],
+        "sub_tests": [
+            {
+                "info": {
+                    "test_name": "WaldoActor.QuxOperation",
+                    "trial": 0,
+                    "tags": [],
+                    "args": {}
+                },
+                "created_at": "2023-01-01T09:51:15.021000+00:00",
+                "completed_at": "2023-01-01T09:51:15.021000+00:00",
+                "artifacts": [
+                    {
+                        "bucket": "genny-metrics",
+                        "path": "WaldoActor.QuxOperation",
+                        "prefix": "foobar_variant.2022_11_bar_patch_ghijk67890_23_01_01_06_24_48_0",
+                        "tags": [],
+                        "created_at": "2023-01-01T09:50:04.992453+00:00",
+                        "local_path": "/data/mci/12345abcdef/build/WorkloadOutput/reports/bar/CedarMetrics/WaldoActor.QuxOperation.ftdc",
+                        "permissions": "public-read",
+                        "convert_bson_to_ftdc": false
+                    }
+                ],
+                "metrics": [],
+                "sub_tests": []
+            },
+            {
+                "info": {
+                    "test_name": "FredActor.BazOperation",
+                    "trial": 0,
+                    "tags": [],
+                    "args": {}
+                },
+                "created_at": "2023-01-01T09:51:11.175000+00:00",
+                "completed_at": "2023-01-01T09:51:14.552000+00:00",
+                "artifacts": [
+                    {
+                        "bucket": "genny-metrics",
+                        "path": "FredActor.BazOperation",
+                        "prefix": "foobar_variant.2022_11_bar_patch_ghijk67890_23_01_01_06_24_48_0",
+                        "tags": [],
+                        "created_at": "2023-01-01T09:50:04.992453+00:00",
+                        "local_path": "/data/mci/12345abcdef/build/WorkloadOutput/reports/bar/CedarMetrics/FredActor.BazOperation.ftdc",
+                        "permissions": "public-read",
+                        "convert_bson_to_ftdc": false
+                    }
+                ],
+                "metrics": [],
+                "sub_tests": []
+            },
+        ]
+    }
+]
+```
+
+Each test result object holds data about a specific test and its
+subtests. It is represented by the
+[`Test` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#Test),
+and contains these fields:
+
+-   `info`: The test's `info` object, described below.
+-   `created_at`: The test's creation timestamp.
+-   `completed_at`: The test's completion timestamp.
+-   `artifacts`: The test's list of `artifact` objects, described below.
+-   `metrics`: The test's list of `metric` objects, described below.
+-   `sub_tests`: The test's list of subtest objects, which recursively
+    have the same format as the parent's test result object.
+
+**Note:** Although the `Test` struct includes the `_id` field, you
+should not populate it. It would be populated automatically by
+`perf.send`.
+
+Each `info` object holds metadata about the test configuration and
+execution. It is represented by the
+[`TestInfo` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#TestInfo),
+and contains these fields:
+
+-   `test_name`: The test's name, as a string.
+-   `trial`: An integer representing repeated execution (starts at 0,
+    for the first execution).
+-   `tags`: The test's tags, as a list of strings.
+-   `args`: The test's configuration arguments, as an object with string 
+    keys & integer values.
+
+**Note:** Although the `TestInfo` struct includes the `parent` field,
+you should not populate it. It stores a subtest's parent test ID, and
+would be populated automatically by `perf.send`.
+
+Each `artifact` object allows you to upload and attach metadata to
+results files. It's frequently used to upload FTDC files representing
+the test's intra-run data. This object is represented by the
+[`TestArtifact` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#TestInfo),
+and contains these fields:
+
+| Name                      | Type            | Description                                                                    |
+| ------------------------- | --------------- | ------------------------------------------------------------------------------ |
+| `local_path`              | string          | (Optional) The artifact's local filepath.                                      |
+| `bucket`                  | string          | The S3 bucket for uploading this artifact to.                                  |
+| `prefix`                  | string          | The S3 bucket's prefix (if any).                                               |
+| `permissions`             | string          | The S3 canned ACL permission to apply to the uploaded artifact.                |
+| `path`                    | string          | The artifact's unique S3 object key (usually the metric name / FTDC filename). |
+| `tags`                    | list of strings | The artifact's list of tags.                                                   |
+| `created_at`              | timestamp       | The artifact's creation time.                                                  |
+| `is_text`                 | boolean         | (Optional) The artifact is a plain text file.                                  |
+| `is_ftdc`                 | boolean         | (Optional) The artifact is an FTDC file.                                       |
+| `is_bson`                 | boolean         | (Optional) The artifact is a BSON file.                                        |
+| `is_json`                 | boolean         | (Optional) The artifact is a JSON file.                                        |
+| `is_csv`                  | boolean         | (Optional) The artifact is a CSV file.                                         |
+| `is_uncompressed`         | boolean         | (Optional) The artifact is an uncompressed file.                               |
+| `is_gzip`                 | boolean         | (Optional) The artifact is a GZIP file.                                        |
+| `is_tarball`              | boolean         | (Optional) The artifact is a tarball.                                          |
+| `convert_gzip`            | boolean         | (Optional) Should gzip the artifact before uploading.                          |
+| `convert_bson_to_ftdc`    | boolean         | (Optional) Should convert the BSON artifact file to FTDC before uploading.     |
+| `convert_json_to_ftdc`    | boolean         | (Optional) Should convert the JSON artifact file to FTDC before uploading.     |
+| `convert_csv_to_ftdc`     | boolean         | (Optional) Should convert the CSV artifact file to FTDC before uploading.      |
+| `events_raw`              | boolean         | (Optional)                                                                     |
+| `events_histogram`        | boolean         | (Optional)                                                                     |
+| `events_interval_summary` | boolean         | (Optional)                                                                     |
+| `events_collapsed`        | boolean         | (Optional)                                                                     |
+
+**Note:** Here is the list of [valid S3 canned ACL permissions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html#canned-acl).
+
+Each `metric` object holds a computed summary statistic / metric for
+a test. It is represented by the
+[`TestMetrics` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#TestMetrics),
+and contains these fields:
+
+-   `name`: The metric's name, as a string.
+-   `type`: The metric's type. All valid metrics types are listed in the
+    [`RollupType` enum](https://github.com/evergreen-ci/cedar/blob/bf4b115ab032fca375e6a86c40f9f8944e55a483/perf.proto#L103-L117).
+-   `value`: The metric's value.
+-   `version`: (Optional) The metric's version, as an int.
+
 ## downstream_expansions.set
 
 downstream_expansions.set is used by parent patches to pass key-value
