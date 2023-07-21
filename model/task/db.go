@@ -2631,6 +2631,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 				},
 			},
 		})
+
+		// Project out the the tasks array since they are no longer needed
+		pipeline = append(pipeline, bson.M{
+			"$project": bson.M{
+				"tasks": 0,
+			},
+		})
+
 		// Unwind the root task and base task arrays so that each document is a single task
 		pipeline = append(pipeline, bson.M{
 			"$addFields": bson.M{
@@ -2661,18 +2669,10 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Project out the base task and the tasks array since they are no longer needed
-		pipeline = append(pipeline, bson.M{
-			"$project": bson.M{
-				"base_task": 0,
-				"tasks":     0,
-			},
-		})
-
 		// Use display status from the base task as its status
 		pipeline = append(pipeline, bson.M{
 			"$addFields": bson.M{
-				bsonutil.GetDottedKeyName("root_task", BaseTaskKey, StatusKey): "$" + bsonutil.GetDottedKeyName("root_task", BaseTaskKey, DisplayStatusKey),
+				bsonutil.GetDottedKeyName("root_task", BaseTaskStatusKey): "$" + bsonutil.GetDottedKeyName("root_task", BaseTaskKey, DisplayStatusKey),
 			},
 		})
 

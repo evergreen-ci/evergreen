@@ -305,7 +305,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	baseVersionID := ""
 	baseVersion, err := model.FindBaseVersionForVersion(utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version id for version with id: '%s': %s", versionId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version id for version '%s': %s", versionId, err.Error()))
 	}
 	if baseVersion != nil {
 		baseVersionID = baseVersion.Id
