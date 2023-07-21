@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/mongodb/grip"
 )
