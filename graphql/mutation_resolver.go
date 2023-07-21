@@ -157,6 +157,24 @@ func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroO
 	}, nil
 }
 
+// CreateDistro is the resolver for the createDistro field.
+func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	if err := data.CreateDistro(ctx, usr, opts.NewDistroID); err != nil {
+
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating distro: %s", err.Error()))
+	}
+
+	return &NewDistroPayload{
+		NewDistroID: opts.NewDistroID,
+	}, nil
+}
+
 // SaveDistroSection is the resolver for the saveDistroSection field.
 func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error) {
 	usr := mustHaveUser(ctx)
@@ -355,7 +373,6 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	opts := task.GetTasksByVersionOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
-		IncludeBaseTasks:      false,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, patchID, opts)
 	if err != nil {

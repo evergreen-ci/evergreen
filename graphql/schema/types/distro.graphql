@@ -144,6 +144,12 @@ input DeleteDistroInput {
   distroId: String! @requireDistroAccess(access: ADMIN)
 }
 
+"""
+CreateDistroInput is the input to the createDistro mutation.
+"""
+input CreateDistroInput {
+  newDistroId: String!
+}
 
 """
 CopyDistroInput is the input to the copyDistro mutation.

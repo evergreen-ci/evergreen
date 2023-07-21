@@ -42,6 +42,11 @@ type BuildVariantOptions struct {
 	Variants         []string `json:"variants,omitempty"`
 }
 
+// CreateDistroInput is the input to the createDistro mutation.
+type CreateDistroInput struct {
+	NewDistroID string `json:"newDistroId"`
+}
+
 // DeleteDistroInput is the input to the deleteDistro mutation.
 type DeleteDistroInput struct {
 	DistroID string `json:"distroId"`
