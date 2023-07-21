@@ -133,39 +133,85 @@ func (c *TaskConfig) GetCloneMethod() string {
 }
 
 func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
-	if tc == nil {
-		return nil, errors.New("unable to get task group because task config is nil")
-	}
-	if tc.Task == nil {
-		return nil, errors.New("unable to get task group because task is nil")
-	}
-	if tc.Task.Version == "" {
-		return nil, errors.New("task has no version")
-	}
-	if tc.Project == nil {
-		return nil, errors.New("project is nil")
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
 	}
 
-	var tg *model.TaskGroup
 	if taskGroup == "" {
-		// if there is no named task group, fall back to project definitions
-		tg = &model.TaskGroup{
-			SetupTask:               tc.Project.Pre,
-			TeardownTask:            tc.Project.Post,
-			Timeout:                 tc.Project.Timeout,
-			SetupGroupFailTask:      tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
-			TeardownTaskCanFailTask: tc.Project.Post == nil || tc.Project.PostErrorFailsTask,
-		}
-	} else {
-		tg = tc.Project.FindTaskGroup(taskGroup)
-		if tg == nil {
-			return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", tc.Task.TaskGroup, tc.Project.Identifier)
-		}
+		return nil, nil
 	}
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
+	}
+
 	if tg.Timeout == nil {
 		tg.Timeout = tc.Project.Timeout
 	}
 	return tg, nil
+}
+
+// GetTimeout returns the timeout defined on the taskGroup or project.
+func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error) {
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
+	}
+
+	if taskGroup == "" {
+		return tc.Project.Timeout, nil
+	}
+
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
+	}
+	if tg.Timeout == nil {
+		return tc.Project.Timeout, nil
+	}
+
+	return tg.Timeout, nil
+}
+
+// CommandBlock contains information for a block of commands.
+type CommandBlock struct {
+	Commands    *model.YAMLCommandSet
+	CanFailTask bool
+}
+
+// GetPre returns a command block containing the pre task commands.
+func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
+	}
+
+	canFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
+	if taskGroup == "" {
+		return &CommandBlock{Commands: tc.Project.Pre, CanFailTask: canFailTask}, nil
+	}
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
+	}
+
+	return &CommandBlock{Commands: tg.SetupTask, CanFailTask: tg.SetupGroupFailTask}, nil
+}
+
+// GetPost returns a command block containing the post task commands.
+func (tc *TaskConfig) GetPost(taskGroup string) (*CommandBlock, error) {
+	if err := tc.validateTaskConfig(); err != nil {
+		return nil, err
+	}
+
+	canFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
+	if taskGroup == "" {
+		return &CommandBlock{Commands: tc.Project.Post, CanFailTask: canFailTask}, nil
+	}
+	tg := tc.Project.FindTaskGroup(taskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
+	}
+	return &CommandBlock{Commands: tg.TeardownTask, CanFailTask: tg.TeardownTaskCanFailTask}, nil
+
 }
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
@@ -207,4 +253,20 @@ func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
 	}
 
 	return attributes
+}
+
+func (tc *TaskConfig) validateTaskConfig() error {
+	if tc == nil {
+		return errors.New("unable to get task setup because task config is nil")
+	}
+	if tc.Task == nil {
+		return errors.New("unable to get task setup because task is nil")
+	}
+	if tc.Task.Version == "" {
+		return errors.New("task has no version")
+	}
+	if tc.Project == nil {
+		return errors.New("project is nil")
+	}
+	return nil
 }
