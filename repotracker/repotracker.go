@@ -593,6 +593,8 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
+// CreateVersionFromConfig will create a version document from a project config
+// and insert it into the database along with its associated tasks and builds.
 func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
 	metadata model.VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if projectInfo.NotPopulated() {
@@ -604,7 +606,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
-	if err = verifyOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id, metadata.Revision.Revision); err != nil {
+	if err = verifyOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 
@@ -682,7 +684,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	return v, errors.Wrap(createVersionItems(ctx, v, metadata, projectInfo, aliases), "error creating version items")
 }
 
-// shellVersionFromRevision populates a new Version with metadata from a model.Revision.
+// ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var u *user.DBUser
@@ -721,7 +723,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
+		v.Id = MakeVersionIdWithTriggerId(ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID)
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
@@ -775,8 +777,13 @@ func makeVersionIdWithTag(project, tag, id string) string {
 	return util.CleanName(fmt.Sprintf("%s_%s_%s", project, tag, id))
 }
 
+// MakeVersionIdWithTriggerId creates a version id with the given trigger id.
+func MakeVersionIdWithTriggerId(project, revision, triggerID string) string {
+	return util.CleanName(fmt.Sprintf("%s_%s_%s", project, revision, triggerID))
+}
+
 // Verifies that the given revision order number is higher than the latest number stored for the project.
-func verifyOrderNum(revOrderNum int, projectId, revision string) error {
+func verifyOrderNum(revOrderNum int, projectId string) error {
 	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
 		return errors.Wrap(err, "getting latest version")

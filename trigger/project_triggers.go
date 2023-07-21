@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -37,6 +39,26 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 
 	// create version
 	projectInfo.Ref = &args.DownstreamProject
+
+	// The same trigger definition ID can be triggered multiple times for the same source version.
+	// Since the calculated version ID is the same for each of these, we need to check if the version
+	// was already created by an earlier trigger.
+	versionId := repotracker.MakeVersionIdWithTriggerId(projectInfo.Ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID)
+	existingVersion, err := model.VersionFindOneId(versionId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "checking for existing version '%s'", versionId)
+	}
+	if existingVersion != nil {
+		grip.Error(message.Fields{
+			"message":            "version already exists, not triggering new downstream version",
+			"version_id":         versionId,
+			"project_identifier": projectInfo.Ref.Identifier,
+			"revision":           metadata.SourceVersion.Revision,
+			"trigger_id":         metadata.TriggerDefinitionID,
+		})
+		return nil, nil
+	}
+
 	v, err := repotracker.CreateVersionFromConfig(context.Background(), &projectInfo, metadata, false, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating version")
