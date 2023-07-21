@@ -63,8 +63,6 @@ type Options struct {
 	LogOutput              LogOutputType
 	WorkingDirectory       string
 	HeartbeatInterval      time.Duration
-	AgentSleepInterval     time.Duration
-	MaxAgentSleepInterval  time.Duration
 	Cleanup                bool
 	SetupData              apimodels.AgentSetupData
 	CloudProvider          string
@@ -258,13 +256,6 @@ func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 
 func (a *Agent) loop(ctx context.Context) error {
 	minAgentSleepInterval := defaultAgentSleepInterval
-	maxAgentSleepInterval := defaultMaxAgentSleepInterval
-	if a.opts.AgentSleepInterval != 0 {
-		minAgentSleepInterval = a.opts.AgentSleepInterval
-	}
-	if a.opts.MaxAgentSleepInterval != 0 {
-		maxAgentSleepInterval = a.opts.MaxAgentSleepInterval
-	}
 	agentSleepInterval := minAgentSleepInterval
 
 	var jitteredSleep time.Duration
