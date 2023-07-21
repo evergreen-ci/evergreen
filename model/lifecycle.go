@@ -65,7 +65,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		if err := SetVersionActivated(versionId, active); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 		}
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
@@ -138,7 +138,7 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 		}
-		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
+		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}

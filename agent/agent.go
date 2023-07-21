@@ -414,16 +414,12 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 }
 
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
-	setupGroup := false
-	var msg string
 	if !tc.ranSetupGroup { // we didn't run setup group yet
-		msg = "running setup group because we haven't yet"
-		setupGroup = true
+		return true
 	} else if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
 		nextTask.Build != tc.taskConfig.Task.BuildId { // next task has a standalone task or a new build
-		msg = "running setup group because we have a new independent task"
-		setupGroup = true
+		return true
 	} else if nextTask.TaskGroup != tc.taskGroup { // next task has a different task group
 		if tc.logger != nil && nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup {
 			tc.logger.Task().Warning(message.Fields{
@@ -433,14 +429,10 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 				"next_task_task_group":    nextTask.TaskGroup,
 			})
 		}
-		msg = "running setup group because new task group"
-		setupGroup = true
+		return true
 	}
 
-	if tc.logger != nil {
-		tc.logger.Task().DebugWhen(setupGroup, msg)
-	}
-	return setupGroup
+	return false
 }
 
 func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {

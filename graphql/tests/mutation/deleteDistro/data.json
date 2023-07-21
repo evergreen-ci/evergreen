@@ -1,0 +1,48 @@
+{
+  "distro": [
+    {
+      "_id": "localhost",
+      "arch": "linux_amd64",
+      "work_dir": "/home/ubuntu",
+      "provider": "static",
+      "settings": {
+        "hosts": [
+          {
+            "name": "localhost"
+          }
+        ]
+      },
+      "user": "ubuntu",
+      "spawn_allowed": false,
+      "ssh_key": "fake_ssh_key"
+    }
+  ],
+  "admin": [
+    {
+      "_id": "global",
+      "keys": {
+        "fake_ssh_key": "key"
+      }
+    }
+  ],
+  "task_queues": [
+    {
+      "queue": [
+        {
+          "project": "project_id",
+          "display_name": "compile",
+          "build_variant": "localhost",
+          "priority": { "$numberLong": "0" },
+          "version": "version_id",
+          "gitspec": "revision",
+          "requester": "patch_request",
+          "_id": "task_id",
+          "order": 0,
+          "exp_dur": { "$numberLong": "600000000000" }
+        }
+      ],
+      "_id": { "$oid": "55c230e1f9f1d47716d86fc2" },
+      "distro": "localhost"
+    }
+  ]
+}
