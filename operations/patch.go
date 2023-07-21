@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -268,8 +269,9 @@ func getParametersFromInput(params []string) ([]patch.Parameter, error) {
 
 func PatchFile() cli.Command {
 	const (
-		baseFlagName     = "base"
-		diffPathFlagName = "diff-file"
+		baseFlagName        = "base"
+		diffPathFlagName    = "diff-file"
+		diffPatchIdFlagName = "diff-patchId"
 	)
 
 	return cli.Command{
@@ -285,6 +287,10 @@ func PatchFile() cli.Command {
 				Usage: "path to a file for diff of the patch",
 			},
 			cli.StringFlag{
+				Name:  diffPatchIdFlagName,
+				Usage: "patch id to fetch the full diff (including modules) from",
+			},
+			cli.StringFlag{
 				Name: patchAuthorFlag,
 				Usage: "optionally define the patch author by providing an Evergreen username; " +
 					"if not found or provided, will default to the submitter",
@@ -292,10 +298,18 @@ func PatchFile() cli.Command {
 		),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
-			requireFileExists(diffPathFlagName),
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
+			mutuallyExclusiveArgs(false, diffPathFlagName, diffPatchIdFlagName),
+			mutuallyExclusiveArgs(false, baseFlagName, diffPatchIdFlagName),
 		),
 		Action: func(c *cli.Context) error {
+			diffPatchId := c.String(diffPatchIdFlagName)
+			diffFilePath := c.String(diffPathFlagName)
+			if diffPatchId == "" && diffFilePath != "" {
+				if _, err := os.Stat(diffFilePath); os.IsNotExist(err) {
+					return errors.Errorf("file '%s' does not exist", diffFilePath)
+				}
+			}
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
 				Project:         c.String(projectFlagName),
@@ -335,6 +349,7 @@ func PatchFile() cli.Command {
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
+
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
@@ -344,22 +359,49 @@ func PatchFile() cli.Command {
 			}
 			params.Description = params.getDescription()
 
-			fullPatch, err := os.ReadFile(diffPath)
-			if err != nil {
-				return errors.Wrapf(err, "reading diff file '%s'", diffPath)
+			var diffData localDiff
+			var rp *restmodel.APIRawPatch
+			if diffPatchId == "" {
+				fullPatch, err := os.ReadFile(diffPath)
+				if err != nil {
+					return errors.Wrapf(err, "reading diff file '%s'", diffPath)
+				}
+				diffData.fullPatch = string(fullPatch)
+				diffData.base = base
+			} else {
+				rp, err = comm.GetRawPatchWithModules(ctx, diffPatchId)
+				if err != nil {
+					return errors.Wrap(err, "getting raw patch with modules")
+				}
+				if rp == nil {
+					return errors.Wrap(err, "patch not found")
+				}
+				diffData.fullPatch = rp.Patch.Diff
+				diffData.base = rp.Patch.Githash
 			}
 
-			diffData := &localDiff{
-				fullPatch: string(fullPatch),
-				base:      base,
-			}
-
-			if err = params.validateSubmission(diffData); err != nil {
+			if err = params.validateSubmission(&diffData); err != nil {
 				return err
 			}
-			newPatch, err := params.createPatch(ac, diffData)
+			newPatch, err := params.createPatch(ac, &diffData)
 			if err != nil {
 				return err
+			}
+
+			if len(rp.RawModules) > 0 {
+				for _, module := range rp.RawModules {
+					moduleParams := UpdatePatchModuleParams{
+						patchID: newPatch.Id.Hex(),
+						module:  module.Name,
+						patch:   module.Diff,
+						base:    module.Githash,
+					}
+					if err = ac.UpdatePatchModule(moduleParams); err != nil {
+						return err
+					}
+					grip.Infof("Module '%s' updated.", module.Name)
+
+				}
 			}
 			return params.displayPatch(newPatch, conf.UIServerHost, false)
 		},
