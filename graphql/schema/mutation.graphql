@@ -35,6 +35,7 @@ type Mutation {
   # distros
   deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload!
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
+  createDistro(opts: CreateDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
 
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!
