@@ -278,9 +278,10 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 // CreateAndEnqueueGenerateTasks returns a job and enqueues it into the generate.tasks queue for the given task.
 func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environment, t task.Task, ts string) (amboy.Job, error) {
+	appCtx, _ := env.Context()
 	j := NewGenerateTasksJob(t.Version, t.Id, ts)
 	queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
-	queue, err := env.RemoteQueueGroup().Get(ctx, queueName)
+	queue, err := env.RemoteQueueGroup().Get(appCtx, queueName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
 	}
