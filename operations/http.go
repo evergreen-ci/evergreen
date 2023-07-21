@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -604,30 +603,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	}
 
 	return reply.Patch, nil
-}
-
-// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID.
-func (ac *legacyClient) GetRawPatchWithModules(patchId string) (*data.RawPatch, error) {
-	resp, err := ac.get2(fmt.Sprintf("patches/%s/raw_modules", patchId), nil)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "making request to get raw patch")
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, NewAuthError(resp)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-
-	rp := data.RawPatch{}
-	if err = utility.ReadJSON(resp.Body, &rp); err != nil {
-		return nil, err
-	}
-	return &rp, nil
 }
 
 func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {

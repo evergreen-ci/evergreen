@@ -197,21 +197,8 @@ func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestE
 	return nil
 }
 
-// RawPatch contains a patch diff along with its module diffs.
-type RawPatch struct {
-	Patch      RawModule   `json:"patch"`
-	RawModules []RawModule `json:"raw_modules"`
-}
-
-// RawModule contains a module diff.
-type RawModule struct {
-	Name    string `json:"name"`
-	Diff    string `json:"diff"`
-	Githash string `json:"githash"`
-}
-
 // GetRawPatches fetches the raw patches for a patch.
-func GetRawPatches(patchID string) (*RawPatch, error) {
+func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -232,9 +219,9 @@ func GetRawPatches(patchID string) (*RawPatch, error) {
 			Message:    errors.Wrap(err, "getting patch contents").Error(),
 		}
 	}
-	var rawPatch RawPatch
+	var rawPatch restModel.APIRawPatch
 	for _, raw := range patchDoc.Patches {
-		module := RawModule{
+		module := restModel.APIRawModule{
 			Name:    raw.ModuleName,
 			Diff:    raw.PatchSet.Patch,
 			Githash: raw.Githash,

@@ -346,3 +346,7 @@ func (c *Mock) GetHostProvisioningOptions(context.Context, string, string) (*res
 		Content: "echo hello world",
 	}, nil
 }
+
+func (c *Mock) GetRawPatchWithModules(context.Context, string) (*restmodel.APIRawPatch, error) {
+	return nil, nil
+}

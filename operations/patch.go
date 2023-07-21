@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/rest/data"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -360,7 +360,7 @@ func PatchFile() cli.Command {
 			params.Description = params.getDescription()
 
 			var diffData localDiff
-			var rp *data.RawPatch
+			var rp *restmodel.APIRawPatch
 			if diffFromPatch == "" {
 				fullPatch, err := os.ReadFile(diffPath)
 				if err != nil {
@@ -369,7 +369,7 @@ func PatchFile() cli.Command {
 				diffData.fullPatch = string(fullPatch)
 				diffData.base = base
 			} else {
-				rp, err = ac.GetRawPatchWithModules(diffFromPatch)
+				rp, err = comm.GetRawPatchWithModules(ctx, diffFromPatch)
 				if err != nil {
 					return errors.Wrap(err, "getting raw patch with modules")
 				}
