@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "create_distro.graphql",
+      "result": {
+        "data": {
+          "createDistro": {
+            "newDistroId": "my-new-distro"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -2157,7 +2157,6 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, 
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
-		IncludeBaseTasks:           false,
 		FieldsToProject:            []string{DisplayStatusKey},
 		IncludeNeverActivatedTasks: true,
 		IncludeExecutionTasks:      false,
@@ -2527,15 +2526,19 @@ type GetTasksByVersionOptions struct {
 	FieldsToProject            []string
 	Sorts                      []TasksSortOrder
 	IncludeExecutionTasks      bool
-	IncludeBaseTasks           bool
 	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
-	IsMainlineCommit           bool
+	BaseVersionID              string
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
+	shouldPopulateBaseTask := opts.BaseVersionID != ""
 	match := bson.M{}
 
-	match[VersionKey] = versionID
+	if shouldPopulateBaseTask {
+		match[VersionKey] = bson.M{"$in": []string{versionID, opts.BaseVersionID}}
+	} else {
+		match[VersionKey] = versionID
+	}
 
 	// GeneratedJSON can often be large, so we filter it out by default
 	projectOut := bson.M{
@@ -2592,60 +2595,103 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
-	if opts.IncludeBaseTasks {
-		baseCommitMatch := []bson.M{
-			{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-			{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-		}
-
-		// If we are requesting a mainline commit's base task we want to use the previous commit instead.
-		if opts.IsMainlineCommit {
-			baseCommitMatch = append(baseCommitMatch, bson.M{
-				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
-					"$subtract": []interface{}{"$$" + RevisionOrderNumberKey, 1},
-				}},
-			})
-		} else {
-			baseCommitMatch = append(baseCommitMatch, bson.M{
-				"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey},
-			})
-		}
-		pipeline = append(pipeline, []bson.M{
-			// Add data about the base task
-			{"$lookup": bson.M{
-				"from": Collection,
-				"let": bson.M{
-					RevisionKey:            "$" + RevisionKey,
-					BuildVariantKey:        "$" + BuildVariantKey,
-					DisplayNameKey:         "$" + DisplayNameKey,
-					RevisionOrderNumberKey: "$" + RevisionOrderNumberKey,
+	if shouldPopulateBaseTask {
+		// First group by variant and task name to group all tasks and their base tasks together
+		pipeline = append(pipeline, bson.M{
+			"$group": bson.M{
+				"_id": bson.M{
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
 				},
-				"as": BaseTaskKey,
-				"pipeline": []bson.M{
-					{"$match": bson.M{
-						RequesterKey: evergreen.RepotrackerVersionRequester,
-						"$expr": bson.M{
-							"$and": baseCommitMatch,
-						},
-					}},
-					{"$project": bson.M{
-						IdKey:     1,
-						StatusKey: displayStatusExpression,
-					}},
-					{"$limit": 1},
-				},
-			}},
-			{
-				"$unwind": bson.M{
-					"path":                       "$" + BaseTaskKey,
-					"preserveNullAndEmptyArrays": true,
+				"tasks": bson.M{
+					"$push": "$$ROOT",
 				},
 			},
-		}...,
-		)
+		})
+		// Separate the root task and base task into separate arrays
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"$filter": bson.M{
+						"input": "$tasks",
+						"as":    "task",
+						"cond": bson.M{
+							"$eq": []string{"$$task." + VersionKey, versionID},
+						},
+					},
+				},
+				"base_task": bson.M{
+					"$filter": bson.M{
+						"input": "$tasks",
+						"as":    "task",
+						"cond": bson.M{
+							"$eq": []string{"$$task." + VersionKey, opts.BaseVersionID},
+						},
+					},
+				},
+			},
+		})
+
+		// Project out the the tasks array since they are no longer needed
+		pipeline = append(pipeline, bson.M{
+			"$project": bson.M{
+				"tasks": 0,
+			},
+		})
+
+		// Unwind the root task and base task arrays so that each document is a single task
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"$first": "$root_task",
+				},
+				"base_task": bson.M{
+					"$first": "$base_task",
+				},
+			},
+		})
+
+		// Ensure that the root task is not nil if it is the task does not exist in the current version
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				"root_task": bson.M{
+					"$exists": true,
+				},
+			},
+		})
+
+		// Include the base task in the root task
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				"root_task": bson.M{
+					"base_task": "$base_task",
+				},
+			},
+		})
+
+		// Use display status from the base task as its status
+		pipeline = append(pipeline, bson.M{
+			"$addFields": bson.M{
+				bsonutil.GetDottedKeyName("root_task", BaseTaskStatusKey): "$" + bsonutil.GetDottedKeyName("root_task", BaseTaskKey, DisplayStatusKey),
+			},
+		})
+
+		// Replace the root document with the task
+		pipeline = append(pipeline, bson.M{
+			"$replaceRoot": bson.M{
+				"newRoot": "$root_task",
+			},
+		})
+
+		// Sort the tasks by their _id to ensure that they are in the same order as the original tasks
+		pipeline = append(pipeline, bson.M{
+			"$sort": bson.M{
+				"_id": 1,
+			},
+		})
 	}
 
-	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
+	if shouldPopulateBaseTask && len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
 				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
