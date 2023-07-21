@@ -269,9 +269,9 @@ func getParametersFromInput(params []string) ([]patch.Parameter, error) {
 
 func PatchFile() cli.Command {
 	const (
-		baseFlagName          = "base"
-		diffPathFlagName      = "diff-file"
-		diffFromPatchFlagName = "diff-from-patch"
+		baseFlagName        = "base"
+		diffPathFlagName    = "diff-file"
+		diffPatchIdFlagName = "diff-patchId"
 	)
 
 	return cli.Command{
@@ -287,7 +287,7 @@ func PatchFile() cli.Command {
 				Usage: "path to a file for diff of the patch",
 			},
 			cli.StringFlag{
-				Name:  diffFromPatchFlagName,
+				Name:  diffPatchIdFlagName,
 				Usage: "patch id to fetch the full diff (including modules) from",
 			},
 			cli.StringFlag{
@@ -299,13 +299,13 @@ func PatchFile() cli.Command {
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
-			mutuallyExclusiveArgs(false, diffPathFlagName, diffFromPatchFlagName),
-			mutuallyExclusiveArgs(false, baseFlagName, diffFromPatchFlagName),
+			mutuallyExclusiveArgs(false, diffPathFlagName, diffPatchIdFlagName),
+			mutuallyExclusiveArgs(false, baseFlagName, diffPatchIdFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			diffFromPatch := c.String(diffFromPatchFlagName)
+			diffPatchId := c.String(diffPatchIdFlagName)
 			diffFilePath := c.String(diffPathFlagName)
-			if diffFromPatch == "" && diffFilePath != "" {
+			if diffPatchId == "" && diffFilePath != "" {
 				if _, err := os.Stat(diffFilePath); os.IsNotExist(err) {
 					return errors.Errorf("file '%s' does not exist", diffFilePath)
 				}
@@ -361,7 +361,7 @@ func PatchFile() cli.Command {
 
 			var diffData localDiff
 			var rp *restmodel.APIRawPatch
-			if diffFromPatch == "" {
+			if diffPatchId == "" {
 				fullPatch, err := os.ReadFile(diffPath)
 				if err != nil {
 					return errors.Wrapf(err, "reading diff file '%s'", diffPath)
@@ -369,7 +369,7 @@ func PatchFile() cli.Command {
 				diffData.fullPatch = string(fullPatch)
 				diffData.base = base
 			} else {
-				rp, err = comm.GetRawPatchWithModules(ctx, diffFromPatch)
+				rp, err = comm.GetRawPatchWithModules(ctx, diffPatchId)
 				if err != nil {
 					return errors.Wrap(err, "getting raw patch with modules")
 				}
