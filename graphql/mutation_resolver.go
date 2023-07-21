@@ -336,7 +336,6 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	opts := task.GetTasksByVersionOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
-		IncludeBaseTasks:      false,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, patchID, opts)
 	if err != nil {
