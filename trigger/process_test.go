@@ -20,8 +20,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func init() { testutil.Setup() }
-
 type projectTriggerSuite struct {
 	suite.Suite
 	processor projectProcessor
