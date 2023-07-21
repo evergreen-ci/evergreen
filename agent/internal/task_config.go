@@ -151,7 +151,7 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 	return tg, nil
 }
 
-// GetTimeout returns the timeout defined on the taskGroup or project
+// GetTimeout returns the timeout defined on the taskGroup or project.
 func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error) {
 	if err := tc.validateTaskConfig(); err != nil {
 		return nil, err
@@ -172,13 +172,13 @@ func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error
 	return tg.Timeout, nil
 }
 
-// CommandBlock contains information for a block of commands
+// CommandBlock contains information for a block of commands.
 type CommandBlock struct {
 	Commands    *model.YAMLCommandSet
 	CanFailTask bool
 }
 
-// GetPre returns a command block containing the pre task commands
+// GetPre returns a command block containing the pre task commands.
 func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
 	if err := tc.validateTaskConfig(); err != nil {
 		return nil, err
@@ -196,7 +196,7 @@ func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
 	return &CommandBlock{Commands: tg.SetupTask, CanFailTask: tg.SetupGroupFailTask}, nil
 }
 
-// GetPost returns a command block containing the post task commands
+// GetPost returns a command block containing the post task commands.
 func (tc *TaskConfig) GetPost(taskGroup string) (*CommandBlock, error) {
 	if err := tc.validateTaskConfig(); err != nil {
 		return nil, err
