@@ -212,28 +212,27 @@ type RawModule struct {
 
 // GetRawPatches fetches the raw patches for a patch.
 func GetRawPatches(patchID string) (*RawPatch, error) {
-	var rawPatch RawPatch
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {
-		return &rawPatch, gimlet.ErrorResponse{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "finding patch '%s'", patchID).Error(),
 		}
 	}
 	if patchDoc == nil {
-		return &rawPatch, gimlet.ErrorResponse{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch '%s' not found", patchID),
 		}
 	}
 
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
-		return &rawPatch, gimlet.ErrorResponse{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "getting patch contents").Error(),
 		}
 	}
-
+	var rawPatch RawPatch
 	for _, raw := range patchDoc.Patches {
 		module := RawModule{
 			Name:    raw.ModuleName,

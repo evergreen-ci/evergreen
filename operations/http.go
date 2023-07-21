@@ -606,27 +606,26 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	return reply.Patch, nil
 }
 
-// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID
+// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID.
 func (ac *legacyClient) GetRawPatchWithModules(patchId string) (*data.RawPatch, error) {
-
-	rp := data.RawPatch{}
 	resp, err := ac.get2(fmt.Sprintf("patches/%s/raw_modules", patchId), nil)
 
 	if err != nil {
-		return &rp, errors.Wrap(err, "making request to get raw patch")
+		return nil, errors.Wrap(err, "making request to get raw patch")
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return &rp, NewAuthError(resp)
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return &rp, NewAPIError(resp)
+		return nil, NewAPIError(resp)
 	}
 
+	rp := data.RawPatch{}
 	if err = utility.ReadJSON(resp.Body, &rp); err != nil {
-		return &rp, err
+		return nil, err
 	}
 	return &rp, nil
 }
