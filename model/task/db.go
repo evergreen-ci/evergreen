@@ -2545,7 +2545,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		GeneratedJSONAsStringKey: 0,
 	}
 
-	if len(opts.TaskNames) > 0 {
+	if len(opts.TaskNames) > 0 && opts.Variants[0] != "" {
 		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
@@ -2559,7 +2559,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	// Filter on Build Variants matching on display name or variant name if it exists
-	if len(opts.Variants) > 0 {
+	if len(opts.Variants) > 0 && opts.Variants[0] != "" {
 		// Allow searching by either variant name or variant display
 		variantsAsRegex := strings.Join(opts.Variants, "|")
 		match = bson.M{
