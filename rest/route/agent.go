@@ -1016,6 +1016,10 @@ func logTaskStartMessage(h *host.Host, t *task.Task) {
 		"variant":                t.BuildVariant,
 	}
 
+	if !t.DependenciesMetTime.IsZero() {
+		msg["dependencies_met_time"] = t.DependenciesMetTime
+	}
+
 	if strings.HasPrefix(h.Distro.Provider, "ec2") {
 		msg["provider"] = "ec2"
 	}

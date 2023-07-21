@@ -41,6 +41,16 @@ type BuildVariantOptions struct {
 	Variants         []string `json:"variants,omitempty"`
 }
 
+// DeleteDistroInput is the input to the deleteDistro mutation.
+type DeleteDistroInput struct {
+	DistroID string `json:"distroId"`
+}
+
+// Return type representing whether a distro was deleted.
+type DeleteDistroPayload struct {
+	DeletedDistroID string `json:"deletedDistroId"`
+}
+
 type Dependency struct {
 	BuildVariant   string         `json:"buildVariant"`
 	MetStatus      MetStatus      `json:"metStatus"`

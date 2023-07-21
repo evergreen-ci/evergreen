@@ -1266,7 +1266,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 		},
 	}
 
-	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_depends_on.unattainable_1'
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
 	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
@@ -1519,8 +1519,14 @@ func (t *Task) ActivateTask(caller string) error {
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		// Activating an activated task is a noop.
+		if t.Activated {
+			continue
+		}
+		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
 	}
 	err := activateTasks(taskIDs, caller, activationTime)
@@ -1528,7 +1534,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		return errors.Wrap(err, "activating tasks")
 	}
 	logs := []event.EventLogEntry{}
-	for _, t := range tasks {
+	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
 	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
@@ -1550,7 +1556,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		StatusKey: evergreen.TaskUndispatched,
 	})
 
-	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey))
+	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}
@@ -2127,7 +2133,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey)
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}

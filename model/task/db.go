@@ -32,7 +32,7 @@ var (
 		{Key: ActivatedKey, Value: 1},
 		{Key: PriorityKey, Value: 1},
 		{Key: OverrideDependenciesKey, Value: 1},
-		{Key: bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), Value: 1},
+		{Key: UnattainableDependencyKey, Value: 1},
 	}
 )
 
@@ -724,7 +724,7 @@ func schedulableHostTasksQuery() bson.M {
 		ByExecutionPlatform(ExecutionPlatformHost),
 		// Filter tasks containing unattainable dependencies
 		{"$or": []bson.M{
-			{bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true}},
+			{UnattainableDependencyKey: false},
 			{OverrideDependenciesKey: true},
 		}},
 	}
@@ -2683,7 +2683,8 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
 	_, err := UpdateAll(
 		bson.M{
-			IdKey: bson.M{"$in": taskIDs},
+			IdKey:        bson.M{"$in": taskIDs},
+			ActivatedKey: false,
 		},
 		[]bson.M{
 			{
