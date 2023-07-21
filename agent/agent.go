@@ -255,12 +255,7 @@ func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 }
 
 func (a *Agent) loop(ctx context.Context) error {
-	minAgentSleepInterval := defaultAgentSleepInterval
 	agentSleepInterval := minAgentSleepInterval
-
-	var jitteredSleep time.Duration
-	tskCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -348,7 +343,7 @@ func (a *Agent) loop(ctx context.Context) error {
 
 				a.jasper.Clear(ctx)
 				tc.jasper = a.jasper
-				shouldExit, err := a.runTask(tskCtx, tc)
+				shouldExit, err := a.runTask(ctx, tc)
 				if err != nil {
 					grip.Critical(message.WrapError(err, message.Fields{
 						"message": "error running task",
@@ -373,7 +368,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				tc = &taskContext{}
 			}
 
-			jitteredSleep = utility.JitterInterval(agentSleepInterval)
+			jitteredSleep := utility.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s.", jitteredSleep)
 			timer.Reset(jitteredSleep)
 			agentSleepInterval = agentSleepInterval * 2
