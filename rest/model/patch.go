@@ -94,13 +94,13 @@ type APIParameter struct {
 	Value *string `json:"value"`
 }
 
-// RawPatch contains a patch diff along with its module diffs.
+// APIRawPatch contains a patch diff along with its module diffs.
 type APIRawPatch struct {
 	Patch      APIRawModule   `json:"patch"`
 	RawModules []APIRawModule `json:"raw_modules"`
 }
 
-// RawModule contains a module diff.
+// APIRawModule contains a module diff.
 type APIRawModule struct {
 	Name    string `json:"name"`
 	Diff    string `json:"diff"`
