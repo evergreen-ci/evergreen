@@ -234,8 +234,8 @@ type Task struct {
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task. This will not be set for
-	// tasks where the generate.task command runs outside of the main task block
-	// (e.g. pre, timeout).
+	// tasks where the generate.tasks command runs outside of the main task
+	// block (e.g. pre, timeout).
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
 	// GeneratedTasks indicates that the task has already generated other tasks. This fields
 	// allows us to noop future requests, since a task should only generate others once.
