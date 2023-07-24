@@ -116,13 +116,13 @@ little validation on the data, so the server may accept inputs that are
 logically nonsensical.
 
 | Name        | Type          | Description                                                                                                            |
-|--------------------|---------|-------------------------------------------|
-| `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                          |
+| ----------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                                  |
 | `test_file` | string        | The name of the test. This is what will be displayed in the test results section of the UI as the test identifier.     |
 | `group_id`  | string        | The group ID if the test is associated with a group. This is mostly used for tests logging directly to cedar.          |
 | `url`       | string        | The URL containing the rich-text view of the test logs.                                                                |
 | `url_raw`   | string        | The URL containing the plain-text view of the test logs.                                                               |
-| `line_num`  | int           | The line number of the test within the "url" parameter, if the URL actually contains the logs for multiple tests.    |
+| `line_num`  | int           | The line number of the test within the "url" parameter, if the URL actually contains the logs for multiple tests.      |
 | `exit_code` | int           | The status with which the test command exited. For the most part this does nothing.                                    |
 | `task_id`   | string        | The ID of the task with which this test should be associated. The test will appear on the page for the specified task. |
 | `execution` | int           | The execution of the task above with which this test should be associated.                                             |
