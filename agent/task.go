@@ -16,6 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// kim: TODO: document responsibilities to set up for task and run pre/main
+// blocks.
+// kim: TODO: verify this is non-blocking.
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
 	defer func() {
 		op := "running task pre and main blocks"

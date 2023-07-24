@@ -10,7 +10,10 @@ import (
 	"github.com/mongodb/grip/recovery"
 )
 
-func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, tc *taskContext, heartbeat chan<- string) {
+// func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.CancelFunc, tc *taskContext, heartbeat <-chan string) {
+// kim: TODO: document heartbeat explicitly, describe its responsibilities to
+// heartbeat back to app server and signals by cancelling when it gets an abort.
+func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
@@ -44,29 +47,34 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 				}
 				continue
 			}
-			if signalBeat == client.TaskConflict {
-				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task.")
-				if err != nil {
-					tc.logger.Task().Error(err.Error())
-				}
-				cancel()
-				continue
-			}
+			// if signalBeat == client.TaskConflict {
+			//     tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task.")
+			//     if err != nil {
+			//         tc.logger.Task().Error(err.Error())
+			//     }
+			//     preAndMainCancel()
+			//     continue
+			// }
+			// kim: TODO: consolidate failed and conflict after checking that
+			// the heartbeat regular abort response returns failed.
 			if signalBeat == evergreen.TaskFailed {
 				tc.logger.Task().Error("Heartbeat received signal to abort task.")
-				heartbeat <- signalBeat
+				// heartbeat <- signalBeat
+				preAndMainCancel()
 				hasSentAbort = true
 				continue
 			}
 			if failures == maxHeartbeats {
 				// Presumably this won't work, but we should try to notify the user anyway
 				tc.logger.Task().Error("Hit max heartbeat attempts, aborting task.")
-				heartbeat <- evergreen.TaskFailed
+				// heartbeat <- evergreen.TaskFailed
+				preAndMainCancel()
 				hasSentAbort = true
 			}
 		case <-ctx.Done():
 			if !hasSentAbort {
-				heartbeat <- evergreen.TaskFailed
+				// heartbeat <- evergreen.TaskFailed
+				preAndMainCancel()
 			}
 			return
 		}

@@ -568,18 +568,25 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
-	innerCtx, innerCancel := context.WithCancel(tskCtx)
+	// kim: TODO: determine when idle timeout is relevant. Does it apply to all
+	// commands, or just to commands in specific blocks (e.g. pre, main, but
+	// possibly not timeout). If it applies to all, then handleTaskResponse
+	// needs to use idleTimeoutCtx as well.
+	// kim: TODO: document which command blocks idle timeout applies to.
+	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(tskCtx)
+	go a.startIdleTimeoutWatch(tskCtx, tc, idleTimeoutCancel)
 
-	// Pass in idle timeout context to heartbeat to enforce the idle timeout.
-	// Pass in the task context canceller to heartbeat because it's responsible for aborting the task.
-	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
-	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
+	preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
+	// go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
+	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
-	complete := make(chan string, 2)
-	go a.startTask(innerCtx, tc, complete)
+	preAndMainComplete := make(chan string, 2)
+	go a.startTask(preAndMainCtx, tc, preAndMainComplete)
 
-	return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete), "")
+	// return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete), "")
+	status := a.wait(tskCtx, tc, preAndMainComplete)
+
+	return a.handleTaskResponse(tskCtx, tc, status, "")
 }
 
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, message string) (bool, error) {
@@ -617,15 +624,17 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 	}
 }
 
-func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
+// kim: TODO: can likely remove this wait function since it's so small and only
+// receives from one channel.
+func (a *Agent) wait(ctx context.Context, tc *taskContext, preAndMainComplete chan string) string {
 	status := evergreen.TaskFailed
 	select {
-	case <-taskCtx.Done():
-		grip.Infof("Task canceled: '%s'.", tc.task.ID)
-	case status = <-complete:
+	// case <-taskCtx.Done():
+	//     grip.Infof("Task canceled: '%s'.", tc.task.ID)
+	case status = <-preAndMainComplete:
 		grip.Infof("Task complete: '%s'.", tc.task.ID)
-	case status = <-heartbeat:
-		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
+		// case status = <-heartbeat:
+		//     grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
 	}
 
 	return status
