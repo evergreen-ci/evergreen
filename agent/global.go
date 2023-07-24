@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	// minAgentSleepInterval is the default amount of time an agent sleeps in between
+	// minAgentSleepInterval is the minimum amount of time an agent sleeps in between
 	// polling for a new task if no new task is found
 	minAgentSleepInterval = 10 * time.Second
 
