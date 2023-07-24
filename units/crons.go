@@ -417,7 +417,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "finding distros that need planning")
 		}
 
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		catcher := grip.NewBasicCatcher()
 
 		for _, d := range distros {
@@ -451,7 +451,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		for _, d := range distros {
 			if d.IsParent(config) {
 				continue
@@ -486,7 +486,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		for _, d := range distros {
 			if d.IsParent(config) {
 				continue
@@ -1222,7 +1222,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 				break
 			}
 
-			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
+			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(15).Format(TSFormat))
 			if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
 				catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing pod allocator job for task '%s'", t.Id)
 				continue
@@ -1251,7 +1251,7 @@ func PopulatePodCreationJobs() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing pod creation job for pod '%s'", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(15).Format(TSFormat))), "enqueueing pod creation job for pod '%s'", p.ID)
 		}
 
 		return catcher.Resolve()
@@ -1284,7 +1284,7 @@ func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOpe
 
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat))), "pod '%s'", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(15).Format(TSFormat))), "pod '%s'", p.ID)
 		}
 
 		return errors.Wrap(catcher.Resolve(), "enqueueing pod definition creation jobs")
