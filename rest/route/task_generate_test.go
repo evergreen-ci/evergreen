@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -50,16 +52,23 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestGenerateExecute(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	require.NoError(t, db.ClearCollections(task.Collection))
 	task1 := task.Task{
-		Id: "task1",
+		Id:      "task1",
+		Version: "version1",
 	}
 	require.NoError(t, task1.Insert())
 	h := &generateHandler{}
 	h.taskID = "task1"
-	r := h.Run(context.Background())
+	r := h.Run(ctx)
 	assert.Equal(t, r.Data(), struct{}{})
 	assert.Equal(t, r.Status(), http.StatusOK)
+	queue, err := evergreen.GetEnvironment().RemoteQueueGroup().Get(ctx, fmt.Sprintf("service.generate.tasks.version.%s", task1.Version))
+	require.NoError(t, err)
+	stats := queue.Stats(ctx)
+	assert.Equal(t, 1, stats.Total)
 }
 
 func TestGeneratePollParse(t *testing.T) {

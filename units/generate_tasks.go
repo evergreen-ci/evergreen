@@ -137,19 +137,19 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	p, pp, v, err := g.NewVersion(ctx, project, parserProject, v)
 	if err != nil {
-		return j.handleError(pp, v, errors.WithStack(err))
+		return j.handleError(errors.WithStack(err))
 	}
 
 	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
-		return j.handleError(pp, v, errors.WithStack(err))
+		return j.handleError(errors.WithStack(err))
 	}
 	if pref == nil {
-		return j.handleError(pp, v, errors.Errorf("project '%s' not found", t.Project))
+		return j.handleError(errors.Errorf("project '%s' not found", t.Project))
 	}
 
 	if err = validator.CheckProjectConfigurationIsValid(ctx, j.env.Settings(), p, pref); err != nil {
-		return j.handleError(pp, v, errors.WithStack(err))
+		return j.handleError(errors.WithStack(err))
 	}
 
 	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
@@ -176,7 +176,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 // handleError return mongo.ErrNoDocuments if generate.tasks has already run.
 // Otherwise, it returns the given error.
-func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version, handledError error) error {
+func (j *generateTasksJob) handleError(handledError error) error {
 	// Get task again, to exit nil if another generator finished, which caused us to error.
 	// Checking this again here makes it very unlikely that there is a race, because both
 	// `t.GeneratedTasks` checks must have been in between the racing generator's call to
@@ -274,6 +274,21 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		}
 
 	}
+}
+
+// CreateAndEnqueueGenerateTasks returns a job and enqueues it into the generate.tasks queue for the given task.
+func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environment, t task.Task, ts string) (amboy.Job, error) {
+	appCtx, _ := env.Context()
+	j := NewGenerateTasksJob(t.Version, t.Id, ts)
+	queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
+	queue, err := env.RemoteQueueGroup().Get(appCtx, queueName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+	}
+	if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+		return nil, errors.Wrapf(err, "enqueueing generate tasks job '%s' for version '%s'", j.ID(), t.Version)
+	}
+	return j, nil
 }
 
 func parseProjectsAsString(ctx context.Context, jsonStrings []string) ([]model.GeneratedProject, error) {
