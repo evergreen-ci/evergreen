@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -258,6 +259,19 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+type SaveDistroInput struct {
+	DistroID string                       `json:"distroId"`
+	Changes  *model.APIDistro             `json:"changes,omitempty"`
+	Section  distro.DistroSettingsSection `json:"section"`
+	OnSave   DistroOnSaveOperation        `json:"onSave"`
+}
+
+// Return type representing the updated distro and the number of hosts that were updated.
+type SaveDistroSectionPayload struct {
+	Distro    *model.APIDistro `json:"distro"`
+	HostCount int              `json:"hostCount"`
+}
+
 // SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
 type SortOrder struct {
 	Direction SortDirection    `json:"Direction"`
@@ -442,6 +456,51 @@ type VersionTiming struct {
 type VolumeHost struct {
 	VolumeID string `json:"volumeId"`
 	HostID   string `json:"hostId"`
+}
+
+type DistroOnSaveOperation string
+
+const (
+	DistroOnSaveOperationDecommission  DistroOnSaveOperation = "DECOMMISSION"
+	DistroOnSaveOperationRestartJasper DistroOnSaveOperation = "RESTART_JASPER"
+	DistroOnSaveOperationReprovision   DistroOnSaveOperation = "REPROVISION"
+	DistroOnSaveOperationNone          DistroOnSaveOperation = "NONE"
+)
+
+var AllDistroOnSaveOperation = []DistroOnSaveOperation{
+	DistroOnSaveOperationDecommission,
+	DistroOnSaveOperationRestartJasper,
+	DistroOnSaveOperationReprovision,
+	DistroOnSaveOperationNone,
+}
+
+func (e DistroOnSaveOperation) IsValid() bool {
+	switch e {
+	case DistroOnSaveOperationDecommission, DistroOnSaveOperationRestartJasper, DistroOnSaveOperationReprovision, DistroOnSaveOperationNone:
+		return true
+	}
+	return false
+}
+
+func (e DistroOnSaveOperation) String() string {
+	return string(e)
+}
+
+func (e *DistroOnSaveOperation) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DistroOnSaveOperation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DistroOnSaveOperation", str)
+	}
+	return nil
+}
+
+func (e DistroOnSaveOperation) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 type DistroSettingsAccess string

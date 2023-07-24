@@ -146,8 +146,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
 	cmd command.Command, displayName string, options runCommandsOptions) error {
-
+	prevExp := map[string]string{}
 	for key, val := range commandInfo.Vars {
+		prevVal := tc.taskConfig.Expansions.Get(key)
+		prevExp[key] = prevVal
+
 		var newVal string
 		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
 		if err != nil {
@@ -155,6 +158,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		}
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
+	defer func() {
+		// This ensures that the function vars do not persist in the expansions after the function is over.
+		tc.taskConfig.Expansions.Update(prevExp)
+	}()
 
 	tc.setCurrentCommand(cmd)
 	tc.setCurrentIdleTimeout(cmd)
