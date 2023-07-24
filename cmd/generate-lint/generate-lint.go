@@ -52,23 +52,23 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 	targets := map[string]struct{}{}
 	for _, f := range files {
 		filePath := strings.TrimSpace(f)
-		if strings.HasSuffix(filePath, ".go") {
-			dir := path.Dir(filePath)
-			if dir == scriptsDir {
-				continue
-			}
+		if !strings.HasSuffix(filePath, ".go") {
+			continue
+		}
 
-			// We can't run make targets on packages in the cmd directory
-			// because the packages contain dashes.
-			if strings.HasPrefix(dir, "cmd") {
-				continue
-			}
+		dir := path.Dir(filePath)
+		// We can't run make targets on packages in the cmd directory
+		// because the packages contain dashes.
+		if strings.HasPrefix(dir, "cmd") {
+			continue
+		}
 
-			if dir == "." || dir == "main" {
-				targets["evergreen"] = struct{}{}
-			} else {
-				targets[strings.Replace(dir, "/", "-", -1)] = struct{}{}
-			}
+		if dir == "." || dir == "main" {
+			// The base Evergreen directory (i.e. the working directory) uses a
+			// special make target.
+			targets["evergreen"] = struct{}{}
+		} else {
+			targets[strings.Replace(dir, "/", "-", -1)] = struct{}{}
 		}
 	}
 	targetSlice := []string{}
@@ -95,7 +95,7 @@ func getAllTargets() ([]string, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 	allPackages, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting diff")
+		return nil, errors.Wrap(err, "getting diff")
 	}
 	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
 	for _, p := range split {

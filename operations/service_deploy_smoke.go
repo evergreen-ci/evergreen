@@ -266,7 +266,7 @@ func smokeTestEndpoints() cli.Command {
 			cli.StringFlag{
 				Name:  testFileFlagName,
 				Usage: "file with test endpoints definitions",
-				Value: filepath.Join(wd, "scripts", "smoke_test.yml"),
+				Value: filepath.Join(wd, "smoke", "testdata", "admin_settings.yml"),
 			},
 			cli.StringFlag{
 				Name:  projectNameFlagName,
@@ -286,7 +286,7 @@ func smokeTestEndpoints() cli.Command {
 			cli.StringFlag{
 				Name:  cliConfigPathFlagName,
 				Usage: "path to the Evergreen CLI config to use for smoke test",
-				Value: filepath.Join(wd, "scripts", "agent-cli.yml"),
+				Value: filepath.Join(wd, "smoke", "testdata", "cli.yml"),
 			},
 			cli.StringFlag{
 				Name:  userNameFlagName,

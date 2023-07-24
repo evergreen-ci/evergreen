@@ -86,7 +86,7 @@ func checkContainerTask(username, key string) error {
 }
 
 // checkHostTaskByPatch runs host tasks in the smoke test based on the project
-// YAML (agent.yml) and the regexp specifying the tasks to run.
+// YAML (project.yml) and the regexp specifying the tasks to run.
 func checkHostTaskByPatch(projectName, bvToRun, cliPath, cliConfigPath, username, key string) error {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
@@ -392,7 +392,7 @@ func getAndCheckTaskLog(task apimodels.APITask, client *http.Client, mode agent.
 }
 
 // checkTaskLogContent compares the expected result of running the smoke test
-// project YAML (agent.yml) against the actual task log's text.
+// project YAML (project.yml) against the actual task log's text.
 func checkTaskLogContent(body []byte, mode agent.Mode) error {
 	page := string(body)
 
@@ -404,7 +404,7 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 	}
 
 	// Note that these checks have a direct dependency on the task configuration
-	// in the smoke test's project YAML (agent.yml).
+	// in the smoke test's project YAML (project.yml).
 	if mode == agent.HostMode {
 		const generatorTaskName = "smoke_test_generate_task"
 		if strings.Contains(page, generatorTaskName) {
@@ -458,7 +458,7 @@ func checkTaskLogContent(body []byte, mode agent.Mode) error {
 		// TODO (PM-2617) Add task groups to the container task smoke test once they are supported
 		// TODO (EVG-17658): this test is highly fragile and has a chance of
 		// breaking if you change any of the container task YAML setup (e.g.
-		// change any container-related configuration in agent.yml). If you
+		// change any container-related configuration in project.yml). If you
 		// change the container task setup, you will likely also have to change
 		// the smoke testdata. EVG-17658 should address the issues with the
 		// smoke test.

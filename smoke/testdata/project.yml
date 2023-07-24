@@ -83,7 +83,7 @@ tasks:
       - command: generate.tasks
         params:
           files:
-            - agent/command/testdata/generated.json
+            - smoke/testdata/generate-tasks.json
   - name: host_smoke_test_commands
     commands:
       - command: git.get_project
