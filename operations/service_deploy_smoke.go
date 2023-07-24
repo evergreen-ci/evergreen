@@ -76,7 +76,7 @@ func smokeStartEvergreen() cli.Command {
 	wd, err := os.Getwd()
 
 	binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
-	confPath := filepath.Join(wd, "testdata", "smoke_config.yml")
+	confPath := filepath.Join(wd, "testdata", "smoke", "admin_settings.yml")
 
 	return cli.Command{
 		Name:    "start-evergreen",
@@ -266,7 +266,7 @@ func smokeTestEndpoints() cli.Command {
 			cli.StringFlag{
 				Name:  testFileFlagName,
 				Usage: "file with test endpoints definitions",
-				Value: filepath.Join(wd, "smoke", "testdata", "admin_settings.yml"),
+				Value: filepath.Join(wd, "testdata", "smoke", "smoke_test_endpoints.yml"),
 			},
 			cli.StringFlag{
 				Name:  projectNameFlagName,
@@ -286,7 +286,7 @@ func smokeTestEndpoints() cli.Command {
 			cli.StringFlag{
 				Name:  cliConfigPathFlagName,
 				Usage: "path to the Evergreen CLI config to use for smoke test",
-				Value: filepath.Join(wd, "smoke", "testdata", "cli.yml"),
+				Value: filepath.Join(wd, "testdata", "smoke", "cli.yml"),
 			},
 			cli.StringFlag{
 				Name:  userNameFlagName,

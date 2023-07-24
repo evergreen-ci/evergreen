@@ -4,7 +4,7 @@
 set -o errexit
 
 mkdir -p clients
-cat >> testdata/smoke_config.yml <<EOF
+cat >> testdata/smoke/admin_settings.yml <<EOF
 credentials: {
   github: "$1",
 }
