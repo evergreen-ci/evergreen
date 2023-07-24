@@ -2,6 +2,9 @@
 
 Evergreen's commit queue merges changes after the code has passed a set of tests.
 
+Evergreen supports GitHub's [merge queue](Merge-Queue.md), and intends to deprecate the commit
+queue feature in favor of GitHub's merge queue.
+
 ## Rationale 
 Gating every merge on a green build means every commit on the tracked branch had a green build. This way: 
 * No one bases their work on broken code.
