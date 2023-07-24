@@ -947,7 +947,7 @@ and contains these fields:
 -   `name`: The metric's name, as a string.
 -   `type`: The metric's type. All valid metrics types are listed in the
     [`RollupType` enum](https://github.com/evergreen-ci/cedar/blob/bf4b115ab032fca375e6a86c40f9f8944e55a483/perf.proto#L103-L117).
--   `value`: The metric's value.
+-   `value`: The metric's value, as an int or a float.
 -   `version`: (Optional) The metric's version, as an int.
 
 ## downstream_expansions.set
