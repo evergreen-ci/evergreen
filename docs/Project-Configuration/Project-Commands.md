@@ -932,10 +932,10 @@ and contains these fields:
 | `convert_bson_to_ftdc`    | boolean         | (Optional) Should convert the BSON artifact file to FTDC before uploading.     |
 | `convert_json_to_ftdc`    | boolean         | (Optional) Should convert the JSON artifact file to FTDC before uploading.     |
 | `convert_csv_to_ftdc`     | boolean         | (Optional) Should convert the CSV artifact file to FTDC before uploading.      |
-| `events_raw`              | boolean         | (Optional)                                                                     |
-| `events_histogram`        | boolean         | (Optional)                                                                     |
-| `events_interval_summary` | boolean         | (Optional)                                                                     |
-| `events_collapsed`        | boolean         | (Optional)                                                                     |
+| `events_raw`              | boolean         | (Unused)                                                                       |
+| `events_histogram`        | boolean         | (Unused)                                                                       |
+| `events_interval_summary` | boolean         | (Unused)                                                                       |
+| `events_collapsed`        | boolean         | (Unused)                                                                       |
 
 **Note:** Here is the list of [valid S3 canned ACL permissions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html#canned-acl).
 
