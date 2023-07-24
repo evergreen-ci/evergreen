@@ -129,4 +129,7 @@ type Communicator interface {
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks(context.Context, []string, bool) ([]string, map[string]map[string]string, error)
+
+	// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID.
+	GetRawPatchWithModules(ctx context.Context, patchId string) (*restmodel.APIRawPatch, error)
 }

@@ -138,7 +138,6 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 			return nil
 		}
 	}
-
 	moduleParams := UpdatePatchModuleParams{
 		patchID: patchId,
 		module:  module.Name,
