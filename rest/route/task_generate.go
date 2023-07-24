@@ -59,14 +59,12 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	j, err := units.CreateAndEnqueueGenerateTasks(ctx, evergreen.GetEnvironment(), *t, ts)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "could not enqueue generate tasks job",
-			"version": t.Version,
-			"task_id": t.Id,
-			"job_id":  j.ID(),
-		}))
-	}
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "could not enqueue generate tasks job",
+		"version": t.Version,
+		"task_id": t.Id,
+		"job_id":  j.ID(),
+	}))
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
