@@ -75,8 +75,8 @@ keys:
   test: "/dev/null"
 
 repotracker:
-  numnewreporevisionstofetch: 10
-  maxreporevisionstosearch: 10
+  revs_to_fetch: 10
+  max_revs_to_search: 10
 
 shutdown_wait_seconds: 10
 
