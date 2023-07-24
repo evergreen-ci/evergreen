@@ -913,7 +913,7 @@ and contains these fields:
 
 | Name                      | Type            | Description                                                                    |
 | ------------------------- | --------------- | ------------------------------------------------------------------------------ |
-| `local_path`              | string          | (Optional) The artifact's local filepath.                                      |
+| `local_path`              | string          | The artifact's local filepath.                                                 |
 | `bucket`                  | string          | The S3 bucket for uploading this artifact to.                                  |
 | `prefix`                  | string          | The S3 bucket's prefix (if any).                                               |
 | `permissions`             | string          | The S3 canned ACL permission to apply to the uploaded artifact.                |
