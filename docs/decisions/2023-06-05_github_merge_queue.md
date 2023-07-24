@@ -52,20 +52,15 @@ will be left to another project if there is interest from users.
 
 ### Post results
 
-Post a check to the checks API. Note that GitHub "status checks" are of two
-types, "statuses" and "checks". Branch protection rules are fulfilled by
-statuses, whereas the GitHub merge queue listens for a check. The merge when
-ready button waits for the branch protection rules to be fulfilled before adding
-the PR to the merge queue.
+Post a check to the checks API. The merge when ready button waits for the branch
+protection rules to be fulfilled before adding the PR to the merge queue.
 
 ## Code Overview
 
-[x] indicates this is done. [ ] is to do. These will be removed when all is done.
-
-* [x] There is a new patch intent type in
+* There is a new patch intent type in
 [model/patch](https://github.com/evergreen-ci/evergreen/blob/main/model/patch/github_merge_intent.go)
-* [x] The intent will be processed by the amboy [patch-intent-processor
+* The intent will be processed by the amboy [patch-intent-processor
 job](https://github.com/evergreen-ci/evergreen/blob/main/units/patch_intent.go).
-* [x] New clone logic in the agent will clone the merge group branch.
-* [x] Evergreen will post the result to the GitHub checks API.
-* [ ] A new UI element will allow users to opt into the GitHub merge queue.
+* New clone logic in the agent will clone the merge group branch.
+* Evergreen will post the result to the GitHub checks API.
+* A new UI element will allow users to opt into the GitHub merge queue.

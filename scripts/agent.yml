@@ -4,7 +4,7 @@ command_type: test
 stepback: false
 
 task_groups:
-  - name: my_group
+  - name: host_smoke_test_task_group
     max_hosts: 1
     setup_group:
       - command: shell.exec
@@ -35,14 +35,14 @@ task_groups:
             set -o errexit
             echo "smoke test is running the teardown task"
     tasks:
-      - smoke_test_first_task_in_task_group
-      - smoke_test_second_task_in_task_group
-      - smoke_test_commands
-      - smoke_test_third_task_in_task_group
-      - smoke_test_fourth_task_in_task_group
+      - host_smoke_test_first_task_in_task_group
+      - host_smoke_test_second_task_in_task_group
+      - host_smoke_test_commands
+      - host_smoke_test_third_task_in_task_group
+      - host_smoke_test_fourth_task_in_task_group
 
 tasks:
-  - name: smoke_test_first_task_in_task_group
+  - name: host_smoke_test_first_task_in_task_group
     commands:
       - command: shell.exec
         params:
@@ -50,7 +50,7 @@ tasks:
             set -o verbose
             set -o errexit
             echo "smoke test is running the first task in the task group"
-  - name: smoke_test_second_task_in_task_group
+  - name: host_smoke_test_second_task_in_task_group
     commands:
       - command: shell.exec
         params:
@@ -58,7 +58,7 @@ tasks:
             set -o verbose
             set -o errexit
             echo "smoke test is running the second task in the task group"
-  - name: smoke_test_third_task_in_task_group
+  - name: host_smoke_test_third_task_in_task_group
     commands:
       - command: shell.exec
         params:
@@ -66,7 +66,7 @@ tasks:
             set -o verbose
             set -o errexit
             echo "smoke test is running the third task in the task group"
-  - name: smoke_test_fourth_task_in_task_group
+  - name: host_smoke_test_fourth_task_in_task_group
     commands:
       - command: shell.exec
         params:
@@ -74,17 +74,7 @@ tasks:
             set -o verbose
             set -o errexit
             echo "smoke test is running the fourth task in the task group"
-  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
-  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
-  - name: container-task
-    commands:
-      - command: shell.exec
-        params:
-          script: |
-            set -o verbose
-            set -o errexit
-            echo "container task"
-  - name: smoke_test_generate_task
+  - name: host_smoke_test_generate_task
     commands:
       - command: git.get_project
         params:
@@ -94,7 +84,7 @@ tasks:
         params:
           files:
             - agent/command/testdata/generated.json
-  - name: smoke_test_commands
+  - name: host_smoke_test_commands
     commands:
       - command: git.get_project
         params:
@@ -229,18 +219,30 @@ tasks:
       - command: timeout.update
         params:
           timeout_secs: 2700
+  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
+  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
+  - name: container-task
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "container task"
+
 buildvariants:
   - name: localhost
-    display_name: localhost
+    display_name: Host smoke test
     run_on:
       - localhost
+    patch_only: true
     tasks:
-      - name: my_group
-      - name: smoke_test_generate_task
+      - name: host_smoke_test_task_group
+      - name: host_smoke_test_generate_task
   # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
   # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
   - name: pod_bv
-    display_name: pod_bv
+    display_name: Container smoke test
     run_on:
       - container
     tasks:

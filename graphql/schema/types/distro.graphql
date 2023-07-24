@@ -1,3 +1,4 @@
+###### ENUMS ######
 enum DistroSettingsAccess {
   ADMIN
   CREATE
@@ -5,14 +6,22 @@ enum DistroSettingsAccess {
   VIEW
 }
 
-"""
-DeleteDistroInput is the input to the deleteDistro mutation.
-"""
-input DeleteDistroInput {
-  distroId: String! @requireDistroAccess(access: ADMIN)
+enum DistroSettingsSection {
+  GENERAL
+  PROVIDER
+  TASK
+  HOST
+  PROJECT
 }
 
+enum DistroOnSaveOperation {
+  DECOMMISSION
+  RESTART_JASPER
+  REPROVISION
+  NONE
+}
 
+###### INPUTS ######
 """
 CopyDistroInput is the input to the copyDistro mutation.
 It contains information about a distro to be duplicated.
@@ -22,6 +31,135 @@ input CopyDistroInput {
   distroIdToCopy: String!
 }
 
+"""
+CreateDistroInput is the input to the createDistro mutation.
+"""
+input CreateDistroInput {
+  newDistroId: String!
+}
+
+"""
+DeleteDistroInput is the input to the deleteDistro mutation.
+"""
+input DeleteDistroInput {
+  distroId: String! @requireDistroAccess(access: ADMIN)
+}
+
+input SaveDistroInput {
+  distroId: String! @requireDistroAccess(access: EDIT), 
+  changes: DistroInput, 
+  section: DistroSettingsSection!, 
+  onSave: DistroOnSaveOperation!
+}
+
+input DistroInput {
+  aliases: [String!]
+  arch: String
+  authorizedKeysFile: String
+  bootstrapSettings: BootstrapSettingsInput
+  cloneMethod: String
+  containerPool: String
+  disabled: Boolean
+  disableShallowClone: Boolean
+  dispatcherSettings: DispatcherSettingsInput
+  expansions: [ExpansionInput!]
+  finderSettings: FinderSettingsInput
+  homeVolumeSettings: HomeVolumeSettingsInput
+  hostAllocatorSettings: HostAllocatorSettingsInput
+  iceCreamSettings: IceCreamSettingsInput
+  isCluster: Boolean
+  isVirtualWorkStation: Boolean
+  name: String
+  note: String
+  plannerSettings: PlannerSettingsInput
+  provider: String
+  providerSettingsList: [Map!]
+  setup: String
+  setupAsSudo: Boolean
+  sshKey: String
+  sshOptions: [String!]
+  user: String
+  userSpawnAllowed: Boolean
+  validProjects: [String!]
+  workDir: String
+}
+
+input BootstrapSettingsInput {
+  clientDir: String
+  communication: String
+  env: [EnvVarInput!]
+  jasperBinaryDir: String
+  jasperCredentialsPath: String
+  method: String
+  preconditionScripts: [PreconditionScriptInput!]
+  resourceLimits: ResourceLimitsInput
+  rootDir: String
+  serviceUser: String
+  shellPath: String
+}
+
+input DispatcherSettingsInput {
+  version: String
+}
+
+input EnvVarInput {
+  key: String
+  value: String
+}
+
+input ExpansionInput {
+  key: String
+  value: String
+}
+
+input FinderSettingsInput {
+  version: String
+}
+
+input HomeVolumeSettingsInput {
+  formatCommand: String
+}
+
+input HostAllocatorSettingsInput {
+  acceptableHostIdleTime: Duration
+  feedbackRule: String
+  hostsOverallocatedRule: String
+  maximumHosts: Int
+  minimumHosts: Int
+  roundingRule: String
+  version: String
+}
+
+input IceCreamSettingsInput {
+  configPath: String
+  schedulerHost: String
+}
+
+input PlannerSettingsInput {
+  expectedRuntimeFactor: Int
+  generateTaskFactor: Int
+  groupVersions: Boolean
+  mainlineTimeInQueueFactor: Int
+  patchFactor: Int
+  patchTimeInQueueFactor: Int
+  targetTime: Duration
+  version: String
+}
+
+input PreconditionScriptInput {
+  path: String
+  script: String
+}
+
+input ResourceLimitsInput {
+  lockedMemoryKb: Int
+  numFiles: Int
+  numProcesses: Int
+  numTasks: Int
+  virtualMemoryKb: Int
+}
+
+###### TYPES ######
 """
 Return type representing whether a distro was created and any validation errors
 """
@@ -36,6 +174,13 @@ type DeleteDistroPayload {
   deletedDistroId: String!
 }
 
+"""
+Return type representing the updated distro and the number of hosts that were updated.
+"""
+type SaveDistroSectionPayload {
+  distro: Distro!
+  hostCount: Int!
+}
 
 """
 Distro models an environment configuration for a host.
@@ -146,3 +291,4 @@ type ResourceLimits {
   numTasks: Int
   virtualMemoryKb: Int
 }
+

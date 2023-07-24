@@ -140,11 +140,21 @@ $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
 	$(gobin) build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
+
+# set-smoke-vars is necessary for the smoke test to run correctly. The AWS credentials are needed to run AWS-related
+# commands such as s3.put. The agent revision must be set to the current version because the agent will have to exit
+# under the expectation that it will be redeployed if it's outdated (and the smoke test cannot deploy agents).
 set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildDir)/set-var
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
+
+# set-smoke-git-config is necessary for the smoke test to submit a manual patch because the patch command uses git
+# metadata.
+set-smoke-git-config:
+	git config user.name username
+	git config user.email email
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
@@ -171,16 +181,16 @@ smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 smoke-test-host-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --mode host --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode host --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	./$< service deploy test-endpoints --check-build --mode host
 	pkill -f $<
 smoke-test-container-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --mode pod --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode pod --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	./$< service deploy test-endpoints --check-build --mode pod
 	pkill -f $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	./$< service deploy test-endpoints
 	pkill -f $<
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen

@@ -194,7 +194,7 @@ func smokeStartEvergreen() cli.Command {
 
 				err = smokeRunBinary(
 					exit,
-					"monitor",
+					"agent.monitor",
 					wd,
 					binary,
 					"agent",
@@ -238,18 +238,22 @@ func smokeRunBinary(exit chan error, name, wd, bin string, cmdParts ...string) e
 	}
 	go func() {
 		exit <- cmd.Wait()
-		grip.Errorf("%s service exited", name)
+		grip.Errorf("%s exited", name)
 	}()
 	return nil
 }
 
 func smokeTestEndpoints() cli.Command {
 	const (
-		testFileFlagName = "test-file"
-		userNameFlagName = "username"
-		userKeyFlagName  = "key"
-		checkBuildName   = "check-build"
-		modeFlagName     = "mode"
+		testFileFlagName      = "test-file"
+		projectNameFlagName   = "project"
+		userNameFlagName      = "username"
+		userKeyFlagName       = "key"
+		checkBuildFlagName    = "check-build"
+		modeFlagName          = "mode"
+		bvFlagName            = "buildvariant"
+		cliPathFlagName       = "cli"
+		cliConfigPathFlagName = "cli-config"
 	)
 
 	wd, err := os.Getwd()
@@ -265,28 +269,54 @@ func smokeTestEndpoints() cli.Command {
 				Value: filepath.Join(wd, "scripts", "smoke_test.yml"),
 			},
 			cli.StringFlag{
+				Name:  projectNameFlagName,
+				Usage: "ID of project in which smoke test should run",
+				Value: "evergreen",
+			},
+			cli.StringFlag{
+				Name:  bvFlagName,
+				Usage: "build variant to run in the smoke test",
+				Value: "localhost",
+			},
+			cli.StringFlag{
+				Name:  cliPathFlagName,
+				Usage: "path to the Evergreen CLI to use for the smoke test",
+				Value: filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen"),
+			},
+			cli.StringFlag{
+				Name:  cliConfigPathFlagName,
+				Usage: "path to the Evergreen CLI config to use for smoke test",
+				Value: filepath.Join(wd, "scripts", "agent-cli.yml"),
+			},
+			cli.StringFlag{
 				Name:  userNameFlagName,
-				Usage: "username to use with the API",
+				Usage: "username to use with the Evergreen API",
+				Value: "admin",
 			},
 			cli.StringFlag{
 				Name:  userKeyFlagName,
-				Usage: "key to use with the API",
+				Usage: "key to use with the Evergreen API",
+				Value: "abb623665fdbf368a1db980dde6ee0f0",
 			},
 			cli.StringFlag{
 				Name:  modeFlagName,
 				Usage: "run host or pod build variant",
 			},
 			cli.BoolFlag{
-				Name:  checkBuildName,
-				Usage: "verify agent has built latest commit",
+				Name:  checkBuildFlagName,
+				Usage: "run the smoke test and verify the tasks run",
 			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err)),
 		Action: func(c *cli.Context) error {
 			testFile := c.String(testFileFlagName)
+			projectName := c.String(projectNameFlagName)
+			cliPath := c.String(cliPathFlagName)
+			cliConfigPath := c.String(cliConfigPathFlagName)
 			username := c.String(userNameFlagName)
 			key := c.String(userKeyFlagName)
 			mode := c.String(modeFlagName)
+			bv := c.String(bvFlagName)
 
 			defs, err := os.ReadFile(testFile)
 			if err != nil {
@@ -298,11 +328,11 @@ func smokeTestEndpoints() cli.Command {
 				return errors.Wrapf(err, "unmarshalling smoke endpoint test YAML '%s'", testFile)
 			}
 
-			if c.Bool(checkBuildName) {
+			if c.Bool(checkBuildFlagName) {
 				if mode == string(agent.PodMode) {
 					return errors.Wrap(checkContainerTask(username, key), "checking container task")
 				}
-				return errors.Wrap(checkHostTaskByCommit(username, key), "checking host task")
+				return errors.Wrap(checkHostTaskByPatch(projectName, bv, cliPath, cliConfigPath, username, key), "checking host task")
 			}
 			return errors.WithStack(tests.checkEndpoints(username, key))
 		},

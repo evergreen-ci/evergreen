@@ -130,6 +130,9 @@ variables:
           target: set-smoke-vars
       - func: run-make
         vars:
+          target: set-smoke-git-config
+      - func: run-make
+        vars:
           target: "${task_name}"
 
   - &version-constants
