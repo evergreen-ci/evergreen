@@ -43,7 +43,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 }
 
 // DeleteDistroById removes a given distro from the database based on its id.
-func DeleteDistroById(ctx context.Context, distroId string) error {
+func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) error {
 	d, err := distro.FindOneId(ctx, distroId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -75,6 +75,8 @@ func DeleteDistroById(ctx context.Context, distroId string) error {
 			Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
 		}
 	}
+
+	event.LogDistroRemoved(d.Id, u.Username(), d.NewDistroData())
 	return nil
 }
 
@@ -106,6 +108,46 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts CopyDistroOpts) error 
 
 	distroToCopy.Id = opts.NewDistroId
 	return newDistro(ctx, distroToCopy, u)
+}
+
+// CreateDistro creates a new distro with the provided ID using the default settings specified here.
+// It returns an error if one is encountered.
+func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error {
+	defaultDistro := &distro.Distro{
+		Id:   newDistroId,
+		Arch: evergreen.ArchLinuxAmd64,
+		BootstrapSettings: distro.BootstrapSettings{
+			Method: distro.BootstrapMethodNone,
+		},
+		CloneMethod: evergreen.CloneMethodLegacySSH,
+		DispatcherSettings: distro.DispatcherSettings{
+			Version: evergreen.DispatcherVersionRevisedWithDependencies,
+		},
+		FinderSettings: distro.FinderSettings{
+			Version: evergreen.FinderVersionLegacy,
+		},
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			Version: evergreen.HostAllocatorUtilization,
+		},
+		PlannerSettings: distro.PlannerSettings{
+			Version: evergreen.PlannerVersionTunable,
+		},
+		Provider: evergreen.ProviderNameStatic,
+		WorkDir:  "/data/mci",
+		User:     "ubuntu",
+	}
+
+	// Get default SSH key by taking the first key encountered.
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+	for keyName := range settings.Keys {
+		defaultDistro.SSHKey = keyName
+		break
+	}
+
+	return newDistro(ctx, defaultDistro, u)
 }
 
 func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {

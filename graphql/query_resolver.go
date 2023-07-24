@@ -745,19 +745,9 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIde
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, false)
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks for task '%s': %s", taskName, err.Error()))
-	}
-	// use legacy lookup pipeline if no results are found
-	if len(taskBuildVariants) == 0 {
-		taskBuildVariants, err = task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, true)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks using legacy pipeline for task '%s': %s", taskName, err.Error()))
-		}
-	}
-	if taskBuildVariants == nil {
-		return nil, nil
 	}
 	return taskBuildVariants, nil
 }

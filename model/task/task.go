@@ -233,7 +233,9 @@ type Task struct {
 	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
-	// scheduler will use to prioritize this task.
+	// scheduler will use to prioritize this task. This will not be set for
+	// tasks where the generate.tasks command runs outside of the main task
+	// block (e.g. pre, timeout).
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
 	// GeneratedTasks indicates that the task has already generated other tasks. This fields
 	// allows us to noop future requests, since a task should only generate others once.
@@ -1163,13 +1165,13 @@ func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 	return errors.Wrap(err, "setting generate.tasks error")
 }
 
+// GenerateNotRun returns tasks that have requested to generate tasks.
 func GenerateNotRun() ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(db.Query(bson.M{
 		StatusKey:                evergreen.TaskStarted,                              // task is running
 		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GenerateTaskKey:          true,                                               // task contains generate.tasks command
-		GeneratedTasksKey:        bson.M{"$exists": false},                           // generate.tasks has not yet run
+		GeneratedTasksKey:        bson.M{"$ne": true},                                // generate.tasks has not yet run
 		GeneratedJSONAsStringKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
 }
@@ -1266,7 +1268,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 		},
 	}
 
-	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_depends_on.unattainable_1'
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
 	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
@@ -1519,8 +1521,14 @@ func (t *Task) ActivateTask(caller string) error {
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		// Activating an activated task is a noop.
+		if t.Activated {
+			continue
+		}
+		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
 	}
 	err := activateTasks(taskIDs, caller, activationTime)
@@ -1528,7 +1536,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		return errors.Wrap(err, "activating tasks")
 	}
 	logs := []event.EventLogEntry{}
-	for _, t := range tasks {
+	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
 	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
@@ -1550,7 +1558,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		StatusKey: evergreen.TaskUndispatched,
 	})
 
-	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey))
+	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}
@@ -2127,7 +2135,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey)
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}

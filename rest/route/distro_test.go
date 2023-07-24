@@ -639,6 +639,7 @@ func (s *DistroDeleteByIDSuite) SetupTest() {
 
 func (s *DistroDeleteByIDSuite) TestParse() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 
 	req, _ := http.NewRequest(http.MethodDelete, "http://example.com/api/rest/v2/distros/distro1", nil)
 	err := s.rm.Parse(ctx, req)
@@ -647,6 +648,7 @@ func (s *DistroDeleteByIDSuite) TestParse() {
 
 func (s *DistroDeleteByIDSuite) TestRunValidDistroId() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 
 	now := time.Now().Round(time.Millisecond).UTC()
 	taskQueue := &model.TaskQueue{
@@ -664,6 +666,8 @@ func (s *DistroDeleteByIDSuite) TestRunValidDistroId() {
 
 func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+
 	h := s.rm.(*distroIDDeleteHandler)
 	h.distroID = "distro4"
 

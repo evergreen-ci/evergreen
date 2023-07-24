@@ -7,6 +7,7 @@ package graphql
 import (
 	"context"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
@@ -20,7 +21,25 @@ func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.AP
 	return settings, nil
 }
 
+// ProviderSettingsList is the resolver for the providerSettingsList field.
+func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error {
+	settings := []*birch.Document{}
+	for _, entry := range data {
+		doc, err := birch.DC.MapInterfaceErr(entry)
+		if err != nil {
+			return InternalServerError.Send(ctx, "converting provider settings list to birch documents")
+		}
+		settings = append(settings, doc)
+	}
+	obj.ProviderSettingsList = settings
+	return nil
+}
+
 // Distro returns DistroResolver implementation.
 func (r *Resolver) Distro() DistroResolver { return &distroResolver{r} }
 
+// DistroInput returns DistroInputResolver implementation.
+func (r *Resolver) DistroInput() DistroInputResolver { return &distroInputResolver{r} }
+
 type distroResolver struct{ *Resolver }
+type distroInputResolver struct{ *Resolver }

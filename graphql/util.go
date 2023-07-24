@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -311,16 +313,25 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
+	baseVersionID := ""
 	if buildVariantOpts.IncludeBaseTasks == nil {
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
-
+	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
+		baseVersion, err := model.FindBaseVersionForVersion(versionId)
+		if err != nil {
+			return nil, errors.Wrapf(err, fmt.Sprintf("Error getting base version for version `%s`", versionId))
+		}
+		if baseVersion != nil {
+			baseVersionID = baseVersion.Id
+		}
+	}
 	opts := task.GetTasksByVersionOptions{
-		Statuses:         getValidTaskStatusesFilter(buildVariantOpts.Statuses),
-		Variants:         buildVariantOpts.Variants,
-		TaskNames:        buildVariantOpts.Tasks,
-		Sorts:            defaultSort,
-		IncludeBaseTasks: utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
+		Statuses:      getValidTaskStatusesFilter(buildVariantOpts.Statuses),
+		Variants:      buildVariantOpts.Variants,
+		TaskNames:     buildVariantOpts.Tasks,
+		Sorts:         defaultSort,
+		BaseVersionID: baseVersionID,
 		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
 		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
 	}
@@ -618,8 +629,7 @@ func setVersionActivationStatus(ctx context.Context, version *model.Version) err
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := task.GetTasksByVersionOptions{
-		Sorts:            defaultSort,
-		IncludeBaseTasks: false,
+		Sorts: defaultSort,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, version.Id, opts)
 	if err != nil {
@@ -994,6 +1004,50 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	return taskOpts, nil
+}
+
+func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave DistroOnSaveOperation, userID string) (int, error) {
+	noHostsUpdated := 0
+	if onSave == DistroOnSaveOperationNone {
+		return noHostsUpdated, nil
+	}
+
+	hosts, err := host.Find(ctx, host.ByDistroIDs(distroID))
+	if err != nil {
+		return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("finding hosts for distro '%s'", distroID))
+	}
+
+	switch onSave {
+	case DistroOnSaveOperationDecommission:
+		if err = host.DecommissionHostsWithDistroId(ctx, distroID); err != nil {
+			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
+		}
+		for _, h := range hosts {
+			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
+		}
+	case DistroOnSaveOperationReprovision:
+		failed := []string{}
+		for _, h := range hosts {
+			if _, err = api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
+		}
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for reprovision: %s", strings.Join(failed, ", ")))
+		}
+	case DistroOnSaveOperationRestartJasper:
+		failed := []string{}
+		for _, h := range hosts {
+			if _, err = api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
+		}
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for Jasper service restart: %s", strings.Join(failed, ", ")))
+		}
+	}
+
+	return len(hosts), nil
 }
 
 func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {

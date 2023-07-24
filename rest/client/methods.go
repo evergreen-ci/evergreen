@@ -1595,3 +1595,30 @@ func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (
 	}
 	return host, nil
 }
+
+// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID.
+func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId string) (*restmodel.APIRawPatch, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("patches/%s/raw_modules", patchId),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to find host by IP address")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespErrorf(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting host by IP address")
+	}
+
+	rp := restmodel.APIRawPatch{}
+	if err = utility.ReadJSON(resp.Body, &rp); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+	return &rp, nil
+}
