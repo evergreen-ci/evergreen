@@ -124,6 +124,27 @@ func byId(id string) bson.M {
 	return bson.M{idKey: id}
 }
 
+func byIDs(ids []string) bson.M {
+	return bson.M{idKey: bson.M{"$in": ids}}
+}
+
+func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
+	cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding configuration sections")
+	}
+
+	var docs = make([]bson.Raw, 0, len(ids))
+	for cur.Next(ctx) {
+		docs = append(docs, cur.Current)
+	}
+	if cur.Err() != nil {
+		return nil, errors.Wrap(err, "getting configuration sections")
+	}
+
+	return docs, nil
+}
+
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
 func SetBanner(bannerText string) error {

@@ -281,7 +281,7 @@ func (e *envState) initSettings(ctx context.Context, path string) error {
 				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
-			e.settings, err = BootstrapConfig(ctx)
+			e.settings, err = GetConfigContext(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting config settings from DB")
 			}
