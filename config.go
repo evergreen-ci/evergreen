@@ -336,7 +336,7 @@ func GetConfigContext(ctx context.Context) (*Settings, error) {
 
 		// set the value of the section struct to the value of the corresponding field in the config
 		sectionVal := reflect.ValueOf(section).Elem()
-		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
+		propVal := reflect.ValueOf(baseConfig).Elem().FieldByName(propName)
 		if !propVal.CanSet() {
 			catcher.Errorf("unable to set field '%s' in section '%s'", propName, sectionId)
 			continue
