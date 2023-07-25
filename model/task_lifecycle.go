@@ -962,7 +962,7 @@ func dequeueAndRestartItem(ctx context.Context, opts dequeueAndRestartOptions) (
 		"queue_length": len(opts.cq.Queue),
 	})
 
-	if err := SendCommitQueueResult(p, opts.githubStatus, opts.reason); err != nil {
+	if err := SendCommitQueueResult(ctx, p, opts.githubStatus, opts.reason); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to send GitHub status",
 			"patch":   p.Id.Hex(),

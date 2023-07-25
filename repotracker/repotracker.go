@@ -626,7 +626,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	// validate the project
 	isConfigDefined := projectInfo.Config != nil
 	verrs := validator.CheckProjectErrors(ctx, projectInfo.Project, true)
-	verrs = append(verrs, validator.CheckProjectSettings(settings, projectInfo.Project, projectInfo.Ref, isConfigDefined)...)
+	verrs = append(verrs, validator.CheckProjectSettings(ctx, settings, projectInfo.Project, projectInfo.Ref, isConfigDefined)...)
 	verrs = append(verrs, validator.CheckProjectConfigErrors(projectInfo.Config)...)
 	verrs = append(verrs, validator.CheckProjectWarnings(projectInfo.Project)...)
 	if len(verrs) > 0 || versionErrs != nil {
@@ -737,7 +737,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		if !ref.IsGitTagVersionsEnabled() {
 			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Id)
 		}
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting settings")
 		}

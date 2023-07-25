@@ -205,7 +205,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		}
 		viewData.Project = *project
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to retrieve admin settings",

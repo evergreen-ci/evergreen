@@ -75,7 +75,7 @@ func NewTaskExecutionMonitorJob(taskID string, ts string) amboy.Job {
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return
@@ -247,7 +247,7 @@ func NewTaskExecutionMonitorPopulateJob(id string) amboy.Job {
 func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

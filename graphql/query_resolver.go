@@ -73,7 +73,7 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 
 // InstanceTypes is the resolver for the instanceTypes field.
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
 	}
@@ -82,7 +82,7 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 
 // SpruceConfig is the resolver for the spruceConfig field.
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching evergreen settings: %s", err.Error()))
 	}

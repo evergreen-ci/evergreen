@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -81,8 +82,8 @@ type PodAPIEventData struct {
 	TaskStatus    *string `bson:"task_status,omitempty" json:"task_status,omitempty"`
 }
 
-func (el *TaskEventData) BuildFromService(v *event.TaskEventData) error {
-	settings, err := evergreen.GetConfig()
+func (el *TaskEventData) BuildFromService(ctx context.Context, v *event.TaskEventData) error {
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}
@@ -103,13 +104,13 @@ func (el *TaskEventData) BuildFromService(v *event.TaskEventData) error {
 	return nil
 }
 
-func (el *TaskAPIEventLogEntry) BuildFromService(v event.EventLogEntry) error {
+func (el *TaskAPIEventLogEntry) BuildFromService(ctx context.Context, v event.EventLogEntry) error {
 	d, ok := v.Data.(*event.TaskEventData)
 	if !ok {
 		return errors.Errorf("programmatic error: expected task event data but got type %T", v.Data)
 	}
 	taskEventData := TaskEventData{}
-	if err := taskEventData.BuildFromService(d); err != nil {
+	if err := taskEventData.BuildFromService(ctx, d); err != nil {
 		return errors.Wrap(err, "converting task event data to API model")
 	}
 	el.ID = utility.ToStringPtr(v.ID)

@@ -202,7 +202,7 @@ func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *attachProjectToRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.AttachToRepo(h.user); err != nil {
+	if err := h.project.AttachToRepo(ctx, h.user); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "attaching repo to project"))
 	}
 
@@ -365,7 +365,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if mergedProjectRef.Enabled {
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
 		}

@@ -29,7 +29,7 @@ import (
 type DBCommitQueueConnector struct{}
 
 func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
 	}
@@ -55,7 +55,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 
 	errs := validator.CheckProjectErrors(ctx, proj, false)
 	isConfigDefined := len(patchDoc.PatchedProjectConfig) > 0
-	errs = append(errs, validator.CheckProjectSettings(settings, proj, &projectRef, isConfigDefined)...)
+	errs = append(errs, validator.CheckProjectSettings(ctx, settings, proj, &projectRef, isConfigDefined)...)
 	errs = append(errs, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range errs.AtLevel(validator.Error) {
@@ -501,7 +501,7 @@ func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, exis
 	return apiPatch, nil
 }
 
-func ConcludeMerge(patchID, status string) error {
+func ConcludeMerge(ctx context.Context, patchID, status string) error {
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
 		return errors.Wrap(err, "finding patch")
@@ -528,7 +528,7 @@ func ConcludeMerge(patchID, status string) error {
 		githubStatus = message.GithubStateSuccess
 		description = "merge test succeeded"
 	}
-	err = model.SendCommitQueueResult(p, githubStatus, description)
+	err = model.SendCommitQueueResult(ctx, p, githubStatus, description)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "unable to send github status",
 		"patch":   patchID,

@@ -147,12 +147,8 @@ func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
-func SetBanner(bannerText string) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
+func SetBanner(ctx context.Context, bannerText string) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerKey: bannerText},
 	}, options.Update().SetUpsert(true))
@@ -162,12 +158,8 @@ func SetBanner(bannerText string) error {
 
 // SetBannerTheme sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
-func SetBannerTheme(theme BannerTheme) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
+func SetBannerTheme(ctx context.Context, theme BannerTheme) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerThemeKey: theme},
 	}, options.Update().SetUpsert(true))
@@ -175,14 +167,7 @@ func SetBannerTheme(theme BannerTheme) error {
 	return errors.WithStack(err)
 }
 
-func GetServiceFlags() (*ServiceFlags, error) {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-
-	return GetServiceFlagsContext(ctx)
-}
-
-func GetServiceFlagsContext(ctx context.Context) (*ServiceFlags, error) {
+func GetServiceFlags(ctx context.Context) (*ServiceFlags, error) {
 	flags := &ServiceFlags{}
 	if err := flags.Get(ctx); err != nil {
 		return nil, errors.Wrapf(err, "getting section '%s'", flags.SectionId())
@@ -191,13 +176,6 @@ func GetServiceFlagsContext(ctx context.Context) (*ServiceFlags, error) {
 }
 
 // SetServiceFlags sets whether each of the runner/API server processes is enabled.
-func SetServiceFlags(flags ServiceFlags) error {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-	return SetServiceFlagsContext(ctx, flags)
-}
-
-// SetServiceFlagsContext sets whether each of the runner/API server processes is enabled.
-func SetServiceFlagsContext(ctx context.Context, flags ServiceFlags) error {
+func SetServiceFlags(ctx context.Context, flags ServiceFlags) error {
 	return flags.Set(ctx)
 }

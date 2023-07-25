@@ -35,10 +35,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-07-24"
+	ClientVersion = "2023-07-25"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-07-24"
+	AgentVersion = "2023-07-25"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -299,17 +299,7 @@ func NewSettings(filename string) (*Settings, error) {
 // GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
 // Use Settings() to get the cached settings object.
-func GetConfig() (*Settings, error) {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-
-	return GetConfigContext(ctx)
-}
-
-// GetConfigContext returns the Evergreen config document. If no document is
-// present in the DB, it will return the defaults.
-// Use Settings() to get the cached settings object.
-func GetConfigContext(ctx context.Context) (*Settings, error) {
+func GetConfig(ctx context.Context) (*Settings, error) {
 	config := NewConfigSections()
 	if err := config.populateSections(ctx); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
@@ -352,15 +342,7 @@ func GetConfigContext(ctx context.Context) (*Settings, error) {
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
-func UpdateConfig(config *Settings) error {
-	ctx, cancel := GetEnvironment().Context()
-	defer cancel()
-
-	return UpdateConfigContext(ctx, config)
-}
-
-// UpdateConfigContext updates all evergreen settings documents in the DB.
-func UpdateConfigContext(ctx context.Context, config *Settings) error {
+func UpdateConfig(ctx context.Context, config *Settings) error {
 	// update the root config document
 	if err := config.Set(ctx); err != nil {
 		return err

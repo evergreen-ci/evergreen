@@ -83,7 +83,7 @@ func (s *githubStatusRefreshSuite) TestRunInDegradedMode() {
 	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
 	}
-	s.Require().NoError(evergreen.SetServiceFlags(flags))
+	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)

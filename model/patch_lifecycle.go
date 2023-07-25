@@ -477,7 +477,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Creates builds based on the Version
 // Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if githubOauthToken == "" {
 		if err != nil {
 			return nil, err
@@ -1237,7 +1237,7 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 
 // SendCommitQueueResult sends an updated GitHub PR status for a commit queue
 // result. If the patch is not part of a PR, this is a no-op.
-func SendCommitQueueResult(p *patch.Patch, status message.GithubState, description string) error {
+func SendCommitQueueResult(ctx context.Context, p *patch.Patch, status message.GithubState, description string) error {
 	if p.GithubPatchData.PRNumber == 0 {
 		return nil
 	}
@@ -1250,7 +1250,7 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 	}
 	url := ""
 	if p.Version != "" {
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "unable to get settings")
 		}

@@ -73,7 +73,7 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
 		return
