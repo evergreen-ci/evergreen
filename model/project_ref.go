@@ -2882,9 +2882,9 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
+		catcher.NewWhen(container.WorkingDir == "", "working directory must be defined")
 		catcher.NewWhen(container.Name == "", "name must be defined")
 		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
-
 	}
 	return catcher.Resolve()
 }

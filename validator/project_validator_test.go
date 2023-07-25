@@ -3293,6 +3293,12 @@ func TestValidateContainers(t *testing.T) {
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "image must be defined")
 		},
+		"FailsWithoutContainerWorkingDirectory": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].WorkingDir = ""
+			verrs := validateContainers(ctx, s, p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "working directory must be defined")
+		},
 		"FailsWithNotAllowedImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Image = "not_allowed"
 			verrs := validateContainers(ctx, s, p, ref, false)

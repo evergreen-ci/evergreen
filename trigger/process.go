@@ -248,6 +248,9 @@ projectLoop:
 			if trigger.Status != "" && trigger.Status != b.Status {
 				continue
 			}
+			if utility.StringSliceContains(sourceVersion.SatisfiedTriggers, trigger.DefinitionID) {
+				continue
+			}
 			if trigger.BuildVariantRegex != "" {
 				regex, err := regexp.Compile(trigger.BuildVariantRegex)
 				if err != nil {

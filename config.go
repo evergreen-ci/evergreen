@@ -35,10 +35,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-07-21"
+	ClientVersion = "2023-07-24"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-07-21"
+	AgentVersion = "2023-07-24"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -299,21 +299,15 @@ func NewSettings(filename string) (*Settings, error) {
 // GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
 // Use Settings() to get the cached settings object.
-func GetConfig(ctx context.Context) (*Settings, error) { return BootstrapConfig(ctx) }
-
-// Bootstrap config gets a config from the database defined in the environment.
-func BootstrapConfig(ctx context.Context) (*Settings, error) {
-	config := &Settings{}
-
-	// retrieve the root config document
-	if err := config.Get(ctx); err != nil {
-		return nil, err
+func GetConfig(ctx context.Context) (*Settings, error) {
+	config := NewConfigSections()
+	if err := config.populateSections(ctx); err != nil {
+		return nil, errors.Wrap(err, "populating sections")
 	}
 
-	// retrieve the other config sub-documents and form the whole struct
 	catcher := grip.NewSimpleCatcher()
-	sections := ConfigRegistry.GetSections()
-	valConfig := reflect.ValueOf(*config)
+	baseConfig := config.Sections[ConfigDocID].(*Settings)
+	valConfig := reflect.ValueOf(*baseConfig)
 	//iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
 		// retrieve the 'id' struct tag
@@ -324,21 +318,15 @@ func BootstrapConfig(ctx context.Context) (*Settings, error) {
 
 		// get the property name and find its corresponding section in the registry
 		propName := valConfig.Type().Field(i).Name
-		section, ok := sections[sectionId]
+		section, ok := config.Sections[sectionId]
 		if !ok {
 			catcher.Add(fmt.Errorf("config section '%s' not found in registry", sectionId))
 			continue
 		}
 
-		// retrieve the section's document from the db
-		if err := section.Get(ctx); err != nil {
-			catcher.Add(errors.Wrapf(err, "populating section '%s'", sectionId))
-			continue
-		}
-
 		// set the value of the section struct to the value of the corresponding field in the config
 		sectionVal := reflect.ValueOf(section).Elem()
-		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
+		propVal := reflect.ValueOf(baseConfig).Elem().FieldByName(propName)
 		if !propVal.CanSet() {
 			catcher.Errorf("unable to set field '%s' in section '%s'", propName, sectionId)
 			continue
@@ -349,7 +337,7 @@ func BootstrapConfig(ctx context.Context) (*Settings, error) {
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
-	return config, nil
+	return baseConfig, nil
 
 }
 

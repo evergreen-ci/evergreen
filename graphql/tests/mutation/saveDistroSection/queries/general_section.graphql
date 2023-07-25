@@ -1,0 +1,27 @@
+mutation {
+    saveDistroSection(
+      opts: {
+        distroId: "rhel71-power8-large"
+        changes: {
+          aliases: ["new-alias"]
+          disabled: true
+          disableShallowClone: true
+          isCluster: true
+          name: "rhel71-power8-large"
+          note: "This is an updated note"
+        },
+        section: GENERAL,
+        onSave: DECOMMISSION
+      }
+    ) 
+    {
+      distro {
+        aliases
+        disableShallowClone
+        isCluster
+        name
+        note
+      }
+      hostCount
+    }
+}

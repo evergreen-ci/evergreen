@@ -9,7 +9,7 @@
       "enabled": true,
       "private": false,
       "batch_time": 0,
-      "remote_path": "scripts/agent.yml",
+      "remote_path": "testdata/smoke/project.yml",
       "identifier": "evergreen",
       "display_name": "evergreen smoke test",
       "local_config": "",

@@ -116,6 +116,13 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		d := distrosFound[i]
 		distrosMap[d.Id] = d
 	}
+
+	schedulerConfig := evergreen.SchedulerConfig{}
+	if err := schedulerConfig.Get(ctx); err != nil {
+		j.AddError(errors.Wrap(err, "getting scheduler config"))
+		return
+	}
+
 	for _, info := range distroHosts {
 		minimumHostsForDistro := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
 		minNumHostsToEvaluate := getMinNumHostsToEvaluate(info, minimumHostsForDistro)
@@ -130,7 +137,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 				}
 			}
 			hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[i])
-			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i], currentDistro))
+			j.AddError(j.checkAndTerminateHost(ctx, schedulerConfig, &info.IdleHosts[i], currentDistro))
 		}
 	}
 }
@@ -150,8 +157,7 @@ func getMinNumHostsToEvaluate(info host.IdleHostsByDistroID, minimumHosts int) i
 	return numIdleHosts
 }
 
-func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d distro.Distro) error {
-
+func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig evergreen.SchedulerConfig, h *host.Host, d distro.Distro) error {
 	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly {
 		return err
@@ -162,11 +168,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 
 	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
 	if idleThreshold == 0 {
-		conf, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting evergreen configuration")
-		}
-		idleThreshold = time.Duration(conf.Scheduler.AcceptableHostIdleTimeSeconds) * time.Second
+		idleThreshold = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
 	}
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleThreshold * 2
