@@ -319,7 +319,6 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 
 // TaskConflict is a special agent-internal message that the heartbeat uses to
 // indicate that the task is failing because it's being aborted.
-// kim: TODO: remove
 const TaskConflict = "task-conflict"
 
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {

@@ -94,7 +94,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
-	s.Equal("test", detail.Type)
+	s.Equal(evergreen.CommandTypeTest, detail.Type)
 	s.Equal("'shell.exec' in function 'task' (step 1 of 1)", detail.Description)
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
@@ -146,7 +146,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
-	s.Equal("test", detail.Type)
+	s.Equal(evergreen.CommandTypeTest, detail.Type)
 	s.Equal("'shell.exec' in function 'task' (step 1 of 1)", detail.Description)
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)

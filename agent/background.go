@@ -13,6 +13,7 @@ import (
 // func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.CancelFunc, tc *taskContext, heartbeat <-chan string) {
 // kim: TODO: document heartbeat explicitly, describe its responsibilities to
 // heartbeat back to app server and signals by cancelling when it gets an abort.
+// kim: TODO: test behavior for abort and abort/restart.
 func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval

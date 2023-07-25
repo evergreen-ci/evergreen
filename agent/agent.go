@@ -568,25 +568,198 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
-	// kim: TODO: determine when idle timeout is relevant. Does it apply to all
-	// commands, or just to commands in specific blocks (e.g. pre, main, but
-	// possibly not timeout). If it applies to all, then handleTaskResponse
-	// needs to use idleTimeoutCtx as well.
-	// kim: TODO: document which command blocks idle timeout applies to.
 	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(tskCtx)
 	go a.startIdleTimeoutWatch(tskCtx, tc, idleTimeoutCancel)
 
 	preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
-	// go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
 	preAndMainComplete := make(chan string, 2)
 	go a.startTask(preAndMainCtx, tc, preAndMainComplete)
 
 	// return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete), "")
-	status := a.wait(tskCtx, tc, preAndMainComplete)
+	status := a.wait(tc, preAndMainComplete)
 
 	return a.handleTaskResponse(tskCtx, tc, status, "")
+}
+
+// startTask performs initial task setup and then runs the pre and main blocks
+// for the task. This method must return exactly one value to the complete
+// goroutine to indicate that it's done. Also note that it's critical that all
+// operations in this method must respect the context. If the context errors,
+// this must eventually return.
+func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
+	defer func() {
+		op := "running task pre and main blocks"
+		pErr := recovery.HandlePanicWithError(recover(), nil, op)
+		if pErr == nil {
+			return
+		}
+		_ = a.logPanic(tc.logger, pErr, nil, op)
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+	}()
+
+	factory, ok := command.GetCommandFactory("setup.initial")
+	if !ok {
+		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		return
+	}
+
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution before setup: %s", ctx.Err())
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		return
+	}
+	tc.setCurrentCommand(factory())
+	a.comm.UpdateLastMessageTime()
+
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution during setup: %s", ctx.Err())
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		return
+	}
+	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
+	tc.logger.Execution().Info("Execution logger initialized.")
+	tc.logger.System().Info("System logger initialized.")
+
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution: %s", ctx.Err())
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		return
+	}
+	hostname, err := os.Hostname()
+	tc.logger.Execution().Info(errors.Wrap(err, "getting hostname"))
+	if hostname != "" {
+		tc.logger.Execution().Infof("Hostname is '%s'.", hostname)
+	}
+	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+
+	innerCtx, innerCancel := context.WithCancel(ctx)
+	defer innerCancel()
+	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
+
+	// set up the system stats collector
+	tc.statsCollector = NewSimpleStatsCollector(
+		tc.logger,
+		a.jasper,
+		defaultStatsInterval,
+		"uptime",
+		"df -h",
+		"${ps|ps}",
+	)
+	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
+
+	if innerCtx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		return
+	}
+
+	// notify API server that the task has been started.
+	tc.logger.Execution().Info("Reporting task started.")
+	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		return
+	}
+
+	a.killProcs(innerCtx, tc, false, "task is starting")
+
+	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
+		return
+	}
+
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
+		tc.logger.Execution().Info("OOM tracker clearing system messages.")
+		if err = tc.oomTracker.Clear(innerCtx); err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "clearing OOM tracker system messages"))
+		}
+	}
+
+	if err = a.runTaskCommands(innerCtx, tc); err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
+		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
+		return
+	}
+
+	trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSucceeded)
+}
+
+// trySendTaskComplete attempts to send a task status to the given channel. This
+// is a non-blocking operation - if it tries to send the task status but the
+// channel is already blocked (either because it is full or there is no consumer
+// to receive the result), it will log an error and continue.
+func trySendTaskComplete(logger grip.Journaler, complete chan<- string, status string) {
+	select {
+	case complete <- status:
+	default:
+		logger.Errorf("Tried sending task status '%s', but complete channel was blocked.", status)
+	}
+}
+
+func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
+	tc.logger.Task().Info("Running pre-task commands.")
+	ctx, preTaskSpan := a.tracer.Start(ctx, "pre-task-commands")
+	defer preTaskSpan.End()
+
+	opts := runCommandsOptions{}
+
+	if !tc.ranSetupGroup {
+		taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
+		if err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for task setup group commands"))
+			return nil
+		}
+		if taskGroup != nil && taskGroup.SetupGroup != nil {
+			tc.logger.Task().Infof("Running setup group for task group '%s'.", taskGroup.Name)
+			opts.failPreAndPost = taskGroup.SetupGroupFailTask
+
+			var setupGroupCtx context.Context
+			var setupGroupCancel context.CancelFunc
+			if taskGroup.SetupGroupTimeoutSecs > 0 {
+				setupGroupCtx, setupGroupCancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
+			} else {
+				setupGroupCtx, setupGroupCancel = a.withCallbackTimeout(ctx, tc)
+			}
+			defer setupGroupCancel()
+
+			err = a.runCommandsInBlock(setupGroupCtx, tc, taskGroup.SetupGroup.List(), opts, setupGroupBlock)
+			if err != nil {
+				tc.logger.Execution().Error(errors.Wrap(err, "running task setup group"))
+				if taskGroup.SetupGroupFailTask {
+					return err
+				}
+			}
+			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", taskGroup.Name)
+		}
+		tc.ranSetupGroup = true
+	}
+
+	pre, err := tc.taskConfig.GetPre(tc.taskGroup)
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for pre-task commands"))
+		return nil
+	}
+
+	if pre.Commands != nil {
+		opts.failPreAndPost = pre.CanFailTask
+		block := preBlock
+		if tc.taskGroup != "" {
+			block = setupTaskBlock
+		}
+		err = a.runCommandsInBlock(ctx, tc, pre.Commands.List(), opts, block)
+	}
+	if err != nil {
+		err = errors.Wrap(err, "Running pre-task commands failed")
+		tc.logger.Task().Error(err)
+		if opts.failPreAndPost {
+			return err
+		}
+	}
+	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
+	return nil
 }
 
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, message string) (bool, error) {
@@ -625,18 +798,14 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 }
 
 // kim: TODO: can likely remove this wait function since it's so small and only
-// receives from one channel.
-func (a *Agent) wait(ctx context.Context, tc *taskContext, preAndMainComplete chan string) string {
+// receives from one channel. I think I was hoping to add something to it
+// though, but I don't remember what.
+func (a *Agent) wait(tc *taskContext, preAndMainComplete chan string) string {
 	status := evergreen.TaskFailed
 	select {
-	// case <-taskCtx.Done():
-	//     grip.Infof("Task canceled: '%s'.", tc.task.ID)
 	case status = <-preAndMainComplete:
 		grip.Infof("Task complete: '%s'.", tc.task.ID)
-		// case status = <-heartbeat:
-		//     grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
 	}
-
 	return status
 }
 
