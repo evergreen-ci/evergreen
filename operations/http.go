@@ -259,7 +259,7 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 
 // GetProjectRef requests project details from the API server for a given project ID.
 func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, error) {
-	resp, err := ac.get(fmt.Sprintf("/ref/%s", projectId), nil)
+	resp, err := ac.get(fmt.Sprintf("ref/%s", projectId), nil)
 	if err != nil {
 		return nil, err
 	}

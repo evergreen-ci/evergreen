@@ -417,7 +417,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "finding distros that need planning")
 		}
 
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		catcher := grip.NewBasicCatcher()
 
 		for _, d := range distros {
@@ -451,7 +451,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		for _, d := range distros {
 			if d.IsParent(config) {
 				continue
@@ -486,7 +486,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		for _, d := range distros {
 			if d.IsParent(config) {
 				continue
@@ -661,8 +661,11 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 
 }
 
-// PopulateGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
-func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
+// PopulateFallbackGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
+// Since the original generate.tasks request kicks off a job immediately, this function only serves as a fallback in case the
+// original job fails to run. If the original job has already completed, the job will not be created here. If the original job is in flight,
+// the job will be created here, but will no-op unless the original job fails to complete.
+func PopulateFallbackGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(_ context.Context, _ amboy.Queue) error {
 		ctx := context.Background()
 
@@ -674,13 +677,10 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 		for _, t := range tasks {
-			queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
-			queue, err := env.RemoteQueueGroup().Get(ctx, queueName)
-			if err != nil {
-				catcher.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+			if _, err = CreateAndEnqueueGenerateTasks(ctx, env, t, ts); err != nil {
+				catcher.Add(err)
 				continue
 			}
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts)), "enqueueing generate tasks job for task '%s'", t.Id)
 		}
 
 		return catcher.Resolve()
@@ -1222,7 +1222,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 				break
 			}
 
-			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
+			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(15).Format(TSFormat))
 			if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
 				catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing pod allocator job for task '%s'", t.Id)
 				continue
@@ -1251,7 +1251,7 @@ func PopulatePodCreationJobs() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing pod creation job for pod '%s'", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(15).Format(TSFormat))), "enqueueing pod creation job for pod '%s'", p.ID)
 		}
 
 		return catcher.Resolve()
@@ -1284,7 +1284,7 @@ func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOpe
 
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat))), "pod '%s'", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(15).Format(TSFormat))), "pod '%s'", p.ID)
 		}
 
 		return errors.Wrap(catcher.Resolve(), "enqueueing pod definition creation jobs")

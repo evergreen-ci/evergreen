@@ -765,6 +765,31 @@ Fetch the raw diff for a patch
 |--------|--------|-------------------------------------------------------------------------------------------------------|
 | module | string | Optional. A module to get the diff for. Returns the empty string when no patch exists for the module. |
 
+##### Get Patch Diff with Module Diffs
+
+    GET /patches/<patch_id>/raw_modules
+
+Fetch the raw diff for a patch along with the module diffs. 
+
+#### Response
+
+| Name             | Type                   | Description                                                                                                      |
+|------------------|------------------------|------------------------------------------------------------------------------------------------------------------|
+| patch          | RawModule                 | The main patch                                                                |
+| raw_modules   | []RawModule                   | The list of module diffs                                                |
+
+#### Objects
+
+**RawModule**
+
+| Name             | Type                   | Description                                                                                                      |
+|------------------|------------------------|------------------------------------------------------------------------------------------------------------------|
+| name          | string                 | The module name                                                                |
+| diff   | string                    | The module diff                                               |
+| githash         | string | The githash for the module |
+
+
+
 ##### Abort a Patch
 
     POST /patches/<patch_id>/abort

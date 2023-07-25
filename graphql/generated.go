@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -70,6 +71,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
+	DistroInput() DistroInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
 
@@ -604,6 +606,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
+		SaveDistroSection             func(childComplexity int, opts SaveDistroInput) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
@@ -1026,6 +1029,11 @@ type ComplexityRoot struct {
 		NumProcesses    func(childComplexity int) int
 		NumTasks        func(childComplexity int) int
 		VirtualMemoryKB func(childComplexity int) int
+	}
+
+	SaveDistroSectionPayload struct {
+		Distro    func(childComplexity int) int
+		HostCount func(childComplexity int) int
 	}
 
 	SearchReturnInfo struct {
@@ -1511,6 +1519,7 @@ type MutationResolver interface {
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error)
 	CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error)
+	SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -1780,6 +1789,9 @@ type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
+type DistroInputResolver interface {
+	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error
+}
 type SubscriberInputResolver interface {
 	Target(ctx context.Context, obj *model.APISubscriber, data string) error
 }
@@ -4268,6 +4280,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RestartVersions(childComplexity, args["versionId"].(string), args["abort"].(bool), args["versionsToRestart"].([]*model1.VersionToRestart)), true
 
+	case "Mutation.saveDistroSection":
+		if e.complexity.Mutation.SaveDistroSection == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveDistroSection_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["opts"].(SaveDistroInput)), true
+
 	case "Mutation.saveProjectSettingsForSection":
 		if e.complexity.Mutation.SaveProjectSettingsForSection == nil {
 			break
@@ -6695,6 +6719,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ResourceLimits.VirtualMemoryKB(childComplexity), true
 
+	case "SaveDistroSectionPayload.distro":
+		if e.complexity.SaveDistroSectionPayload.Distro == nil {
+			break
+		}
+
+		return e.complexity.SaveDistroSectionPayload.Distro(childComplexity), true
+
+	case "SaveDistroSectionPayload.hostCount":
+		if e.complexity.SaveDistroSectionPayload.HostCount == nil {
+			break
+		}
+
+		return e.complexity.SaveDistroSectionPayload.HostCount(childComplexity), true
+
 	case "SearchReturnInfo.featuresURL":
 		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
 			break
@@ -8903,6 +8941,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
 		ec.unmarshalInputBuildVariantOptions,
 		ec.unmarshalInputCommitQueueParamsInput,
@@ -8912,11 +8951,19 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateDistroInput,
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputDeleteDistroInput,
+		ec.unmarshalInputDispatcherSettingsInput,
 		ec.unmarshalInputDisplayTask,
+		ec.unmarshalInputDistroInput,
 		ec.unmarshalInputDistroPermissionsOptions,
 		ec.unmarshalInputEditSpawnHostInput,
+		ec.unmarshalInputEnvVarInput,
+		ec.unmarshalInputExpansionInput,
 		ec.unmarshalInputExternalLinkInput,
+		ec.unmarshalInputFinderSettingsInput,
 		ec.unmarshalInputGithubUserInput,
+		ec.unmarshalInputHomeVolumeSettingsInput,
+		ec.unmarshalInputHostAllocatorSettingsInput,
+		ec.unmarshalInputIceCreamSettingsInput,
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
 		ec.unmarshalInputJiraFieldInput,
@@ -8931,6 +8978,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPatchTriggerAliasInput,
 		ec.unmarshalInputPatchesInput,
 		ec.unmarshalInputPeriodicBuildInput,
+		ec.unmarshalInputPlannerSettingsInput,
+		ec.unmarshalInputPreconditionScriptInput,
 		ec.unmarshalInputProjectAliasInput,
 		ec.unmarshalInputProjectBannerInput,
 		ec.unmarshalInputProjectInput,
@@ -8939,6 +8988,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPublicKeyInput,
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
+		ec.unmarshalInputResourceLimitsInput,
+		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputSortOrder,
 		ec.unmarshalInputSpawnHostInput,
@@ -10047,6 +10098,21 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 		}
 	}
 	args["versionsToRestart"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveDistroSection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 SaveDistroInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -25416,6 +25482,67 @@ func (ec *executionContext) fieldContext_Mutation_createDistro(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createDistro_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_saveDistroSection(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["opts"].(SaveDistroInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*SaveDistroSectionPayload)
+	fc.Result = res
+	return ec.marshalNSaveDistroSectionPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_saveDistroSection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "distro":
+				return ec.fieldContext_SaveDistroSectionPayload_distro(ctx, field)
+			case "hostCount":
+				return ec.fieldContext_SaveDistroSectionPayload_hostCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SaveDistroSectionPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveDistroSection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -46731,6 +46858,154 @@ func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _SaveDistroSectionPayload_distro(ctx context.Context, field graphql.CollectedField, obj *SaveDistroSectionPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveDistroSectionPayload_distro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Distro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIDistro)
+	fc.Result = res
+	return ec.marshalNDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SaveDistroSectionPayload_distro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SaveDistroSectionPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aliases":
+				return ec.fieldContext_Distro_aliases(ctx, field)
+			case "arch":
+				return ec.fieldContext_Distro_arch(ctx, field)
+			case "authorizedKeysFile":
+				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "bootstrapSettings":
+				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
+			case "cloneMethod":
+				return ec.fieldContext_Distro_cloneMethod(ctx, field)
+			case "containerPool":
+				return ec.fieldContext_Distro_containerPool(ctx, field)
+			case "disabled":
+				return ec.fieldContext_Distro_disabled(ctx, field)
+			case "disableShallowClone":
+				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
+			case "dispatcherSettings":
+				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "expansions":
+				return ec.fieldContext_Distro_expansions(ctx, field)
+			case "finderSettings":
+				return ec.fieldContext_Distro_finderSettings(ctx, field)
+			case "homeVolumeSettings":
+				return ec.fieldContext_Distro_homeVolumeSettings(ctx, field)
+			case "hostAllocatorSettings":
+				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
+			case "iceCreamSettings":
+				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "isCluster":
+				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isVirtualWorkStation":
+				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "name":
+				return ec.fieldContext_Distro_name(ctx, field)
+			case "note":
+				return ec.fieldContext_Distro_note(ctx, field)
+			case "plannerSettings":
+				return ec.fieldContext_Distro_plannerSettings(ctx, field)
+			case "provider":
+				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerSettingsList":
+				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
+			case "setup":
+				return ec.fieldContext_Distro_setup(ctx, field)
+			case "setupAsSudo":
+				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "sshKey":
+				return ec.fieldContext_Distro_sshKey(ctx, field)
+			case "sshOptions":
+				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "user":
+				return ec.fieldContext_Distro_user(ctx, field)
+			case "userSpawnAllowed":
+				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
+			case "validProjects":
+				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "workDir":
+				return ec.fieldContext_Distro_workDir(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SaveDistroSectionPayload_hostCount(ctx context.Context, field graphql.CollectedField, obj *SaveDistroSectionPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveDistroSectionPayload_hostCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HostCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SaveDistroSectionPayload_hostCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SaveDistroSectionPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SearchReturnInfo_featuresURL(ctx, field)
 	if err != nil {
@@ -63808,6 +64083,125 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Context, obj interface{}) (model.APIBootstrapSettings, error) {
+	var it model.APIBootstrapSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"clientDir", "communication", "env", "jasperBinaryDir", "jasperCredentialsPath", "method", "preconditionScripts", "resourceLimits", "rootDir", "serviceUser", "shellPath"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "clientDir":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientDir"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientDir = data
+		case "communication":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communication"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Communication = data
+		case "env":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("env"))
+			data, err := ec.unmarshalOEnvVarInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVarᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Env = data
+		case "jasperBinaryDir":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jasperBinaryDir"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.JasperBinaryDir = data
+		case "jasperCredentialsPath":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jasperCredentialsPath"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.JasperCredentialsPath = data
+		case "method":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Method = data
+		case "preconditionScripts":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("preconditionScripts"))
+			data, err := ec.unmarshalOPreconditionScriptInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPreconditionScriptᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PreconditionScripts = data
+		case "resourceLimits":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("resourceLimits"))
+			data, err := ec.unmarshalOResourceLimitsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceLimits(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResourceLimits = data
+		case "rootDir":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rootDir"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RootDir = data
+		case "serviceUser":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceUser"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceUser = data
+		case "shellPath":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shellPath"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ShellPath = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Context, obj interface{}) (model.APIBuildBaronSettings, error) {
 	var it model.APIBuildBaronSettings
 	asMap := map[string]interface{}{}
@@ -64275,6 +64669,35 @@ func (ec *executionContext) unmarshalInputDeleteDistroInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDispatcherSettingsInput(ctx context.Context, obj interface{}) (model.APIDispatcherSettings, error) {
+	var it model.APIDispatcherSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"version"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "version":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Version = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
 	var it DisplayTask
 	asMap := map[string]interface{}{}
@@ -64307,6 +64730,289 @@ func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj i
 				return it, err
 			}
 			it.Name = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj interface{}) (model.APIDistro, error) {
+	var it model.APIDistro
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "cloneMethod", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "aliases":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aliases"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Aliases = data
+		case "arch":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("arch"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Arch = data
+		case "authorizedKeysFile":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("authorizedKeysFile"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AuthorizedKeysFile = data
+		case "bootstrapSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bootstrapSettings"))
+			data, err := ec.unmarshalOBootstrapSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBootstrapSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BootstrapSettings = data
+		case "cloneMethod":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloneMethod"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CloneMethod = data
+		case "containerPool":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerPool"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ContainerPool = data
+		case "disabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Disabled = data
+		case "disableShallowClone":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disableShallowClone"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisableShallowClone = data
+		case "dispatcherSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dispatcherSettings"))
+			data, err := ec.unmarshalODispatcherSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDispatcherSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DispatcherSettings = data
+		case "expansions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expansions"))
+			data, err := ec.unmarshalOExpansionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansionᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Expansions = data
+		case "finderSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("finderSettings"))
+			data, err := ec.unmarshalOFinderSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFinderSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FinderSettings = data
+		case "homeVolumeSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("homeVolumeSettings"))
+			data, err := ec.unmarshalOHomeVolumeSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHomeVolumeSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HomeVolumeSettings = data
+		case "hostAllocatorSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostAllocatorSettings"))
+			data, err := ec.unmarshalOHostAllocatorSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostAllocatorSettings = data
+		case "iceCreamSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iceCreamSettings"))
+			data, err := ec.unmarshalOIceCreamSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIceCreamSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IcecreamSettings = data
+		case "isCluster":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isCluster"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsCluster = data
+		case "isVirtualWorkStation":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isVirtualWorkStation"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsVirtualWorkstation = data
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "note":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Note = data
+		case "plannerSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("plannerSettings"))
+			data, err := ec.unmarshalOPlannerSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPlannerSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PlannerSettings = data
+		case "provider":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Provider = data
+		case "providerSettingsList":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerSettingsList"))
+			data, err := ec.unmarshalOMap2ᚕmapᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.DistroInput().ProviderSettingsList(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "setup":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("setup"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Setup = data
+		case "setupAsSudo":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("setupAsSudo"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SetupAsSudo = data
+		case "sshKey":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sshKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SSHKey = data
+		case "sshOptions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sshOptions"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SSHOptions = data
+		case "user":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.User = data
+		case "userSpawnAllowed":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userSpawnAllowed"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserSpawnAllowed = data
+		case "validProjects":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("validProjects"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ValidProjects = data
+		case "workDir":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workDir"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkDir = data
 		}
 	}
 
@@ -64461,6 +65167,82 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputEnvVarInput(ctx context.Context, obj interface{}) (model.APIEnvVar, error) {
+	var it model.APIEnvVar
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputExpansionInput(ctx context.Context, obj interface{}) (model.APIExpansion, error) {
+	var it model.APIExpansion
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context, obj interface{}) (model.APIExternalLink, error) {
 	var it model.APIExternalLink
 	asMap := map[string]interface{}{}
@@ -64508,6 +65290,35 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputFinderSettingsInput(ctx context.Context, obj interface{}) (model.APIFinderSettings, error) {
+	var it model.APIFinderSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"version"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "version":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Version = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, obj interface{}) (model.APIGithubUser, error) {
 	var it model.APIGithubUser
 	asMap := map[string]interface{}{}
@@ -64531,6 +65342,156 @@ func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.LastKnownAs = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputHomeVolumeSettingsInput(ctx context.Context, obj interface{}) (model.APIHomeVolumeSettings, error) {
+	var it model.APIHomeVolumeSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"formatCommand"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "formatCommand":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatCommand"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatCommand = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context.Context, obj interface{}) (model.APIHostAllocatorSettings, error) {
+	var it model.APIHostAllocatorSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"acceptableHostIdleTime", "feedbackRule", "hostsOverallocatedRule", "maximumHosts", "minimumHosts", "roundingRule", "version"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "acceptableHostIdleTime":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("acceptableHostIdleTime"))
+			data, err := ec.unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AcceptableHostIdleTime = data
+		case "feedbackRule":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("feedbackRule"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FeedbackRule = data
+		case "hostsOverallocatedRule":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostsOverallocatedRule"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostsOverallocatedRule = data
+		case "maximumHosts":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maximumHosts"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaximumHosts = data
+		case "minimumHosts":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minimumHosts"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MinimumHosts = data
+		case "roundingRule":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roundingRule"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoundingRule = data
+		case "version":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Version = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputIceCreamSettingsInput(ctx context.Context, obj interface{}) (model.APIIceCreamSettings, error) {
+	var it model.APIIceCreamSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"configPath", "schedulerHost"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "configPath":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configPath"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConfigPath = data
+		case "schedulerHost":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("schedulerHost"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SchedulerHost = data
 		}
 	}
 
@@ -65316,6 +66277,136 @@ func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context
 				return it, err
 			}
 			it.NextRunTime = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Context, obj interface{}) (model.APIPlannerSettings, error) {
+	var it model.APIPlannerSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"expectedRuntimeFactor", "generateTaskFactor", "groupVersions", "mainlineTimeInQueueFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "expectedRuntimeFactor":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expectedRuntimeFactor"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpectedRuntimeFactor = data
+		case "generateTaskFactor":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generateTaskFactor"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GenerateTaskFactor = data
+		case "groupVersions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupVersions"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupVersions = data
+		case "mainlineTimeInQueueFactor":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mainlineTimeInQueueFactor"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MainlineTimeInQueueFactor = data
+		case "patchFactor":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchFactor"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PatchFactor = data
+		case "patchTimeInQueueFactor":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchTimeInQueueFactor"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PatchTimeInQueueFactor = data
+		case "targetTime":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetTime"))
+			data, err := ec.unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TargetTime = data
+		case "version":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Version = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPreconditionScriptInput(ctx context.Context, obj interface{}) (model.APIPreconditionScript, error) {
+	var it model.APIPreconditionScript
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"path", "script"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "path":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Path = data
+		case "script":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("script"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Script = data
 		}
 	}
 
@@ -66477,6 +67568,144 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 				return it, err
 			}
 			it.Vars = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Context, obj interface{}) (model.APIResourceLimits, error) {
+	var it model.APIResourceLimits
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"lockedMemoryKb", "numFiles", "numProcesses", "numTasks", "virtualMemoryKb"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "lockedMemoryKb":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lockedMemoryKb"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LockedMemoryKB = data
+		case "numFiles":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numFiles"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NumFiles = data
+		case "numProcesses":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numProcesses"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NumProcesses = data
+		case "numTasks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numTasks"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NumTasks = data
+		case "virtualMemoryKb":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("virtualMemoryKb"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VirtualMemoryKB = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSaveDistroInput(ctx context.Context, obj interface{}) (SaveDistroInput, error) {
+	var it SaveDistroInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"distroId", "changes", "section", "onSave"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "distroId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroId"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireDistroAccess == nil {
+					return nil, errors.New("directive requireDistroAccess is not implemented")
+				}
+				return ec.directives.RequireDistroAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.DistroID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "changes":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("changes"))
+			data, err := ec.unmarshalODistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Changes = data
+		case "section":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
+			data, err := ec.unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Section = data
+		case "onSave":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("onSave"))
+			data, err := ec.unmarshalNDistroOnSaveOperation2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroOnSaveOperation(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OnSave = data
 		}
 	}
 
@@ -71256,6 +72485,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "saveDistroSection":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveDistroSection(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "reprovisionToNew":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -75205,6 +76443,41 @@ func (ec *executionContext) _ResourceLimits(ctx context.Context, sel ast.Selecti
 
 			out.Values[i] = ec._ResourceLimits_virtualMemoryKb(ctx, field, obj)
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var saveDistroSectionPayloadImplementors = []string{"SaveDistroSectionPayload"}
+
+func (ec *executionContext) _SaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, obj *SaveDistroSectionPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, saveDistroSectionPayloadImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SaveDistroSectionPayload")
+		case "distro":
+
+			out.Values[i] = ec._SaveDistroSectionPayload_distro(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "hostCount":
+
+			out.Values[i] = ec._SaveDistroSectionPayload_hostCount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -79463,6 +80736,26 @@ func (ec *executionContext) marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
+func (ec *executionContext) marshalNDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v *model.APIDistro) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Distro(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDistroOnSaveOperation2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroOnSaveOperation(ctx context.Context, v interface{}) (DistroOnSaveOperation, error) {
+	var res DistroOnSaveOperation
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDistroOnSaveOperation2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroOnSaveOperation(ctx context.Context, sel ast.SelectionSet, v DistroOnSaveOperation) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNDistroPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroPermissions(ctx context.Context, sel ast.SelectionSet, v DistroPermissions) graphql.Marshaler {
 	return ec._DistroPermissions(ctx, sel, &v)
 }
@@ -79490,6 +80783,22 @@ func (ec *executionContext) unmarshalNDistroSettingsAccess2githubᚗcomᚋevergr
 
 func (ec *executionContext) marshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx context.Context, sel ast.SelectionSet, v DistroSettingsAccess) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx context.Context, v interface{}) (distro.DistroSettingsSection, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := distro.DistroSettingsSection(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx context.Context, sel ast.SelectionSet, v distro.DistroSettingsSection) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
@@ -79555,6 +80864,11 @@ func (ec *executionContext) marshalNEnvVar2ᚕgithubᚗcomᚋevergreenᚑciᚋev
 	return ret
 }
 
+func (ec *executionContext) unmarshalNEnvVarInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVar(ctx context.Context, v interface{}) (model.APIEnvVar, error) {
+	res, err := ec.unmarshalInputEnvVarInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNExpansion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansion(ctx context.Context, sel ast.SelectionSet, v model.APIExpansion) graphql.Marshaler {
 	return ec._Expansion(ctx, sel, &v)
 }
@@ -79601,6 +80915,11 @@ func (ec *executionContext) marshalNExpansion2ᚕgithubᚗcomᚋevergreenᚑci�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalNExpansionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansion(ctx context.Context, v interface{}) (model.APIExpansion, error) {
+	res, err := ec.unmarshalInputExpansionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNExternalLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLink(ctx context.Context, sel ast.SelectionSet, v model.APIExternalLink) graphql.Marshaler {
@@ -81010,6 +82329,11 @@ func (ec *executionContext) marshalNPreconditionScript2ᚕgithubᚗcomᚋevergre
 	return ret
 }
 
+func (ec *executionContext) unmarshalNPreconditionScriptInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPreconditionScript(ctx context.Context, v interface{}) (model.APIPreconditionScript, error) {
+	res, err := ec.unmarshalInputPreconditionScriptInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
 	return ec._Project(ctx, sel, &v)
 }
@@ -81357,6 +82681,25 @@ func (ec *executionContext) unmarshalNRequiredStatus2githubᚗcomᚋevergreenᚑ
 
 func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v RequiredStatus) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v interface{}) (SaveDistroInput, error) {
+	res, err := ec.unmarshalInputSaveDistroInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSaveDistroSectionPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, v SaveDistroSectionPayload) graphql.Marshaler {
+	return ec._SaveDistroSectionPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSaveDistroSectionPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, v *SaveDistroSectionPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SaveDistroSectionPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, sel ast.SelectionSet, v model.APISelector) graphql.Marshaler {
@@ -82851,6 +84194,11 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOBootstrapSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBootstrapSettings(ctx context.Context, v interface{}) (model.APIBootstrapSettings, error) {
+	res, err := ec.unmarshalInputBootstrapSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx context.Context, v interface{}) (model.APIBuildBaronSettings, error) {
 	res, err := ec.unmarshalInputBuildBaronSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -83186,6 +84534,11 @@ func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑ
 	return ret
 }
 
+func (ec *executionContext) unmarshalODispatcherSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDispatcherSettings(ctx context.Context, v interface{}) (model.APIDispatcherSettings, error) {
+	res, err := ec.unmarshalInputDispatcherSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v *model.APIDistro) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -83195,6 +84548,14 @@ func (ec *executionContext) marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 
 func (ec *executionContext) marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx context.Context, sel ast.SelectionSet, v model.DistroInfo) graphql.Marshaler {
 	return ec._DistroInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalODistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, v interface{}) (*model.APIDistro, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDistroInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
@@ -83236,6 +84597,46 @@ func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋeverg
 	}
 	res, err := ec.unmarshalInputEditSpawnHostInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOEnvVarInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVarᚄ(ctx context.Context, v interface{}) ([]model.APIEnvVar, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]model.APIEnvVar, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNEnvVarInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVar(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOExpansionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansionᚄ(ctx context.Context, v interface{}) ([]model.APIExpansion, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]model.APIExpansion, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNExpansionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansion(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOExternalLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIExternalLink) graphql.Marshaler {
@@ -83350,6 +84751,11 @@ func (ec *executionContext) marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋe
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOFinderSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFinderSettings(ctx context.Context, v interface{}) (model.APIFinderSettings, error) {
+	res, err := ec.unmarshalInputFinderSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v interface{}) (float64, error) {
@@ -83650,11 +85056,21 @@ func (ec *executionContext) marshalOGroupedTaskStatusCount2ᚕᚖgithubᚗcomᚋ
 	return ret
 }
 
+func (ec *executionContext) unmarshalOHomeVolumeSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHomeVolumeSettings(ctx context.Context, v interface{}) (model.APIHomeVolumeSettings, error) {
+	res, err := ec.unmarshalInputHomeVolumeSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v *model.APIHost) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Host(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOHostAllocatorSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx context.Context, v interface{}) (model.APIHostAllocatorSettings, error) {
+	res, err := ec.unmarshalInputHostAllocatorSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOHostSortBy2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostSortBy(ctx context.Context, v interface{}) (*HostSortBy, error) {
@@ -83687,6 +85103,11 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	}
 	res := graphql.MarshalID(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOIceCreamSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIceCreamSettings(ctx context.Context, v interface{}) (model.APIIceCreamSettings, error) {
+	res, err := ec.unmarshalInputIceCreamSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOInstanceTagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTagᚄ(ctx context.Context, v interface{}) ([]*host.Tag, error) {
@@ -83946,6 +85367,44 @@ func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.Selecti
 	}
 	res := graphql.MarshalMap(v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOMap2ᚕmapᚄ(ctx context.Context, v interface{}) ([]map[string]interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]map[string]interface{}, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNMap2map(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOMap2ᚕmapᚄ(ctx context.Context, sel ast.SelectionSet, v []map[string]interface{}) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNMap2map(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, v interface{}) (model1.MergeQueue, error) {
@@ -84377,11 +85836,36 @@ func (ec *executionContext) unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋeverg
 	return res, nil
 }
 
+func (ec *executionContext) unmarshalOPlannerSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPlannerSettings(ctx context.Context, v interface{}) (model.APIPlannerSettings, error) {
+	res, err := ec.unmarshalInputPlannerSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOPod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPod(ctx context.Context, sel ast.SelectionSet, v *model.APIPod) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Pod(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPreconditionScriptInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPreconditionScriptᚄ(ctx context.Context, v interface{}) ([]model.APIPreconditionScript, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]model.APIPreconditionScript, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPreconditionScriptInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPreconditionScript(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
@@ -84596,6 +86080,11 @@ func (ec *executionContext) unmarshalORepoSettingsInput2ᚖgithubᚗcomᚋevergr
 
 func (ec *executionContext) marshalOResourceLimits2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceLimits(ctx context.Context, sel ast.SelectionSet, v model.APIResourceLimits) graphql.Marshaler {
 	return ec._ResourceLimits(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOResourceLimitsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceLimits(ctx context.Context, v interface{}) (model.APIResourceLimits, error) {
+	res, err := ec.unmarshalInputResourceLimitsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v *thirdparty.SearchReturnInfo) graphql.Marshaler {

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -1002,6 +1004,50 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	return taskOpts, nil
+}
+
+func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave DistroOnSaveOperation, userID string) (int, error) {
+	noHostsUpdated := 0
+	if onSave == DistroOnSaveOperationNone {
+		return noHostsUpdated, nil
+	}
+
+	hosts, err := host.Find(ctx, host.ByDistroIDs(distroID))
+	if err != nil {
+		return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("finding hosts for distro '%s'", distroID))
+	}
+
+	switch onSave {
+	case DistroOnSaveOperationDecommission:
+		if err = host.DecommissionHostsWithDistroId(ctx, distroID); err != nil {
+			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
+		}
+		for _, h := range hosts {
+			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
+		}
+	case DistroOnSaveOperationReprovision:
+		failed := []string{}
+		for _, h := range hosts {
+			if _, err = api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
+		}
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for reprovision: %s", strings.Join(failed, ", ")))
+		}
+	case DistroOnSaveOperationRestartJasper:
+		failed := []string{}
+		for _, h := range hosts {
+			if _, err = api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
+		}
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for Jasper service restart: %s", strings.Join(failed, ", ")))
+		}
+	}
+
+	return len(hosts), nil
 }
 
 func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
