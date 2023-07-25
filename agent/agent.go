@@ -577,7 +577,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	preAndMainComplete := make(chan string, 2)
 	go a.startTask(preAndMainCtx, tc, preAndMainComplete)
 
-	// return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete), "")
 	status := a.wait(tc, preAndMainComplete)
 
 	return a.handleTaskResponse(tskCtx, tc, status, "")
@@ -797,16 +796,12 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 	}
 }
 
-// kim: TODO: can likely remove this wait function since it's so small and only
-// receives from one channel. I think I was hoping to add something to it
-// though, but I don't remember what.
 func (a *Agent) wait(tc *taskContext, preAndMainComplete chan string) string {
-	status := evergreen.TaskFailed
 	select {
-	case status = <-preAndMainComplete:
+	case status := <-preAndMainComplete:
 		grip.Infof("Task complete: '%s'.", tc.task.ID)
+		return status
 	}
-	return status
 }
 
 func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {

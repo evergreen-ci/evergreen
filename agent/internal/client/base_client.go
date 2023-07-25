@@ -336,10 +336,9 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusConflict {
-		// In this case, the task has an incorrect task secret because it was
-		// aborted and restarted to a new execution (which gets a new secret).
+		// The task has an incorrect task secret because it was aborted and
+		// restarted to a new execution (which gets a new secret).
 		return evergreen.TaskFailed, nil
-		// return TaskConflict, errors.Errorf("unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", util.RespErrorf(resp, "sending heartbeat")
@@ -350,8 +349,7 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 		return "", errors.Wrap(err, "reading heartbeat reply from response")
 	}
 	if heartbeatResponse.Abort {
-		// In this case, the task has been aborted, but not restarted to a new
-		// execution.
+		// The task has been aborted, but not restarted to a new execution.
 		return evergreen.TaskFailed, nil
 	}
 	return "", nil
