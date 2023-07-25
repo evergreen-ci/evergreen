@@ -797,11 +797,9 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 }
 
 func (a *Agent) wait(tc *taskContext, preAndMainComplete chan string) string {
-	select {
-	case status := <-preAndMainComplete:
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-		return status
-	}
+	status := <-preAndMainComplete
+	grip.Infof("Task complete: '%s'.", tc.task.ID)
+	return status
 }
 
 func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
