@@ -310,15 +310,14 @@ func GetConfig() (*Settings, error) {
 // present in the DB, it will return the defaults.
 // Use Settings() to get the cached settings object.
 func GetConfigContext(ctx context.Context) (*Settings, error) {
-	if err := ConfigRegistry.populateSections(ctx); err != nil {
+	config := NewConfigSections()
+	if err := config.populateSections(ctx); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
 	}
 
-	// retrieve the other config sub-documents and form the whole struct
 	catcher := grip.NewSimpleCatcher()
-	sections := ConfigRegistry.GetSections()
-	config := sections[ConfigDocID].(*Settings)
-	valConfig := reflect.ValueOf(*config)
+	baseConfig := config.Sections[ConfigDocID].(*Settings)
+	valConfig := reflect.ValueOf(*baseConfig)
 	//iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
 		// retrieve the 'id' struct tag
@@ -329,7 +328,7 @@ func GetConfigContext(ctx context.Context) (*Settings, error) {
 
 		// get the property name and find its corresponding section in the registry
 		propName := valConfig.Type().Field(i).Name
-		section, ok := sections[sectionId]
+		section, ok := config.Sections[sectionId]
 		if !ok {
 			catcher.Add(fmt.Errorf("config section '%s' not found in registry", sectionId))
 			continue
@@ -348,7 +347,7 @@ func GetConfigContext(ctx context.Context) (*Settings, error) {
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
-	return config, nil
+	return baseConfig, nil
 
 }
 
