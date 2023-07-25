@@ -67,6 +67,11 @@ func (s *BackgroundSuite) TestWithCallbackTimeoutSetByProject() {
 	s.True(ok)
 }
 
+const (
+	defaultAbortCheckInterval = 100 * time.Millisecond
+	defaultNumAbortChecks     = 3
+)
+
 func (s *BackgroundSuite) TestAbortedTaskStillHeartbeats() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
@@ -78,36 +83,32 @@ func (s *BackgroundSuite) TestAbortedTaskStillHeartbeats() {
 
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
-	// kim: TODO: wrap this waiting func into a helper method
-	const checkInterval = 100 * time.Millisecond
-	timer := time.NewTimer(checkInterval)
-	defer timer.Stop()
 	lastHeartbeatCount := 0
-	numHeartbeatChecks := 0
-	for {
-		select {
-		case <-timer.C:
-			timer.Reset(checkInterval)
+	s.checkHeartbeatCondition(heartbeatCheckOptions{
+		heartbeatCtx:      heartbeatCtx,
+		checkInterval:     defaultAbortCheckInterval,
+		numRequiredChecks: defaultNumAbortChecks,
+		checkCondition: func() bool {
 			if childCtx.Err() == nil {
-				continue
+				// If the child context has not errored, the heartbeat has not
+				// yet signaled for the task to abort.
+				return false
 			}
 
+			// This is checking that the task was signaled to abort (via context
+			// cancellation) due to getting an explicit abort message.
+			// Furthermore, even though the task is aborting, the heartbeat
+			// should continue running.
 			currentHeartbeatCount := s.mockCommunicator.GetHeartbeatCount()
 			s.Greater(currentHeartbeatCount, lastHeartbeatCount, "heartbeat should still be running")
 			lastHeartbeatCount = currentHeartbeatCount
-			numHeartbeatChecks++
-			if numHeartbeatChecks > 3 {
-				// This is the success case - the task should have been signaled
-				// to abort via context cancellation due to getting an abort
-				// message before the heartbeat exits. Furthermore, the
-				// heartbeat counts should be incrementing on each check as the
-				// heartbeat continues running.
-				return
-			}
-		case <-heartbeatCtx.Done():
-			s.FailNow("heartbeat context errored before it could signal abort")
-		}
-	}
+
+			return true
+		},
+		exitCondition: func() {
+			s.FailNow("heartbeat exited before it could finish checks")
+		},
+	})
 }
 
 func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnTaskConflict() {
@@ -121,36 +122,32 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnTaskConflict() {
 
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
-	const checkInterval = 100 * time.Millisecond
-	timer := time.NewTimer(checkInterval)
-	defer timer.Stop()
 	lastHeartbeatCount := 0
-	numHeartbeatChecks := 0
-	for {
-		select {
-		case <-timer.C:
-			timer.Reset(checkInterval)
+	s.checkHeartbeatCondition(heartbeatCheckOptions{
+		heartbeatCtx:      heartbeatCtx,
+		checkInterval:     defaultAbortCheckInterval,
+		numRequiredChecks: defaultNumAbortChecks,
+		checkCondition: func() bool {
 			if childCtx.Err() == nil {
-				continue
+				// If the child context has not errored, the heartbeat has not
+				// yet signaled for the task to abort.
+				return false
 			}
 
+			// This is checking that the task was signaled to abort (via context
+			// cancellation) due to getting a task conflict (i.e. abort and
+			// restart task). Furthermore, even though the task is aborting, the
+			// heartbeat should continue running.
 			currentHeartbeatCount := s.mockCommunicator.GetHeartbeatCount()
 			s.Greater(currentHeartbeatCount, lastHeartbeatCount, "heartbeat should still be running")
 			lastHeartbeatCount = currentHeartbeatCount
-			numHeartbeatChecks++
-			if numHeartbeatChecks > 3 {
-				// This is the success case - the task should have been signaled
-				// to abort via context cancellation due to getting a task
-				// conflict (i.e. abort and restart task) before the heartbeat
-				// exits. Furthermore, the heartbeat counts should be
-				// incrementing on each check as the heartbeat continues
-				// running.
-				return
-			}
-		case <-heartbeatCtx.Done():
-			s.FailNow("heartbeat context errored before it could signal abort")
-		}
-	}
+
+			return true
+		},
+		exitCondition: func() {
+			s.FailNow("heartbeat exited before it could finish checks")
+		},
+	})
 }
 
 func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnHittingMaxFailedHeartbeats() {
@@ -164,35 +161,32 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnHittingMaxFailedHeartbeats(
 
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
-	const checkInterval = 100 * time.Millisecond
-	timer := time.NewTimer(checkInterval)
-	defer timer.Stop()
 	lastHeartbeatCount := 0
-	numHeartbeatChecks := 0
-	for {
-		select {
-		case <-timer.C:
-			timer.Reset(checkInterval)
+	s.checkHeartbeatCondition(heartbeatCheckOptions{
+		heartbeatCtx:      heartbeatCtx,
+		checkInterval:     defaultAbortCheckInterval,
+		numRequiredChecks: defaultNumAbortChecks,
+		checkCondition: func() bool {
 			if childCtx.Err() == nil {
-				continue
+				// If the child context has not errored, the heartbeat has not
+				// yet signaled for the task to abort.
+				return false
 			}
 
+			// This is checking that the task was signaled to abort (via context
+			// cancellation) due to consistently failing to heartbeat.
+			// Furthermore, even though the task is aborting, the heartbeat
+			// should continue running.
 			currentHeartbeatCount := s.mockCommunicator.GetHeartbeatCount()
 			s.Greater(currentHeartbeatCount, lastHeartbeatCount, "heartbeat should still be running")
 			lastHeartbeatCount = currentHeartbeatCount
-			numHeartbeatChecks++
-			if numHeartbeatChecks > 3 {
-				// This is the success case - the task should have been signaled
-				// to abort via context cancellation due to too many failed
-				// heartbeats before the heartbeat exits. Furthermore, the
-				// heartbeat counts should be incrementing on each check as the
-				// heartbeat continues running.
-				return
-			}
-		case <-heartbeatCtx.Done():
-			s.FailNow("heartbeat context errored before it could signal abort")
-		}
-	}
+
+			return true
+		},
+		exitCondition: func() {
+			s.FailNow("heartbeat exited before it could finish checks")
+		},
+	})
 }
 
 func (s *BackgroundSuite) TestHeartbeatSignalsAbortWhenHeartbeatStops() {
@@ -205,37 +199,28 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortWhenHeartbeatStops() {
 
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
-	// kim: TODO: wrap this "no abort" checker into a helper method (same with
-	// other "no abort" test)
-	const checkInterval = 100 * time.Millisecond
-	timer := time.NewTimer(checkInterval)
-	numHeartbeatChecks := 0
-	for {
-		select {
-		case <-timer.C:
-			timer.Reset(checkInterval)
-			// There should be no abort signal while the heartbeat is running.
-			if numHeartbeatChecks > 3 {
-				continue
-			}
-
-			// There should be no abort signal even though the heartbeat is
-			// failing occasionally. The heartbeat should only send an abort
-			// signal for many repeated heartbeat failures in a row.
+	s.checkHeartbeatCondition(heartbeatCheckOptions{
+		heartbeatCtx:      heartbeatCtx,
+		checkInterval:     defaultAbortCheckInterval,
+		numRequiredChecks: defaultNumAbortChecks,
+		checkCondition: func() bool {
+			// This is checking that the task does not abort. There should be no
+			// reason for the task to abort until the heartbeat exits.
 			s.NoError(childCtx.Err())
-			numHeartbeatChecks++
-		case <-heartbeatCtx.Done():
-			// kim: TODO: check this "eventual signal" more safely with a
-			// timeout.
+			return true
+		},
+		exitCondition: func() {
+			// Check that once the heartbeat exits, the task is signaled to
+			// abort (if it is still running) in a timely manner.
+			checkChildCtx, checkChildCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer checkChildCancel()
 			select {
 			case <-childCtx.Done():
+			case <-checkChildCtx.Done():
+				s.FailNow("child context should be done in a timely manner")
 			}
-			// This is the success case - the heartbeat continued without ever
-			// signaling the task to abort. It only signaled once the heartbeat
-			// itself exited.
-			return
-		}
-	}
+		},
+	})
 }
 
 func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
@@ -249,33 +234,30 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
-	const checkInterval = 100 * time.Millisecond
-	timer := time.NewTimer(checkInterval)
-	numHeartbeatChecks := 0
-	for {
-		select {
-		case <-timer.C:
-			timer.Reset(checkInterval)
-			if numHeartbeatChecks > 3 {
-				continue
-			}
-
-			// There should be no abort signal even though the heartbeat is
-			// failing occasionally. The heartbeat should only send an abort
-			// signal for many repeated heartbeat failures in a row.
+	s.checkHeartbeatCondition(heartbeatCheckOptions{
+		heartbeatCtx:      heartbeatCtx,
+		checkInterval:     defaultAbortCheckInterval,
+		numRequiredChecks: defaultNumAbortChecks,
+		checkCondition: func() bool {
+			// This is checking that, even though the heartbeat is sporadically
+			// failing, as long as it's succeeding sometimes, the task does not
+			// abort. There should be no reason for the task to abort until the
+			// heartbeat exits.
 			s.NoError(childCtx.Err())
-			numHeartbeatChecks++
-		case <-heartbeatCtx.Done():
+			return true
+		},
+		exitCondition: func() {
+			// Check that once the heartbeat exits, the task is signaled to
+			// abort (if it is still running) in a timely manner.
+			checkChildCtx, checkChildCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer checkChildCancel()
 			select {
 			case <-childCtx.Done():
+			case <-checkChildCtx.Done():
+				s.FailNow("child context should be done in a timely manner")
 			}
-			// s.Error(childCtx.Err(), "heartbeat should signal abort once the heartbeat has exited")
-			// This is the success case - the heartbeat continued without ever
-			// signaling the task to abort. It only signaled once the heartbeat
-			// itself exited.
-			return
-		}
-	}
+		},
+	})
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {
@@ -291,4 +273,41 @@ func (s *BackgroundSuite) TestGetCurrentTimeout() {
 
 func (s *BackgroundSuite) TestGetTimeoutDefault() {
 	s.Equal(defaultIdleTimeout, s.tc.getCurrentTimeout())
+}
+
+type heartbeatCheckOptions struct {
+	heartbeatCtx context.Context
+
+	checkInterval     time.Duration
+	numRequiredChecks int
+	checkCondition    func() bool
+
+	exitCondition func()
+}
+
+// checkHeartbeatCondition periodically checks a condition until the heartbeat
+// exits. When the timer fires, it will check the abort condition, which can be
+// used to check the current heartbeat/abort state. When the heartbeat exits, it
+// will check the exit condition.
+func (s *BackgroundSuite) checkHeartbeatCondition(abortCheck heartbeatCheckOptions) {
+	timer := time.NewTimer(abortCheck.checkInterval)
+	defer timer.Stop()
+
+	numChecksPassed := 0
+	for {
+		select {
+		case <-timer.C:
+			timer.Reset(abortCheck.checkInterval)
+			if checkPassed := abortCheck.checkCondition(); !checkPassed {
+				continue
+			}
+
+			numChecksPassed++
+			if numChecksPassed >= abortCheck.numRequiredChecks {
+				return
+			}
+		case <-abortCheck.heartbeatCtx.Done():
+			abortCheck.exitCondition()
+		}
+	}
 }
