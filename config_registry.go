@@ -125,7 +125,7 @@ func (r *ConfigSectionRegistry) unmarshalSection(rawSection bson.Raw) error {
 	if !ok {
 		return nil
 	}
-	return errors.Wrapf(bson.Unmarshal(rawSection, section), "unmarshaling section '%s'", idString)
+	return errors.Wrapf(bson.Unmarshal(rawSection, section), "unmarshalling section '%s'", idString)
 }
 
 func (r *ConfigSectionRegistry) GetSections() map[string]ConfigSection {
