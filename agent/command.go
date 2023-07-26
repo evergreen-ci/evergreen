@@ -71,8 +71,9 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 	return errors.WithStack(err)
 }
 
-// runCommandOrFunc runs a list of commands, which can either be single
-// standalone command or a list of sub-commands in a function.
+// runCommandOrFunc initializes and then executes a list of commands, which can
+// either be a single standalone command or a list of sub-commands in a
+// function.
 func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmds []command.Command, options runCommandsOptions, blockInfo command.BlockInfo) error {
 

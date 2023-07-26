@@ -246,7 +246,7 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 		return evergreen.TaskFailed, nil
 	}
 	if c.HeartbeatShouldConflict {
-		return TaskConflict, errors.Errorf("unauthorized - wrong secret")
+		return evergreen.TaskFailed, nil
 	}
 	if c.HeartbeatShouldSometimesErr {
 		if c.HeartbeatShouldErr {
