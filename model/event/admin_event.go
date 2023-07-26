@@ -140,7 +140,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	}
 
 	// get the correct implementation of the interface from the registry
-	section := evergreen.ConfigRegistry.GetSection(out.Section)
+	section := evergreen.NewConfigSections().Sections[out.Section]
 	if section == nil {
 		return nil, errors.Errorf("getting section '%s' from config registry", out.Section)
 	}
@@ -175,7 +175,7 @@ func RevertConfig(ctx context.Context, guid string, user string) error {
 	}
 	evt := events[0]
 	data := evt.Data.(*AdminEventData)
-	current := evergreen.ConfigRegistry.GetSection(data.Section)
+	current := evergreen.NewConfigSections().Sections[data.Section]
 	if current == nil {
 		return errors.Errorf("finding section '%s'", data.Section)
 	}

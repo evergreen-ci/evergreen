@@ -126,7 +126,7 @@ func TestAdminSuite(t *testing.T) {
 	}
 
 	originalEnv := GetEnvironment()
-	originalSettings, err := GetConfig()
+	originalSettings, err := GetConfig(ctx)
 	require.NoError(t, err)
 
 	env, err := NewEnvironment(ctx, configFile, nil)
@@ -141,29 +141,34 @@ func TestAdminSuite(t *testing.T) {
 
 func (s *AdminSuite) SetupTest() {
 	SetEnvironment(s.env)
-	s.NoError(resetRegistry())
 }
 
 func (s *AdminSuite) TearDownTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Reset the global env and admin settings after modifications to avoid
 	// affecting other tests that depend on the global test env.
 	SetEnvironment(s.originalEnv)
-	s.NoError(UpdateConfig(s.originalSettings))
+	s.NoError(UpdateConfig(ctx, s.originalSettings))
 }
 
 func (s *AdminSuite) TestBanner() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	const bannerText = "hello evergreen users!"
 
-	err := SetBanner(bannerText)
+	err := SetBanner(ctx, bannerText)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(bannerText, settings.Banner)
 
-	err = SetBannerTheme(Important)
+	err = SetBannerTheme(ctx, Important)
 	s.NoError(err)
-	settings, err = GetConfig()
+	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(Important, string(settings.BannerTheme))
@@ -196,7 +201,7 @@ func (s *AdminSuite) TestBaseConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config.ApiUrl, settings.ApiUrl)
@@ -240,7 +245,7 @@ func (s *AdminSuite) TestServiceFlags() {
 
 	err := testFlags.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(testFlags, settings.ServiceFlags)
@@ -273,7 +278,7 @@ func (s *AdminSuite) TestAlertsConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Alerts)
@@ -305,7 +310,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Amboy)
@@ -322,7 +327,7 @@ func (s *AdminSuite) TestApiConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Api)
@@ -372,7 +377,7 @@ func (s *AdminSuite) TestAuthConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.AuthConfig)
@@ -388,7 +393,7 @@ func (s *AdminSuite) TestHostinitConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.HostInit)
@@ -413,7 +418,7 @@ func (s *AdminSuite) TestJiraConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Jira)
@@ -432,7 +437,7 @@ func (s *AdminSuite) TestPodLifecycleConfig() {
 
 	err := config.Set(ctx)
 	s.Require().NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.Require().NoError(err)
 	s.Require().NotNil(settings)
 	s.Equal(config, settings.PodLifecycle)
@@ -478,7 +483,7 @@ func (s *AdminSuite) TestProvidersConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Providers)
@@ -496,7 +501,7 @@ func (s *AdminSuite) TestRepotrackerConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.RepoTracker)
@@ -512,7 +517,7 @@ func (s *AdminSuite) TestSchedulerConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Scheduler)
@@ -534,7 +539,7 @@ func (s *AdminSuite) TestSlackConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Slack)
@@ -554,7 +559,7 @@ func (s *AdminSuite) TestSplunkConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Splunk)
@@ -576,7 +581,7 @@ func (s *AdminSuite) TestUiConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Ui)
@@ -675,7 +680,7 @@ func (s *AdminSuite) TestNotifyConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Notify)
@@ -684,7 +689,7 @@ func (s *AdminSuite) TestNotifyConfig() {
 	config.BufferTargetPerInterval = 2
 	s.NoError(config.Set(ctx))
 
-	settings, err = GetConfig()
+	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Notify)
@@ -725,7 +730,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	err = validConfig.Set(ctx)
 	s.NoError(err)
 
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(validConfig, settings.ContainerPools)
@@ -733,7 +738,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	validConfig.Pools[0].MaxContainers = 50
 	s.NoError(validConfig.Set(ctx))
 
-	settings, err = GetConfig()
+	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(validConfig, settings.ContainerPools)
@@ -822,7 +827,7 @@ func (s *AdminSuite) TestCommitQueueConfig() {
 	s.NoError(config.ValidateAndDefault())
 	s.NoError(config.Set(ctx))
 
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.Require().NotNil(settings)
 
@@ -848,7 +853,7 @@ func (s *AdminSuite) TestHostJasperConfig() {
 	s.NoError(config.ValidateAndDefault())
 	s.NoError(config.Set(ctx))
 
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.Require().NoError(err)
 
 	s.Equal(config, settings.HostJasper)
@@ -989,7 +994,7 @@ func (s *AdminSuite) TestCedarConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Cedar)
@@ -997,7 +1002,7 @@ func (s *AdminSuite) TestCedarConfig() {
 	config.RPCPort = "7070"
 	s.NoError(config.Set(ctx))
 
-	settings, err = GetConfig()
+	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Cedar)
@@ -1014,7 +1019,7 @@ func (s *AdminSuite) TestTracerConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Tracer)
@@ -1022,7 +1027,7 @@ func (s *AdminSuite) TestTracerConfig() {
 	config.Enabled = false
 	s.NoError(config.Set(ctx))
 
-	settings, err = GetConfig()
+	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Tracer)
@@ -1042,7 +1047,7 @@ func (s *AdminSuite) TestDataPipesConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.DataPipes)
@@ -1050,7 +1055,7 @@ func (s *AdminSuite) TestDataPipesConfig() {
 	config.Region = "us-west-1"
 	s.NoError(config.Set(ctx))
 
-	settings, err = GetConfig()
+	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.DataPipes)
@@ -1069,7 +1074,7 @@ func (s *AdminSuite) TestBucketConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig()
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Buckets)
@@ -1077,7 +1082,7 @@ func (s *AdminSuite) TestBucketConfig() {
 	config.LogBucket.Name = "logs-2"
 	s.NoError(config.Set(ctx))
 
-	settings, err = GetConfig()
+	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Buckets)

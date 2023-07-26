@@ -124,7 +124,7 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if skipWithToggle {
-			flags, err := evergreen.GetServiceFlags()
+			flags, err := evergreen.GetServiceFlags(r.Context())
 			if err != nil {
 				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
 			}

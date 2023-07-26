@@ -728,9 +728,9 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting config")
 	}
@@ -1647,7 +1647,7 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		return true, nil
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "finding evergreen settings")
 	}
@@ -2760,7 +2760,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	conf, err := evergreen.GetConfig()
+	conf, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get evergreen configuration")
 	}

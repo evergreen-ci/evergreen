@@ -320,7 +320,7 @@ buildvariants:
 		settings := &evergreen.Settings{
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
+		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t3, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
@@ -388,7 +388,7 @@ buildvariants:
 		settings := &evergreen.Settings{
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
+		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t4, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})

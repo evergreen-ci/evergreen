@@ -34,13 +34,13 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 		{
 			name: "CacheStatsJobDisabled",
 			pre: func(t *testing.T) {
-				flags, err := evergreen.GetServiceFlags()
+				flags, err := evergreen.GetServiceFlags(ctx)
 				require.NoError(t, err)
 				flags.CacheStatsJobDisabled = true
 				require.NoError(t, flags.Set(ctx))
 			},
 			post: func(t *testing.T) {
-				flags, err := evergreen.GetServiceFlags()
+				flags, err := evergreen.GetServiceFlags(ctx)
 				require.NoError(t, err)
 				flags.CacheStatsJobDisabled = false
 				require.NoError(t, flags.Set(ctx))

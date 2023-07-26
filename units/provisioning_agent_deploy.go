@@ -70,7 +70,7 @@ func NewAgentDeployJob(env evergreen.Environment, h host.Host, id string) amboy.
 func (j *agentDeployJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddRetryableError(err)
 		return

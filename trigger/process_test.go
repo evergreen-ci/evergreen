@@ -25,7 +25,7 @@ type projectTriggerSuite struct {
 	processor projectProcessor
 }
 
-func mockTriggerVersion(args ProcessorArgs) (*model.Version, error) {
+func mockTriggerVersion(_ context.Context, args ProcessorArgs) (*model.Version, error) {
 	// we're putting the input params into arbitrary fields of the struct so that the tests can inspect them
 	v := model.Version{
 		Branch:      args.DownstreamProject.Id,
@@ -71,6 +71,9 @@ func (s *projectTriggerSuite) SetupTest() {
 }
 
 func (s *projectTriggerSuite) TestSimpleTaskFile() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	simpleTaskFile := model.ProjectRef{
 		Id:      "simpleTaskFile",
 		Enabled: true,
@@ -86,13 +89,16 @@ func (s *projectTriggerSuite) TestSimpleTaskFile() {
 		EventType:  event.TaskFinished,
 		ResourceId: "task",
 	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
+	versions, err := EvalProjectTriggers(ctx, &e, s.processor)
 	s.NoError(err)
 	s.Require().Len(versions, 1)
 	s.Equal("simpleTaskFile", versions[0].Branch)
 }
 
 func (s *projectTriggerSuite) TestMultipleProjects() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proj1 := model.ProjectRef{
 		Id:      "proj1",
 		Enabled: true,
@@ -122,12 +128,15 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 		EventType:  event.TaskFinished,
 		ResourceId: "task",
 	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
+	versions, err := EvalProjectTriggers(ctx, &e, s.processor)
 	s.NoError(err)
 	s.Len(versions, 3)
 }
 
 func (s *projectTriggerSuite) TestDateCutoff() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	date := 1
 	proj := model.ProjectRef{
 		Id:      "proj",
@@ -142,12 +151,15 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 		EventType:  event.TaskFinished,
 		ResourceId: "task",
 	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
+	versions, err := EvalProjectTriggers(ctx, &e, s.processor)
 	s.NoError(err)
 	s.Len(versions, 0)
 }
 
 func (s *projectTriggerSuite) TestWrongEvent() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	simpleTaskFile := model.ProjectRef{
 		Id:      "simpleTaskFile",
 		Enabled: true,
@@ -161,12 +173,15 @@ func (s *projectTriggerSuite) TestWrongEvent() {
 		EventType:  event.TaskStarted,
 		ResourceId: "task",
 	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
+	versions, err := EvalProjectTriggers(ctx, &e, s.processor)
 	s.NoError(err)
 	s.Len(versions, 0)
 }
 
 func (s *projectTriggerSuite) TestTaskRegex() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proj1 := model.ProjectRef{
 		Id:      "proj1",
 		Enabled: true,
@@ -188,13 +203,16 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 		EventType:  event.TaskFinished,
 		ResourceId: "task",
 	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
+	versions, err := EvalProjectTriggers(ctx, &e, s.processor)
 	s.NoError(err)
 	s.Require().Len(versions, 1)
 	s.Equal("proj1", versions[0].Branch)
 }
 
 func (s *projectTriggerSuite) TestMultipleTriggers() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	duplicate := model.ProjectRef{
 		Id:      "duplicate",
 		Enabled: true,
@@ -209,12 +227,15 @@ func (s *projectTriggerSuite) TestMultipleTriggers() {
 		EventType:  event.TaskFinished,
 		ResourceId: "task",
 	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
+	versions, err := EvalProjectTriggers(ctx, &e, s.processor)
 	s.NoError(err)
 	s.Len(versions, 1)
 }
 
 func (s *projectTriggerSuite) TestBuildFinish() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ref := model.ProjectRef{
 		Id:      "ref",
 		Enabled: true,
@@ -234,7 +255,7 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 		},
 		ResourceType: event.ResourceTypeBuild,
 	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
+	versions, err := EvalProjectTriggers(ctx, &e, s.processor)
 	s.NoError(err)
 	s.Require().Len(versions, 1)
 	s.Equal("ref", versions[0].Branch)
@@ -311,7 +332,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
 
-	downstreamVersions, err := EvalProjectTriggers(&e, TriggerDownstreamVersion)
+	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
 	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
@@ -365,7 +386,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	upstreamVersionFromDB, err := model.VersionFindOneId(upstreamVersion.Id)
 	assert.NoError(err)
 	assert.Contains(upstreamVersionFromDB.SatisfiedTriggers, "def1")
-	downstreamVersions, err = EvalProjectTriggers(&e, TriggerDownstreamVersion)
+	downstreamVersions, err = EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
 	assert.Len(downstreamVersions, 0)
 }
@@ -444,7 +465,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
 
-	downstreamVersions, err := EvalProjectTriggers(&e, TriggerDownstreamVersion)
+	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
 	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
@@ -498,7 +519,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	upstreamVersionFromDB, err := model.VersionFindOneId(upstreamVersion.Id)
 	assert.NoError(err)
 	assert.Contains(upstreamVersionFromDB.SatisfiedTriggers, "def1")
-	downstreamVersions, err = EvalProjectTriggers(&e, TriggerDownstreamVersion)
+	downstreamVersions, err = EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
 	assert.Len(downstreamVersions, 0)
 }

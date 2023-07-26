@@ -337,12 +337,15 @@ func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
 }
 
 func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection))
 	conf := testutil.TestConfig()
 	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Key: "key", Secret: "secret"}}
 	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}
-	assert.NoError(t, evergreen.UpdateConfig(conf))
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
+	assert.NoError(t, evergreen.UpdateConfig(ctx, conf))
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "userName"})
 
 	d := &distro.Distro{Id: "d1", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 		Provider: evergreen.ProviderNameEc2OnDemand,
@@ -464,7 +467,7 @@ func (s *DistroPutSuite) SetupTest() {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
-	s.NoError(evergreen.UpdateConfig(settings))
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
 	s.rm = makePutDistro()
 }
 
@@ -766,7 +769,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
-	s.NoError(evergreen.UpdateConfig(settings))
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
 	s.rm = makePatchDistroByID()
 }
 

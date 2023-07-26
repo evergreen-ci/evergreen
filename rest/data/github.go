@@ -14,7 +14,7 @@ type DBGithubConnector struct{}
 
 // GetGitHubPR takes the owner, repo, and PR number, and returns the associated GitHub PR.
 func (gc *DBGithubConnector) GetGitHubPR(ctx context.Context, owner, repo string, prNum int) (*github.PullRequest, error) {
-	conf, err := evergreen.GetConfig()
+	conf, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
 	}
@@ -35,7 +35,7 @@ func (gc *DBGithubConnector) GetGitHubPR(ctx context.Context, owner, repo string
 
 // AddCommentToPR adds the given comment to the associated PR.
 func (gc *DBGithubConnector) AddCommentToPR(ctx context.Context, owner, repo string, prNum int, comment string) error {
-	conf, err := evergreen.GetConfig()
+	conf, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}

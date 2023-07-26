@@ -132,7 +132,7 @@ func TestIsParent(t *testing.T) {
 	}
 	assert.NoError(conf.Set(ctx))
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	assert.NoError(err)
 
 	d1 := &Distro{

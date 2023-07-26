@@ -67,7 +67,7 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
 	})
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
 	}
@@ -247,7 +247,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
 	}

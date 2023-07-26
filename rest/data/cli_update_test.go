@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,6 +16,9 @@ type cliUpdateConnectorSuite struct {
 }
 
 func TestUpdateConnector(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s := &cliUpdateConnectorSuite{}
 	s.setup = func() {
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))
@@ -23,7 +27,7 @@ func TestUpdateConnector(t *testing.T) {
 		flags := evergreen.ServiceFlags{
 			CLIUpdatesDisabled: true,
 		}
-		s.NoError(evergreen.SetServiceFlags(flags))
+		s.NoError(evergreen.SetServiceFlags(ctx, flags))
 	}
 	suite.Run(t, s)
 }
@@ -33,15 +37,21 @@ func (s *cliUpdateConnectorSuite) SetupSuite() {
 }
 
 func (s *cliUpdateConnectorSuite) Test() {
-	v, err := GetCLIUpdate()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	v, err := GetCLIUpdate(ctx)
 	s.Require().NoError(err)
 	s.Require().NotNil(v)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
 }
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.degrade()
-	v, err := GetCLIUpdate()
+	v, err := GetCLIUpdate(ctx)
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.True(v.IgnoreUpdate)

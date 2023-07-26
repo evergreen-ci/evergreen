@@ -281,7 +281,7 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	defer cancel()
 
 	s.NoError(db.ClearCollections(distro.Collection, evergreen.ConfigCollection))
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	config.CommitQueue.MergeTaskDistro = "d"
 	s.NoError(config.CommitQueue.Set(ctx))

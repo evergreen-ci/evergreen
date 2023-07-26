@@ -30,7 +30,7 @@ type projectValidator func(*model.Project) ValidationErrors
 
 type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
 
-type projectSettingsValidator func(*evergreen.Settings, *model.Project, *model.ProjectRef, bool) ValidationErrors
+type projectSettingsValidator func(context.Context, *evergreen.Settings, *model.Project, *model.ProjectRef, bool) ValidationErrors
 
 // bool indicates if we should still run the validator if the project is complex
 type longValidator func(*model.Project, bool) ValidationErrors
@@ -293,10 +293,10 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 
 // CheckProjectSettings checks the project configuration against the project
 // settings.
-func CheckProjectSettings(settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
+func CheckProjectSettings(ctx context.Context, settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
 	for _, validateSettings := range projectSettingsValidators {
-		errs = append(errs, validateSettings(settings, p, ref, isConfigDefined)...)
+		errs = append(errs, validateSettings(ctx, settings, p, ref, isConfigDefined)...)
 	}
 	return errs
 }
@@ -316,7 +316,7 @@ func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.S
 		}
 	}
 
-	if settingsErrs := CheckProjectSettings(settings, project, pref, false); len(settingsErrs) != 0 {
+	if settingsErrs := CheckProjectSettings(ctx, settings, project, pref, false); len(settingsErrs) != 0 {
 		if errs := settingsErrs.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors related to project settings: %s", ValidationErrorsToString(errs))
 		}
@@ -351,8 +351,8 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateContainers(_ *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
-	settings, err := evergreen.GetConfig()
+func validateContainers(ctx context.Context, _ *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return ValidationErrors{
 			ValidationError{
@@ -1788,7 +1788,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
-func validateTaskSyncSettings(_ *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+func validateTaskSyncSettings(_ context.Context, _ *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
@@ -1811,7 +1811,7 @@ func validateTaskSyncSettings(_ *evergreen.Settings, p *model.Project, ref *mode
 }
 
 // validateVersionControl checks if a project with defined project config fields has version control enabled on the project ref.
-func validateVersionControl(_ *evergreen.Settings, _ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
+func validateVersionControl(_ context.Context, _ *evergreen.Settings, _ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
 	if ref.IsVersionControlEnabled() && !isConfigDefined {
 		errs = append(errs, ValidationError{

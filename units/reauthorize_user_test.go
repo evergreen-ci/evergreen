@@ -122,9 +122,9 @@ func TestReauthorizeUserJob(t *testing.T) {
 			assert.False(t, um.attemptedReauth)
 		},
 		"NoopsIfDegraded": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
-			require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{BackgroundReauthDisabled: true}))
+			require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{BackgroundReauthDisabled: true}))
 			defer func() {
-				assert.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{BackgroundReauthDisabled: false}))
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{BackgroundReauthDisabled: false}))
 			}()
 			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
