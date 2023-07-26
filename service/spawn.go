@@ -118,7 +118,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	maxHosts := evergreen.DefaultMaxSpawnHostsPerUser
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 		return
@@ -418,7 +418,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	case HostExpirationExtension:
 		if updateParams.Expiration == nil || updateParams.Expiration.IsZero() { // set expiration to never expire
 			var settings *evergreen.Settings
-			settings, err = evergreen.GetConfig()
+			settings, err = evergreen.GetConfig(ctx)
 			if err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))

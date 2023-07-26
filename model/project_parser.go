@@ -742,7 +742,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		return fileContents, nil
 	default:
 		if opts.Token == "" {
-			conf, err := evergreen.GetConfig()
+			conf, err := evergreen.GetConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen configuration")
 			}

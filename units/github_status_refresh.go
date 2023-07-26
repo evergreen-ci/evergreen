@@ -67,8 +67,8 @@ func makeGithubStatusRefreshJob() *githubStatusRefreshJob {
 	return j
 }
 
-func (j *githubStatusRefreshJob) shouldUpdate() (bool, error) {
-	flags, err := evergreen.GetServiceFlags()
+func (j *githubStatusRefreshJob) shouldUpdate(ctx context.Context) (bool, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "error retrieving admin settings")
 	}
@@ -224,7 +224,7 @@ func (j *githubStatusRefreshJob) sendBuildStatuses() {
 }
 
 func (j *githubStatusRefreshJob) Run(ctx context.Context) {
-	shouldUpdate, err := j.shouldUpdate()
+	shouldUpdate, err := j.shouldUpdate(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

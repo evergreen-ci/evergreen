@@ -309,10 +309,11 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 }
 
 func TestFinalizePatch(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
-	require.NoError(t, evergreen.UpdateConfig(patchTestConfig), ShouldBeNil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
+	require.NoError(t, evergreen.UpdateConfig(ctx, patchTestConfig), ShouldBeNil)
 
 	// Running a multi-document transaction requires the collections to exist
 	// first before any documents can be inserted.

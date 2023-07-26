@@ -231,7 +231,7 @@ func (e *Environment) Settings() *evergreen.Settings {
 	return e.EvergreenSettings
 }
 
-func (e *Environment) SaveConfig() error {
+func (e *Environment) SaveConfig(context.Context) error {
 	return nil
 }
 

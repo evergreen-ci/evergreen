@@ -67,7 +67,7 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	}
 
 	// Collect hosts by provider and region
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return

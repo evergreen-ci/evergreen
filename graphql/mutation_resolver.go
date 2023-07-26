@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -30,6 +31,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -170,6 +172,41 @@ func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroIn
 
 	return &NewDistroPayload{
 		NewDistroID: opts.NewDistroID,
+	}, nil
+}
+
+// SaveDistroSection is the resolver for the saveDistroSection field.
+func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error) {
+	usr := mustHaveUser(ctx)
+	distroChanges := opts.Changes.ToService()
+
+	originalDistro, err := distro.FindOneId(ctx, opts.DistroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distro '%s': %s", opts.DistroID, err.Error()))
+	}
+	if originalDistro == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", opts.DistroID))
+	}
+
+	if err = validator.ValidateDistroSection(ctx, originalDistro, distroChanges, opts.Section); err != nil {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", opts.DistroID, err.Error()))
+	}
+
+	updatedDistro, err := distro.UpdateDistroSection(ctx, originalDistro, distroChanges, opts.Section, usr.Username())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating distro '%s': %s", opts.DistroID, err.Error()))
+	}
+	apiDistro := &restModel.APIDistro{}
+	apiDistro.BuildFromService(*updatedDistro)
+
+	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, opts.DistroID, opts.OnSave, usr.Username())
+	if err != nil {
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
+	}
+
+	return &SaveDistroSectionPayload{
+		Distro:    apiDistro,
+		HostCount: numHostsUpdated,
 	}, nil
 }
 
@@ -476,7 +513,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
-	if err = pRef.AttachToRepo(usr); err != nil {
+	if err = pRef.AttachToRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
 	}
 
@@ -521,7 +558,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	if utility.FromBoolPtr(requestS3Creds) {
-		if err = data.RequestS3Creds(*apiProjectRef.Identifier, u.EmailAddress); err != nil {
+		if err = data.RequestS3Creds(ctx, *apiProjectRef.Identifier, u.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
 		}
 	}
@@ -550,7 +587,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	}
 	if utility.FromBoolPtr(requestS3Creds) {
 		usr := mustHaveUser(ctx)
-		if err = data.RequestS3Creds(*projectRef.Identifier, usr.EmailAddress); err != nil {
+		if err = data.RequestS3Creds(ctx, *projectRef.Identifier, usr.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
 	}
@@ -716,7 +753,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 	if spawnHost.InstanceType != nil {
 		var config *evergreen.Settings
-		config, err = evergreen.GetConfig()
+		config, err = evergreen.GetConfig(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
 		}

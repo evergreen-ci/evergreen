@@ -55,7 +55,7 @@ func NewDistroAliasSchedulerJob(distroID string, ts time.Time) amboy.Job {
 func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

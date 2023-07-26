@@ -208,7 +208,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.Equal(t, pod.StatusDecommissioned, p.Status)
 		},
 		"CleansUpUnrecognizedPodTryingToStart": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
 				require.NoError(t, originalFlags.Set(ctx))
@@ -258,7 +258,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.EqualValues(t, ecs.TaskStatusStopped, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod should have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsTryingToStartInUnrecognizedCluster": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
 				require.NoError(t, originalFlags.Set(ctx))
@@ -301,7 +301,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod in unrecognized cluster should not have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsDetectedButAlreadyShuttingDown": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
 				require.NoError(t, originalFlags.Set(ctx))
@@ -350,7 +350,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod in unrecognized cluster should not have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsDetectedButUnrecognizedPodCleanupIsDisabled": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
 				require.NoError(t, originalFlags.Set(ctx))

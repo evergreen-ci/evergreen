@@ -100,7 +100,7 @@ func TestCopyDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	assert.NoError(t, err)
 	config.Keys = map[string]string{"abc": "123"}
 	assert.NoError(t, config.Set(ctx))
@@ -219,7 +219,7 @@ func TestCreateDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	assert.NoError(t, err)
 	config.Keys = map[string]string{"abc": "123"}
 	assert.NoError(t, config.Set(ctx))

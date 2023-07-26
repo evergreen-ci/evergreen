@@ -1242,6 +1242,9 @@ func TestCreateManifest(t *testing.T) {
 }
 
 func TestShellVersionFromRevisionGitTags(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// triggered from yaml
 	metadata := model.VersionMetadata{
 		RemotePath: "releases.yml",
@@ -1263,7 +1266,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}
-	assert.NoError(t, evergreen.UpdateConfig(testutil.TestConfig()))
+	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
 	v, err := ShellVersionFromRevision(context.TODO(), pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)

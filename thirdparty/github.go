@@ -299,7 +299,7 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 // getInstallationToken creates an installation token using Github app auth.
 // If creating a token fails it will return the legacyToken.
 func getInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "getting config")
 	}
@@ -323,7 +323,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 }
 
 func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "getting evergreen settings")
 	}
@@ -498,7 +498,7 @@ func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
 func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput, urlBase string) error {
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}

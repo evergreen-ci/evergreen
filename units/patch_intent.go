@@ -295,7 +295,7 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 	if errs := validator.CheckProjectErrors(ctx, patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckProjectSettings(j.env.Settings(), patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
 	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig); len(errs.AtLevel(validator.Error)) != 0 {
@@ -872,7 +872,7 @@ func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projec
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "checking if GitHub PR testing is disabled")
 	}

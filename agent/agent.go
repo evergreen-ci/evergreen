@@ -63,8 +63,6 @@ type Options struct {
 	LogOutput              LogOutputType
 	WorkingDirectory       string
 	HeartbeatInterval      time.Duration
-	AgentSleepInterval     time.Duration
-	MaxAgentSleepInterval  time.Duration
 	Cleanup                bool
 	SetupData              apimodels.AgentSetupData
 	CloudProvider          string
@@ -257,19 +255,7 @@ func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 }
 
 func (a *Agent) loop(ctx context.Context) error {
-	minAgentSleepInterval := defaultAgentSleepInterval
-	maxAgentSleepInterval := defaultMaxAgentSleepInterval
-	if a.opts.AgentSleepInterval != 0 {
-		minAgentSleepInterval = a.opts.AgentSleepInterval
-	}
-	if a.opts.MaxAgentSleepInterval != 0 {
-		maxAgentSleepInterval = a.opts.MaxAgentSleepInterval
-	}
 	agentSleepInterval := minAgentSleepInterval
-
-	var jitteredSleep time.Duration
-	tskCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -357,7 +343,7 @@ func (a *Agent) loop(ctx context.Context) error {
 
 				a.jasper.Clear(ctx)
 				tc.jasper = a.jasper
-				shouldExit, err := a.runTask(tskCtx, tc)
+				shouldExit, err := a.runTask(ctx, tc)
 				if err != nil {
 					grip.Critical(message.WrapError(err, message.Fields{
 						"message": "error running task",
@@ -382,7 +368,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				tc = &taskContext{}
 			}
 
-			jitteredSleep = utility.JitterInterval(agentSleepInterval)
+			jitteredSleep := utility.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s.", jitteredSleep)
 			timer.Reset(jitteredSleep)
 			agentSleepInterval = agentSleepInterval * 2
@@ -652,13 +638,13 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 
-	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
+	timeout, err := tc.taskConfig.GetTimeout(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for task timeout commands"))
 		return
 	}
-	if taskGroup.Timeout != nil {
-		err := a.runCommandsInBlock(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{}, taskTimeoutBlock)
+	if timeout != nil {
+		err := a.runCommandsInBlock(ctx, tc, timeout.List(), runCommandsOptions{}, taskTimeoutBlock)
 		tc.logger.Execution().Error(errors.Wrap(err, "running timeout commands"))
 		tc.logger.Task().Infof("Finished running timeout commands in %s.", time.Since(start))
 	}
@@ -787,21 +773,21 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
-	taskGroup, err := taskConfig.GetTaskGroup(tc.taskGroup)
+	post, err := taskConfig.GetPost(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for post-task commands"))
 		return nil
 	}
-	if taskGroup.TeardownTask != nil {
-		opts.failPreAndPost = taskGroup.TeardownTaskCanFailTask
+	if post.Commands != nil {
+		opts.failPreAndPost = post.CanFailTask
 		block := postBlock
 		if tc.taskGroup != "" {
 			block = teardownTaskBlock
 		}
-		err = a.runCommandsInBlock(postCtx, tc, taskGroup.TeardownTask.List(), opts, block)
+		err = a.runCommandsInBlock(postCtx, tc, post.Commands.List(), opts, block)
 		if err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
-			if taskGroup.TeardownTaskCanFailTask {
+			if post.CanFailTask {
 				return err
 			}
 		}
@@ -831,7 +817,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		}
 		return
 	}
-	if taskGroup.TeardownGroup != nil {
+	if taskGroup != nil && taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands.")
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 		var cancel context.CancelFunc
@@ -933,7 +919,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 		return false
 	}
 	// do not kill if share_processes is set
-	if taskGroup.ShareProcs {
+	if taskGroup != nil && taskGroup.ShareProcs {
 		return false
 	}
 	// return true otherwise

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,7 +10,7 @@ import (
 )
 
 // GetCLIUpdate fetches the current cli version and the urls to download
-func GetCLIUpdate() (*model.APICLIUpdate, error) {
+func GetCLIUpdate(ctx context.Context) (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{}
 	env := evergreen.GetEnvironment()
 	config := env.ClientConfig()
@@ -20,7 +21,7 @@ func GetCLIUpdate() (*model.APICLIUpdate, error) {
 		}
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

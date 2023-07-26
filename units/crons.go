@@ -39,7 +39,7 @@ const (
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -61,7 +61,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	const reachabilityCheckInterval = 10 * time.Minute
 
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -105,7 +105,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 // checked in recently to determine if they are still healthy.
 func PopulatePodHealthCheckJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -136,7 +136,7 @@ func PopulatePodHealthCheckJobs() amboy.QueueOperation {
 
 func PopulateEventSendJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -156,7 +156,7 @@ func PopulateEventSendJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateEventNotifierJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -201,7 +201,7 @@ func PopulateEventNotifierJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -221,7 +221,7 @@ func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 
 func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -279,7 +279,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 
 func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -309,7 +309,7 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -363,7 +363,7 @@ func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 
 func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -393,7 +393,7 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -407,7 +407,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -417,7 +417,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "finding distros that need planning")
 		}
 
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		catcher := grip.NewBasicCatcher()
 
 		for _, d := range distros {
@@ -430,7 +430,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -451,7 +451,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		for _, d := range distros {
 			if d.IsParent(config) {
 				continue
@@ -465,7 +465,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -486,7 +486,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(0)
+		ts := utility.RoundPartOfMinute(15)
 		for _, d := range distros {
 			if d.IsParent(config) {
 				continue
@@ -501,7 +501,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 
 func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -514,7 +514,7 @@ func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 			return nil
 		}
 
-		config, err := evergreen.GetConfig()
+		config, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -549,7 +549,7 @@ func PopulateHostStatJobs(parts int) amboy.QueueOperation {
 
 func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -609,7 +609,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 // already been marked as needing to redeploy a new agent monitor.
 func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -661,8 +661,11 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 
 }
 
-// PopulateGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
-func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
+// PopulateFallbackGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
+// Since the original generate.tasks request kicks off a job immediately, this function only serves as a fallback in case the
+// original job fails to run. If the original job has already completed, the job will not be created here. If the original job is in flight,
+// the job will be created here, but will no-op unless the original job fails to complete.
+func PopulateFallbackGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(_ context.Context, _ amboy.Queue) error {
 		ctx := context.Background()
 
@@ -674,13 +677,10 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 		for _, t := range tasks {
-			queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
-			queue, err := env.RemoteQueueGroup().Get(ctx, queueName)
-			if err != nil {
-				catcher.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+			if _, err = CreateAndEnqueueGenerateTasks(ctx, env, t, ts); err != nil {
+				catcher.Add(err)
 				continue
 			}
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts)), "enqueueing generate tasks job for task '%s'", t.Id)
 		}
 
 		return catcher.Resolve()
@@ -689,7 +689,7 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -726,7 +726,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 
 func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -804,7 +804,7 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 // on the host.
 func PopulateHostRestartJasperJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -841,7 +841,7 @@ func PopulateHostRestartJasperJobs(env evergreen.Environment) amboy.QueueOperati
 // provisioning type.
 func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -875,7 +875,7 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 
 func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
 				"message":   "problem fetching service flags",
@@ -909,7 +909,7 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 
 func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -927,7 +927,7 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 
 func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -1034,7 +1034,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(queue.Put(ctx, NewJasperManagerCleanup(utility.RoundPartOfMinute(0).Format(TSFormat), env)))
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			catcher.Wrap(err, "getting service flags")
 			return catcher.Resolve()
@@ -1135,7 +1135,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 			return nil
 		}
 
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -1172,7 +1172,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 // undispatched threshold.
 func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
+		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
@@ -1203,7 +1203,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			"num_initializing": numInitializing,
 		})
 
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
@@ -1222,7 +1222,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 				break
 			}
 
-			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
+			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(15).Format(TSFormat))
 			if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
 				catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing pod allocator job for task '%s'", t.Id)
 				continue
@@ -1251,7 +1251,7 @@ func PopulatePodCreationJobs() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing pod creation job for pod '%s'", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(15).Format(TSFormat))), "enqueueing pod creation job for pod '%s'", p.ID)
 		}
 
 		return catcher.Resolve()
@@ -1284,7 +1284,7 @@ func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOpe
 
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat))), "pod '%s'", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(15).Format(TSFormat))), "pod '%s'", p.ID)
 		}
 
 		return errors.Wrap(catcher.Resolve(), "enqueueing pod definition creation jobs")

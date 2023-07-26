@@ -87,7 +87,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	j.start = time.Now()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 	}

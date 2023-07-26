@@ -59,7 +59,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	}
 	createDistro := u.HasPermission(opts)
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		message := fmt.Sprintf("error fetching evergreen settings: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -152,7 +152,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		newDistro.PlannerSettings.Version = evergreen.FinderVersionLegacy
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -365,7 +365,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 	if hasId {
 		d.Id = id
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -240,7 +240,7 @@ func (a *APIQuestionAnswer) ToService() model.QuestionAnswer {
 
 // UpdateUserSettings Returns an updated version of the user settings struct
 func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIUserSettings) (*user.UserSettings, error) {
-	adminSettings, err := evergreen.GetConfig()
+	adminSettings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting admin settings")
 	}

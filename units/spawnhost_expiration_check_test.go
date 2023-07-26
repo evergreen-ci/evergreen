@@ -22,7 +22,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 	defer cancel()
 
 	config := testutil.TestConfig()
-	assert.NoError(t, evergreen.UpdateConfig(config))
+	assert.NoError(t, evergreen.UpdateConfig(ctx, config))
 	assert.NoError(t, db.ClearCollections(host.Collection))
 	mock := cloud.GetMockProvider()
 

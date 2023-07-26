@@ -34,7 +34,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 	var originalPodLifecycleConf evergreen.PodLifecycleConfig
 	require.NoError(t, originalPodLifecycleConf.Get(ctx))
-	originalFlags, err := evergreen.GetServiceFlags()
+	originalFlags, err := evergreen.GetServiceFlags(ctx)
 	require.NoError(t, err)
 	// Since the tests depend on modifying the global environment, reset it to
 	// its initial state afterwards.
@@ -333,7 +333,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 
 	var originalPodLifecycleConf evergreen.PodLifecycleConfig
 	require.NoError(t, originalPodLifecycleConf.Get(ctx))
-	originalFlags, err := evergreen.GetServiceFlags()
+	originalFlags, err := evergreen.GetServiceFlags(ctx)
 	require.NoError(t, err)
 	// Since the tests depend on modifying the global environment, reset it to
 	// its initial state afterwards.

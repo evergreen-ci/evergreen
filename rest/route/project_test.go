@@ -558,13 +558,16 @@ func TestProjectPutSuite(t *testing.T) {
 }
 
 func (s *ProjectPutSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
 	s.NoError(getTestProjectRef().Insert())
 
 	settings := s.env.Settings()
 	s.settings = settings
 	settings.GithubOrgs = []string{"Rembrandt Q. Einstein"}
-	s.NoError(evergreen.UpdateConfig(settings))
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
 	s.rm = makePutProjectByID(s.env).(*projectIDPutHandler)
 }

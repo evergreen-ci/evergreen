@@ -24,7 +24,7 @@ func (DisableQuery) Validate(graphql.ExecutableSchema) error {
 }
 
 func (DisableQuery) MutateOperationContext(ctx context.Context, rc *graphql.OperationContext) *gqlerror.Error {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "getting Evergreen admin settings"))
 	} else if utility.StringSliceContains(settings.DisabledGQLQueries, rc.Operation.Name) {

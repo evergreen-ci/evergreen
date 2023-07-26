@@ -138,7 +138,7 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error
 	}
 
 	// Get default SSH key by taking the first key encountered.
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}
@@ -151,7 +151,7 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error
 }
 
 func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}

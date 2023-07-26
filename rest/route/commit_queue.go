@@ -266,7 +266,7 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
-	err := data.ConcludeMerge(p.patchId, p.Status)
+	err := data.ConcludeMerge(ctx, p.patchId, p.Status)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "concluding merge"))
 	}

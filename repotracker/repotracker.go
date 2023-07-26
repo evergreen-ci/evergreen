@@ -593,6 +593,8 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
+// CreateVersionFromConfig will create a version document from a project config
+// and insert it into the database along with its associated tasks and builds.
 func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
 	metadata model.VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if projectInfo.NotPopulated() {
@@ -604,7 +606,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
-	if err = verifyOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id, metadata.Revision.Revision); err != nil {
+	if err = verifyOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 
@@ -624,7 +626,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	// validate the project
 	isConfigDefined := projectInfo.Config != nil
 	verrs := validator.CheckProjectErrors(ctx, projectInfo.Project, true)
-	verrs = append(verrs, validator.CheckProjectSettings(settings, projectInfo.Project, projectInfo.Ref, isConfigDefined)...)
+	verrs = append(verrs, validator.CheckProjectSettings(ctx, settings, projectInfo.Project, projectInfo.Ref, isConfigDefined)...)
 	verrs = append(verrs, validator.CheckProjectConfigErrors(projectInfo.Config)...)
 	verrs = append(verrs, validator.CheckProjectWarnings(projectInfo.Project)...)
 	if len(verrs) > 0 || versionErrs != nil {
@@ -682,7 +684,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	return v, errors.Wrap(createVersionItems(ctx, v, metadata, projectInfo, aliases), "error creating version items")
 }
 
-// shellVersionFromRevision populates a new Version with metadata from a model.Revision.
+// ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var u *user.DBUser
@@ -735,7 +737,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		if !ref.IsGitTagVersionsEnabled() {
 			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Id)
 		}
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting settings")
 		}
@@ -776,7 +778,7 @@ func makeVersionIdWithTag(project, tag, id string) string {
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
-func verifyOrderNum(revOrderNum int, projectId, revision string) error {
+func verifyOrderNum(revOrderNum int, projectId string) error {
 	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
 		return errors.Wrap(err, "getting latest version")
