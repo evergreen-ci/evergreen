@@ -13,10 +13,10 @@ import (
 // startHeartbeat runs the task heartbeat. The heartbeat is responsible for two
 // things:
 //  1. It communicates with the app server to indicate that the agent is still
-//     alive and running its task. If the app server does not receive a heartbeat
-//     for a long time while the task is still running, then it can assume task
-//     has somehow stopped running and can choose system-fail the task.
-//     Furthermore,
+//     alive and running its task. If the app server does not receive a
+//     heartbeat for a long time while the task is still running, then it can
+//     assume the task has somehow stopped running and can choose to system-fail
+//     the task.
 //  2. It decides if/when to abort a task. If it receives an explicit message
 //     from the app server to abort (e.g. the user requested the task to abort),
 //     then it triggers the running task to abort by cancelling
