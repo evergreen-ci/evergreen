@@ -768,7 +768,7 @@ Parameters:
 -   `bucket`: the S3 bucket to use.
 -   `prefix`: prefix, if any, within the s3 bucket.
 
-Example dummy content of a test results JSON file:
+Example dummy content of a test results JSON file containing `test` objects:
 
 ```json
 [
@@ -872,7 +872,7 @@ Example dummy content of a test results JSON file:
 ]
 ```
 
-Each test result object holds data about a specific test and its
+Each `test` object holds data about a specific test and its
 subtests. It is represented by the
 [`Test` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#Test),
 and contains these fields:
@@ -884,7 +884,7 @@ and contains these fields:
 | `completed_at` | string | The test's completion timestamp.                                                                               |
 | `artifacts`    | array  | The test's list of `artifact` objects, described below.                                                        |
 | `metrics`      | array  | The test's list of `metric` objects, described below.                                                          |
-| `sub_tests`    | array  | The test's list of subtest objects, which recursively have the same format as the parent's test result object. |
+| `sub_tests`    | array  | The test's list of subtest `test` objects, which recursively have the same format as the parent's `test` object. |
 
 **Note:** Although the `Test` struct includes the `_id` field, you
 should not populate it. It would be populated automatically by
