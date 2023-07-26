@@ -622,7 +622,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056/head:evg-mg-test-"))
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056:evg-mg-test-"))
 	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-mg-test-"))
 	s.Equal("git reset --hard d2a90288ad96adca4a7d0122d8d4fd1deb24db11", cmds[7])
 	s.Equal("git log --oneline -n 10", cmds[8])
