@@ -173,6 +173,12 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			cmdChan <- recovery.HandlePanicWithError(recover(), nil,
 				fmt.Sprintf("running command %s", displayName))
 		}()
+		// kim: NOTE: this is the one line that actually runs the command.
+
+		// kim: NOTE: should double check that command implementations generally
+		// respect context cancellation. This is the true, minus background
+		// processes which possibly need special consideration.
+
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
 	select {
@@ -186,6 +192,16 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			}
 		}
 	case <-ctx.Done():
+		// Make a best-effort attempt to wait for the command to gracefully shut
+		// down. Either the command will respect the context and return, or this
+		// will time out waiting for the command.
+		timer := time.NewTimer(5 * time.Second)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-cmdChan:
+		}
+
 		if ctx.Err() == context.DeadlineExceeded {
 			tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", displayName, int(tc.timeout.idleTimeoutDuration.Seconds()))
 		} else {

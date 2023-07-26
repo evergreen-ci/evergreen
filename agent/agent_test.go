@@ -27,6 +27,10 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+func init() {
+	_ = command.RegisterCommand("command.mock", command.MockCommandFactory)
+}
+
 const defaultProjYml = `
 buildvariants:
 - name: some_build_variant
@@ -291,10 +295,10 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 const panicLog = "panic"
 
 func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
-	complete := make(chan string, 1)
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task that aborts before it even can run should system fail")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
@@ -306,14 +310,13 @@ func (s *AgentSuite) TestStartTaskIsPanicSafe() {
 	tc := &taskContext{
 		logger: s.tc.logger,
 	}
-	s.a.startTask(s.ctx, tc, nil)
+	status := s.a.startTask(s.ctx, tc)
 	s.NoError(tc.logger.Close())
+	s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
-func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
-	complete := make(chan string, 1)
-
+func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
@@ -321,17 +324,46 @@ func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
 	// result in system failure. Also, startTask should not block if there is
 	// no consumer running in parallel to pick up the complete status.
 	s.mockCommunicator.StartTaskShouldFail = true
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task should system-fail when it cannot start the task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+}
 
-	select {
-	case <-ctx.Done():
-		s.Fail("test context cancelled before startTask returned: %s", ctx.Err())
-	case status := <-complete:
-		s.Equal(evergreen.TaskSystemFailed, status)
+func (s *AgentSuite) TestStartTaskEventuallyExitsForCommandThatIgnoresAbort() {
+	s.setupRunTask(`
+pre:
+- command: command.mock
+  params:
+    sleep_seconds: 500
+`)
+
+	ctx, cancel := context.WithCancel(s.ctx)
+	go func() {
+		// Get past all the context checks until the command is actually
+		// running, then cancel the long-running command. Sleeping kinda sucks
+		// here, but eh?
+		time.Sleep(2 * time.Second)
+		cancel()
+	}()
+
+	cmd := model.PluginCommandConf{
+		Command: "command.mock",
+		Params: map[string]interface{}{
+			"sleep_seconds": 500,
+		},
 	}
+	cmds := []model.PluginCommandConf{cmd}
+
+	startAt := time.Now()
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+	s.Error(err)
+	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
+	cmdDuration := time.Since(startAt)
+
+	s.True(cmdDuration > 4*time.Second, "command should have only stopped when it received cancel")
+	s.True(cmdDuration < 500*time.Second, "command should not block if it's taking too long to stop")
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {

@@ -211,6 +211,12 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 			var cancel context.CancelFunc
 			var ictx context.Context
 			if c.Background {
+				// kim: NOTE: little dodgy to use background context to achieve
+				// background process, but it might be fine as long as the
+				// process exits before post. This and shell.exec are the only
+				// ones that ignore the context. This case is caught by
+				// killProcs eventually, which is probably okay given that it's
+				// a background process.
 				ictx, cancel = context.WithCancel(context.Background())
 			} else {
 				ictx = lctx
