@@ -760,14 +760,13 @@ information is not necessary.
 
 Parameters:
 
-| Name         | Type   | Description                                                                         |
-| ------------ | ------ | ----------------------------------------------------------------------------------- |
-| `file`       | string | Name of the JSON or YAML file containing the test results, see below for more info. |
-| `aws_key`    | string | Your AWS key (use expansions to keep this a secret).                                |
-| `aws_secret` | string | Your AWS secret (use expansions to keep this a secret).                             |
-| `region`     | string | AWS region of the bucket, defaults to us-east-1.                                    |
-| `bucket`     | string | The S3 bucket to use.                                                               |
-| `prefix`     | string | Prefix, if any, within the s3 bucket.                                               |
+-   `file`: the JSON or YAML file containing the test results, see
+    below for more info.
+-   `aws_key`: your AWS key (use expansions to keep this a secret)
+-   `aws_secret`: your AWS secret (use expansions to keep this a secret)
+-   `region`: AWS region of the bucket, defaults to us-east-1.
+-   `bucket`: the S3 bucket to use.
+-   `prefix`: prefix, if any, within the s3 bucket.
 
 Example dummy content of a test results JSON file:
 
