@@ -871,6 +871,7 @@ Example dummy content of a test results JSON file containing `test` objects:
     }
 ]
 ```
+### test
 
 Each `test` object holds data about a specific test and its
 subtests. It is represented by the
@@ -890,6 +891,8 @@ and contains these fields:
 should not populate it. It would be populated automatically by
 `perf.send`.
 
+### info
+
 Each `info` object holds metadata about the test configuration and
 execution. It is represented by the
 [`TestInfo` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#TestInfo),
@@ -905,6 +908,8 @@ and contains these fields:
 **Note:** Although the `TestInfo` struct includes the `parent` field,
 you should not populate it. It stores a subtest's parent test ID, and
 would be populated automatically by `perf.send`.
+
+### artifact
 
 Each `artifact` object allows you to upload and attach metadata to
 results files. It's frequently used to upload FTDC files representing
@@ -937,6 +942,8 @@ and contains these fields:
 | `events_histogram`        | boolean   | (Unused)                                                                                                                                                                                      |
 | `events_interval_summary` | boolean   | (Unused)                                                                                                                                                                                      |
 | `events_collapsed`        | boolean   | (Unused)                                                                                                                                                                                      |
+
+### metric
 
 Each `metric` object holds a computed summary statistic / metric for
 a test. It is represented by the
