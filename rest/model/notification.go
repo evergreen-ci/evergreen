@@ -172,7 +172,6 @@ func (f *APISlackAttachmentField) ToService() message.SlackAttachmentField {
 ///////////////////////////////////////////////////////////////////////
 
 type APIEmail struct {
-	From              *string             `json:"from"`
 	Recipients        []string            `json:"recipients"`
 	Subject           *string             `json:"subject"`
 	Body              *string             `json:"body"`
@@ -182,7 +181,6 @@ type APIEmail struct {
 
 // BuildFromService converts from service level message.Email to an APIEmail.
 func (n *APIEmail) BuildFromService(email message.Email) {
-	n.From = utility.ToStringPtr(email.From)
 	if email.Recipients != nil {
 		n.Recipients = email.Recipients
 	}
@@ -195,7 +193,6 @@ func (n *APIEmail) BuildFromService(email message.Email) {
 // ToService returns a service layer message.Email using the data from APIEmail.
 func (n *APIEmail) ToService() message.Email {
 	email := message.Email{}
-	email.From = utility.FromStringPtr(n.From)
 	email.Recipients = n.Recipients
 	email.Subject = utility.FromStringPtr(n.Subject)
 	email.Body = utility.FromStringPtr(n.Body)
