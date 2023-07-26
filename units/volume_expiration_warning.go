@@ -54,7 +54,7 @@ func NewVolumeExpirationWarningsJob(id string) amboy.Job {
 func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting service flags"))
 		return

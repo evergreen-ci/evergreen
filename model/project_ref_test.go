@@ -604,7 +604,7 @@ func TestAttachToRepo(t *testing.T) {
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	// No repo exists, but one should be created.
-	assert.NoError(t, pRef.AttachToRepo(u))
+	assert.NoError(t, pRef.AttachToRepo(ctx, u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
@@ -644,7 +644,7 @@ func TestAttachToRepo(t *testing.T) {
 		Enabled:          true,
 	}
 	assert.NoError(t, pRef.Insert())
-	assert.NoError(t, pRef.AttachToRepo(u))
+	assert.NoError(t, pRef.AttachToRepo(ctx, u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
@@ -667,10 +667,13 @@ func TestAttachToRepo(t *testing.T) {
 		Branch: "main",
 	}
 	assert.NoError(t, pRef.Insert())
-	assert.Error(t, pRef.AttachToRepo(u))
+	assert.Error(t, pRef.AttachToRepo(ctx, u))
 }
 
 func TestDetachFromRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
 		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
@@ -722,7 +725,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, aliases[0].Alias, projectAlias.Alias)
 
 			// reattach to repo to test without project patch aliases
-			assert.NoError(t, pRef.AttachToRepo(dbUser))
+			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
 			assert.True(t, pRef.UseRepoSettings())
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
@@ -809,7 +812,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, subs[0].Trigger, event.TriggerOutcome)
 
 			// reattach to repo to test without subscription
-			assert.NoError(t, pRef.AttachToRepo(dbUser))
+			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NoError(t, event.RemoveSubscription(projectSubscription.ID))
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 

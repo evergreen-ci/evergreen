@@ -181,7 +181,7 @@ func (j *githubStatusUpdateJob) preamble(ctx context.Context) error {
 		}
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
 	}

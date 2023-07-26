@@ -54,7 +54,7 @@ func NewSpawnhostExpirationWarningsJob(id string) amboy.Job {
 func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting service flags"))
 		return

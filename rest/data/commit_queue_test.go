@@ -366,6 +366,9 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 }
 
 func TestConcludeMerge(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(commitqueue.Collection))
 	projectID := "evergreen"
 	itemID := bson.NewObjectId()
@@ -380,7 +383,7 @@ func TestConcludeMerge(t *testing.T) {
 	}
 	require.NoError(t, commitqueue.InsertQueue(queue))
 
-	assert.NoError(t, ConcludeMerge(itemID.Hex(), "foo"))
+	assert.NoError(t, ConcludeMerge(ctx, itemID.Hex(), "foo"))
 
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)

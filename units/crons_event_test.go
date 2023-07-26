@@ -112,20 +112,17 @@ func (s *cronsEventSuite) SetupTest() {
 }
 
 func (s *cronsEventSuite) TestDegradedMode() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Reset to original flags after the test finishes.
-	originalFlags, err := evergreen.GetServiceFlags()
+	originalFlags, err := evergreen.GetServiceFlags(s.ctx)
 	s.Require().NoError(err)
 	defer func() {
-		s.NoError(originalFlags.Set(ctx))
+		s.NoError(originalFlags.Set(s.ctx))
 	}()
 
 	flags := evergreen.ServiceFlags{
 		EventProcessingDisabled: true,
 	}
-	s.NoError(flags.Set(ctx))
+	s.NoError(flags.Set(s.ctx))
 
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
@@ -188,7 +185,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 	}
 
 	// Reset to original flags after the test finishes.
-	originalFlags, err := evergreen.GetServiceFlags()
+	originalFlags, err := evergreen.GetServiceFlags(s.ctx)
 	s.Require().NoError(err)
 	defer func() {
 		s.NoError(originalFlags.Set(ctx))
@@ -309,7 +306,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 func (s *cronsEventSuite) TestDispatchUnprocessedNotifications() {
 	s.NoError(notification.InsertMany(s.n...))
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(s.ctx)
 	s.NoError(err)
 	origStats := s.env.LocalQueue().Stats(s.ctx)
 

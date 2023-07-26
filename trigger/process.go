@@ -85,7 +85,7 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 	return notifications, catcher.Resolve()
 }
 
-type projectProcessor func(ProcessorArgs) (*model.Version, error)
+type projectProcessor func(context.Context, ProcessorArgs) (*model.Version, error)
 
 type ProcessorArgs struct {
 	SourceVersion     *model.Version
@@ -100,7 +100,7 @@ type ProcessorArgs struct {
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
 // and checks if any downstream builds should be triggered, creating them if they should
-func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
+func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	switch e.EventType {
 	case event.TaskFinished:
 		t, err := task.FindOneId(e.ResourceId)
@@ -110,7 +110,7 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 		if t == nil {
 			return nil, errors.Errorf("task '%s' not found", e.ResourceId)
 		}
-		return triggerDownstreamProjectsForTask(t, e, processor)
+		return triggerDownstreamProjectsForTask(ctx, t, e, processor)
 	case event.BuildStateChange:
 		if e.ResourceType != event.ResourceTypeBuild {
 			return nil, nil
@@ -129,13 +129,13 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 		if b == nil {
 			return nil, errors.Errorf("build '%s' not found", e.ResourceId)
 		}
-		return triggerDownstreamProjectsForBuild(b, e, processor)
+		return triggerDownstreamProjectsForBuild(ctx, b, e, processor)
 	default:
 		return nil, nil
 	}
 }
 
-func triggerDownstreamProjectsForTask(t *task.Task, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
+func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	if t.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
@@ -203,7 +203,7 @@ projectLoop:
 				DefinitionID:      trigger.DefinitionID,
 				Alias:             trigger.Alias,
 			}
-			v, err := processor(args)
+			v, err := processor(ctx, args)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -218,7 +218,7 @@ projectLoop:
 	return versions, catcher.Resolve()
 }
 
-func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
+func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	if b.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
@@ -272,7 +272,7 @@ projectLoop:
 				DefinitionID:      trigger.DefinitionID,
 				Alias:             trigger.Alias,
 			}
-			v, err := processor(args)
+			v, err := processor(ctx, args)
 			if err != nil {
 				catcher.Add(err)
 				continue

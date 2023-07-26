@@ -24,7 +24,7 @@ func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (gh *cliVersion) Run(ctx context.Context) gimlet.Responder {
-	version, err := data.GetCLIUpdate()
+	version, err := data.GetCLIUpdate(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting CLI updates"))
 	}

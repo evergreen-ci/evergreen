@@ -68,13 +68,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting service flags"))
 		return

@@ -139,7 +139,7 @@ func TestCLIFetchSource(t *testing.T) {
 	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": task.Collection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.VersionCollection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": manifest.Collection})
-	require.NoError(t, evergreen.UpdateConfig(testConfig), ShouldBeNil)
+	require.NoError(t, evergreen.UpdateConfig(ctx, testConfig), ShouldBeNil)
 
 	Convey("with a task containing patches and modules", t, func() {
 		testSetup := setupCLITestHarness(ctx)
@@ -369,7 +369,7 @@ func TestCLIFunctions(t *testing.T) {
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
-	require.NoError(t, evergreen.UpdateConfig(testConfig), ShouldBeNil)
+	require.NoError(t, evergreen.UpdateConfig(ctx, testConfig), ShouldBeNil)
 
 	var patches []patch.Patch
 

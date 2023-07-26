@@ -37,10 +37,13 @@ func (s *repotrackerJobSuite) TestJob() {
 }
 
 func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	flags := evergreen.ServiceFlags{
 		RepotrackerDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(ctx, flags))
 
 	job := NewRepotrackerJob("1", "mci")
 	job.Run(context.Background())

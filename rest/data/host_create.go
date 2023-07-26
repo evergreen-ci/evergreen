@@ -136,7 +136,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 	}
 
 	for _, createHost := range createHostCmds {
-		err = createHost.Validate()
+		err = createHost.Validate(ctx)
 		if err != nil {
 			catcher.Add(err)
 			continue

@@ -134,7 +134,7 @@ type Environment interface {
 	ClientConfig() *ClientConfig
 
 	// SaveConfig persists the configuration settings.
-	SaveConfig() error
+	SaveConfig(context.Context) error
 
 	// GetSender provides a grip Sender configured with the environment's
 	// settings. These Grip senders must be used with Composers that specify
@@ -281,7 +281,7 @@ func (e *envState) initSettings(ctx context.Context, path string) error {
 				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
-			e.settings, err = BootstrapConfig(ctx)
+			e.settings, err = GetConfig(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting config settings from DB")
 			}
@@ -1031,7 +1031,7 @@ type WebHook struct {
 	Secret   string `mapstructure:"secret" bson:"secret" json:"secret" yaml:"secret"`
 }
 
-func (e *envState) SaveConfig() error {
+func (e *envState) SaveConfig(ctx context.Context) error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot persist to DB")
 	}
@@ -1066,7 +1066,7 @@ func (e *envState) SaveConfig() error {
 		}
 	}
 
-	return errors.WithStack(UpdateConfig(&copy))
+	return errors.WithStack(UpdateConfig(ctx, &copy))
 }
 
 func (e *envState) GetSender(key SenderKey) (send.Sender, error) {

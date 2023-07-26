@@ -67,7 +67,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return

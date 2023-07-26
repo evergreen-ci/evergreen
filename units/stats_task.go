@@ -51,10 +51,10 @@ func makeTaskStatsCollector() *taskStatsCollector {
 	return j
 }
 
-func (j *taskStatsCollector) Run(_ context.Context) {
+func (j *taskStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

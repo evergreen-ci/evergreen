@@ -75,7 +75,7 @@ func TestHostNextTask(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
-	originalServiceFlags, err := evergreen.GetServiceFlags()
+	originalServiceFlags, err := evergreen.GetServiceFlags(ctx)
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, originalServiceFlags.Set(ctx))
@@ -514,7 +514,7 @@ func TestHostNextTask(t *testing.T) {
 			}
 		},
 		"WithDegradedModeSet": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
-			originalServiceFlags, err := evergreen.GetServiceFlags()
+			originalServiceFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
 				// Reset to original service flags.

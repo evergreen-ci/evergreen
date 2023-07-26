@@ -32,7 +32,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 
 	for name, test := range map[string]func(t *testing.T, ref model.RepoRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.RepoRef) {
-			config, err := evergreen.GetConfig()
+			config, err := evergreen.GetConfig(ctx)
 			assert.NoError(t, err)
 			config.GithubOrgs = []string{ref.Owner}
 			assert.NoError(t, config.Set(ctx))
@@ -265,7 +265,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.ProjectRef) {
 			assert.Empty(t, ref.SpawnHostScriptPath)
-			config, err := evergreen.GetConfig()
+			config, err := evergreen.GetConfig(ctx)
 			assert.NoError(t, err)
 			config.GithubOrgs = []string{ref.Owner}
 			assert.NoError(t, config.Set(ctx))
