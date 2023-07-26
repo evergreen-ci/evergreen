@@ -233,7 +233,6 @@ func (s *EmailNotificationSuite) SetupSuite() {
 func (s *EmailNotificationSuite) TestParseValidJSON() {
 	ctx := context.Background()
 	json := []byte(`{
-		"from": "me",
 	"recipients": ["Tom", "Dick", "Harry"],
 	"subject": "This is the email's subject",
 	"body": "This is the email's body",
