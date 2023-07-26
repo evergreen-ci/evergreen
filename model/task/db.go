@@ -2545,8 +2545,10 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		GeneratedJSONAsStringKey: 0,
 	}
 
-	if len(opts.TaskNames) > 0 && opts.Variants[0] != "" {
-		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
+	// Filter on task name if it exists
+	nonEmptyTaskNames := utility.FilterSlice(opts.TaskNames, func(s string) bool { return s != "" })
+	if len(nonEmptyTaskNames) > 0 {
+		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
@@ -2559,7 +2561,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	// Filter on Build Variants matching on display name or variant name if it exists
-	if len(opts.Variants) > 0 && opts.Variants[0] != "" {
+	nonEmptyVariants := utility.FilterSlice(opts.Variants, func(s string) bool { return s != "" })
+	if len(nonEmptyVariants) > 0 {
 		// Allow searching by either variant name or variant display
 		variantsAsRegex := strings.Join(opts.Variants, "|")
 		match = bson.M{
