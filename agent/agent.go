@@ -772,14 +772,6 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 	}
 }
 
-func (a *Agent) wait(tc *taskContext, preAndMainComplete chan string) string {
-	// TODO (EVG-20283): this function will likely go away entirely. It's only
-	// being temporarily kept because startTask is still a goroutine.
-	status := <-preAndMainComplete
-	grip.Infof("Task complete: '%s'.", tc.task.ID)
-	return status
-}
-
 func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	tc.logger.Task().Info("Running task-timeout commands.")
 	start := time.Now()

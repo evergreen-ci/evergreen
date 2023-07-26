@@ -721,34 +721,6 @@ func (s *AgentSuite) TestOOMTracker() {
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
-func (s *AgentSuite) TestWaitCompleteSuccess() {
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskSucceeded:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.tc, complete)
-	s.Equal(evergreen.TaskSucceeded, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitCompleteFailure() {
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskFailed:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.tc, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
 func (s *AgentSuite) TestPrepareNextTask() {
 	var err error
 	nextTask := &apimodels.NextTaskResponse{}
