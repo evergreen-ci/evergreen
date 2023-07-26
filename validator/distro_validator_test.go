@@ -776,38 +776,74 @@ func TestValidateDistroSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for name, test := range map[string]func(t *testing.T, ctx context.Context){
-		"General section": func(t *testing.T, ctx context.Context) {
-			assert.NotNil(t, ValidateDistroSection(ctx, &distro.Distro{
-				Id:            "distro_id",
-				ContainerPool: "container_pool",
-				Provider:      evergreen.ProviderNameDocker,
-			},
-				&distro.Distro{
-					Id:      "distro_id",
-					Aliases: []string{"alias_1", "alias_2"},
-				},
-				distro.DistroSettingsGeneral))
+	config, err := evergreen.GetConfig(ctx)
+	assert.NoError(t, err)
+	config.Keys = map[string]string{"abc": "123"}
+	assert.NoError(t, config.Set(ctx))
+	defer func() {
+		config.Keys = map[string]string{}
+		assert.NoError(t, config.Set(ctx))
+	}()
 
-			assert.Nil(t, ValidateDistroSection(ctx, &distro.Distro{
-				Id:            "distro_id",
-				ContainerPool: "",
-				Provider:      evergreen.ProviderNameEc2Fleet,
-			},
+	for name, test := range map[string]func(t *testing.T, ctx context.Context, d distro.Distro){
+		"Catches errors introduced by changes": func(t *testing.T, ctx context.Context, d distro.Distro) {
+			// Assert initial distro is valid
+			assert.Nil(t, ValidateDistroChanges(ctx, &d, &distro.Distro{}))
+
+			assert.NotNil(t, ValidateDistroChanges(ctx, &d,
+				&distro.Distro{
+					Id:            "distro_id",
+					Aliases:       []string{"alias_1", "alias_2"},
+					ContainerPool: "foo",
+				}))
+		},
+		"Passes when changes introduce no errors": func(t *testing.T, ctx context.Context, d distro.Distro) {
+			// Assert initial distro is valid
+			assert.Nil(t, ValidateDistroChanges(ctx, &d, &distro.Distro{}))
+
+			assert.Nil(t, ValidateDistroChanges(ctx, &d,
 				&distro.Distro{
 					Id:                  "distro_id",
 					Aliases:             []string{"alias_1", "alias_2"},
 					DisableShallowClone: true,
 					Disabled:            true,
-				},
-				distro.DistroSettingsGeneral))
+				}))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
 
-			test(t, tctx)
+			assert.NoError(t, db.ClearCollections(distro.Collection))
+
+			d := distro.Distro{
+				Id:                 "distro",
+				Arch:               "linux_amd64",
+				AuthorizedKeysFile: "keys.txt",
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodNone,
+				},
+				CloneMethod: evergreen.CloneMethodLegacySSH,
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevised,
+				},
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionParallel,
+				},
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					Version: evergreen.HostAllocatorUtilization,
+				},
+				PlannerSettings: distro.PlannerSettings{
+					Version: evergreen.PlannerVersionTunable,
+				},
+				Provider: evergreen.ProviderNameStatic,
+				SSHKey:   "abc",
+				WorkDir:  "/tmp",
+				User:     "admin",
+			}
+			assert.NoError(t, d.Insert(tctx))
+
+			test(t, tctx, d)
 		})
 	}
 }

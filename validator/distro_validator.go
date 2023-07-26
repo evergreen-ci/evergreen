@@ -20,13 +20,6 @@ const (
 
 type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) ValidationErrors
 
-var validateSection = map[distro.DistroSettingsSection]([]distroValidator){
-	distro.DistroSettingsGeneral: []distroValidator{
-		ensureHasNonZeroID,
-		ensureHasNoUnauthorizedCharacters,
-	},
-}
-
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
@@ -563,25 +556,15 @@ func validateAliases(d *distro.Distro, allDistroAliases []string) ValidationErro
 	return validationErrs
 }
 
-// ValidateDistroSection validates that the incoming changes for a given section are valid.
-func ValidateDistroSection(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro, section distro.DistroSettingsSection) error {
-	settings := evergreen.GetEnvironment().Settings()
-	validationErrs := ValidationErrors{}
+// ValidateDistroChanges validates that the incoming changes are valid.
+func ValidateDistroChanges(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro) error {
+	settings, err := evergreen.GetConfig(ctx)
 
-	switch section {
-	case distro.DistroSettingsGeneral:
-		changes.ContainerPool = originalDistro.ContainerPool
-		changes.Provider = originalDistro.Provider
+	mergedDistro := distro.ApplyDistroChanges(*originalDistro, *changes)
 
-		_, allDistroAliases, err := getDistros(ctx)
-		if err != nil {
-			return errors.Wrap(err, "unable to fetch all distro aliases")
-		}
-		validationErrs = append(validationErrs, validateAliases(changes, allDistroAliases)...)
-	}
-
-	for _, v := range validateSection[section] {
-		validationErrs = append(validationErrs, v(ctx, changes, settings)...)
+	validationErrs, err := CheckDistro(ctx, &mergedDistro, settings, false)
+	if err != nil {
+		return errors.Wrap(err, "validating distro")
 	}
 
 	if len(validationErrs) > 0 {

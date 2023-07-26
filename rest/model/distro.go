@@ -68,6 +68,7 @@ type APIHostAllocatorSettings struct {
 	FeedbackRule           *string     `json:"feedback_rule"`
 	HostsOverallocatedRule *string     `json:"hosts_overallocated_rule"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
+	FutureHostFraction     float64     `json:"future_host_fraction"`
 }
 
 // BuildFromService converts from service level distro.HostAllocatorSettings to an APIHostAllocatorSettings
@@ -83,7 +84,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(settings distro.HostAllocato
 	s.RoundingRule = utility.ToStringPtr(settings.RoundingRule)
 	s.FeedbackRule = utility.ToStringPtr(settings.FeedbackRule)
 	s.HostsOverallocatedRule = utility.ToStringPtr(settings.HostsOverallocatedRule)
-
+	s.FutureHostFraction = settings.FutureHostFraction
 }
 
 // ToService returns a service layer distro.HostAllocatorSettings using the data from APIHostAllocatorSettings
@@ -100,6 +101,7 @@ func (s *APIHostAllocatorSettings) ToService() distro.HostAllocatorSettings {
 	settings.RoundingRule = utility.FromStringPtr(s.RoundingRule)
 	settings.FeedbackRule = utility.FromStringPtr(s.FeedbackRule)
 	settings.HostsOverallocatedRule = utility.FromStringPtr(s.HostsOverallocatedRule)
+	settings.FutureHostFraction = s.FutureHostFraction
 
 	return settings
 }

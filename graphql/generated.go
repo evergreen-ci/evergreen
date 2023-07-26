@@ -411,6 +411,7 @@ type ComplexityRoot struct {
 	HostAllocatorSettings struct {
 		AcceptableHostIdleTime func(childComplexity int) int
 		FeedbackRule           func(childComplexity int) int
+		FutureHostFraction     func(childComplexity int) int
 		HostsOverallocatedRule func(childComplexity int) int
 		MaximumHosts           func(childComplexity int) int
 		MinimumHosts           func(childComplexity int) int
@@ -3196,6 +3197,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.HostAllocatorSettings.FeedbackRule(childComplexity), true
+
+	case "HostAllocatorSettings.futureHostFraction":
+		if e.complexity.HostAllocatorSettings.FutureHostFraction == nil {
+			break
+		}
+
+		return e.complexity.HostAllocatorSettings.FutureHostFraction(childComplexity), true
 
 	case "HostAllocatorSettings.hostsOverallocatedRule":
 		if e.complexity.HostAllocatorSettings.HostsOverallocatedRule == nil {
@@ -15598,6 +15606,8 @@ func (ec *executionContext) fieldContext_Distro_hostAllocatorSettings(ctx contex
 				return ec.fieldContext_HostAllocatorSettings_acceptableHostIdleTime(ctx, field)
 			case "feedbackRule":
 				return ec.fieldContext_HostAllocatorSettings_feedbackRule(ctx, field)
+			case "futureHostFraction":
+				return ec.fieldContext_HostAllocatorSettings_futureHostFraction(ctx, field)
 			case "hostsOverallocatedRule":
 				return ec.fieldContext_HostAllocatorSettings_hostsOverallocatedRule(ctx, field)
 			case "maximumHosts":
@@ -20548,6 +20558,47 @@ func (ec *executionContext) fieldContext_HostAllocatorSettings_feedbackRule(ctx 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HostAllocatorSettings_futureHostFraction(ctx context.Context, field graphql.CollectedField, obj *model.APIHostAllocatorSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostAllocatorSettings_futureHostFraction(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FutureHostFraction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalOFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_HostAllocatorSettings_futureHostFraction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HostAllocatorSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65384,7 +65435,7 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"acceptableHostIdleTime", "feedbackRule", "hostsOverallocatedRule", "maximumHosts", "minimumHosts", "roundingRule", "version"}
+	fieldsInOrder := [...]string{"acceptableHostIdleTime", "feedbackRule", "futureHostFraction", "hostsOverallocatedRule", "maximumHosts", "minimumHosts", "roundingRule", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65409,6 +65460,15 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 				return it, err
 			}
 			it.FeedbackRule = data
+		case "futureHostFraction":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("futureHostFraction"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FutureHostFraction = data
 		case "hostsOverallocatedRule":
 			var err error
 
@@ -71346,6 +71406,10 @@ func (ec *executionContext) _HostAllocatorSettings(ctx context.Context, sel ast.
 		case "feedbackRule":
 
 			out.Values[i] = ec._HostAllocatorSettings_feedbackRule(ctx, field, obj)
+
+		case "futureHostFraction":
+
+			out.Values[i] = ec._HostAllocatorSettings_futureHostFraction(ctx, field, obj)
 
 		case "hostsOverallocatedRule":
 

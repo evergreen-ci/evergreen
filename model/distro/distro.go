@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -906,6 +908,61 @@ func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *D
 					NoteKey:                changes.Note,
 				},
 			})
+	case DistroSettingsProvider:
+		err = db.Update(Collection,
+			bson.M{IdKey: distroID},
+			bson.M{
+
+				"$set": bson.M{
+					ProviderKey:             changes.Provider,
+					ProviderSettingsListKey: changes.ProviderSettingsList,
+				},
+			})
+
+	case DistroSettingsTask:
+		err = db.Update(Collection,
+			bson.M{IdKey: distroID},
+			bson.M{
+
+				"$set": bson.M{
+					DispatcherSettingsKey: changes.DispatcherSettings,
+					PlannerSettingsKey:    changes.PlannerSettings,
+					FinderSettingsKey:     changes.FinderSettings,
+				},
+			})
+	case DistroSettingsHost:
+		err = db.Update(Collection,
+			bson.M{IdKey: distroID},
+			bson.M{
+
+				"$set": bson.M{
+					ArchKey:                  changes.Arch,
+					AuthorizedKeysFileKey:    changes.AuthorizedKeysFile,
+					BootstrapSettingsKey:     changes.BootstrapSettings,
+					HomeVolumeSettingsKey:    changes.HomeVolumeSettings,
+					HostAllocatorSettingsKey: changes.HostAllocatorSettings,
+					IceCreamSettingsKey:      changes.IceCreamSettings,
+					IsVirtualWorkstationKey:  changes.IsVirtualWorkstation,
+					SetupKey:                 changes.Setup,
+					SetupAsSudoKey:           changes.SetupAsSudo,
+					SpawnAllowedKey:          changes.SpawnAllowed,
+					SSHKeyKey:                changes.SSHKey,
+					SSHOptionsKey:            changes.SSHOptions,
+					UserKey:                  changes.User,
+					WorkDirKey:               changes.WorkDir,
+				},
+			})
+	case DistroSettingsProject:
+		err = db.Update(Collection,
+			bson.M{IdKey: distroID},
+			bson.M{
+
+				"$set": bson.M{
+					CloneMethodKey:   changes.CloneMethod,
+					ExpansionsKey:    changes.Expansions,
+					ValidProjectsKey: changes.ValidProjects,
+				},
+			})
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("saving %s section", section))
@@ -922,4 +979,13 @@ func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *D
 	event.LogDistroModified(distroID, userID, updatedDistro.NewDistroData())
 
 	return updatedDistro, nil
+}
+
+// ApplyDistroChanges merges changes made to a distro with the existing distro to return a complete updated distro object.
+func ApplyDistroChanges(current Distro, changes Distro) Distro {
+	reflectOldSettings := reflect.ValueOf(&current).Elem()
+	reflectNewSettings := reflect.ValueOf(&changes).Elem()
+	util.RecursivelySetUndefinedFields(reflectNewSettings, reflectOldSettings)
+
+	return changes
 }

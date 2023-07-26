@@ -188,7 +188,7 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", opts.DistroID))
 	}
 
-	if err = validator.ValidateDistroSection(ctx, originalDistro, distroChanges, opts.Section); err != nil {
+	if err = validator.ValidateDistroChanges(ctx, originalDistro, distroChanges); err != nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", opts.DistroID, err.Error()))
 	}
 

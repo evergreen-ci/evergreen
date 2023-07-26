@@ -123,6 +123,7 @@ input HomeVolumeSettingsInput {
 input HostAllocatorSettingsInput {
   acceptableHostIdleTime: Duration
   feedbackRule: String
+  futureHostFraction: Float
   hostsOverallocatedRule: String
   maximumHosts: Int
   minimumHosts: Int
@@ -256,6 +257,7 @@ type HomeVolumeSettings {
 type HostAllocatorSettings {
   acceptableHostIdleTime: Duration
   feedbackRule: String
+  futureHostFraction: Float
   hostsOverallocatedRule: String
   maximumHosts: Int!
   minimumHosts: Int!
