@@ -574,23 +574,15 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
-	// preAndMainComplete := make(chan string, 2)
-	// status := a.startTask(preAndMainCtx, tc, preAndMainComplete)
 	status := a.startTask(preAndMainCtx, tc)
-
-	// kim: TODO: get rid of wait entirely since we're already implicitly
-	// waiting for startTask to return
-	// status := a.wait(tc, preAndMainComplete)
 
 	return a.handleTaskResponse(tskCtx, tc, status, "")
 }
 
 // startTask performs initial task setup and then runs the pre and main blocks
-// for the task. This method must return the status of the task after pre and
-// main have run. Also note that it's critical that all operations in this
-// method must respect the context. If the context errors, this must eventually
-// return.
-// func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) status {
+// for the task. This method returns the status of the task after pre and main
+// have run. Also note that it's critical that all operations in this method
+// must respect the context. If the context errors, this must eventually return.
 func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) {
 	defer func() {
 		op := "running task pre and main blocks"
@@ -600,27 +592,23 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 		}
 		_ = a.logPanic(tc.logger, pErr, nil, op)
 		status = evergreen.TaskSystemFailed
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 	}()
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return evergreen.TaskSystemFailed
 	}
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution before setup: %s", ctx.Err())
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
-		return
+		return evergreen.TaskSystemFailed
 	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution during setup: %s", ctx.Err())
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return evergreen.TaskSystemFailed
 	}
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
@@ -629,7 +617,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution: %s", ctx.Err())
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return evergreen.TaskSystemFailed
 	}
 	hostname, err := os.Hostname()
@@ -656,7 +643,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 
 	if innerCtx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return evergreen.TaskSystemFailed
 	}
 
@@ -664,15 +650,12 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 	tc.logger.Execution().Info("Reporting task started.")
 	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
 		return evergreen.TaskSystemFailed
 	}
 
 	a.killProcs(innerCtx, tc, false, "task is starting")
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
-		// return
 		return evergreen.TaskFailed
 	}
 
@@ -685,26 +668,11 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 
 	if err = a.runTaskCommands(innerCtx, tc); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
-		// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
 		return evergreen.TaskFailed
 	}
 
-	// trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSucceeded)
 	return evergreen.TaskSucceeded
 }
-
-// trySendTaskComplete attempts to send a task status to the given channel. This
-// is a non-blocking operation - if it tries to send the task status but the
-// channel is already blocked (either because it is full or there is no consumer
-// to receive the result), it will log an error and continue.
-// kim: TODO: remove forever
-// func trySendTaskComplete(logger grip.Journaler, complete chan<- string, status string) {
-//     select {
-//     case complete <- status:
-//     default:
-//         logger.Errorf("Tried sending task status '%s', but complete channel was blocked.", status)
-//     }
-// }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Task().Info("Running pre-task commands.")
@@ -845,8 +813,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
-		// kim: NOTE: before this starts, startTask commands have to have
-		// stopped.
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
@@ -1117,7 +1083,7 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 	}
 
 	msg := message.Fields{
-		"message":   "programmatic error: agent panicked",
+		"message":   "programmatic error: agent hit panic",
 		"operation": op,
 		"stack":     message.NewStack(2, "").Raw(),
 	}
@@ -1128,7 +1094,7 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 	grip.Alert(message.WrapError(catcher.Resolve(), msg))
 	if logger != nil && !logger.Closed() {
 		logMsg := message.Fields{
-			"message":   "programmatic error: Evergreen agent hit a runtime panic",
+			"message":   "programmatic error: Evergreen agent hit panic",
 			"operation": op,
 		}
 		logger.Execution().Error(logMsg)

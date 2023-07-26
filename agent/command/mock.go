@@ -24,7 +24,6 @@ func MockCommandFactory() Command { return &mockCommand{} }
 // no-op.
 func (c *mockCommand) Execute(context.Context, client.Communicator, client.LoggerProducer, *internal.TaskConfig) error {
 	if c.SleepSeconds != 0 {
-		// kim: NOTE: this ignores the context, which is good for the test
 		time.Sleep(time.Duration(c.SleepSeconds) * time.Second)
 	}
 	return nil

@@ -173,12 +173,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			cmdChan <- recovery.HandlePanicWithError(recover(), nil,
 				fmt.Sprintf("running command %s", displayName))
 		}()
-		// kim: NOTE: this is the one line that actually runs the command.
-
-		// kim: NOTE: should double check that command implementations generally
-		// respect context cancellation. This is the true, minus background
-		// processes which possibly need special consideration.
-
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
 	select {

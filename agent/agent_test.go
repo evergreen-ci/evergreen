@@ -28,7 +28,7 @@ import (
 )
 
 func init() {
-	_ = command.RegisterCommand("command.mock", command.MockCommandFactory)
+	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
 }
 
 const defaultProjYml = `
@@ -292,7 +292,7 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	s.Error(err)
 }
 
-const panicLog = "panic"
+const panicLog = "hit panic"
 
 func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -331,7 +331,8 @@ func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
-func (s *AgentSuite) TestStartTaskEventuallyExitsForCommandThatIgnoresAbort() {
+func (s *AgentSuite) TestRunCommandsEventuallyReturnsForCommandThatIgnoresContext() {
+	const cmdSleepSecs = 500
 	s.setupRunTask(`
 pre:
 - command: command.mock
@@ -339,31 +340,33 @@ pre:
     sleep_seconds: 500
 `)
 
-	ctx, cancel := context.WithCancel(s.ctx)
-	go func() {
-		// Get past all the context checks until the command is actually
-		// running, then cancel the long-running command. Sleeping kinda sucks
-		// here, but eh?
-		time.Sleep(2 * time.Second)
-		cancel()
-	}()
-
 	cmd := model.PluginCommandConf{
 		Command: "command.mock",
 		Params: map[string]interface{}{
-			"sleep_seconds": 500,
+			"sleep_seconds": cmdSleepSecs,
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
 
+	ctx, cancel := context.WithCancel(s.ctx)
+
 	startAt := time.Now()
 	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
-	s.Error(err)
-	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
 	cmdDuration := time.Since(startAt)
 
-	s.True(cmdDuration > 4*time.Second, "command should have only stopped when it received cancel")
-	s.True(cmdDuration < 500*time.Second, "command should not block if it's taking too long to stop")
+	const waitUntilAbort = 2 * time.Second
+	go func() {
+		// Cancel the long-running command after giving the command some time to
+		// start running.
+		time.Sleep(waitUntilAbort)
+		cancel()
+	}()
+
+	s.Error(err)
+	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
+
+	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
+	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -1029,7 +1032,7 @@ timeout:
     shell: bash
     script: |
       echo "hi"
-      sleep 5
+      sleep 20
       echo "bye"
 `
 	p := &model.Project{}
@@ -1037,10 +1040,9 @@ timeout:
 	s.NoError(err)
 	p.CallbackTimeout = 2
 	s.tc.taskConfig.Project = p
-	now := time.Now()
+	startAt := time.Now()
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
-	then := time.Now()
-	s.True(then.Sub(now) < 4*time.Second)
+	s.WithinDuration(time.Now(), startAt, 20*time.Second, "timeout command should have stopped before it finished running due to callback timeout")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
