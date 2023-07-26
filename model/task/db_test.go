@@ -2,6 +2,8 @@ package task
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -1093,6 +1095,50 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	assert.NotNil(t, tasks[0].BaseTask)
 	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
 	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
+}
+
+func TestGetTasksByVersionErrorHandling(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	// Generate 40000 tasks that average 5kb each in size. This will result in over 200MB of data.
+	// This is a test to ensure we can handle the 100mb memory limitations present in the $facet stage of our query when querying for versions with a large amount of tasks.
+	// See https://jira.mongodb.org/browse/SERVER-59837
+	fiveKBString := strings.Repeat("a", 1024*5)
+	task := Task{
+		Version:             "v1",
+		BuildVariant:        "bv",
+		DisplayName:         "displayName",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            fiveKBString,
+		DisplayTaskId:       utility.ToStringPtr(""),
+	}
+
+	for i := 0; i < 40; i++ {
+		tasksToInsert := []interface{}{}
+		for j := 0; j < 1000; j++ {
+			task.Id = fmt.Sprintf("t_%d_%d", i, j)
+			task.BuildVariant = fmt.Sprintf("bv_%d", j)
+			tasksToInsert = append(tasksToInsert, task)
+		}
+		assert.NoError(t, db.InsertMany(Collection, tasksToInsert...))
+	}
+	// Normal Patch builds
+	opts := GetTasksByVersionOptions{}
+	ctx := context.TODO()
+	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 40000, count)
+	assert.Equal(t, 40000, len(tasks))
+
+	opts.Limit = 10
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 40000, count)
+	assert.Equal(t, 10, len(tasks))
+
 }
 
 func TestGetTaskStatusesByVersion(t *testing.T) {

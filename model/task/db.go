@@ -335,6 +335,38 @@ var (
 		{"$unwind": "$tasks"},
 		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
 	}
+
+	// AddAnnotationsSlowLookup adds the annotations to the task document. This is a slower version of AddAnnotations that does not use a facet and does not run into the 104mb pipeline stage limit.
+	AddAnnotationsSlowLookup = []bson.M{
+		{
+			"$lookup": bson.M{
+				"from": annotations.Collection,
+				"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+				"pipeline": []bson.M{
+					{
+						"$match": bson.M{
+							"$expr": bson.M{
+								"$and": []bson.M{
+									{
+										"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+									},
+									{
+										"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+									},
+									{
+										"$ne": []interface{}{
+											bson.M{
+												"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+											}, 0,
+										},
+									},
+								},
+							},
+						}}},
+				"as": "annotation_docs",
+			},
+		},
+	}
 )
 
 var StatusFields = []string{
@@ -2112,7 +2144,12 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+
 	if err != nil {
+		if db.IsErrorCode(err, db.FACET_PIPELINE_STAGE_TOO_LARGE_CODE) {
+			opts.UseSlowAnnotationsLookup = true
+			return GetTasksByVersion(ctx, versionID, opts)
+		}
 		return nil, 0, err
 	}
 
@@ -2528,6 +2565,7 @@ type GetTasksByVersionOptions struct {
 	IncludeExecutionTasks      bool
 	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
 	BaseVersionID              string
+	UseSlowAnnotationsLookup   bool // In some cases, where there are many tasks, we can hit the 104mb limit on the aggregation pipeline. This flag allows us to use a slower lookup method to avoid this limit.
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
@@ -2582,7 +2620,11 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	pipeline = append(pipeline, AddAnnotations...)
+	if opts.UseSlowAnnotationsLookup {
+		pipeline = append(pipeline, AddAnnotationsSlowLookup...)
+	} else {
+		pipeline = append(pipeline, AddAnnotations...)
+	}
 	pipeline = append(pipeline,
 		// Add a field for the display status of each task
 		addDisplayStatus,
