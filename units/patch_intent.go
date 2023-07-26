@@ -102,7 +102,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	patchDoc := j.intent.NewPatch()
 
 	// set owner and repo for child patches
-	if j.IntentType == patch.TriggerIntentType {
+	if j.IntentType == patch.TriggerIntentType || j.IntentType == patch.CliIntentType {
 		if patchDoc.Project == "" {
 			j.AddError(errors.New("cannot search for an empty project"))
 			return
