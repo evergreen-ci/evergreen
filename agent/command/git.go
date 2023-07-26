@@ -305,7 +305,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 
 	// if there's a PR checkout the ref containing the changes
 	if isGitHub(conf) {
-		var ref, localBranchName, remoteBranchName, commitToTest string
+		var suffix, localBranchName, remoteBranchName, commitToTest string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			// If opts indicates this is the first attempt (of five), start by trying the patch's
 			// cached MergeCommitSHA from when it was created and skip the agent route.
@@ -321,18 +321,18 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 					logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
 				}
 			}
-			ref = "merge"
+			suffix = "/merge"
 			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
 		} else if conf.Task.Requester == evergreen.GithubPRRequester {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
-			ref = "head"
+			suffix = "/head"
 			commitToTest = conf.GithubPatchData.HeadHash
 			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
 		} else if conf.Task.Requester == evergreen.GithubMergeRequester {
-			ref = "head"
+			suffix = "" // redudant, included for clarity
 			commitToTest = conf.GithubMergeData.HeadSHA
 			localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
 			// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
@@ -340,7 +340,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 		}
 		if commitToTest != "" {
 			gitCommands = append(gitCommands, []string{
-				fmt.Sprintf(`git fetch origin "%s/%s:%s"`, remoteBranchName, ref, localBranchName),
+				fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
 				fmt.Sprintf(`git checkout "%s"`, localBranchName),
 				fmt.Sprintf("git reset --hard %s", commitToTest),
 			}...)
