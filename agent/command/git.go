@@ -332,7 +332,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
 		} else if conf.Task.Requester == evergreen.GithubMergeRequester {
-			suffix = "" // redudant, included for clarity
+			suffix = "" // redundant, included for clarity
 			commitToTest = conf.GithubMergeData.HeadSHA
 			localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
 			// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
