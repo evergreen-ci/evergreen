@@ -18,6 +18,27 @@
           }
         }
       }
+    },
+    {
+      "query_file": "provider_section.graphql",
+      "result": {
+        "data": {
+          "saveDistroSection": {
+            "distro": {
+              "name": "rhel71-power8-large",
+              "provider": "docker",
+              "provider_settings_list": [
+                {
+                  "ami": "who-ami",
+                  "instance_type": "m4.4xlarge",
+                  "security_group_ids": ["1"]
+                }
+              ]
+            },
+            "hostCount": 0
+          }
+        }
+      }
     }
   ]
 }

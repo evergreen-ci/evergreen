@@ -1,0 +1,27 @@
+mutation {
+    saveDistroSection(
+      opts: {
+        distroId: "rhel71-power8-large"
+        changes: {
+          provider: "ec2-ondemand",
+          providerSettingsList: [
+            {
+              ami: "who-ami",
+              instance_type: "m4.4xlarge",
+              security_group_ids: ["1"]
+            }
+          ]
+        },
+        section: PROVIDER,
+        onSave: NONE
+      }
+    ) 
+    {
+      distro {
+        name
+        provider
+        providerSettingsList
+      }
+      hostCount
+    }
+}
