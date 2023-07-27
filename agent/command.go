@@ -42,9 +42,6 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 	options runCommandsOptions, block string) (err error) {
 
 	defer func() {
-		// kim: TODO: see if we can remove this recovery and move it to outer
-		// blocks so we can system fail. Alternatively, set the command failure
-		// type, which is a little weird solution.
 		op := fmt.Sprintf("running commands for block '%s'", block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
 		if pErr == nil {
@@ -178,25 +175,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			if pErr == nil {
 				return
 			}
-
 			_ = a.logPanic(tc.logger, pErr, nil, op)
 
-			// kim: TODO: check if this is reasonable or not, the command did
-			// panic after all.
-
-			// The command panicked, which is a bug, so the task should
-			// system-fail on this command, which is achieved by setting the
-			// command type to system.
-			tc.logger.Task().Error("Command panicked during runtime, marking command as system failed.")
-			cmd := tc.getCurrentCommand()
-			cmd.SetType(evergreen.CommandTypeSystem)
-			tc.setCurrentCommand(cmd)
-
 			cmdChan <- pErr
-
 		}()
-		// kim: TODO: test what happens if you put a panic in the command, see
-		// if it propagates to failed command.
 
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
