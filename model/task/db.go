@@ -2335,6 +2335,11 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
+			opts.UseSlowAnnotationsLookup = true
+			return GetTaskStatsByVersion(ctx, versionID, opts)
+		}
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	if err := cursor.All(ctx, &taskStats); err != nil {
@@ -2439,6 +2444,11 @@ func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts Ge
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
+			opts.UseSlowAnnotationsLookup = true
+			return GetGroupedTaskStatsByVersion(ctx, versionID, opts)
+		}
 		return nil, errors.Wrap(err, "aggregating task stats")
 	}
 	err = cursor.All(ctx, &result)
@@ -2523,6 +2533,7 @@ type HasMatchingTasksOptions struct {
 	Variants                   []string
 	Statuses                   []string
 	IncludeNeverActivatedTasks bool
+	UseSlowAnnotationsLookup   bool
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
@@ -2533,6 +2544,7 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 		Variants:                   opts.Variants,
 		Statuses:                   opts.Statuses,
 		IncludeNeverActivatedTasks: !opts.IncludeNeverActivatedTasks,
+		UseSlowAnnotationsLookup:   opts.UseSlowAnnotationsLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, options)
 	if err != nil {
@@ -2542,6 +2554,11 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
+			opts.UseSlowAnnotationsLookup = true
+			return HasMatchingTasks(ctx, versionID, opts)
+		}
 		return false, err
 	}
 
