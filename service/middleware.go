@@ -127,6 +127,7 @@ func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.H
 			flags, err := evergreen.GetServiceFlags(r.Context())
 			if err != nil {
 				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+				return
 			}
 			if !flags.LegacyUIPublicAccessDisabled {
 				onSuccess(w, r)

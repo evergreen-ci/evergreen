@@ -687,7 +687,6 @@ func (s *AgentSuite) TestOOMTracker() {
 }
 
 func (s *AgentSuite) TestWaitCompleteSuccess() {
-	heartbeat := make(chan string, 1)
 	complete := make(chan string, 1)
 	go func() {
 		select {
@@ -696,13 +695,12 @@ func (s *AgentSuite) TestWaitCompleteSuccess() {
 		}
 	}()
 	s.tc.project = &model.Project{}
-	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(s.tc, complete)
 	s.Equal(evergreen.TaskSucceeded, status)
 	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentSuite) TestWaitCompleteFailure() {
-	heartbeat := make(chan string, 1)
 	complete := make(chan string, 1)
 	go func() {
 		select {
@@ -711,53 +709,7 @@ func (s *AgentSuite) TestWaitCompleteFailure() {
 		}
 	}()
 	s.tc.project = &model.Project{}
-	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitIdleTimeout() {
-	var err error
-	s.tc = &taskContext{
-		task: client.TaskData{
-			ID:     "task_id",
-			Secret: "task_secret",
-		},
-		taskConfig: &internal.TaskConfig{
-			BuildVariant: &model.BuildVariant{
-				Name: "buildvariant_id",
-			},
-			Task: &task.Task{
-				Id: "task_id",
-			},
-			Project: &model.Project{
-				Timeout: &model.YAMLCommandSet{
-					SingleCommand: &model.PluginCommandConf{
-						Command: "shell.exec",
-						Params: map[string]interface{}{
-							"script": "echo hi",
-						},
-					},
-				},
-			},
-		},
-		oomTracker: &mock.OOMTracker{},
-		project:    &model.Project{},
-	}
-
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
-	s.NoError(err)
-	factory, ok := command.GetCommandFactory("setup.initial")
-	s.True(ok)
-	s.tc.setCurrentCommand(factory())
-
-	heartbeat := make(chan string, 1)
-	complete := make(chan string, 1)
-	var idleTimeoutCtx context.Context
-	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(s.ctx)
-	idleTimeoutCancel()
-
-	status := s.a.wait(s.ctx, idleTimeoutCtx, s.tc, heartbeat, complete)
+	status := s.a.wait(s.tc, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
 }

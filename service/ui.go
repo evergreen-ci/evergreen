@@ -212,6 +212,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 			"url":     r.URL,
 			"request": gimlet.GetRequestID(r.Context()),
 		}))
+		return ViewData{}
 	}
 
 	if u, ok := userCtx.(*user.DBUser); ok {

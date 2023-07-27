@@ -100,10 +100,21 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	}
 
 	patchDoc := j.intent.NewPatch()
-	if patchDoc.GithubPatchData.BaseOwner == "" || patchDoc.GithubPatchData.BaseRepo == "" {
+
+	// set owner and repo for child patches
+	if j.IntentType == patch.TriggerIntentType || j.IntentType == patch.CliIntentType {
+		if patchDoc.Project == "" {
+			j.AddError(errors.New("cannot search for an empty project"))
+			return
+		}
 		p, err := model.FindBranchProjectRef(patchDoc.Project)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
+			return
+		}
+		if p == nil {
+			j.AddError(errors.Errorf("project '%s' not found", patchDoc.Project))
+			return
 		}
 		patchDoc.GithubPatchData.BaseOwner = p.Owner
 		patchDoc.GithubPatchData.BaseRepo = p.Repo
@@ -1179,13 +1190,27 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
-	update := NewGithubStatusUpdateJobForProcessingError(
-		evergreenContext,
-		patchDoc.GithubPatchData.BaseOwner,
-		patchDoc.GithubPatchData.BaseRepo,
-		patchDoc.GithubPatchData.HeadHash,
-		j.gitHubError,
-	)
+	var update amboy.Job
+	if j.IntentType == patch.GithubIntentType {
+		update = NewGithubStatusUpdateJobForProcessingError(
+			evergreenContext,
+			patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo,
+			patchDoc.GithubPatchData.HeadHash,
+			j.gitHubError,
+		)
+	} else if j.IntentType == patch.GithubMergeIntentType {
+		update = NewGithubStatusUpdateJobForProcessingError(
+			evergreenContext,
+			patchDoc.GithubMergeData.Org,
+			patchDoc.GithubMergeData.Repo,
+			patchDoc.GithubMergeData.HeadSHA,
+			j.gitHubError,
+		)
+	} else {
+		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
+		return
+	}
 	update.Run(ctx)
 
 	j.AddError(update.Error())
