@@ -2191,13 +2191,14 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 }
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
-func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+func GetTaskStatusesByVersion(ctx context.Context, versionID string, useSlowAnnotationLookup bool) ([]string, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
 		FieldsToProject:            []string{DisplayStatusKey},
 		IncludeNeverActivatedTasks: true,
 		IncludeExecutionTasks:      false,
+		UseSlowAnnotationsLookup:   useSlowAnnotationLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 
@@ -2237,6 +2238,10 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, 
 	err = cursor.All(ctx, &results)
 
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !useSlowAnnotationLookup {
+			return GetTaskStatusesByVersion(ctx, versionID, true)
+		}
 		return nil, err
 	}
 	if len(results) == 0 {

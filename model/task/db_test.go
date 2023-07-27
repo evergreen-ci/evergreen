@@ -1192,7 +1192,7 @@ func TestGetTaskStatusesByVersion(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
 	ctx := context.TODO()
-	tasks, err := GetTaskStatusesByVersion(ctx, "v1")
+	tasks, err := GetTaskStatusesByVersion(ctx, "v1", false)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 4)
 	assert.Equal(t, []string{evergreen.TaskFailed, evergreen.TaskSetupFailed, evergreen.TaskStarted, evergreen.TaskSucceeded}, tasks)
