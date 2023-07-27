@@ -344,6 +344,7 @@ type ProcessNextResponse struct {
 	tc               *taskContext
 }
 
+// ProcessNextTask takes in the NextTaskResponse and processes it.
 func (a *Agent) ProcessNextTask(nt *apimodels.NextTaskResponse, ctx context.Context, tc *taskContext, needPostGroup bool) (ProcessNextResponse, error) {
 	if nt.ShouldExit {
 		grip.Notice("Next task response indicates agent should exit.")
