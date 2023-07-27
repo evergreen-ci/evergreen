@@ -40,7 +40,11 @@ type runCommandsOptions struct {
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
 func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
 	options runCommandsOptions, block string) (err error) {
+
 	defer func() {
+		// kim: TODO: see if we can remove this recovery and move it to outer
+		// blocks so we can system fail. Alternatively, set the command failure
+		// type, which is a little weird solution.
 		op := fmt.Sprintf("running commands for block '%s'", block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
 		if pErr == nil {
@@ -169,10 +173,27 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	cmdChan := make(chan error, 1)
 	go func() {
 		defer func() {
-			// this channel will get read from twice even though we only send once, hence why it's buffered
-			cmdChan <- recovery.HandlePanicWithError(recover(), nil,
+			panicErr := recovery.HandlePanicWithError(recover(), nil,
 				fmt.Sprintf("running command %s", displayName))
+			if panicErr == nil {
+				return
+			}
+
+			// kim: TODO: check if this is reasonable or not, the command did
+			// panic after all.
+
+			// The command panicked, which is a bug, so the task should
+			// system-fail on this command.
+			cmd := tc.getCurrentCommand()
+			cmd.SetType(evergreen.CommandTypeSystem)
+			tc.setCurrentCommand(cmd)
+
+			cmdChan <- panicErr
+
 		}()
+		// kim: TODO: test what happens if you put a panic in the command, see
+		// if it propagates to failed command.
+
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
 	select {
