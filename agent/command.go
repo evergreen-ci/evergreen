@@ -162,10 +162,13 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	a.comm.UpdateLastMessageTime()
 
 	start := time.Now()
-	// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
-	// the process has called subprocesses. It will wait until a subprocess
-	// finishes, instead of returning immediately when the context is canceled.
-	// We therefore check both if the context is cancelled and if Wait() has finished.
+	// This method must return soon after the context errors (e.g. due to
+	// aborting the task). Even though commands ought to respect the context and
+	// finish up quickly when the context errors, we cannot guarantee that every
+	// command implementation will respect the context or will finish in a
+	// timely manner. Therefore, just in case the command hangs or is slow, run
+	// the command in a goroutine so it not stop the task from making forward
+	// progress.
 	cmdChan := make(chan error, 1)
 	go func() {
 		defer func() {
