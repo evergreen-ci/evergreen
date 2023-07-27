@@ -31,6 +31,7 @@ func IsDocumentLimit(err error) bool {
 	return strings.Contains(errors.Cause(err).Error(), "an inserted document is too large")
 }
 
+// IsErrorCode checks if the error is a mongo error with the given error code.
 func IsErrorCode(err error, errorCode int) bool {
 	var mongoError mongo.CommandError
 	if errors.As(err, &mongoError) && mongoError.HasErrorCode(errorCode) {
@@ -41,4 +42,6 @@ func IsErrorCode(err error, errorCode int) bool {
 
 // ErrorCode constants for mongo errors
 
-const FACET_PIPELINE_STAGE_TOO_LARGE_CODE = 4031700 // https://github.com/mongodb/mongo/blob/a1732172ed5d66d98582ea1059c0ede9d8cd5065/src/mongo/db/pipeline/document_source_facet.cpp#L165
+// FacetPipelineStageTooLargeCode is the error code for when a facet pipeline stage is too large.
+// https://github.com/mongodb/mongo/blob/a1732172ed5d66d98582ea1059c0ede9d8cd5065/src/mongo/db/pipeline/document_source_facet.cpp#L165
+const FacetPipelineStageTooLargeCode = 4031700 //

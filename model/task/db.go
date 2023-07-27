@@ -2147,7 +2147,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 	if err != nil {
 		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FACET_PIPELINE_STAGE_TOO_LARGE_CODE) {
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) {
 			opts.UseSlowAnnotationsLookup = true
 			return GetTasksByVersion(ctx, versionID, opts)
 		}
