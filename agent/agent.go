@@ -1121,7 +1121,7 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 			"message":   "programmatic error: Evergreen agent hit a runtime panic",
 			"operation": op,
 		}
-		logger.Execution().Error(logMsg)
+		logger.Task().Alert(logMsg)
 	}
 
 	return catcher.Resolve()

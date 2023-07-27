@@ -173,22 +173,26 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	cmdChan := make(chan error, 1)
 	go func() {
 		defer func() {
-			panicErr := recovery.HandlePanicWithError(recover(), nil,
-				fmt.Sprintf("running command %s", displayName))
-			if panicErr == nil {
+			op := fmt.Sprintf("running command %s", displayName)
+			pErr := recovery.HandlePanicWithError(recover(), nil, op)
+			if pErr == nil {
 				return
 			}
+
+			_ = a.logPanic(tc.logger, pErr, nil, op)
 
 			// kim: TODO: check if this is reasonable or not, the command did
 			// panic after all.
 
 			// The command panicked, which is a bug, so the task should
-			// system-fail on this command.
+			// system-fail on this command, which is achieved by setting the
+			// command type to system.
+			tc.logger.Task().Error("Command panicked during runtime, marking command as system failed.")
 			cmd := tc.getCurrentCommand()
 			cmd.SetType(evergreen.CommandTypeSystem)
 			tc.setCurrentCommand(cmd)
 
-			cmdChan <- panicErr
+			cmdChan <- pErr
 
 		}()
 		// kim: TODO: test what happens if you put a panic in the command, see
