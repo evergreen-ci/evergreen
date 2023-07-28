@@ -568,18 +568,173 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
-	innerCtx, innerCancel := context.WithCancel(tskCtx)
+	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(tskCtx)
+	go a.startIdleTimeoutWatch(tskCtx, tc, idleTimeoutCancel)
 
-	// Pass in idle timeout context to heartbeat to enforce the idle timeout.
-	// Pass in the task context canceller to heartbeat because it's responsible for aborting the task.
-	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
-	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
+	preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
+	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
-	complete := make(chan string, 2)
-	go a.startTask(innerCtx, tc, complete)
+	status := a.startTask(preAndMainCtx, tc)
 
-	return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete), "")
+	return a.handleTaskResponse(tskCtx, tc, status, "")
+}
+
+// startTask performs initial task setup and then runs the pre and main blocks
+// for the task. This method returns the status of the task after pre and main
+// have run. Also note that it's critical that all operations in this method
+// must respect the context. If the context errors, this must eventually return.
+func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) {
+	defer func() {
+		op := "running task pre and main blocks"
+		pErr := recovery.HandlePanicWithError(recover(), nil, op)
+		if pErr == nil {
+			return
+		}
+		_ = a.logPanic(tc.logger, pErr, nil, op)
+		status = evergreen.TaskSystemFailed
+	}()
+
+	factory, ok := command.GetCommandFactory("setup.initial")
+	if !ok {
+		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
+		return evergreen.TaskSystemFailed
+	}
+
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution before setup: %s", ctx.Err())
+		return evergreen.TaskSystemFailed
+	}
+	tc.setCurrentCommand(factory())
+	a.comm.UpdateLastMessageTime()
+
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution during setup: %s", ctx.Err())
+		return evergreen.TaskSystemFailed
+	}
+	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
+	tc.logger.Execution().Info("Execution logger initialized.")
+	tc.logger.System().Info("System logger initialized.")
+
+	if ctx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution: %s", ctx.Err())
+		return evergreen.TaskSystemFailed
+	}
+	hostname, err := os.Hostname()
+	tc.logger.Execution().Info(errors.Wrap(err, "getting hostname"))
+	if hostname != "" {
+		tc.logger.Execution().Infof("Hostname is '%s'.", hostname)
+	}
+	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+
+	innerCtx, innerCancel := context.WithCancel(ctx)
+	defer innerCancel()
+	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
+
+	// set up the system stats collector
+	tc.statsCollector = NewSimpleStatsCollector(
+		tc.logger,
+		a.jasper,
+		defaultStatsInterval,
+		"uptime",
+		"df -h",
+		"${ps|ps}",
+	)
+	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
+
+	if innerCtx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
+		return evergreen.TaskSystemFailed
+	}
+
+	// notify API server that the task has been started.
+	tc.logger.Execution().Info("Reporting task started.")
+	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
+		return evergreen.TaskSystemFailed
+	}
+
+	a.killProcs(innerCtx, tc, false, "task is starting")
+
+	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
+		return evergreen.TaskFailed
+	}
+
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
+		tc.logger.Execution().Info("OOM tracker clearing system messages.")
+		if err = tc.oomTracker.Clear(innerCtx); err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "clearing OOM tracker system messages"))
+		}
+	}
+
+	if err = a.runTaskCommands(innerCtx, tc); err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
+		return evergreen.TaskFailed
+	}
+
+	return evergreen.TaskSucceeded
+}
+
+func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
+	tc.logger.Task().Info("Running pre-task commands.")
+	ctx, preTaskSpan := a.tracer.Start(ctx, "pre-task-commands")
+	defer preTaskSpan.End()
+
+	opts := runCommandsOptions{}
+
+	if !tc.ranSetupGroup {
+		taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
+		if err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for task setup group commands"))
+			return nil
+		}
+		if taskGroup != nil && taskGroup.SetupGroup != nil {
+			tc.logger.Task().Infof("Running setup group for task group '%s'.", taskGroup.Name)
+			opts.failPreAndPost = taskGroup.SetupGroupFailTask
+
+			var setupGroupCtx context.Context
+			var setupGroupCancel context.CancelFunc
+			if taskGroup.SetupGroupTimeoutSecs > 0 {
+				setupGroupCtx, setupGroupCancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
+			} else {
+				setupGroupCtx, setupGroupCancel = a.withCallbackTimeout(ctx, tc)
+			}
+			defer setupGroupCancel()
+
+			err = a.runCommandsInBlock(setupGroupCtx, tc, taskGroup.SetupGroup.List(), opts, setupGroupBlock)
+			if err != nil {
+				tc.logger.Execution().Error(errors.Wrap(err, "running task setup group"))
+				if taskGroup.SetupGroupFailTask {
+					return err
+				}
+			}
+			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", taskGroup.Name)
+		}
+		tc.ranSetupGroup = true
+	}
+
+	pre, err := tc.taskConfig.GetPre(tc.taskGroup)
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for pre-task commands"))
+		return nil
+	}
+
+	if pre.Commands != nil {
+		opts.failPreAndPost = pre.CanFailTask
+		block := preBlock
+		if tc.taskGroup != "" {
+			block = setupTaskBlock
+		}
+		err = a.runCommandsInBlock(ctx, tc, pre.Commands.List(), opts, block)
+	}
+	if err != nil {
+		err = errors.Wrap(err, "Running pre-task commands failed")
+		tc.logger.Task().Error(err)
+		if opts.failPreAndPost {
+			return err
+		}
+	}
+	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
+	return nil
 }
 
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, message string) (bool, error) {
@@ -615,20 +770,6 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
 	}
-}
-
-func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
-	status := evergreen.TaskFailed
-	select {
-	case <-taskCtx.Done():
-		grip.Infof("Task canceled: '%s'.", tc.task.ID)
-	case status = <-complete:
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-	case status = <-heartbeat:
-		grip.Infof("Received signal from heartbeat channel for task: '%s'.", tc.task.ID)
-	}
-
-	return status
 }
 
 func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
@@ -934,7 +1075,7 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 	}
 
 	msg := message.Fields{
-		"message":   "programmatic error: agent panicked",
+		"message":   "programmatic error: agent hit panic",
 		"operation": op,
 		"stack":     message.NewStack(2, "").Raw(),
 	}
@@ -945,7 +1086,7 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 	grip.Alert(message.WrapError(catcher.Resolve(), msg))
 	if logger != nil && !logger.Closed() {
 		logMsg := message.Fields{
-			"message":   "programmatic error: Evergreen agent hit a runtime panic",
+			"message":   "programmatic error: Evergreen agent hit panic",
 			"operation": op,
 		}
 		logger.Execution().Error(logMsg)

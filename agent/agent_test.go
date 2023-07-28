@@ -27,6 +27,10 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+func init() {
+	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
+}
+
 const defaultProjYml = `
 buildvariants:
 - name: some_build_variant
@@ -288,13 +292,13 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	s.Error(err)
 }
 
-const panicLog = "panic"
+const panicLog = "hit panic"
 
 func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
-	complete := make(chan string, 1)
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task that aborts before it even can run should system fail")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
@@ -306,14 +310,13 @@ func (s *AgentSuite) TestStartTaskIsPanicSafe() {
 	tc := &taskContext{
 		logger: s.tc.logger,
 	}
-	s.a.startTask(s.ctx, tc, nil)
+	status := s.a.startTask(s.ctx, tc)
 	s.NoError(tc.logger.Close())
+	s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
-func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
-	complete := make(chan string, 1)
-
+func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
@@ -321,17 +324,49 @@ func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
 	// result in system failure. Also, startTask should not block if there is
 	// no consumer running in parallel to pick up the complete status.
 	s.mockCommunicator.StartTaskShouldFail = true
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task should system-fail when it cannot start the task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+}
 
-	select {
-	case <-ctx.Done():
-		s.Fail("test context cancelled before startTask returned: %s", ctx.Err())
-	case status := <-complete:
-		s.Equal(evergreen.TaskSystemFailed, status)
+func (s *AgentSuite) TestRunCommandsEventuallyReturnsForCommandThatIgnoresContext() {
+	const cmdSleepSecs = 500
+	s.setupRunTask(`
+pre:
+- command: command.mock
+  params:
+    sleep_seconds: 500
+`)
+
+	cmd := model.PluginCommandConf{
+		Command: "command.mock",
+		Params: map[string]interface{}{
+			"sleep_seconds": cmdSleepSecs,
+		},
 	}
+	cmds := []model.PluginCommandConf{cmd}
+
+	ctx, cancel := context.WithCancel(s.ctx)
+
+	startAt := time.Now()
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+	cmdDuration := time.Since(startAt)
+
+	const waitUntilAbort = 2 * time.Second
+	go func() {
+		// Cancel the long-running command after giving the command some time to
+		// start running.
+		time.Sleep(waitUntilAbort)
+		cancel()
+	}()
+
+	s.Error(err)
+	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
+
+	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
+	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -686,82 +721,6 @@ func (s *AgentSuite) TestOOMTracker() {
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
-func (s *AgentSuite) TestWaitCompleteSuccess() {
-	heartbeat := make(chan string, 1)
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskSucceeded:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskSucceeded, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitCompleteFailure() {
-	heartbeat := make(chan string, 1)
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskFailed:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitIdleTimeout() {
-	var err error
-	s.tc = &taskContext{
-		task: client.TaskData{
-			ID:     "task_id",
-			Secret: "task_secret",
-		},
-		taskConfig: &internal.TaskConfig{
-			BuildVariant: &model.BuildVariant{
-				Name: "buildvariant_id",
-			},
-			Task: &task.Task{
-				Id: "task_id",
-			},
-			Project: &model.Project{
-				Timeout: &model.YAMLCommandSet{
-					SingleCommand: &model.PluginCommandConf{
-						Command: "shell.exec",
-						Params: map[string]interface{}{
-							"script": "echo hi",
-						},
-					},
-				},
-			},
-		},
-		oomTracker: &mock.OOMTracker{},
-		project:    &model.Project{},
-	}
-
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
-	s.NoError(err)
-	factory, ok := command.GetCommandFactory("setup.initial")
-	s.True(ok)
-	s.tc.setCurrentCommand(factory())
-
-	heartbeat := make(chan string, 1)
-	complete := make(chan string, 1)
-	var idleTimeoutCtx context.Context
-	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(s.ctx)
-	idleTimeoutCancel()
-
-	status := s.a.wait(s.ctx, idleTimeoutCtx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
 func (s *AgentSuite) TestPrepareNextTask() {
 	var err error
 	nextTask := &apimodels.NextTaskResponse{}
@@ -1045,7 +1004,7 @@ timeout:
     shell: bash
     script: |
       echo "hi"
-      sleep 5
+      sleep 20
       echo "bye"
 `
 	p := &model.Project{}
@@ -1053,10 +1012,9 @@ timeout:
 	s.NoError(err)
 	p.CallbackTimeout = 2
 	s.tc.taskConfig.Project = p
-	now := time.Now()
+	startAt := time.Now()
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
-	then := time.Now()
-	s.True(then.Sub(now) < 4*time.Second)
+	s.WithinDuration(time.Now(), startAt, 20*time.Second, "timeout command should have stopped before it finished running due to callback timeout")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }

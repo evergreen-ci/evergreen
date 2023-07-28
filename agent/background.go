@@ -10,16 +10,26 @@ import (
 	"github.com/mongodb/grip/recovery"
 )
 
-func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, tc *taskContext, heartbeat chan<- string) {
+// startHeartbeat runs the task heartbeat. The heartbeat is responsible for two
+// things:
+//  1. It communicates with the app server to indicate that the agent is still
+//     alive and running its task. If the app server does not receive a
+//     heartbeat for a long time while the task is still running, then it can
+//     assume the task has somehow stopped running and can choose to system-fail
+//     the task.
+//  2. It decides if/when to abort a task. If it receives an explicit message
+//     from the app server to abort (e.g. the user requested the task to abort),
+//     then it triggers the running task to abort by cancelling
+//     preAndMainCancel. It may also choose to abort in certain edge cases such
+//     as repeatedly failing to heartbeat.
+func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
 		heartbeatInterval = a.opts.HeartbeatInterval
 	}
 
-	var failures int
-	var signalBeat string
-	var err error
+	var numRepeatedFailures int
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
 
@@ -27,11 +37,11 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 	for {
 		select {
 		case <-ticker.C:
-			signalBeat, err = a.doHeartbeat(ctx, tc)
+			signalBeat, err := a.doHeartbeat(ctx, tc)
 			if err != nil {
-				failures++
+				numRepeatedFailures++
 			} else {
-				failures = 0
+				numRepeatedFailures = 0
 			}
 			if hasSentAbort {
 				// Once abort has been received and passed along to the task
@@ -39,34 +49,25 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 				// signal to the app server that post tasks are still running.
 				// This is a best-effort attempt, since there's no graceful way
 				// to handle heartbeat failures when abort was already sent.
-				if failures == maxHeartbeats {
+				if numRepeatedFailures == maxHeartbeats {
 					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted, task is at risk of timing out if it runs for much longer.")
 				}
 				continue
 			}
-			if signalBeat == client.TaskConflict {
-				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task.")
-				if err != nil {
-					tc.logger.Task().Error(err.Error())
-				}
-				cancel()
-				continue
-			}
 			if signalBeat == evergreen.TaskFailed {
 				tc.logger.Task().Error("Heartbeat received signal to abort task.")
-				heartbeat <- signalBeat
+				preAndMainCancel()
 				hasSentAbort = true
 				continue
 			}
-			if failures == maxHeartbeats {
-				// Presumably this won't work, but we should try to notify the user anyway
+			if numRepeatedFailures == maxHeartbeats {
 				tc.logger.Task().Error("Hit max heartbeat attempts, aborting task.")
-				heartbeat <- evergreen.TaskFailed
+				preAndMainCancel()
 				hasSentAbort = true
 			}
 		case <-ctx.Done():
 			if !hasSentAbort {
-				heartbeat <- evergreen.TaskFailed
+				preAndMainCancel()
 			}
 			return
 		}

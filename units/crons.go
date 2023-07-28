@@ -277,26 +277,6 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
-func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
-
-		if flags.MonitorDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "monitor is disabled",
-				"impact":  "not submitting detecting idle hosts",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		return queue.Put(ctx, NewIdleHostTerminationJob(env, utility.RoundPartOfHour(1).Format(TSFormat)))
-	}
-}
-
 func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
@@ -496,6 +476,26 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 
 		return errors.Wrap(catcher.Resolve(), "populating distro secondary scheduler jobs")
+	}
+}
+
+func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting service flags")
+		}
+
+		if flags.MonitorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "monitor is disabled",
+				"impact":  "not submitting detecting idle hosts",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		return queue.Put(ctx, NewIdleHostTerminationJob(env, utility.RoundPartOfMinute(15).Format(TSFormat)))
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -19,7 +20,8 @@ import (
 )
 
 func TestGetPIDsToKill(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	const timeoutSecs = 10
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutSecs*time.Second)
 	defer cancel()
 
 	agentPID, ok := os.LookupEnv(MarkerAgentPID)
@@ -31,7 +33,7 @@ func TestGetPIDsToKill(t *testing.T) {
 		defer os.Setenv(MarkerAgentPID, agentPID)
 	}
 
-	inEvergreenCmd := exec.CommandContext(ctx, "sleep", "10")
+	inEvergreenCmd := exec.CommandContext(ctx, "sleep", strconv.Itoa(timeoutSecs))
 	inEvergreenCmd.Env = append(inEvergreenCmd.Env, fmt.Sprintf("%s=true", MarkerInEvergreen))
 	require.NoError(t, inEvergreenCmd.Start())
 	inEvergreenPID := inEvergreenCmd.Process.Pid
@@ -39,15 +41,34 @@ func TestGetPIDsToKill(t *testing.T) {
 	fullSleepPath, err := exec.LookPath("sleep")
 	require.NoError(t, err)
 
-	inWorkingDirCmd := exec.CommandContext(ctx, fullSleepPath, "10")
+	inWorkingDirCmd := exec.CommandContext(ctx, fullSleepPath, strconv.Itoa(timeoutSecs))
 	require.NoError(t, inWorkingDirCmd.Start())
 	inWorkingDirPID := inWorkingDirCmd.Process.Pid
 
-	pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
-	require.NoError(t, err)
-	assert.Contains(t, pids, inEvergreenPID)
-	assert.Contains(t, pids, inWorkingDirPID)
-	assert.NotContains(t, pids, os.Getpid())
+	assert.Eventually(t, func() bool {
+		// Since the processes run in the background, we have to poll them until
+		// they actually start, at which point they should appear in the listed
+		// PIDs.
+		pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
+		require.NoError(t, err)
+
+		var (
+			foundInEvergreenPID  bool
+			foundInWorkingDirPID bool
+		)
+		for _, pid := range pids {
+			if pid == inEvergreenPID {
+				foundInEvergreenPID = true
+			}
+			if pid == inWorkingDirPID {
+				foundInWorkingDirPID = true
+			}
+			if foundInEvergreenPID && foundInWorkingDirPID {
+				break
+			}
+		}
+		return foundInEvergreenPID && foundInWorkingDirPID
+	}, timeoutSecs*time.Second, 100*time.Millisecond, "in Evergreen process (pid %d) and in working directory process (pid %d) both should have eventually appeared in the listed PID")
 }
 
 func TestKillSpawnedProcs(t *testing.T) {

@@ -49,6 +49,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		PopulateSchedulerJobs(j.env),
 		PopulateAliasSchedulerJobs(j.env),
 		PopulateHostAllocatorJobs(j.env),
+		PopulateIdleHostJobs(j.env),
 		PopulateAgentDeployJobs(j.env),
 		PopulateAgentMonitorDeployJobs(j.env),
 	}
