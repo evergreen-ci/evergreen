@@ -325,6 +325,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				timer.Reset(jitteredSleep)
 				agentSleepInterval = agentSleepInterval * 2
 				if agentSleepInterval > maxAgentSleepInterval {
+					//nolint:ineffassign
 					agentSleepInterval = maxAgentSleepInterval
 				}
 			}
