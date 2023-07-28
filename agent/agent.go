@@ -305,7 +305,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				return errors.Wrap(err, "getting next task")
 			}
-			ntr, err := a.ProcessNextTask(nextTask, ctx, tc, needPostGroup)
+			ntr, err := a.processNextTask(nextTask, ctx, tc, needPostGroup)
 			if err != nil {
 				return errors.Wrap(err, "processing next task")
 			}
@@ -313,14 +313,14 @@ func (a *Agent) loop(ctx context.Context) error {
 			if ntr.tc != nil {
 				tc = ntr.tc
 			}
-			if ntr.ShouldResetTimer {
+			if ntr.shouldResetTimer {
 				timer.Reset(0)
 				agentSleepInterval = minAgentSleepInterval
 			}
-			if ntr.ShouldContinue {
+			if ntr.shouldContinue {
 				continue
 			}
-			if ntr.ShouldExit {
+			if ntr.shouldExit {
 				return nil
 			}
 
@@ -335,27 +335,25 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 }
 
-// ProcessNextResponse contains information for what should be done after processing next task
-type ProcessNextResponse struct {
-	ShouldExit       bool
-	ShouldContinue   bool
-	ShouldResetTimer bool
+type processNextResponse struct {
+	shouldExit       bool
+	shouldContinue   bool
+	shouldResetTimer bool
 	needPostGroup    bool
 	tc               *taskContext
 }
 
-// ProcessNextTask takes in the NextTaskResponse and processes it.
-func (a *Agent) ProcessNextTask(nt *apimodels.NextTaskResponse, ctx context.Context, tc *taskContext, needPostGroup bool) (ProcessNextResponse, error) {
+func (a *Agent) processNextTask(nt *apimodels.NextTaskResponse, ctx context.Context, tc *taskContext, needPostGroup bool) (processNextResponse, error) {
 	if nt.ShouldExit {
 		grip.Notice("Next task response indicates agent should exit.")
-		return ProcessNextResponse{ShouldExit: true}, nil
+		return processNextResponse{shouldExit: true}, nil
 	}
 	// if the host's current task group is finished we teardown
 	if nt.ShouldTeardownGroup {
 		a.runPostGroupCommands(ctx, tc)
-		return ProcessNextResponse{
-			ShouldContinue:   true,
-			ShouldResetTimer: true,
+		return processNextResponse{
+			shouldContinue:   true,
+			shouldResetTimer: true,
 			// Running the post group commands implies exiting the group, so
 			// destroy prior task information.
 			tc:            &taskContext{},
@@ -368,9 +366,9 @@ func (a *Agent) ProcessNextTask(nt *apimodels.NextTaskResponse, ctx context.Cont
 				"message": "task response missing secret",
 				"task":    tc.task.ID,
 			})
-			return ProcessNextResponse{
-				ShouldContinue:   true,
-				ShouldResetTimer: true,
+			return processNextResponse{
+				shouldContinue:   true,
+				shouldResetTimer: true,
 			}, nil
 		}
 		prevLogger := tc.logger
@@ -392,34 +390,34 @@ func (a *Agent) ProcessNextTask(nt *apimodels.NextTaskResponse, ctx context.Cont
 				"message": "error running task",
 				"task":    tc.task.ID,
 			}))
-			return ProcessNextResponse{
-				ShouldContinue:   true,
-				ShouldResetTimer: true,
+			return processNextResponse{
+				shouldContinue:   true,
+				shouldResetTimer: true,
 				tc:               tc,
 			}, nil
 		}
 		if shouldExit {
-			return ProcessNextResponse{
-				ShouldExit: true,
+			return processNextResponse{
+				shouldExit: true,
 				tc:         tc,
 			}, nil
 		}
-		return ProcessNextResponse{
-			ShouldContinue:   true,
-			ShouldResetTimer: true,
+		return processNextResponse{
+			shouldContinue:   true,
+			shouldResetTimer: true,
 			tc:               tc,
 			needPostGroup:    true,
 		}, nil
 	} else if needPostGroup {
 		a.runPostGroupCommands(ctx, tc)
-		return ProcessNextResponse{
+		return processNextResponse{
 			needPostGroup: false,
 			// Running the post group commands implies exiting the group, so
 			// destroy prior task information.
 			tc: &taskContext{},
 		}, nil
 	}
-	return ProcessNextResponse{}, nil
+	return processNextResponse{}, nil
 }
 
 func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) *taskContext {
