@@ -6,10 +6,10 @@
 
 ## Context and Problem Statement
 
-The agent was implemented run pre and main block commands in a separate goroutine and then waited on either it to
-return or for the task to hit a context error (e.g. due to aborting the task). It seems to have been put in a goroutine
-out of uncertainty because the pre and main blocks could hang forever, which would prevent the task from making forward
-progress as it waits forever for them to finish.
+The agent was implemented run pre and main block commands in a separate goroutine and then waited until it either
+completed normally or hit a context error (e.g. due to aborting the task). It seems to have been put in a separate
+goroutine out of uncertainty about whether the pre and main blocks could hang forever, which would prevent the task from
+making forward progress as it waits forever for them to finish.
 
 ## Decision Outcome
 The agent has been fixed over time to ensure that all logic does respect the context (or has other timeout mechanisms),
