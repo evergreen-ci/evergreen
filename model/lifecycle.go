@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/mongo"
 	"sort"
 	"strings"
 	"time"
@@ -1566,6 +1567,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, errors.Wrap(err, "getting create time for tasks")
 	}
 	batchTimeCatcher := grip.NewBasicCatcher()
+
+	buildsToInsert := build.Builds{}
+	tasksToInsert := task.Tasks{}
 	for _, pair := range creationInfo.Pairs.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
 			continue
@@ -1610,13 +1614,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			})
 			continue
 		}
+		buildsToInsert = append(buildsToInsert, build)
+		tasksToInsert = append(tasksToInsert, tasks...)
 
-		if err = build.Insert(); err != nil {
-			return nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
-		}
-		if err = tasks.InsertUnordered(ctx); err != nil {
-			return nil, errors.Wrapf(err, "inserting tasks for build '%s'", build.Id)
-		}
 		newBuildIds = append(newBuildIds, build.Id)
 
 		batchTimeTasksToIds := map[string]string{}
@@ -1657,6 +1657,29 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 				},
 			},
 		)
+	}
+
+	env := evergreen.GetEnvironment()
+	mongoClient := env.Client()
+	session, err := mongoClient.StartSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "starting DB session")
+	}
+	defer session.EndSession(ctx)
+
+	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
+			return nil, errors.Wrapf(err, "inserting builds for version '%s'", creationInfo.Version.Id)
+		}
+		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
+			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", creationInfo.Version.Id)
+		}
+		return nil, err
+	}
+
+	_, err = session.WithTransaction(ctx, txFunc)
+	if err != nil {
+		return nil, errors.Wrapf(err, "inserting builds and tasks for version '%s'", creationInfo.Version.Id)
 	}
 
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
