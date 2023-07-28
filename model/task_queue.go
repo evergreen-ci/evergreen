@@ -118,6 +118,7 @@ type TaskQueueItem struct {
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
 	Priority            int64         `bson:"priority" json:"priority"`
 	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
+	Author              string        `bson:"author" json:"author"`
 }
 
 // must not no-lint these values
@@ -143,6 +144,7 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
+	taskQueueItemAuthorKey        = bsonutil.MustHaveTag(TaskQueueItem{}, "Author")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -450,6 +452,7 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 						taskQueueItemProjectKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemProjectKey),
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
+						taskQueueItemAuthorKey:        "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemAuthorKey),
 					},
 				},
 			},

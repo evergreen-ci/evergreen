@@ -17,6 +17,8 @@ Gating every merge on a green build means every commit on the tracked branch had
 To turn it on, you must turn on Evergreen's merge queue integration, and then
 turn on the GitHub merge queue in GitHub.
 
+Note that you cannot use Evergreen's commit queue if the GitHub merge queue is on.
+
 ## Enable the merge queue
 
 ### Turn on Evergreen's merge queue integration
