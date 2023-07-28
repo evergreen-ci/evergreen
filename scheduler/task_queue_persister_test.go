@@ -132,7 +132,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[0].Requester, ShouldEqual, tasks[0].Requester)
 			So(taskQueue.Queue[0].Revision, ShouldEqual, tasks[0].Revision)
 			So(taskQueue.Queue[0].Project, ShouldEqual, tasks[0].Project)
-			So(taskQueue.Queue[0].Author, ShouldEqual, tasks[0].ActivatedBy)
+			So(taskQueue.Queue[0].ActivatedBy, ShouldEqual, tasks[0].ActivatedBy)
 			So(taskQueue.Queue[0].ExpectedDuration, ShouldEqual, durations[0])
 
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[1])
@@ -145,7 +145,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[1].Requester, ShouldEqual, tasks[1].Requester)
 			So(taskQueue.Queue[1].Revision, ShouldEqual, tasks[1].Revision)
 			So(taskQueue.Queue[1].Project, ShouldEqual, tasks[1].Project)
-			So(taskQueue.Queue[1].Author, ShouldEqual, tasks[1].ActivatedBy)
+			So(taskQueue.Queue[1].ActivatedBy, ShouldEqual, tasks[1].ActivatedBy)
 			So(taskQueue.Queue[1].ExpectedDuration, ShouldEqual, durations[1])
 
 			So(taskQueue.Queue[2].Id, ShouldEqual, taskIds[2])
@@ -158,7 +158,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[2].Requester, ShouldEqual, tasks[2].Requester)
 			So(taskQueue.Queue[2].Revision, ShouldEqual, tasks[2].Revision)
 			So(taskQueue.Queue[2].Project, ShouldEqual, tasks[2].Project)
-			So(taskQueue.Queue[2].Author, ShouldEqual, tasks[2].ActivatedBy)
+			So(taskQueue.Queue[2].ActivatedBy, ShouldEqual, tasks[2].ActivatedBy)
 			So(taskQueue.Queue[2].ExpectedDuration, ShouldEqual, durations[2])
 
 			taskQueue, err = model.LoadTaskQueue(distroIds[1])
@@ -175,7 +175,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[0].Requester, ShouldEqual, tasks[3].Requester)
 			So(taskQueue.Queue[0].Revision, ShouldEqual, tasks[3].Revision)
 			So(taskQueue.Queue[0].Project, ShouldEqual, tasks[3].Project)
-			So(taskQueue.Queue[0].Author, ShouldEqual, tasks[3].ActivatedBy)
+			So(taskQueue.Queue[0].ActivatedBy, ShouldEqual, tasks[3].ActivatedBy)
 			So(taskQueue.Queue[0].ExpectedDuration, ShouldEqual, durations[3])
 
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[4])
@@ -188,7 +188,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[1].Requester, ShouldEqual, tasks[4].Requester)
 			So(taskQueue.Queue[1].Revision, ShouldEqual, tasks[4].Revision)
 			So(taskQueue.Queue[1].Project, ShouldEqual, tasks[4].Project)
-			So(taskQueue.Queue[1].Author, ShouldEqual, tasks[4].ActivatedBy)
+			So(taskQueue.Queue[1].ActivatedBy, ShouldEqual, tasks[4].ActivatedBy)
 			So(taskQueue.Queue[1].ExpectedDuration, ShouldEqual,
 				10*time.Minute)
 		})

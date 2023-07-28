@@ -17,7 +17,7 @@ type APITaskQueueItem struct {
 	Build               *string     `json:"build"`
 	ExpectedDuration    APIDuration `json:"exp_dur"`
 	Priority            int64       `json:"priority"`
-	Author              *string     `json:"author"`
+	ActivatedBy         *string     `json:"activated_by"`
 }
 
 func (s *APITaskQueueItem) BuildFromService(tqi model.TaskQueueItem) {
@@ -32,5 +32,5 @@ func (s *APITaskQueueItem) BuildFromService(tqi model.TaskQueueItem) {
 	s.Build = utility.ToStringPtr(tqi.BuildVariant)
 	s.ExpectedDuration = NewAPIDuration(tqi.ExpectedDuration)
 	s.Priority = tqi.Priority
-	s.Author = utility.ToStringPtr(tqi.Author)
+	s.ActivatedBy = utility.ToStringPtr(tqi.ActivatedBy)
 }
