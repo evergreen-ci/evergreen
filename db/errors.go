@@ -44,4 +44,4 @@ func IsErrorCode(err error, errorCode int) bool {
 
 // FacetPipelineStageTooLargeCode is the error code for when a facet pipeline stage is too large.
 // https://github.com/mongodb/mongo/blob/a1732172ed5d66d98582ea1059c0ede9d8cd5065/src/mongo/db/pipeline/document_source_facet.cpp#L165
-const FacetPipelineStageTooLargeCode = 4031700 //
+const FacetPipelineStageTooLargeCode = 4031700
