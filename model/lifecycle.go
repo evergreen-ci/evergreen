@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
 	"sort"
 	"strings"
 	"time"
@@ -1568,8 +1567,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	}
 	batchTimeCatcher := grip.NewBasicCatcher()
 
-	buildsToInsert := build.Builds{}
-	tasksToInsert := task.Tasks{}
+	var buildsBulk []interface{}
+	var tasksBulk []interface{}
 	for _, pair := range creationInfo.Pairs.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
 			continue
@@ -1614,8 +1613,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			})
 			continue
 		}
-		buildsToInsert = append(buildsToInsert, build)
-		tasksToInsert = append(tasksToInsert, tasks...)
+		buildsBulk = append(buildsBulk, build)
+		tasksBulk = append(tasksBulk, tasks.Export())
 
 		newBuildIds = append(newBuildIds, build.Id)
 
@@ -1658,28 +1657,12 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			},
 		)
 	}
-
-	env := evergreen.GetEnvironment()
-	mongoClient := env.Client()
-	session, err := mongoClient.StartSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "starting DB session")
+	dB := evergreen.GetEnvironment().DB()
+	if _, err = dB.Collection(build.Collection).InsertMany(ctx, buildsBulk); err != nil {
+		return nil, errors.Wrapf(err, "inserting builds for version '%s'", creationInfo.Version.Id)
 	}
-	defer session.EndSession(ctx)
-
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
-			return nil, errors.Wrapf(err, "inserting builds for version '%s'", creationInfo.Version.Id)
-		}
-		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
-			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", creationInfo.Version.Id)
-		}
-		return nil, err
-	}
-
-	_, err = session.WithTransaction(ctx, txFunc)
-	if err != nil {
-		return nil, errors.Wrapf(err, "inserting builds and tasks for version '%s'", creationInfo.Version.Id)
+	if _, err = dB.Collection(task.Collection).InsertMany(ctx, tasksBulk); err != nil {
+		return nil, errors.Wrapf(err, "inserting builds for version '%s'", creationInfo.Version.Id)
 	}
 
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
