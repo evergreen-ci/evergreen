@@ -310,15 +310,11 @@ func (s *AgentSuite) TestStartTaskIsPanicSafe() {
 	tc := &taskContext{
 		logger: s.tc.logger,
 	}
-<<<<<<< HEAD
 	s.NotPanics(func() {
-		s.a.startTask(s.ctx, tc, nil)
+		status := s.a.startTask(s.ctx, tc)
+		s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
 	})
-=======
-	status := s.a.startTask(s.ctx, tc)
->>>>>>> ecc1b88a3c227b8ece318c2fc6e9259d71be84e7
 	s.NoError(tc.logger.Close())
-	s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
