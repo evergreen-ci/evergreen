@@ -40,6 +40,7 @@ type runCommandsOptions struct {
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
 func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
 	options runCommandsOptions, block string) (err error) {
+
 	defer func() {
 		op := fmt.Sprintf("running commands for block '%s'", block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
@@ -172,10 +173,16 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	cmdChan := make(chan error, 1)
 	go func() {
 		defer func() {
-			// this channel will get read from twice even though we only send once, hence why it's buffered
-			cmdChan <- recovery.HandlePanicWithError(recover(), nil,
-				fmt.Sprintf("running command %s", displayName))
+			op := fmt.Sprintf("running command %s", displayName)
+			pErr := recovery.HandlePanicWithError(recover(), nil, op)
+			if pErr == nil {
+				return
+			}
+			_ = a.logPanic(tc.logger, pErr, nil, op)
+
+			cmdChan <- pErr
 		}()
+
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
 	select {

@@ -42,14 +42,18 @@ func getInc() int { return <-idSource }
 // GetSender configures the agent's local logging to a file.
 func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string) (send.Sender, error) {
 	var senders []send.Sender
-	if a.opts.SetupData.SplunkClientToken != "" && a.opts.SetupData.SplunkServerURL != "" && a.opts.SetupData.SplunkChannel != "" {
-		info := send.SplunkConnectionInfo{
-			ServerURL: a.opts.SetupData.SplunkServerURL,
-			Token:     a.opts.SetupData.SplunkClientToken,
-			Channel:   a.opts.SetupData.SplunkChannel,
-		}
-		grip.Info("Configuring splunk sender.")
-		sender, err := send.NewSplunkLogger("evergreen.agent", info, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
+
+	splunkInfo := send.SplunkConnectionInfo{
+		ServerURL: a.opts.SetupData.SplunkServerURL,
+		Token:     a.opts.SetupData.SplunkClientToken,
+		Channel:   a.opts.SetupData.SplunkChannel,
+	}
+	if splunkInfo.Populated() {
+		// Send alerts or higher from the agent to Splunk, since they are
+		// generally critical problems (e.g. panics) in the agent runtime.
+		grip.Info("Configuring Splunk sender.")
+		alertThreshold := send.LevelInfo{Default: level.Alert, Threshold: level.Alert}
+		sender, err := send.NewSplunkLogger("evergreen.agent", splunkInfo, alertThreshold)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating Splunk logger")
 		}

@@ -310,9 +310,11 @@ func (s *AgentSuite) TestStartTaskIsPanicSafe() {
 	tc := &taskContext{
 		logger: s.tc.logger,
 	}
-	status := s.a.startTask(s.ctx, tc)
+	s.NotPanics(func() {
+		status := s.a.startTask(s.ctx, tc)
+		s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
+	})
 	s.NoError(tc.logger.Close())
-	s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
@@ -397,10 +399,12 @@ func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
-	s.NoError(s.tc.logger.Close())
+	s.NotPanics(func() {
+		err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
+		s.Require().Error(err)
+	})
 
-	s.Require().Error(err)
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
