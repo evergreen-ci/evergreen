@@ -136,7 +136,8 @@ func (s *cedarService) convertOpts(taskOpts []TaskOptions, filterOpts *FilterOpt
 			})
 		}
 		cedarFilterOpts = &testresults.FilterOptions{
-			TestName:  filterOpts.TestName,
+			TestName: filterOpts.TestName,
+			//ExcludeDisplayNames: filterOpts.ExcludeDisplayNames,
 			Statuses:  filterOpts.Statuses,
 			GroupID:   filterOpts.GroupID,
 			Sort:      sort,

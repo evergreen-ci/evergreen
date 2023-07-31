@@ -358,12 +358,6 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			expectedCount:   4,
 		},
 		{
-			name:            "TestNameExactMatchFilter",
-			opts:            &FilterOptions{TestName: "A test"},
-			expectedResults: results[0:1],
-			expectedCount:   1,
-		},
-		{
 			name: "TestNameRegexFilter",
 			opts: &FilterOptions{TestName: "A|C"},
 			expectedResults: []TestResult{
@@ -371,6 +365,15 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 				results[2],
 			},
 			expectedCount: 2,
+		},
+		{
+			name: "TestNameExcludeDisplayNamesFilter",
+			opts: &FilterOptions{
+				TestName:            "B test",
+				ExcludeDisplayNames: true,
+			},
+			expectedResults: results[1:2],
+			expectedCount:   1,
 		},
 		{
 			name:            "DisplayTestNameFilter",
