@@ -23,7 +23,7 @@ require (
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
-	github.com/evergreen-ci/timber v0.0.0-20230413164224-05a3a6e11d78
+	github.com/evergreen-ci/timber v0.0.0-20230731225120-893f8ec27fe3
 	github.com/evergreen-ci/utility v0.0.0-20230726191623-866cb804386e
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
