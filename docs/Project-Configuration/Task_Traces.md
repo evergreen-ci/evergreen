@@ -27,11 +27,23 @@ The following examples illustrate how to inject the trace/span IDs into the cont
 #### Python
 ```python
 from opentelemetry import trace, context
-from opentelemetry.trace import NonRecordingSpan, SpanContext
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
 
+# Task traces in Honeycomb are sent with an "evergreen-agent" service name.
+# We need to send test spans with the same service name since the service name
+# determines the Honeycomb dataset and traces can not span multiple datasets.
+resource = Resource(attributes={SERVICE_NAME: "evergreen-agent"})
+provider = TracerProvider(resource=resource)
+trace.set_tracer_provider(provider)
+
+# otel_trace_id and otel_parent_id are hex encoded strings identifying the parent
+# span of this test.
 span_context = SpanContext(
     trace_id = int("${otel_trace_id}", 16),
-    span_id = int(("${otel_parent_id}", 16)
+    span_id = int(("${otel_parent_id}", 16),
+    trace_flags = TraceFlags(0x01)
 )
 ctx = trace.set_span_in_context(NonRecordingSpan(span_context))
 
@@ -55,8 +67,23 @@ finally:
 
 #### Go
 ```go
-import "go.opentelemetry.io/otel/trace"
+import (
+    "go.opentelemetry.io/otel/sdk/resource"
+    semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+    "go.opentelemetry.io/otel/trace"
+)
 
+// Task traces in Honeycomb are sent with an "evergreen-agent" service name.
+// We need to send test spans with the same service name since the service name
+// determines the Honeycomb dataset and traces can not span multiple datasets.
+resource := resource.New(ctx, resource.WithAttributes(semconv.ServiceName("evergreen-agent")))
+tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithResource(r),
+)
+otel.SetTracerProvider(tracerProvider)
+
+// otel_trace_id and otel_parent_id are hex encoded strings identifying the parent
+// span of this test.
 traceID, err := trace.TraceIDFromHex("${otel_trace_id}")
 if err != nil {
     return err
@@ -70,6 +97,7 @@ if err != nil {
 sc := trace.NewSpanContext(SpanContextConfig{
     TraceID: traceID,
     SpanID: spanID,
+    TraceFlags: trace.FlagsSampled,
 })
 
 // Inject the span context into a context.
