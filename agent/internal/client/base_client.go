@@ -553,10 +553,9 @@ func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData Task
 	info.setTaskPathSuffix("pull_request")
 
 	body := apimodels.CheckMergeRequest{
-		PRNum:     prNum,
-		Owner:     owner,
-		Repo:      repo,
-		LastRetry: lastAttempt,
+		PRNum: prNum,
+		Owner: owner,
+		Repo:  repo,
 	}
 	resp, err := c.retryRequest(ctx, info, &body)
 	if err != nil {
@@ -571,7 +570,7 @@ func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData Task
 	return res, nil
 }
 
-// GetPatch tries to get the patch data from the server in json format,
+// GetTaskPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure. If patchId is not specified, the task's
 // patch is returned
