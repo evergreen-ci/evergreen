@@ -169,7 +169,7 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 
 // TaskStatuses is the resolver for the taskStatuses field.
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	statuses, err := task.GetTaskStatusesByVersion(ctx, utility.FromStringPtr(obj.Id))
+	statuses, err := task.GetTaskStatusesByVersion(ctx, utility.FromStringPtr(obj.Id), false)
 	if err != nil {
 		return nil, nil
 	}

@@ -11,6 +11,7 @@ type TaskQueueItem {
   priority: Int!
   project: String!
   requester: TaskQueueItemType!
+  activatedBy: String!
   revision: String!
   version: String!
 }

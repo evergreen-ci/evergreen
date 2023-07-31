@@ -50,7 +50,7 @@ func TestGlobalCommandRegistryNamesMatchExpectedValues(t *testing.T) {
 func TestRenderCommands(t *testing.T) {
 	registry := newCommandRegistry()
 	registry.cmds = map[string]CommandFactory{
-		"command.mock": func() Command { return &mockCommand{} },
+		"command.mock": MockCommandFactory,
 	}
 
 	t.Run("NoType", func(t *testing.T) {

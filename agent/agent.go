@@ -574,20 +574,16 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
-	preAndMainComplete := make(chan string, 2)
-	go a.startTask(preAndMainCtx, tc, preAndMainComplete)
-
-	status := a.wait(tc, preAndMainComplete)
+	status := a.startTask(preAndMainCtx, tc)
 
 	return a.handleTaskResponse(tskCtx, tc, status, "")
 }
 
 // startTask performs initial task setup and then runs the pre and main blocks
-// for the task. This method must return exactly one value to the complete
-// goroutine to indicate that it's done. Also note that it's critical that all
-// operations in this method must respect the context. If the context errors,
-// this must eventually return.
-func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
+// for the task. This method returns the status of the task after pre and main
+// have run. Also note that it's critical that all operations in this method
+// must respect the context. If the context errors, this must eventually return.
+func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) {
 	defer func() {
 		op := "running task pre and main blocks"
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
@@ -595,28 +591,25 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 			return
 		}
 		_ = a.logPanic(tc.logger, pErr, nil, op)
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
+		status = evergreen.TaskSystemFailed
 	}()
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
-		return
+		return evergreen.TaskSystemFailed
 	}
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution before setup: %s", ctx.Err())
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
-		return
+		return evergreen.TaskSystemFailed
 	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution during setup: %s", ctx.Err())
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
-		return
+		return evergreen.TaskSystemFailed
 	}
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
@@ -624,8 +617,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution: %s", ctx.Err())
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
-		return
+		return evergreen.TaskSystemFailed
 	}
 	hostname, err := os.Hostname()
 	tc.logger.Execution().Info(errors.Wrap(err, "getting hostname"))
@@ -651,23 +643,20 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 
 	if innerCtx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
-		return
+		return evergreen.TaskSystemFailed
 	}
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
 	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSystemFailed)
-		return
+		return evergreen.TaskSystemFailed
 	}
 
 	a.killProcs(innerCtx, tc, false, "task is starting")
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
-		return
+		return evergreen.TaskFailed
 	}
 
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
@@ -679,23 +668,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 
 	if err = a.runTaskCommands(innerCtx, tc); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
-		trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskFailed)
-		return
+		return evergreen.TaskFailed
 	}
 
-	trySendTaskComplete(tc.logger.Execution(), complete, evergreen.TaskSucceeded)
-}
-
-// trySendTaskComplete attempts to send a task status to the given channel. This
-// is a non-blocking operation - if it tries to send the task status but the
-// channel is already blocked (either because it is full or there is no consumer
-// to receive the result), it will log an error and continue.
-func trySendTaskComplete(logger grip.Journaler, complete chan<- string, status string) {
-	select {
-	case complete <- status:
-	default:
-		logger.Errorf("Tried sending task status '%s', but complete channel was blocked.", status)
-	}
+	return evergreen.TaskSucceeded
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
@@ -794,14 +770,6 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
 	}
-}
-
-func (a *Agent) wait(tc *taskContext, preAndMainComplete chan string) string {
-	// TODO (EVG-20283): this function will likely go away entirely. It's only
-	// being temporarily kept because startTask is still a goroutine.
-	status := <-preAndMainComplete
-	grip.Infof("Task complete: '%s'.", tc.task.ID)
-	return status
 }
 
 func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
@@ -1099,29 +1067,22 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	return true
 }
 
-// logPanic logs and returns a panic error, along with the original error (if
-// any). If there was no panic error, this is a no-op.
+// logPanic logs a panic to the task log and returns the panic error, along with
+// the original error (if any). If there was no panic error, this is a no-op.
 func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, op string) error {
 	if pErr == nil {
 		return nil
 	}
 
-	msg := message.Fields{
-		"message":   "programmatic error: agent panicked",
-		"operation": op,
-		"stack":     message.NewStack(2, "").Raw(),
-	}
-
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	grip.Alert(message.WrapError(catcher.Resolve(), msg))
 	if logger != nil && !logger.Closed() {
 		logMsg := message.Fields{
-			"message":   "programmatic error: Evergreen agent hit a runtime panic",
+			"message":   "programmatic error: Evergreen agent hit panic",
 			"operation": op,
 		}
-		logger.Execution().Error(logMsg)
+		logger.Task().Error(logMsg)
 	}
 
 	return catcher.Resolve()

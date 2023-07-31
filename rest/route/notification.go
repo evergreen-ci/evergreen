@@ -40,10 +40,6 @@ func (h *notificationPostHandler) Factory() gimlet.RouteHandler {
 func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	t := gimlet.GetVars(r)["type"]
 	switch t {
-	case "jira_comment":
-		h.handler = makeJiraCommentNotification(h.environment)
-	case "jira_issue":
-		h.handler = makeJiraIssueNotification(h.environment)
 	case "slack":
 		h.handler = makeSlackNotification(h.environment)
 	case "email":
@@ -58,107 +54,6 @@ func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) er
 // Run dispatches the notification.
 func (h *notificationPostHandler) Run(ctx context.Context) gimlet.Responder {
 	return h.handler.Run(ctx)
-}
-
-///////////////////////////////////////////////////////////////////////
-//
-// POST /rest/v2/notifications/jira_comment
-
-type jiraCommentNotificationPostHandler struct {
-	APIJiraComment *model.APIJiraComment
-	composer       message.Composer
-	sender         send.Sender
-	environment    evergreen.Environment
-}
-
-func makeJiraCommentNotification(environment evergreen.Environment) gimlet.RouteHandler {
-	return &jiraCommentNotificationPostHandler{
-		environment: environment,
-	}
-}
-
-func (h *jiraCommentNotificationPostHandler) Factory() gimlet.RouteHandler {
-	return &jiraCommentNotificationPostHandler{
-		environment: h.environment,
-	}
-}
-
-// Parse fetches the JSON payload from the and unmarshals it to an APIJiraComment.
-func (h *jiraCommentNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := utility.NewRequestReader(r)
-	h.APIJiraComment = &model.APIJiraComment{}
-	if err := gimlet.GetJSON(body, h.APIJiraComment); err != nil {
-		return errors.Wrap(err, "reading Jira comment from JSON request body")
-	}
-
-	return nil
-}
-
-// Run dispatches the notification.
-func (h *jiraCommentNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
-	comment := h.APIJiraComment.ToService()
-	h.composer = message.NewJIRACommentMessage(level.Notice, comment.IssueID, comment.Body)
-	var err error
-	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAComment)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Jira comment sender"))
-	}
-
-	h.sender.Send(h.composer)
-
-	return gimlet.NewJSONResponse(struct{}{})
-}
-
-///////////////////////////////////////////////////////////////////////
-//
-// POST /rest/v2/notifications/jira_issue
-
-type jiraIssueNotificationPostHandler struct {
-	APIJiraIssue *model.APIJiraIssue
-	composer     message.Composer
-	sender       send.Sender
-	environment  evergreen.Environment
-}
-
-func makeJiraIssueNotification(environment evergreen.Environment) gimlet.RouteHandler {
-	return &jiraIssueNotificationPostHandler{
-		environment: environment,
-	}
-}
-
-func (h *jiraIssueNotificationPostHandler) Factory() gimlet.RouteHandler {
-	return &jiraIssueNotificationPostHandler{
-		environment: h.environment,
-	}
-}
-
-// Parse fetches the JSON payload from the and unmarshals it to an APIJiraIssue.
-func (h *jiraIssueNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := utility.NewRequestReader(r)
-	h.APIJiraIssue = &model.APIJiraIssue{}
-	if err := gimlet.GetJSON(body, h.APIJiraIssue); err != nil {
-		return errors.Wrap(err, "reading Jira issue from JSON request body")
-	}
-
-	return nil
-}
-
-// Run dispatches the notification.
-func (h *jiraIssueNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
-	issue := h.APIJiraIssue.ToService()
-	h.composer = message.MakeJiraMessage(issue)
-
-	var err error
-	if err = h.composer.SetPriority(level.Notice); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting priority on Jira message"))
-	}
-	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAIssue)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Jira issue sender"))
-	}
-	h.sender.Send(h.composer)
-
-	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ///////////////////////////////////////////////////////////////////////
