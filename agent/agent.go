@@ -254,8 +254,7 @@ func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 	a.ec2InstanceID = instanceID
 }
 
-// loop is responsible for continually polling for new tasks and processing them at.
-// If there are no more tasks, it sleeps at interval agentSleepInterval with jitteredSleep
+// loop is responsible for continually polling for new tasks and processing them.
 // and then tries again.
 func (a *Agent) loop(ctx context.Context) error {
 	agentSleepInterval := minAgentSleepInterval
