@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -87,6 +88,7 @@ type taskStatusByTest map[string]taskTestResult
 
 // Returns a JSON response with the marshaled output of the task
 // specified in the request.
+// kim: NOTE: this is the route used by (legacyClient).GetTask.
 func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	srcTask := projCtx.Task
@@ -162,17 +164,32 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	// Copy over artifacts and binaries.
 	entries, err := artifact.FindAll(artifact.ByTaskId(srcTask.Id))
 	if err != nil {
-		msg := fmt.Sprintf("Error finding task '%v'", srcTask.Id)
+		msg := fmt.Sprintf("Error finding task '%s'", srcTask.Id)
 		grip.Errorf("%v: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 
 	}
 	for _, entry := range entries {
-		for _, _file := range entry.Files {
+		// kim: TODO: test that this gets the signed URL, probably have to do
+		// in staging.
+		// kim: TODO: add unit test for hiding private artifacts
+		strippedFiles, err := artifact.StripHiddenFiles(entry.Files, true)
+		if err != nil {
+			msg := fmt.Sprintf("Error getting artifact files for task '%s'", srcTask.Id)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": msg,
+				"task":    srcTask.Id,
+			}))
+			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+			return
+		}
+
+		for _, f := range strippedFiles {
 			file := taskFile{
-				Name: _file.Name,
-				URL:  _file.Link,
+				Name:           f.Name,
+				URL:            f.Link,
+				IgnoreForFetch: f.IgnoreForFetch,
 			}
 			destTask.Files = append(destTask.Files, file)
 		}

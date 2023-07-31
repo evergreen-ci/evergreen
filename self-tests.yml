@@ -40,6 +40,17 @@ post:
       content_type: text/plain
       permissions: public-read
       display_name: Evergreen test application server logs
+  - command: s3.put
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_file: evergreen/config.go
+      remote_file: evergreen/${task_id}/config.go
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: private
+      display_name: Test signed URL
+      visibility: signed
 
 #######################################
 #         YAML Templates              #
