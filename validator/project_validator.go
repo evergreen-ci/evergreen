@@ -1419,9 +1419,6 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 		for _, dep := range task.DependsOn {
 			pair := model.TVPair{TaskName: dep.Name, Variant: dep.Variant}
 			// make sure the dependency is not specified more than once
-			// kim: NOTE: easiest is to just consider if the dependency exists
-			// in the expected build variant list. Considering requesters would
-			// be better, but very difficult.
 			if depNames[pair] {
 				errs = append(errs,
 					ValidationError{
