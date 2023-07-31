@@ -88,7 +88,6 @@ type taskStatusByTest map[string]taskTestResult
 
 // Returns a JSON response with the marshaled output of the task
 // specified in the request.
-// kim: NOTE: this is the route used by (legacyClient).GetTask.
 func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	srcTask := projCtx.Task
@@ -171,9 +170,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 
 	}
 	for _, entry := range entries {
-		// kim: TODO: test that this gets the signed URL, probably have to do
-		// in staging.
-		// kim: TODO: add unit test for hiding private artifacts
 		strippedFiles, err := artifact.StripHiddenFiles(entry.Files, true)
 		if err != nil {
 			msg := fmt.Sprintf("Error getting artifact files for task '%s'", srcTask.Id)

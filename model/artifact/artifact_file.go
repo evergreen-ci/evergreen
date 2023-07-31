@@ -60,9 +60,7 @@ type File struct {
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
 }
 
-// StripHiddenFiles is a helper for only showing users the files they are
-// allowed to see. If they are allowed to see the file and it's a signed URL, it
-// will return the signed URL.
+// StripHiddenFiles is a helper for only showing users the files they are allowed to see.
 func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 	publicFiles := []File{}
 	for _, file := range files {
@@ -72,13 +70,6 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			// kim: NOTE: pre-signed file should return signed URL. I checked
-			// one pre-signed file and it had all the necessary parameters for
-			// pre-signing.
-			// kim: TODO: pre-signing test for evergreen fetch didn't work
-			// but all the necessary AWS parameters were there. Now that the fix
-			// is applied to the legacy route, try signing a URL in staging to
-			// see if the signed URL is returned.
 			if !file.ContainsSigningParams() {
 				return nil, errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
 			}
