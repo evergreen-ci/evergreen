@@ -187,7 +187,7 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	if err = p.UpdateMergeCommitSHA(pr.GetMergeCommitSHA()); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating merge commit SHA for patch '%s'", p.Id.Hex()))
 	}
-	
+
 	return gimlet.NewJSONResponse(resp)
 }
 
