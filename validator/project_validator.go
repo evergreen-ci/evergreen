@@ -1487,9 +1487,9 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// checkRequestersForTaskDependencies checks that that each task's dependencies will run for
-// the same requesters. For example, a task that runs in a mainline commit
-// cannot depend on a patch only task since the dependency will only be
+// checkRequestersForTaskDependencies checks that each task's dependencies will
+// run for the same requesters. For example, a task that runs in a mainline
+// commit cannot depend on a patch only task since the dependency will only be
 // satisfiable in patches.
 func checkRequestersForTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
