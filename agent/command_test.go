@@ -88,8 +88,9 @@ func (s *CommandSuite) SetupTest() {
 		task: client.TaskData{
 			Secret: "mock_task_secret",
 		},
-		taskModel:  &task.Task{},
-		oomTracker: &mock.OOMTracker{},
+		taskModel:                 &task.Task{},
+		oomTracker:                &mock.OOMTracker{},
+		unsetFunctionVarsDisabled: false,
 	}
 }
 
