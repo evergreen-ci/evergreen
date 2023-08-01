@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -137,6 +138,12 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		catcher.Wrap(err, "expanding args")
 	}
 
+	// kim: NOTE: env is lower priority than add_to_path
+	// kim: TODO: add test for env var precedence
+	// * If add_to_path is specified: add_to_path, default PATH, explicit PATH.
+	// * If explicit PATH is specified, only explicit PATH is available.
+	// * Otherwise (PATH not specified), does not have PATH defined.
+	// kim: TODO: update docs about precedence of PATH env var.
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
 		catcher.Wrap(err, "expanding environment variables")
@@ -150,6 +157,8 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		}
 		path = append(path, os.Getenv("PATH"))
 
+		// kim: NOTE: add_to_path paths are higher priority than default PATH
+		// and explicit PATH.
 		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
@@ -203,8 +212,17 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	return env
 }
 
-func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger client.LoggerProducer) *jasper.Command {
-	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
+func addTempDirs(env map[string]string, dir string) {
+	for _, key := range []string{"TMP", "TMPDIR", "TEMP"} {
+		if _, ok := env[key]; ok {
+			continue
+		}
+		env[key] = dir
+	}
+}
+
+func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, logger client.LoggerProducer) *jasper.Command {
+	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{execPath}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
@@ -263,13 +281,66 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 	return cmd
 }
 
-func addTempDirs(env map[string]string, dir string) {
-	for _, key := range []string{"TMP", "TMPDIR", "TEMP"} {
-		if _, ok := env[key]; ok {
-			continue
-		}
-		env[key] = dir
+// getCommandPath returns the absolute path to the command executable, falling
+// back to looking for the command in the paths specified by the PATH
+// environment variable if it is set. If the executable is available in the
+// default path, then that path will be used. Otherwise if it can't find the
+// command in the default path, the command will fall back to checking the
+// command's PATH environment variable.
+// kim: TODO: test
+// kim: TODO: update docs
+func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
+	cmdPath := c.Env["PATH"]
+
+	defaultPath, err := exec.LookPath(c.Binary)
+	if defaultPath != "" || len(cmdPath) == 0 || strings.Contains(c.Binary, string(filepath.Separator)) {
+		// If the binary is already a file path, don't try prepending a path to
+		// it.
+		return defaultPath, err
 	}
+
+	// Only look in the explicit command path if the default path didn't contain
+	// a matching executable, the command path is set (either by add_to_path or
+	// an explicit PATH environment variable), and the executable is not already
+	// a file path (i.e. contains a slash).
+
+	// kim: TODO: have to take into account precedence - if set, c.Path has
+	// higher precedence than current PATH. And if PATH is just directly set
+	// without c.Path, then that should be the only path available.
+	originalPath := os.Getenv("PATH")
+	defer func() {
+		// Try to reset the PATH back to its original state. If this fails, then
+		// the agent may have a modified PATH, which will affect all future
+		// agent operations that need to execute processes. However, the
+		// potential ways this could fail to reset (e.g. due to having
+		// insufficient memory to set it) seem highly unlikely, so it doesn't
+		// seem worth handling in a better way.
+		if resetErr := os.Setenv("PATH", originalPath); resetErr != nil {
+			logger.Execution().Error(errors.Wrap(resetErr, "resetting agent's PATH env var back to its original state").Error())
+		}
+	}()
+
+	if err := os.Setenv("PATH", cmdPath); err != nil {
+		return "", errors.Wrap(err, "setting PATH env var to try alternative executable paths")
+	}
+
+	altPath, err := exec.LookPath(c.Binary)
+	if err != nil {
+		return altPath, nil
+	}
+
+	// kim: NOTE: this is a little safer than a setenv-based solution but is
+	// much more difficult to get correct because executable permissions suck.
+	// // kim: QUESTION: does this have to handle funny business like a filepath
+	// // containing ":"? I very much doubt it, but idk.
+	// for _, path := range strings.Split(explicitPath, string(filepath.ListSeparator)) {
+	//     stat, err := os.Stat(filepath.Join(path, c.Binary))
+	//     if err != nil {
+	//         continue
+	//     }
+	//     // if stat.Mode()
+	// }
+	return "", errors.Errorf("could not find command in default execution PATH or in command's PATH")
 }
 
 func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
@@ -317,13 +388,18 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		}
 	}
 
+	execPath, err := c.getExecutablePath(logger)
+	if err != nil {
+		return errors.Wrap(err, "resolving executable path")
+	}
+
 	logger.Execution().Debug(message.Fields{
 		"working_directory": c.WorkingDir,
 		"background":        c.Background,
-		"binary":            c.Binary,
+		"binary":            execPath,
 	})
 
-	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, conf.Task.Id, logger), logger))
+	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())
