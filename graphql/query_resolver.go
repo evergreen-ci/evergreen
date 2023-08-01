@@ -333,14 +333,14 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	}
 
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
-		statuses, err := task.GetTaskStatusesByVersion(ctx, id)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, id, false)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for patch: %s ", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
-				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
+				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id, false)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for child patch: %s ", err.Error()))
 				}
