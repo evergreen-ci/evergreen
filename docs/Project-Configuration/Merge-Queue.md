@@ -1,7 +1,5 @@
 # GitHub Merge Queue
 
-**This feature is not currently working, pending [EVG-20515](https://jira.mongodb.org/browse/EVG-20515) and [EVG-20516](https://jira.mongodb.org/browse/EVG-20516).**
-
 [GitHub's merge queue](https://github.blog/2023-07-12-github-merge-queue-is-generally-available/)
 ensures that all pull requests pass required tests, rebased on HEAD, and it
 batches pull requests to test them as a unit to increase throughput.
