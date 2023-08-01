@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -575,6 +576,14 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 func (t *Task) AddDependency(d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
+		if d.TaskId == t.Id {
+			grip.Error(message.Fields{
+				"message": "task is attempting to add a dependency on itself, skipping this dependency",
+				"task_id": t.Id,
+				"stack":   string(debug.Stack()),
+			})
+			return nil
+		}
 		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
@@ -601,7 +610,10 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 	for i := len(t.DependsOn) - 1; i >= 0; i-- {
 		d := t.DependsOn[i]
 		if d.TaskId == dependencyId {
-			t.DependsOn = append(t.DependsOn[:i], t.DependsOn[i+1:]...)
+			var dependsOn []Dependency
+			dependsOn = append(dependsOn, t.DependsOn[:i]...)
+			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
+			t.DependsOn = dependsOn
 			found = true
 			break
 		}
@@ -3177,6 +3189,15 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
+		if depID == t.Id {
+			grip.Error(message.Fields{
+				"message": "task is attempting to add a dependency on itself, skipping this dependency",
+				"task_id": t.Id,
+				"stack":   string(debug.Stack()),
+			})
+			continue
+		}
+
 		newDependencies = append(newDependencies, Dependency{
 			TaskId: depID,
 			Status: status,

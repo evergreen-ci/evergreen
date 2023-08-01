@@ -35,10 +35,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-07-25"
+	ClientVersion = "2023-07-28"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-07-27"
+	AgentVersion = "2023-08-02"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -58,7 +58,6 @@ type ConfigSection interface {
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
 	Id                  string                  `bson:"_id" json:"id" yaml:"id"`
-	Alerts              AlertsConfig            `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy               AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
 	ApiUrl              string                  `yaml:"api_url" bson:"api_url" json:"api_url"`

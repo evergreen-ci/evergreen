@@ -1250,6 +1250,7 @@ type ComplexityRoot struct {
 	}
 
 	TaskQueueItem struct {
+		ActivatedBy      func(childComplexity int) int
 		BuildVariant     func(childComplexity int) int
 		DisplayName      func(childComplexity int) int
 		ExpectedDuration func(childComplexity int) int
@@ -7808,6 +7809,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskQueueDistro.TaskCount(childComplexity), true
+
+	case "TaskQueueItem.activatedBy":
+		if e.complexity.TaskQueueItem.ActivatedBy == nil {
+			break
+		}
+
+		return e.complexity.TaskQueueItem.ActivatedBy(childComplexity), true
 
 	case "TaskQueueItem.buildVariant":
 		if e.complexity.TaskQueueItem.BuildVariant == nil {
@@ -41066,6 +41074,8 @@ func (ec *executionContext) fieldContext_Query_distroTaskQueue(ctx context.Conte
 				return ec.fieldContext_TaskQueueItem_project(ctx, field)
 			case "requester":
 				return ec.fieldContext_TaskQueueItem_requester(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_TaskQueueItem_activatedBy(ctx, field)
 			case "revision":
 				return ec.fieldContext_TaskQueueItem_revision(ctx, field)
 			case "version":
@@ -54810,6 +54820,50 @@ func (ec *executionContext) fieldContext_TaskQueueItem_requester(ctx context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type TaskQueueItemType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskQueueItem_activatedBy(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQueueItem) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskQueueItem_activatedBy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ActivatedBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskQueueItem_activatedBy(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskQueueItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -78389,6 +78443,13 @@ func (ec *executionContext) _TaskQueueItem(ctx context.Context, sel ast.Selectio
 				return innerFunc(ctx)
 
 			})
+		case "activatedBy":
+
+			out.Values[i] = ec._TaskQueueItem_activatedBy(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "revision":
 
 			out.Values[i] = ec._TaskQueueItem_revision(ctx, field, obj)
