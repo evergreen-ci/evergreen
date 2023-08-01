@@ -305,7 +305,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				return errors.Wrap(err, "getting next task")
 			}
-			ntr, err := a.processNextTask(nextTask, ctx, tc, needPostGroup)
+			ntr, err := a.processNextTask(ctx, tc, nextTask, needPostGroup)
 			if err != nil {
 				return errors.Wrap(err, "processing next task")
 			}
@@ -319,21 +319,18 @@ func (a *Agent) loop(ctx context.Context) error {
 			}
 
 			if ntr.noTaskToRun {
-				// Increase sleep interval and sleep until next round of asking for a task
 				jitteredSleep := utility.JitterInterval(agentSleepInterval)
-				grip.Debugf("Agent sleeping %s.", jitteredSleep)
+				grip.Debugf("Agent found no task to run, sleeping %s.", jitteredSleep)
 				timer.Reset(jitteredSleep)
 				agentSleepInterval = agentSleepInterval * 2
 				if agentSleepInterval > maxAgentSleepInterval {
 					//nolint:ineffassign
 					agentSleepInterval = maxAgentSleepInterval
 				}
+				continue
 			}
-
-			// reset the timer and immediately ask for a new task
 			timer.Reset(0)
 			agentSleepInterval = minAgentSleepInterval
-			continue
 
 		}
 	}
@@ -346,7 +343,7 @@ type processNextResponse struct {
 	tc            *taskContext
 }
 
-func (a *Agent) processNextTask(nt *apimodels.NextTaskResponse, ctx context.Context, tc *taskContext, needPostGroup bool) (processNextResponse, error) {
+func (a *Agent) processNextTask(ctx context.Context, tc *taskContext, nt *apimodels.NextTaskResponse, needPostGroup bool) (processNextResponse, error) {
 	if nt.ShouldExit {
 		grip.Notice("Next task response indicates agent should exit.")
 		return processNextResponse{shouldExit: true}, nil
