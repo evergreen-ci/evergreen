@@ -307,7 +307,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				return errors.Wrap(err, "getting next task")
 			}
-			ntr, err := a.processNextTask(ctx, tc, nextTask, needPostGroup)
+			ntr, err := a.processNextTask(ctx, nextTask, tc, needPostGroup)
 			if err != nil {
 				return errors.Wrap(err, "processing next task")
 			}
