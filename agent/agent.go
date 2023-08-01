@@ -326,7 +326,6 @@ func (a *Agent) loop(ctx context.Context) error {
 				timer.Reset(jitteredSleep)
 				agentSleepInterval = agentSleepInterval * 2
 				if agentSleepInterval > maxAgentSleepInterval {
-					//nolint:ineffassign
 					agentSleepInterval = maxAgentSleepInterval
 				}
 				continue
@@ -345,7 +344,7 @@ type processNextResponse struct {
 	tc            *taskContext
 }
 
-func (a *Agent) processNextTask(ctx context.Context, tc *taskContext, nt *apimodels.NextTaskResponse, needPostGroup bool) (processNextResponse, error) {
+func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskResponse, tc *taskContext, needPostGroup bool) (processNextResponse, error) {
 	if nt.ShouldExit {
 		grip.Notice("Next task response indicates agent should exit.")
 		return processNextResponse{shouldExit: true}, nil
