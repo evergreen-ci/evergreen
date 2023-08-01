@@ -165,7 +165,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		for key, functionValue := range commandInfo.Vars {
 			currentValue := tc.taskConfig.Expansions.Get(key)
 			if currentValue != functionValue {
-				// if an expansion has been updated to something that's not a function var, persist it.
+				// If a command in the func updates the expansion value, persist it.
 				prevExp[key] = currentValue
 			}
 		}
