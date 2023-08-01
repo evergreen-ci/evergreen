@@ -136,6 +136,18 @@
                     "saveProjectSettingsForSection": {
                         "aliases": [
                             {
+                                "id": "5ffe393097b1d3759dd3c1aa",
+                                "alias": "__commit_queue",
+                                "description": "",
+                                "variant": "ubuntu1604",
+                                "variantTags": [],
+                                "task": "unit_tests",
+                                "taskTags": [],
+                                "gitTag": "",
+                                "remotePath": "",
+                                "parameters": []
+                            },
+                            {
                                 "id": "64c80057d1d6f12b0d4c69d0",
                                 "alias": "test",
                                 "variant": "",
