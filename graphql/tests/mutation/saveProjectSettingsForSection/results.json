@@ -150,6 +150,7 @@
                             {
                                 "id": "64c80057d1d6f12b0d4c69d0",
                                 "alias": "test",
+                                "description": "alias",
                                 "variant": "",
                                 "variantTags": [
                                     ".*"
