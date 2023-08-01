@@ -57,7 +57,7 @@ type APIProjectAlias struct {
 	TaskTags    []*string       `json:"tags,omitempty"`
 	Delete      bool            `json:"delete,omitempty"`
 	ID          *string         `json:"_id,omitempty"`
-	Parameters  []*APIParameter `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
+	Parameters  []*APIParameter `json:"parameters,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) error {
