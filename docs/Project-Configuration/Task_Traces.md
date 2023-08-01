@@ -31,8 +31,9 @@ from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
 
 span_context = SpanContext(
     trace_id = int("${otel_trace_id}", 16),
-    span_id = int(("${otel_parent_id}", 16),
-    trace_flags = TraceFlags(0x01)
+    span_id = int("${otel_parent_id}", 16),
+    trace_flags = TraceFlags(0x01),
+    is_remote = False,
 )
 ctx = trace.set_span_in_context(NonRecordingSpan(span_context))
 
