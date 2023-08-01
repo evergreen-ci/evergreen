@@ -138,28 +138,19 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		catcher.Wrap(err, "expanding args")
 	}
 
-	// kim: NOTE: env is lower priority than add_to_path
-	// kim: TODO: add test for env var precedence
-	// * If add_to_path is specified: add_to_path, default PATH, explicit PATH.
+	// kim: TODO: update docs about precedence of PATH env var.
+	// * If add_to_path is specified: add_to_path, agent PATH (explicit PATH is
+	// overwritten).
 	// * If explicit PATH is specified, only explicit PATH is available.
 	// * Otherwise (PATH not specified), does not have PATH defined.
-	// kim: TODO: update docs about precedence of PATH env var.
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
 		catcher.Wrap(err, "expanding environment variables")
 	}
 
-	if len(c.Path) > 0 {
-		path := make([]string, len(c.Path), len(c.Path)+1)
-		for idx := range c.Path {
-			path[idx], err = exp.ExpandString(c.Path[idx])
-			catcher.Add(err)
-		}
-		path = append(path, os.Getenv("PATH"))
-
-		// kim: NOTE: add_to_path paths are higher priority than default PATH
-		// and explicit PATH.
-		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
+	for idx := range c.Path {
+		c.Path[idx], err = exp.ExpandString(c.Path[idx])
+		catcher.Wrap(err, "expanding path to add")
 	}
 
 	return errors.Wrap(catcher.Resolve(), "expanding strings")
@@ -172,11 +163,20 @@ type modifyEnvOptions struct {
 	expansions             util.Expansions
 	includeExpansionsInEnv []string
 	addExpansionsToEnv     bool
+	addToPath              []string
 }
 
 func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions) map[string]string {
 	if env == nil {
 		env = map[string]string{}
+	}
+
+	if len(opts.addToPath) > 0 {
+		// Prepend paths to the agent process's PATH. More reasonable behavior
+		// here would be to respect the PATH env var if it's explicitly set, but
+		// changing it could break existing workflows, so we don't do that.
+		path := append(opts.addToPath, os.Getenv("PATH"))
+		env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
 	expansions := opts.expansions.Map()
@@ -304,8 +304,8 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	// an explicit PATH environment variable), and the executable is not already
 	// a file path (i.e. contains a slash).
 
-	// kim: TODO: have to take into account precedence - if set, c.Path has
-	// higher precedence than current PATH. And if PATH is just directly set
+	// kim: NOTE: have to take into account precedence - if set, c.Path has
+	// higher precedence than agent PATH. And if PATH is just directly set
 	// without c.Path, then that should be the only path available.
 	originalPath := os.Getenv("PATH")
 	defer func() {
@@ -367,17 +367,14 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		logger.Execution().Notice(errors.Wrap(err, "getting temporary directory"))
 	}
 
-	var exp util.Expansions
-	if conf.Expansions != nil {
-		exp = *conf.Expansions
-	}
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
 		tmpDir:                 taskTmpDir,
-		expansions:             exp,
+		expansions:             *conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
+		addToPath:              c.Path,
 	})
 
 	if !c.KeepEmptyArgs {
