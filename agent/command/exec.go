@@ -174,7 +174,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	if len(opts.addToPath) > 0 {
 		// Prepend paths to the agent process's PATH. More reasonable behavior
 		// here would be to respect the PATH env var if it's explicitly set, but
-		// changing it could break existing workflows, so we don't do that.
+		// changing this could break existing workflows, so we don't do that.
 		path := append(opts.addToPath, os.Getenv("PATH"))
 		env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
@@ -281,32 +281,34 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 	return cmd
 }
 
-// getCommandPath returns the absolute path to the command executable, falling
-// back to looking for the command in the paths specified by the PATH
+// getExecutablePath returns the absolute path to the command executable,
+// falling back to looking for the command in the paths specified by the PATH
 // environment variable if it is set. If the executable is available in the
 // default path, then that path will be used. Otherwise if it can't find the
 // command in the default path, the command will fall back to checking the
 // command's PATH environment variable.
-// kim: TODO: test
+// kim: TODO: test in staging
 // kim: TODO: update docs
 func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
+	// kim; NOTE: explicitly not handling executing something in the current
+	// working directory. For the agent, there shouldn't be anything in the
+	// current working directory (supposedly)
+
 	cmdPath := c.Env["PATH"]
 
 	defaultPath, err := exec.LookPath(c.Binary)
-	if defaultPath != "" || len(cmdPath) == 0 || strings.Contains(c.Binary, string(filepath.Separator)) {
-		// If the binary is already a file path, don't try prepending a path to
-		// it.
-		return defaultPath, err
+	if defaultPath != "" {
+		return defaultPath, nil
+	}
+	if len(cmdPath) == 0 || strings.Contains(c.Binary, string(filepath.Separator)) {
+		return "", err
 	}
 
 	// Only look in the explicit command path if the default path didn't contain
 	// a matching executable, the command path is set (either by add_to_path or
 	// an explicit PATH environment variable), and the executable is not already
-	// a file path (i.e. contains a slash).
+	// a file path (e.g. ./my-script.sh).
 
-	// kim: NOTE: have to take into account precedence - if set, c.Path has
-	// higher precedence than agent PATH. And if PATH is just directly set
-	// without c.Path, then that should be the only path available.
 	originalPath := os.Getenv("PATH")
 	defer func() {
 		// Try to reset the PATH back to its original state. If this fails, then
@@ -325,22 +327,11 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	}
 
 	altPath, err := exec.LookPath(c.Binary)
-	if err != nil {
+	if altPath != "" {
 		return altPath, nil
 	}
 
-	// kim: NOTE: this is a little safer than a setenv-based solution but is
-	// much more difficult to get correct because executable permissions suck.
-	// // kim: QUESTION: does this have to handle funny business like a filepath
-	// // containing ":"? I very much doubt it, but idk.
-	// for _, path := range strings.Split(explicitPath, string(filepath.ListSeparator)) {
-	//     stat, err := os.Stat(filepath.Join(path, c.Binary))
-	//     if err != nil {
-	//         continue
-	//     }
-	//     // if stat.Mode()
-	// }
-	return "", errors.Errorf("could not find command in default execution PATH or in command's PATH")
+	return "", errors.Errorf("could not find executable in default execution PATH or in command's explicit PATH")
 }
 
 func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {

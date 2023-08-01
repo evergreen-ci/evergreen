@@ -2,8 +2,10 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -302,6 +304,50 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 2)
+}
+
+func (s *execCmdSuite) TestCommandFailsForExecutableNotFound() {
+	cmd := &subprocessExec{
+		Command:    "not-a-real-executable",
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should not be able to run because executable does not exist in PATH")
+}
+
+func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForExecutable() {
+	executableName := "evergreen"
+	if runtime.GOOS == "windows" {
+		executableName = executableName + ".exe"
+	}
+	cmd := &subprocessExec{
+		// Set the command to point to the locally-compiled Evergreern binary so
+		// we can test executing it when it's not in the PATH by default.
+		Command:    executableName,
+		WorkingDir: testutil.GetDirectoryOfFile(),
+		Path:       []string{filepath.Join(os.Getenv("EVGHOME"), "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled evergreen executable from PATH")
+}
+
+func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvForExecutableFilePath() {
+	executableName := "./evergreen"
+	if runtime.GOOS == "windows" {
+		executableName = executableName + ".exe"
+	}
+	cmd := &subprocessExec{
+		// Set the command to point to the locally-compiled Evergreern binary so
+		// we can test executing it when it's not in the PATH by default.
+		Command:    executableName,
+		WorkingDir: testutil.GetDirectoryOfFile(),
+		Path:       []string{filepath.Join(os.Getenv("EVGHOME"), "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should not be able to run because evergreen executable should not be available in the current working directory")
 }
 
 func (s *execCmdSuite) TestExpansionsForEnv() {

@@ -315,7 +315,7 @@ html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
-# end convienence targets
+# end convenience targets
 
 
 # start test and coverage artifacts
@@ -362,6 +362,9 @@ $(buildDir)/output.%.test: .FORCE
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
 $(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+# test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
+$(buildDir)/output.agent-command.test: build .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./agent/command 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
