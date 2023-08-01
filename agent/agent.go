@@ -1069,29 +1069,22 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	return true
 }
 
-// logPanic logs and returns a panic error, along with the original error (if
-// any). If there was no panic error, this is a no-op.
+// logPanic logs a panic to the task log and returns the panic error, along with
+// the original error (if any). If there was no panic error, this is a no-op.
 func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, op string) error {
 	if pErr == nil {
 		return nil
 	}
 
-	msg := message.Fields{
-		"message":   "programmatic error: agent hit panic",
-		"operation": op,
-		"stack":     message.NewStack(2, "").Raw(),
-	}
-
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	grip.Alert(message.WrapError(catcher.Resolve(), msg))
 	if logger != nil && !logger.Closed() {
 		logMsg := message.Fields{
 			"message":   "programmatic error: Evergreen agent hit panic",
 			"operation": op,
 		}
-		logger.Execution().Error(logMsg)
+		logger.Task().Error(logMsg)
 	}
 
 	return catcher.Resolve()

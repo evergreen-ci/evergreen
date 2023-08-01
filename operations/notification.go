@@ -84,7 +84,7 @@ func notificationEmail() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  joinFlagNames(fromFlagName, "f"),
-				Usage: "message sender",
+				Usage: "message sender. DEPRECATED: all emails are sent from the configured notifications address",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(recipientsFlagName, "r"),
@@ -103,7 +103,6 @@ func notificationEmail() cli.Command {
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
-			from := c.String(fromFlagName)
 			recipients := c.StringSlice(recipientsFlagName)
 			body := c.String(bodyFlagName)
 			subject := c.String(subjectFlagName)
@@ -112,7 +111,6 @@ func notificationEmail() cli.Command {
 			defer cancel()
 
 			apiEmail := model.APIEmail{
-				From:       utility.ToStringPtr(from),
 				Subject:    utility.ToStringPtr(subject),
 				Recipients: recipients,
 				Body:       utility.ToStringPtr(body),

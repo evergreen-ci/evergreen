@@ -1250,7 +1250,7 @@ type ComplexityRoot struct {
 	}
 
 	TaskQueueItem struct {
-		Author           func(childComplexity int) int
+		ActivatedBy      func(childComplexity int) int
 		BuildVariant     func(childComplexity int) int
 		DisplayName      func(childComplexity int) int
 		ExpectedDuration func(childComplexity int) int
@@ -7810,12 +7810,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskQueueDistro.TaskCount(childComplexity), true
 
-	case "TaskQueueItem.author":
-		if e.complexity.TaskQueueItem.Author == nil {
+	case "TaskQueueItem.activatedBy":
+		if e.complexity.TaskQueueItem.ActivatedBy == nil {
 			break
 		}
 
-		return e.complexity.TaskQueueItem.Author(childComplexity), true
+		return e.complexity.TaskQueueItem.ActivatedBy(childComplexity), true
 
 	case "TaskQueueItem.buildVariant":
 		if e.complexity.TaskQueueItem.BuildVariant == nil {
@@ -41074,8 +41074,8 @@ func (ec *executionContext) fieldContext_Query_distroTaskQueue(ctx context.Conte
 				return ec.fieldContext_TaskQueueItem_project(ctx, field)
 			case "requester":
 				return ec.fieldContext_TaskQueueItem_requester(ctx, field)
-			case "author":
-				return ec.fieldContext_TaskQueueItem_author(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_TaskQueueItem_activatedBy(ctx, field)
 			case "revision":
 				return ec.fieldContext_TaskQueueItem_revision(ctx, field)
 			case "version":
@@ -54825,8 +54825,8 @@ func (ec *executionContext) fieldContext_TaskQueueItem_requester(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskQueueItem_author(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQueueItem) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskQueueItem_author(ctx, field)
+func (ec *executionContext) _TaskQueueItem_activatedBy(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQueueItem) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskQueueItem_activatedBy(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -54839,7 +54839,7 @@ func (ec *executionContext) _TaskQueueItem_author(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Author, nil
+		return obj.ActivatedBy, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -54856,7 +54856,7 @@ func (ec *executionContext) _TaskQueueItem_author(ctx context.Context, field gra
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_TaskQueueItem_author(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskQueueItem_activatedBy(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskQueueItem",
 		Field:      field,
@@ -78443,9 +78443,9 @@ func (ec *executionContext) _TaskQueueItem(ctx context.Context, sel ast.Selectio
 				return innerFunc(ctx)
 
 			})
-		case "author":
+		case "activatedBy":
 
-			out.Values[i] = ec._TaskQueueItem_author(ctx, field, obj)
+			out.Values[i] = ec._TaskQueueItem_activatedBy(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
