@@ -38,13 +38,7 @@ mutation {
         value
       }
     }
-    projectRef {
-      enabled
-      remotePath
-      spawnHostScriptPath ## overwritten
-    }
-    vars {
-      vars ## should be unchanged
-    }
+
+
   }
 }
