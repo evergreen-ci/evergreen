@@ -54,3 +54,16 @@ all variants.
 
 For more information on GitHub's merge queue feature and how to customize its
 settings, refer to the [official GitHub documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue).
+
+## FAQ
+
+**Q:** Is there a plan to have the merge queue send outcome notifications or
+to attribute the merge queue patch to your Evergreen user?
+
+**A:** No. We believe it makes more sense for notifications to come from GitHub,
+since it manages the queue, and supports sending notifications. The versions
+aren’t commit queue entries, they’re commit queue builds. There’s a many-to-many
+relationship between versions and PRs: A version can have multiple authors
+because GitHub’s merge queue supports concurrency, and a PR can have multiple
+versions for the same reason. It’s also possible for a version to succeed and
+not yield a merge on GitHub’s side.
