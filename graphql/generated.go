@@ -857,6 +857,7 @@ type ComplexityRoot struct {
 		Description func(childComplexity int) int
 		GitTag      func(childComplexity int) int
 		ID          func(childComplexity int) int
+		Parameters  func(childComplexity int) int
 		RemotePath  func(childComplexity int) int
 		Task        func(childComplexity int) int
 		TaskTags    func(childComplexity int) int
@@ -5695,6 +5696,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectAlias.ID(childComplexity), true
+
+	case "ProjectAlias.parameters":
+		if e.complexity.ProjectAlias.Parameters == nil {
+			break
+		}
+
+		return e.complexity.ProjectAlias.Parameters(childComplexity), true
 
 	case "ProjectAlias.remotePath":
 		if e.complexity.ProjectAlias.RemotePath == nil {
@@ -39006,6 +39014,53 @@ func (ec *executionContext) fieldContext_ProjectAlias_variantTags(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectAlias_parameters(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectAlias_parameters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Parameters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIParameter)
+	fc.Result = res
+	return ec.marshalOParameter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectAlias_parameters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectAlias",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_Parameter_key(ctx, field)
+			case "value":
+				return ec.fieldContext_Parameter_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectBanner_text(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectBanner) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectBanner_text(ctx, field)
 	if err != nil {
@@ -39474,6 +39529,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_aliases(ctx contex
 				return ec.fieldContext_ProjectAlias_variant(ctx, field)
 			case "variantTags":
 				return ec.fieldContext_ProjectAlias_variantTags(ctx, field)
+			case "parameters":
+				return ec.fieldContext_ProjectAlias_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectAlias", field.Name)
 		},
@@ -39922,6 +39979,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_aliases(ctx context.Con
 				return ec.fieldContext_ProjectAlias_variant(ctx, field)
 			case "variantTags":
 				return ec.fieldContext_ProjectAlias_variantTags(ctx, field)
+			case "parameters":
+				return ec.fieldContext_ProjectAlias_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectAlias", field.Name)
 		},
@@ -46206,6 +46265,8 @@ func (ec *executionContext) fieldContext_RepoSettings_aliases(ctx context.Contex
 				return ec.fieldContext_ProjectAlias_variant(ctx, field)
 			case "variantTags":
 				return ec.fieldContext_ProjectAlias_variantTags(ctx, field)
+			case "parameters":
+				return ec.fieldContext_ProjectAlias_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectAlias", field.Name)
 		},
@@ -66474,7 +66535,7 @@ func (ec *executionContext) unmarshalInputProjectAliasInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "alias", "description", "gitTag", "remotePath", "task", "taskTags", "variant", "variantTags"}
+	fieldsInOrder := [...]string{"id", "alias", "description", "gitTag", "remotePath", "task", "taskTags", "variant", "variantTags", "parameters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -66562,6 +66623,15 @@ func (ec *executionContext) unmarshalInputProjectAliasInput(ctx context.Context,
 				return it, err
 			}
 			it.VariantTags = data
+		case "parameters":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parameters"))
+			data, err := ec.unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Parameters = data
 		}
 	}
 
@@ -74657,6 +74727,10 @@ func (ec *executionContext) _ProjectAlias(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "parameters":
+
+			out.Values[i] = ec._ProjectAlias_parameters(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -82069,6 +82143,21 @@ func (ec *executionContext) marshalNParameter2ᚕgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
+func (ec *executionContext) marshalNParameter2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, sel ast.SelectionSet, v *model.APIParameter) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Parameter(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNParameterInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, v interface{}) (*model.APIParameter, error) {
+	res, err := ec.unmarshalInputParameterInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, sel ast.SelectionSet, v model.APIParsleyFilter) graphql.Marshaler {
 	return ec._ParsleyFilter(ctx, sel, &v)
 }
@@ -85593,6 +85682,53 @@ func (ec *executionContext) unmarshalONotificationsInput2ᚖgithubᚗcomᚋeverg
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOParameter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIParameter) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParameter2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, v interface{}) ([]*model.APIParameter, error) {
 	if v == nil {
 		return nil, nil
@@ -85606,6 +85742,26 @@ func (ec *executionContext) unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergr
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
 		res[i], err = ec.unmarshalOParameterInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx context.Context, v interface{}) ([]*model.APIParameter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.APIParameter, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNParameterInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
