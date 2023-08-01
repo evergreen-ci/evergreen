@@ -1542,41 +1542,78 @@ func TestFindVariantsWithTask(t *testing.T) {
 }
 
 func TestAddDependency(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-	t1 := &Task{Id: "t1", DependsOn: depTaskIds}
-	assert.NoError(t, t1.Insert())
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
+		"AddingDuplicateDependencyIsNoop": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(depTaskIds[0]))
 
-	assert.NoError(t, t1.AddDependency(depTaskIds[0]))
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			assert.Equal(t, tsk.DependsOn, updated.DependsOn)
+			assert.Len(t, updated.DependsOn, len(depTaskIds))
+		},
+		"UpdatesDuplicateDependencyForUnattainability": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(Dependency{
+				TaskId:       depTaskIds[0].TaskId,
+				Status:       evergreen.TaskSucceeded,
+				Unattainable: true,
+			}))
 
-	updated, err := FindOneId(t1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, t1.DependsOn, updated.DependsOn)
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			require.Len(t, updated.DependsOn, len(depTaskIds))
+			assert.True(t, updated.DependsOn[0].Unattainable)
+		},
+		"AddsDependencyForSameTaskButDifferentStatus": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(Dependency{
+				TaskId: depTaskIds[0].TaskId,
+				Status: evergreen.TaskFailed,
+			}))
 
-	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskSucceeded, Unattainable: true}))
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			assert.Len(t, updated.DependsOn, len(depTaskIds)+1)
+		},
+		"AddingSelfDependencyShouldNoop": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(Dependency{
+				TaskId: tsk.Id,
+			}))
 
-	updated, err = FindOneId(t1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, len(depTaskIds), len(updated.DependsOn))
-	assert.True(t, updated.DependsOn[0].Unattainable)
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			assert.Len(t, updated.DependsOn, len(depTaskIds))
+			for _, d := range updated.DependsOn {
+				assert.NotEqual(t, d.TaskId, tsk.Id, "task should not add dependency on itself")
+			}
+		},
+		"RemoveDependency": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.RemoveDependency(depTaskIds[2].TaskId))
+			for _, d := range tsk.DependsOn {
+				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
+			}
 
-	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskFailed}))
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			for _, d := range updated.DependsOn {
+				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
+			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
 
-	updated, err = FindOneId(t1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, len(depTaskIds)+1, len(updated.DependsOn))
+			tsk := &Task{Id: "t1", DependsOn: depTaskIds}
+			require.NoError(t, tsk.Insert())
 
-	assert.NoError(t, t1.RemoveDependency("td3"))
-	for _, d := range t1.DependsOn {
-		if d.TaskId == "td3" {
-			assert.Fail(t, "did not remove dependency from in-memory task")
-		}
-	}
-	updated, err = FindOneId(t1.Id)
-	assert.NoError(t, err)
-	for _, d := range updated.DependsOn {
-		if d.TaskId == "td3" {
-			assert.Fail(t, "did not remove dependency from db task")
-		}
+			tCase(t, tsk)
+		})
 	}
 }
 
@@ -1746,6 +1783,16 @@ func TestUpdateDependsOn(t *testing.T) {
 	t2, err = FindOneId("t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 4)
+
+	t.Run("AddingSelfDependencyShouldNoop", func(t *testing.T) {
+		assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{t1.Id}))
+		dbTask1, err := FindOneId(t1.Id)
+		assert.NoError(t, err)
+		require.NotZero(t, dbTask1)
+		for _, d := range dbTask1.DependsOn {
+			assert.NotEqual(t, t1.Id, d.TaskId, "task should not add dependency on itself")
+		}
+	})
 }
 
 func TestDisplayTaskCache(t *testing.T) {
