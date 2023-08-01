@@ -2986,9 +2986,21 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	return &hosts[0], nil
 }
 
-// GetPaginatedRunningHosts gets running hosts with pagination and applies any
-// filters.
-func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
+// HostsFilterOptions represents the filtering arguments for fetching hosts.
+type HostsFilterOptions struct {
+	HostID        string
+	DistroID      string
+	CurrentTaskID string
+	Statuses      []string
+	StartedBy     string
+	SortBy        string
+	SortDir       int
+	Page          int
+	Limit         int
+}
+
+// GetPaginatedRunningHosts gets running hosts with pagination and applies any filters.
+func GetPaginatedRunningHosts(opts HostsFilterOptions) ([]Host, *int, int, error) {
 	runningHostsPipeline := []bson.M{
 		{
 			"$match": bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}},
@@ -3033,53 +3045,60 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	hasFilters := false
 
-	if len(hostID) > 0 {
+	if len(opts.HostID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				IdKey: hostID,
+				"$or": []bson.M{
+					{
+						IdKey: bson.M{"$regex": opts.HostID, "$options": "i"},
+					},
+					{
+						DNSKey: bson.M{"$regex": opts.HostID, "$options": "i"},
+					},
+				},
 			},
 		})
 	}
 
-	if len(distroID) > 0 {
+	if len(opts.DistroID) > 0 {
 		hasFilters = true
 
 		distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				distroIDKey: bson.M{"$regex": distroID, "$options": "i"},
+				distroIDKey: bson.M{"$regex": opts.DistroID, "$options": "i"},
 			},
 		})
 	}
 
-	if len(currentTaskID) > 0 {
+	if len(opts.CurrentTaskID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				RunningTaskKey: currentTaskID,
+				RunningTaskKey: opts.CurrentTaskID,
 			},
 		})
 	}
 
-	if len(startedBy) > 0 {
+	if len(opts.StartedBy) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				StartedByKey: startedBy,
+				StartedByKey: opts.StartedBy,
 			},
 		})
 	}
 
-	if len(statuses) > 0 {
+	if len(opts.Statuses) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				StatusKey: bson.M{"$in": statuses},
+				StatusKey: bson.M{"$in": opts.Statuses},
 			},
 		})
 	}
@@ -3106,8 +3125,8 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	}
 
 	sorters := bson.D{}
-	if len(sortBy) > 0 {
-		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
+	if len(opts.SortBy) > 0 {
+		sorters = append(sorters, bson.E{Key: opts.SortBy, Value: opts.SortDir})
 	}
 	// _id must be the last item in the sort array to ensure a consistent sort
 	// order when previous sort keys result in a tie.
@@ -3116,12 +3135,12 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		"$sort": sorters,
 	})
 
-	if limit > 0 {
+	if opts.Limit > 0 {
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
-			"$skip": page * limit,
+			"$skip": opts.Page * opts.Limit,
 		})
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
-			"$limit": limit,
+			"$limit": opts.Limit,
 		})
 	}
 

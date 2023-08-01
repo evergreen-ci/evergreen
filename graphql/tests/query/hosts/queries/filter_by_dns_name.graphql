@@ -1,0 +1,10 @@
+query {
+  hosts(hostId: "ec2-34-207-222-84") {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      hostUrl
+    }
+  }
+}

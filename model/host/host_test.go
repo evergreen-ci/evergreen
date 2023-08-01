@@ -5725,3 +5725,199 @@ func TestFindHostsToTerminate(t *testing.T) {
 		})
 	}
 }
+
+func TestGetPaginatedRunningHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.DropCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ExcludesTerminatedHosts": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "",
+					DistroID:      "",
+					CurrentTaskID: "",
+					Statuses:      []string{},
+					StartedBy:     "",
+					SortBy:        "",
+					SortDir:       1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 2)
+			require.Equal(t, hosts[0].Status, evergreen.HostRunning)
+		},
+		"FilterByID": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "h2",
+					DistroID:      "",
+					CurrentTaskID: "",
+					Statuses:      []string{},
+					StartedBy:     "",
+					SortBy:        "",
+					SortDir:       1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			require.Equal(t, hosts[0].Id, "h2")
+		},
+		"FilterByDNSName": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "ec2-host-2",
+					DistroID:      "",
+					CurrentTaskID: "",
+					Statuses:      []string{},
+					StartedBy:     "",
+					SortBy:        "",
+					SortDir:       1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			require.Equal(t, hosts[0].Id, "h2")
+		},
+		"FilterByDistroID": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "",
+					DistroID:      "rhel80",
+					CurrentTaskID: "",
+					Statuses:      []string{},
+					StartedBy:     "",
+					SortBy:        "",
+					SortDir:       1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			require.Equal(t, hosts[0].Id, "h3")
+		},
+		"FilterByCurrentTaskID": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "",
+					DistroID:      "",
+					CurrentTaskID: "task_id",
+					Statuses:      []string{},
+					StartedBy:     "",
+					SortBy:        "",
+					SortDir:       1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			require.Equal(t, hosts[0].Id, "h3")
+		},
+		"FilterByStatuses": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "",
+					DistroID:      "",
+					CurrentTaskID: "",
+					Statuses:      []string{evergreen.HostRunning},
+					StartedBy:     "",
+					SortBy:        "",
+					SortDir:       1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			require.Equal(t, hosts[0].Id, "h2")
+		},
+		"FilterByStartedBy": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "",
+					DistroID:      "",
+					CurrentTaskID: "",
+					Statuses:      []string{},
+					StartedBy:     "evergreen",
+					SortBy:        "",
+					SortDir:       1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 2)
+		},
+		"SortBy": func(t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(
+				HostsFilterOptions{
+					HostID:        "",
+					DistroID:      "",
+					CurrentTaskID: "",
+					Statuses:      []string{},
+					StartedBy:     "",
+					SortBy:        IdKey,
+					SortDir:       -1,
+					Page:          0,
+					Limit:         0,
+				})
+			require.NoError(t, err)
+			require.Len(t, hosts, 2)
+			require.Equal(t, hosts[0].Id, "h3")
+			require.Equal(t, hosts[1].Id, "h2")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+
+			h1 := &Host{
+				Id:   "h1",
+				Host: "ec2-host-1.compute-1.amazonaws.com",
+				Distro: distro.Distro{
+					Id: "ubuntu1604-small",
+				},
+				StartedBy:      "normal-user",
+				Status:         evergreen.HostTerminated,
+				Provider:       evergreen.ProviderNameMock,
+				ExpirationTime: time.Now().Add(-10 * time.Minute),
+				RunningTask:    "",
+			}
+			require.NoError(t, h1.Insert(ctx))
+
+			h2 := &Host{
+				Id:   "h2",
+				Host: "ec2-host-2.compute-1.amazonaws.com",
+				Distro: distro.Distro{
+					Id: "ubuntu1604-small",
+				},
+				StartedBy:      "evergreen",
+				Status:         evergreen.HostRunning,
+				Provider:       evergreen.ProviderNameMock,
+				ExpirationTime: time.Now().Add(-10 * time.Minute),
+				RunningTask:    "",
+			}
+			require.NoError(t, h2.Insert(ctx))
+
+			h3 := &Host{
+				Id:   "h3",
+				Host: "ec2-host-3.compute-1.amazonaws.com",
+				Distro: distro.Distro{
+					Id: "rhel80-large",
+				},
+				StartedBy:      "evergreen",
+				Status:         evergreen.HostQuarantined,
+				Provider:       evergreen.ProviderNameMock,
+				ExpirationTime: time.Now().Add(-10 * time.Minute),
+				RunningTask:    "task_id",
+			}
+			require.NoError(t, h3.Insert(ctx))
+
+			tCase(t)
+		})
+	}
+}
