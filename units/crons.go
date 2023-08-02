@@ -1025,15 +1025,7 @@ func PopulateVolumeExpirationJob() amboy.QueueOperation {
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeDeletionJob(ts, &v)), "enqueueing volume deletion job for volume '%s'", v.ID)
 		}
-
-		volumes, err = host.FindVolumesWithTerminatedHost()
-		if err != nil {
-			catcher.Add(err)
-			return catcher.Resolve()
-		}
-		for _, v := range volumes {
-
-		}
+		
 		return errors.Wrap(catcher.Resolve(), "populating expire volume jobs")
 	}
 }
