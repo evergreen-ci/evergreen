@@ -138,11 +138,6 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		catcher.Wrap(err, "expanding args")
 	}
 
-	// kim: TODO: update docs about precedence of PATH env var.
-	// * If add_to_path is specified: add_to_path, agent PATH (explicit PATH is
-	// overwritten).
-	// * If explicit PATH is specified, only explicit PATH is available.
-	// * Otherwise (PATH not specified), does not have PATH defined.
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
 		catcher.Wrap(err, "expanding environment variables")
@@ -287,13 +282,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 // default path, then that path will be used. Otherwise if it can't find the
 // command in the default path, the command will fall back to checking the
 // command's PATH environment variable.
-// kim: TODO: test in staging
-// kim: TODO: update docs
 func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
-	// kim; NOTE: explicitly not handling executing something in the current
-	// working directory. For the agent, there shouldn't be anything in the
-	// current working directory (supposedly)
-
 	cmdPath := c.Env["PATH"]
 
 	defaultPath, err := exec.LookPath(c.Binary)
@@ -313,9 +302,9 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	defer func() {
 		// Try to reset the PATH back to its original state. If this fails, then
 		// the agent may have a modified PATH, which will affect all future
-		// agent operations that need to execute processes. However, the
-		// potential ways this could fail to reset (e.g. due to having
-		// insufficient memory to set it) seem highly unlikely, so it doesn't
+		// agent operations that need to execute processes. However, given that
+		// the potential ways this could fail to reset seem highly unlikely
+		// (e.g. due to having insufficient memory to reset it) , it doesn't
 		// seem worth handling in a better way.
 		if resetErr := os.Setenv("PATH", originalPath); resetErr != nil {
 			logger.Execution().Error(errors.Wrap(resetErr, "resetting agent's PATH env var back to its original state").Error())
@@ -323,15 +312,10 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	}()
 
 	if err := os.Setenv("PATH", cmdPath); err != nil {
-		return "", errors.Wrap(err, "setting PATH env var to try alternative executable paths")
+		return "", errors.Wrap(err, "setting command's PATH to try fallback executable paths")
 	}
 
-	altPath, err := exec.LookPath(c.Binary)
-	if altPath != "" {
-		return altPath, nil
-	}
-
-	return "", errors.Errorf("could not find executable in default execution PATH or in command's explicit PATH")
+	return exec.LookPath(c.Binary)
 }
 
 func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {

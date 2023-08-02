@@ -1080,7 +1080,7 @@ Parameters:
 
 -   `binary`: a binary to run
 -   `args`: a list of arguments to the binary
--   `env`: a map of environment variables and their values.  In case of
+-   `env`: a map of environment variables and their values. In case of
     conflicting environment variables defined by `add_expansions_to_env` or
     `include_expansions_in_env`, this has the lowest priority. Unless
     overridden, the following environment variables will be set by default:
@@ -1118,8 +1118,24 @@ Parameters:
     not exist, it is ignored. In case of conflicting environment variables
     defined by `env` or `add_expansions_to_env`, this has highest
     priority.
--   `add_to_path`: specify one or more paths which are prepended to the
-    `PATH` environment variable.
+-   `add_to_path`: specify one or more paths to prepend to the command `PATH`,
+    which has the following effects:
+    - If `PATH` is explicitly set in `env`, that `PATH` is ignored.
+    - The command automatically inherits the runtime environment's `PATH`
+      environment variable. Then, any paths specified in `add_to_path` are
+      prepended in the given order.
+    - This can be used to specify fallback paths to search for the `binary`
+      executable (see [PATH special case](#path-environment-variable-special-case)).
+
+### PATH Environment Variable Special Case
+The `PATH` environment variable (specified either via explicitly setting `PATH`
+in `env` or via `add_to_path`) is a special variable that has two effects:
+
+- It sets the `PATH` environment variable for the command that runs.
+- It adds fallback paths to search for the command's `binary`. If the `binary`
+  is not found in the default runtime environment's `PATH`, it will try
+  searching for a matching executable `binary` in any of the paths in
+  `add_to_path` or in the `PATH` specified in `env`.
 
 ## timeout.update
 
