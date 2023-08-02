@@ -27,11 +27,13 @@ The following examples illustrate how to inject the trace/span IDs into the cont
 #### Python
 ```python
 from opentelemetry import trace, context
-from opentelemetry.trace import NonRecordingSpan, SpanContext
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
 
 span_context = SpanContext(
     trace_id = int("${otel_trace_id}", 16),
-    span_id = int(("${otel_parent_id}", 16)
+    span_id = int("${otel_parent_id}", 16),
+    trace_flags = TraceFlags(0x01),
+    is_remote = False,
 )
 ctx = trace.set_span_in_context(NonRecordingSpan(span_context))
 
@@ -70,6 +72,7 @@ if err != nil {
 sc := trace.NewSpanContext(SpanContextConfig{
     TraceID: traceID,
     SpanID: spanID,
+    TraceFlags: trace.FlagsSampled,
 })
 
 // Inject the span context into a context.

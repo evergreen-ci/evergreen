@@ -300,11 +300,12 @@ const (
 
 // FilterOptions represents the filtering arguments for fetching test results.
 type FilterOptions struct {
-	TestName  string
-	Statuses  []string
-	GroupID   string
-	Sort      []SortBy
-	Limit     int
-	Page      int
-	BaseTasks []TaskOptions
+	TestName            string
+	ExcludeDisplayNames bool
+	Statuses            []string
+	GroupID             string
+	Sort                []SortBy
+	Limit               int
+	Page                int
+	BaseTasks           []TaskOptions
 }

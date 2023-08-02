@@ -179,22 +179,50 @@ func TestValidateTaskDependencies(t *testing.T) {
 			}
 			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "non-existent task name 'nonexistent' in dependencies for task '3'")
 		})
-		Convey("depending on a non-patchable task should generate a warning", func() {
+		Convey("depending implicitly on a task in the same build variant but it not being listed generates a warning", func() {
 			p := model.Project{
 				Tasks: []model.ProjectTask{
 					{Name: "t1", DependsOn: []model.TaskUnitDependency{
-						{Name: "t2", Variant: model.AllVariants},
+						{Name: "t2"},
 					}},
-					{Name: "t2", Patchable: utility.FalsePtr()},
+					{Name: "t2"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "bv1",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "t1",
+							},
+						},
+					},
 				},
 			}
-			allTasks := p.FindAllTasksMap()
-			errs := checkTaskDependencies(&p.Tasks[0], allTasks)
-			errs = append(errs, checkTaskDependencies(&p.Tasks[1], allTasks)...)
-			So(len(errs), ShouldEqual, 1)
+			errs := validateTaskDependencies(&p)
+
+			So(errs, ShouldHaveLength, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
-			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
+			So(errs[0].Message, ShouldContainSubstring, "task 't1' in build variant 'bv1' depends on task 't2', but that task is not listed in this build variant")
 		})
+	})
+}
+
+func TestCheckRequestersForTaskDependencies(t *testing.T) {
+	t.Run("DependingOnNonPatchableTaskGeneratesWarning", func(t *testing.T) {
+		p := model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1", DependsOn: []model.TaskUnitDependency{
+					{Name: "t2", Variant: model.AllVariants},
+				}},
+				{Name: "t2", Patchable: utility.FalsePtr()},
+			},
+		}
+		allTasks := p.FindAllTasksMap()
+		errs := checkRequestersForTaskDependencies(&p.Tasks[0], allTasks)
+		errs = append(errs, checkRequestersForTaskDependencies(&p.Tasks[1], allTasks)...)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "'t1' depends on non-patchable task 't2'")
 	})
 }
 

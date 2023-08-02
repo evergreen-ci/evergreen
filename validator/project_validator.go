@@ -1411,6 +1411,7 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 // correct fields, and that the fields have valid values
 func validateTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
+	implicitBVDeps := map[string][]string{}
 	for _, task := range project.Tasks {
 		// create a set of the dependencies, to check for duplicates
 		depNames := map[model.TVPair]bool{}
@@ -1457,12 +1458,40 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 				})
 			}
 
+			implicitBVDeps[task.Name] = append(implicitBVDeps[task.Name], dep.Name)
 		}
 	}
+
+	// If a task depends on another task but doesn't specify an explicit variant
+	// in the dependency, that task is implicitly depending on a task being in
+	// the same variant where it's listed. Check that build variants containing
+	// tasks with implicit build variant dependencies also include the
+	// dependencies in the task list.
+	for _, bv := range project.BuildVariants {
+		for taskName, depNames := range implicitBVDeps {
+			if project.FindTaskForVariant(taskName, bv.Name) == nil {
+				continue
+			}
+
+			for _, depName := range depNames {
+				if project.FindTaskForVariant(depName, bv.Name) == nil {
+					errs = append(errs, ValidationError{
+						Level:   Warning,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s', but that task is not listed in this build variant", taskName, bv.Name, depName),
+					})
+				}
+			}
+		}
+	}
+
 	return errs
 }
 
-func checkTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
+// checkRequestersForTaskDependencies checks that each task's dependencies will
+// run for the same requesters. For example, a task that runs in a mainline
+// commit cannot depend on a patch only task since the dependency will only be
+// satisfiable in patches.
+func checkRequestersForTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, dep := range task.DependsOn {
@@ -2132,7 +2161,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 			execTimeoutWarningAdded = true
 		}
 		errs = append(errs, checkLoggerConfig(&task)...)
-		errs = append(errs, checkTaskDependencies(&task, allTasks)...)
+		errs = append(errs, checkRequestersForTaskDependencies(&task, allTasks)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
 	}
 	if project.Loggers != nil {

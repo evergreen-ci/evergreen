@@ -22,7 +22,6 @@ type ConfigSections struct {
 
 func NewConfigSections() ConfigSections {
 	sections := []ConfigSection{
-		&AlertsConfig{},
 		&AmboyConfig{},
 		&APIConfig{},
 		&AuthConfig{},

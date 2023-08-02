@@ -137,7 +137,6 @@ func (s *EmailNotificationSuite) SetupSuite() {
 func (s *EmailNotificationSuite) TestParseValidJSON() {
 	ctx := context.Background()
 	json := []byte(`{
-		"from": "me",
 	"recipients": ["Tom", "Dick", "Harry"],
 	"subject": "This is the email's subject",
 	"body": "This is the email's body",
@@ -149,7 +148,6 @@ func (s *EmailNotificationSuite) TestParseValidJSON() {
 	s.NoError(err)
 
 	apiEmail := s.rm.(*emailNotificationPostHandler).APIEmail
-	s.Equal(utility.ToStringPtr("me"), apiEmail.From)
 	s.Equal([]string{"Tom", "Dick", "Harry"}, apiEmail.Recipients)
 	s.Equal(utility.ToStringPtr("This is the email's subject"), apiEmail.Subject)
 	s.Equal(utility.ToStringPtr("This is the email's body"), apiEmail.Body)
