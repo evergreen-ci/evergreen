@@ -65,3 +65,8 @@ relationship between versions and PRs: A version can have multiple authors
 because GitHub’s merge queue supports concurrency, and a PR can have multiple
 versions for the same reason. It’s also possible for a version to succeed and
 not yield a merge on GitHub’s side.
+
+**Q:** Is it possible to get a notification for a merge?
+
+**A:** You can set up email notifications, but the Slack integration does not
+send notifications for merges done by the GitHub merge queue.
