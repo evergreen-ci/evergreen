@@ -1026,6 +1026,31 @@ func PopulateVolumeExpirationJob() amboy.QueueOperation {
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeDeletionJob(ts, &v)), "enqueueing volume deletion job for volume '%s'", v.ID)
 		}
 
+		volumes, err = host.FindVolumesWithTerminatedHost()
+		if err != nil {
+			catcher.Add(err)
+			return catcher.Resolve()
+		}
+		for _, v := range volumes {
+
+		}
+		return errors.Wrap(catcher.Resolve(), "populating expire volume jobs")
+	}
+}
+
+func PopulateUnstickVolumesJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		volumes, err := host.FindVolumesWithTerminatedHost()
+		if err != nil {
+			return errors.Wrap(err, "finding volumes to delete")
+
+		}
+		for _, v := range volumes {
+			ts := utility.RoundPartOfHour(0).Format(TSFormat)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeUnstickJob(ts, &v)), "enqueueing volume deletion job for volume '%s'", v.ID)
+		}
+
 		return errors.Wrap(catcher.Resolve(), "populating expire volume jobs")
 	}
 }
