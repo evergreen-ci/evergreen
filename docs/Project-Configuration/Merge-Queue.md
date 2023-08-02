@@ -55,16 +55,19 @@ settings, refer to the [official GitHub documentation](https://docs.github.com/e
 
 ## FAQ
 
-**Q:** Is there a plan to have the merge queue send outcome notifications or
-to attribute the merge queue patch to your Evergreen user?
+**Q:** Is there a plan to have Evergreen send merge notifications? 
 
 **A:** No. We believe it makes more sense for notifications to come from GitHub,
-since it manages the queue, and supports sending notifications. The versions
-aren’t commit queue entries, they’re commit queue builds. There’s a many-to-many
-relationship between versions and PRs: A version can have multiple authors
-because GitHub’s merge queue supports concurrency, and a PR can have multiple
-versions for the same reason. It’s also possible for a version to succeed and
-not yield a merge on GitHub’s side.
+since it manages the queue, and supports sending notifications. 
+
+**Q:** Is it possible to attribute the merge queue patch to your Evergreen user?
+
+**A:** There’s a many-to-many relationship between versions and PRs. A version
+can have multiple authors because GitHub’s merge queue supports concurrency, and a PR can
+have multiple versions for the same reason. It’s also possible for a version to
+succeed and not yield a merge on GitHub’s side. This makes it difficult to link back
+from Evergreen versions to PRs. Instead, users can use the GitHub UI as the primary
+starting point, and link to Evergreen builds from there.
 
 **Q:** Is it possible to get a notification for a merge?
 
