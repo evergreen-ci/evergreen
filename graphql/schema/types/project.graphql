@@ -41,6 +41,7 @@ input ProjectAliasInput {
   taskTags: [String!]!
   variant: String!
   variantTags: [String!]!
+  parameters: [ParameterInput!]
 }
 
 input TaskSyncOptionsInput {
