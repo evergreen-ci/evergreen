@@ -168,10 +168,13 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	}
 
 	if len(opts.addToPath) > 0 {
-		// Prepend paths to the agent process's PATH. More reasonable behavior
-		// here would be to respect the PATH env var if it's explicitly set, but
-		// changing this could break existing workflows, so we don't do that.
-		path := append(opts.addToPath, os.Getenv("PATH"))
+		// Prepend paths to the runtime environment's PATH. More reasonable
+		// behavior here would be to respect the PATH env var if it's explicitly
+		// set for the command, but changing this could break existing
+		// workflows, so we don't do that.
+		path := make([]string, 0, len(opts.addToPath)+1)
+		path = append(path, opts.addToPath...)
+		path = append(path, os.Getenv("PATH"))
 		env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
