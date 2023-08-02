@@ -188,5 +188,5 @@ type ProjectAlias {
   taskTags: [String!]!
   variant: String!
   variantTags: [String!]!
-  parameters: [Parameter!]
+  parameters: [Parameter!]!
 }
