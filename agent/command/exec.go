@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -276,27 +277,22 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 	return cmd
 }
 
-// getExecutablePath returns the absolute path to the command executable,
-// falling back to looking for the command in the paths specified by the PATH
-// environment variable if it is set. If the executable is available in the
-// default path, then that path will be used. Otherwise if it can't find the
-// command in the default path, the command will fall back to checking the
-// command's PATH environment variable.
+// getExecutablePath returns the absolute path to the command executable to run.
+// If the executable is available in the default runtime environment's PATH,
+// then that path will be used. Otherwise if it can't find the command in the
+// default PATH locations, the command will fall back to checking the command's
+// PATH environment variable for a matching executable location (if any).
 func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
 	cmdPath := c.Env["PATH"]
-
 	defaultPath, err := exec.LookPath(c.Binary)
 	if defaultPath != "" {
-		return defaultPath, nil
-	}
-	if len(cmdPath) == 0 || strings.Contains(c.Binary, string(filepath.Separator)) {
-		return "", err
+		return defaultPath, err
 	}
 
-	// Only look in the explicit command path if the default path didn't contain
-	// a matching executable, the command path is set (either by add_to_path or
-	// an explicit PATH environment variable), and the executable is not already
-	// a file path (e.g. ./my-script.sh).
+	binaryIsFilePath := strings.Contains(c.Binary, string(filepath.Separator)) || runtime.GOOS == "windows" && strings.Contains(c.Binary, "/")
+	if len(cmdPath) == 0 || binaryIsFilePath {
+		return "", err
+	}
 
 	originalPath := os.Getenv("PATH")
 	defer func() {
@@ -361,15 +357,25 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	}
 
 	execPath, err := c.getExecutablePath(logger)
-	if err != nil {
+	if execPath == "" && err != nil {
 		return errors.Wrap(err, "resolving executable path")
 	}
-
-	logger.Execution().Debug(message.Fields{
-		"working_directory": c.WorkingDir,
-		"background":        c.Background,
-		"binary":            execPath,
-	})
+	if err != nil {
+		logger.Execution().Debug(message.WrapError(err, message.Fields{
+			"message":           "found an executable path, but encountered errors while doing so",
+			"working_directory": c.WorkingDir,
+			"background":        c.Background,
+			"binary":            c.Binary,
+			"binary_path":       execPath,
+		}))
+	} else {
+		logger.Execution().Debug(message.Fields{
+			"working_directory": c.WorkingDir,
+			"background":        c.Background,
+			"binary":            c.Binary,
+			"binary_path":       execPath,
+		})
+	}
 
 	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
 

@@ -316,7 +316,7 @@ func (s *execCmdSuite) TestCommandFailsForExecutableNotFound() {
 	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should not be able to run because executable does not exist in PATH")
 }
 
-func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForExecutable() {
+func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecutable() {
 	executableName := "evergreen"
 	if runtime.GOOS == "windows" {
 		executableName = executableName + ".exe"
@@ -333,7 +333,7 @@ func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForExecutable()
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled evergreen executable from PATH")
 }
 
-func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvForExecutableFilePath() {
+func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinaryExecutableIsAFilePath() {
 	executableName := "./evergreen"
 	if runtime.GOOS == "windows" {
 		executableName = executableName + ".exe"
