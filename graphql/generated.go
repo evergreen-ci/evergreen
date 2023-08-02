@@ -68527,7 +68527,7 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"testName", "statuses", "groupID", "sort", "limit", "page"}
+	fieldsInOrder := [...]string{"testName", "excludeDisplayNames", "statuses", "groupID", "sort", "limit", "page"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68543,6 +68543,15 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 				return it, err
 			}
 			it.TestName = data
+		case "excludeDisplayNames":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("excludeDisplayNames"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExcludeDisplayNames = data
 		case "statuses":
 			var err error
 
