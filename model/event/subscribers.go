@@ -13,6 +13,7 @@ import (
 const (
 	GithubPullRequestSubscriberType = "github_pull_request"
 	GithubCheckSubscriberType       = "github_check"
+	GithubMergeSubscriberType       = "github_merge"
 	JIRAIssueSubscriberType         = "jira-issue"
 	JIRACommentSubscriberType       = "jira-comment"
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
@@ -30,6 +31,7 @@ const (
 var SubscriberTypes = []string{
 	GithubPullRequestSubscriberType,
 	GithubCheckSubscriberType,
+	GithubMergeSubscriberType,
 	JIRAIssueSubscriberType,
 	JIRACommentSubscriberType,
 	EvergreenWebhookSubscriberType,
@@ -74,6 +76,8 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &GithubPullRequestSubscriber{}
 	case GithubCheckSubscriberType:
 		s.Target = &GithubCheckSubscriber{}
+	case GithubMergeSubscriberType:
+		s.Target = &GithubMergeSubscriber{}
 	case EvergreenWebhookSubscriberType:
 		s.Target = &WebhookSubscriber{}
 	case JIRAIssueSubscriberType:
@@ -200,6 +204,12 @@ type GithubCheckSubscriber struct {
 	Ref   string `bson:"ref"`
 }
 
+type GithubMergeSubscriber struct {
+	Owner string `bson:"owner"`
+	Repo  string `bson:"repo"`
+	Ref   string `bson:"ref"`
+}
+
 type ChildPatchSubscriber struct {
 	ParentStatus string `bson:"parent_status"`
 	ChildPatchId string `bson:"child_patch_id"`
@@ -234,6 +244,13 @@ func NewGithubStatusAPISubscriber(s GithubPullRequestSubscriber) Subscriber {
 func NewGithubCheckAPISubscriber(s GithubCheckSubscriber) Subscriber {
 	return Subscriber{
 		Type:   GithubCheckSubscriberType,
+		Target: s,
+	}
+}
+
+func NewGithubMergeAPISubscriber(s GithubMergeSubscriber) Subscriber {
+	return Subscriber{
+		Type:   GithubMergeSubscriberType,
 		Target: s,
 	}
 }

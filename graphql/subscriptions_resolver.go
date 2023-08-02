@@ -27,7 +27,16 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.A
 				event.GithubPullRequestSubscriberType, err.Error()))
 		}
 		res.GithubPRSubscriber = &sub
+
 	case event.GithubCheckSubscriberType:
+		sub := model.APIGithubCheckSubscriber{}
+		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+				event.GithubCheckSubscriberType, err.Error()))
+		}
+		res.GithubCheckSubscriber = &sub
+
+	case event.GithubMergeSubscriberType:
 		sub := model.APIGithubCheckSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",

@@ -31,6 +31,12 @@ type APIGithubCheckSubscriber struct {
 	Ref   *string `json:"ref" mapstructure:"ref"`
 }
 
+type APIGithubMergeSubscriber struct {
+	Owner *string `json:"owner" mapstructure:"owner"`
+	Repo  *string `json:"repo" mapstructure:"repo"`
+	Ref   *string `json:"ref" mapstructure:"ref"`
+}
+
 type APIPRInfo struct {
 	Owner       *string `json:"owner" mapstructure:"owner"`
 	Repo        *string `json:"repo" mapstructure:"repo"`
@@ -66,8 +72,17 @@ func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
 			return err
 		}
 		target = sub
+
 	case event.GithubCheckSubscriberType:
 		sub := APIGithubCheckSubscriber{}
+		err := sub.BuildFromService(in.Target)
+		if err != nil {
+			return err
+		}
+		target = sub
+
+	case event.GithubMergeSubscriberType:
+		sub := APIGithubMergeSubscriber{}
 		err := sub.BuildFromService(in.Target)
 		if err != nil {
 			return err
@@ -121,6 +136,16 @@ func (s *APISubscriber) ToService() (event.Subscriber, error) {
 
 	case event.GithubCheckSubscriberType:
 		apiModel := APIGithubCheckSubscriber{}
+		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
+			return event.Subscriber{}, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    errors.Wrap(err, "GitHub check subscriber target is malformed").Error(),
+			}
+		}
+		target = apiModel.ToService()
+
+	case event.GithubMergeSubscriberType:
+		apiModel := APIGithubMergeSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			return event.Subscriber{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
@@ -204,6 +229,28 @@ func (s *APIGithubCheckSubscriber) BuildFromService(h interface{}) error {
 
 	default:
 		return errors.Errorf("programmatic error: expected GitHub check subscriber but got type %T", h)
+	}
+
+	return nil
+}
+
+func (s *APIGithubMergeSubscriber) ToService() event.GithubMergeSubscriber {
+	return event.GithubMergeSubscriber{
+		Owner: utility.FromStringPtr(s.Owner),
+		Repo:  utility.FromStringPtr(s.Repo),
+		Ref:   utility.FromStringPtr(s.Ref),
+	}
+}
+
+func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *event.GithubMergeSubscriber:
+		s.Owner = utility.ToStringPtr(v.Owner)
+		s.Repo = utility.ToStringPtr(v.Repo)
+		s.Ref = utility.ToStringPtr(v.Ref)
+
+	default:
+		return errors.Errorf("programmatic error: expected GitHub merge subscriber but got type %T", h)
 	}
 
 	return nil
