@@ -1362,7 +1362,6 @@ func (t *Task) MarkFailed() error {
 }
 
 func (t *Task) MarkSystemFailed(description string) error {
-	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
 	t.Details = GetSystemFailureDetails(description)
 
@@ -1386,25 +1385,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 		"execution_platform": t.ExecutionPlatform,
 	})
 
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
-
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey:             evergreen.TaskFailed,
-				FinishTimeKey:         t.FinishTime,
-				DetailsKey:            t.Details,
-				ContainerAllocatedKey: false,
-			},
-			"$unset": bson.M{
-				ContainerAllocatedTimeKey: 1,
-			},
-		},
-	)
+	return t.MarkEnd(t.FinishTime, &t.Details)
 }
 
 // GetSystemFailureDetails returns a task's end details based on an input description.
