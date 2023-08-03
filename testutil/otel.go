@@ -50,7 +50,7 @@ func ContextForTest(t *testing.T) context.Context {
 	return ctx
 }
 
-func spanForRootTest(t *testing.T) context.Context {
+func spanForRootTest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
@@ -58,24 +58,24 @@ func spanForRootTest(t *testing.T) context.Context {
 	traceIDString := os.Getenv(otelTraceIDEnvVar)
 	spanIDString := os.Getenv(otelParentIDEnvVar)
 	if collectorEndpoint == "" || traceIDString == "" || spanIDString == "" {
-		return ctx
+		return
 	}
 
 	tracerCloser, err := initTracer(ctx, collectorEndpoint)
 	if err != nil {
-		t.Logf("initializing tracer provider: %s", err)
-		return ctx
+		grip.Error(errors.Wrap(err, "initializing tracer provider"))
+		return
 	}
 
 	traceID, err := trace.TraceIDFromHex(traceIDString)
 	if err != nil {
-		t.Logf("parsing trace ID '%s': %s", os.Getenv(otelTraceIDEnvVar), err)
-		return ctx
+		grip.Error(errors.Wrapf(err, "parsing trace ID '%s'", traceIDString))
+		return
 	}
-	spanID, err := trace.SpanIDFromHex(os.Getenv(otelParentIDEnvVar))
+	spanID, err := trace.SpanIDFromHex(spanIDString)
 	if err != nil {
-		t.Logf("parsing parent span ID '%s': %s", os.Getenv(otelParentIDEnvVar), err)
-		return ctx
+		grip.Error(errors.Wrapf(err, "parsing parent span ID '%s'", spanIDString))
+		return
 	}
 	parentCtx := trace.ContextWithSpanContext(
 		ctx,
@@ -91,21 +91,20 @@ func spanForRootTest(t *testing.T) context.Context {
 
 	t.Cleanup(func() {
 		span.End()
-		t.Log(errors.Wrap(tracerCloser(ctx), "closing otel tracer"))
-	})
+		if err := tracerCloser(ctx); err != nil {
+			grip.Error(errors.Wrap(tracerCloser(ctx), "closing otel tracer"))
+		}
 
-	return testCtx
+	})
 }
 
-func spanForChildTest(parentCtx context.Context, t *testing.T) context.Context {
+func spanForChildTest(parentCtx context.Context, t *testing.T) {
 	testCtx, span := otel.GetTracerProvider().Tracer(packageName).Start(parentCtx, t.Name())
 	testCtxMap[t.Name()] = testCtx
 
 	t.Cleanup(func() {
 		span.End()
 	})
-
-	return testCtx
 }
 
 func initTracer(ctx context.Context, collectorEndpoint string) (func(context.Context) error, error) {
