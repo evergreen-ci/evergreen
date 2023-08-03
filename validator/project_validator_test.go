@@ -247,19 +247,6 @@ buildvariants:
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
 		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
-		// kim: TODO: add unit tests for:
-		// x Depending on a task in a task group does validation checks (pass/fail)
-		// x Defining depends_on inline in the BVTU does validation checks
-		// (pass/fail)
-		// x Defining depends_on for the entire BV does validation checks
-		// (pass/fail)
-		// x Defining valid depends_on inline for the BVTU overriding the
-		// invalid depends_on for the task results in no validation error
-		// x Defining invalid depends_on inline for the BVTU overriding the
-		// valid depends_on for the task results in validation error
-		// o Task with "*" tasks and named build variant (pass/fail)
-		// o Task with "*" build variant and named task (pass/fail)
-		// o Task with "*" build variant and "*" task (pass)
 	})
 	t.Run("SucceedsWithTaskGroupTaskImplicitlyDependingOnTask", func(t *testing.T) {
 		projYAML := `
