@@ -22,6 +22,9 @@ import (
 )
 
 func TestValidateTaskDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When validating a project's dependencies", t, func() {
 		Convey("if any task has a duplicate dependency, an error should be returned", func() {
 			project := &model.Project{
@@ -180,29 +183,59 @@ func TestValidateTaskDependencies(t *testing.T) {
 			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "non-existent task name 'nonexistent' in dependencies for task '3'")
 		})
 		Convey("depending implicitly on a task in the same build variant but it not being listed generates a warning", func() {
-			p := model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "t1", DependsOn: []model.TaskUnitDependency{
-						{Name: "t2"},
-					}},
-					{Name: "t2"},
-				},
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "bv1",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name: "t1",
-							},
-						},
-					},
-				},
-			}
+			projYAML := `
+tasks:
+- name: t1
+  depends_on: t2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+			var p model.Project
+			_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+			So(err, ShouldBeNil)
+			// p := model.Project{
+			//     Tasks: []model.ProjectTask{
+			//         {Name: "t1", DependsOn: []model.TaskUnitDependency{
+			//             {Name: "t2"},
+			//         }},
+			//         {Name: "t2"},
+			//     },
+			//     BuildVariants: []model.BuildVariant{
+			//         {
+			//             Name: "bv1",
+			//             Tasks: []model.BuildVariantTaskUnit{
+			//                 {
+			//                     Name: "t1",
+			//                     DependsOn: []model.TaskUnitDependency{
+			//                         {
+			//                             Name:    "t2",
+			//                             Variant: "bv1",
+			//                         },
+			//                     },
+			//                 },
+			//             },
+			//         },
+			//     },
+			// }
 			errs := validateTaskDependencies(&p)
 
 			So(errs, ShouldHaveLength, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
-			So(errs[0].Message, ShouldContainSubstring, "task 't1' in build variant 'bv1' depends on task 't2', but that task is not listed in this build variant")
+			So(errs[0].Message, ShouldContainSubstring, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+			// kim: TODO: add unit tests for:
+			// - Depending on a task in a task group does validation checks (pass/fail)
+			// - Defining depends_on inline in the BVTU does validation checks
+			// (pass/fail)
+			// - Defining depends_on for the entire BV does validation checks
+			// (pass/fail)
+			// - Defining valid depends_on inline for the BVTU overriding the
+			// invalid depends_on for the task results in no validation error
+			// - Defining invalid depends_on inline for the BVTU overriding the
+			// valid depends_on for the task results in validation error
 		})
 	})
 }

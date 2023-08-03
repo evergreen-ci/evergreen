@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
@@ -1411,7 +1412,6 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 // correct fields, and that the fields have valid values
 func validateTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	implicitBVDeps := map[string][]string{}
 	for _, task := range project.Tasks {
 		// create a set of the dependencies, to check for duplicates
 		depNames := map[model.TVPair]bool{}
@@ -1457,32 +1457,87 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 						dep.Variant, task.Name),
 				})
 			}
-
-			implicitBVDeps[task.Name] = append(implicitBVDeps[task.Name], dep.Name)
 		}
 	}
 
-	// If a task depends on another task but doesn't specify an explicit variant
-	// in the dependency, that task is implicitly depending on a task being in
-	// the same variant where it's listed. Check that build variants containing
-	// tasks with implicit build variant dependencies also include the
-	// dependencies in the task list.
-	for _, bv := range project.BuildVariants {
-		for taskName, depNames := range implicitBVDeps {
-			if project.FindTaskForVariant(taskName, bv.Name) == nil {
-				continue
-			}
+	// Dependencies can be specified in the build variant task unit, for all
+	// tasks in a build variant, or for an individual task definition. Check
+	// that these dependencies defined at the different levels all point to
+	// valid tasks.
 
-			for _, depName := range depNames {
-				if project.FindTaskForVariant(depName, bv.Name) == nil {
-					errs = append(errs, ValidationError{
-						Level:   Warning,
-						Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s', but that task is not listed in this build variant", taskName, bv.Name, depName),
-					})
-				}
+	// bvsToBVTUs := map[string]map[string]struct{}{}
+	type bvAndTask struct {
+		bv   string
+		task string
+	}
+	// kim: TODO: test server and mms projects in staging against just this
+	// validation
+	bvtus := map[bvAndTask]model.BuildVariantTaskUnit{}
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		// kim: TODO: confirm that BVTU form FindAllBuildVariantTasks will
+		// always have Variant set as long as it was created via
+		// LoadProjectInto.
+		// kim: TODO: confirm that FindAllBuildVariantTasks returns individual
+		// tasks in task group for the BVTU name
+		bvtus[bvAndTask{bv: bvtu.Variant, task: bvtu.Name}] = bvtu
+	}
+	pp.Println("BVTUs:", bvtus)
+
+	for _, bvtu := range bvtus {
+		for _, dep := range bvtu.DependsOn {
+			pp.Println("BVTU has dependency:", dep)
+			if dep.Variant == "" {
+				pp.Println("dep is missing variant, defaulting to task's variant")
+				// dep.Variant = bv
+				dep.Variant = bvtu.Variant
+			}
+			// bvtus, ok := bvsToBVTUs[dep.Variant]
+			// if !ok {
+			//     errs = append(errs, ValidationError{
+			//         Level:   Warning,
+			//         Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s' in nonexistent build variant '%s'", bvtu.Name, bv.Name, dep.Name, dep.Variant),
+			//     })
+			//     continue
+			// }
+			if _, ok := bvtus[bvAndTask{bv: dep.Variant, task: dep.Name}]; !ok {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s' in build variant '%s', but it was not found", bvtu.Name, bvtu.Variant, dep.Name, dep.Variant),
+				})
 			}
 		}
 	}
+	// for bv, bvtus := range bvsToBVTUs {
+	//     for _, bvtu := range bvtus {
+	//         for _, dep := range bvtu.DependsOn {
+	//             pp.Println("BVTU has dependency:", dep)
+	//             if dep.Variant == "" {
+	//                 pp.Println("dep is missing variant")
+	//                 dep.Variant = bv
+	//             }
+	//             bvtus, ok := bvsToBVTUs[dep.Variant]
+	//             if !ok {
+	//                 errs = append(errs, ValidationError{
+	//                     Level:   Warning,
+	//                     Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s' in nonexistent build variant '%s'", bvtu.Name, bv.Name, dep.Name, dep.Variant),
+	//                 })
+	//                 continue
+	//             }
+	//             if _, ok := bvtus[dep.Name]; !ok {
+	//                 errs = append(errs, ValidationError{
+	//                     Level:   Warning,
+	//                     Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s', but that task is not listed in build variant '%s'", bvtu.Name, bv.Name, dep.Name, dep.Variant),
+	//                 })
+	//             }
+	//         }
+	//     }
+	// }
+	// for _, bv := range project.BuildVariants {
+	//     for _, bvtu := range bv.Tasks {
+	//         for _, dep := range bvtu.DependsOn {
+	//         }
+	//     }
+	// }
 
 	return errs
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -1538,6 +1539,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
+			pp.Println("BVTU variant:", t.Variant)
 			if t.IsGroup {
 				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
 			} else {
