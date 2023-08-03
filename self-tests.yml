@@ -220,6 +220,10 @@ functions:
         MACOS_NOTARY_SECRET: ${notary_server_secret}
         EVERGREEN_BUNDLE_ID: ${evergreen_bundle_id}
         SIGN_MACOS: ${sign_macos}
+        OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
+        OTEL_TRACE_ID: ${otel_trace_id}
+        OTEL_PARENT_ID: ${otel_parent_id}
+
 
   setup-credentials:
     command: subprocess.exec

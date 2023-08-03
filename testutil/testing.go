@@ -12,7 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const EnvOverride = "SETTINGS_OVERRIDE"
+const (
+	EnvOverride = "SETTINGS_OVERRIDE"
+
+	otelCollectorEndpointEnvVar = "OTEL_COLLECTOR_ENDPOINT"
+	otelTraceIDEnvVar           = "OTEL_TRACE_ID"
+	otelParentIDEnvVar          = "OTEL_PARENT_ID"
+)
 
 // path to an mci settings file containing sensitive information
 var settingsOverride = flag.String("evergreen.settingsOverride", "", "Settings file"+

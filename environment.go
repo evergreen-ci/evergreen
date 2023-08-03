@@ -60,8 +60,6 @@ const (
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
-
-	otelAttributeMaxLength = 10000
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -880,7 +878,7 @@ func (e *envState) initTracer(ctx context.Context) error {
 	}
 
 	spanLimits := trace.NewSpanLimits()
-	spanLimits.AttributeValueLengthLimit = otelAttributeMaxLength
+	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
 
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),

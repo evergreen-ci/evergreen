@@ -468,6 +468,8 @@ type ModificationAction string
 const (
 	PackageName = "github.com/evergreen-ci/evergreen"
 
+	OtelAttributeMaxLength = 10000
+
 	TaskIDOtelAttribute            = "evergreen.task.id"
 	TaskNameOtelAttribute          = "evergreen.task.name"
 	TaskExecutionOtelAttribute     = "evergreen.task.execution"

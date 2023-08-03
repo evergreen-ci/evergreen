@@ -28,6 +28,8 @@ var sampleCommitQueueItem = CommitQueueItem{
 }
 
 func TestCommitQueueSuite(t *testing.T) {
+	testutil.TestSpan(t)
+
 	s := new(CommitQueueSuite)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -41,6 +43,8 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
+	testutil.TestSpan(s.T())
+
 	s.NoError(db.ClearCollections(Collection))
 
 	s.q = &CommitQueue{
