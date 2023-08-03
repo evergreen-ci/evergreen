@@ -390,6 +390,7 @@ func (s *AdminSuite) TestJiraConfig() {
 			AccessToken: "fdsa",
 		},
 		DefaultProject: "proj",
+		Email:          "a@mail.com",
 	}
 
 	err := config.Set(ctx)
