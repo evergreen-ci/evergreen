@@ -279,7 +279,7 @@ To pass information from the upstream patch to the downstream patch use
 ### Periodic Builds
 
 Evergreen has the capability to periodically run a set of tasks in the
-project. The Periodic Builds section of Project Settings page allows you to specify
+project. The Periodic Builds section of the Project Settings page allows you to specify
 what should be run periodically, and how often. **This is different than build variant crons** because
 a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify
 (so if you want it to run daily, it’ll activate the most recent build variant at that time daily),
