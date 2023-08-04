@@ -1424,9 +1424,8 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range bvtus {
 		for _, d := range bvtu.DependsOn {
-			switch d.Status {
-			case evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, "":
-			default:
+			validDepStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, ""}
+			if !utility.StringSliceContains(validDepStatuses, d.Status) {
 				errs = append(errs,
 					ValidationError{
 						Level:   Error,

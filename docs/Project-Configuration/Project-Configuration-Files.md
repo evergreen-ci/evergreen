@@ -1568,8 +1568,7 @@ Example in a command:
 
 ### Task Fields Override Hierarchy
 
-Some task fields can be specified at multiple levels in the YAML. These fields
-are:
+Some task fields can be specified at multiple levels in the YAML.
 
 If a field is defined at multiple levels and they conflict, the one with the
 highest priority will overwrite the others. The task's specific fields will be
