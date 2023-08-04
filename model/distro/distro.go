@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -14,9 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -878,114 +875,4 @@ func AllDistros(ctx context.Context) ([]Distro, error) {
 
 func AllDistroIDs(ctx context.Context) ([]Distro, error) {
 	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
-}
-
-type DistroSettingsSection string
-
-const (
-	DistroSettingsGeneral  DistroSettingsSection = "GENERAL"
-	DistroSettingsProvider DistroSettingsSection = "PROVIDER"
-	DistroSettingsTask     DistroSettingsSection = "TASK"
-	DistroSettingsHost     DistroSettingsSection = "HOST"
-	DistroSettingsProject  DistroSettingsSection = "PROJECT"
-)
-
-// UpdateDistroSection saves the changes for a given distro settings section.
-func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *Distro, section DistroSettingsSection, userID string) (*Distro, error) {
-	distroID := originalDistro.Id
-	var err error
-
-	switch section {
-	case DistroSettingsGeneral:
-		err = db.Update(Collection,
-			bson.M{IdKey: distroID},
-			bson.M{
-				"$set": bson.M{
-					AliasesKey:             changes.Aliases,
-					DisabledKey:            changes.Disabled,
-					DisableShallowCloneKey: changes.DisableShallowClone,
-					IsClusterKey:           changes.IsCluster,
-					NoteKey:                changes.Note,
-				},
-			})
-	case DistroSettingsProvider:
-		err = db.Update(Collection,
-			bson.M{IdKey: distroID},
-			bson.M{
-
-				"$set": bson.M{
-					ProviderKey:             changes.Provider,
-					ProviderSettingsListKey: changes.ProviderSettingsList,
-				},
-			})
-
-	case DistroSettingsTask:
-		err = db.Update(Collection,
-			bson.M{IdKey: distroID},
-			bson.M{
-
-				"$set": bson.M{
-					DispatcherSettingsKey: changes.DispatcherSettings,
-					PlannerSettingsKey:    changes.PlannerSettings,
-					FinderSettingsKey:     changes.FinderSettings,
-				},
-			})
-	case DistroSettingsHost:
-		err = db.Update(Collection,
-			bson.M{IdKey: distroID},
-			bson.M{
-
-				"$set": bson.M{
-					ArchKey:                  changes.Arch,
-					AuthorizedKeysFileKey:    changes.AuthorizedKeysFile,
-					BootstrapSettingsKey:     changes.BootstrapSettings,
-					HomeVolumeSettingsKey:    changes.HomeVolumeSettings,
-					HostAllocatorSettingsKey: changes.HostAllocatorSettings,
-					IceCreamSettingsKey:      changes.IceCreamSettings,
-					IsVirtualWorkstationKey:  changes.IsVirtualWorkstation,
-					SetupKey:                 changes.Setup,
-					SetupAsSudoKey:           changes.SetupAsSudo,
-					SpawnAllowedKey:          changes.SpawnAllowed,
-					SSHKeyKey:                changes.SSHKey,
-					SSHOptionsKey:            changes.SSHOptions,
-					UserKey:                  changes.User,
-					WorkDirKey:               changes.WorkDir,
-				},
-			})
-	case DistroSettingsProject:
-		err = db.Update(Collection,
-			bson.M{IdKey: distroID},
-			bson.M{
-
-				"$set": bson.M{
-					CloneMethodKey:   changes.CloneMethod,
-					ExpansionsKey:    changes.Expansions,
-					ValidProjectsKey: changes.ValidProjects,
-				},
-			})
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("saving %s section", section))
-	}
-
-	updatedDistro, err := FindOneId(ctx, distroID)
-	if err != nil {
-		return nil, errors.Wrap(err, "fetching updated distro")
-	}
-
-	if originalDistro.GetDefaultAMI() != updatedDistro.GetDefaultAMI() {
-		event.LogDistroAMIModified(distroID, userID)
-	}
-	event.LogDistroModified(distroID, userID, updatedDistro.NewDistroData())
-
-	return updatedDistro, nil
-}
-
-// ApplyDistroChanges merges changes made to a distro with the existing distro to return a complete updated distro object.
-func ApplyDistroChanges(current Distro, changes Distro) Distro {
-	reflectOldSettings := reflect.ValueOf(&current).Elem()
-	reflectNewSettings := reflect.ValueOf(&changes).Elem()
-	util.RecursivelySetUndefinedFields(reflectNewSettings, reflectOldSettings)
-
-	return changes
 }

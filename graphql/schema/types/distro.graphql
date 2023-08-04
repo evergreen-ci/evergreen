@@ -6,14 +6,6 @@ enum DistroSettingsAccess {
   VIEW
 }
 
-enum DistroSettingsSection {
-  GENERAL
-  PROVIDER
-  TASK
-  HOST
-  PROJECT
-}
-
 enum DistroOnSaveOperation {
   DECOMMISSION
   RESTART_JASPER
