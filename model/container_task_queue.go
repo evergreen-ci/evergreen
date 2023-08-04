@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -73,6 +74,8 @@ func (q *ContainerTaskQueue) populate() error {
 	})
 
 	q.queue = readyForAllocation
+
+	q.setFirstScheduledTime(startAt)
 
 	return nil
 }
@@ -150,4 +153,25 @@ func (q *ContainerTaskQueue) getProjectRefs(tasks []task.Task) (map[string]Proje
 	}
 
 	return projRefsByID, nil
+}
+
+func (q *ContainerTaskQueue) setFirstScheduledTime(scheduledTime time.Time) {
+	var notScheduledBefore []task.Task
+	for i := range q.queue {
+		t := q.queue[i]
+		if utility.IsZeroTime(t.ScheduledTime) {
+			notScheduledBefore = append(notScheduledBefore, t)
+		}
+	}
+
+	if len(notScheduledBefore) == 0 {
+		return
+	}
+
+	if err := task.SetTasksScheduledTime(notScheduledBefore, scheduledTime); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":                 "could not set first scheduled time for new container tasks",
+			"num_new_container_tasks": len(notScheduledBefore),
+		}))
+	}
 }
