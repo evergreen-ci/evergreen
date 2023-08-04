@@ -1373,6 +1373,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
+		g.SetNewTasksAndActivationInfo(context.Background(), v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1402,6 +1403,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
+		g.SetNewTasksAndActivationInfo(context.Background(), v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1435,6 +1437,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
+		g.SetNewTasksAndActivationInfo(context.Background(), v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1469,6 +1472,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
+		g.SetNewTasksAndActivationInfo(context.Background(), v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }
