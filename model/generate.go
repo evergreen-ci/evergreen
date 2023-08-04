@@ -30,7 +30,9 @@ type GeneratedProject struct {
 	Functions     map[string]*YAMLCommandSet `yaml:"functions"`
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
-	Task *task.Task
+	Task           *task.Task
+	ActivationInfo specificActivationInfo
+	NewTVPairs     TaskVariantPairs
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
@@ -105,17 +107,6 @@ func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 	dataAsJSON := []byte(data)
 	if err := util.UnmarshalYAMLWithFallback(dataAsJSON, &g); err != nil {
 		return g, errors.Wrap(err, "unmarshalling generated project from YAML data")
-	}
-	return g, nil
-}
-
-// ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
-// YAML parser instead of the JSON parser because the JSON parser will not
-// properly unmarshal into a struct with multiple fields as options, like the YAMLCommandSet.
-func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
-	g := GeneratedProject{}
-	if err := util.UnmarshalYAMLWithFallback(data, &g); err != nil {
-		return g, errors.Wrap(err, "unmarshalling generated project from JSON data")
 	}
 	return g, nil
 }
@@ -233,10 +224,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 			p.BuildVariants[i].Tasks[j].Priority = g.Task.Priority
 		}
 	}
-	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
-
-	newTVPairs := g.getNewTasksWithDependencies(ctx, v, p, &activationInfo)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -250,14 +237,14 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// Group into new builds and new tasks for existing builds.
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
-	for _, execTask := range newTVPairs.ExecTasks {
+	for _, execTask := range g.NewTVPairs.ExecTasks {
 		if _, ok := buildSet[execTask.Variant]; ok {
 			newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, execTask)
 		} else {
 			newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, execTask)
 		}
 	}
-	for _, dispTask := range newTVPairs.DisplayTasks {
+	for _, dispTask := range g.NewTVPairs.DisplayTasks {
 		if _, ok := buildSet[dispTask.Variant]; ok {
 			newTVPairsForExistingVariants.DisplayTasks = append(newTVPairsForExistingVariants.DisplayTasks, dispTask)
 		} else {
@@ -268,7 +255,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// This will only be populated for patches, not mainline commits.
 	var syncAtEndOpts patch.SyncAtEndOptions
 	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
-		if err = patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
+		if err = patchDoc.AddSyncVariantsTasks(g.NewTVPairs.TVPairsToVariantTasks()); err != nil {
 			return errors.Wrap(err, "updating sync variants and tasks")
 		}
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
@@ -286,7 +273,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		ProjectRef:     projectRef,
 		Version:        v,
 		Pairs:          newTVPairsForExistingVariants,
-		ActivationInfo: activationInfo,
+		ActivationInfo: g.ActivationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
 		// If the parent generator is required to finish, then its generated
@@ -310,6 +297,15 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	return nil
+}
+
+// SetNewTasksAndActivationInfo sets the NewTVPairs and ActivationInfo fields on the generator.
+func (g *GeneratedProject) SetNewTasksAndActivationInfo(ctx context.Context, v *Version, p *Project) {
+	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
+	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+	newTasks := g.getNewTasksWithDependencies(ctx, v, p, &activationInfo)
+	g.NewTVPairs = newTasks
+	g.ActivationInfo = activationInfo
 }
 
 // CheckForCycles builds a dependency graph from the existing tasks in the version and simulates
@@ -338,21 +334,19 @@ func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Pr
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
 func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
-	newTasks := g.getNewTasksWithDependencies(ctx, v, p, nil)
-
 	creationInfo := TaskCreationInfo{
 		Project:    p,
 		ProjectRef: projectRef,
 		Version:    v,
-		Pairs:      newTasks,
+		Pairs:      g.NewTVPairs,
 	}
 	taskIDs, err := getTaskIdTables(creationInfo)
 	if err != nil {
 		return graph, errors.Wrap(err, "getting task ids")
 	}
 
-	graph = addTasksToGraph(newTasks.ExecTasks, graph, p, taskIDs)
-	return g.addDependencyEdgesToGraph(newTasks.ExecTasks, v, p, graph, taskIDs)
+	graph = addTasksToGraph(g.NewTVPairs.ExecTasks, graph, p, taskIDs)
+	return g.addDependencyEdgesToGraph(g.NewTVPairs.ExecTasks, v, p, graph, taskIDs)
 }
 
 // getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
