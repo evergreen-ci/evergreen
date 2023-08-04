@@ -5,79 +5,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-type APIJiraComment struct {
-	IssueID *string `json:"issue_id"`
-	Body    *string `json:"body"`
-}
-
-// BuildFromService converts from service level message.JIRAComment to APIJiraComment.
-func (c *APIJiraComment) BuildFromService(comment *message.JIRAComment) {
-	c.IssueID = utility.ToStringPtr(comment.IssueID)
-	c.Body = utility.ToStringPtr(comment.Body)
-}
-
-// ToService returns a service layer message.JIRAComment using the data from APIJiraComment.
-func (c *APIJiraComment) ToService() *message.JIRAComment {
-	comment := message.JIRAComment{
-		IssueID: utility.FromStringPtr(c.IssueID),
-		Body:    utility.FromStringPtr(c.Body),
-	}
-
-	return &comment
-}
-
-///////////////////////////////////////////////////////////////////////
-
-type APIJiraIssue struct {
-	IssueKey    *string                `json:"issue_key"`
-	Project     *string                `json:"project"`
-	Summary     *string                `json:"summary"`
-	Description *string                `json:"description"`
-	Reporter    *string                `json:"reporter"`
-	Assignee    *string                `json:"assignee"`
-	Type        *string                `json:"type"`
-	Components  []string               `json:"components"`
-	Labels      []string               `json:"labels"`
-	Fields      map[string]interface{} `json:"fields"`
-}
-
-// BuildFromService converts from service level message.JiraIssue to APIJiraIssue.
-func (i *APIJiraIssue) BuildFromService(issue message.JiraIssue) {
-	i.IssueKey = utility.ToStringPtr(issue.IssueKey)
-	i.Project = utility.ToStringPtr(issue.Project)
-	i.Summary = utility.ToStringPtr(issue.Summary)
-	i.Description = utility.ToStringPtr(issue.Description)
-	i.Reporter = utility.ToStringPtr(issue.Reporter)
-	i.Assignee = utility.ToStringPtr(issue.Assignee)
-	i.Type = utility.ToStringPtr(issue.Type)
-	if issue.Components != nil {
-		i.Components = issue.Components
-	}
-	if issue.Labels != nil {
-		i.Labels = issue.Labels
-	}
-	i.Fields = issue.Fields
-}
-
-// ToService returns a service layer message.JiraIssue using the data from APIJiraIssue.
-func (i *APIJiraIssue) ToService() *message.JiraIssue {
-	issue := message.JiraIssue{}
-	issue.IssueKey = utility.FromStringPtr(i.IssueKey)
-	issue.Project = utility.FromStringPtr(i.Project)
-	issue.Summary = utility.FromStringPtr(i.Summary)
-	issue.Description = utility.FromStringPtr(i.Description)
-	issue.Reporter = utility.FromStringPtr(i.Reporter)
-	issue.Assignee = utility.FromStringPtr(i.Assignee)
-	issue.Type = utility.FromStringPtr(i.Type)
-	issue.Components = i.Components
-	issue.Labels = i.Labels
-	issue.Fields = i.Fields
-
-	return &issue
-}
-
-///////////////////////////////////////////////////////////////////////
-
 type APISlack struct {
 	Target      *string              `json:"target"`
 	Msg         *string              `json:"msg"`
@@ -172,7 +99,6 @@ func (f *APISlackAttachmentField) ToService() message.SlackAttachmentField {
 ///////////////////////////////////////////////////////////////////////
 
 type APIEmail struct {
-	From              *string             `json:"from"`
 	Recipients        []string            `json:"recipients"`
 	Subject           *string             `json:"subject"`
 	Body              *string             `json:"body"`
@@ -182,7 +108,6 @@ type APIEmail struct {
 
 // BuildFromService converts from service level message.Email to an APIEmail.
 func (n *APIEmail) BuildFromService(email message.Email) {
-	n.From = utility.ToStringPtr(email.From)
 	if email.Recipients != nil {
 		n.Recipients = email.Recipients
 	}
@@ -195,7 +120,6 @@ func (n *APIEmail) BuildFromService(email message.Email) {
 // ToService returns a service layer message.Email using the data from APIEmail.
 func (n *APIEmail) ToService() message.Email {
 	email := message.Email{}
-	email.From = utility.FromStringPtr(n.From)
 	email.Recipients = n.Recipients
 	email.Subject = utility.FromStringPtr(n.Subject)
 	email.Body = utility.FromStringPtr(n.Body)

@@ -27,6 +27,10 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+func init() {
+	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
+}
+
 const defaultProjYml = `
 buildvariants:
 - name: some_build_variant
@@ -288,13 +292,13 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	s.Error(err)
 }
 
-const panicLog = "panic"
+const panicLog = "hit panic"
 
 func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
-	complete := make(chan string, 1)
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task that aborts before it even can run should system fail")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
@@ -306,14 +310,15 @@ func (s *AgentSuite) TestStartTaskIsPanicSafe() {
 	tc := &taskContext{
 		logger: s.tc.logger,
 	}
-	s.a.startTask(s.ctx, tc, nil)
+	s.NotPanics(func() {
+		status := s.a.startTask(s.ctx, tc)
+		s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
+	})
 	s.NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
-func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
-	complete := make(chan string, 1)
-
+func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
@@ -321,17 +326,49 @@ func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
 	// result in system failure. Also, startTask should not block if there is
 	// no consumer running in parallel to pick up the complete status.
 	s.mockCommunicator.StartTaskShouldFail = true
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task should system-fail when it cannot start the task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+}
 
-	select {
-	case <-ctx.Done():
-		s.Fail("test context cancelled before startTask returned: %s", ctx.Err())
-	case status := <-complete:
-		s.Equal(evergreen.TaskSystemFailed, status)
+func (s *AgentSuite) TestRunCommandsEventuallyReturnsForCommandThatIgnoresContext() {
+	const cmdSleepSecs = 500
+	s.setupRunTask(`
+pre:
+- command: command.mock
+  params:
+    sleep_seconds: 500
+`)
+
+	cmd := model.PluginCommandConf{
+		Command: "command.mock",
+		Params: map[string]interface{}{
+			"sleep_seconds": cmdSleepSecs,
+		},
 	}
+	cmds := []model.PluginCommandConf{cmd}
+
+	ctx, cancel := context.WithCancel(s.ctx)
+
+	const waitUntilAbort = 2 * time.Second
+	go func() {
+		// Cancel the long-running command after giving the command some time to
+		// start running.
+		time.Sleep(waitUntilAbort)
+		cancel()
+	}()
+
+	startAt := time.Now()
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+	cmdDuration := time.Since(startAt)
+
+	s.Error(err)
+	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
+
+	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
+	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -362,10 +399,12 @@ func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
-	s.NoError(s.tc.logger.Close())
+	s.NotPanics(func() {
+		err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
+		s.Require().Error(err)
+	})
 
-	s.Require().Error(err)
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
@@ -686,34 +725,6 @@ func (s *AgentSuite) TestOOMTracker() {
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
-func (s *AgentSuite) TestWaitCompleteSuccess() {
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskSucceeded:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.tc, complete)
-	s.Equal(evergreen.TaskSucceeded, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitCompleteFailure() {
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskFailed:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.tc, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
 func (s *AgentSuite) TestPrepareNextTask() {
 	var err error
 	nextTask := &apimodels.NextTaskResponse{}
@@ -997,7 +1008,7 @@ timeout:
     shell: bash
     script: |
       echo "hi"
-      sleep 5
+      sleep 20
       echo "bye"
 `
 	p := &model.Project{}
@@ -1005,10 +1016,9 @@ timeout:
 	s.NoError(err)
 	p.CallbackTimeout = 2
 	s.tc.taskConfig.Project = p
-	now := time.Now()
+	startAt := time.Now()
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
-	then := time.Now()
-	s.True(then.Sub(now) < 4*time.Second)
+	s.WithinDuration(time.Now(), startAt, 20*time.Second, "timeout command should have stopped before it finished running due to callback timeout")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
@@ -1031,7 +1041,7 @@ func (s *AgentSuite) TestFetchProjectConfig() {
 
 func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
-	s.a.opts.HeartbeatInterval = time.Millisecond
+	s.a.opts.HeartbeatInterval = 500 * time.Millisecond
 
 	projYml := `
 buildvariants:
@@ -1042,7 +1052,7 @@ tasks:
   commands:
   - command: shell.exec
     params:
-      script: sleep 5
+      script: sleep 10
 
 post:
 - command: shell.exec
@@ -1063,7 +1073,7 @@ timeout:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
-	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 10, "heartbeat should be still running for post block even when abort signal is received, so count should be high")
+	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 1, "heartbeat should be still running for teardown_task block even when initial abort signal is received")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",
@@ -1074,7 +1084,7 @@ timeout:
 
 func (s *AgentSuite) TestAbortExitsMainAndRunsTeardownTask() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
-	s.a.opts.HeartbeatInterval = time.Millisecond
+	s.a.opts.HeartbeatInterval = 500 * time.Millisecond
 
 	projYml := `
 buildvariants:
@@ -1111,7 +1121,7 @@ timeout:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
-	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 10, "heartbeat should be still running for teardown_task block even when abort signal is received, so count should be high")
+	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 1, "heartbeat should be still running for teardown_task block even when initial abort signal is received")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",

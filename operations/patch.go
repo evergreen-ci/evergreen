@@ -388,7 +388,7 @@ func PatchFile() cli.Command {
 				return err
 			}
 
-			if len(rp.RawModules) > 0 {
+			if rp != nil {
 				for _, module := range rp.RawModules {
 					moduleParams := UpdatePatchModuleParams{
 						patchID: newPatch.Id.Hex(),
@@ -403,6 +403,7 @@ func PatchFile() cli.Command {
 
 				}
 			}
+
 			return params.displayPatch(newPatch, conf.UIServerHost, false)
 		},
 	}

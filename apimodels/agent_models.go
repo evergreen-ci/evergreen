@@ -37,10 +37,9 @@ type HeartbeatResponse struct {
 
 // CheckMergeRequest holds information sent by the agent to get a PR and check mergeability.
 type CheckMergeRequest struct {
-	PRNum     int    `json:"pr_num"`
-	Owner     string `json:"owner"`
-	Repo      string `json:"repo"`
-	LastRetry bool   `json:"last_retry"` // Temporary field to help us understand if we are testing with the wrong commit.
+	PRNum int    `json:"pr_num"`
+	Owner string `json:"owner"`
+	Repo  string `json:"repo"`
 }
 
 type PullRequestInfo struct {
@@ -118,13 +117,14 @@ type AgentSetupData struct {
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
-	TaskId              string `json:"task_id,omitempty"`
-	TaskSecret          string `json:"task_secret,omitempty"`
-	TaskGroup           string `json:"task_group,omitempty"`
-	Version             string `json:"version,omitempty"`
-	Build               string `json:"build,omitempty"`
-	ShouldExit          bool   `json:"should_exit,omitempty"`
-	ShouldTeardownGroup bool   `json:"should_teardown_group,omitempty"`
+	TaskId                    string `json:"task_id,omitempty"`
+	TaskSecret                string `json:"task_secret,omitempty"`
+	TaskGroup                 string `json:"task_group,omitempty"`
+	Version                   string `json:"version,omitempty"`
+	Build                     string `json:"build,omitempty"`
+	ShouldExit                bool   `json:"should_exit,omitempty"`
+	ShouldTeardownGroup       bool   `json:"should_teardown_group,omitempty"`
+	UnsetFunctionVarsDisabled bool   `json:"unset_function_vars_disabled"`
 }
 
 // EndTaskResponse is what is returned when the task ends

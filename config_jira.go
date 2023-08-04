@@ -17,6 +17,7 @@ type JiraConfig struct {
 	BasicAuthConfig JiraBasicAuthConfig `yaml:"basic_auth" bson:"basic_auth" json:"basic_auth"`
 	OAuth1Config    JiraOAuth1Config    `yaml:"oauth1" bson:"oauth1" json:"oauth1"`
 	DefaultProject  string              `yaml:"default_project" bson:"default_project" json:"default_project"`
+	Email           string              `yaml:"email" bson:"email" json:"email"`
 }
 
 type JiraBasicAuthConfig struct {
@@ -57,6 +58,7 @@ func (c *JiraConfig) Set(ctx context.Context) error {
 			"basic_auth":      c.BasicAuthConfig,
 			"oauth1":          c.OAuth1Config,
 			"default_project": c.DefaultProject,
+			"email":           c.Email,
 		},
 	}, options.Update().SetUpsert(true))
 

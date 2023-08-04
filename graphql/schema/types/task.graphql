@@ -13,6 +13,7 @@ It's used to filter, sort, and paginate test results of a task.
 """
 input TestFilterOptions {
   testName: String
+  excludeDisplayNames: Boolean
   statuses: [String!]
   groupID: String
   sort: [TestSortOptions!]

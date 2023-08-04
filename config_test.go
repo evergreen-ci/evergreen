@@ -260,30 +260,6 @@ func (s *AdminSuite) TestServiceFlags() {
 	})
 }
 
-func (s *AdminSuite) TestAlertsConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	config := AlertsConfig{
-		SMTP: SMTPConfig{
-			Server:     "server",
-			Port:       2285,
-			UseSSL:     true,
-			Username:   "username",
-			Password:   "password",
-			From:       "from",
-			AdminEmail: []string{"email"},
-		},
-	}
-
-	err := config.Set(ctx)
-	s.NoError(err)
-	settings, err := GetConfig(ctx)
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.Alerts)
-}
-
 func (s *AdminSuite) TestAmboyConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -414,6 +390,7 @@ func (s *AdminSuite) TestJiraConfig() {
 			AccessToken: "fdsa",
 		},
 		DefaultProject: "proj",
+		Email:          "a@mail.com",
 	}
 
 	err := config.Set(ctx)
@@ -667,14 +644,8 @@ func (s *AdminSuite) TestNotifyConfig() {
 	defer cancel()
 
 	config := NotifyConfig{
-		SMTP: SMTPConfig{
-			Server:     "server",
-			Port:       2285,
-			UseSSL:     true,
-			Username:   "username",
-			Password:   "password",
-			From:       "from",
-			AdminEmail: []string{"email"},
+		SES: SESConfig{
+			SenderAddress: "from",
 		},
 	}
 

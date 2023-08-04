@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -46,16 +47,17 @@ type APIProjectVars struct {
 }
 
 type APIProjectAlias struct {
-	Alias       *string   `json:"alias"`
-	GitTag      *string   `json:"git_tag"`
-	Variant     *string   `json:"variant"`
-	Description *string   `json:"description"`
-	Task        *string   `json:"task"`
-	RemotePath  *string   `json:"remote_path"`
-	VariantTags []*string `json:"variant_tags,omitempty"`
-	TaskTags    []*string `json:"tags,omitempty"`
-	Delete      bool      `json:"delete,omitempty"`
-	ID          *string   `json:"_id,omitempty"`
+	Alias       *string         `json:"alias"`
+	GitTag      *string         `json:"git_tag"`
+	Variant     *string         `json:"variant"`
+	Description *string         `json:"description"`
+	Task        *string         `json:"task"`
+	RemotePath  *string         `json:"remote_path"`
+	VariantTags []*string       `json:"variant_tags,omitempty"`
+	TaskTags    []*string       `json:"tags,omitempty"`
+	Delete      bool            `json:"delete,omitempty"`
+	ID          *string         `json:"_id,omitempty"`
+	Parameters  []*APIParameter `json:"parameters,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) error {
@@ -154,6 +156,11 @@ func (a *APIProjectAlias) ToService() model.ProjectAlias {
 		TaskTags:    utility.FromStringPtrSlice(a.TaskTags),
 		VariantTags: utility.FromStringPtrSlice(a.VariantTags),
 	}
+	res.Parameters = []patch.Parameter{}
+	for _, param := range a.Parameters {
+		res.Parameters = append(res.Parameters, param.ToService())
+	}
+
 	if model.IsValidId(utility.FromStringPtr(a.ID)) {
 		res.ID = model.NewId(utility.FromStringPtr(a.ID))
 	}
@@ -173,6 +180,13 @@ func (a *APIProjectAlias) BuildFromService(in model.ProjectAlias) {
 	a.VariantTags = APIVariantTags
 	a.TaskTags = APITaskTags
 	a.ID = utility.ToStringPtr(in.ID.Hex())
+	APIParameters := []*APIParameter{}
+	for _, param := range in.Parameters {
+		APIParam := &APIParameter{}
+		APIParam.BuildFromService(&param)
+		APIParameters = append(APIParameters, APIParam)
+	}
+	a.Parameters = APIParameters
 }
 
 func dbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {
