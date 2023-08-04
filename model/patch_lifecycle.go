@@ -951,7 +951,8 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 	return errors.Wrap(catcher.Resolve(), "aborting patches")
 }
 
-func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project, githubMergePatch bool) string {
+func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project,
+	githubMergePatch bool, githubMergeSHA string) string {
 	commitFmtString := "'%s' into '%s/%s:%s'"
 	description := []string{}
 	for _, p := range patches {
@@ -982,7 +983,7 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 	}
 
 	if githubMergePatch {
-		return "GitHub Merge Queue"
+		return "GitHub Merge Queue: " + githubMergeSHA[0:7]
 	} else {
 		return "Commit Queue Merge: " + strings.Join(description, " || ")
 	}
@@ -1073,7 +1074,8 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {
 		return nil, errors.Wrap(err, "making merge patches from existing patch")
 	}
-	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project, patchDoc.IsGithubMergePatch())
+	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project,
+		patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData.HeadSHA)
 
 	// verify the commit queue has tasks/variants enabled that match the project
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
