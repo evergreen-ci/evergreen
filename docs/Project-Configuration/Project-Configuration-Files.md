@@ -49,13 +49,16 @@ tasks:
 Notice that tasks contain:
 
 1.  A name
-2.  A set of dependencies on other tasks
+2.  A set of dependencies on other tasks. `depends_on` can be defined at
+    multiple levels of the YAML. If there are conflicting `depends_on`
+    definitions at different levels, the order of priority is defined
+    [here](#dependencies-override-hierarchy).
 3.  A distro or list of distros to run on (documented more under
     ["Build
     Variants"](#build-variants)).
-    If run_on is set at the task level, it takes precedent over the
-    default set for the buildvariant (unless run_on is explicitly
-    defined for this task under a specific build variant).
+    `run_on` can be defined at multiple levels of the YAML. If there are
+    conflicting `run_on` definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
 4.  A list of commands and/or functions that tell Evergreen how to run
     it.
 
@@ -252,7 +255,7 @@ Fields:
 -   `name`: an identification string for the variant
 -   `display_name`: how the variant is displayed in the Evergreen UI
 -   `run_on`: a list of acceptable distros to run tasks for that variant
-    a. The first distro in the list is the primary distro. The others
+    The first distro in the list is the primary distro. The others
     are secondary distros. Each distro has a primary queue, a queue of
     all tasks that have specified it as their primary distro; and a
     secondary queue, a queue of tasks that have specified it as a
@@ -260,20 +263,31 @@ Fields:
     process that queue and ignore the secondary queue. If the primary
     queue is empty, the distro will process the secondary queue. If both
     queues are empty, idle hosts will eventually be terminated.
+    `run_on` can be defined at multiple levels of the YAML. If there are
+    conflicting `run_on` definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
+-   `depends_on`: a list of dependencies on other tasks. All tasks in the build
+    variant will depend on these tasks. `depends_on` can be defined under a
+    task, under an entire build variant, or for a specific task under a specific
+    build variant. If there are conflicting `depends_on` definitions at
+    different levels, the order of priority is defined
+    [here](#dependencies-override-hierarchy).
 -   `expansions`: a set of key-value expansion pairs
--   `tasks`: a list of tasks to run, using `name`. This can also include
-    batchtime/cron/activate (defined below), which will overwrite all
-    other defaults. We can also [define when a task will
-    run](#limiting-when-a-task-will-run)
-    under this list or [add dependencies](#task-dependencies), also demonstrated in the example above.
--   `batchtime`: interval of time in minutes that Evergreen should wait
-    before activating this variant. The default is set on the project
-    settings page. This can also be set for individual tasks. Only applies to tasks from mainline commits.
+-   `tasks`: a list of tasks to run, referenced either by task name or by tags.
+    Tasks listed here can also include other task-level fields, such as
+    `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
+    [define when a task will run](#limiting-when-a-task-will-run). If there are
+    conflicting settings definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
 -   `activate`: by default, we'll activate if the whole version is
-    being activated or if batchtime specifies it should be activated. If
+    being activated or if `batchtime` specifies it should be activated. If
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
+-   `batchtime`: interval of time in minutes that Evergreen should wait
+    before activating this variant. The default is set on the project
+    settings page. This can also be set for individual tasks. Only applies to
+    tasks from mainline commits.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
     Month \| DayOfWeekOptional) when (in UTC) a task or variant should be activated
     (cannot be combined with batchtime). This also accepts descriptors
@@ -555,28 +569,11 @@ To cause a task to not run at all, set `disable: true`.
     dependent task will simply exclude the disabled task from its
     dependencies.
 
-Can also set batchtime or cron on tasks or build variants, detailed
+Can also set activate, batchtime or cron on tasks or build variants, detailed
 [here](#build-variants).
 
 If there are conflicting settings defined at different levels, the order of
-priority (from highest to lowest) is:
-
-- Tasks listed under a build variant.
-- The task definition.
-- The build variant definition.
-
-For example, if we have this configuration:
-```yaml
-buildvariants:
-- name: some-build-variant
-  patchable: false
-  tasks:
-    - name: unpatchable-task
-    - name: patchable-task
-      patchable: true
-```
-In this case, `unpatchable-task` cannot run in patches, but `patchable-task`
-can.
+priority is defined [here](#task-fields-override-hierarchy).
 
 ### Expansions
 
@@ -1058,14 +1055,14 @@ axes:
  - id: big
    variables:
      distro_size: big
--id: os
- values:
- - id: win
-   run_on: "windows_${distro_size}"
+- id: os
+  values:
+  - id: win
+    run_on: "windows_${distro_size}"
 
- - id: linux
-   run_on: "linux_${distro_size}"
-   variables:
+  - id: linux
+    run_on: "linux_${distro_size}"
+    variables:
 ```
 
 Where the run_on fields will be evaluated when the matrix is parsed.
@@ -1571,9 +1568,11 @@ Example in a command:
 
 ### Task Fields Override Hierarchy
 
-Some fields can be specified at multiple levels in the YAML. The task's specific
-fields will be taken into priority in the following order (from highest to
-lowest):
+Some task fields can be specified at multiple levels in the YAML.
+
+If a field is defined at multiple levels and they conflict, the one with the
+highest priority will overwrite the others. The task's specific fields will be
+taken into priority in the following order (from highest to lowest):
 
 - Tasks listed under a build variant.
 - The task definition.
@@ -1593,3 +1592,13 @@ tasks:
 - name: task_definiton
   run_on: mid_priority
 ```
+
+#### Dependency Override Hierarchy
+Task fields all follow the same priority rules, except for `depends_on`, for
+which a build variant's `depends_on` overrides the task definition's
+`depends_on`. `depends_on` will be taken into priority in the following order
+(from highest to lowest):
+
+- Tasks listed under a build variant.
+- The build variant definition.
+- The task definition.
