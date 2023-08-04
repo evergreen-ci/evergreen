@@ -123,52 +123,52 @@ type ValidationInput struct {
 // Functions used to validate the syntax of a project configuration file.
 var projectErrorValidators = []projectValidator{
 	// kim: TODO: uncomment
-	validateBVFields,
-	validateDependencyGraph,
-	validatePluginCommands,
-	validateProjectFields,
+	// validateBVFields,
+	// validateDependencyGraph,
+	// validatePluginCommands,
+	// validateProjectFields,
 	validateTaskDependencies,
-	validateTaskNames,
-	validateBVNames,
-	validateBVBatchTimes,
-	validateDisplayTaskNames,
-	validateBVTaskNames,
-	validateAllDependenciesSpec,
-	validateProjectTaskNames,
-	validateProjectTaskIdsAndTags,
-	validateParameters,
-	validateTaskGroups,
-	validateHostCreates,
-	validateDuplicateBVTasks,
-	validateGenerateTasks,
+	// validateTaskNames,
+	// validateBVNames,
+	// validateBVBatchTimes,
+	// validateDisplayTaskNames,
+	// validateBVTaskNames,
+	// validateAllDependenciesSpec,
+	// validateProjectTaskNames,
+	// validateProjectTaskIdsAndTags,
+	// validateParameters,
+	// validateTaskGroups,
+	// validateHostCreates,
+	// validateDuplicateBVTasks,
+	// validateGenerateTasks,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
 var projectConfigErrorValidators = []projectConfigValidator{
-	validateProjectConfigAliases,
-	validateProjectConfigPlugins,
-	validateProjectConfigContainers,
+	// validateProjectConfigAliases,
+	// validateProjectConfigPlugins,
+	// validateProjectConfigContainers,
 }
 
 // Functions used to validate the semantics of a project configuration file.
 var projectWarningValidators = []projectValidator{
-	checkTaskGroups,
-	checkProjectFields,
-	checkTaskRuns,
-	checkModules,
-	checkTasks,
-	checkBuildVariants,
+	// checkTaskGroups,
+	// checkProjectFields,
+	// checkTaskRuns,
+	// checkModules,
+	// checkTasks,
+	// checkBuildVariants,
 }
 
 var projectSettingsValidators = []projectSettingsValidator{
-	validateTaskSyncSettings,
-	validateVersionControl,
-	validateContainers,
+	// validateTaskSyncSettings,
+	// validateVersionControl,
+	// validateContainers,
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
 var longErrorValidators = []longValidator{
-	validateTaskSyncCommands,
+	// validateTaskSyncCommands,
 }
 
 func (vr ValidationError) Error() string {
@@ -226,15 +226,18 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 // verify that the project configuration semantics is valid
 func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
-	for _, projectWarningValidator := range projectWarningValidators {
-		validationErrs = append(validationErrs,
-			projectWarningValidator(project)...)
-	}
+	// kim: TODO: uncomment
+	// for _, projectWarningValidator := range projectWarningValidators {
+	//     validationErrs = append(validationErrs,
+	//         projectWarningValidator(project)...)
+	// }
 	return validationErrs
 }
 
 func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	return validateAliasCoverage(project, aliases)
+	// kim: TODO: uncomment
+	// return validateAliasCoverage(project, aliases)
+	return ValidationErrors{}
 }
 
 // verify that the project configuration syntax is valid
@@ -250,19 +253,19 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 	}
 
 	// kim: TODO: uncomment
-	// get distro IDs and aliases for ensureReferentialIntegrity validation
-	distroIDs, distroAliases, err := getDistrosForProject(ctx, project.Identifier)
-	if err != nil {
-		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
-	}
-	containerNameMap := map[string]bool{}
-	for _, container := range project.Containers {
-		if containerNameMap[container.Name] {
-			validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is defined multiple times", container.Name)})
-		}
-		containerNameMap[container.Name] = true
-	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases)...)
+	// // get distro IDs and aliases for ensureReferentialIntegrity validation
+	// distroIDs, distroAliases, err := getDistrosForProject(ctx, project.Identifier)
+	// if err != nil {
+	//     validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
+	// }
+	// containerNameMap := map[string]bool{}
+	// for _, container := range project.Containers {
+	//     if containerNameMap[container.Name] {
+	//         validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is defined multiple times", container.Name)})
+	//     }
+	//     containerNameMap[container.Name] = true
+	// }
+	// validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases)...)
 	return validationErrs
 }
 

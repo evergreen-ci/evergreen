@@ -526,6 +526,53 @@ buildvariants:
 		assert.Equal(t, Warning, errs[0].Level)
 		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on '*' tasks in build variant 'bv2', but the build variant was not found")
 	})
+	t.Run("SucceedsWithTaskDependingOnSpecificTaskInAllBuildVariants", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: "*"
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskDependingOnSpecificTaskInAllBuildVariantsButNoneMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: "*"
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in '*' build variants, but no build variant contains that task")
+	})
 	t.Run("WarnsWithTaskDependingOnNonexistentTask", func(t *testing.T) {
 		p := model.Project{
 			Tasks: []model.ProjectTask{
@@ -598,53 +645,6 @@ buildvariants:
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
 		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
-	})
-	t.Run("WarnsWithTaskDependingOnAllTasksInSpecificNonexistentVariant", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-  depends_on:
-  - name: t2
-    variant: "*"
-- name: t2
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: t1
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in '*' build variants, but no build variant contains that task")
-	})
-	t.Run("WarnsWithTaskDependingOnNonexistentTask", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-  depends_on:
-  - name: t2
-    variant: bv2
-- name: t2
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: t1
-- name: bv2
-  tasks:
-  - name: t2
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		assert.Empty(t, errs)
 	})
 }
 
