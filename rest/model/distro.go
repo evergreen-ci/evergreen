@@ -37,6 +37,7 @@ func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
 	s.MainlineTimeInQueueFactor = settings.MainlineTimeInQueueFactor
 	s.GenerateTaskFactor = settings.GenerateTaskFactor
+	s.CommitQueueFactor = settings.CommitQueueFactor
 }
 
 // ToService returns a service layer distro.PlannerSettings using the data from APIPlannerSettings
@@ -53,6 +54,7 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 	settings.GenerateTaskFactor = s.GenerateTaskFactor
+	settings.CommitQueueFactor = s.CommitQueueFactor
 
 	return settings
 }
