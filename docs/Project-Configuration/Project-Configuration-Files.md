@@ -49,18 +49,16 @@ tasks:
 Notice that tasks contain:
 
 1.  A name
-2.  A set of dependencies on other tasks. `depends_on` can be defined under a
-    task, under an entire build variant, or for a specific task under a specific
-    build variant. If there are conflicting `depends_on` definitions at
-    different levels, the order of priority is defined
+2.  A set of dependencies on other tasks. `depends_on` can be defined at
+    multiple levels of the YAML. If there are conflicting `depends_on`
+    definitions at different levels, the order of priority is defined
     [here](#dependencies-override-hierarchy).
 3.  A distro or list of distros to run on (documented more under
     ["Build
     Variants"](#build-variants)).
-    `run_on` can be defined under a task definition, under an entire build
-    variant, or for a specific task listed in a specific build variant. If there
-    are conflicting `run_on` definitions at different levels, the order of
-    priority is defined [here](#task-fields-override-hierarchy).
+    `run_on` can be defined at multiple levels of the YAML. If there are
+    conflicting `run_on` definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
 4.  A list of commands and/or functions that tell Evergreen how to run
     it.
 
@@ -265,10 +263,9 @@ Fields:
     process that queue and ignore the secondary queue. If the primary
     queue is empty, the distro will process the secondary queue. If both
     queues are empty, idle hosts will eventually be terminated.
-    `run_on` can be defined under a task definition, under an entire build
-    variant, or for a specific task listed in a specific build variant. If there
-    are conflicting `run_on` definitions at different levels, the order of
-    priority is defined [here](#task-fields-override-hierarchy).
+    `run_on` can be defined at multiple levels of the YAML. If there are
+    conflicting `run_on` definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
 -   `depends_on`: a list of dependencies on other tasks. All tasks in the build
     variant will depend on these tasks. `depends_on` can be defined under a
     task, under an entire build variant, or for a specific task under a specific

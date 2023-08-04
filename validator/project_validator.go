@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -122,53 +121,52 @@ type ValidationInput struct {
 
 // Functions used to validate the syntax of a project configuration file.
 var projectErrorValidators = []projectValidator{
-	// kim: TODO: uncomment
-	// validateBVFields,
-	// validateDependencyGraph,
-	// validatePluginCommands,
-	// validateProjectFields,
+	validateBVFields,
+	validateDependencyGraph,
+	validatePluginCommands,
+	validateProjectFields,
 	validateTaskDependencies,
-	// validateTaskNames,
-	// validateBVNames,
-	// validateBVBatchTimes,
-	// validateDisplayTaskNames,
-	// validateBVTaskNames,
-	// validateAllDependenciesSpec,
-	// validateProjectTaskNames,
-	// validateProjectTaskIdsAndTags,
-	// validateParameters,
-	// validateTaskGroups,
-	// validateHostCreates,
-	// validateDuplicateBVTasks,
-	// validateGenerateTasks,
+	validateTaskNames,
+	validateBVNames,
+	validateBVBatchTimes,
+	validateDisplayTaskNames,
+	validateBVTaskNames,
+	validateAllDependenciesSpec,
+	validateProjectTaskNames,
+	validateProjectTaskIdsAndTags,
+	validateParameters,
+	validateTaskGroups,
+	validateHostCreates,
+	validateDuplicateBVTasks,
+	validateGenerateTasks,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
 var projectConfigErrorValidators = []projectConfigValidator{
-	// validateProjectConfigAliases,
-	// validateProjectConfigPlugins,
-	// validateProjectConfigContainers,
+	validateProjectConfigAliases,
+	validateProjectConfigPlugins,
+	validateProjectConfigContainers,
 }
 
 // Functions used to validate the semantics of a project configuration file.
 var projectWarningValidators = []projectValidator{
-	// checkTaskGroups,
-	// checkProjectFields,
-	// checkTaskRuns,
-	// checkModules,
-	// checkTasks,
-	// checkBuildVariants,
+	checkTaskGroups,
+	checkProjectFields,
+	checkTaskRuns,
+	checkModules,
+	checkTasks,
+	checkBuildVariants,
 }
 
 var projectSettingsValidators = []projectSettingsValidator{
-	// validateTaskSyncSettings,
-	// validateVersionControl,
-	// validateContainers,
+	validateTaskSyncSettings,
+	validateVersionControl,
+	validateContainers,
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
 var longErrorValidators = []longValidator{
-	// validateTaskSyncCommands,
+	validateTaskSyncCommands,
 }
 
 func (vr ValidationError) Error() string {
@@ -226,18 +224,15 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 // verify that the project configuration semantics is valid
 func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
-	// kim: TODO: uncomment
-	// for _, projectWarningValidator := range projectWarningValidators {
-	//     validationErrs = append(validationErrs,
-	//         projectWarningValidator(project)...)
-	// }
+	for _, projectWarningValidator := range projectWarningValidators {
+		validationErrs = append(validationErrs,
+			projectWarningValidator(project)...)
+	}
 	return validationErrs
 }
 
 func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	// kim: TODO: uncomment
-	// return validateAliasCoverage(project, aliases)
-	return ValidationErrors{}
+	return validateAliasCoverage(project, aliases)
 }
 
 // verify that the project configuration syntax is valid
@@ -252,20 +247,19 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 			longSyntaxValidator(project, includeLong)...)
 	}
 
-	// kim: TODO: uncomment
-	// // get distro IDs and aliases for ensureReferentialIntegrity validation
-	// distroIDs, distroAliases, err := getDistrosForProject(ctx, project.Identifier)
-	// if err != nil {
-	//     validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
-	// }
-	// containerNameMap := map[string]bool{}
-	// for _, container := range project.Containers {
-	//     if containerNameMap[container.Name] {
-	//         validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is defined multiple times", container.Name)})
-	//     }
-	//     containerNameMap[container.Name] = true
-	// }
-	// validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases)...)
+	// get distro IDs and aliases for ensureReferentialIntegrity validation
+	distroIDs, distroAliases, err := getDistrosForProject(ctx, project.Identifier)
+	if err != nil {
+		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
+	}
+	containerNameMap := map[string]bool{}
+	for _, container := range project.Containers {
+		if containerNameMap[container.Name] {
+			validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is defined multiple times", container.Name)})
+		}
+		containerNameMap[container.Name] = true
+	}
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases)...)
 	return validationErrs
 }
 
@@ -1418,22 +1412,10 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 // reference tasks that will actually run. For example, if task t1 in build
 // variant bv1 depends on task t2, t2 should also be listed under bv1.
 func validateTaskDependencies(project *model.Project) ValidationErrors {
-	grip.Info(message.Fields{
-		"message": "kim: validating task dependency references",
-		"project": project.Identifier,
-	})
-
-	// kim: TODO: test all projects in staging against just this validation.
 	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
 	bvs := map[string]struct{}{}
 	tasks := map[string]struct{}{}
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
-		grip.WarningWhen(bvtu.Variant == "" || bvtu.Name == "", message.Fields{
-			"message": "kim: build variant task unit is unexpectedly missing variant/task name",
-			"bv":      bvtu.Variant,
-			"task":    bvtu.Name,
-			"bvtu":    bvtu,
-		})
 		bvtus[model.TVPair{Variant: bvtu.Variant, TaskName: bvtu.Name}] = bvtu
 		bvs[bvtu.Variant] = struct{}{}
 		tasks[bvtu.Name] = struct{}{}
@@ -1444,21 +1426,20 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 		for _, d := range bvtu.DependsOn {
 			switch d.Status {
 			case evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, "":
-				// these are all valid
 			default:
 				errs = append(errs,
 					ValidationError{
+						Level:   Error,
 						Message: fmt.Sprintf("invalid dependency status '%s' for task '%s' in build variant '%s'", d.Status, d.Name, bvtu.Variant),
 					},
 				)
 			}
 
-			// Dependencies can be specified (from highest to lowest precedence) in
-			// the build variant task unit, for all tasks in a build variant, or for
-			// an individual task definition. Each build variant task unit already
-			// takes into account the precedence rules, so check that these
-			// dependencies defined at the different levels all reference valid
-			// tasks.
+			// Dependencies can be specified in different places, which can
+			// overwrite each other. Each build variant task unit already takes
+			// into account these precedence rules, so after resolving the
+			// dependencies defined at the different levels, check that the
+			// final dependencies all reference valid tasks.
 
 			dep := model.TVPair{Variant: d.Variant, TaskName: d.Name}
 
