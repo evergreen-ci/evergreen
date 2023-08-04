@@ -25,15 +25,15 @@ var (
 	packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/testutil")
 )
 
-func TestSpan(t *testing.T) {
-	if parentCtx := ContextForTest(t); parentCtx == nil {
-		spanForRootTest(t)
+func TestSpan(t *testing.T) context.Context {
+	if parentCtx := contextForTest(t); parentCtx == nil {
+		return spanForRootTest(t)
 	} else {
-		spanForChildTest(parentCtx, t)
+		return spanForChildTest(parentCtx, t)
 	}
 }
 
-func ContextForTest(t *testing.T) context.Context {
+func contextForTest(t *testing.T) context.Context {
 	testName := t.Name()
 	sep := "/"
 	tests := strings.Split(testName, sep)
@@ -50,7 +50,7 @@ func ContextForTest(t *testing.T) context.Context {
 	return ctx
 }
 
-func spanForRootTest(t *testing.T) {
+func spanForRootTest(t *testing.T) context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
@@ -58,24 +58,24 @@ func spanForRootTest(t *testing.T) {
 	traceIDString := os.Getenv(otelTraceIDEnvVar)
 	spanIDString := os.Getenv(otelParentIDEnvVar)
 	if collectorEndpoint == "" || traceIDString == "" || spanIDString == "" {
-		return
+		return nil
 	}
 
 	tracerCloser, err := initTracer(ctx, collectorEndpoint)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "initializing tracer provider"))
-		return
+		return nil
 	}
 
 	traceID, err := trace.TraceIDFromHex(traceIDString)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "parsing trace ID '%s'", traceIDString))
-		return
+		return nil
 	}
 	spanID, err := trace.SpanIDFromHex(spanIDString)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "parsing parent span ID '%s'", spanIDString))
-		return
+		return nil
 	}
 	parentCtx := trace.ContextWithSpanContext(
 		ctx,
@@ -94,17 +94,20 @@ func spanForRootTest(t *testing.T) {
 		if err := tracerCloser(ctx); err != nil {
 			grip.Error(errors.Wrap(tracerCloser(ctx), "closing otel tracer"))
 		}
-
 	})
+
+	return testCtx
 }
 
-func spanForChildTest(parentCtx context.Context, t *testing.T) {
+func spanForChildTest(parentCtx context.Context, t *testing.T) context.Context {
 	testCtx, span := otel.GetTracerProvider().Tracer(packageName).Start(parentCtx, t.Name())
 	testCtxMap[t.Name()] = testCtx
 
 	t.Cleanup(func() {
 		span.End()
 	})
+
+	return testCtx
 }
 
 func initTracer(ctx context.Context, collectorEndpoint string) (func(context.Context) error, error) {
