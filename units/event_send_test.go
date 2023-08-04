@@ -22,7 +22,7 @@ type eventNotificationSuite struct {
 
 	suiteCtx context.Context
 	ctx      context.Context
-	cancel   func()
+	cancel   context.CancelFunc
 
 	env *mock.Environment
 
@@ -41,6 +41,10 @@ func TestEventNotificationJob(t *testing.T) {
 func (s *eventNotificationSuite) SetupSuite() {
 	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
 	s.suiteCtx = testutil.TestSpan(s.suiteCtx, s.T())
+}
+
+func (s *eventNotificationSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *eventNotificationSuite) SetupTest() {
@@ -158,9 +162,6 @@ func (s *eventNotificationSuite) notificationHasError(id string, pattern string)
 }
 
 func (s *eventNotificationSuite) TestDegradedMode() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	flags := evergreen.ServiceFlags{
 		JIRANotificationsDisabled:    true,
 		SlackNotificationsDisabled:   true,
@@ -170,7 +171,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 		CommitQueueDisabled:          true,
 		BackgroundStatsDisabled:      true,
 	}
-	s.NoError(flags.Set(ctx))
+	s.NoError(flags.Set(s.ctx))
 
 	for i := range s.notifications {
 		job := NewEventSendJob(s.notifications[i].ID, "").(*eventSendJob)

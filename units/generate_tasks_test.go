@@ -538,7 +538,7 @@ func TestGenerateTasks(t *testing.T) {
 	require.NoError(projectRef.Insert())
 
 	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
-	j.Run(context.Background())
+	j.Run(ctx)
 	assert.NoError(j.Error())
 	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
@@ -656,7 +656,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	require.NoError(projectRef.Insert())
 
 	j := NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
-	j.Run(context.Background())
+	j.Run(ctx)
 	assert.NoError(j.Error())
 	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
