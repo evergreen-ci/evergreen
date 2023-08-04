@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -20,62 +19,39 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var (
-	testCtxMap  = make(map[string]context.Context)
-	packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/testutil")
-)
+var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/testutil")
 
-func TestSpan(t *testing.T) context.Context {
-	if parentCtx := contextForTest(t); parentCtx == nil {
-		return spanForRootTest(t)
+func TestSpan(ctx context.Context, t *testing.T) context.Context {
+	if !trace.SpanContextFromContext(ctx).IsValid() {
+		return spanForRootTest(ctx, t)
 	} else {
-		return spanForChildTest(parentCtx, t)
+		return spanForChildTest(ctx, t)
 	}
 }
 
-func contextForTest(t *testing.T) context.Context {
-	testName := t.Name()
-	sep := "/"
-	tests := strings.Split(testName, sep)
-
-	var ctx context.Context
-	for x := len(tests); x >= 0; x-- {
-		testCtx, ok := testCtxMap[strings.Join(tests[:x], sep)]
-		if ok {
-			ctx = testCtx
-			break
-		}
-	}
-
-	return ctx
-}
-
-func spanForRootTest(t *testing.T) context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
+func spanForRootTest(ctx context.Context, t *testing.T) context.Context {
 	collectorEndpoint := os.Getenv(otelCollectorEndpointEnvVar)
 	traceIDString := os.Getenv(otelTraceIDEnvVar)
 	spanIDString := os.Getenv(otelParentIDEnvVar)
 	if collectorEndpoint == "" || traceIDString == "" || spanIDString == "" {
-		return nil
+		return ctx
 	}
 
 	tracerCloser, err := initTracer(ctx, collectorEndpoint)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "initializing tracer provider"))
-		return nil
+		return ctx
 	}
 
 	traceID, err := trace.TraceIDFromHex(traceIDString)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "parsing trace ID '%s'", traceIDString))
-		return nil
+		return ctx
 	}
 	spanID, err := trace.SpanIDFromHex(spanIDString)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "parsing parent span ID '%s'", spanIDString))
-		return nil
+		return ctx
 	}
 	parentCtx := trace.ContextWithSpanContext(
 		ctx,
@@ -87,7 +63,6 @@ func spanForRootTest(t *testing.T) context.Context {
 	)
 
 	testCtx, span := otel.GetTracerProvider().Tracer(packageName).Start(parentCtx, t.Name())
-	testCtxMap[t.Name()] = testCtx
 
 	t.Cleanup(func() {
 		span.End()
@@ -101,7 +76,6 @@ func spanForRootTest(t *testing.T) context.Context {
 
 func spanForChildTest(parentCtx context.Context, t *testing.T) context.Context {
 	testCtx, span := otel.GetTracerProvider().Tracer(packageName).Start(parentCtx, t.Name())
-	testCtxMap[t.Name()] = testCtx
 
 	t.Cleanup(func() {
 		span.End()

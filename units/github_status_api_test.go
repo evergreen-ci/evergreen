@@ -27,18 +27,23 @@ type githubStatusUpdateSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
 	buildDoc *build.Build
-	ctx      context.Context
+	suiteCtx context.Context
 	cancel   context.CancelFunc
+	ctx      context.Context
 
 	suite.Suite
 }
 
 func TestGithubStatusUpdate(t *testing.T) {
-	suite.Run(t, new(githubStatusUpdateSuite))
+	s := &githubStatusUpdateSuite{}
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
+	suite.Run(t, s)
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.NoError(db.ClearCollections(patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
 	uiConfig := evergreen.UIConfig{}

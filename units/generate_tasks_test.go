@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -464,13 +465,14 @@ var sampleGeneratedProject3 = []string{`
 `}
 
 func TestGenerateTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
 	defer require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
@@ -589,6 +591,10 @@ func TestGenerateTasks(t *testing.T) {
 }
 
 func TestGeneratedTasksAreNotDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
@@ -690,7 +696,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	}
 	require.NoError(generateTaskWithoutFlag.Insert())
 	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
-	j.Run(context.Background())
+	j.Run(ctx)
 	assert.NoError(j.Error())
 	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
@@ -728,7 +734,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	}
 	require.NoError(generateTask.Insert())
 	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
-	j.Run(context.Background())
+	j.Run(ctx)
 	assert.NoError(j.Error())
 	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
@@ -748,8 +754,12 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 }
 
 func TestParseProjects(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
-	parsed, err := parseProjectsAsString(context.Background(), sampleGeneratedProject)
+	parsed, err := parseProjectsAsString(ctx, sampleGeneratedProject)
 	assert.NoError(err)
 	assert.Len(parsed, 1)
 	assert.Len(parsed[0].BuildVariants, 1)
@@ -766,6 +776,7 @@ func TestParseProjects(t *testing.T) {
 func TestGenerateSkipsInvalidDependency(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	var sampleBaseProject = `
 tasks:
@@ -863,7 +874,7 @@ buildvariants:
 	require.NoError(projectRef.Insert())
 
 	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
-	j.Run(context.Background())
+	j.Run(ctx)
 	assert.NoError(j.Error())
 
 	tasks, err := task.Find(task.ByVersion(sampleVersion.Id))
@@ -880,6 +891,10 @@ buildvariants:
 }
 
 func TestMarkGeneratedTasksError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
 	sampleTask := task.Task{
 		Id:                    "sample_task",
@@ -893,7 +908,7 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	require.NoError(t, sampleTask.Insert())
 
 	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
-	j.Run(context.Background())
+	j.Run(ctx)
 	assert.Error(t, j.Error())
 	dbTask, err := task.FindOneId(sampleTask.Id)
 	assert.NoError(t, err)

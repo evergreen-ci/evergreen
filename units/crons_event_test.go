@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -30,15 +31,17 @@ import (
 
 type cronsEventSuite struct {
 	suite.Suite
-	cancel func()
-	n      []notification.Notification
-	ctx    context.Context
-	env    evergreen.Environment
+	cancel   func()
+	n        []notification.Notification
+	suiteCtx context.Context
+	ctx      context.Context
+	env      evergreen.Environment
 }
 
 func TestEventCrons(t *testing.T) {
 	s := &cronsEventSuite{}
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
 
 	suite.Run(t, s)
 }
@@ -49,6 +52,8 @@ func (s *cronsEventSuite) TearDownSuite() {
 
 func (s *cronsEventSuite) SetupTest() {
 	env := &mock.Environment{}
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
+
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env
 

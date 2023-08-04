@@ -27,6 +27,7 @@ import (
 type commitQueueSuite struct {
 	suite.Suite
 	env      *mock.Environment
+	suiteCtx context.Context
 	ctx      context.Context
 	settings *evergreen.Settings
 
@@ -64,12 +65,13 @@ func (s *commitQueueSuite) SetupSuite() {
 	s.Require().NoError(s.projectRef.Insert())
 
 	s.env = &mock.Environment{}
-	s.ctx = context.Background()
-	s.NoError(s.env.Configure(s.ctx))
+	s.suiteCtx = testutil.TestSpan(context.Background(), s.T())
+	s.NoError(s.env.Configure(s.suiteCtx))
 }
 
 func (s *commitQueueSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(commitqueue.Collection))
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
 	webhookInterface, err := github.ParseWebHook("pull_request", s.prBody)
 	s.NoError(err)

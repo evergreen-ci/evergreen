@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -24,18 +25,23 @@ type githubStatusRefreshSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
 
 	suite.Suite
 }
 
 func TestGithubStatusRefresh(t *testing.T) {
-	suite.Run(t, new(githubStatusRefreshSuite))
+	s := &githubStatusRefreshSuite{}
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
+	suite.Run(t, s)
 }
 
 func (s *githubStatusRefreshSuite) SetupTest() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
