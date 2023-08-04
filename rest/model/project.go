@@ -49,6 +49,7 @@ type APITriggerDefinition struct {
 	DateCutoff        *int    `json:"date_cutoff"`
 	ConfigFile        *string `json:"config_file"`
 	Alias             *string `json:"alias"`
+	UnscheduleTasks   *bool   `json:"unschedule_tasks"`
 }
 
 func (t *APITriggerDefinition) ToService() model.TriggerDefinition {
@@ -61,6 +62,7 @@ func (t *APITriggerDefinition) ToService() model.TriggerDefinition {
 		Status:            utility.FromStringPtr(t.Status),
 		ConfigFile:        utility.FromStringPtr(t.ConfigFile),
 		Alias:             utility.FromStringPtr(t.Alias),
+		UnscheduleTasks:   utility.FromBoolPtr(t.UnscheduleTasks),
 		DateCutoff:        t.DateCutoff,
 	}
 }
@@ -74,6 +76,7 @@ func (t *APITriggerDefinition) BuildFromService(triggerDef model.TriggerDefiniti
 	t.Status = utility.ToStringPtr(triggerDef.Status)
 	t.ConfigFile = utility.ToStringPtr(triggerDef.ConfigFile)
 	t.Alias = utility.ToStringPtr(triggerDef.Alias)
+	t.UnscheduleTasks = utility.ToBoolPtr(triggerDef.UnscheduleTasks)
 	t.DateCutoff = triggerDef.DateCutoff
 }
 

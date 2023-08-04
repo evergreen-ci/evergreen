@@ -96,6 +96,7 @@ type ProcessorArgs struct {
 	EventID           string
 	DefinitionID      string
 	Alias             string
+	UnscheduleTasks   bool
 }
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
@@ -202,6 +203,7 @@ projectLoop:
 				EventID:           e.ID,
 				DefinitionID:      trigger.DefinitionID,
 				Alias:             trigger.Alias,
+				UnscheduleTasks:   trigger.UnscheduleTasks,
 			}
 			v, err := processor(ctx, args)
 			if err != nil {
@@ -271,6 +273,7 @@ projectLoop:
 				EventID:           e.ID,
 				DefinitionID:      trigger.DefinitionID,
 				Alias:             trigger.Alias,
+				UnscheduleTasks:   trigger.UnscheduleTasks,
 			}
 			v, err := processor(ctx, args)
 			if err != nil {
