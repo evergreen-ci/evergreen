@@ -292,7 +292,12 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 		return defaultPath, err
 	}
 
+	// For non-Windows platforms, the filepath.Separator is always '/'. However,
+	// for Windows, Go accepts both '\' and '/' as valid file path separators,
+	// even though the native filepath.Separator for Windows is really '\'. This
+	// detects both '\' and '/' as valid Windows file path separators.
 	binaryIsFilePath := strings.Contains(c.Binary, string(filepath.Separator)) || runtime.GOOS == "windows" && strings.Contains(c.Binary, "/")
+
 	if len(cmdPath) == 0 || binaryIsFilePath {
 		return "", err
 	}
