@@ -297,6 +297,8 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 		return "", err
 	}
 
+	logger.Execution().Debug("could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
+
 	originalPath := os.Getenv("PATH")
 	defer func() {
 		// Try to reset the PATH back to its original state. If this fails, then
