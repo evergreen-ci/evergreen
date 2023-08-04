@@ -54,7 +54,13 @@ func New(apiURL string) Config {
 		}
 		distroId, hasDistroId := args["distroId"].(string)
 		if !hasDistroId {
-			return nil, ResourceNotFound.Send(ctx, "Distro not specified")
+			name, hasName := args["name"].(string)
+
+			if !hasName {
+				return nil, ResourceNotFound.Send(ctx, "Distro not specified")
+
+			}
+			distroId = name
 		}
 
 		var requiredLevel int

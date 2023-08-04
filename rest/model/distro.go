@@ -20,6 +20,7 @@ type APIPlannerSettings struct {
 	MainlineTimeInQueueFactor int64       `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64       `json:"expected_runtime_factor"`
 	GenerateTaskFactor        int64       `json:"generate_task_factor"`
+	CommitQueueFactor         int64       `json:"commit_queue_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings

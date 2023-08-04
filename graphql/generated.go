@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -72,6 +71,8 @@ type ResolverRoot interface {
 	Version() VersionResolver
 	Volume() VolumeResolver
 	DistroInput() DistroInputResolver
+	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
+	PlannerSettingsInput() PlannerSettingsInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
 
@@ -754,6 +755,7 @@ type ComplexityRoot struct {
 	}
 
 	PlannerSettings struct {
+		CommitQueueFactor         func(childComplexity int) int
 		ExpectedRuntimeFactor     func(childComplexity int) int
 		GenerateTaskFactor        func(childComplexity int) int
 		GroupVersions             func(childComplexity int) int
@@ -1792,6 +1794,12 @@ type VolumeResolver interface {
 
 type DistroInputResolver interface {
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error
+}
+type HostAllocatorSettingsInputResolver interface {
+	AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data *int) error
+}
+type PlannerSettingsInputResolver interface {
+	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data *int) error
 }
 type SubscriberInputResolver interface {
 	Target(ctx context.Context, obj *model.APISubscriber, data string) error
@@ -5111,6 +5119,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Permissions.UserID(childComplexity), true
+
+	case "PlannerSettings.commitQueueFactor":
+		if e.complexity.PlannerSettings.CommitQueueFactor == nil {
+			break
+		}
+
+		return e.complexity.PlannerSettings.CommitQueueFactor(childComplexity), true
 
 	case "PlannerSettings.expectedRuntimeFactor":
 		if e.complexity.PlannerSettings.ExpectedRuntimeFactor == nil {
@@ -15884,6 +15899,8 @@ func (ec *executionContext) fieldContext_Distro_plannerSettings(ctx context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "commitQueueFactor":
+				return ec.fieldContext_PlannerSettings_commitQueueFactor(ctx, field)
 			case "expectedRuntimeFactor":
 				return ec.fieldContext_PlannerSettings_expectedRuntimeFactor(ctx, field)
 			case "generateTaskFactor":
@@ -34250,6 +34267,47 @@ func (ec *executionContext) fieldContext_Permissions_userId(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlannerSettings_commitQueueFactor(ctx context.Context, field graphql.CollectedField, obj *model.APIPlannerSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannerSettings_commitQueueFactor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CommitQueueFactor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlannerSettings_commitQueueFactor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannerSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -64949,11 +65007,30 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireDistroAccess == nil {
+					return nil, errors.New("directive requireDistroAccess is not implemented")
+				}
+				return ec.directives.RequireDistroAccess(ctx, obj, directive0, access)
 			}
-			it.Name = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Name = data
+			} else if tmp == nil {
+				it.Name = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "note":
 			var err error
 
@@ -65446,11 +65523,13 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("acceptableHostIdleTime"))
-			data, err := ec.unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.AcceptableHostIdleTime = data
+			if err = ec.resolvers.HostAllocatorSettingsInput().AcceptableHostIdleTime(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "feedbackRule":
 			var err error
 
@@ -66350,13 +66429,22 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"expectedRuntimeFactor", "generateTaskFactor", "groupVersions", "mainlineTimeInQueueFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
+	fieldsInOrder := [...]string{"commitQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "groupVersions", "mainlineTimeInQueueFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "commitQueueFactor":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("commitQueueFactor"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommitQueueFactor = data
 		case "expectedRuntimeFactor":
 			var err error
 
@@ -66415,11 +66503,13 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetTime"))
-			data, err := ec.unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TargetTime = data
+			if err = ec.resolvers.PlannerSettingsInput().TargetTime(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "version":
 			var err error
 
@@ -67706,57 +67796,22 @@ func (ec *executionContext) unmarshalInputSaveDistroInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"distroId", "changes", "section", "onSave"}
+	fieldsInOrder := [...]string{"distro", "onSave"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "distroId":
+		case "distro":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "EDIT")
-				if err != nil {
-					return nil, err
-				}
-				if ec.directives.RequireDistroAccess == nil {
-					return nil, errors.New("directive requireDistroAccess is not implemented")
-				}
-				return ec.directives.RequireDistroAccess(ctx, obj, directive0, access)
-			}
-
-			tmp, err := directive1(ctx)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			if data, ok := tmp.(string); ok {
-				it.DistroID = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-		case "changes":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("changes"))
-			data, err := ec.unmarshalODistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distro"))
+			data, err := ec.unmarshalNDistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Changes = data
-		case "section":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-			data, err := ec.unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Section = data
+			it.Distro = data
 		case "onSave":
 			var err error
 
@@ -73963,6 +74018,10 @@ func (ec *executionContext) _PlannerSettings(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PlannerSettings")
+		case "commitQueueFactor":
+
+			out.Values[i] = ec._PlannerSettings_commitQueueFactor(ctx, field, obj)
+
 		case "expectedRuntimeFactor":
 
 			out.Values[i] = ec._PlannerSettings_expectedRuntimeFactor(ctx, field, obj)
@@ -80810,6 +80869,11 @@ func (ec *executionContext) marshalNDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 	return ec._Distro(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNDistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, v interface{}) (*model.APIDistro, error) {
+	res, err := ec.unmarshalInputDistroInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNDistroOnSaveOperation2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroOnSaveOperation(ctx context.Context, v interface{}) (DistroOnSaveOperation, error) {
 	var res DistroOnSaveOperation
 	err := res.UnmarshalGQL(v)
@@ -80847,22 +80911,6 @@ func (ec *executionContext) unmarshalNDistroSettingsAccess2githubᚗcomᚋevergr
 
 func (ec *executionContext) marshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx context.Context, sel ast.SelectionSet, v DistroSettingsAccess) graphql.Marshaler {
 	return v
-}
-
-func (ec *executionContext) unmarshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx context.Context, v interface{}) (distro.DistroSettingsSection, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := distro.DistroSettingsSection(tmp)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNDistroSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋdistroᚐDistroSettingsSection(ctx context.Context, sel ast.SelectionSet, v distro.DistroSettingsSection) graphql.Marshaler {
-	res := graphql.MarshalString(string(v))
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
 }
 
 func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
@@ -84612,14 +84660,6 @@ func (ec *executionContext) marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 
 func (ec *executionContext) marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx context.Context, sel ast.SelectionSet, v model.DistroInfo) graphql.Marshaler {
 	return ec._DistroInfo(ctx, sel, &v)
-}
-
-func (ec *executionContext) unmarshalODistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, v interface{}) (*model.APIDistro, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputDistroInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {

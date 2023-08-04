@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -178,34 +177,28 @@ func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroIn
 // SaveDistroSection is the resolver for the saveDistroSection field.
 func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error) {
 	usr := mustHaveUser(ctx)
-	distroChanges := opts.Changes.ToService()
+	d := opts.Distro.ToService()
 
-	originalDistro, err := distro.FindOneId(ctx, opts.DistroID)
+	settings, err := evergreen.GetConfig(ctx)
+	validationErrs, err := validator.CheckDistro(ctx, d, settings, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distro '%s': %s", opts.DistroID, err.Error()))
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	if originalDistro == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", opts.DistroID))
-	}
-
-	if err = validator.ValidateDistroChanges(ctx, originalDistro, distroChanges); err != nil {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': %s", opts.DistroID, err.Error()))
+	if len(validationErrs) != 0 {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': '%s'", d.Id, err.Error()))
 	}
 
-	updatedDistro, err := distro.UpdateDistroSection(ctx, originalDistro, distroChanges, opts.Section, usr.Username())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating distro '%s': %s", opts.DistroID, err.Error()))
+	if err = d.ReplaceOne(ctx); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	apiDistro := &restModel.APIDistro{}
-	apiDistro.BuildFromService(*updatedDistro)
 
-	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, opts.DistroID, opts.OnSave, usr.Username())
+	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
 	if err != nil {
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 
 	return &SaveDistroSectionPayload{
-		Distro:    apiDistro,
+		Distro:    opts.Distro,
 		HostCount: numHostsUpdated,
 	}, nil
 }

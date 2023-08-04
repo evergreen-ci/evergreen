@@ -555,20 +555,3 @@ func validateAliases(d *distro.Distro, allDistroAliases []string) ValidationErro
 	}
 	return validationErrs
 }
-
-// ValidateDistroChanges validates that the incoming changes are valid.
-func ValidateDistroChanges(ctx context.Context, originalDistro *distro.Distro, changes *distro.Distro) error {
-	settings, err := evergreen.GetConfig(ctx)
-
-	mergedDistro := distro.ApplyDistroChanges(*originalDistro, *changes)
-
-	validationErrs, err := CheckDistro(ctx, &mergedDistro, settings, false)
-	if err != nil {
-		return errors.Wrap(err, "validating distro")
-	}
-
-	if len(validationErrs) > 0 {
-		return errors.New(fmt.Sprintf("validating distro changes: %s", validationErrs.String()))
-	}
-	return nil
-}

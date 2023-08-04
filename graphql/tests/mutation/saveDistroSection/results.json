@@ -26,14 +26,88 @@
           "saveDistroSection": {
             "distro": {
               "name": "rhel71-power8-large",
-              "provider": "docker",
-              "provider_settings_list": [
+              "provider": "ec2-ondemand",
+              "providerSettingsList": [
                 {
                   "ami": "who-ami",
                   "instance_type": "m4.4xlarge",
-                  "security_group_ids": ["1"]
+                  "is_vpc": true,
+                  "region": "us-east-1",
+                  "security_group_ids": ["1"],
+                  "subnet_id": "subnet-123"
+                },
+                {
+                  "ami": "who-ami-2",
+                  "instance_type": "m4.2xlarge",
+                  "is_vpc": false,
+                  "region": "us-west-1",
+                  "security_group_ids": ["2"]
                 }
               ]
+            },
+            "hostCount": 0
+          }
+        }
+      }
+    },
+    {
+      "query_file": "host_section.graphql",
+      "result": {
+        "data": {
+          "saveDistroSection": {
+            "distro": {
+              "arch": "linux_amd64",
+              "authorizedKeysFile": "",
+              "bootstrapSettings": {
+                "clientDir": "/home/mci-exec/evergreen_provisioning",
+                "communication": "rpc",
+                "jasperBinaryDir": "/home/mci-exec/evergreen_provisioning",
+                "jasperCredentialsPath": "/home/mci-exec/evergreen_provisioning/jasper_credentials.json",
+                "method": "ssh",
+                "resourceLimits": {
+                  "lockedMemoryKb": -1,
+                  "numFiles": 66000,
+                  "numProcesses": -1,
+                  "virtualMemoryKb": -1
+                },
+                "shellPath": "/bin/fish"
+              },
+              "homeVolumeSettings": {
+                "formatCommand": ""
+              },
+              "iceCreamSettings": {
+                "configPath": "",
+                "schedulerHost": ""
+              },
+              "isVirtualWorkStation": false,
+              "name": "rhel71-power8-large",
+              "setup": "echo 'Hello, World'",
+              "setupAsSudo": true,
+              "sshKey": "mci",
+              "sshOptions": [
+                "StrictHostKeyChecking=no",
+                "BatchMode=yes",
+                "ConnectTimeout=10"
+              ],
+              "user": "mci-exec",
+              "userSpawnAllowed": false,
+              "workDir": ""
+            },
+            "hostCount": 0
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_section.graphql",
+      "result": {
+        "data": {
+          "saveDistroSection": {
+            "distro": {
+              "name": "rhel71-power8-large",
+              "plannerSettings": {
+                "version": "revised"
+              }
             },
             "hostCount": 0
           }

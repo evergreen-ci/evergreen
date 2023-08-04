@@ -46,9 +46,7 @@ input DeleteDistroInput {
 }
 
 input SaveDistroInput {
-  distroId: String! @requireDistroAccess(access: EDIT), 
-  changes: DistroInput, 
-  section: DistroSettingsSection!, 
+  distro: DistroInput!
   onSave: DistroOnSaveOperation!
 }
 
@@ -69,7 +67,7 @@ input DistroInput {
   iceCreamSettings: IceCreamSettingsInput
   isCluster: Boolean
   isVirtualWorkStation: Boolean
-  name: String
+  name: String! @requireDistroAccess(access: EDIT)
   note: String
   plannerSettings: PlannerSettingsInput
   provider: String
@@ -121,7 +119,7 @@ input HomeVolumeSettingsInput {
 }
 
 input HostAllocatorSettingsInput {
-  acceptableHostIdleTime: Duration
+  acceptableHostIdleTime: Int
   feedbackRule: String
   futureHostFraction: Float
   hostsOverallocatedRule: String
@@ -137,13 +135,14 @@ input IceCreamSettingsInput {
 }
 
 input PlannerSettingsInput {
+  commitQueueFactor: Int
   expectedRuntimeFactor: Int
   generateTaskFactor: Int
   groupVersions: Boolean
   mainlineTimeInQueueFactor: Int
   patchFactor: Int
   patchTimeInQueueFactor: Int
-  targetTime: Duration
+  targetTime: Int
   version: String
 }
 
@@ -271,6 +270,7 @@ type IceCreamSettings {
 }
 
 type PlannerSettings {
+  commitQueueFactor: Int
   expectedRuntimeFactor: Int
   generateTaskFactor: Int
   groupVersions: Boolean
