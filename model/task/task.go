@@ -1230,6 +1230,7 @@ func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) er
 func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	ids := []string{}
 	for i := range tasks {
+		tasks[i].ScheduledTime = scheduledTime
 		ids = append(ids, tasks[i].Id)
 
 		// Display tasks are considered scheduled when their first exec task is scheduled

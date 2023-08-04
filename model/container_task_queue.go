@@ -158,9 +158,8 @@ func (q *ContainerTaskQueue) getProjectRefs(tasks []task.Task) (map[string]Proje
 func (q *ContainerTaskQueue) setFirstScheduledTime(scheduledTime time.Time) {
 	var notScheduledBefore []task.Task
 	for i := range q.queue {
-		t := q.queue[i]
-		if utility.IsZeroTime(t.ScheduledTime) {
-			notScheduledBefore = append(notScheduledBefore, t)
+		if utility.IsZeroTime(q.queue[i].ScheduledTime) {
+			notScheduledBefore = append(notScheduledBefore, q.queue[i])
 		}
 	}
 
