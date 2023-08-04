@@ -30,7 +30,7 @@ func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *mod
 	for _, entry := range data {
 		newEntry, err := json.Marshal(entry)
 		if err != nil {
-			return InternalServerError.Send(ctx, fmt.Sprintf("marshalling provider settings entry", err.Error()))
+			return InternalServerError.Send(ctx, fmt.Sprintf("marshalling provider settings entry: %s", err.Error()))
 		}
 		doc := &birch.Document{}
 		err = json.Unmarshal(newEntry, doc)

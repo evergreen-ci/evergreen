@@ -58,7 +58,6 @@ func New(apiURL string) Config {
 
 			if !hasName {
 				return nil, ResourceNotFound.Send(ctx, "Distro not specified")
-
 			}
 			distroId = name
 		}
