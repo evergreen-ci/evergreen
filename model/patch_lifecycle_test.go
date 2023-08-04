@@ -867,7 +867,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 
 	// no commits
 	patches := []patch.ModulePatch{}
-	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project, false))
 
 	// main repo commit
 	patches = []patch.ModulePatch{
@@ -876,9 +876,9 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Commit"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, false))
 
-	assert.Equal(t, "GitHub Merge Queue: 0e312ff", MakeCommitQueueDescription(patches, projectRef, project, true, "0e312ff6c06bd09eff0aed1bd1f73911a7daa350"))
+	assert.Equal(t, "GitHub Merge Queue", MakeCommitQueueDescription(patches, projectRef, project, true))
 
 	// main repo + module commits
 	patches = []patch.ModulePatch{
@@ -892,7 +892,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false))
 
 	// module only commits
 	patches = []patch.ModulePatch{
@@ -904,7 +904,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Module Commit 1", "Module Commit 2"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false))
 }
 
 func TestRetryCommitQueueItems(t *testing.T) {

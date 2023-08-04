@@ -365,7 +365,7 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 	}
 
 	if patchDoc.IsCommitQueuePatch() {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData.HeadSHA)
+		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch())
 	}
 
 	if patchDoc.IsBackport() {
