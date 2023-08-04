@@ -3,12 +3,15 @@ mutation {
       opts: {
         distro: {
           name: "rhel71-power8-large"
+          workDir: "",
+
           aliases: [
             "new-alias"
           ],
           arch: "linux_ppc64le",
+          authorizedKeysFile: "",
+          containerPool: "",
           disabled: true,
-          workDir: "/data/mci",
           provider: "ec2-ondemand",
           providerSettingsList: [
             {
@@ -31,15 +34,25 @@ mutation {
           bootstrapSettings: {
             clientDir: "/home/mci-exec/evergreen_provisioning",
             communication: "rpc",
+            env: [
+              {
+                key: "foo",
+                value: "bar"
+              }
+            ],
             jasperBinaryDir: "/home/mci-exec/evergreen_provisioning",
             jasperCredentialsPath: "/home/mci-exec/evergreen_provisioning/jasper_credentials.json",
             method: "ssh",
+            preconditionScripts: [],
             resourceLimits: {
               lockedMemoryKb: -1,
               numFiles: 66000,
               numProcesses: -1,
+              numTasks: 0,
               virtualMemoryKb: -1
             },
+            rootDir: "C:/cygwin",
+            serviceUser: "",
             shellPath: "/bin/fish"
           }
           cloneMethod: "legacy-ssh",
@@ -64,23 +77,28 @@ mutation {
             version: "legacy"
           },
           plannerSettings: {
-            version: "tunable",
-            targetTime: 0,
+            commitQueueFactor: 0,
+            expectedRuntimeFactor: 0,
+            generateTaskFactor: 0,
             groupVersions: false,
-            patchFactor: 0
-            patchTimeInQueueFactor: 0
-            commitQueueFactor: 0
-            mainlineTimeInQueueFactor: 0
-            expectedRuntimeFactor: 0
+            mainlineTimeInQueueFactor: 0,
+            patchFactor: 0,
+            patchTimeInQueueFactor: 0,
+            targetTime: 0,
+            version: "tunable"
           },
           dispatcherSettings: {
             version: "revised-with-dependencies"
           },
           hostAllocatorSettings: {
-            version: "utilization",
-            minimumHosts: 0,
+            acceptableHostIdleTime: 5407399999,
+            feedbackRule: "",
+            futureHostFraction: 0,
+            hostsOverallocatedRule: "",
             maximumHosts: 0,
-            acceptableHostIdleTime: 5407399999
+            minimumHosts: 0,
+            roundingRule: "",
+            version: "utilization",
           },
           disableShallowClone: true,
           note: "This is an updated note"
@@ -89,8 +107,13 @@ mutation {
           homeVolumeSettings: {
             formatCommand: ""
           },
-          iceCreamSettings: {}
-
+          iceCreamSettings: {
+            configPath: "",
+            schedulerHost: ""
+          },
+          setup: "ls -alF",
+          setupAsSudo: true,
+          validProjects: []
         },
         onSave: DECOMMISSION
       }

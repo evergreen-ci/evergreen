@@ -44,13 +44,13 @@ func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *mod
 }
 
 // AcceptableHostIdleTime is the resolver for the acceptableHostIdleTime field.
-func (r *hostAllocatorSettingsInputResolver) AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data *int) error {
+func (r *hostAllocatorSettingsInputResolver) AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error {
 	obj.AcceptableHostIdleTime = model.NewAPIDuration(time.Duration(obj.AcceptableHostIdleTime))
 	return nil
 }
 
 // TargetTime is the resolver for the targetTime field.
-func (r *plannerSettingsInputResolver) TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data *int) error {
+func (r *plannerSettingsInputResolver) TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error {
 	obj.TargetTime = model.NewAPIDuration(time.Duration(obj.TargetTime))
 	return nil
 }

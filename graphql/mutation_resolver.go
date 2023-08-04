@@ -185,7 +185,7 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	if len(validationErrs) != 0 {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': '%s'", d.Id, err.Error()))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': '%s'", d.Id, validationErrs.String()))
 	}
 
 	if err = d.ReplaceOne(ctx); err != nil {
