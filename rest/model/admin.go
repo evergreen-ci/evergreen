@@ -1012,6 +1012,7 @@ func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
 type APIJiraConfig struct {
 	Host            *string           `json:"host"`
 	DefaultProject  *string           `json:"default_project"`
+	Email           *string           `json:"email"`
 	BasicAuthConfig *APIJiraBasicAuth `json:"basic_auth"`
 	OAuth1Config    *APIJiraOAuth1    `json:"oauth1"`
 }
@@ -1021,6 +1022,7 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	case evergreen.JiraConfig:
 		a.Host = utility.ToStringPtr(v.Host)
 		a.DefaultProject = utility.ToStringPtr(v.DefaultProject)
+		a.Email = utility.ToStringPtr(v.Email)
 		a.BasicAuthConfig = &APIJiraBasicAuth{}
 		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
 		a.OAuth1Config = &APIJiraOAuth1{}
@@ -1035,6 +1037,7 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 	c := evergreen.JiraConfig{
 		Host:           utility.FromStringPtr(a.Host),
 		DefaultProject: utility.FromStringPtr(a.DefaultProject),
+		Email:          utility.FromStringPtr(a.Email),
 	}
 	if a.BasicAuthConfig != nil {
 		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
