@@ -483,6 +483,8 @@ Docker Parameters:
     interval. Must be \<= 60 (1 second). Default to 30.
 -   `publish_ports` - Set to make ports available by mapping container
     ports to ports on the Docker host. Default is false.
+-   `extra_hosts` - Optional. This is a list of hosts to be added to
+    /etc/hosts on the container (each should be of the form
     hostname:IP).
 -   `registry_name` - The registry from which to pull/import the image.
     Defaults to Dockerhub.
