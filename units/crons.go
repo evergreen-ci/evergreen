@@ -1030,6 +1030,8 @@ func PopulateVolumeExpirationJob() amboy.QueueOperation {
 	}
 }
 
+// PopulateUnstickVolumesJob looks for volumes that are marked as attached to terminated hosts in our DB,
+// and enqueues jobs to mark them unattached.
 func PopulateUnstickVolumesJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
