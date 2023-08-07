@@ -136,15 +136,11 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		logger.Execution().Notice(errors.Wrap(err, "getting task temporary directory"))
 	}
 
-	var exp util.Expansions
-	if conf.Expansions != nil {
-		exp = *conf.Expansions
-	}
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
 		tmpDir:                 taskTmpDir,
-		expansions:             exp,
+		expansions:             *conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
 	})

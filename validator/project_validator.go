@@ -1407,79 +1407,83 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateTaskDependencies ensures that the dependencies for the tasks have the
-// correct fields, and that the fields have valid values
+// validateTaskDependencies checks that, for all tasks that have
+// dependencies, those dependencies set the expected fields and all dependencies
+// reference tasks that will actually run. For example, if task t1 in build
+// variant bv1 depends on task t2, t2 should also be listed under bv1.
 func validateTaskDependencies(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	implicitBVDeps := map[string][]string{}
-	for _, task := range project.Tasks {
-		// create a set of the dependencies, to check for duplicates
-		depNames := map[model.TVPair]bool{}
-
-		for _, dep := range task.DependsOn {
-			pair := model.TVPair{TaskName: dep.Name, Variant: dep.Variant}
-			// make sure the dependency is not specified more than once
-			if depNames[pair] {
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("duplicate dependency '%s' specified for task '%s'",
-							dep.Name, task.Name),
-					},
-				)
-			}
-			depNames[pair] = true
-
-			// check that the status is valid
-			switch dep.Status {
-			case evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, "":
-				// these are all valid
-			default:
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("invalid dependency status for task '%s': %s",
-							task.Name, dep.Status)})
-			}
-
-			// check that name of the dependency task is valid
-			if dep.Name != model.AllDependencies && project.FindProjectTask(dep.Name) == nil {
-				errs = append(errs,
-					ValidationError{
-						Level: Error,
-						Message: fmt.Sprintf("non-existent task name '%s' in dependencies for task '%s'",
-							dep.Name, task.Name),
-					},
-				)
-			}
-			if dep.Variant != "" && dep.Variant != model.AllVariants && project.FindBuildVariant(dep.Variant) == nil {
-				errs = append(errs, ValidationError{
-					Level: Error,
-					Message: fmt.Sprintf("non-existent variant name '%s' in dependencies for task '%s'",
-						dep.Variant, task.Name),
-				})
-			}
-
-			implicitBVDeps[task.Name] = append(implicitBVDeps[task.Name], dep.Name)
-		}
+	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
+	bvs := map[string]struct{}{}
+	tasks := map[string]struct{}{}
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		bvtus[model.TVPair{Variant: bvtu.Variant, TaskName: bvtu.Name}] = bvtu
+		bvs[bvtu.Variant] = struct{}{}
+		tasks[bvtu.Name] = struct{}{}
 	}
 
-	// If a task depends on another task but doesn't specify an explicit variant
-	// in the dependency, that task is implicitly depending on a task being in
-	// the same variant where it's listed. Check that build variants containing
-	// tasks with implicit build variant dependencies also include the
-	// dependencies in the task list.
-	for _, bv := range project.BuildVariants {
-		for taskName, depNames := range implicitBVDeps {
-			if project.FindTaskForVariant(taskName, bv.Name) == nil {
+	var errs ValidationErrors
+	for _, bvtu := range bvtus {
+		for _, d := range bvtu.DependsOn {
+			validDepStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, ""}
+			if !utility.StringSliceContains(validDepStatuses, d.Status) {
+				errs = append(errs,
+					ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("invalid dependency status '%s' for task '%s' in build variant '%s'", d.Status, d.Name, bvtu.Variant),
+					},
+				)
+			}
+
+			// Dependencies can be specified in different places, which can
+			// overwrite each other. Each build variant task unit already takes
+			// into account these precedence rules, so after resolving the
+			// dependencies defined at the different levels, check that the
+			// final dependencies all reference valid tasks.
+
+			dep := model.TVPair{Variant: d.Variant, TaskName: d.Name}
+
+			if dep.Variant == "" {
+				// Implicit build variant - if no build variant is explicitly
+				// stated, the task and dependency should both run in the same
+				// build variant.
+				dep.Variant = bvtu.Variant
+			}
+
+			if dep.TaskName == model.AllDependencies && dep.Variant == model.AllVariants {
+				// If it depends on all other tasks, there's no referential
+				// integrity to check because it can depend on any other task.
+				continue
+			}
+			if dep.TaskName == model.AllDependencies {
+				// If it depends on all tasks in a specific build variant, make
+				// sure the build variant exists.
+				if _, ok := bvs[dep.Variant]; !ok {
+					errs = append(errs, ValidationError{
+						Level:   Warning,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' depends on '%s' tasks in build variant '%s', but the build variant was not found", bvtu.Name, bvtu.Variant, dep.TaskName, dep.Variant),
+					})
+				}
+				continue
+			}
+			if dep.Variant == model.AllDependencies {
+				// If it depends on a specific task in all build variants, make
+				// sure at least one build variant lists the task.
+				if _, ok := tasks[dep.TaskName]; !ok {
+					errs = append(errs, ValidationError{
+						Level:   Warning,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s' in '%s' build variants, but no build variant contains that task", bvtu.Name, bvtu.Variant, dep.TaskName, dep.Variant),
+					})
+				}
 				continue
 			}
 
-			for _, depName := range depNames {
-				if project.FindTaskForVariant(depName, bv.Name) == nil {
-					errs = append(errs, ValidationError{
-						Level:   Warning,
-						Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s', but that task is not listed in this build variant", taskName, bv.Name, depName),
-					})
-				}
+			// If it depends on a specific task and build variant, check that
+			// the build variant contains that task.
+			if _, ok := bvtus[dep]; !ok {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s' in build variant '%s', but it was not found", bvtu.Name, bvtu.Variant, dep.TaskName, dep.Variant),
+				})
 			}
 		}
 	}

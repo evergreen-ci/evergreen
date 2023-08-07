@@ -101,22 +101,23 @@ const (
 )
 
 type taskContext struct {
-	currentCommand command.Command
-	expansions     util.Expansions
-	privateVars    map[string]bool
-	logger         client.LoggerProducer
-	jasper         jasper.Manager
-	statsCollector *StatsCollector
-	task           client.TaskData
-	taskGroup      string
-	ranSetupGroup  bool
-	taskConfig     *internal.TaskConfig
-	taskDirectory  string
-	timeout        timeoutInfo
-	project        *model.Project
-	taskModel      *task.Task
-	oomTracker     jasper.OOMTracker
-	traceID        string
+	currentCommand            command.Command
+	expansions                util.Expansions
+	privateVars               map[string]bool
+	logger                    client.LoggerProducer
+	jasper                    jasper.Manager
+	statsCollector            *StatsCollector
+	task                      client.TaskData
+	taskGroup                 string
+	ranSetupGroup             bool
+	taskConfig                *internal.TaskConfig
+	taskDirectory             string
+	timeout                   timeoutInfo
+	project                   *model.Project
+	taskModel                 *task.Task
+	oomTracker                jasper.OOMTracker
+	traceID                   string
+	unsetFunctionVarsDisabled bool
 	sync.RWMutex
 }
 
@@ -387,6 +388,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 
 	prevLogger := tc.logger
 	tc = a.prepareNextTask(ctx, nt, tc)
+	tc.unsetFunctionVarsDisabled = nt.UnsetFunctionVarsDisabled
 	if prevLogger != nil {
 		grip.Error(errors.Wrap(prevLogger.Close(), "closing the previous logger producer"))
 	}
