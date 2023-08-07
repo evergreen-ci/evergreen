@@ -33,8 +33,7 @@ func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *mod
 			return InternalServerError.Send(ctx, fmt.Sprintf("marshalling provider settings entry: %s", err.Error()))
 		}
 		doc := &birch.Document{}
-		err = json.Unmarshal(newEntry, doc)
-		if err != nil {
+		if err = json.Unmarshal(newEntry, doc); err != nil {
 			return InternalServerError.Send(ctx, fmt.Sprintf("converting map to birch: %s", err.Error()))
 		}
 		settings = append(settings, doc)

@@ -174,7 +174,7 @@ func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroIn
 	}, nil
 }
 
-// SaveDistroSection is the resolver for the saveDistroSection field.
+// SaveDistroSection is the resolver for the saveDistroSection field. The entire distro object is provided as input (not just the updated fields) in order to validate all distro settings.
 func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error) {
 	usr := mustHaveUser(ctx)
 	d := opts.Distro.ToService()
@@ -191,6 +191,7 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 	if err = d.ReplaceOne(ctx); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	event.LogDistroModified(d.Id, usr.Username(), d.NewDistroData())
 
 	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
 	if err != nil {
