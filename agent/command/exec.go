@@ -299,7 +299,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	binaryIsFilePath := strings.Contains(c.Binary, string(filepath.Separator)) || runtime.GOOS == "windows" && strings.Contains(c.Binary, "/")
 
 	if len(cmdPath) == 0 || binaryIsFilePath {
-		return "", err
+		return defaultPath, err
 	}
 
 	logger.Execution().Debug("could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
@@ -318,7 +318,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	}()
 
 	if err := os.Setenv("PATH", cmdPath); err != nil {
-		return "", errors.Wrap(err, "setting command's PATH to try fallback executable paths")
+		return defaultPath, errors.Wrap(err, "setting command's PATH to try fallback executable paths")
 	}
 
 	return exec.LookPath(c.Binary)
