@@ -115,6 +115,12 @@ func (p *APIParameter) ToService() patch.Parameter {
 	return res
 }
 
+// BuildFromService converts from service level parameter to an APIPatch.
+func (p *APIParameter) BuildFromService(param *patch.Parameter) {
+	p.Key = utility.ToStringPtr(param.Key)
+	p.Value = utility.ToStringPtr(param.Value)
+}
+
 type APIPatchArgs struct {
 	IncludeProjectIdentifier   bool
 	IncludeCommitQueuePosition bool
@@ -229,10 +235,9 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	if p.Parameters != nil {
 		apiPatch.Parameters = []APIParameter{}
 		for _, param := range p.Parameters {
-			apiPatch.Parameters = append(apiPatch.Parameters, APIParameter{
-				Key:   utility.ToStringPtr(param.Key),
-				Value: utility.ToStringPtr(param.Value),
-			})
+			APIParam := APIParameter{}
+			APIParam.BuildFromService(&param)
+			apiPatch.Parameters = append(apiPatch.Parameters, APIParam)
 		}
 	}
 

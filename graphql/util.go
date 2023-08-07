@@ -936,13 +936,14 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 	}
 
 	return &testresult.FilterOptions{
-		TestName:  utility.FromStringPtr(opts.TestName),
-		Statuses:  opts.Statuses,
-		GroupID:   utility.FromStringPtr(opts.GroupID),
-		Sort:      sort,
-		Limit:     utility.FromIntPtr(opts.Limit),
-		Page:      utility.FromIntPtr(opts.Page),
-		BaseTasks: baseTaskOpts,
+		TestName:            utility.FromStringPtr(opts.TestName),
+		ExcludeDisplayNames: utility.FromBoolPtr(opts.ExcludeDisplayNames),
+		Statuses:            opts.Statuses,
+		GroupID:             utility.FromStringPtr(opts.GroupID),
+		Sort:                sort,
+		Limit:               utility.FromIntPtr(opts.Limit),
+		Page:                utility.FromIntPtr(opts.Page),
+		BaseTasks:           baseTaskOpts,
 	}, nil
 }
 
