@@ -317,6 +317,10 @@ func (s *execCmdSuite) TestCommandFailsForExecutableNotFound() {
 }
 
 func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecutable() {
+	workingDir := os.Getenv("EVGHOME")
+	if workingDir == "" {
+		s.FailNow("test cannot run without EVGHOME set")
+	}
 	executableName := "evergreen"
 	if runtime.GOOS == "windows" {
 		executableName = executableName + ".exe"
@@ -324,9 +328,9 @@ func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecut
 	cmd := &subprocessExec{
 		// Set the command to point to the locally-compiled Evergreern binary so
 		// we can test executing it when it's not in the PATH by default.
-		Command:    executableName,
-		WorkingDir: testutil.GetDirectoryOfFile(),
-		Path:       []string{filepath.Join(os.Getenv("EVGHOME"), "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+		Binary:     executableName,
+		WorkingDir: workingDir,
+		Path:       []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
@@ -334,23 +338,34 @@ func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecut
 }
 
 func (s *execCmdSuite) TestCommandUsesFilePathExecutable() {
+	workingDir := os.Getenv("EVGHOME")
+	if workingDir == "" {
+		s.FailNow("test cannot run without EVGHOME set")
+	}
 	executableName := "evergreen"
 	if runtime.GOOS == "windows" {
 		executableName = executableName + ".exe"
 	}
-	executablePath := filepath.Join(os.Getenv("EVGHOME"), "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), executableName)
+	executablePath := filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), executableName)
+	_, err := os.Stat(executablePath)
+	s.Require().NoError(err, "evergreen executable must exist for test to run")
+
 	cmd := &subprocessExec{
 		// Set the command to point to the locally-compiled Evergreern binary so
 		// we can test executing it when it's not in the PATH by default.
-		Command:    executablePath,
-		WorkingDir: testutil.GetDirectoryOfFile(),
+		Binary:     executablePath,
+		WorkingDir: workingDir,
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled evergreen executable from PATH")
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled file path to evergreen executable")
 }
 
 func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinaryExecutableIsAFilePath() {
+	workingDir := os.Getenv("EVGHOME")
+	if workingDir == "" {
+		s.FailNow("test cannot run without EVGHOME set")
+	}
 	executableName := "./evergreen"
 	if runtime.GOOS == "windows" {
 		executableName = executableName + ".exe"
@@ -358,9 +373,9 @@ func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinar
 	cmd := &subprocessExec{
 		// Set the command to point to the locally-compiled Evergreern binary so
 		// we can test executing it when it's not in the PATH by default.
-		Command:    executableName,
-		WorkingDir: testutil.GetDirectoryOfFile(),
-		Path:       []string{filepath.Join(os.Getenv("EVGHOME"), "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+		Binary:     executableName,
+		WorkingDir: workingDir,
+		Path:       []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
