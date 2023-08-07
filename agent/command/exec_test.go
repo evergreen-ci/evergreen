@@ -333,6 +333,23 @@ func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecut
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled evergreen executable from PATH")
 }
 
+func (s *execCmdSuite) TestCommandUsesFilePathExecutable() {
+	executableName := "evergreen"
+	if runtime.GOOS == "windows" {
+		executableName = executableName + ".exe"
+	}
+	executablePath := filepath.Join(os.Getenv("EVGHOME"), "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), executableName)
+	cmd := &subprocessExec{
+		// Set the command to point to the locally-compiled Evergreern binary so
+		// we can test executing it when it's not in the PATH by default.
+		Command:    executablePath,
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled evergreen executable from PATH")
+}
+
 func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinaryExecutableIsAFilePath() {
 	executableName := "./evergreen"
 	if runtime.GOOS == "windows" {
