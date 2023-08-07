@@ -238,6 +238,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			ctx = testutil.TestSpan(ctx, t)
 
 			env := testutil.NewEnvironment(ctx, t)
 

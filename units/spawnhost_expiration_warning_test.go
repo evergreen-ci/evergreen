@@ -9,25 +9,35 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
 type spawnHostExpirationSuite struct {
 	j *spawnhostExpirationWarningsJob
 	suite.Suite
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
 }
 
 func TestSpawnHostExpiration(t *testing.T) {
-	suite.Run(t, new(spawnHostExpirationSuite))
+	s := new(spawnHostExpirationSuite)
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+	suite.Run(t, s)
 }
 
 func (s *spawnHostExpirationSuite) SetupSuite() {
 	s.j = makeSpawnhostExpirationWarningsJob()
 }
 
+func (s *spawnHostExpirationSuite) TearDownSuite() {
+	s.cancel()
+}
+
 func (s *spawnHostExpirationSuite) SetupTest() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
 	s.NoError(db.ClearCollections(event.EventCollection, host.Collection, alertrecord.Collection))
 	now := time.Now()
@@ -43,23 +53,20 @@ func (s *spawnHostExpirationSuite) SetupTest() {
 		Id:             "h3",
 		ExpirationTime: now.Add(1 * time.Hour),
 	}
-	s.NoError(h1.Insert(ctx))
-	s.NoError(h2.Insert(ctx))
-	s.NoError(h3.Insert(ctx))
+	s.NoError(h1.Insert(s.ctx))
+	s.NoError(h2.Insert(s.ctx))
+	s.NoError(h3.Insert(s.ctx))
 }
 
 func (s *spawnHostExpirationSuite) TestAlerts() {
-	ctx := context.Background()
-	s.j.Run(ctx)
+	s.j.Run(s.ctx)
 	events, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
 	s.Len(events, 3)
 }
 
 func (s *spawnHostExpirationSuite) TestCanceledJob() {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	s.j.Run(ctx)
+	s.j.Run(s.ctx)
 	events, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
 	s.Len(events, 0)

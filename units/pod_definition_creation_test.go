@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
@@ -25,6 +26,10 @@ import (
 )
 
 func TestNewPodDefinitionCreationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testutil.TestSpan(ctx, t)
+
 	opts := pod.TaskContainerCreationOptions{
 		Image:      "image",
 		MemoryMB:   512,
@@ -42,6 +47,10 @@ func TestNewPodDefinitionCreationJob(t *testing.T) {
 }
 
 func TestPodDefinitionCreationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	defer cocoaMock.ResetGlobalECSService()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod){
@@ -160,8 +169,9 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
+			tctx, cancel := context.WithCancel(ctx)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			require.NoError(t, db.ClearCollections(definition.Collection, pod.Collection, event.EventCollection))
 			defer func() {
@@ -171,7 +181,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			cocoaMock.ResetGlobalECSService()
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 			env.EvergreenSettings.Providers.AWS.Pod.ECS = evergreen.ECSConfig{
 				TaskDefinitionPrefix: "task_definition_prefix",
 				TaskRole:             "task_role",
@@ -207,14 +217,14 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
-				assert.NoError(t, j.ecsClient.Close(ctx))
+				assert.NoError(t, j.ecsClient.Close(tctx))
 			}()
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 			require.NoError(t, err)
 			j.podDefMgr = cocoaMock.NewECSPodDefinitionManager(pdm)
 
-			tCase(ctx, t, j, p)
+			tCase(tctx, t, j, p)
 		})
 	}
 }

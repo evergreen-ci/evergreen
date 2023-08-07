@@ -1,12 +1,18 @@
 package units
 
 import (
+	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetMostRecentlyAddedDevice(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testutil.TestSpan(ctx, t)
+
 	lsblkOutput := `{
 	"blockdevices": [
 		{"name": "loop0", "fstype": "squashfs", "label": null, "uuid": null, "mountpoint": "/snap/core/8935"},
