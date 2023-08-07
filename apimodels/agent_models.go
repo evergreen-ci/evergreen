@@ -166,7 +166,7 @@ type CreateHost struct {
 	PollFrequency            int               `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
 	StdoutFile               string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
 	StderrFile               string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
-	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"environment_vars"`
+	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"expand"`
 }
 
 type EbsDevice struct {

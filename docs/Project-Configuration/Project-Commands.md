@@ -483,8 +483,6 @@ Docker Parameters:
     interval. Must be \<= 60 (1 second). Default to 30.
 -   `publish_ports` - Set to make ports available by mapping container
     ports to ports on the Docker host. Default is false.
--   `extra_hosts` - Optional. This is a list of hosts to be added to
-    /etc/hosts on the container (each should be of the form
     hostname:IP).
 -   `registry_name` - The registry from which to pull/import the image.
     Defaults to Dockerhub.
@@ -496,6 +494,8 @@ Docker Parameters:
     container. Default is \<container_id\>.out.log.
 -   `stderr_file_name` - The file path to write stderr logs from the
     container. Default is \<container_id\>.err.log.
+-   `environment_vars` - Environment variables to pass to the container command.
+    By default, no environment variables are passed.
 
 ### Required IAM Policies for `host.create`
 
