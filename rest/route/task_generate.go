@@ -24,10 +24,11 @@ func makeGenerateTasksHandler() gimlet.RouteHandler {
 type generateHandler struct {
 	files  []json.RawMessage
 	taskID string
+	env    evergreen.Environment
 }
 
 func (h *generateHandler) Factory() gimlet.RouteHandler {
-	return &generateHandler{}
+	return &generateHandler{env: h.env}
 }
 
 func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -58,7 +59,7 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("task '%s' not found", h.taskID))
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	j, err := units.CreateAndEnqueueGenerateTasks(ctx, evergreen.GetEnvironment(), *t, ts)
+	j, err := units.CreateAndEnqueueGenerateTasks(ctx, h.env, *t, ts)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "could not enqueue generate tasks job",
 		"version": t.Version,
