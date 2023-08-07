@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -61,14 +63,13 @@ func spanForRootTest(ctx context.Context, t *testing.T) context.Context {
 			TraceFlags: trace.FlagsSampled,
 		}),
 	)
+	parentCtx = addTaskAttributes(parentCtx)
 
 	testCtx, span := otel.GetTracerProvider().Tracer(packageName).Start(parentCtx, t.Name())
 
 	t.Cleanup(func() {
 		span.End()
-		if err := tracerCloser(ctx); err != nil {
-			grip.Error(errors.Wrap(tracerCloser(ctx), "closing otel tracer"))
-		}
+		grip.Error(errors.Wrap(tracerCloser(), "closing otel tracer"))
 	})
 
 	return testCtx
@@ -84,7 +85,7 @@ func spanForChildTest(parentCtx context.Context, t *testing.T) context.Context {
 	return testCtx
 }
 
-func initTracer(ctx context.Context, collectorEndpoint string) (func(context.Context) error, error) {
+func initTracer(ctx context.Context, collectorEndpoint string) (func() error, error) {
 	resource := resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName("evergreen-tests"))
 	client := otlptracegrpc.NewClient(
 		otlptracegrpc.WithEndpoint(collectorEndpoint),
@@ -108,10 +109,35 @@ func initTracer(ctx context.Context, collectorEndpoint string) (func(context.Con
 		grip.Error(errors.Wrap(err, "otel error"))
 	}))
 
-	return func(ctx context.Context) error {
+	return func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(tp.Shutdown(ctx))
 		catcher.Add(exp.Shutdown(ctx))
 		return nil
 	}, nil
+}
+
+func addTaskAttributes(ctx context.Context) context.Context {
+	var attributes []attribute.KeyValue
+	for envVar, attributeName := range map[string]string{
+		"task_id":       "evergreen.task.id",
+		"task_name":     "evergreen.task.name",
+		"execution":     "evergreen.task.execution",
+		"version_id":    "evergreen.version.id",
+		"requester":     "evergreen.version.requester",
+		"build_id":      "evergreen.build.id",
+		"build_variant": "evergreen.build.name",
+		"project":       "evergreen.project.identifier",
+		"project_id":    "evergreen.project.id",
+		"distro_id":     "evergreen.distro.id",
+	} {
+		if val := os.Getenv(envVar); val != "" {
+			attributes = append(attributes, attribute.String(attributeName, val))
+		}
+	}
+
+	return utility.ContextWithAttributes(ctx, attributes)
 }

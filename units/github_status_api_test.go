@@ -42,6 +42,10 @@ func TestGithubStatusUpdate(t *testing.T) {
 	suite.Run(t, s)
 }
 
+func (s *githubStatusUpdateSuite) TearDownSuite() {
+	s.cancel()
+}
+
 func (s *githubStatusUpdateSuite) SetupTest() {
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.NoError(db.ClearCollections(patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
@@ -80,10 +84,6 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 
 	s.NoError(s.patchDoc.Insert())
 	s.NoError(s.buildDoc.Insert())
-}
-
-func (s *githubStatusUpdateSuite) TearDownSuite() {
-	s.cancel()
 }
 
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {

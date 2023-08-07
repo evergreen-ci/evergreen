@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,7 @@ import (
 func TestHostMonitoringCheckJob(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -69,6 +71,8 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 func TestHandleExternallyTerminatedHost(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	for _, status := range []cloud.CloudStatus{
 		cloud.StatusTerminated,
 		cloud.StatusNonExistent,

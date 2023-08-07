@@ -197,6 +197,16 @@ functions:
         - RUN_TEST
         - RUN_EC2_SPECIFIC_TESTS
         - IS_DOCKER
+        - task_id
+        - task_name
+        - execution
+        - version_id
+        - requester
+        - build_id
+        - build_variant
+        - project
+        - project_id
+        - distro_id
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}

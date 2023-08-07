@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -42,7 +43,10 @@ func numHostsTerminated(ctx context.Context, env evergreen.Environment, drawdown
 //
 
 func TestTerminatingHosts(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	env := evergreen.GetEnvironment()
 
 	t.Run("SimpleTerminationTest", func(t *testing.T) {
