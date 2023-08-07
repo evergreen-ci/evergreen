@@ -209,9 +209,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, patchIntentJobName)
 }
-func (s *PatchIntentUnitsSuite) TearDownTest() {
-	s.cancel()
-}
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	resp, err := http.Get(s.diffURL)

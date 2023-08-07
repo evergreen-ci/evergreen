@@ -66,7 +66,10 @@ func (s *spawnHostExpirationSuite) TestAlerts() {
 }
 
 func (s *spawnHostExpirationSuite) TestCanceledJob() {
-	s.j.Run(s.ctx)
+	ctx, cancel := context.WithCancel(s.ctx)
+	cancel()
+
+	s.j.Run(ctx)
 	events, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
 	s.Len(events, 0)
