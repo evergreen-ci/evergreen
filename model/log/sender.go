@@ -26,6 +26,8 @@ type LoggerOptions struct {
 	LogName string
 	// Parse is the function for parsing raw log lines collected by the
 	// sender.
+	// The injectable line parser allows the sender to be agnostic to the
+	// raw log line formats it ingests.
 	Parse LineParser
 	// Local is the sender for "fallback" operations and to collect any
 	// logger error output.
