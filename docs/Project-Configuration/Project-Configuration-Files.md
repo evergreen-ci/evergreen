@@ -52,7 +52,7 @@ Notice that tasks contain:
 2.  A set of dependencies on other tasks. `depends_on` can be defined at
     multiple levels of the YAML. If there are conflicting `depends_on`
     definitions at different levels, the order of priority is defined
-    [here](#dependencies-override-hierarchy).
+    [here](#dependency-override-hierarchy).
 3.  A distro or list of distros to run on (documented more under
     ["Build
     Variants"](#build-variants)).
@@ -271,7 +271,7 @@ Fields:
     task, under an entire build variant, or for a specific task under a specific
     build variant. If there are conflicting `depends_on` definitions at
     different levels, the order of priority is defined
-    [here](#dependencies-override-hierarchy).
+    [here](#dependency-override-hierarchy).
 -   `expansions`: a set of key-value expansion pairs
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
