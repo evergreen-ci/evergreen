@@ -152,7 +152,6 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return j.handleError(errors.WithStack(err))
 	}
 
-	g.SetNewTasksAndActivationInfo(ctx, v, p)
 	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
 		return errors.Wrap(err, "checking new dependency graph for cycles")
 	}

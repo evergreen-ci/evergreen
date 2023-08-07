@@ -31,8 +31,8 @@ type GeneratedProject struct {
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
 	Task           *task.Task
-	ActivationInfo specificActivationInfo
-	NewTVPairs     TaskVariantPairs
+	ActivationInfo *specificActivationInfo
+	NewTVPairs     *TaskVariantPairs
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
@@ -234,17 +234,18 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		buildSet[b.BuildVariant] = struct{}{}
 	}
 
+	newTVPairs, activationInfo := g.GetNewTasksAndActivationInfo(ctx, v, p)
 	// Group into new builds and new tasks for existing builds.
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
-	for _, execTask := range g.NewTVPairs.ExecTasks {
+	for _, execTask := range newTVPairs.ExecTasks {
 		if _, ok := buildSet[execTask.Variant]; ok {
 			newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, execTask)
 		} else {
 			newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, execTask)
 		}
 	}
-	for _, dispTask := range g.NewTVPairs.DisplayTasks {
+	for _, dispTask := range newTVPairs.DisplayTasks {
 		if _, ok := buildSet[dispTask.Variant]; ok {
 			newTVPairsForExistingVariants.DisplayTasks = append(newTVPairsForExistingVariants.DisplayTasks, dispTask)
 		} else {
@@ -255,7 +256,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// This will only be populated for patches, not mainline commits.
 	var syncAtEndOpts patch.SyncAtEndOptions
 	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
-		if err = patchDoc.AddSyncVariantsTasks(g.NewTVPairs.TVPairsToVariantTasks()); err != nil {
+		if err = patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
 			return errors.Wrap(err, "updating sync variants and tasks")
 		}
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
@@ -273,7 +274,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		ProjectRef:     projectRef,
 		Version:        v,
 		Pairs:          newTVPairsForExistingVariants,
-		ActivationInfo: g.ActivationInfo,
+		ActivationInfo: *activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
 		// If the parent generator is required to finish, then its generated
@@ -299,13 +300,16 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-// SetNewTasksAndActivationInfo sets the NewTVPairs and ActivationInfo fields on the generator.
-func (g *GeneratedProject) SetNewTasksAndActivationInfo(ctx context.Context, v *Version, p *Project) {
-	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
+// GetNewTasksAndActivationInfo computes the NewTVPairs and ActivationInfo fields on the generator if they are nil.
+func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *Version, p *Project) (*TaskVariantPairs, *specificActivationInfo) {
+	if g.NewTVPairs != nil && g.ActivationInfo != nil {
+		return g.NewTVPairs, g.ActivationInfo
+	}
 	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 	newTasks := g.getNewTasksWithDependencies(ctx, v, p, &activationInfo)
-	g.NewTVPairs = newTasks
-	g.ActivationInfo = activationInfo
+	g.NewTVPairs = &newTasks
+	g.ActivationInfo = &activationInfo
+	return g.NewTVPairs, g.ActivationInfo
 }
 
 // CheckForCycles builds a dependency graph from the existing tasks in the version and simulates
@@ -334,19 +338,20 @@ func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Pr
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
 func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
+	newTVPairs, _ := g.GetNewTasksAndActivationInfo(ctx, v, p)
 	creationInfo := TaskCreationInfo{
 		Project:    p,
 		ProjectRef: projectRef,
 		Version:    v,
-		Pairs:      g.NewTVPairs,
+		Pairs:      *newTVPairs,
 	}
 	taskIDs, err := getTaskIdTables(creationInfo)
 	if err != nil {
 		return graph, errors.Wrap(err, "getting task ids")
 	}
 
-	graph = addTasksToGraph(g.NewTVPairs.ExecTasks, graph, p, taskIDs)
-	return g.addDependencyEdgesToGraph(g.NewTVPairs.ExecTasks, v, p, graph, taskIDs)
+	graph = addTasksToGraph(newTVPairs.ExecTasks, graph, p, taskIDs)
+	return g.addDependencyEdgesToGraph(ctx, newTVPairs.ExecTasks, v, p, graph, taskIDs)
 }
 
 // getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
@@ -397,8 +402,8 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 }
 
 // addDependencyEdgesToGraph adds edges from the tasks that depend on the generator to activated generated tasks.
-func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
-	activatedNewTasks, err := g.filterInactiveTasks(newTasks, v, p)
+func (g *GeneratedProject) addDependencyEdgesToGraph(ctx context.Context, newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
+	activatedNewTasks, err := g.filterInactiveTasks(ctx, newTasks, v, p)
 	if err != nil {
 		return graph, errors.Wrap(err, "filtering inactive tasks")
 	}
@@ -417,8 +422,7 @@ func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Vers
 }
 
 // filterInactiveTasks returns a copy of tasks with the tasks that will not be activated by the generator removed.
-func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding builds for version")
@@ -433,6 +437,7 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 		buildSet[t.Variant] = append(buildSet[t.Variant], t.TaskName)
 	}
 
+	_, activationInfo := g.GetNewTasksAndActivationInfo(ctx, v, p)
 	activatedTasks := make(TVPairSet, 0, len(tasks))
 	for bv, tasks := range buildSet {
 		if existingBuildMap[bv] {
@@ -524,7 +529,7 @@ func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, tas
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
-		// Only consider batchtime for certain requesters
+		// Only consider batchtime for mainline builds. We should always respect activate if it is set.
 		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {
 			res.activationVariants = append(res.activationVariants, bv.name())
 		} else if bv.Activate != nil {
