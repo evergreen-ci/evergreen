@@ -267,6 +267,8 @@ func (a *Agent) loop(ctx context.Context) error {
 	needPostGroup := false
 	defer func() {
 		if tc.logger != nil {
+			// If the logger from the task is still open and the agent is
+			// shutting down, close the logger to flush the remaining logs.
 			grip.Error(errors.Wrap(tc.logger.Close(), "closing logger"))
 		}
 	}()
@@ -991,6 +993,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
 	defer func() {
 		if tc.logger != nil {
+			// If the logger from the task is still open, running the teardown
+			// group is the last thing that a task can do, so close the logger
+			// to indicate logging is complete.
 			grip.Error(tc.logger.Close())
 		}
 	}()

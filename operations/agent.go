@@ -80,7 +80,7 @@ func Agent() cli.Command {
 			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: "evg.agent",
-				Usage: "prefix for the agent's log output",
+				Usage: "if logging to a file, the prefix of the file name for the agent's log output",
 			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,

@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
+	"runtime/debug"
 	"sync"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -30,6 +32,10 @@ func (l *logHarness) Task() grip.Journaler      { return l.task }
 func (l *logHarness) System() grip.Journaler    { return l.system }
 
 func (l *logHarness) Flush(ctx context.Context) error {
+	grip.Info(message.Fields{
+		"message":    "kim: flushing loggers",
+		"stacktrace": string(debug.Stack()),
+	})
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -46,6 +52,10 @@ func (l *logHarness) Flush(ctx context.Context) error {
 }
 
 func (l *logHarness) Close() error {
+	grip.Info(message.Fields{
+		"message":    "kim: closing loggers",
+		"stacktrace": string(debug.Stack()),
+	})
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.closed {
