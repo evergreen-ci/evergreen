@@ -286,12 +286,12 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 // default PATH locations, the command will fall back to checking the command's
 // PATH environment variable for a matching executable location (if any).
 func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
-	cmdPath := c.Env["PATH"]
 	defaultPath, err := exec.LookPath(c.Binary)
 	if defaultPath != "" {
-		return defaultPath, err
+		return c.Binary, err
 	}
 
+	cmdPath := c.Env["PATH"]
 	// For non-Windows platforms, the filepath.Separator is always '/'. However,
 	// for Windows, Go accepts both '\' and '/' as valid file path separators,
 	// even though the native filepath.Separator for Windows is really '\'. This
@@ -299,7 +299,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	binaryIsFilePath := strings.Contains(c.Binary, string(filepath.Separator)) || runtime.GOOS == "windows" && strings.Contains(c.Binary, "/")
 
 	if len(cmdPath) == 0 || binaryIsFilePath {
-		return "", err
+		return c.Binary, nil
 	}
 
 	logger.Execution().Debug("could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
@@ -318,7 +318,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	}()
 
 	if err := os.Setenv("PATH", cmdPath); err != nil {
-		return "", errors.Wrap(err, "setting command's PATH to try fallback executable paths")
+		return c.Binary, errors.Wrap(err, "setting command's PATH to try fallback executable paths")
 	}
 
 	return exec.LookPath(c.Binary)
