@@ -1088,10 +1088,12 @@ Parameters:
     - "GOCACHE" will be set to `${workdir}/.gocache`.
     - "EVR_TASK_ID" will be set to the running task's ID.
     - "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
--   `command`: a command string (cannot use with `binary` or `args`),
-    split on spaces for use as arguments\--note that expansions will
-    *not* be split on spaces; each expansion represents its own
-    argument.
+-   `command`: a command string (cannot use with `binary` or `args`), split
+    according to shell rules for use as arguments.
+    - Note: Expansions will *not* be split on spaces; each expansion represents
+      its own argument.
+    - Note: on Windows, the shell splitting rules may not parse the command
+      string as desired (e.g. for Windows paths containing `\`).
 -   `background`: if set to true, the process runs in the background
     instead of the foreground. `subprocess.exec` starts the process but
     does not wait for the process to exit before running the next command. 
