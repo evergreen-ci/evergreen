@@ -69,7 +69,6 @@ type Options struct {
 	TraceCollectorEndpoint string
 	// SendTaskLogsToGlobalSender indicates whether task logs should also be
 	// sent to the global agent file log.
-	// kim: TODO: integrate with CLI flag
 	SendTaskLogsToGlobalSender bool
 }
 
@@ -517,17 +516,11 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
 
-	// For file logging, this will re-initialize the sender to log to a new file
-	// for the new task.
-	fmt.Printf("kim: resetting global grip sender for new task: %s %d\n", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	// If the agent is logging to a file, this will re-initialize the sender to
+	// log to a new file for the new task.
 	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 	grip.Error(errors.Wrap(err, "getting sender"))
-	// kim: NOTE: calling SetSender closes the underlying grip sender. Since
-	// this SetSender happened after the task logger was set up, this would
-	// close the file and prevent file logging for task logs. For stdout, it
-	// didn't matter because stdout is never closed.
 	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
-	fmt.Printf("kim: finished resetting global grip sender for new task\n")
 
 	if tc.logger != nil {
 		grip.Error(errors.Wrap(tc.logger.Close(), "closing the logger producer"))
@@ -1007,7 +1000,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		if tc.logger != nil {
 			// If the logger from the task is still open, running the teardown
 			// group is the last thing that a task can do, so close the logger
-			// to indicate logging is complete.
+			// to indicate logging is complete for the task.
 			grip.Error(tc.logger.Close())
 		}
 	}()

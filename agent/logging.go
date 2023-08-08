@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -62,7 +61,6 @@ func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix stri
 		senders = append(senders, sender)
 	}
 
-	var fileName string
 	switch output {
 	case LogOutputStdout:
 		sender, err := send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
@@ -72,10 +70,11 @@ func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix stri
 
 		senders = append(senders, sender)
 	default:
-		if taskID == "" || taskExecution < 0 {
-			fileName = fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc())
-		} else {
+		var fileName string
+		if taskID != "" && taskExecution >= 0 {
 			fileName = fmt.Sprintf("%s-%d-%s-%d.log", prefix, os.Getpid(), taskID, taskExecution)
+		} else {
+			fileName = fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc())
 		}
 		sender, err := send.NewFileLogger("evergreen.agent",
 			fileName,
@@ -86,12 +85,6 @@ func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix stri
 
 		senders = append(senders, sender)
 	}
-	grip.Info(message.Fields{
-		"message":     "kim: set up new agent logger",
-		"type":        output,
-		"file_name":   fileName,
-		"sender_type": fmt.Sprintf("%T", senders[len(senders)-1]),
-	})
 
 	return send.NewConfiguredMultiSender(senders...), nil
 }

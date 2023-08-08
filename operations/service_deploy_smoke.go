@@ -150,7 +150,7 @@ func smokeStartEvergreen() cli.Command {
 					fmt.Sprintf("--%s_id", mode), id,
 					fmt.Sprintf("--%s_secret", mode), secret,
 					"--api_server", apiServerURL,
-					"--log_output", string(agent.LogOutputFile),
+					"--log_output", string(agent.LogOutputStdout),
 					"--log_prefix", "smoke.agent",
 					"--global_task_logs",
 					"--status_port", statusPort,

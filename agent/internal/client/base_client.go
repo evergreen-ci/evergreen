@@ -373,11 +373,6 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 		}
 	}
 	underlying := []send.Sender{}
-	grip.Info(message.Fields{
-		"message":            "kim: getting logger producer for task",
-		"task_logger_config": config.Task[0],
-		"task":               td.ID,
-	})
 
 	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
 	if err != nil {
@@ -405,22 +400,10 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 
 func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, prefix string, logType string) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	// kim: NOTE: grip.GetSender here is what's allowing task logs to go to
-	// stdout. It's not clear why this doesn't work if it's a file sender
-	// though.
-	// kim: NOTE: we should put logging task logs to the global logger behind an
-	// agent CLI option. Otherwise, the agent will actually log task logs to a
-	// file.
 	var senders []send.Sender
 	if sendToGlobalSender {
 		senders = append(senders, grip.GetSender())
 	}
-	// senders := send.Sender{grip.GetSender()}
-	grip.Info(message.Fields{
-		"message":                "kim: making new grip log sender with underlying agent sender",
-		"underlying_sender":      grip.GetSender().Name(),
-		"underlying_sender_type": fmt.Sprintf("%T", grip.GetSender()),
-	})
 	underlyingBufferedSenders := []send.Sender{}
 
 	for _, opt := range opts {
@@ -529,11 +512,6 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	var cancel context.CancelFunc
 	now := time.Now()
 	grip.Debugf("sending %d log messages", payload.MessageCount)
-	grip.Info(message.Fields{
-		"message":      "kim: sending log messages to their destination",
-		"num_messages": len(msgs),
-		"path":         info.path,
-	})
 	ctx, cancel = context.WithDeadline(ctx, now.Add(10*time.Minute))
 	defer cancel()
 	backupTimer := time.NewTimer(15 * time.Minute)

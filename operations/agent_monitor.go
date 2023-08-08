@@ -343,10 +343,6 @@ func (m *monitor) setupJasperConnection(ctx context.Context, retry utility.Retry
 // createAgentProcess attempts to start an agent subprocess.
 func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOptions) (jasper.Process, error) {
 	agentCmdArgs := append([]string{m.clientPath, "agent"}, m.agentArgs...)
-	grip.Info(message.Fields{
-		"message": "kim: got agent args to execute agent",
-		"cmd":     agentCmdArgs,
-	})
 
 	// Copy the monitor's environment to the agent.
 	env := make(map[string]string)

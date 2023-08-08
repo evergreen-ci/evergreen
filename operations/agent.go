@@ -103,7 +103,7 @@ func Agent() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  sendTaskLogsToGlobalSenderFlagName,
-				Usage: "if set, send task logs to the global agent file log",
+				Usage: "send task logs to the global agent file log",
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(versionFlagName, "v"),

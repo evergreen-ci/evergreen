@@ -89,7 +89,10 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			return errors.Wrap(err, "making command logger")
 		}
 		defer func() {
-			grip.Error(errors.Wrap(logger.Flush(ctx), "closing command logger"))
+			// If the logger is a command-specific logger, when the command
+			// finishes, the loggers should have no more logs to send. Closing
+			// it ensure that the command logger flushes all logs and cleans up.
+			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
 		}()
 	}
 
