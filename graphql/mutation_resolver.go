@@ -191,6 +191,7 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 	if err = d.ReplaceOne(ctx); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	// TODO EVG-20603: Update with improved distro modified handling
 	event.LogDistroModified(d.Id, usr.Username(), d.NewDistroData())
 
 	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
