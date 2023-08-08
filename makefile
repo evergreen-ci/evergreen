@@ -292,7 +292,7 @@ coverage-html:$(coverageHtmlOutput)
 list-tests:
 	@echo -e "test targets:" $(foreach target,$(packages),\\n\\ttest-$(target))
 phony += lint build test coverage coverage-html list-tests
-.PRECIOUS:$(testOutput) $(lintOutput) $(coverageOutput) $(coverageHtmlOutput)
+.PRECIOUS:$(testOutput) $(lintOutput) $(coverageOutput) $(coverageHtmlOutput) $(buildDir)/%.testbinary
 # end front-ends
 
 # start module management targets
@@ -303,9 +303,9 @@ verify-mod-tidy:
 phony += mod-tidy verify-mod-tidy
 # end module management targets
 
-# convenience targets for runing tests and coverage tasks on a
+# convenience targets for running tests and coverage tasks on a
 # specific package.
-testbinary-%:$(buildDir)/%.testbinary;
+testbinary-test-%:$(buildDir)/%.testbinary;
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
 dlv-%:$(buildDir)/output-dlv.%.test
@@ -355,12 +355,12 @@ endif
 $(buildDir):
 	mkdir -p $@
 $(buildDir)/output.%.test: $(buildDir)/%.testbinary .FORCE
-	$(testRunEnv) $(buildDir)/$*.testbinary $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1
+	$(testRunEnv) $(buildDir)/$*.testbinary $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $(buildDir)/output.$*.test
 $(buildDir)/%.testbinary: $(srcFiles) $(testSrcFiles)
-	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./$*
+	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./$(if $(subst $(name),,$*),$(subst -,/,$*),)
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
-$(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+$(buildDir)/cmd-codegen-core.testbinary: build-codegen $(srcFiles) $(testSrcFiles)
+	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./$(if $(subst $(name),,$*),$(subst -,/,$*),)
 $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
