@@ -41,6 +41,8 @@ type SharedCommunicator interface {
 	UpdateLastMessageTime()
 	LastMessageAt() time.Time
 
+	// SetTaskLogServiceVersion sets the log service version for the task.
+	SetTaskLogServiceVersion(context.Context, TaskData, int) error
 	// StartTask marks the task as started.
 	StartTask(context.Context, TaskData) error
 	// GetTask returns the active task.

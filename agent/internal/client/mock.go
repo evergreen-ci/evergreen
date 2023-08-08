@@ -60,13 +60,14 @@ type Mock struct {
 
 	CedarGRPCConn *grpc.ClientConn
 
-	AttachedFiles    map[string][]*artifact.File
-	LogID            string
-	LocalTestResults []testresult.TestResult
-	ResultsService   string
-	ResultsFailed    bool
-	TestLogs         []*serviceModel.TestLog
-	TestLogCount     int
+	AttachedFiles     map[string][]*artifact.File
+	LogID             string
+	LocalTestResults  []testresult.TestResult
+	LogServiceVersion int
+	ResultsService    string
+	ResultsFailed     bool
+	TestLogs          []*serviceModel.TestLog
+	TestLogCount      int
 
 	logMessages map[string][]apimodels.LogMessage
 	PatchFiles  map[string]string
@@ -124,6 +125,12 @@ func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
 	if c.StartTaskShouldFail {
 		return errors.New("start task mock failure")
 	}
+	return nil
+}
+
+func (c *Mock) SetTaskLogServiceVersion(ctx context.Context, _ TaskData, version int) error {
+	c.LogServiceVersion = version
+
 	return nil
 }
 
@@ -408,7 +415,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-func (c *Mock) SetResultsInfo(ctx context.Context, td TaskData, service string, failed bool) error {
+func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, service string, failed bool) error {
 	c.ResultsService = service
 	if failed {
 		c.ResultsFailed = true

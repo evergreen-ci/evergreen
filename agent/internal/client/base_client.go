@@ -144,6 +144,21 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 	return errors.Wrap(err, "checking Cedar gRPC health")
 }
 
+func (c *baseCommunicator) SetTaskLogServiceVersion(ctx context.Context, taskData TaskData, version int) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+	}
+	info.path = fmt.Sprintf("tasks/%s/set_log_service_version", taskData.ID)
+	resp, err := c.retryRequest(ctx, info, &apimodels.TaskLogServiceVersionRequest{Version: version})
+	if err != nil {
+		return util.RespErrorf(resp, errors.Wrap(err, "setting task log service version").Error())
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
 // GetProjectRef loads the task's project.
 func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
