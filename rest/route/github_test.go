@@ -86,7 +86,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24731)
+	s.Len(s.prBody, 24692)
 	s.pushBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
 	s.Len(s.pushBody, 7597)

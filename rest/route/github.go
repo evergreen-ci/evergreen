@@ -102,10 +102,12 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
+	hasApp := gh.settings.GetGithubAppAuth() != nil
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		// Ignore events from GitHub app if app is not set up.
-		if event.GetInstallation() != nil && gh.settings.GetGithubAppAuth() == nil {
+		// If the app is set up, ignore events from repo webhooks.
+		if (event.GetInstallation() != nil) != hasApp {
 			break
 		}
 		if event.HookID == nil {
@@ -123,7 +125,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.PullRequestEvent:
 		// Ignore events from GitHub app if app is not set up.
-		if event.GetInstallation() != nil && gh.settings.GetGithubAppAuth() == nil {
+		// If the app is set up, ignore events from repo webhooks.
+		if (event.GetInstallation() != nil) != hasApp {
 			break
 		}
 		if event.Action == nil {
@@ -191,7 +194,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 	case *github.PushEvent:
 		// Ignore events from GitHub app if app is not set up.
-		if event.GetInstallation() != nil && gh.settings.GetGithubAppAuth() == nil {
+		// If the app is set up, ignore events from repo webhooks.
+		if (event.GetInstallation() != nil) != hasApp {
 			break
 		}
 		grip.Debug(message.Fields{
@@ -216,7 +220,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		// Ignore events from GitHub app if app is not set up.
-		if event.GetInstallation() != nil && gh.settings.GetGithubAppAuth() == nil {
+		// If the app is set up, ignore events from repo webhooks.
+		if (event.GetInstallation() != nil) != hasApp {
 			break
 		}
 		if err := gh.handleComment(ctx, event); err != nil {
@@ -225,7 +230,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.MetaEvent:
 		// Ignore events from GitHub app if app is not set up.
-		if event.GetInstallation() != nil && gh.settings.GetGithubAppAuth() == nil {
+		// If the app is set up, ignore events from repo webhooks.
+		if (event.GetInstallation() != nil) != hasApp {
 			break
 		}
 		if event.GetAction() == "deleted" {
@@ -248,7 +254,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.MergeGroupEvent:
 		// Ignore events from GitHub app if app is not set up.
-		if event.GetInstallation() != nil && gh.settings.GetGithubAppAuth() == nil {
+		// If the app is set up, ignore events from repo webhooks.
+		if (event.GetInstallation() != nil) != hasApp {
 			break
 		}
 		return gh.handleMergeGroupEvent(event)
