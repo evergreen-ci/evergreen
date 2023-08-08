@@ -1337,6 +1337,8 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestSimulateNewDependencyGraph(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	defer func() {
 		assert.NoError(t, db.Clear(task.Collection))
 	}()
@@ -1373,7 +1375,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(context.Background(), v, project)
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1403,7 +1405,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		g.GetNewTasksAndActivationInfo(context.Background(), v, project)
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1437,7 +1439,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(context.Background(), v, project)
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1472,7 +1474,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(context.Background(), v, project)
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }
