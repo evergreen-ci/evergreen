@@ -4,7 +4,7 @@
       "query_file": "save.graphql",
       "result": {
         "data": {
-          "saveDistroSection": {
+          "saveDistro": {
             "distro": {
               "aliases": [
                 "new-alias"
@@ -27,7 +27,7 @@
           {
             "message": "validating changes for distro 'rhel71-power8-large': 'ERROR: distro 'work_dir' cannot be blank'",
             "path": [
-              "saveDistroSection"
+              "saveDistro"
             ],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"
@@ -44,7 +44,7 @@
           {
             "message": "user 'testuser' does not have permission to access settings for the distro 'fake'",
             "path": [
-              "saveDistroSection",
+              "saveDistro",
               "opts",
               "distro",
               "name"

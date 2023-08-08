@@ -1,5 +1,5 @@
 mutation {
-    saveDistroSection(
+    saveDistro(
       opts: {
         distro: {
           name: "fake"

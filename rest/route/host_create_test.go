@@ -315,15 +315,20 @@ func TestHostCreateDocker(t *testing.T) {
 		Id: handler.taskID,
 	}
 	require.NoError(sampleTask.Insert())
+
+	extraHosts := []string{"localhost:127.0.0.1"}
 	c := apimodels.CreateHost{
-		CloudProvider: apimodels.ProviderDocker,
-		NumHosts:      "1",
-		Distro:        "distro",
-		Image:         "my-image",
-		Command:       "echo hello",
+		CloudProvider:   apimodels.ProviderDocker,
+		NumHosts:        "1",
+		Distro:          "distro",
+		Image:           "my-image",
+		Command:         "echo hello",
+		EnvironmentVars: map[string]string{"env_key": "env_value"},
+		ExtraHosts:      extraHosts,
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
+
 	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	require.NotNil(h)
@@ -331,6 +336,8 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.Equal("my-image", h.DockerOptions.Image)
 	assert.Equal("echo hello", h.DockerOptions.Command)
 	assert.Equal("myregistry", h.DockerOptions.RegistryName)
+	assert.Equal([]string{"env_key=env_value"}, h.DockerOptions.EnvironmentVars)
+	assert.Equal(extraHosts, h.DockerOptions.ExtraHosts)
 
 	assert.Equal(200, handler.Run(context.Background()).Status())
 
