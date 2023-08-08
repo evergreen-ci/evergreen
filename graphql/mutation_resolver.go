@@ -174,8 +174,8 @@ func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroIn
 	}, nil
 }
 
-// SaveDistroSection is the resolver for the saveDistroSection field. The entire distro object is provided as input (not just the updated fields) in order to validate all distro settings.
-func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error) {
+// SaveDistro is the resolver for the saveDistro field.
+func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput) (*SaveDistroPayload, error) {
 	usr := mustHaveUser(ctx)
 	d := opts.Distro.ToService()
 
@@ -199,7 +199,7 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 
-	return &SaveDistroSectionPayload{
+	return &SaveDistroPayload{
 		Distro:    opts.Distro,
 		HostCount: numHostsUpdated,
 	}, nil
