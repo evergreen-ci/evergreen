@@ -67,6 +67,10 @@ type Options struct {
 	SetupData              apimodels.AgentSetupData
 	CloudProvider          string
 	TraceCollectorEndpoint string
+	// SendTaskLogsToGlobalSender indicates whether task logs should also be
+	// sent to the global agent file log.
+	// kim: TODO: integrate with CLI flag
+	SendTaskLogsToGlobalSender bool
 }
 
 // Mode represents a mode that the agent will run in.
@@ -513,6 +517,18 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
 
+	// For file logging, this will re-initialize the sender to log to a new file
+	// for the new task.
+	fmt.Printf("kim: resetting global grip sender for new task: %s %d\n", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	grip.Error(errors.Wrap(err, "getting sender"))
+	// kim: NOTE: calling SetSender closes the underlying grip sender. Since
+	// this SetSender happened after the task logger was set up, this would
+	// close the file and prevent file logging for task logs. For stdout, it
+	// didn't matter because stdout is never closed.
+	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
+	fmt.Printf("kim: finished resetting global grip sender for new task\n")
+
 	if tc.logger != nil {
 		grip.Error(errors.Wrap(tc.logger.Close(), "closing the logger producer"))
 	}
@@ -526,10 +542,6 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "making the logger producer")
 	}
-
-	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix)
-	grip.Error(errors.Wrap(err, "getting sender"))
-	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
 
 	return nil
 }

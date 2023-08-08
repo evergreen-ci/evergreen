@@ -128,7 +128,7 @@ func (s *AgentSuite) SetupTest() {
 	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 	s.tc.taskDirectory = s.tmpDirName
-	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent")
+	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
 }

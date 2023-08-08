@@ -42,7 +42,7 @@ func getInc() int { return <-idSource }
 
 // GetSender configures the agent's local logging, which can go to Splunk, a
 // file, or stdout.
-func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string) (send.Sender, error) {
+func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string, taskID string, taskExecution int) (send.Sender, error) {
 	var senders []send.Sender
 
 	splunkInfo := send.SplunkConnectionInfo{
@@ -72,7 +72,11 @@ func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix stri
 
 		senders = append(senders, sender)
 	default:
-		fileName = fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc())
+		if taskID == "" || taskExecution < 0 {
+			fileName = fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc())
+		} else {
+			fileName = fmt.Sprintf("%s-%d-%s-%d.log", prefix, os.Getpid(), taskID, taskExecution)
+		}
 		sender, err := send.NewFileLogger("evergreen.agent",
 			fileName,
 			send.LevelInfo{Default: level.Info, Threshold: level.Debug})
@@ -114,7 +118,9 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		logDir = filepath.Join(logDir, commandName)
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
 	}
-	config := client.LoggerConfig{}
+	config := client.LoggerConfig{
+		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
+	}
 
 	var defaultLogger string
 	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil {

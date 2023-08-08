@@ -379,17 +379,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 		"task":               td.ID,
 	})
 
-	exec, senders, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
+	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
+	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -403,11 +403,22 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, prefix string, logType string) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	senders := []send.Sender{grip.GetSender()}
+	// kim: NOTE: grip.GetSender here is what's allowing task logs to go to
+	// stdout. It's not clear why this doesn't work if it's a file sender
+	// though.
+	// kim: NOTE: we should put logging task logs to the global logger behind an
+	// agent CLI option. Otherwise, the agent will actually log task logs to a
+	// file.
+	var senders []send.Sender
+	if sendToGlobalSender {
+		senders = append(senders, grip.GetSender())
+	}
+	// senders := send.Sender{grip.GetSender()}
 	grip.Info(message.Fields{
 		"message":                "kim: making new grip log sender with underlying agent sender",
+		"underlying_sender":      grip.GetSender().Name(),
 		"underlying_sender_type": fmt.Sprintf("%T", grip.GetSender()),
 	})
 	underlyingBufferedSenders := []send.Sender{}

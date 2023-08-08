@@ -26,17 +26,18 @@ const (
 
 func Agent() cli.Command {
 	const (
-		hostIDFlagName           = "host_id"
-		hostSecretFlagName       = "host_secret"
-		workingDirectoryFlagName = "working_directory"
-		logOutputFlagName        = "log_output"
-		logPrefixFlagName        = "log_prefix"
-		statusPortFlagName       = "status_port"
-		cleanupFlagName          = "cleanup"
-		modeFlagName             = "mode"
-		podIDFlagName            = "pod_id"
-		podSecretFlagName        = "pod_secret"
-		versionFlagName          = "version"
+		hostIDFlagName                     = "host_id"
+		hostSecretFlagName                 = "host_secret"
+		workingDirectoryFlagName           = "working_directory"
+		logOutputFlagName                  = "log_output"
+		logPrefixFlagName                  = "log_prefix"
+		statusPortFlagName                 = "status_port"
+		cleanupFlagName                    = "cleanup"
+		modeFlagName                       = "mode"
+		podIDFlagName                      = "pod_id"
+		podSecretFlagName                  = "pod_secret"
+		versionFlagName                    = "version"
+		sendTaskLogsToGlobalSenderFlagName = "global_task_logs"
 	)
 
 	return cli.Command{
@@ -101,6 +102,10 @@ func Agent() cli.Command {
 				Value: "host",
 			},
 			cli.BoolFlag{
+				Name:  sendTaskLogsToGlobalSenderFlagName,
+				Usage: "if set, send task logs to the global agent file log",
+			},
+			cli.BoolFlag{
 				Name:  joinFlagNames(versionFlagName, "v"),
 				Usage: "print the agent revision of the current binary and exit",
 			},
@@ -139,17 +144,18 @@ func Agent() cli.Command {
 			}
 
 			opts := agent.Options{
-				HostID:           c.String(hostIDFlagName),
-				HostSecret:       c.String(hostSecretFlagName),
-				PodID:            c.String(podIDFlagName),
-				PodSecret:        c.String(podSecretFlagName),
-				Mode:             agent.Mode(c.String(modeFlagName)),
-				StatusPort:       c.Int(statusPortFlagName),
-				LogPrefix:        c.String(logPrefixFlagName),
-				LogOutput:        agent.LogOutputType(c.String(logOutputFlagName)),
-				WorkingDirectory: c.String(workingDirectoryFlagName),
-				Cleanup:          c.Bool(cleanupFlagName),
-				CloudProvider:    c.String(agentCloudProviderFlagName),
+				HostID:                     c.String(hostIDFlagName),
+				HostSecret:                 c.String(hostSecretFlagName),
+				PodID:                      c.String(podIDFlagName),
+				PodSecret:                  c.String(podSecretFlagName),
+				Mode:                       agent.Mode(c.String(modeFlagName)),
+				StatusPort:                 c.Int(statusPortFlagName),
+				LogPrefix:                  c.String(logPrefixFlagName),
+				LogOutput:                  agent.LogOutputType(c.String(logOutputFlagName)),
+				WorkingDirectory:           c.String(workingDirectoryFlagName),
+				Cleanup:                    c.Bool(cleanupFlagName),
+				CloudProvider:              c.String(agentCloudProviderFlagName),
+				SendTaskLogsToGlobalSender: c.Bool(sendTaskLogsToGlobalSenderFlagName),
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {
@@ -175,7 +181,7 @@ func Agent() cli.Command {
 
 			defer agt.Close(ctx)
 
-			sender, err := agt.GetSender(ctx, opts.LogOutput, opts.LogPrefix)
+			sender, err := agt.GetSender(ctx, opts.LogOutput, opts.LogPrefix, "", -1)
 			if err != nil {
 				return errors.Wrap(err, "configuring logger")
 			}
