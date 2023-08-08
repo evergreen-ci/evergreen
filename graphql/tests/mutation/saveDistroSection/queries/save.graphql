@@ -1,0 +1,130 @@
+mutation {
+    saveDistroSection(
+      opts: {
+        distro: {
+          name: "rhel71-power8-large"
+          aliases: [
+            "new-alias"
+          ],
+          arch: "linux_ppc64le",
+          authorizedKeysFile: "",
+          containerPool: "",
+          disabled: true,
+          workDir: "/data/mci",
+          provider: "ec2-ondemand",
+          providerSettingsList: [
+            {
+              ami: "who-ami",
+              instance_type: "m4.4xlarge",
+              is_vpc: true,
+              region: "us-east-1",
+              security_group_ids: ["1"],
+              subnet_id: "subnet-123"
+            },
+            {
+              ami: "who-ami-2",
+              instance_type: "m4.2xlarge",
+              is_vpc: false,
+              region: "us-west-1",
+              security_group_ids: ["2"]
+            }
+          ]
+          user: "mci-exec",
+          bootstrapSettings: {
+            clientDir: "/home/mci-exec/evergreen_provisioning",
+            communication: "rpc",
+            env: [
+              {
+                key: "foo",
+                value: "bar"
+              }
+            ],
+            jasperBinaryDir: "/home/mci-exec/evergreen_provisioning",
+            jasperCredentialsPath: "/home/mci-exec/evergreen_provisioning/jasper_credentials.json",
+            method: "ssh",
+            preconditionScripts: [],
+            resourceLimits: {
+              lockedMemoryKb: -1,
+              numFiles: 66000,
+              numProcesses: -1,
+              numTasks: 0,
+              virtualMemoryKb: -1
+            },
+            rootDir: "C:/cygwin",
+            serviceUser: "",
+            shellPath: "/bin/fish"
+          }
+          cloneMethod: "legacy-ssh",
+          sshKey: "mci",
+          sshOptions: [
+            "StrictHostKeyChecking=no",
+            "BatchMode=yes",
+            "ConnectTimeout=10"
+          ],
+          userSpawnAllowed: false,
+          expansions: [
+            {
+              key: "decompress",
+              value: "tar xzvf"
+            },
+            {
+              key: "ps",
+              value: "ps aux"
+            }
+          ],
+          finderSettings: {
+            version: "legacy"
+          },
+          plannerSettings: {
+            commitQueueFactor: 0,
+            expectedRuntimeFactor: 0,
+            generateTaskFactor: 0,
+            groupVersions: false,
+            mainlineTimeInQueueFactor: 0,
+            patchFactor: 0,
+            patchTimeInQueueFactor: 0,
+            targetTime: 0,
+            version: "tunable"
+          },
+          dispatcherSettings: {
+            version: "revised-with-dependencies"
+          },
+          hostAllocatorSettings: {
+            acceptableHostIdleTime: 30000000000,
+            feedbackRule: "",
+            futureHostFraction: 0,
+            hostsOverallocatedRule: "",
+            maximumHosts: 0,
+            minimumHosts: 0,
+            roundingRule: "",
+            version: "utilization",
+          },
+          disableShallowClone: true,
+          note: "This is an updated note"
+          isVirtualWorkStation: false,
+          isCluster: true,
+          homeVolumeSettings: {
+            formatCommand: ""
+          },
+          iceCreamSettings: {
+            configPath: "",
+            schedulerHost: ""
+          },
+          setup: "ls -alF",
+          setupAsSudo: true,
+          validProjects: []
+        },
+        onSave: DECOMMISSION
+      }
+    ) 
+    {
+      distro {
+        aliases
+        disableShallowClone
+        isCluster
+        name
+        note
+      }
+      hostCount
+    }
+}

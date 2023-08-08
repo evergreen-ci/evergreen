@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -876,50 +875,4 @@ func AllDistros(ctx context.Context) ([]Distro, error) {
 
 func AllDistroIDs(ctx context.Context) ([]Distro, error) {
 	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
-}
-
-type DistroSettingsSection string
-
-const (
-	DistroSettingsGeneral  DistroSettingsSection = "GENERAL"
-	DistroSettingsProvider DistroSettingsSection = "PROVIDER"
-	DistroSettingsTask     DistroSettingsSection = "TASK"
-	DistroSettingsHost     DistroSettingsSection = "HOST"
-	DistroSettingsProject  DistroSettingsSection = "PROJECT"
-)
-
-// UpdateDistroSection saves the changes for a given distro settings section.
-func UpdateDistroSection(ctx context.Context, originalDistro *Distro, changes *Distro, section DistroSettingsSection, userID string) (*Distro, error) {
-	distroID := originalDistro.Id
-	var err error
-
-	switch section {
-	case DistroSettingsGeneral:
-		err = db.Update(Collection,
-			bson.M{IdKey: distroID},
-			bson.M{
-				"$set": bson.M{
-					AliasesKey:             changes.Aliases,
-					DisabledKey:            changes.Disabled,
-					DisableShallowCloneKey: changes.DisableShallowClone,
-					IsClusterKey:           changes.IsCluster,
-					NoteKey:                changes.Note,
-				},
-			})
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("saving %s section", section))
-	}
-
-	updatedDistro, err := FindOneId(ctx, distroID)
-	if err != nil {
-		return nil, errors.Wrap(err, "fetching updated distro")
-	}
-
-	if originalDistro.GetDefaultAMI() != updatedDistro.GetDefaultAMI() {
-		event.LogDistroAMIModified(distroID, userID)
-	}
-	event.LogDistroModified(distroID, userID, updatedDistro.NewDistroData())
-
-	return updatedDistro, nil
 }

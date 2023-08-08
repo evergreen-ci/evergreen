@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -260,10 +259,8 @@ type PublicKeyInput struct {
 }
 
 type SaveDistroInput struct {
-	DistroID string                       `json:"distroId"`
-	Changes  *model.APIDistro             `json:"changes,omitempty"`
-	Section  distro.DistroSettingsSection `json:"section"`
-	OnSave   DistroOnSaveOperation        `json:"onSave"`
+	Distro *model.APIDistro      `json:"distro"`
+	OnSave DistroOnSaveOperation `json:"onSave"`
 }
 
 // Return type representing the updated distro and the number of hosts that were updated.

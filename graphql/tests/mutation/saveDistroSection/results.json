@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "general_section.graphql",
+      "query_file": "save.graphql",
       "result": {
         "data": {
           "saveDistroSection": {
@@ -17,6 +17,43 @@
             "hostCount": 2
           }
         }
+      }
+    },
+    {
+      "query_file": "validation_error.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "validating changes for distro 'rhel71-power8-large': 'ERROR: distro 'work_dir' cannot be blank'",
+            "path": [
+              "saveDistroSection"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "insufficient_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access settings for the distro 'fake'",
+            "path": [
+              "saveDistroSection",
+              "opts",
+              "distro",
+              "name"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]
