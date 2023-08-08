@@ -941,9 +941,8 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 // StartTask marks the task as started.
 func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) error {
 	grip.Info(message.Fields{
-		"message":     "started StartTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
+		"message": "started StartTask",
+		"task_id": taskData.ID,
 	})
 	pidStr := strconv.Itoa(os.Getpid())
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
@@ -958,9 +957,8 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	}
 	defer resp.Body.Close()
 	grip.Info(message.Fields{
-		"message":     "finished StartTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
+		"message": "finished StartTask",
+		"task_id": taskData.ID,
 	})
 	return nil
 }
