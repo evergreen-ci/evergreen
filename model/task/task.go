@@ -2312,12 +2312,6 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-		grip.Debug(message.Fields{
-			"message":   "task is in incomplete state, skipping archiving",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-			"func":      "Archive",
-		})
 		return nil
 	}
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -2365,12 +2359,6 @@ func ArchiveMany(tasks []Task) error {
 
 	for _, t := range tasks {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-			grip.Debug(message.Fields{
-				"message":   "task is in incomplete state, skipping archiving",
-				"task_id":   t.Id,
-				"execution": t.Execution,
-				"func":      "ArchiveMany",
-			})
 			continue
 		}
 		allTaskIds = append(allTaskIds, t.Id)

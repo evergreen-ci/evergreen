@@ -59,14 +59,25 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	e.EvergreenSettings = testutil.TestConfig()
 
-	e.Remote = queue.NewLocalLimitedSize(2, 1048)
+	e.Remote = queue.NewLocalLimitedSize(2, 1024)
 	if err := e.Remote.Start(ctx); err != nil {
 		return errors.WithStack(err)
 	}
-	e.Local = queue.NewLocalLimitedSize(2, 1048)
+	e.Local = queue.NewLocalLimitedSize(2, 1024)
 	if err := e.Local.Start(ctx); err != nil {
 		return errors.WithStack(err)
 	}
+	qg, err := queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{
+			Constructor: func(ctx context.Context) (amboy.Queue, error) {
+				return queue.NewLocalLimitedSize(2, 1024), nil
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	e.RemoteGroup = qg
 
 	e.InternalSender = send.MakeInternalLogger()
 

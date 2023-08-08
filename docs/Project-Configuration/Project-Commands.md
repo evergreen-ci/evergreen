@@ -496,6 +496,8 @@ Docker Parameters:
     container. Default is \<container_id\>.out.log.
 -   `stderr_file_name` - The file path to write stderr logs from the
     container. Default is \<container_id\>.err.log.
+-   `environment_vars` - Environment variables to pass to the container command.
+    By default, no environment variables are passed.
 
 ### Required IAM Policies for `host.create`
 
@@ -1080,7 +1082,7 @@ Parameters:
 
 -   `binary`: a binary to run
 -   `args`: a list of arguments to the binary
--   `env`: a map of environment variables and their values.  In case of
+-   `env`: a map of environment variables and their values. In case of
     conflicting environment variables defined by `add_expansions_to_env` or
     `include_expansions_in_env`, this has the lowest priority. Unless
     overridden, the following environment variables will be set by default:
@@ -1088,10 +1090,12 @@ Parameters:
     - "GOCACHE" will be set to `${workdir}/.gocache`.
     - "EVR_TASK_ID" will be set to the running task's ID.
     - "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
--   `command`: a command string (cannot use with `binary` or `args`),
-    split on spaces for use as arguments\--note that expansions will
-    *not* be split on spaces; each expansion represents its own
-    argument.
+-   `command`: a command string (cannot use with `binary` or `args`), split
+    according to shell rules for use as arguments.
+    - Note: Expansions will *not* be split on spaces; each expansion represents
+      its own argument.
+    - Note: on Windows, the shell splitting rules may not parse the command
+      string as desired (e.g. for Windows paths containing `\`).
 -   `background`: if set to true, the process runs in the background
     instead of the foreground. `subprocess.exec` starts the process but
     does not wait for the process to exit before running the next command. 
@@ -1118,8 +1122,24 @@ Parameters:
     not exist, it is ignored. In case of conflicting environment variables
     defined by `env` or `add_expansions_to_env`, this has highest
     priority.
--   `add_to_path`: specify one or more paths which are prepended to the
-    `PATH` environment variable.
+-   `add_to_path`: specify one or more paths to prepend to the command `PATH`,
+    which has the following effects:
+    - If `PATH` is explicitly set in `env`, that `PATH` is ignored.
+    - The command automatically inherits the runtime environment's `PATH`
+      environment variable. Then, any paths specified in `add_to_path` are
+      prepended in the given order.
+    - This can be used to specify fallback paths to search for the `binary`
+      executable (see [PATH special case](#path-environment-variable-special-case)).
+
+### PATH Environment Variable Special Case
+The `PATH` environment variable (specified either via explicitly setting `PATH`
+in `env` or via `add_to_path`) is a special variable that has two effects:
+
+- It sets the `PATH` environment variable for the command that runs.
+- It adds fallback paths to search for the command's `binary`. If the `binary`
+  is not found in the default runtime environment's `PATH`, it will try
+  searching for a matching executable `binary` in any of the paths in
+  `add_to_path` or in the `PATH` specified in `env`.
 
 ## timeout.update
 

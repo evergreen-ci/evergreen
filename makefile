@@ -39,10 +39,13 @@ endif
 
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
+nativeGobin := $(shell cygpath -m $(gobin))
 goCache := $(shell cygpath -m $(goCache))
 goModCache := $(shell cygpath -m $(goModCache))
 lintCache := $(shell cygpath -m $(lintCache))
 export GOROOT := $(shell cygpath -m $(GOROOT))
+else
+nativeGobin := $(gobin)
 endif
 
 ifneq ($(goCache),$(GOCACHE))
@@ -120,7 +123,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
@@ -316,7 +319,7 @@ html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
-# end convienence targets
+# end convenience targets
 
 
 # start test and coverage artifacts
@@ -360,7 +363,10 @@ $(buildDir)/%.testbinary: $(srcFiles) $(testSrcFiles)
 	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./$(if $(subst $(name),,$*),$(subst -,/,$*),)
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
 $(buildDir)/cmd-codegen-core.testbinary: build-codegen $(srcFiles) $(testSrcFiles)
-	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./$(if $(subst $(name),,$*),$(subst -,/,$*),)
+	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./cmd/codegen/core
+# test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
+$(buildDir)/output.agent-command.testbinary: build
+	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./agent/command
 $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
