@@ -82,18 +82,17 @@ type Task struct {
 	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
-	Version           string              `bson:"version" json:"version,omitempty"`
-	Project           string              `bson:"branch" json:"branch,omitempty"`
-	Revision          string              `bson:"gitspec" json:"gitspec"`
-	Priority          int64               `bson:"priority" json:"priority"`
-	TaskGroup         string              `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	ResultsService    string              `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-	ResultsFailed     bool                `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	Version           string `bson:"version" json:"version,omitempty"`
+	Project           string `bson:"branch" json:"branch,omitempty"`
+	Revision          string `bson:"gitspec" json:"gitspec"`
+	Priority          int64  `bson:"priority" json:"priority"`
+	TaskGroup         string `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	ResultsService    string `bson:"results_service,omitempty" json:"results_service,omitempty"`
+	HasCedarResults   bool   `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	ResultsFailed     bool   `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
+	MustHaveResults   bool   `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
