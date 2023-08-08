@@ -56,7 +56,6 @@ func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 }
 
 // GET /rest/v2/agent/data_pipes_config
-
 type agentDataPipesConfig struct {
 	config evergreen.DataPipesConfig
 }
@@ -190,6 +189,52 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	}
 
 	return gimlet.NewJSONResponse(resp)
+}
+
+// POST /rest/v2/task/{task_id}/set_log_service_version
+type setTaskLogServiceVersionHandler struct {
+	taskID string
+	req    apimodels.TaskLogServiceVersionRequest
+
+	env evergreen.Environment
+}
+
+func makeSetTaskLogServiceVersion(env evergreen.Environment) gimlet.RouteHandler {
+	return &setTaskLogServiceVersionHandler{env: env}
+}
+
+func (h *setTaskLogServiceVersionHandler) Factory() gimlet.RouteHandler {
+	return &setTaskLogServiceVersionHandler{env: h.env}
+}
+
+func (h *setTaskLogServiceVersionHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.req); err != nil {
+		return errors.Wrap(err, "reading task log service version from JSON request body")
+	}
+
+	return nil
+}
+
+func (h *setTaskLogServiceVersionHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	if err := t.SetLogServiceVersion(ctx, h.env, h.req.Version); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting log service version in task '%s'", h.taskID))
+	}
+
+	return gimlet.NewTextResponse("Log service version set in task")
 }
 
 // POST /task/{task_id}/update_push_status
@@ -654,6 +699,49 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))
 	}
 	return gimlet.NewJSONResponse(fmt.Sprintf("Artifact files for task %s successfully attached", t.Id))
+}
+
+// POST /rest/v2/task/{task_id}/set_results_info
+type setTaskResultsInfoHandler struct {
+	taskID string
+	info   apimodels.TaskTestResultsInfo
+}
+
+func makeSetTaskResultsInfoHandler() gimlet.RouteHandler {
+	return &setTaskResultsInfoHandler{}
+}
+
+func (h *setTaskResultsInfoHandler) Factory() gimlet.RouteHandler {
+	return &setTaskResultsInfoHandler{}
+}
+
+func (h *setTaskResultsInfoHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.taskID = gimlet.GetVars(r)["task_id"]
+
+	if err := gimlet.GetJSON(r.Body, &h.info); err != nil {
+		return errors.Wrap(err, "reading test results info from JSON request body")
+	}
+
+	return nil
+}
+
+func (h *setTaskResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	if err = t.SetResultsInfo(h.info.Service, h.info.Failed); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting results info for task '%s'", h.taskID))
+	}
+
+	return gimlet.NewTextResponse("Results info set in task")
 }
 
 // POST /task/{task_id}/test_logs
