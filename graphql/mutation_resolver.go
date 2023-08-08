@@ -174,7 +174,7 @@ func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroIn
 	}, nil
 }
 
-// SaveDistro is the resolver for the saveDistro field.
+// SaveDistro is the resolver for the saveDistro field. The entire distro object is provided as input (not just the updated fields) in order to validate all distro settings.
 func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput) (*SaveDistroPayload, error) {
 	usr := mustHaveUser(ctx)
 	d := opts.Distro.ToService()
