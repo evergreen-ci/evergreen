@@ -43,7 +43,7 @@ input SaveDistroInput {
 }
 
 input DistroInput {
-  aliases: [String!]
+  aliases: [String!]!
   arch: String!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!

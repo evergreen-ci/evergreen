@@ -90,7 +90,7 @@ mutation {
             version: "revised-with-dependencies"
           },
           hostAllocatorSettings: {
-            acceptableHostIdleTime: 5407399999,
+            acceptableHostIdleTime: 30000000000,
             feedbackRule: "",
             futureHostFraction: 0,
             hostsOverallocatedRule: "",
