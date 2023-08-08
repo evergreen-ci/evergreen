@@ -596,6 +596,15 @@ func TestAddPermissions(t *testing.T) {
 func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.EventCollection))
 
+	oldDistro := Distro{
+		Id:       "rainbow-lollipop",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument().Set(birch.EC.String("ami", "ami-0")),
+			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
+		},
+	}
+
 	d := Distro{
 		Id:       "rainbow-lollipop",
 		Provider: evergreen.ProviderNameEc2OnDemand,
@@ -604,17 +613,47 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
 		},
 	}
-	event.LogDistroModified(d.Id, "user1", d.NewDistroData())
+	event.LogDistroModified(d.Id, "user1", oldDistro.NewDistroData(), d.NewDistroData())
 	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(d.Id, 10)
 	assert.NoError(t, err)
 	require.Len(t, eventsForDistro, 1)
 	eventData, ok := eventsForDistro[0].Data.(*event.DistroEventData)
 	assert.True(t, ok)
 	assert.Equal(t, "user1", eventData.UserId)
+	assert.Equal(t, "user1", eventData.User)
 	assert.NotNil(t, eventData.Data)
+	assert.NotNil(t, eventData.Before)
+	assert.NotNil(t, eventData.After)
 
+	// Test legacy Data field
 	data := DistroData{}
 	body, err := bson.Marshal(eventData.Data)
+	assert.NoError(t, err)
+	assert.NoError(t, bson.Unmarshal(body, &data))
+	require.NotNil(t, data)
+	assert.Equal(t, d.Id, data.Distro.Id)
+	assert.Equal(t, d.Provider, data.Distro.Provider)
+	assert.Nil(t, data.Distro.ProviderSettingsList)
+	require.Len(t, data.ProviderSettingsMap, 2)
+	assert.EqualValues(t, d.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
+	assert.EqualValues(t, d.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+
+	// Test Before field
+	data = DistroData{}
+	body, err = bson.Marshal(eventData.Before)
+	assert.NoError(t, err)
+	assert.NoError(t, bson.Unmarshal(body, &data))
+	require.NotNil(t, data)
+	assert.Equal(t, oldDistro.Id, data.Distro.Id)
+	assert.Equal(t, oldDistro.Provider, data.Distro.Provider)
+	assert.Nil(t, data.Distro.ProviderSettingsList)
+	require.Len(t, data.ProviderSettingsMap, 2)
+	assert.EqualValues(t, oldDistro.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
+	assert.EqualValues(t, oldDistro.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+
+	// Test After field
+	data = DistroData{}
+	body, err = bson.Marshal(eventData.After)
 	assert.NoError(t, err)
 	assert.NoError(t, bson.Unmarshal(body, &data))
 	require.NotNil(t, data)
