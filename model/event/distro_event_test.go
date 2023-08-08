@@ -19,10 +19,11 @@ func TestLoggingDistroEvents(t *testing.T) {
 			userId := "user_id"
 			// simulate ProviderSettingsMap from DistroData
 			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
+			oldData := birch.NewDocument().Set(birch.EC.String("ami", "ami-0")).ExportMap()
 			// log some events, sleeping in between to make sure the times are different
 			LogDistroAdded(distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
-			LogDistroModified(distroId, userId, data)
+			LogDistroModified(distroId, userId, oldData, data)
 			time.Sleep(1 * time.Millisecond)
 			LogDistroRemoved(distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
@@ -51,10 +52,26 @@ func TestLoggingDistroEvents(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeDistro)
 			So(eventData.UserId, ShouldEqual, userId)
+			So(eventData.User, ShouldEqual, userId)
 
+			// Check legacy data field
 			doc := birch.NewDocument()
 			doc.ExtendInterface(eventData.Data)
 			ami, ok := doc.Lookup("ami").StringValueOK()
+			So(ok, ShouldBeTrue)
+			So(ami, ShouldEqual, "ami-123456")
+
+			// Check before field
+			doc = birch.NewDocument()
+			doc.ExtendInterface(eventData.Before)
+			ami, ok = doc.Lookup("ami").StringValueOK()
+			So(ok, ShouldBeTrue)
+			So(ami, ShouldEqual, "ami-0")
+
+			// Check after field
+			doc = birch.NewDocument()
+			doc.ExtendInterface(eventData.After)
+			ami, ok = doc.Lookup("ami").StringValueOK()
 			So(ok, ShouldBeTrue)
 			So(ami, ShouldEqual, "ami-123456")
 
@@ -67,6 +84,19 @@ func TestLoggingDistroEvents(t *testing.T) {
 			So(event.ResourceType, ShouldEqual, ResourceTypeDistro)
 			So(eventData.UserId, ShouldEqual, userId)
 			So(eventData.Data, ShouldBeNil)
+		})
+		Convey("logging identical data should not insert a modified document", func() {
+			distroId := "distro_id"
+			userId := "user_id"
+			// simulate ProviderSettingsMap from DistroData
+			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
+			oldData := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
+
+			LogDistroModified(distroId, userId, oldData, data)
+
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10)
+			So(err, ShouldBeNil)
+			So(len(eventsForDistro), ShouldEqual, 0)
 		})
 	})
 }

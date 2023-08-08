@@ -248,7 +248,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	if newDistro.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
 		event.LogDistroAMIModified(id, u.Username())
 	}
-	event.LogDistroModified(id, u.Username(), newDistro.NewDistroData())
+	event.LogDistroModified(id, u.Username(), oldDistro.NewDistroModified(), newDistro.NewDistroData())
 
 	message := fmt.Sprintf("Distro %v successfully updated.", id)
 	if shouldDeco {

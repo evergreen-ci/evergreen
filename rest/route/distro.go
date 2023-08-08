@@ -196,7 +196,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = data.UpdateDistro(ctx, original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating existing distro '%s'", h.distroID))
 		}
-		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
+		event.LogDistroModified(h.distroID, user.Username(), original.NewDistroData(), newDistro.NewDistroData())
 		if newDistro.GetDefaultAMI() != original.GetDefaultAMI() {
 			event.LogDistroAMIModified(h.distroID, user.Username())
 		}
@@ -330,7 +330,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = data.UpdateDistro(ctx, old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
-	event.LogDistroModified(h.distroID, user.Username(), d.NewDistroData())
+	event.LogDistroModified(h.distroID, user.Username(), old.NewDistroData(), d.NewDistroData())
 	if d.GetDefaultAMI() != old.GetDefaultAMI() {
 		event.LogDistroAMIModified(h.distroID, user.Username())
 	}
@@ -557,11 +557,18 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	modifiedIDs := []string{}
 	for _, d := range modifiedDistros {
 		if !h.dryRun {
+			old, err := distro.FindOneId(ctx, d.Id)
+			if err != nil {
+				catcher.Wrapf(err, "finding existing distro '%s'", d.Id)
+				continue
+
+			}
+
 			if err = d.ReplaceOne(ctx); err != nil {
 				catcher.Wrapf(err, "updating distro '%s'", d.Id)
 				continue
 			}
-			event.LogDistroModified(d.Id, u.Username(), d.NewDistroData())
+			event.LogDistroModified(d.Id, u.Username(), old.NewDistroData(), d.NewDistroData())
 		}
 
 		modifiedIDs = append(modifiedIDs, d.Id)

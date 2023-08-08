@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -178,6 +179,10 @@ func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroIn
 func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error) {
 	usr := mustHaveUser(ctx)
 	d := opts.Distro.ToService()
+	oldDistro, err := distro.FindOneId(ctx, d.Id)
+	if err != nil || oldDistro == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find distro '%s'", d.Id))
+	}
 
 	settings, err := evergreen.GetConfig(ctx)
 	validationErrs, err := validator.CheckDistro(ctx, d, settings, false)
@@ -191,8 +196,7 @@ func (r *mutationResolver) SaveDistroSection(ctx context.Context, opts SaveDistr
 	if err = d.ReplaceOne(ctx); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	// TODO EVG-20603: Update with improved distro modified handling
-	event.LogDistroModified(d.Id, usr.Username(), d.NewDistroData())
+	event.LogDistroModified(d.Id, usr.Username(), oldDistro.NewDistroData(), d.NewDistroData())
 
 	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
 	if err != nil {
