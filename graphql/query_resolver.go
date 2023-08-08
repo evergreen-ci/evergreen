@@ -278,7 +278,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		Limit:         limitParam,
 	}
 
-	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostsFilterOpts)
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(ctx, hostsFilterOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
 	}

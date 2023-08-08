@@ -5734,9 +5734,9 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 		assert.NoError(t, db.DropCollections(Collection))
 	}()
 
-	for tName, tCase := range map[string]func(t *testing.T){
-		"ExcludesTerminatedHosts": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"ExcludesTerminatedHosts": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "",
 					DistroID:      "",
@@ -5752,8 +5752,8 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.Len(t, hosts, 2)
 			require.Equal(t, hosts[0].Status, evergreen.HostRunning)
 		},
-		"FilterByID": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+		"FilterByID": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "h2",
 					DistroID:      "",
@@ -5769,8 +5769,8 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.Len(t, hosts, 1)
 			require.Equal(t, hosts[0].Id, "h2")
 		},
-		"FilterByDNSName": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+		"FilterByDNSName": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "ec2-host-2.compute-1.amazonaws.com",
 					DistroID:      "",
@@ -5786,8 +5786,8 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.Len(t, hosts, 1)
 			require.Equal(t, hosts[0].Id, "h2")
 		},
-		"FilterByDistroID": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+		"FilterByDistroID": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "",
 					DistroID:      "rhel80",
@@ -5803,8 +5803,8 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.Len(t, hosts, 1)
 			require.Equal(t, hosts[0].Id, "h3")
 		},
-		"FilterByCurrentTaskID": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+		"FilterByCurrentTaskID": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "",
 					DistroID:      "",
@@ -5820,8 +5820,8 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.Len(t, hosts, 1)
 			require.Equal(t, hosts[0].Id, "h3")
 		},
-		"FilterByStatuses": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+		"FilterByStatuses": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "",
 					DistroID:      "",
@@ -5837,8 +5837,8 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.Len(t, hosts, 1)
 			require.Equal(t, hosts[0].Id, "h2")
 		},
-		"FilterByStartedBy": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+		"FilterByStartedBy": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "",
 					DistroID:      "",
@@ -5853,8 +5853,8 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 2)
 		},
-		"SortBy": func(t *testing.T) {
-			hosts, _, _, err := GetPaginatedRunningHosts(
+		"SortBy": func(ctx context.Context, t *testing.T) {
+			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
 				HostsFilterOptions{
 					HostID:        "",
 					DistroID:      "",
@@ -5873,6 +5873,9 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			defer tcancel()
+
 			require.NoError(t, db.Clear(Collection))
 
 			h1 := &Host{
@@ -5917,7 +5920,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			}
 			require.NoError(t, h3.Insert(ctx))
 
-			tCase(t)
+			tCase(tctx, t)
 		})
 	}
 }

@@ -3000,7 +3000,7 @@ type HostsFilterOptions struct {
 }
 
 // GetPaginatedRunningHosts gets running hosts with pagination and applies any filters.
-func GetPaginatedRunningHosts(opts HostsFilterOptions) ([]Host, *int, int, error) {
+func GetPaginatedRunningHosts(ctx context.Context, opts HostsFilterOptions) ([]Host, *int, int, error) {
 	runningHostsPipeline := []bson.M{
 		{
 			"$match": bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}},
@@ -3021,15 +3021,12 @@ func GetPaginatedRunningHosts(opts HostsFilterOptions) ([]Host, *int, int, error
 		},
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
 	countPipeline := []bson.M{}
 	countPipeline = append(countPipeline, runningHostsPipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	tmp := []counter{}
+	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
 	if err != nil {
 		return nil, nil, 0, err
