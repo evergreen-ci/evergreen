@@ -5772,7 +5772,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 		"FilterByDNSName": func(t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(
 				HostsFilterOptions{
-					HostID:        "ec2-host-2",
+					HostID:        "ec2-host-2.compute-1.amazonaws.com",
 					DistroID:      "",
 					CurrentTaskID: "",
 					Statuses:      []string{},

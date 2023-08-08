@@ -3051,12 +3051,8 @@ func GetPaginatedRunningHosts(opts HostsFilterOptions) ([]Host, *int, int, error
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
 				"$or": []bson.M{
-					{
-						IdKey: bson.M{"$regex": opts.HostID, "$options": "i"},
-					},
-					{
-						DNSKey: bson.M{"$regex": opts.HostID, "$options": "i"},
-					},
+					{IdKey: opts.HostID},
+					{DNSKey: opts.HostID},
 				},
 			},
 		})

@@ -1,5 +1,5 @@
 query {
-  hosts(hostId: "ec2-34-207-222-84") {
+  hosts(hostId: "ec2-34-207-222-84.compute-1.amazonaws.com") {
     filteredHostsCount
     totalHostsCount
     hosts {
