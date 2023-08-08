@@ -855,6 +855,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
+	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// verify we stopped saving versions
@@ -973,6 +974,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
+	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	tasks := []task.Task{}
@@ -1047,6 +1049,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
+	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1154,6 +1157,7 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
+	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// the depended-on task is created in the existing variant
@@ -1206,6 +1210,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
+	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1332,6 +1337,8 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestSimulateNewDependencyGraph(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	defer func() {
 		assert.NoError(t, db.Clear(task.Collection))
 	}()
@@ -1368,6 +1375,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1397,6 +1405,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1430,6 +1439,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1464,6 +1474,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }
@@ -1484,7 +1495,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			Task: &task.Task{},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 1)
 	})
@@ -1503,7 +1514,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			Task: &task.Task{},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
 		assert.NoError(t, err)
 		assert.Empty(t, tasks)
 	})
@@ -1535,7 +1546,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 1)
 	})
@@ -1567,7 +1578,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
 		assert.NoError(t, err)
 		assert.Empty(t, tasks)
 	})
@@ -1588,7 +1599,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			Task: &task.Task{},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
 		assert.NoError(t, err)
 		assert.Empty(t, tasks)
 	})
