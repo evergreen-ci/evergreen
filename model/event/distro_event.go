@@ -1,7 +1,6 @@
 package event
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -62,11 +61,6 @@ func LogDistroAdded(distroId, userId string, data interface{}) {
 
 // LogDistroModified should take in DistroData in order to preserve the ProviderSettingsList
 func LogDistroModified(distroId, userId string, before, after interface{}) {
-	// Stop if there are no changes
-	if reflect.DeepEqual(before, after) {
-		return
-	}
-
 	data := DistroEventData{
 		UserId: userId,
 		User:   userId,

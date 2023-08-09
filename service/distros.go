@@ -126,7 +126,8 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newDistro := oldDistro
+	newDistro := &distro.Distro{}
+	*newDistro = *oldDistro
 	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
