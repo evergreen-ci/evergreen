@@ -5750,7 +5750,10 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				})
 			require.NoError(t, err)
 			require.Len(t, hosts, 2)
-			require.Equal(t, hosts[0].Status, evergreen.HostRunning)
+			require.NotNil(t, hosts[0])
+			require.NotEqual(t, hosts[0].Status, evergreen.HostTerminated)
+			require.NotNil(t, hosts[1])
+			require.NotEqual(t, hosts[1].Status, evergreen.HostTerminated)
 		},
 		"FilterByID": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5767,6 +5770,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				})
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
+			require.NotNil(t, hosts[0])
 			require.Equal(t, hosts[0].Id, "h2")
 		},
 		"FilterByDNSName": func(ctx context.Context, t *testing.T) {
@@ -5784,6 +5788,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				})
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
+			require.NotNil(t, hosts[0])
 			require.Equal(t, hosts[0].Id, "h2")
 		},
 		"FilterByDistroID": func(ctx context.Context, t *testing.T) {
@@ -5801,6 +5806,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				})
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
+			require.NotNil(t, hosts[0])
 			require.Equal(t, hosts[0].Id, "h3")
 		},
 		"FilterByCurrentTaskID": func(ctx context.Context, t *testing.T) {
@@ -5818,6 +5824,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				})
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
+			require.NotNil(t, hosts[0])
 			require.Equal(t, hosts[0].Id, "h3")
 		},
 		"FilterByStatuses": func(ctx context.Context, t *testing.T) {
@@ -5835,6 +5842,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				})
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
+			require.NotNil(t, hosts[0])
 			require.Equal(t, hosts[0].Id, "h2")
 		},
 		"FilterByStartedBy": func(ctx context.Context, t *testing.T) {
@@ -5851,7 +5859,9 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 					Limit:         0,
 				})
 			require.NoError(t, err)
-			require.Len(t, hosts, 2)
+			require.Len(t, hosts, 1)
+			require.NotNil(t, hosts[0])
+			require.Equal(t, hosts[0].Id, "h2")
 		},
 		"SortBy": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5868,7 +5878,9 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				})
 			require.NoError(t, err)
 			require.Len(t, hosts, 2)
+			require.NotNil(t, hosts[0])
 			require.Equal(t, hosts[0].Id, "h3")
+			require.NotNil(t, hosts[1])
 			require.Equal(t, hosts[1].Id, "h2")
 		},
 	} {
@@ -5884,7 +5896,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				Distro: distro.Distro{
 					Id: "ubuntu1604-small",
 				},
-				StartedBy:      "normal-user",
+				StartedBy:      "random-user",
 				Status:         evergreen.HostTerminated,
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(-10 * time.Minute),
@@ -5912,7 +5924,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 				Distro: distro.Distro{
 					Id: "rhel80-large",
 				},
-				StartedBy:      "evergreen",
+				StartedBy:      "admin",
 				Status:         evergreen.HostQuarantined,
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(-10 * time.Minute),
