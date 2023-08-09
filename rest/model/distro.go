@@ -14,7 +14,7 @@ import (
 type APIPlannerSettings struct {
 	Version                   *string     `json:"version"`
 	TargetTime                APIDuration `json:"target_time"`
-	GroupVersions             *bool       `json:"group_versions"`
+	GroupVersions             bool        `json:"group_versions"`
 	PatchFactor               int64       `json:"patch_factor"`
 	PatchTimeInQueueFactor    int64       `json:"patch_time_in_queue_factor"`
 	MainlineTimeInQueueFactor int64       `json:"mainline_time_in_queue_factor"`
@@ -31,7 +31,7 @@ func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 		s.Version = utility.ToStringPtr(settings.Version)
 	}
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
-	s.GroupVersions = settings.GroupVersions
+	s.GroupVersions = utility.FromBoolPtr(settings.GroupVersions)
 	s.PatchFactor = settings.PatchFactor
 	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
 	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
@@ -48,7 +48,7 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 		settings.Version = evergreen.PlannerVersionLegacy
 	}
 	settings.TargetTime = s.TargetTime.ToDuration()
-	settings.GroupVersions = s.GroupVersions
+	settings.GroupVersions = utility.ToBoolPtr(s.GroupVersions)
 	settings.PatchFactor = s.PatchFactor
 	settings.PatchTimeInQueueFactor = s.PatchTimeInQueueFactor
 	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
