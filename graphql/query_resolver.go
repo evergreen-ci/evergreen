@@ -13,6 +13,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -108,15 +109,83 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel.APIDistro, error) {
 	d, err := distro.FindOneId(ctx, distroID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching distro '%s': %s", distroID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", distroID, err.Error()))
 	}
 	if d == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", distroID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding distro '%s'", distroID))
 	}
 
 	apiDistro := restModel.APIDistro{}
 	apiDistro.BuildFromService(*d)
 	return &apiDistro, nil
+}
+
+// DistroEvents is the resolver for the distroEvents field.
+func (r *queryResolver) DistroEvents(ctx context.Context, opts DistroEventsInput) (*DistroEventsPayload, error) {
+	events, err := event.FindLatestPrimaryDistroEvents(opts.DistroID, utility.FromIntPtr(opts.Limit))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving events for distro '%s': %s", opts.DistroID, err.Error()))
+	}
+
+	eventLogEntries := []*DistroEvent{}
+	for _, e := range events {
+		data, ok := e.Data.(*event.DistroEventData)
+		if !ok {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("casting distro event data '%s'", opts.DistroID))
+		}
+
+		// after := restModel.APIDistro{}
+		after := map[string]interface{}{}
+		afterBody, err := bson.Marshal(data.After)
+		err = bson.Unmarshal(afterBody, &after)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("unmarshaling after: '%s'", err.Error()))
+		}
+
+		// before := restModel.APIDistro{}
+		before := map[string]interface{}{}
+		beforeBody, err := bson.Marshal(data.Before)
+		err = bson.Unmarshal(beforeBody, &before)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("unmarshaling before: '%s'", err.Error()))
+		}
+
+		// legacyData := restModel.APIDistro{}
+		legacyData := map[string]interface{}{}
+		legacyDataBody, err := bson.Marshal(data.Data)
+		err = bson.Unmarshal(legacyDataBody, &legacyData)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("unmarshaling legacy data: '%s'", err.Error()))
+		}
+
+		/*after, isStringMap := data.After.(map[string]interface{})
+		if !isStringMap {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("casting distro event 'after' data '%s'", opts.DistroID))
+		}
+
+		before, isStringMap := data.Before.(map[string]interface{})
+		if !isStringMap {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("casting distro event 'before' data '%s'", opts.DistroID))
+		}
+
+		legacyData, isStringMap := data.Data.(map[string]interface{})
+		if !isStringMap {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("casting legacy distro event 'data' data '%s'", opts.DistroID))
+		} */
+
+		entry := &DistroEvent{
+			After:     after,
+			Before:    before,
+			Data:      legacyData,
+			Timestamp: e.Timestamp,
+			User:      data.User,
+		}
+		eventLogEntries = append(eventLogEntries, entry)
+	}
+	return &DistroEventsPayload{
+		EventLogEntries: eventLogEntries,
+		Count:           len(eventLogEntries),
+	}, nil
 }
 
 // Distros is the resolver for the distros field.

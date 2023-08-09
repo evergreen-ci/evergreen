@@ -37,6 +37,17 @@ input DeleteDistroInput {
   distroId: String! @requireDistroAccess(access: ADMIN)
 }
 
+"""
+DistroEventsInput is the input to the distroEvents query.
+"""
+input DistroEventsInput {
+  distroId: String! @requireDistroAccess(access: VIEW)
+  limit: Int = 10
+}
+
+"""
+SaveDistroInput is the input to the saveDistro mutation.
+"""
 input SaveDistroInput {
   distro: DistroInput!
   onSave: DistroOnSaveOperation!
@@ -164,6 +175,20 @@ Return type representing whether a distro was deleted.
 """
 type DeleteDistroPayload {
   deletedDistroId: String!
+}
+
+
+type DistroEvent {
+  after: Map
+  before: Map
+  data: Map
+  timestamp: Time!
+  user: String!
+}
+
+type DistroEventsPayload {
+  count: Int!
+  eventLogEntries: [DistroEvent!]!
 }
 
 """
