@@ -74,12 +74,6 @@ type OOMTrackerInfo struct {
 	Pids     []int `bson:"pids" json:"pids"`
 }
 
-type TaskLogs struct {
-	AgentLogURLs  []LogInfo `bson:"agent" json:"agent"`
-	SystemLogURLs []LogInfo `bson:"system" json:"system"`
-	TaskLogURLs   []LogInfo `bson:"task" json:"task"`
-}
-
 type LogInfo struct {
 	Command string `bson:"command" json:"command"`
 	URL     string `bson:"url" json:"url"`
