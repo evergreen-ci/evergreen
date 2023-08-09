@@ -126,8 +126,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newDistro := &distro.Distro{}
-	*newDistro = *oldDistro
+	newDistro := *oldDistro
 	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
@@ -159,7 +158,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// check that the resulting distro is valid
-	vErrs, err := validator.CheckDistro(r.Context(), newDistro, settings, false)
+	vErrs, err := validator.CheckDistro(r.Context(), &newDistro, settings, false)
 	if err != nil {
 		message := fmt.Sprintf("error retrieving distroIds: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
