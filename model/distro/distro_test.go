@@ -613,7 +613,7 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
 		},
 	}
-	event.LogDistroModified(d.Id, "user1", oldDistro.NewDistroData(), d.NewDistroData())
+	event.LogDistroModified(d.Id, "user1", oldDistro.DistroData(), d.DistroData())
 	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(d.Id, 10)
 	assert.NoError(t, err)
 	require.Len(t, eventsForDistro, 1)

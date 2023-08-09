@@ -196,7 +196,7 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 	if err = d.ReplaceOne(ctx); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	event.LogDistroModified(d.Id, usr.Username(), oldDistro.NewDistroData(), d.NewDistroData())
+	event.LogDistroModified(d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
 
 	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
 	if err != nil {

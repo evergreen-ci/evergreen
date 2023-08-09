@@ -62,9 +62,9 @@ type DistroData struct {
 	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
 }
 
-// NewDistroData creates distro data from this distro. The provider settings are
+// DistroData creates distro data from this distro. The provider settings are
 // converted into maps instead of Birch BSON documents.
-func (d *Distro) NewDistroData() DistroData {
+func (d *Distro) DistroData() DistroData {
 	res := DistroData{ProviderSettingsMap: []map[string]interface{}{}}
 	res.Distro = *d
 	for _, each := range d.ProviderSettingsList {
