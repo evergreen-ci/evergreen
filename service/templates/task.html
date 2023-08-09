@@ -535,18 +535,6 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         <a class="pointer btn btn-default" ng-class="{active:currentLogs==eventLogs}" ng-click="setCurrentLogs(eventLogs)">Event logs</a>
       </div>
     </h3>
-    <div class="row" ng-show="task.logs && (task.logs.agent.length > 0 || task.logs.task.length > 0 || task.logs.system.length > 0)">
-      <div class="col-lg-12">
-        <pre>
-<span class="">External Task Logs:</span>
-<span ng-repeat="logInfo in task.logs.task"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a><br/></span>
-<span class="">External Agent Logs:</span>
-<span ng-repeat="logInfo in task.logs.agent"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a><br/></span>
-<span class="">External System Logs:</span>
-<span ng-repeat="logInfo in task.logs.system"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a><br/></span></pre>
-
-      </div>
-    </div>
     <div class="row">
       <div class="col-lg-12">
         <pre ng-show="currentLogs != eventLogs && logs.length && !buildlogger"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>

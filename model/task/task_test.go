@@ -911,9 +911,6 @@ func TestEndingTask(t *testing.T) {
 			So(t.Status, ShouldEqual, evergreen.TaskFailed)
 			So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
 			So(t.StartTime.Unix(), ShouldEqual, now.Add(-5*time.Minute).Unix())
-			Convey("if no logs are present, it should not be nil", func() {
-				So(t.Logs, ShouldBeNil)
-			})
 		})
 		Convey("a task with no start time set should have one added", func() {
 			now := time.Now()
