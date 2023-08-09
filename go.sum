@@ -141,6 +141,8 @@ github.com/aws/aws-sdk-go-v2/service/dynamodb v1.19.7 h1:yb2o8oh3Y+Gg2g+wlzrWS3p
 github.com/aws/aws-sdk-go-v2/service/dynamodb v1.19.7/go.mod h1:1MNss6sqoIsFGisX92do/5doiUCBrN7EjhZCS/8DUjI=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.98.0 h1:WblDV33AG9dhv0zFEPEmGtD5UECSNpKMxtdENULfR8M=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.98.0/go.mod h1:L3ZT0N/vBsw77mOAawXmRnREpEjcHd2v5Hzf7AkIH8M=
+github.com/aws/aws-sdk-go-v2/service/ecs v1.27.1 h1:54QSuWR3Pot7HqBRXd+c1yF97h2bqzDBID8qFSAkTlE=
+github.com/aws/aws-sdk-go-v2/service/ecs v1.27.1/go.mod h1:SB6YszwN1iKvyt/Qk+ICeKsfBxjd0CTEwwkmej9qoa0=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11 h1:y2+VQzC6Zh2ojtV2LoC0MNwHWc6qXv/j2vrQtlftkdA=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11/go.mod h1:iV4q2hsqtNECrfmlXyord9u4zyuFEJX9eLgLpSPzWA8=
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.27 h1:QmyPCRZNMR1pFbiOi9kBZWZuKrKB9LD4cxltxQk4tNE=
@@ -148,6 +150,10 @@ github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.27/go.mod 
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.27/go.mod h1:EOwBD4J4S5qYszS5/3DpkejfuK+Z5/1uzICfPaZLtqw=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.28 h1:bkRyG4a929RCnpVSTvLM2j/T4ls015ZhhYApbmYs15s=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.28/go.mod h1:jj7znCIg05jXlaGBlFMGP8+7UN3VtCkRBG2spnmRQkU=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.12 h1:/fvzwRqxxiNJwNK5XVE1NvnQFvNajNRYx82lkTqXlMM=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.12/go.mod h1:i/CXT+v8caoM60a7brYlrVG64srBa1Op0Q5Nl6askyo=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8 h1:eB91eEYUlh8+O2dXr189W8GJJd+/T8N/c5HocH2KzVo=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8/go.mod h1:3ARttS6G6U3auEdKfaN4GlnfS9UxYE9nqub1+0YGycA=
 github.com/aws/aws-sdk-go-v2/service/ses v1.15.11 h1:7/MtUTSdIdZuW3jRWwDq5kKVihe+VwBGEjWkuZbhlFg=
 github.com/aws/aws-sdk-go-v2/service/ses v1.15.11/go.mod h1:iI3tHe16kyXcYA6fcoct3hW1uB/XSoe46w29wupWwho=
 github.com/aws/aws-sdk-go-v2/service/sqs v1.22.0 h1:ikSvot5NdywduxtkOwOa2GJFzFuJq1ZjXsGjoIA82Ao=
@@ -443,8 +449,8 @@ github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuE
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
 github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118/go.mod h1:J23DaXv/35hpeeDLK1ay9KX/7zMF0HdVMAitqXQW9j0=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
-github.com/evergreen-ci/utility v0.0.0-20230726191623-866cb804386e h1:uhm66J3aNN2yIF2rLconhPk64WizMgD5Mf/DCiqMYhk=
-github.com/evergreen-ci/utility v0.0.0-20230726191623-866cb804386e/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
+github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c h1:1MsTaPMQ0eM9KXeqdbbFPPAeXuhckMDKo/DkKLFfzVA=
+github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=

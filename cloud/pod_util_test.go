@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	awsECS "github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ecsTypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/evergreen-ci/cocoa"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/cocoa/secret"
@@ -25,13 +25,13 @@ func TestMakeECSClient(t *testing.T) {
 	defer cancel()
 
 	t.Run("Succeeds", func(t *testing.T) {
-		c, err := MakeECSClient(validPodClientSettings())
+		c, err := MakeECSClient(ctx, validPodClientSettings())
 		assert.NoError(t, err)
 		assert.NotZero(t, c)
 		assert.NoError(t, c.Close(ctx))
 	})
 	t.Run("FailsWithoutRequiredSettings", func(t *testing.T) {
-		c, err := MakeECSClient(&evergreen.Settings{})
+		c, err := MakeECSClient(ctx, &evergreen.Settings{})
 		assert.Error(t, err)
 		assert.Zero(t, c)
 	})
@@ -42,21 +42,24 @@ func TestMakeSecretsManagerClient(t *testing.T) {
 	defer cancel()
 
 	t.Run("Succeeds", func(t *testing.T) {
-		c, err := MakeSecretsManagerClient(validPodClientSettings())
+		c, err := MakeSecretsManagerClient(ctx, validPodClientSettings())
 		assert.NoError(t, err)
 		assert.NotZero(t, c)
 		assert.NoError(t, c.Close(ctx))
 	})
 	t.Run("FailsWithoutRequiredSettings", func(t *testing.T) {
-		c, err := MakeSecretsManagerClient(&evergreen.Settings{})
+		c, err := MakeSecretsManagerClient(ctx, &evergreen.Settings{})
 		assert.Error(t, err)
 		assert.Zero(t, c)
 	})
 }
 
 func TestMakeSecretsManagerVault(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Run("Succeeds", func(t *testing.T) {
-		c, err := MakeSecretsManagerClient(validPodClientSettings())
+		c, err := MakeSecretsManagerClient(ctx, validPodClientSettings())
 		require.NoError(t, err)
 		v, err := MakeSecretsManagerVault(c)
 		assert.NoError(t, err)
@@ -134,12 +137,12 @@ func TestExportECSPod(t *testing.T) {
 					},
 				},
 			}
-			ecsClient, err := MakeECSClient(validPodClientSettings())
+			ecsClient, err := MakeECSClient(ctx, validPodClientSettings())
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, ecsClient.Close(ctx))
 			}()
-			smClient, err := MakeSecretsManagerClient(validPodClientSettings())
+			smClient, err := MakeSecretsManagerClient(ctx, validPodClientSettings())
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, smClient.Close(ctx))
@@ -402,7 +405,7 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 		require.Equal(t, containerOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
-		assert.Equal(t, awsECS.LogDriverAwslogs, utility.FromStringPtr(cDef.LogConfiguration.LogDriver))
+		assert.Equal(t, ecsTypes.LogDriverAwslogs, utility.FromStringPtr(cDef.LogConfiguration.LogDriver))
 		assert.Equal(t, "us-east-1", cDef.LogConfiguration.Options[awsLogsRegion])
 		assert.Equal(t, "log_group", cDef.LogConfiguration.Options[awsLogsGroup])
 

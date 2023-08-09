@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go/aws"
-	awsECS "github.com/aws/aws-sdk-go/service/ecs"
+	awsECS "github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
@@ -568,7 +568,7 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEve
 		return nil
 	}
 
-	c, err := cloud.MakeECSClient(sns.env.Settings())
+	c, err := cloud.MakeECSClient(ctx, sns.env.Settings())
 	if err != nil {
 		return errors.Wrap(err, "getting ECS client")
 	}
@@ -622,7 +622,7 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 		return nil, nil
 	}
 
-	c, err := cloud.MakeECSClient(sns.env.Settings())
+	c, err := cloud.MakeECSClient(ctx, sns.env.Settings())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting ECS client")
 	}
@@ -650,10 +650,7 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 		}
 
 		for _, arn := range resp.TaskArns {
-			if arn == nil {
-				continue
-			}
-			taskARNs = append(taskARNs, utility.FromStringPtr(arn))
+			taskARNs = append(taskARNs, arn)
 		}
 
 		token = resp.NextToken
