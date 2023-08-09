@@ -149,7 +149,7 @@ func (s *APISubscriber) ToService() (event.Subscriber, error) {
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			return event.Subscriber{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "GitHub check subscriber target is malformed").Error(),
+				Message:    errors.Wrap(err, "GitHub merge subscriber target is malformed").Error(),
 			}
 		}
 		target = apiModel.ToService()

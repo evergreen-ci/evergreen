@@ -207,7 +207,7 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		sub := n.Subscriber.Target.(*event.GithubMergeSubscriber)
 		payload, ok := n.Payload.(*message.GithubStatus)
 		if !ok || payload == nil {
-			return nil, errors.New("github-check payload is invalid")
+			return nil, errors.New("github-merge payload is invalid")
 		}
 		payload.Owner = sub.Owner
 		payload.Repo = sub.Repo
