@@ -1,8 +1,10 @@
 mutation {
-    saveDistroSection(
+    saveDistro(
       opts: {
         distro: {
           name: "rhel71-power8-large"
+          workDir: "",
+
           aliases: [
             "new-alias"
           ],
@@ -10,7 +12,6 @@ mutation {
           authorizedKeysFile: "",
           containerPool: "",
           disabled: true,
-          workDir: "/data/mci",
           provider: "ec2-ondemand",
           providerSettingsList: [
             {

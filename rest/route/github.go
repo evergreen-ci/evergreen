@@ -101,9 +101,20 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
+// shouldSkipWebhook returns true if the event is from a GitHub app and the app is not set up or,
+// the event is from webhooks and app is set up.
+func (gh *githubHookApi) shouldSkipWebhook(fromApp bool) bool {
+	hasApp := gh.settings.GetGithubAppAuth() != nil
+	return (fromApp && !hasApp) || (!fromApp && hasApp)
+}
+
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
+		fromApp := event.GetInstallation() != nil
+		if gh.shouldSkipWebhook(fromApp) {
+			break
+		}
 		if event.HookID == nil {
 			return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
@@ -118,6 +129,10 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		})
 
 	case *github.PullRequestEvent:
+		fromApp := event.GetInstallation() != nil
+		if gh.shouldSkipWebhook(fromApp) {
+			break
+		}
 		if event.Action == nil {
 			err := gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
@@ -182,6 +197,10 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
 	case *github.PushEvent:
+		fromApp := event.GetInstallation() != nil
+		if gh.shouldSkipWebhook(fromApp) {
+			break
+		}
 		grip.Debug(message.Fields{
 			"source":     "GitHub hook",
 			"msg_id":     gh.msgID,
@@ -203,11 +222,19 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.IssueCommentEvent:
+		fromApp := event.GetInstallation() != nil
+		if gh.shouldSkipWebhook(fromApp) {
+			break
+		}
 		if err := gh.handleComment(ctx, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 	case *github.MetaEvent:
+		fromApp := event.GetInstallation() != nil
+		if gh.shouldSkipWebhook(fromApp) {
+			break
+		}
 		if event.GetAction() == "deleted" {
 			hookID := event.GetHookID()
 			if hookID == 0 {
@@ -227,6 +254,10 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.MergeGroupEvent:
+		fromApp := event.GetInstallation() != nil
+		if gh.shouldSkipWebhook(fromApp) {
+			break
+		}
 		return gh.handleMergeGroupEvent(event)
 	}
 

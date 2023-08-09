@@ -608,7 +608,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
-		SaveDistroSection             func(childComplexity int, opts SaveDistroInput) int
+		SaveDistro                    func(childComplexity int, opts SaveDistroInput) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
@@ -1035,7 +1035,7 @@ type ComplexityRoot struct {
 		VirtualMemoryKB func(childComplexity int) int
 	}
 
-	SaveDistroSectionPayload struct {
+	SaveDistroPayload struct {
 		Distro    func(childComplexity int) int
 		HostCount func(childComplexity int) int
 	}
@@ -1524,7 +1524,7 @@ type MutationResolver interface {
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error)
 	CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error)
-	SaveDistroSection(ctx context.Context, opts SaveDistroInput) (*SaveDistroSectionPayload, error)
+	SaveDistro(ctx context.Context, opts SaveDistroInput) (*SaveDistroPayload, error)
 	ReprovisionToNew(ctx context.Context, hostIds []string) (int, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -4298,17 +4298,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RestartVersions(childComplexity, args["versionId"].(string), args["abort"].(bool), args["versionsToRestart"].([]*model1.VersionToRestart)), true
 
-	case "Mutation.saveDistroSection":
-		if e.complexity.Mutation.SaveDistroSection == nil {
+	case "Mutation.saveDistro":
+		if e.complexity.Mutation.SaveDistro == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_saveDistroSection_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveDistro_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveDistroSection(childComplexity, args["opts"].(SaveDistroInput)), true
+		return e.complexity.Mutation.SaveDistro(childComplexity, args["opts"].(SaveDistroInput)), true
 
 	case "Mutation.saveProjectSettingsForSection":
 		if e.complexity.Mutation.SaveProjectSettingsForSection == nil {
@@ -6751,19 +6751,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ResourceLimits.VirtualMemoryKB(childComplexity), true
 
-	case "SaveDistroSectionPayload.distro":
-		if e.complexity.SaveDistroSectionPayload.Distro == nil {
+	case "SaveDistroPayload.distro":
+		if e.complexity.SaveDistroPayload.Distro == nil {
 			break
 		}
 
-		return e.complexity.SaveDistroSectionPayload.Distro(childComplexity), true
+		return e.complexity.SaveDistroPayload.Distro(childComplexity), true
 
-	case "SaveDistroSectionPayload.hostCount":
-		if e.complexity.SaveDistroSectionPayload.HostCount == nil {
+	case "SaveDistroPayload.hostCount":
+		if e.complexity.SaveDistroPayload.HostCount == nil {
 			break
 		}
 
-		return e.complexity.SaveDistroSectionPayload.HostCount(childComplexity), true
+		return e.complexity.SaveDistroPayload.HostCount(childComplexity), true
 
 	case "SearchReturnInfo.featuresURL":
 		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
@@ -10140,7 +10140,7 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_saveDistroSection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_saveDistro_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 SaveDistroInput
@@ -25677,8 +25677,8 @@ func (ec *executionContext) fieldContext_Mutation_createDistro(ctx context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_saveDistroSection(ctx, field)
+func (ec *executionContext) _Mutation_saveDistro(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_saveDistro(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -25691,7 +25691,7 @@ func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveDistroSection(rctx, fc.Args["opts"].(SaveDistroInput))
+		return ec.resolvers.Mutation().SaveDistro(rctx, fc.Args["opts"].(SaveDistroInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -25703,12 +25703,12 @@ func (ec *executionContext) _Mutation_saveDistroSection(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*SaveDistroSectionPayload)
+	res := resTmp.(*SaveDistroPayload)
 	fc.Result = res
-	return ec.marshalNSaveDistroSectionPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx, field.Selections, res)
+	return ec.marshalNSaveDistroPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroPayload(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_saveDistroSection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_saveDistro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -25717,11 +25717,11 @@ func (ec *executionContext) fieldContext_Mutation_saveDistroSection(ctx context.
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "distro":
-				return ec.fieldContext_SaveDistroSectionPayload_distro(ctx, field)
+				return ec.fieldContext_SaveDistroPayload_distro(ctx, field)
 			case "hostCount":
-				return ec.fieldContext_SaveDistroSectionPayload_hostCount(ctx, field)
+				return ec.fieldContext_SaveDistroPayload_hostCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type SaveDistroSectionPayload", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type SaveDistroPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -25731,7 +25731,7 @@ func (ec *executionContext) fieldContext_Mutation_saveDistroSection(ctx context.
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_saveDistroSection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_saveDistro_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -47194,8 +47194,8 @@ func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(ctx cont
 	return fc, nil
 }
 
-func (ec *executionContext) _SaveDistroSectionPayload_distro(ctx context.Context, field graphql.CollectedField, obj *SaveDistroSectionPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SaveDistroSectionPayload_distro(ctx, field)
+func (ec *executionContext) _SaveDistroPayload_distro(ctx context.Context, field graphql.CollectedField, obj *SaveDistroPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveDistroPayload_distro(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -47225,9 +47225,9 @@ func (ec *executionContext) _SaveDistroSectionPayload_distro(ctx context.Context
 	return ec.marshalNDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_SaveDistroSectionPayload_distro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_SaveDistroPayload_distro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "SaveDistroSectionPayload",
+		Object:     "SaveDistroPayload",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -47298,8 +47298,8 @@ func (ec *executionContext) fieldContext_SaveDistroSectionPayload_distro(ctx con
 	return fc, nil
 }
 
-func (ec *executionContext) _SaveDistroSectionPayload_hostCount(ctx context.Context, field graphql.CollectedField, obj *SaveDistroSectionPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SaveDistroSectionPayload_hostCount(ctx, field)
+func (ec *executionContext) _SaveDistroPayload_hostCount(ctx context.Context, field graphql.CollectedField, obj *SaveDistroPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveDistroPayload_hostCount(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -47329,9 +47329,9 @@ func (ec *executionContext) _SaveDistroSectionPayload_hostCount(ctx context.Cont
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_SaveDistroSectionPayload_hostCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_SaveDistroPayload_hostCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "SaveDistroSectionPayload",
+		Object:     "SaveDistroPayload",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -65134,7 +65134,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aliases"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -72998,10 +72998,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "saveDistroSection":
+		case "saveDistro":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_saveDistroSection(ctx, field)
+				return ec._Mutation_saveDistro(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -77026,26 +77026,26 @@ func (ec *executionContext) _ResourceLimits(ctx context.Context, sel ast.Selecti
 	return out
 }
 
-var saveDistroSectionPayloadImplementors = []string{"SaveDistroSectionPayload"}
+var saveDistroPayloadImplementors = []string{"SaveDistroPayload"}
 
-func (ec *executionContext) _SaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, obj *SaveDistroSectionPayload) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, saveDistroSectionPayloadImplementors)
+func (ec *executionContext) _SaveDistroPayload(ctx context.Context, sel ast.SelectionSet, obj *SaveDistroPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, saveDistroPayloadImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("SaveDistroSectionPayload")
+			out.Values[i] = graphql.MarshalString("SaveDistroPayload")
 		case "distro":
 
-			out.Values[i] = ec._SaveDistroSectionPayload_distro(ctx, field, obj)
+			out.Values[i] = ec._SaveDistroPayload_distro(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "hostCount":
 
-			out.Values[i] = ec._SaveDistroSectionPayload_hostCount(ctx, field, obj)
+			out.Values[i] = ec._SaveDistroPayload_hostCount(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -83425,18 +83425,18 @@ func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreen�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNSaveDistroSectionPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, v SaveDistroSectionPayload) graphql.Marshaler {
-	return ec._SaveDistroSectionPayload(ctx, sel, &v)
+func (ec *executionContext) marshalNSaveDistroPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroPayload(ctx context.Context, sel ast.SelectionSet, v SaveDistroPayload) graphql.Marshaler {
+	return ec._SaveDistroPayload(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSaveDistroSectionPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroSectionPayload(ctx context.Context, sel ast.SelectionSet, v *SaveDistroSectionPayload) graphql.Marshaler {
+func (ec *executionContext) marshalNSaveDistroPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroPayload(ctx context.Context, sel ast.SelectionSet, v *SaveDistroPayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._SaveDistroSectionPayload(ctx, sel, v)
+	return ec._SaveDistroPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, sel ast.SelectionSet, v model.APISelector) graphql.Marshaler {

@@ -158,16 +158,6 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	s.Error(err)
 	s.Contains(err.Error(), "image must not be empty")
 	s.Nil(h)
-
-	emptyHostOpts.DockerOptions.Image = "my image"
-	emptyHostOpts.DockerOptions.ExtraHosts = []string{"invalid format", "also:so:invalid"}
-	h = host.NewIntent(emptyHostOpts)
-	h, err = s.manager.SpawnHost(ctx, h)
-	s.Error(err)
-	s.Contains(err.Error(), "invalid format")
-	s.Contains(err.Error(), "also:so:invalid")
-	s.NotContains(err.Error(), "Image")
-	s.Nil(h)
 }
 
 func (s *DockerSuite) TestSpawnDuplicateHostID() {
