@@ -521,7 +521,7 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
 // createGithubMergeSubscription creates a subscription on a commit for the GitHub merge queue.
 func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context, p *patch.Patch) error {
 	catcher := grip.NewBasicCatcher()
-	ghSub := event.NewGithubCheckAPISubscriber(event.GithubCheckSubscriber{
+	ghSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
 		Owner: p.GithubMergeData.Org,
 		Repo:  p.GithubMergeData.Repo,
 		Ref:   p.GithubMergeData.HeadSHA,
