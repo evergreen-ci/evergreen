@@ -3,7 +3,9 @@ package command
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -142,15 +144,9 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		catcher.Wrap(err, "expanding environment variables")
 	}
 
-	if len(c.Path) > 0 {
-		path := make([]string, len(c.Path), len(c.Path)+1)
-		for idx := range c.Path {
-			path[idx], err = exp.ExpandString(c.Path[idx])
-			catcher.Add(err)
-		}
-		path = append(path, os.Getenv("PATH"))
-
-		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
+	for idx := range c.Path {
+		c.Path[idx], err = exp.ExpandString(c.Path[idx])
+		catcher.Wrap(err, "expanding path to add")
 	}
 
 	return errors.Wrap(catcher.Resolve(), "expanding strings")
@@ -163,11 +159,23 @@ type modifyEnvOptions struct {
 	expansions             util.Expansions
 	includeExpansionsInEnv []string
 	addExpansionsToEnv     bool
+	addToPath              []string
 }
 
 func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions) map[string]string {
 	if env == nil {
 		env = map[string]string{}
+	}
+
+	if len(opts.addToPath) > 0 {
+		// Prepend paths to the runtime environment's PATH. More reasonable
+		// behavior here would be to respect the PATH env var if it's explicitly
+		// set for the command, but changing this could break existing
+		// workflows, so we don't do that.
+		path := make([]string, 0, len(opts.addToPath)+1)
+		path = append(path, opts.addToPath...)
+		path = append(path, os.Getenv("PATH"))
+		env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
 	expansions := opts.expansions.Map()
@@ -203,8 +211,17 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	return env
 }
 
-func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger client.LoggerProducer) *jasper.Command {
-	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
+func addTempDirs(env map[string]string, dir string) {
+	for _, key := range []string{"TMP", "TMPDIR", "TEMP"} {
+		if _, ok := env[key]; ok {
+			continue
+		}
+		env[key] = dir
+	}
+}
+
+func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, logger client.LoggerProducer) *jasper.Command {
+	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{execPath}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
@@ -263,13 +280,48 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 	return cmd
 }
 
-func addTempDirs(env map[string]string, dir string) {
-	for _, key := range []string{"TMP", "TMPDIR", "TEMP"} {
-		if _, ok := env[key]; ok {
-			continue
-		}
-		env[key] = dir
+// getExecutablePath returns the absolute path to the command executable to run.
+// If the executable is available in the default runtime environment's PATH,
+// then that path will be used. Otherwise if it can't find the command in the
+// default PATH locations, the command will fall back to checking the command's
+// PATH environment variable for a matching executable location (if any).
+func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
+	defaultPath, err := exec.LookPath(c.Binary)
+	if defaultPath != "" {
+		return c.Binary, err
 	}
+
+	cmdPath := c.Env["PATH"]
+	// For non-Windows platforms, the filepath.Separator is always '/'. However,
+	// for Windows, Go accepts both '\' and '/' as valid file path separators,
+	// even though the native filepath.Separator for Windows is really '\'. This
+	// detects both '\' and '/' as valid Windows file path separators.
+	binaryIsFilePath := strings.Contains(c.Binary, string(filepath.Separator)) || runtime.GOOS == "windows" && strings.Contains(c.Binary, "/")
+
+	if len(cmdPath) == 0 || binaryIsFilePath {
+		return c.Binary, nil
+	}
+
+	logger.Execution().Debug("could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
+
+	originalPath := os.Getenv("PATH")
+	defer func() {
+		// Try to reset the PATH back to its original state. If this fails, then
+		// the agent may have a modified PATH, which will affect all future
+		// agent operations that need to execute processes. However, given that
+		// the potential ways this could fail to reset seem highly unlikely
+		// (e.g. due to having insufficient memory to reset it) , it doesn't
+		// seem worth handling in a better way.
+		if resetErr := os.Setenv("PATH", originalPath); resetErr != nil {
+			logger.Execution().Error(errors.Wrap(resetErr, "resetting agent's PATH env var back to its original state").Error())
+		}
+	}()
+
+	if err := os.Setenv("PATH", cmdPath); err != nil {
+		return c.Binary, errors.Wrap(err, "setting command's PATH to try fallback executable paths")
+	}
+
+	return exec.LookPath(c.Binary)
 }
 
 func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
@@ -296,17 +348,14 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		logger.Execution().Notice(errors.Wrap(err, "getting temporary directory"))
 	}
 
-	var exp util.Expansions
-	if conf.Expansions != nil {
-		exp = *conf.Expansions
-	}
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
 		tmpDir:                 taskTmpDir,
-		expansions:             exp,
+		expansions:             *conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
+		addToPath:              c.Path,
 	})
 
 	if !c.KeepEmptyArgs {
@@ -317,13 +366,28 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		}
 	}
 
-	logger.Execution().Debug(message.Fields{
-		"working_directory": c.WorkingDir,
-		"background":        c.Background,
-		"binary":            c.Binary,
-	})
+	execPath, err := c.getExecutablePath(logger)
+	if execPath == "" && err != nil {
+		return errors.Wrap(err, "resolving executable path")
+	}
+	if err != nil {
+		logger.Execution().Debug(message.WrapError(err, message.Fields{
+			"message":           "found an executable path, but encountered errors while doing so",
+			"working_directory": c.WorkingDir,
+			"background":        c.Background,
+			"binary":            c.Binary,
+			"binary_path":       execPath,
+		}))
+	} else {
+		logger.Execution().Debug(message.Fields{
+			"working_directory": c.WorkingDir,
+			"background":        c.Background,
+			"binary":            c.Binary,
+			"binary_path":       execPath,
+		})
+	}
 
-	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, conf.Task.Id, logger), logger))
+	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())

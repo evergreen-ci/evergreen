@@ -20,6 +20,7 @@ type APIPlannerSettings struct {
 	MainlineTimeInQueueFactor int64       `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64       `json:"expected_runtime_factor"`
 	GenerateTaskFactor        int64       `json:"generate_task_factor"`
+	CommitQueueFactor         int64       `json:"commit_queue_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -36,6 +37,7 @@ func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
 	s.MainlineTimeInQueueFactor = settings.MainlineTimeInQueueFactor
 	s.GenerateTaskFactor = settings.GenerateTaskFactor
+	s.CommitQueueFactor = settings.CommitQueueFactor
 }
 
 // ToService returns a service layer distro.PlannerSettings using the data from APIPlannerSettings
@@ -52,6 +54,7 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 	settings.GenerateTaskFactor = s.GenerateTaskFactor
+	settings.CommitQueueFactor = s.CommitQueueFactor
 
 	return settings
 }
@@ -68,6 +71,7 @@ type APIHostAllocatorSettings struct {
 	FeedbackRule           *string     `json:"feedback_rule"`
 	HostsOverallocatedRule *string     `json:"hosts_overallocated_rule"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
+	FutureHostFraction     float64     `json:"future_host_fraction"`
 }
 
 // BuildFromService converts from service level distro.HostAllocatorSettings to an APIHostAllocatorSettings
@@ -83,7 +87,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(settings distro.HostAllocato
 	s.RoundingRule = utility.ToStringPtr(settings.RoundingRule)
 	s.FeedbackRule = utility.ToStringPtr(settings.FeedbackRule)
 	s.HostsOverallocatedRule = utility.ToStringPtr(settings.HostsOverallocatedRule)
-
+	s.FutureHostFraction = settings.FutureHostFraction
 }
 
 // ToService returns a service layer distro.HostAllocatorSettings using the data from APIHostAllocatorSettings
@@ -100,6 +104,7 @@ func (s *APIHostAllocatorSettings) ToService() distro.HostAllocatorSettings {
 	settings.RoundingRule = utility.FromStringPtr(s.RoundingRule)
 	settings.FeedbackRule = utility.FromStringPtr(s.FeedbackRule)
 	settings.HostsOverallocatedRule = utility.FromStringPtr(s.HostsOverallocatedRule)
+	settings.FutureHostFraction = s.FutureHostFraction
 
 	return settings
 }

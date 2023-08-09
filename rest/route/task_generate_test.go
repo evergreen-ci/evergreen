@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
@@ -59,13 +59,15 @@ func TestGenerateExecute(t *testing.T) {
 		Id:      "task1",
 		Version: "version1",
 	}
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 	require.NoError(t, task1.Insert())
-	h := &generateHandler{}
+	h := &generateHandler{env: env}
 	h.taskID = "task1"
 	r := h.Run(ctx)
 	assert.Equal(t, r.Data(), struct{}{})
 	assert.Equal(t, r.Status(), http.StatusOK)
-	queue, err := evergreen.GetEnvironment().RemoteQueueGroup().Get(ctx, fmt.Sprintf("service.generate.tasks.version.%s", task1.Version))
+	queue, err := env.RemoteQueueGroup().Get(ctx, fmt.Sprintf("service.generate.tasks.version.%s", task1.Version))
 	require.NoError(t, err)
 	stats := queue.Stats(ctx)
 	assert.Equal(t, 1, stats.Total)

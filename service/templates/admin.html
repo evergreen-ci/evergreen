@@ -246,6 +246,15 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Unset Function Vars</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.unset_function_vars_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Test GitHub pull requests</td>
 												<td colspan="2">
 													<md-radio-group
@@ -1185,6 +1194,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default project</label>
 										<input type="text" ng-model="Settings.jira.default_project">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Email</label>
+										<input type="text" ng-model="Settings.jira.email">
 									</md-input-container>
 									<md-card>
 										<md-card-title>

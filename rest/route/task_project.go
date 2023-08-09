@@ -126,6 +126,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		err = taskModel.BuildFromService(ctx, &t, &model.APITaskArgs{
 			IncludeAMI:               true,
 			IncludeProjectIdentifier: true,
+			IncludeArtifacts:         true,
 			LogURL:                   tph.url,
 			ParsleyLogURL:            tph.parsleyURL,
 		})

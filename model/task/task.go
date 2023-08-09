@@ -1362,7 +1362,6 @@ func (t *Task) MarkFailed() error {
 }
 
 func (t *Task) MarkSystemFailed(description string) error {
-	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
 	t.Details = GetSystemFailureDetails(description)
 
@@ -1386,25 +1385,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 		"execution_platform": t.ExecutionPlatform,
 	})
 
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
-
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey:             evergreen.TaskFailed,
-				FinishTimeKey:         t.FinishTime,
-				DetailsKey:            t.Details,
-				ContainerAllocatedKey: false,
-			},
-			"$unset": bson.M{
-				ContainerAllocatedTimeKey: 1,
-			},
-		},
-	)
+	return t.MarkEnd(t.FinishTime, &t.Details)
 }
 
 // GetSystemFailureDetails returns a task's end details based on an input description.
@@ -2331,12 +2312,6 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-		grip.Debug(message.Fields{
-			"message":   "task is in incomplete state, skipping archiving",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-			"func":      "Archive",
-		})
 		return nil
 	}
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -2384,12 +2359,6 @@ func ArchiveMany(tasks []Task) error {
 
 	for _, t := range tasks {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-			grip.Debug(message.Fields{
-				"message":   "task is in incomplete state, skipping archiving",
-				"task_id":   t.Id,
-				"execution": t.Execution,
-				"func":      "ArchiveMany",
-			})
 			continue
 		}
 		allTaskIds = append(allTaskIds, t.Id)

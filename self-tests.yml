@@ -738,11 +738,10 @@ buildvariants:
       - name: ".agent .test"
       - name: ".cli .test"
 
-# TODO: EVG-19745 Use a security-vetted image once one is available
 containers:
   - name: evg-container
     working_dir: /
-    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/production-ecs:latest"
+    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/production-ecs:1635b8ecdd264fb4f5fde38d88931b4e9a677b06"
     resources:
       cpu: 4096
       memory_mb: 8192

@@ -2,9 +2,12 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -115,7 +118,6 @@ func (s *execCmdSuite) TestWeirdAndBadExpansions() {
 	s.Equal("baf}}r", cmd.Binary)
 	s.Equal("a", cmd.Args[0])
 	s.Equal("b", cmd.Args[1])
-
 }
 
 func (s *execCmdSuite) TestParseParamsInitializesEnvMap() {
@@ -177,7 +179,7 @@ func (s *execCmdSuite) TestRunCommand() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
 }
 
@@ -187,7 +189,7 @@ func (s *execCmdSuite) TestRunCommandPropagatesError() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
 	err := cmd.runCommand(s.ctx, "foo", exec, s.logger)
 	s.Require().NotNil(err)
 	s.Contains(err.Error(), "process encountered problem: exit code 1")
@@ -201,7 +203,7 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
 }
 
@@ -213,13 +215,13 @@ func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
 }
 
 func (s *execCmdSuite) TestCommandFailsWithoutWorkingDirectorySet() {
-	// this is a situation that won't happen in production code,
-	// but should happen logicaly, but means if you don't specify
+	// This is a situation that won't happen in production code,
+	// but should happen logically, but means if you don't specify
 	// a directory and there's not one configured on the distro,
 	// then you're in trouble.
 	cmd := &subprocessExec{
@@ -304,40 +306,83 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 	s.Len(cmd.Args, 2)
 }
 
-func (s *execCmdSuite) TestPathSetting() {
+func (s *execCmdSuite) TestCommandFailsForExecutableNotFound() {
 	cmd := &subprocessExec{
-		// just set up enough so that we don't fail parse params
-		Env:        map[string]string{},
-		WorkingDir: testutil.GetDirectoryOfFile(),
-		Path:       []string{"foo", "bar"},
-	}
-	exp := util.NewExpansions(map[string]string{})
-	s.Len(cmd.Env, 0)
-	s.NoError(cmd.doExpansions(exp))
-	s.Len(cmd.Env, 1)
-
-	path, ok := cmd.Env["PATH"]
-	s.True(ok)
-	s.Len(filepath.SplitList(path), len(filepath.SplitList(os.Getenv("PATH")))+2)
-}
-
-func (s *execCmdSuite) TestNoPathSetting() {
-	cmd := &subprocessExec{
-		// just set up enough so that we don't fail parse params
-		Env:        map[string]string{},
+		Command:    "not-a-real-executable",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
-	exp := util.NewExpansions(map[string]string{})
-	s.Len(cmd.Env, 0)
-	s.NoError(cmd.doExpansions(exp))
-	s.Len(cmd.Env, 0)
-
-	path, ok := cmd.Env["PATH"]
-	s.False(ok)
-	s.Zero(path)
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should not be able to run because executable does not exist in PATH")
 }
 
-func (s *execCmdSuite) TestExpansionsEnvOptionDisabled() {
+func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecutable() {
+	workingDir := os.Getenv("EVGHOME")
+	if workingDir == "" {
+		s.FailNow("test cannot run without EVGHOME set")
+	}
+	executableName := "evergreen"
+	if runtime.GOOS == "windows" {
+		executableName = executableName + ".exe"
+	}
+	cmd := &subprocessExec{
+		// Set the command to point to the locally-compiled Evergreern binary so
+		// we can test executing it when it's not in the PATH by default.
+		Binary:     executableName,
+		WorkingDir: workingDir,
+		Path:       []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled evergreen executable from PATH")
+}
+
+func (s *execCmdSuite) TestCommandUsesFilePathExecutable() {
+	workingDir := os.Getenv("EVGHOME")
+	if workingDir == "" {
+		s.FailNow("test cannot run without EVGHOME set")
+	}
+	executableName := "evergreen"
+	if runtime.GOOS == "windows" {
+		executableName = executableName + ".exe"
+	}
+	executablePath := filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), executableName)
+	_, err := os.Stat(executablePath)
+	s.Require().NoError(err, "evergreen executable must exist for test to run")
+
+	cmd := &subprocessExec{
+		// Set the command to point to the locally-compiled Evergreern binary so
+		// we can test executing it when it's not in the PATH by default.
+		Binary:     executablePath,
+		WorkingDir: workingDir,
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled file path to evergreen executable")
+}
+
+func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinaryExecutableIsAFilePath() {
+	workingDir := os.Getenv("EVGHOME")
+	if workingDir == "" {
+		s.FailNow("test cannot run without EVGHOME set")
+	}
+	executableName := "./evergreen"
+	if runtime.GOOS == "windows" {
+		executableName = executableName + ".exe"
+	}
+	cmd := &subprocessExec{
+		// Set the command to point to the locally-compiled Evergreern binary so
+		// we can test executing it when it's not in the PATH by default.
+		Binary:     executableName,
+		WorkingDir: workingDir,
+		Path:       []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+	}
+	cmd.SetJasperManager(s.jasper)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should not be able to run because evergreen executable should not be available in the current working directory")
+}
+
+func (s *execCmdSuite) TestExpansionsForEnv() {
 	cmd := &subprocessExec{
 		Env:        map[string]string{},
 		WorkingDir: testutil.GetDirectoryOfFile(),
@@ -350,6 +395,17 @@ func (s *execCmdSuite) TestExpansionsEnvOptionDisabled() {
 	s.Len(cmd.Env, 1)
 	s.NotEqual("two", cmd.Env["two"])
 	s.Equal("one", cmd.Env["one"])
+}
+
+func (s *execCmdSuite) TestExpansionsForPath() {
+	cmd := &subprocessExec{
+		Path:       []string{"${my_path}", "another_path"},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"my_path": "/my/expanded/path"})))
+	s.Require().Len(cmd.Path, 2)
+	s.Equal([]string{"/my/expanded/path", "another_path"}, cmd.Path)
 }
 
 func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
@@ -438,6 +494,14 @@ func TestAddTemp(t *testing.T) {
 
 func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, exp util.Expansions){
+		"NoOptionsSetsExpectedDefaults": func(t *testing.T, exp util.Expansions) {
+			env := defaultAndApplyExpansionsToEnv(map[string]string{}, modifyEnvOptions{})
+			for _, key := range []string{"GOCACHE", "CI", "TEMP", "TMPDIR", "TMP"} {
+				_, ok := env[key]
+				assert.True(t, ok, "expected default env var '%s' not set", key)
+			}
+			assert.Zero(t, env["PATH"], "PATH should not be set by default")
+		},
 		"SetsDefaultAndRequiredEnvWhenStandardValuesAreGiven": func(t *testing.T, exp util.Expansions) {
 			opts := modifyEnvOptions{
 				taskID:     "task_id",
@@ -476,7 +540,7 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 			assert.Equal(t, strconv.Itoa(os.Getpid()), env[agentutil.MarkerAgentPID])
 			assert.Equal(t, opts.taskID, env[agentutil.MarkerTaskID])
 		},
-		"ExplicitlySetEnVVarsOverrideDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
+		"ExplicitlySetEnvVarsOverrideDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
 			gocache := "/path/to/gocache"
 			ci := "definitely not Jenkins"
 			tmpDir := "/some/tmpdir"
@@ -600,6 +664,28 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 			for _, expName := range include {
 				assert.NotContains(t, env, expName)
 			}
+		},
+		"AddToPathPrependsToInheritedPATH": func(t *testing.T, exp util.Expansions) {
+			opts := modifyEnvOptions{
+				addToPath: []string{"foo", "bar"},
+			}
+			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
+
+			inheritedPath := os.Getenv("PATH")
+			path := env["PATH"]
+			assert.NotEmpty(t, path)
+			assert.Len(t, filepath.SplitList(path), len(filepath.SplitList(inheritedPath))+len(opts.addToPath))
+		},
+		"AddToPathOverwritesExplicitPATHEnvVar": func(t *testing.T, exp util.Expansions) {
+			const expectedPath = "overwrite_the_path_with_this"
+			opts := modifyEnvOptions{
+				addToPath: []string{expectedPath},
+			}
+			env := defaultAndApplyExpansionsToEnv(map[string]string{"PATH": "some_path_to_overwrite"}, opts)
+			path := env["PATH"]
+			assert.True(t, strings.HasPrefix(path, expectedPath), "expected path to add should appear and should be prepended to path")
+			assert.True(t, strings.HasSuffix(path, os.Getenv("PATH")), "path should be inherited from current process")
+			assert.NotContains(t, path, "some_path_to_overwrite", "add_to_path ignores explicit PATH env var")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
