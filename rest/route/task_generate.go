@@ -17,8 +17,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeGenerateTasksHandler() gimlet.RouteHandler {
-	return &generateHandler{}
+func makeGenerateTasksHandler(env evergreen.Environment) gimlet.RouteHandler {
+	return &generateHandler{env: env}
 }
 
 type generateHandler struct {

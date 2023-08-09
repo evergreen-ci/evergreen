@@ -169,7 +169,8 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 
 	s.NoError(err)
 	s.Require().NotNil(ntr)
-	s.Equal(false, ntr.shouldExit)
+	s.False(ntr.shouldExit)
+	s.True(ntr.noTaskToRun)
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {

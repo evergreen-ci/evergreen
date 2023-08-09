@@ -1,9 +1,11 @@
 package host
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,4 +64,29 @@ func TestCountNoExpirationVolumesForUser(t *testing.T) {
 	count, err := CountNoExpirationVolumesForUser("me")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+func TestFindVolumesWithTerminatedHost(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VolumesCollection, Collection))
+
+	volumes := []Volume{
+		{ID: "v0", Host: "real_host"},
+		{ID: "v1", Host: "terminated_host"},
+		{ID: "v2"}, // No host
+	}
+	for _, vol := range volumes {
+		require.NoError(t, vol.Insert())
+	}
+	hosts := []Host{
+		{Id: "real_host", Status: evergreen.HostStopped},
+		{Id: "terminated_host", Status: evergreen.HostTerminated},
+	}
+	for _, h := range hosts {
+		require.NoError(t, h.Insert(context.Background()))
+	}
+	volumes, err := FindVolumesWithTerminatedHost()
+	assert.NoError(t, err)
+	require.Len(t, volumes, 1)
+	assert.Equal(t, volumes[0].ID, "v1")
+
 }
