@@ -15,6 +15,7 @@ type repotrackerJobSuite struct {
 	suite.Suite
 	suiteCtx context.Context
 	cancel   context.CancelFunc
+	ctx      context.Context
 }
 
 func TestRepotrackerJob(t *testing.T) {
@@ -29,7 +30,7 @@ func (s *repotrackerJobSuite) TearDownSuite() {
 }
 
 func (s *repotrackerJobSuite) SetupTest() {
-	testutil.TestSpan(s.suiteCtx, s.T())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 }
 
@@ -41,23 +42,20 @@ func (s *repotrackerJobSuite) TestJob() {
 	j := NewRepotrackerJob("1", "mci").(*repotrackerJob)
 	s.Equal("mci", j.ProjectID)
 	s.Equal("repotracker:1:mci", j.ID())
-	j.Run(context.Background())
+	j.Run(s.ctx)
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "project ref 'mci' not found")
 	s.True(j.Status().Completed)
 }
 
 func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	flags := evergreen.ServiceFlags{
 		RepotrackerDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(ctx, flags))
+	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	job := NewRepotrackerJob("1", "mci")
-	job.Run(context.Background())
+	job.Run(s.ctx)
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "repotracker is disabled")

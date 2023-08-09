@@ -14,10 +14,6 @@ import (
 
 const (
 	EnvOverride = "SETTINGS_OVERRIDE"
-
-	otelCollectorEndpointEnvVar = "OTEL_COLLECTOR_ENDPOINT"
-	otelTraceIDEnvVar           = "OTEL_TRACE_ID"
-	otelParentIDEnvVar          = "OTEL_PARENT_ID"
 )
 
 // path to an mci settings file containing sensitive information

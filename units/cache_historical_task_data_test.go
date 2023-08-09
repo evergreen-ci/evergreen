@@ -249,24 +249,24 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ctx = testutil.TestSpan(ctx, t)
+			tctx := testutil.TestSpan(ctx, t)
 
 			require.NoError(t, db.ClearCollections(task.Collection, taskstats.DailyTaskStatsCollection, taskstats.DailyStatsStatusCollection))
 			if test.pre != nil {
-				test.pre(ctx, t)
+				test.pre(tctx, t)
 			}
 
 			j := NewCacheHistoricalTaskDataJob("id", "p0")
 			if test.hasErr {
-				j.Run(ctx)
+				j.Run(tctx)
 				require.Error(t, j.Error())
 			} else {
-				j.Run(ctx)
+				j.Run(tctx)
 				require.NoError(t, j.Error())
 			}
 
 			if test.post != nil {
-				test.post(ctx, t)
+				test.post(tctx, t)
 			}
 		})
 	}

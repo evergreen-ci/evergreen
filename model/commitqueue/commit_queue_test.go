@@ -16,7 +16,6 @@ type CommitQueueSuite struct {
 	suite.Suite
 	suiteCtx context.Context
 	cancel   context.CancelFunc
-	ctx      context.Context
 
 	q *CommitQueue
 }
@@ -33,7 +32,6 @@ var sampleCommitQueueItem = CommitQueueItem{
 
 func TestCommitQueueSuite(t *testing.T) {
 	s := new(CommitQueueSuite)
-
 	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
 	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
 
@@ -51,8 +49,7 @@ func (s *CommitQueueSuite) TearDownSuite() {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
-	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
-
+	testutil.TestSpan(s.suiteCtx, s.T())
 	s.NoError(db.ClearCollections(Collection))
 
 	s.q = &CommitQueue{

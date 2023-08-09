@@ -21,7 +21,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/testutil")
+var (
+	packageName                 = fmt.Sprintf("%s%s", evergreen.PackageName, "/testutil")
+	serviceName                 = "evergreen-tests"
+	otelCollectorEndpointEnvVar = "OTEL_COLLECTOR_ENDPOINT"
+	otelTraceIDEnvVar           = "OTEL_TRACE_ID"
+	otelParentIDEnvVar          = "OTEL_PARENT_ID"
+)
 
 func TestSpan(ctx context.Context, t *testing.T) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
@@ -86,7 +92,7 @@ func spanForChildTest(parentCtx context.Context, t *testing.T) context.Context {
 }
 
 func initTracer(ctx context.Context, collectorEndpoint string) (func() error, error) {
-	resource := resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName("evergreen-tests"))
+	resource := resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(serviceName))
 	client := otlptracegrpc.NewClient(
 		otlptracegrpc.WithEndpoint(collectorEndpoint),
 	)
@@ -123,16 +129,16 @@ func initTracer(ctx context.Context, collectorEndpoint string) (func() error, er
 func addTaskAttributes(ctx context.Context) context.Context {
 	var attributes []attribute.KeyValue
 	for envVar, attributeName := range map[string]string{
-		"task_id":       "evergreen.task.id",
-		"task_name":     "evergreen.task.name",
-		"execution":     "evergreen.task.execution",
-		"version_id":    "evergreen.version.id",
-		"requester":     "evergreen.version.requester",
-		"build_id":      "evergreen.build.id",
-		"build_variant": "evergreen.build.name",
-		"project":       "evergreen.project.identifier",
-		"project_id":    "evergreen.project.id",
-		"distro_id":     "evergreen.distro.id",
+		"task_id":       evergreen.TaskIDOtelAttribute,
+		"task_name":     evergreen.TaskNameOtelAttribute,
+		"execution":     evergreen.TaskExecutionOtelAttribute,
+		"version_id":    evergreen.VersionIDOtelAttribute,
+		"requester":     evergreen.VersionRequesterOtelAttribute,
+		"build_id":      evergreen.BuildIDOtelAttribute,
+		"build_variant": evergreen.BuildNameOtelAttribute,
+		"project":       evergreen.ProjectIdentifierOtelAttribute,
+		"project_id":    evergreen.ProjectIDOtelAttribute,
+		"distro_id":     evergreen.DistroIDOtelAttribute,
 	} {
 		if val := os.Getenv(envVar); val != "" {
 			attributes = append(attributes, attribute.String(attributeName, val))

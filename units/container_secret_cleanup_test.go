@@ -103,7 +103,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tCtx := testutil.TestSpan(ctx, t)
+			tctx := testutil.TestSpan(ctx, t)
 
 			cocoaMock.ResetGlobalSecretCache()
 
@@ -111,11 +111,11 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			require.True(t, ok)
 			j.tagClient = &cocoaMock.TagClient{}
 			defer func() {
-				assert.NoError(t, j.tagClient.Close(tCtx))
+				assert.NoError(t, j.tagClient.Close(tctx))
 			}()
 			j.smClient = &cocoaMock.SecretsManagerClient{}
 			defer func() {
-				assert.NoError(t, j.smClient.Close(tCtx))
+				assert.NoError(t, j.smClient.Close(tctx))
 			}()
 			v, err := secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
 				SetClient(j.smClient).
@@ -124,12 +124,12 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			j.vault = cocoaMock.NewVault(v)
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tCtx))
+			require.NoError(t, env.Configure(tctx))
 
 			env.EvergreenSettings.PodLifecycle.MaxSecretCleanupRate = 1000
 			j.env = env
 
-			tCase(tCtx, t, j)
+			tCase(tctx, t, j)
 		})
 	}
 }
