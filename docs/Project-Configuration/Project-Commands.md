@@ -116,13 +116,13 @@ little validation on the data, so the server may accept inputs that are
 logically nonsensical.
 
 | Name        | Type          | Description                                                                                                            |
-|--------------------|---------|-------------------------------------------|
-| `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                          |
+| ----------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                                  |
 | `test_file` | string        | The name of the test. This is what will be displayed in the test results section of the UI as the test identifier.     |
 | `group_id`  | string        | The group ID if the test is associated with a group. This is mostly used for tests logging directly to cedar.          |
 | `url`       | string        | The URL containing the rich-text view of the test logs.                                                                |
 | `url_raw`   | string        | The URL containing the plain-text view of the test logs.                                                               |
-| `line_num`  | int           | The line number of the test within the "url" parameter, if the URL actually contains the logs for multiple tests.    |
+| `line_num`  | int           | The line number of the test within the "url" parameter, if the URL actually contains the logs for multiple tests.      |
 | `exit_code` | int           | The status with which the test command exited. For the most part this does nothing.                                    |
 | `task_id`   | string        | The ID of the task with which this test should be associated. The test will appear on the page for the specified task. |
 | `execution` | int           | The execution of the task above with which this test should be associated.                                             |
@@ -763,12 +763,201 @@ information is not necessary.
 Parameters:
 
 -   `file`: the JSON or YAML file containing the test results, see
-    <https://github.com/evergreen-ci/poplar> for more info.
+    below for more info.
 -   `aws_key`: your AWS key (use expansions to keep this a secret)
 -   `aws_secret`: your AWS secret (use expansions to keep this a secret)
 -   `region`: AWS region of the bucket, defaults to us-east-1.
 -   `bucket`: the S3 bucket to use.
 -   `prefix`: prefix, if any, within the s3 bucket.
+
+Example dummy content of a test results JSON file containing `test` objects:
+
+```json
+[
+    {
+        "info": {
+            "test_name": "foo",
+            "trial": 0,
+            "tags": [],
+            "args": {
+                "mongod": 0,
+                "genny_phase_id": 1
+            }
+        },
+        "created_at": "2023-01-01T00:00:14.993882+00:00",
+        "completed_at": "2023-01-01T00:03:15+00:00",
+        "artifacts": [],
+        "metrics": [
+            {
+                "name": "lorem",
+                "type": "COUNT",
+                "value": 12345.0,
+                "user_submitted": false
+            },
+            {
+                "name": "ipsum",
+                "type": "PERCENTILE_99TH",
+                "value": 6.78910,
+                "user_submitted": false
+            },
+            {
+                "name": "dolor",
+                "type": "MIN",
+                "value": 1.11213,
+                "user_submitted": false
+            }
+        ],
+        "sub_tests": []
+    },
+    {
+        "info": {
+            "test_name": "bar",
+            "trial": 0,
+            "tags": [],
+            "args": {}
+        },
+        "created_at": "2023-01-01T09:50:01.720954+00:00",
+        "completed_at": "2023-01-01T10:04:37.015088+00:00",
+        "artifacts": [],
+        "metrics": [],
+        "sub_tests": [
+            {
+                "info": {
+                    "test_name": "WaldoActor.QuxOperation",
+                    "trial": 0,
+                    "tags": [],
+                    "args": {}
+                },
+                "created_at": "2023-01-01T09:51:15.021000+00:00",
+                "completed_at": "2023-01-01T09:51:15.021000+00:00",
+                "artifacts": [
+                    {
+                        "bucket": "genny-metrics",
+                        "path": "WaldoActor.QuxOperation",
+                        "prefix": "foobar_variant.2022_11_bar_patch_ghijk67890_23_01_01_06_24_48_0",
+                        "tags": [],
+                        "created_at": "2023-01-01T09:50:04.992453+00:00",
+                        "local_path": "/data/mci/12345abcdef/build/WorkloadOutput/reports/bar/CedarMetrics/WaldoActor.QuxOperation.ftdc",
+                        "permissions": "public-read",
+                        "convert_bson_to_ftdc": false
+                    }
+                ],
+                "metrics": [],
+                "sub_tests": []
+            },
+            {
+                "info": {
+                    "test_name": "FredActor.BazOperation",
+                    "trial": 0,
+                    "tags": [],
+                    "args": {}
+                },
+                "created_at": "2023-01-01T09:51:11.175000+00:00",
+                "completed_at": "2023-01-01T09:51:14.552000+00:00",
+                "artifacts": [
+                    {
+                        "bucket": "genny-metrics",
+                        "path": "FredActor.BazOperation",
+                        "prefix": "foobar_variant.2022_11_bar_patch_ghijk67890_23_01_01_06_24_48_0",
+                        "tags": [],
+                        "created_at": "2023-01-01T09:50:04.992453+00:00",
+                        "local_path": "/data/mci/12345abcdef/build/WorkloadOutput/reports/bar/CedarMetrics/FredActor.BazOperation.ftdc",
+                        "permissions": "public-read",
+                        "convert_bson_to_ftdc": false
+                    }
+                ],
+                "metrics": [],
+                "sub_tests": []
+            },
+        ]
+    }
+]
+```
+### test
+
+Each `test` object holds data about a specific test and its
+subtests. It is represented by the
+[`Test` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#Test),
+and contains these fields:
+
+| Name           | Type   | Description                                                                                                    |
+| -------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| `info`         | object | The test's `info` object, described below.                                                                     |
+| `created_at`   | string | The test's creation timestamp.                                                                                 |
+| `completed_at` | string | The test's completion timestamp.                                                                               |
+| `artifacts`    | array  | The test's list of `artifact` objects, described below.                                                        |
+| `metrics`      | array  | The test's list of `metric` objects, described below.                                                          |
+| `sub_tests`    | array  | The test's list of subtest `test` objects, which recursively have the same format as the parent's `test` object. |
+
+**Note:** Although the `Test` struct includes the `_id` field, you
+should not populate it. It would be populated automatically by
+`perf.send`.
+
+### info
+
+Each `info` object holds metadata about the test configuration and
+execution. It is represented by the
+[`TestInfo` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#TestInfo),
+and contains these fields:
+
+| Name        | Type    | Description                                                                                    |
+| ----------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `test_name` | string  | The test's name.                                                                               |
+| `trial`     | integer | (Optional) Representing a repeated test run (first run is 0).                                  |
+| `tags`      | array   | (Optional) The test's list of tags.                                                            |
+| `args`      | object  | (Optional) The test's configuration arguments, as an object with string keys & integer values. |
+
+**Note:** Although the `TestInfo` struct includes the `parent` field,
+you should not populate it. It stores a subtest's parent test ID, and
+would be populated automatically by `perf.send`.
+
+### artifact
+
+Each `artifact` object allows you to upload and attach metadata to
+results files. It's frequently used to upload FTDC files representing
+the test's intra-run data. This object is represented by the
+[`TestArtifact` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#TestInfo),
+and contains these fields:
+
+| Name                      | Type      | Description                                                                                                                                                                                   |
+| ------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `local_path`              | string    | The artifact's local filepath.                                                                                                                                                                |
+| `permissions`             | string    | The S3 canned ACL permission to apply to the uploaded artifact. See the list of valid permissions [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html#canned-acl). |
+| `created_at`              | timestamp | The artifact's creation time.                                                                                                                                                                 |
+| `bucket`                  | string    | (Optional) The S3 bucket to upload to. If not provided, the top level bucket information (provided above as part of the evergreen command config) will be used.                               |
+| `prefix`                  | string    | (Optional) The S3 bucket's prefix (if any). If not provided, also uses top level prefix.                                                                                                      |
+| `path`                    | string    | (Optional) The artifact's unique S3 object key (usually the metric name / FTDC filename). If not provided, the filename is used.                                                              |
+| `tags`                    | array     | (Optional) The artifact's list of tags.                                                                                                                                                       |
+| `is_text`                 | boolean   | (Optional) The artifact is a plain text file.                                                                                                                                                 |
+| `is_ftdc`                 | boolean   | (Optional) The artifact is an FTDC file.                                                                                                                                                      |
+| `is_bson`                 | boolean   | (Optional) The artifact is a BSON file.                                                                                                                                                       |
+| `is_json`                 | boolean   | (Optional) The artifact is a JSON file.                                                                                                                                                       |
+| `is_csv`                  | boolean   | (Optional) The artifact is a CSV file.                                                                                                                                                        |
+| `is_uncompressed`         | boolean   | (Optional) The artifact is an uncompressed file.                                                                                                                                              |
+| `is_gzip`                 | boolean   | (Optional) The artifact is a GZIP file.                                                                                                                                                       |
+| `is_tarball`              | boolean   | (Optional) The artifact is a tarball.                                                                                                                                                         |
+| `convert_gzip`            | boolean   | (Optional) Should gzip the artifact before uploading.                                                                                                                                         |
+| `convert_bson_to_ftdc`    | boolean   | (Optional) Should convert the BSON artifact file to FTDC before uploading.                                                                                                                    |
+| `convert_json_to_ftdc`    | boolean   | (Optional) Should convert the JSON artifact file to FTDC before uploading.                                                                                                                    |
+| `convert_csv_to_ftdc`     | boolean   | (Optional) Should convert the CSV artifact file to FTDC before uploading.                                                                                                                     |
+| `events_raw`              | boolean   | (Unused)                                                                                                                                                                                      |
+| `events_histogram`        | boolean   | (Unused)                                                                                                                                                                                      |
+| `events_interval_summary` | boolean   | (Unused)                                                                                                                                                                                      |
+| `events_collapsed`        | boolean   | (Unused)                                                                                                                                                                                      |
+
+### metric
+
+Each `metric` object holds a computed summary statistic / metric for
+a test. It is represented by the
+[`TestMetrics` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#TestMetrics),
+and contains these fields:
+
+| Name      | Type      | Description                                                                                                                                                                                                                                                                                                                                                                        |
+| --------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`    | string    | The metric's name.                                                                                                                                                                                                                                                                                                                                                                 |
+| `type`    | string    | The metric's type. Valid types are: `SUM`, `MEAN`, `MEDIAN`, `MAX`, `MIN`, `STANDARD_DEVIATION`, `THROUGHPUT`, `LATENCY`, `PERCENTILE_99TH`, `PERCENTILE_95TH`, `PERCENTILE_90TH`, `PERCENTILE_80TH`, `PERCENTILE_50TH`. This is represented by the [`RollupType` enum](https://github.com/evergreen-ci/cedar/blob/bf4b115ab032fca375e6a86c40f9f8944e55a483/perf.proto#L103-L117). |
+| `value`   | int/float | The metric's value.                                                                                                                                                                                                                                                                                                                                                                |
+| `version` | int       | (Optional) The metric's version.                                                                                                                                                                                                                                                                                                                                                   |
 
 ## downstream_expansions.set
 
