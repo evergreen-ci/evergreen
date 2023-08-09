@@ -262,10 +262,6 @@ func (opts *DockerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.ErrorfWhen(opts.Image == "", "image must not be empty")
 
-	for _, h := range opts.ExtraHosts {
-		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
-	}
-
 	return catcher.Resolve()
 }
 

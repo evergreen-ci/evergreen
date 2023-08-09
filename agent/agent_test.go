@@ -160,26 +160,16 @@ func (s *AgentSuite) TestNextTaskResponseShouldExit() {
 }
 
 func (s *AgentSuite) TestTaskWithoutSecret() {
-	s.mockCommunicator.NextTaskResponse = &apimodels.NextTaskResponse{
+	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
 		ShouldExit: false}
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-	defer cancel()
 
-	agentCtx, agentCancel := context.WithCancel(ctx)
-	errs := make(chan error, 1)
-	go func() {
-		errs <- s.a.loop(agentCtx)
-	}()
-	time.Sleep(1 * time.Second)
-	agentCancel()
-	select {
-	case err := <-errs:
-		s.NoError(err)
-	case <-ctx.Done():
-		s.FailNow(ctx.Err().Error())
-	}
+	ntr, err := s.a.processNextTask(s.ctx, nextTask, s.tc, false)
+
+	s.NoError(err)
+	s.Require().NotNil(ntr)
+	s.Equal(false, ntr.shouldExit)
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {

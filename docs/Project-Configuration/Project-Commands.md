@@ -496,6 +496,8 @@ Docker Parameters:
     container. Default is \<container_id\>.out.log.
 -   `stderr_file_name` - The file path to write stderr logs from the
     container. Default is \<container_id\>.err.log.
+-   `environment_vars` - Environment variables to pass to the container command.
+    By default, no environment variables are passed.
 
 ### Required IAM Policies for `host.create`
 
