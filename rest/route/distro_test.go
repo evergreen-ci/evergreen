@@ -212,7 +212,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(restModel.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
 	s.Equal(restModel.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
-	s.Equal(true, *d.PlannerSettings.GroupVersions)
+	s.Equal(true, d.PlannerSettings.GroupVersions)
 	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
