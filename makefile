@@ -1,6 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
+absBuildDir := $(abspath bin)
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
@@ -26,15 +27,15 @@ endif
 
 goCache := $(GOCACHE)
 ifeq (,$(goCache))
-goCache := $(abspath $(buildDir)/.cache)
+goCache := $(absBuildDir)/.cache
 endif
 goModCache := $(GOMODCACHE)
 ifeq (,$(goModCache))
-goModCache := $(abspath $(buildDir)/.mod-cache)
+goModCache := $(absBuildDir)/.mod-cache
 endif
 lintCache := $(GOLANGCI_LINT_CACHE)
 ifeq (,$(lintCache))
-lintCache := $(abspath $(buildDir)/.lint-cache)
+lintCache := $(absBuildDir)/.lint-cache
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -354,13 +355,15 @@ testArgs += -test.timeout=$(TEST_TIMEOUT)
 else
 testArgs += -test.timeout=10m
 endif
+
+testPath = ./$(if $(subst $(name),,$*),$(subst -,/,$*),)
 #  targets to run any tests in the top-level package
 $(buildDir):
 	mkdir -p $@
 $(buildDir)/output.%.test: $(buildDir)/%.testbinary .FORCE
-	$(testRunEnv) $(buildDir)/$*.testbinary $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $(buildDir)/output.$*.test
+	pushd $(testPath) && $(testRunEnv) $(absBuildDir)/$*.testbinary $(testArgs) $(testPath) 2>&1 | tee $(absBuildDir)/output.$*.test && popd
 $(buildDir)/%.testbinary: $(srcFiles) $(testSrcFiles)
-	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./$(if $(subst $(name),,$*),$(subst -,/,$*),)
+	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary $(testPath)
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
 $(buildDir)/cmd-codegen-core.testbinary: build-codegen $(srcFiles) $(testSrcFiles)
 	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./cmd/codegen/core
@@ -368,9 +371,9 @@ $(buildDir)/cmd-codegen-core.testbinary: build-codegen $(srcFiles) $(testSrcFile
 $(buildDir)/output.agent-command.testbinary: build
 	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./agent/command
 $(buildDir)/output-dlv.%.test: .FORCE
-	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
+	$(testRunEnv) dlv test $(testArgs) $(testPath) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(testRunEnv) $(gobin) test $(testArgs) $(testPath) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 ifneq (go,$(gobin))
