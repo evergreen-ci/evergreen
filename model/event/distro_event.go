@@ -1,6 +1,7 @@
 package event
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -31,6 +32,9 @@ type DistroEventData struct {
 	DistroId string      `bson:"d_id,omitempty" json:"d_id,omitempty"`
 	UserId   string      `bson:"u_id,omitempty" json:"u_id,omitempty"`
 	Data     interface{} `bson:"dstr,omitempty" json:"dstr,omitempty"`
+	User     string      `bson:"user,omitempty" json:"user,omitempty"`
+	Before   interface{} `bson:"before" json:"before"`
+	After    interface{} `bson:"after" json:"after"`
 }
 
 func LogDistroEvent(distroId string, eventType string, eventData DistroEventData) {
@@ -57,8 +61,21 @@ func LogDistroAdded(distroId, userId string, data interface{}) {
 }
 
 // LogDistroModified should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroModified(distroId, userId string, data interface{}) {
-	LogDistroEvent(distroId, EventDistroModified, DistroEventData{UserId: userId, Data: data})
+func LogDistroModified(distroId, userId string, before, after interface{}) {
+	// Stop if there are no changes
+	if reflect.DeepEqual(before, after) {
+		return
+	}
+
+	data := DistroEventData{
+		UserId: userId,
+		User:   userId,
+		Data:   after,
+		Before: before,
+		After:  after,
+	}
+
+	LogDistroEvent(distroId, EventDistroModified, data)
 }
 
 // LogDistroRemoved should take in DistroData in order to preserve the ProviderSettingsList
