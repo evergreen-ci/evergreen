@@ -83,7 +83,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
-		Activate:            !args.UnscheduleTasks,
+		Activate:            !args.UnscheduleDownstreamVersions,
 		TriggerID:           args.TriggerID,
 		TriggerType:         args.TriggerType,
 		EventID:             args.EventID,

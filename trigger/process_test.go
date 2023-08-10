@@ -306,7 +306,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		RemotePath: "self-tests.yml",
 		Branch:     "main",
 		Triggers: []model.TriggerDefinition{
-			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, UnscheduleTasks: true, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
+			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, UnscheduleDownstreamVersions: true, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
 	}
 	assert.NoError(downstreamProjectRef.Insert())
