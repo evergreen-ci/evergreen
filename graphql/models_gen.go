@@ -264,7 +264,7 @@ type SaveDistroInput struct {
 }
 
 // Return type representing the updated distro and the number of hosts that were updated.
-type SaveDistroSectionPayload struct {
+type SaveDistroPayload struct {
 	Distro    *model.APIDistro `json:"distro"`
 	HostCount int              `json:"hostCount"`
 }

@@ -383,7 +383,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 			"message": "task response missing secret",
 			"task":    tc.task.ID,
 		})
-		return processNextResponse{}, nil
+		return processNextResponse{
+			noTaskToRun: true,
+		}, nil
 	}
 
 	prevLogger := tc.logger

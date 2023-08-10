@@ -312,6 +312,7 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 		Method:           method,
 		SkipImageBuild:   true,
 		EnvironmentVars:  envVars,
+		ExtraHosts:       createHost.ExtraHosts,
 	}
 
 	containerPool := env.Settings().ContainerPools.GetContainerPool(d.ContainerPool)

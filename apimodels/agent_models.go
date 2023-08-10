@@ -3,6 +3,7 @@ package apimodels
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -78,12 +79,6 @@ type TaskEndDetail struct {
 type OOMTrackerInfo struct {
 	Detected bool  `bson:"detected" json:"detected"`
 	Pids     []int `bson:"pids" json:"pids"`
-}
-
-type TaskLogs struct {
-	AgentLogURLs  []LogInfo `bson:"agent" json:"agent"`
-	SystemLogURLs []LogInfo `bson:"system" json:"system"`
-	TaskLogURLs   []LogInfo `bson:"task" json:"task"`
 }
 
 type LogInfo struct {
@@ -173,7 +168,8 @@ type CreateHost struct {
 	PollFrequency            int               `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
 	StdoutFile               string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
 	StderrFile               string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
-	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"environment_vars"`
+	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"expand"`
+	ExtraHosts               []string          `mapstructure:"extra_hosts" json:"extra_hosts" yaml:"extra_hosts" plugin:"expand"`
 }
 
 type EbsDevice struct {
@@ -194,7 +190,7 @@ func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
 
-func (ch *CreateHost) ValidateDocker(ctx context.Context) error {
+func (ch *CreateHost) validateDocker(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -228,10 +224,15 @@ func (ch *CreateHost) ValidateDocker(ctx context.Context) error {
 		(ch.Registry.Username == "" && ch.Registry.Password != "") {
 		catcher.New("username and password must both be set or unset")
 	}
+
+	for _, h := range ch.ExtraHosts {
+		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
+	}
+
 	return catcher.Resolve()
 }
 
-func (ch *CreateHost) ValidateEC2() error {
+func (ch *CreateHost) validateEC2() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -315,11 +316,11 @@ func (ch *CreateHost) setNumHosts() error {
 func (ch *CreateHost) Validate(ctx context.Context) error {
 	if ch.CloudProvider == ProviderEC2 || ch.CloudProvider == "" { //default
 		ch.CloudProvider = ProviderEC2
-		return ch.ValidateEC2()
+		return ch.validateEC2()
 	}
 
 	if ch.CloudProvider == ProviderDocker {
-		return ch.ValidateDocker(ctx)
+		return ch.validateDocker(ctx)
 	}
 
 	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)
