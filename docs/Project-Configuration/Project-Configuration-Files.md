@@ -537,10 +537,11 @@ Similar to `pre`, by default, a command failing during the `post` block will not
 cause the entire task to fail. If you want to enforce that failures during
 `post` cause the task to fail, set the field `post_error_fails_task` to true. If
 `post_error_fails_task` is set to true and both the main task and post block
-fail, the task's failing command will be the command that failed in the main
-task block, not the failing post command. `post_error_fails_task` has no effect
-on tasks run in task groups because they do not run `post`; instead, those
-tasks, follow the settings defined for that task group.
+have failing commands, the task's failing command will be the command that
+failed in the main task block, not the failing post command.
+`post_error_fails_task` has no effect on tasks run in task groups because they
+do not run `post`; instead, those tasks, follow the settings defined for that
+task group.
 
 By default, commands in `post` or `timeout` will time out after 15 minutes. You
 can override this timeout by setting `callback_timeout_secs` at the root level
