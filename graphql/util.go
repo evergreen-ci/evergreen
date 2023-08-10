@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -1059,4 +1060,59 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 		RequiredLevel: requiredLevel,
 	}
 	return u.HasPermission(opts)
+}
+
+func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
+	data, ok := entry.Data.(*event.DistroEventData)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, "casting distro event data")
+	}
+
+	after, err := interfaceToMap(ctx, data.After)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting 'after' field to map: '%s'", err.Error()))
+	}
+
+	before, err := interfaceToMap(ctx, data.Before)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting 'before' field to map: '%s'", err.Error()))
+	}
+
+	legacyData, err := interfaceToMap(ctx, data.Data)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting legacy 'data' field to map: '%s'", err.Error()))
+	}
+
+	user := data.User
+	if user == "" {
+		// Use legacy UserId field if User is undefined
+		user = data.UserId
+	}
+
+	return &DistroEvent{
+		After:     after,
+		Before:    before,
+		Data:      legacyData,
+		Timestamp: entry.Timestamp,
+		User:      user,
+	}, nil
+}
+
+func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface{}, error) {
+	if data == nil {
+		return nil, nil
+	}
+
+	mapField := map[string]interface{}{}
+	marshalledData, err := bson.Marshal(data)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("marshalling data: %s", err.Error()))
+	}
+
+	err = bson.Unmarshal(marshalledData, &mapField)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unmarshalling data: %s", err.Error()))
+	}
+
+	return mapField, nil
 }
