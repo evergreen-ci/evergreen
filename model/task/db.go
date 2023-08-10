@@ -97,6 +97,7 @@ var (
 	GenerateTaskKey                = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	LogServiceVersionKey           = bsonutil.MustHaveTag(Task{}, "LogServiceVersion")
 	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
 	HasCedarResultsKey             = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
 	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
@@ -108,7 +109,6 @@ var (
 	GeneratedTasksToActivateKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
 	ResetWhenFinishedKey        = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	ResetFailedWhenFinishedKey  = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
-	LogsKey                     = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
@@ -1040,7 +1040,6 @@ func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]
 
 	removeFields := bson.M{
 		"$project": bson.M{
-			LogsKey:      0,
 			OldTaskIdKey: 0,
 			DependsOnKey + "." + DependencyUnattainableKey: 0,
 		},

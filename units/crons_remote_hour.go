@@ -53,6 +53,7 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 		PopulateCloudCleanupJob(j.env),
 		PopulateVolumeExpirationCheckJob(),
 		PopulateVolumeExpirationJob(),
+		PopulateUnstickVolumesJob(),
 		PopulateSSHKeyUpdates(j.env),
 		PopulateDuplicateTaskCheckJobs(),
 		PopulatePodResourceCleanupJobs(),

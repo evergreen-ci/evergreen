@@ -911,9 +911,6 @@ func TestEndingTask(t *testing.T) {
 			So(t.Status, ShouldEqual, evergreen.TaskFailed)
 			So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
 			So(t.StartTime.Unix(), ShouldEqual, now.Add(-5*time.Minute).Unix())
-			Convey("if no logs are present, it should not be nil", func() {
-				So(t.Logs, ShouldBeNil)
-			})
 		})
 		Convey("a task with no start time set should have one added", func() {
 			now := time.Now()
@@ -4068,9 +4065,9 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 }
 
 func TestHasResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
 	}()
 
 	for _, test := range []struct {
@@ -4197,9 +4194,9 @@ func TestHasResults(t *testing.T) {
 }
 
 func TestCreateTestResultsTaskOptions(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
 	}()
 
 	for _, test := range []struct {
@@ -4635,6 +4632,82 @@ func TestGenerateNotRun(t *testing.T) {
 				GeneratedTasks:        false,
 				GeneratedJSONAsString: []string{"some_generated_json"},
 			})
+		})
+	}
+}
+
+func TestSetLogServiceVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := evergreen.GetEnvironment()
+	defer func() {
+		assert.NoError(t, env.DB().Collection(Collection).Drop(ctx))
+	}()
+	require.NoError(t, env.DB().Collection(Collection).Drop(ctx))
+
+	for _, test := range []struct {
+		name   string
+		dbTsk  *Task
+		tsk    *Task
+		hasErr bool
+	}{
+		{
+			name: "DisplayTask",
+			tsk: &Task{
+				DisplayOnly: true,
+			},
+			hasErr: true,
+		},
+		{
+			name: "VersionAlreadySet",
+			tsk: &Task{
+				LogServiceVersion: utility.ToIntPtr(1),
+			},
+			hasErr: true,
+		},
+		{
+			name: "TaskDNE",
+			tsk: &Task{
+				Id:                "DNE",
+				LogServiceVersion: utility.ToIntPtr(1),
+			},
+			hasErr: true,
+		},
+		{
+			name: "VersionAlreadySetInDB",
+			dbTsk: &Task{
+				Id:                "task0",
+				LogServiceVersion: utility.ToIntPtr(1),
+			},
+			tsk: &Task{
+				Id: "task0",
+			},
+			hasErr: true,
+		},
+		{
+			name: "UnsetVersion",
+			dbTsk: &Task{
+				Id: "task1",
+			},
+			tsk: &Task{
+				Id: "task1",
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if test.dbTsk != nil {
+				_, err := env.DB().Collection(Collection).InsertOne(ctx, test.dbTsk)
+				require.NoError(t, err)
+			}
+
+			err := test.tsk.SetLogServiceVersion(ctx, env, 0)
+			if test.hasErr {
+				require.Error(t, err)
+				assert.NotEqual(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+			}
 		})
 	}
 }
