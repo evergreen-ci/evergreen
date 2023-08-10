@@ -126,7 +126,7 @@ func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind tim
 			timeSinceTickerStarted := time.Since(timeTickerStarted)
 
 			if timeSinceTickerStarted > timeout {
-				tc.logger.Execution().Errorf("Hit %s timeout (%s).", kind, getTimeout())
+				tc.logger.Task().Errorf("Hit %s timeout (%s).", kind, getTimeout())
 				tc.reachTimeOut(kind, timeout)
 				return
 			}
