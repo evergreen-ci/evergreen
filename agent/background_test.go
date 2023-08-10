@@ -52,20 +52,32 @@ func (s *BackgroundSuite) SetupTest() {
 	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)
 }
 
-// kim: TODO: replace with startTimeoutWatch
-func (s *BackgroundSuite) TestWithCallbackTimeoutDefault() {
-	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
-	deadline, ok := ctx.Deadline()
-	s.True(deadline.Sub(time.Now()) > (defaultCallbackCmdTimeout - time.Second)) // nolint
-	s.True(ok)
+func (s *BackgroundSuite) TestStartTimeoutWatchTimesOut() {
+	const testTimeout = 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	const timeout = time.Nanosecond
+	startAt := time.Now()
+	s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, timeout, cancel)
+
+	s.Less(time.Since(startAt), testTimeout)
+	s.True(s.tc.hadTimedOut())
+	s.Equal(callbackTimeout, s.tc.getTimeoutType(), "should have hit callback timeout")
+	s.Equal(timeout, s.tc.getTimeoutDuration(), "should have recorded timeout duration")
 }
 
-func (s *BackgroundSuite) TestWithCallbackTimeoutSetByProject() {
-	s.tc.taskConfig.Project.CallbackTimeout = 100
-	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
-	deadline, ok := ctx.Deadline()
-	s.True(deadline.Sub(time.Now()) > 99) // nolint
-	s.True(ok)
+func (s *BackgroundSuite) TestStartTimeoutWatchExitsWithoutTimeout() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	timeoutWatcherDone := make(chan struct{})
+	go func() {
+		s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, time.Hour, cancel)
+		close(timeoutWatcherDone)
+	}()
+	cancel()
+
+	s.False(s.tc.hadTimedOut())
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
 }
 
 const (

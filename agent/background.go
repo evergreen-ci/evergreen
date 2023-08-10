@@ -133,8 +133,6 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, c
 // startTimeoutWatch waits until the given timeout is hit. If the watcher has
 // run for longer than the timeout, then it marks the task as having hit the
 // timeout and cancels the running operation.
-// kim: TODO: use this instead of context.WithTimeout where applicable.
-// kim: TODO: check existing tests pass and add callback timeout tests.
 func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind timeoutType, timeout time.Duration, cancel context.CancelFunc) {
 	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", kind))
 	defer cancel()
@@ -159,18 +157,6 @@ func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind tim
 	}
 }
 
-// withCallbackTimeout creates a context with a timeout set either to the project's
-// callback timeout if it has one or to the defaultCallbackCmdTimeout.
-func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (context.Context, context.CancelFunc) {
-	timeout := defaultCallbackCmdTimeout
-	taskConfig := tc.getTaskConfig()
-	if taskConfig != nil && taskConfig.Project != nil && taskConfig.Project.CallbackTimeout != 0 {
-		timeout = time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
-	}
-	return context.WithTimeout(ctx, timeout)
-}
-
-// kim: NOTE: basically the same as getExecTimeout but it's the callback timeout
 // getCallbackTimeout returns the callback timeout for the task.
 func (tc *taskContext) getCallbackTimeout() time.Duration {
 	tc.RLock()
