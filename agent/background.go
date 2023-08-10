@@ -106,34 +106,10 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
-	defer recovery.LogStackTraceAndContinue("exec timeout watcher")
-	defer cancel()
-	ticker := time.NewTicker(time.Second)
-	timeTickerStarted := time.Now()
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			grip.Info("Exec timeout watcher canceled.")
-			return
-		case <-ticker.C:
-			timeout := tc.getExecTimeout()
-			timeSinceTickerStarted := time.Since(timeTickerStarted)
-
-			if timeSinceTickerStarted > timeout {
-				tc.logger.Execution().Errorf("Hit exec timeout (%s).", timeout)
-				tc.reachTimeOut(execTimeout, timeout)
-				return
-			}
-		}
-	}
-}
-
 // startTimeoutWatch waits until the given timeout is hit. If the watcher has
 // run for longer than the timeout, then it marks the task as having hit the
 // timeout and cancels the running operation.
-func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind timeoutType, timeout time.Duration, cancel context.CancelFunc) {
+func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind timeoutType, getTimeout func() time.Duration, cancel context.CancelFunc) {
 	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", kind))
 	defer cancel()
 	ticker := time.NewTicker(time.Second)
@@ -146,10 +122,11 @@ func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind tim
 			grip.Infof("%s timeout watcher canceled.", kind)
 			return
 		case <-ticker.C:
+			timeout := getTimeout()
 			timeSinceTickerStarted := time.Since(timeTickerStarted)
 
 			if timeSinceTickerStarted > timeout {
-				tc.logger.Execution().Errorf("Hit %s timeout (%s).", kind, timeout)
+				tc.logger.Execution().Errorf("Hit %s timeout (%s).", kind, getTimeout())
 				tc.reachTimeOut(kind, timeout)
 				return
 			}

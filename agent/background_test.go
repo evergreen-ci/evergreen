@@ -58,7 +58,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatchTimesOut() {
 	defer cancel()
 	const timeout = time.Nanosecond
 	startAt := time.Now()
-	s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, timeout, cancel)
+	s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, func() time.Duration { return timeout }, cancel)
 
 	s.Less(time.Since(startAt), testTimeout)
 	s.True(s.tc.hadTimedOut())
@@ -70,7 +70,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatchExitsWithoutTimeout() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	timeoutWatcherDone := make(chan struct{})
 	go func() {
-		s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, time.Hour, cancel)
+		s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, func() time.Duration { return time.Hour }, cancel)
 		close(timeoutWatcherDone)
 	}()
 	cancel()

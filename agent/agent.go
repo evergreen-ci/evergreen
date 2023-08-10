@@ -673,9 +673,9 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 	}
 	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
-	innerCtx, innerCancel := context.WithCancel(ctx)
-	defer innerCancel()
-	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
+	execTimeoutCtx, execTimeoutCancel := context.WithCancel(ctx)
+	defer execTimeoutCancel()
+	go a.startTimeoutWatch(ctx, tc, execTimeout, tc.getExecTimeout, execTimeoutCancel)
 
 	// set up the system stats collector
 	tc.statsCollector = NewSimpleStatsCollector(
@@ -686,34 +686,34 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 		"df -h",
 		"${ps|ps}",
 	)
-	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
+	tc.statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 
-	if innerCtx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution after setup: %s", innerCtx.Err())
+	if execTimeoutCtx.Err() != nil {
+		tc.logger.Execution().Infof("Stopping task execution after setup: %s", execTimeoutCtx.Err())
 		return evergreen.TaskSystemFailed
 	}
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-	if err = a.comm.StartTask(innerCtx, tc.task); err != nil {
+	if err = a.comm.StartTask(execTimeoutCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		return evergreen.TaskSystemFailed
 	}
 
-	a.killProcs(innerCtx, tc, false, "task is starting")
+	a.killProcs(execTimeoutCtx, tc, false, "task is starting")
 
-	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
+	if err = a.runPreTaskCommands(execTimeoutCtx, tc); err != nil {
 		return evergreen.TaskFailed
 	}
 
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
 		tc.logger.Execution().Info("OOM tracker clearing system messages.")
-		if err = tc.oomTracker.Clear(innerCtx); err != nil {
+		if err = tc.oomTracker.Clear(execTimeoutCtx); err != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "clearing OOM tracker system messages"))
 		}
 	}
 
-	if err = a.runTaskCommands(innerCtx, tc); err != nil {
+	if err = a.runTaskCommands(execTimeoutCtx, tc); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
 		return evergreen.TaskFailed
 	}
@@ -749,7 +749,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			} else {
 				timeout = tc.getCallbackTimeout()
 			}
-			go a.startTimeoutWatch(setupGroupCtx, tc, setupGroupTimeout, timeout, setupGroupCancel)
+			go a.startTimeoutWatch(setupGroupCtx, tc, setupGroupTimeout, func() time.Duration { return timeout }, setupGroupCancel)
 
 			err = a.runCommandsInBlock(setupGroupCtx, tc, taskGroup.SetupGroup.List(), opts, setupGroupBlock)
 			if err != nil {
@@ -828,7 +828,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	start := time.Now()
 	timeoutCtx, timeoutCancel := context.WithCancel(ctx)
 	defer timeoutCancel()
-	go a.startTimeoutWatch(timeoutCtx, tc, callbackTimeout, tc.getCallbackTimeout(), timeoutCancel)
+	go a.startTimeoutWatch(timeoutCtx, tc, callbackTimeout, tc.getCallbackTimeout, timeoutCancel)
 
 	timeout, err := tc.taskConfig.GetTimeout(tc.taskGroup)
 	if err != nil {
@@ -964,7 +964,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	opts := runCommandsOptions{}
 	postCtx, postCancel := context.WithCancel(ctx)
 	defer postCancel()
-	go a.startTimeoutWatch(ctx, tc, callbackTimeout, tc.getCallbackTimeout(), postCancel)
+	go a.startTimeoutWatch(ctx, tc, callbackTimeout, tc.getCallbackTimeout, postCancel)
 	taskConfig := tc.getTaskConfig()
 	post, err := taskConfig.GetPost(tc.taskGroup)
 	if err != nil {
@@ -1016,7 +1016,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 
 		teardownGroupCtx, teardownGroupCancel := context.WithCancel(ctx)
 		defer teardownGroupCancel()
-		go a.startTimeoutWatch(teardownGroupCtx, tc, callbackTimeout, tc.getCallbackTimeout(), teardownGroupCancel)
+		go a.startTimeoutWatch(teardownGroupCtx, tc, callbackTimeout, tc.getCallbackTimeout, teardownGroupCancel)
 		err := a.runCommandsInBlock(teardownGroupCtx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{}, teardownGroupBlock)
 		grip.Error(errors.Wrap(err, "running post-group commands"))
 		grip.Info("Finished running post-group commands.")
