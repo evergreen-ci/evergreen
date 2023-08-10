@@ -48,7 +48,7 @@ func (l *logHarness) Flush(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
-// Close closes the all the task loggers and prevents further writes to it. Note
+// Close closes all the task loggers and prevents further writes to it. Note
 // that this should not be called until the task is completely finished and will
 // not log any more; otherwise, any further logs may be lost. To flush the
 // current buffered task logs, call Flush instead.
