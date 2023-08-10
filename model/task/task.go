@@ -1453,25 +1453,26 @@ func (t *Task) SetLogServiceVersion(ctx context.Context, env evergreen.Environme
 		return errors.New("log service version already set")
 	}
 
-	if err := env.DB().Collection(Collection).FindOneAndUpdate(
-		ctx,
-		bson.M{
-			IdKey:                t.Id,
-			LogServiceVersionKey: nil,
+	res, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, []bson.M{
+		{
+			"$set": bson.M{LogServiceVersionKey: bson.M{
+				"$ifNull": bson.A{
+					"$" + LogServiceVersionKey,
+					version,
+				}},
+			},
 		},
-		bson.M{
-			"$set": bson.M{LogServiceVersionKey: version},
-		},
-		options.FindOneAndUpdate().SetReturnDocument(options.After),
-	).Decode(t); err != nil {
+	})
+	if err != nil {
 		return errors.Wrap(err, "setting the log service version")
 	}
-	if t.LogServiceVersion == nil {
-		return errors.New("programmatic error: failed to set previously unset log service version")
+	if res.MatchedCount == 0 {
+		return errors.New("programmatic error: task not found")
 	}
-	if utility.FromIntPtr(t.LogServiceVersion) != version {
+	if res.ModifiedCount == 0 {
 		return errors.New("log service version already set")
 	}
+	t.LogServiceVersion = utility.ToIntPtr(version)
 
 	return nil
 }
