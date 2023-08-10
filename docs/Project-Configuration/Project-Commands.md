@@ -1028,7 +1028,8 @@ Parameters:
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
     30, 2020 containing dots (".") are not supported.
--   `permissions`: the permissions string to upload with
+-   `permissions`: the S3 permissions string to upload with. See [S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html#canned-acl)
+    for allowed values.
 -   `content_type`: the MIME type of the file
 -   `optional`: boolean to indicate if failure to find or upload this
     file will result in a task failure. Not compatible with

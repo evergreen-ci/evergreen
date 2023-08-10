@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/jasper"
@@ -69,6 +70,12 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
+		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
@@ -122,6 +129,12 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
+		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
@@ -172,6 +185,12 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
+		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
 		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
@@ -224,6 +243,12 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
+		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
@@ -275,6 +300,12 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
+		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
@@ -324,6 +355,12 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
+		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
 		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
