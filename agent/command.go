@@ -223,11 +223,31 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		}
 
 		if ctx.Err() == context.DeadlineExceeded {
-			tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", displayName, int(tc.timeout.idleTimeoutDuration.Seconds()))
+			// kim: NOTE: timeout due to exec or idle timeout will not cause
+			// deadline exceeded - it'll just be cancelled. However, we can't
+			// just check for cancelled, because what if it cancels for another
+			// reason? For example, cancelling in the timeout block (after we
+			// already know it's a timeout scenario)
+
+			// kim: NOTE: this timeout could happen for either idle timeout,
+			// exec timeout, or callback timeout. So this log is just wrong.
+			// kim: TODO: figure out if we can get the timeout reason without
+			// having to hard code assumptions.
+			// kim: NOTE: can use timeout type since it'll be set when the
+			// context errors. But not for callback
+
+			// kim: TODO: remove
+			// tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", displayName, int(tc.timeout.idleTimeoutDuration.Seconds()))
+			if timeoutType := tc.getTimeoutType(); timeoutType != "" {
+				timeoutDuration := tc.getTimeoutDuration()
+				tc.logger.Task().Errorf("Command %s stopped early because %s timeout duration of %d seconds has been reached.", displayName, timeoutType, timeoutDuration.Seconds())
+			} else {
+				tc.logger.Task().Errorf("Command %s stopped early because context timed out.", displayName)
+			}
 		} else {
 			tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
 		}
-		return errors.Wrap(ctx.Err(), "agent stopped early")
+		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
 	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
 	if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {

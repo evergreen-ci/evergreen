@@ -52,6 +52,7 @@ func (s *BackgroundSuite) SetupTest() {
 	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)
 }
 
+// kim: TODO: replace with startTimeoutWatch
 func (s *BackgroundSuite) TestWithCallbackTimeoutDefault() {
 	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
 	deadline, ok := ctx.Deadline()

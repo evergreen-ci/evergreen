@@ -134,8 +134,10 @@ type timeoutInfo struct {
 type timeoutType string
 
 const (
-	execTimeout timeoutType = "exec"
-	idleTimeout timeoutType = "idle"
+	execTimeout       timeoutType = "exec"
+	idleTimeout       timeoutType = "idle"
+	callbackTimeout   timeoutType = "callback"
+	setupGroupTimeout timeoutType = "setup_group"
 )
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
@@ -671,6 +673,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 	}
 	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
+	// kim: NOTE: callback logic might be equivalent for max exec timeout. Can
+	// maybe absorb it into the callback timeout background helper.
+	// kim: NOTE: possibly a little tricky becaues the exec timeout can be
+	// dynamically modified while the task is running by timeout.update.
 	innerCtx, innerCancel := context.WithCancel(ctx)
 	defer innerCancel()
 	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
@@ -736,14 +742,22 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			tc.logger.Task().Infof("Running setup group for task group '%s'.", taskGroup.Name)
 			opts.failPreAndPost = taskGroup.SetupGroupFailTask
 
-			var setupGroupCtx context.Context
-			var setupGroupCancel context.CancelFunc
-			if taskGroup.SetupGroupTimeoutSecs > 0 {
-				setupGroupCtx, setupGroupCancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
-			} else {
-				setupGroupCtx, setupGroupCancel = a.withCallbackTimeout(ctx, tc)
-			}
+			// var setupGroupCtx context.Context
+			// var setupGroupCancel context.CancelFunc
+			setupGroupCtx, setupGroupCancel := context.WithCancel(ctx)
 			defer setupGroupCancel()
+
+			var timeout time.Duration
+			// kim: TODO: clean up
+			// kim: NOTE: use callback timeout for setup_group
+			if taskGroup.SetupGroupTimeoutSecs > 0 {
+				// setupGroupCtx, setupGroupCancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
+				timeout = time.Duration(taskGroup.SetupGroupTimeoutSecs) * time.Second
+			} else {
+				timeout = tc.getCallbackTimeout()
+				// setupGroupCtx, setupGroupCancel = a.withCallbackTimeout(ctx, tc)
+			}
+			go a.startTimeoutWatch(setupGroupCtx, tc, setupGroupTimeout, timeout, setupGroupCancel)
 
 			err = a.runCommandsInBlock(setupGroupCtx, tc, taskGroup.SetupGroup.List(), opts, setupGroupBlock)
 			if err != nil {
@@ -757,6 +771,14 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		tc.ranSetupGroup = true
 	}
 
+	// kim: NOTE: for some reason, pre does not have callback timeout apply.
+	// Kind of inconsistent with post and the other pre/post blocks but maybe
+	// figure out what to do about it later.
+	// kim: NOTE: we can give people a generous callback timeout (like 1 hour),
+	// then warn if people don't set it explicitly like exec_timeout_secs to
+	// indicate that this timeout might be too generous for their use case.
+	// kim: NOTE: nobody's ever set callback_timeout_secs so they presumably
+	// aren't affected.
 	pre, err := tc.taskConfig.GetPre(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for pre-task commands"))
@@ -820,9 +842,15 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	tc.logger.Task().Info("Running task-timeout commands.")
 	start := time.Now()
-	var cancel context.CancelFunc
-	ctx, cancel = a.withCallbackTimeout(ctx, tc)
-	defer cancel()
+	timeoutCtx, timeoutCancel := context.WithCancel(ctx)
+	defer timeoutCancel()
+	go a.startTimeoutWatch(timeoutCtx, tc, callbackTimeout, tc.getCallbackTimeout(), timeoutCancel)
+	// kim: TODO: remove
+	// var cancel context.CancelFunc
+	// kim: NOTE: timeout block applies callback timeout so that it doesn't run
+	// forever.
+	// ctx, cancel = a.withCallbackTimeout(ctx, tc)
+	// defer cancel()
 
 	timeout, err := tc.taskConfig.GetTimeout(tc.taskGroup)
 	if err != nil {
@@ -830,7 +858,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if timeout != nil {
-		err := a.runCommandsInBlock(ctx, tc, timeout.List(), runCommandsOptions{}, taskTimeoutBlock)
+		err := a.runCommandsInBlock(timeoutCtx, tc, timeout.List(), runCommandsOptions{}, taskTimeoutBlock)
 		tc.logger.Execution().Error(errors.Wrap(err, "running timeout commands"))
 		tc.logger.Task().Infof("Finished running timeout commands in %s.", time.Since(start))
 	}
@@ -919,7 +947,12 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		TimedOut:        tc.hadTimedOut(),
+		TimedOut: tc.hadTimedOut(),
+		// kim: NOTE: this could change the task end details since the callback
+		// timeout will be set when it times out. This shows up in the UI, and
+		// possibly would show up in the REST API. The only user-facing
+		// difference is a callback timeout will result in task timed out instead
+		// of task failed.
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
 		OOMTracker:      tc.getOomTrackerInfo(),
@@ -956,8 +989,14 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	defer a.killProcs(ctx, tc, false, "post task commands are finished")
 	tc.logger.Task().Info("Running post-task commands.")
 	opts := runCommandsOptions{}
-	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
-	defer cancel()
+	// kim: NOTE: Use callback timeout for both post and teardown_task, but not
+	// pre and setup_task.
+	postCtx, postCancel := context.WithCancel(ctx)
+	defer postCancel()
+	go a.startTimeoutWatch(ctx, tc, callbackTimeout, tc.getCallbackTimeout(), postCancel)
+	// kim: TODO: remove
+	// postCtx, cancel := a.withCallbackTimeout(ctx, tc)
+	// defer cancel()
 	taskConfig := tc.getTaskConfig()
 	post, err := taskConfig.GetPost(tc.taskGroup)
 	if err != nil {
@@ -1006,10 +1045,17 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if taskGroup != nil && taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands.")
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
-		var cancel context.CancelFunc
-		ctx, cancel = a.withCallbackTimeout(ctx, tc)
-		defer cancel()
-		err := a.runCommandsInBlock(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{}, teardownGroupBlock)
+
+		// kim: TODO: ensure timeout stops after block exits.
+		teardownGroupCtx, teardownGroupCancel := context.WithCancel(ctx)
+		defer teardownGroupCancel()
+		go a.startTimeoutWatch(teardownGroupCtx, tc, callbackTimeout, tc.getCallbackTimeout(), teardownGroupCancel)
+		// kim: TODO: remove
+		// var cancel context.CancelFunc
+		// // kim: NOTE: callback timeout applies to teardown_group.
+		// ctx, cancel = a.withCallbackTimeout(ctx, tc)
+		// defer cancel()
+		err := a.runCommandsInBlock(teardownGroupCtx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{}, teardownGroupBlock)
 		grip.Error(errors.Wrap(err, "running post-group commands"))
 		grip.Info("Finished running post-group commands.")
 	}
