@@ -1,1 +1,0 @@
-/home/kim/go/src/github.com/evergreen-ci/evergreen/kim/local_smoke_test.sh
