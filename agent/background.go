@@ -127,7 +127,14 @@ func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind tim
 
 			if timeSinceTickerStarted > timeout {
 				tc.logger.Task().Errorf("Hit %s timeout (%s).", kind, getTimeout())
-				tc.reachTimeOut(kind, timeout)
+				if !tc.hadTimedOut() {
+					// Record a timeout only if one has not already been
+					// detected. This is because if the task encounters multiple
+					// timeouts (e.g. hits the idle timeout in the pre block,
+					// then hits callback timeout in the timeout block), it
+					// should fail due to the first timeout that occurs.
+					tc.reachTimeOut(kind, timeout)
+				}
 				return
 			}
 		}
