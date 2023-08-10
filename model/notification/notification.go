@@ -80,7 +80,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.SlackSubscriberType:
 		return evergreen.SenderSlack, nil
 
-	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
 	case event.EnqueuePatchSubscriberType:
@@ -203,6 +203,17 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		payload.Ref = sub.Ref
 		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
 
+	case event.GithubMergeSubscriberType:
+		sub := n.Subscriber.Target.(*event.GithubMergeSubscriber)
+		payload, ok := n.Payload.(*message.GithubStatus)
+		if !ok || payload == nil {
+			return nil, errors.New("github-merge payload is invalid")
+		}
+		payload.Owner = sub.Owner
+		payload.Repo = sub.Repo
+		payload.Ref = sub.Ref
+		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
+
 	case event.EnqueuePatchSubscriberType:
 		payload, ok := n.Payload.(*model.EnqueuePatch)
 		if !ok || payload == nil {
@@ -297,6 +308,7 @@ type NotificationStats struct {
 	Email             int `json:"email" bson:"email" yaml:"email"`
 	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
 	GithubCheck       int `json:"github_check" bson:"github_check" yaml:"github_check"`
+	GithubMerge       int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
 	EnqueuePatch      int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
 }
 
@@ -338,6 +350,9 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.GithubCheckSubscriberType:
 			nStats.GithubCheck = data.Count
+
+		case event.GithubMergeSubscriberType:
+			nStats.GithubMerge = data.Count
 
 		case event.JIRAIssueSubscriberType:
 			nStats.JIRAIssue = data.Count

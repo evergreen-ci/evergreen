@@ -412,7 +412,7 @@ func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes
 	}
 
 	switch sub.Subscriber.Type {
-	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		if len(data.githubDescription) == 0 {
 			return nil, errors.Errorf("GitHub subscriber not supported for trigger '%s'", sub.Trigger)
 		}
