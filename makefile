@@ -1,7 +1,6 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-absBuildDir := $(abspath bin)
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
@@ -27,15 +26,15 @@ endif
 
 goCache := $(GOCACHE)
 ifeq (,$(goCache))
-goCache := $(absBuildDir)/.cache
+goCache := $(abspath $(buildDir)/.cache)
 endif
 goModCache := $(GOMODCACHE)
 ifeq (,$(goModCache))
-goModCache := $(absBuildDir)/.mod-cache
+goModCache := $(abspath $(buildDir)/.mod-cache)
 endif
 lintCache := $(GOLANGCI_LINT_CACHE)
 ifeq (,$(lintCache))
-lintCache := $(absBuildDir)/.lint-cache
+lintCache := $(abspath $(buildDir)/.lint-cache)
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -296,7 +295,7 @@ coverage-html:$(coverageHtmlOutput)
 list-tests:
 	@echo -e "test targets:" $(foreach target,$(packages),\\n\\ttest-$(target))
 phony += lint build test coverage coverage-html list-tests
-.PRECIOUS:$(testOutput) $(lintOutput) $(coverageOutput) $(coverageHtmlOutput) $(buildDir)/%.testbinary
+.PRECIOUS:$(testOutput) $(lintOutput) $(coverageOutput) $(coverageHtmlOutput)
 # end front-ends
 
 # start module management targets
@@ -307,9 +306,8 @@ verify-mod-tidy:
 phony += mod-tidy verify-mod-tidy
 # end module management targets
 
-# convenience targets for running tests and coverage tasks on a
+# convenience targets for runing tests and coverage tasks on a
 # specific package.
-testbinary-test-%:$(buildDir)/%.testbinary;
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
 dlv-%:$(buildDir)/output-dlv.%.test
@@ -328,7 +326,8 @@ lint-%:$(buildDir)/output.%.lint
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testArgs := -test.v
+testArgs := -v
+dlvArgs := -test.v
 testRunEnv := EVGHOME=$(evghome)
 ifeq (,$(GOCONVEY_REPORTER))
 	testRunEnv += GOCONVEY_REPORTER=silent
@@ -337,43 +336,42 @@ ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
 endif
 ifneq (,$(RUN_TEST))
-testArgs += -test.run='$(RUN_TEST)'
+testArgs += -run='$(RUN_TEST)'
+dlvArgs += -test.run='$(RUN_TEST)'
 endif
 ifneq (,$(SKIP_LONG))
-testArgs += -test.short
+testArgs += -short
+dlvArgs += -test.short
 endif
 ifneq (,$(RUN_COUNT))
-testArgs += -test.count='$(RUN_COUNT)'
+testArgs += -count='$(RUN_COUNT)'
+dlvArgs += -test.count='$(RUN_COUNT)'
 endif
 ifneq (,$(RACE_DETECTOR))
-testArgs += -test.race
+testArgs += -race
+dlvArgs += -test.race
 endif
-dlvArgs := $(testArgs)
-
 ifneq (,$(TEST_TIMEOUT))
-testArgs += -test.timeout=$(TEST_TIMEOUT)
+testArgs += -timeout=$(TEST_TIMEOUT)
 else
-testArgs += -test.timeout=10m
+testArgs += -timeout=10m
 endif
-
-testPath = ./$(if $(subst $(name),,$*),$(subst -,/,$*),)
+testArgs += -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test"
 #  targets to run any tests in the top-level package
 $(buildDir):
 	mkdir -p $@
-$(buildDir)/output.%.test: $(buildDir)/%.testbinary .FORCE
-	pushd $(testPath) && $(testRunEnv) $(absBuildDir)/$*.testbinary $(testArgs) $(testPath) 2>&1 | tee $(absBuildDir)/output.$*.test && popd
-$(buildDir)/%.testbinary: $(srcFiles) $(testSrcFiles)
-	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary $(testPath)
+$(buildDir)/output.%.test: .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
-$(buildDir)/cmd-codegen-core.testbinary: build-codegen $(srcFiles) $(testSrcFiles)
-	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./cmd/codegen/core
+$(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 # test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
-$(buildDir)/output.agent-command.testbinary: build
-	$(gobin) test -c -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test" -o $(buildDir)/$*.testbinary ./agent/command
+$(buildDir)/output.agent-command.test: build .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./agent/command 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test: .FORCE
-	$(testRunEnv) dlv test $(testArgs) $(testPath) -- $(dlvArgs) 2>&1 | tee $@
+	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) $(testPath) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 ifneq (go,$(gobin))

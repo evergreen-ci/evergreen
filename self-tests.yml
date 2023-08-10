@@ -76,8 +76,6 @@ variables:
       - func: get-project-and-modules
       - func: setup-credentials
       - func: run-make
-        vars: { target: "testbinary-${task_name}" }
-      - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-docker
     name: test
@@ -87,8 +85,6 @@ variables:
       - func: setup-credentials
       - func: setup-mongodb
       - func: setup-docker-host
-      - func: run-make
-        vars: { target: "testbinary-${task_name}" }
       - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb
@@ -101,8 +97,6 @@ variables:
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
-        vars: { target: "testbinary-${task_name}" }
-      - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb-useast
     # runs a make target above, but only on systems that have a
@@ -113,8 +107,6 @@ variables:
       - func: get-project-and-modules
       - func: setup-credentials
       - func: setup-mongodb
-      - func: run-make
-        vars: { target: "testbinary-${task_name}" }
       - func: run-make
         vars: { target: "${task_name}", tz: "America/New_York" }
   - &run-smoke-test
@@ -397,6 +389,8 @@ tasks:
     tags: ["smoke"]
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
+    name: js-test
+  - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-thirdparty-docker
   - <<: *run-go-test-suite-with-mongodb
@@ -624,13 +618,6 @@ tasks:
           AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
-  - name: js-test
-    must_have_test_results: true
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: run-make
-        vars: { target: "js-test" }
 
 task_groups:
   - name: dist-and-upload-clis
