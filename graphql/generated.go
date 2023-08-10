@@ -34551,9 +34551,9 @@ func (ec *executionContext) _PlannerSettings_groupVersions(ctx context.Context, 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PlannerSettings_groupVersions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -66738,7 +66738,7 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupVersions"))
-			data, err := ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
