@@ -65591,13 +65591,22 @@ func (ec *executionContext) unmarshalInputDistroEventsInput(ctx context.Context,
 		asMap["limit"] = 10
 	}
 
-	fieldsInOrder := [...]string{"distroId", "limit"}
+	fieldsInOrder := [...]string{"before", "distroId", "limit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "before":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Before = data
 		case "distroId":
 			var err error
 

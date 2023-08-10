@@ -66,7 +66,6 @@ func LogDistroAdded(distroId, userId string, data interface{}) {
 func LogDistroModified(distroId, userId string, before, after interface{}) {
 	// Stop if there are no changes
 	if reflect.DeepEqual(before, after) {
-
 		grip.Info(message.Fields{
 			"message":   "no changes found when logging modified distro",
 			"distro_id": distroId,

@@ -31,7 +31,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10)
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, nil)
 			So(err, ShouldBeNil)
 
 			event := eventsForDistro[2]
@@ -94,7 +94,28 @@ func TestLoggingDistroEvents(t *testing.T) {
 
 			LogDistroModified(distroId, userId, oldData, data)
 
-			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10)
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, nil)
+			So(err, ShouldBeNil)
+			So(len(eventsForDistro), ShouldEqual, 0)
+		})
+		Convey("querying with a before time prior to any distro events should return none", func() {
+			distroId := "distro_id"
+			userId := "user_id"
+			// simulate ProviderSettingsMap from DistroData
+			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
+			oldData := birch.NewDocument().Set(birch.EC.String("ami", "ami-1")).ExportMap()
+
+			timeBeforeEvents := time.Now()
+			time.Sleep(1 * time.Millisecond)
+			LogDistroAdded(distroId, userId, nil)
+			time.Sleep(1 * time.Millisecond)
+			LogDistroModified(distroId, userId, oldData, data)
+
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, nil)
+			So(err, ShouldBeNil)
+			So(len(eventsForDistro), ShouldEqual, 2)
+
+			eventsForDistro, err = FindLatestPrimaryDistroEvents(distroId, 10, &timeBeforeEvents)
 			So(err, ShouldBeNil)
 			So(len(eventsForDistro), ShouldEqual, 0)
 		})

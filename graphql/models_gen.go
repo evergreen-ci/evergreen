@@ -79,8 +79,9 @@ type DistroEvent struct {
 
 // DistroEventsInput is the input to the distroEvents query.
 type DistroEventsInput struct {
-	DistroID string `json:"distroId"`
-	Limit    *int   `json:"limit,omitempty"`
+	Before   *time.Time `json:"before,omitempty"`
+	DistroID string     `json:"distroId"`
+	Limit    *int       `json:"limit,omitempty"`
 }
 
 type DistroEventsPayload struct {

@@ -70,6 +70,17 @@
             }
         },
         {
+            "query_file": "distro_events_before.graphql",
+            "result": {
+                "data": {
+                  "distroEvents": {
+                    "count": 0,
+                    "eventLogEntries": []
+                  }
+                }
+            }
+        },
+        {
             "query_file": "distro_events.graphql",
             "result": {
                 "data": {

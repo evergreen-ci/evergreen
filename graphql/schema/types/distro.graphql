@@ -41,6 +41,7 @@ input DeleteDistroInput {
 DistroEventsInput is the input to the distroEvents query.
 """
 input DistroEventsInput {
+  before: Time
   distroId: String! @requireDistroAccess(access: VIEW)
   limit: Int = 10
 }

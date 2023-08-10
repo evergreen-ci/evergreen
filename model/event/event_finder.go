@@ -161,9 +161,9 @@ func TaskEventsInOrder(id string) db.Q {
 // Distro Events
 
 // FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
-func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
+func FindLatestPrimaryDistroEvents(id string, n int, before *time.Time) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, n, false), &events)
+	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, n, false, before), &events)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
 func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
 	events := []EventLogEntry{}
 	res := EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, 1, true), &events)
+	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, 1, true, nil), &events)
 	if err != nil {
 		return res, err
 	}
@@ -184,10 +184,17 @@ func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
 	return res, nil
 }
 
-func latestDistroEventsPipeline(id string, n int, amiOnly bool) []bson.M {
+func latestDistroEventsPipeline(id string, n int, amiOnly bool, before *time.Time) []bson.M {
+	timestamp := time.Now()
+	if before != nil {
+		timestamp = *before
+	}
+
 	// We use two different match stages to use the most efficient index.
 	resourceFilter := ResourceTypeKeyIs(ResourceTypeDistro)
 	resourceFilter[ResourceIdKey] = id
+	resourceFilter[TimestampKey] = bson.M{"$lt": timestamp}
+
 	var eventFilter = bson.M{}
 	if amiOnly {
 		eventFilter[TypeKey] = EventDistroAMIModfied
