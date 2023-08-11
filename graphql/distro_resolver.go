@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 )
 
 // CloneMethod is the resolver for the cloneMethod field.
@@ -41,9 +42,9 @@ func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.AP
 func (r *distroInputResolver) CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error {
 	switch data {
 	case CloneMethodLegacySSH:
-		*obj.CloneMethod = evergreen.CloneMethodLegacySSH
+		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodLegacySSH)
 	case CloneMethodOauth:
-		*obj.CloneMethod = evergreen.CloneMethodOAuth
+		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodOAuth)
 	default:
 		return InputValidationError.Send(ctx, fmt.Sprintf("Clone method '%s' is invalid", data))
 	}
