@@ -40,6 +40,7 @@ type DockerClient interface {
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
 	StartContainer(context.Context, *host.Host, string) error
+	AttachToContainer(context.Context, *host.Host, string, host.DockerOptions) (*types.HijackedResponse, error)
 	ListImages(context.Context, *host.Host) ([]types.ImageSummary, error)
 }
 
@@ -382,6 +383,9 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
 
 	// Build container
+	// kim: NOTE: only way to send to the container's stdin is via AttachStdin
+	// and streaming the contents (see Jasper). It's not totally clear to me if
+	// this can be done for a remote process.
 	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, nil, containerHost.Id); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "Docker create API call failed",
@@ -534,12 +538,36 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 		return errors.Wrap(err, "generating Docker client")
 	}
 
+	// kim: NOTE: before starting the container, we have to attach the stdin
+	// stream and start a goroutine to stream to it. I can't think of a better
+	// way to do this since this is the only API that Docker gives us.
+
 	opts := types.ContainerStartOptions{}
 	if err := dockerClient.ContainerStart(ctx, containerID, opts); err != nil {
 		return errors.Wrapf(err, "starting container '%s'", containerID)
 	}
 
 	return nil
+}
+
+func (c *dockerClientImpl) AttachToContainer(ctx context.Context, h *host.Host, containerID string, opts host.DockerOptions) (*types.HijackedResponse, error) {
+	if len(opts.StdinData) == 0 {
+		return nil, nil
+	}
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "generating Docker client")
+	}
+
+	stream, err := dockerClient.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
+		Stream: true,
+		Stdin:  true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "attaching stdin to container")
+	}
+
+	return &stream, nil
 }
 
 func makeDockerLogMessage(name, parent string, data interface{}) message.Fields {

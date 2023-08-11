@@ -492,6 +492,8 @@ Docker Parameters:
     requires authentication. Must set if `registry_password` is set.
 -   `registry_password` - Password for the `registry_name` if it
     requires authentication. Must set if `registry_username` is set.
+-   `stdin_file_name` - The file to provide as stdin to the container command.
+    By default, the container command has no input to stdin.
 -   `stdout_file_name` - The file path to write stdout logs from the
     container. Default is \<container_id\>.out.log.
 -   `stderr_file_name` - The file path to write stderr logs from the

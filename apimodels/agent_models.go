@@ -153,17 +153,21 @@ type CreateHost struct {
 	KeyName         string      `mapstructure:"key_name" json:"key_name" yaml:"key_name" plugin:"expand"`
 
 	// docker-related settings
-	Image                    string            `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
-	Command                  string            `mapstructure:"command" json:"command" yaml:"command" plugin:"expand"`
-	PublishPorts             bool              `mapstructure:"publish_ports" json:"publish_ports" yaml:"publish_ports"`
-	Registry                 RegistrySettings  `mapstructure:"registry" json:"registry" yaml:"registry" plugin:"expand"`
-	Background               bool              `mapstructure:"background" json:"background" yaml:"background"` // default is true
-	ContainerWaitTimeoutSecs int               `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs" yaml:"container_wait_timeout_secs"`
-	PollFrequency            int               `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
-	StdoutFile               string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
-	StderrFile               string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
-	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"expand"`
-	ExtraHosts               []string          `mapstructure:"extra_hosts" json:"extra_hosts" yaml:"extra_hosts" plugin:"expand"`
+	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
+	Command                  string           `mapstructure:"command" json:"command" yaml:"command" plugin:"expand"`
+	PublishPorts             bool             `mapstructure:"publish_ports" json:"publish_ports" yaml:"publish_ports"`
+	Registry                 RegistrySettings `mapstructure:"registry" json:"registry" yaml:"registry" plugin:"expand"`
+	Background               bool             `mapstructure:"background" json:"background" yaml:"background"` // default is true
+	ContainerWaitTimeoutSecs int              `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs" yaml:"container_wait_timeout_secs"`
+	PollFrequency            int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
+	StdinFile                string           `mapstructure:"stdin_file_name" json:"stdin_file_name" yaml:"stdin_file_name" plugin:"expand"`
+	// StdinFileContents is the full file content of the StdinFile on the host,
+	// which is then sent to the app server.
+	StdinFileContents []byte            `mapstructure:"-" json:"stdin_file_contents" yaml:"-"`
+	StdoutFile        string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
+	StderrFile        string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
+	EnvironmentVars   map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"expand"`
+	ExtraHosts        []string          `mapstructure:"extra_hosts" json:"extra_hosts" yaml:"extra_hosts" plugin:"expand"`
 }
 
 type EbsDevice struct {
