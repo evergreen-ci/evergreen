@@ -11,8 +11,21 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
+
+// CloneMethod is the resolver for the cloneMethod field.
+func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error) {
+	switch *obj.CloneMethod {
+	case evergreen.CloneMethodLegacySSH:
+		return CloneMethodLegacySSH, nil
+	case evergreen.CloneMethodOAuth:
+		return CloneMethodOauth, nil
+	default:
+		return CloneMethodLegacySSH, InternalServerError.Send(ctx, fmt.Sprintf("Clone method '%s' is invalid", *obj.CloneMethod))
+	}
+}
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.
 func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]interface{}, error) {
@@ -22,6 +35,19 @@ func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.AP
 	}
 
 	return settings, nil
+}
+
+// CloneMethod is the resolver for the cloneMethod field.
+func (r *distroInputResolver) CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error {
+	switch data {
+	case CloneMethodLegacySSH:
+		*obj.CloneMethod = evergreen.CloneMethodLegacySSH
+	case CloneMethodOauth:
+		*obj.CloneMethod = evergreen.CloneMethodOAuth
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("Clone method '%s' is invalid", data))
+	}
+	return nil
 }
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.
