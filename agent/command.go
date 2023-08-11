@@ -89,6 +89,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			return errors.Wrap(err, "making command logger")
 		}
 		defer func() {
+			// If the logger is a command-specific logger, when the command
+			// finishes, the loggers should have no more logs to send. Closing
+			// it ensure that the command logger flushes all logs and cleans up.
 			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
 		}()
 	}
@@ -166,8 +169,8 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			for key, functionValue := range commandInfo.Vars {
 				currentValue := tc.taskConfig.Expansions.Get(key)
 				if currentValue != functionValue {
-					// If a command in the func updates the expansion value, persist it.
-					prevExp[key] = currentValue
+					// If a command in the func updates the expansion value, don't reset it.
+					delete(prevExp, key)
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)

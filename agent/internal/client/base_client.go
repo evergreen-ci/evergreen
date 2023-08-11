@@ -374,17 +374,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
+	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
+	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -398,9 +398,12 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, prefix string, logType string) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	senders := []send.Sender{grip.GetSender()}
+	var senders []send.Sender
+	if sendToGlobalSender {
+		senders = append(senders, grip.GetSender())
+	}
 	underlyingBufferedSenders := []send.Sender{}
 
 	for _, opt := range opts {
@@ -938,9 +941,8 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 // StartTask marks the task as started.
 func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) error {
 	grip.Info(message.Fields{
-		"message":     "started StartTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
+		"message": "started StartTask",
+		"task_id": taskData.ID,
 	})
 	pidStr := strconv.Itoa(os.Getpid())
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
@@ -955,9 +957,8 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	}
 	defer resp.Body.Close()
 	grip.Info(message.Fields{
-		"message":     "finished StartTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
+		"message": "finished StartTask",
+		"task_id": taskData.ID,
 	})
 	return nil
 }

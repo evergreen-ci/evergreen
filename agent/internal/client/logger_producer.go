@@ -29,6 +29,9 @@ func (l *logHarness) Execution() grip.Journaler { return l.execution }
 func (l *logHarness) Task() grip.Journaler      { return l.task }
 func (l *logHarness) System() grip.Journaler    { return l.system }
 
+// Flush flushes the current buffered task logs. This is safe to call multiple
+// times. Once the task logger is closed, Flush will no-op, so it's important
+// to ensure that Close is only called when the task is completely done logging.
 func (l *logHarness) Flush(ctx context.Context) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -45,6 +48,10 @@ func (l *logHarness) Flush(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
+// Close closes all the task loggers and prevents further writes to it. Note
+// that this should not be called until the task is completely finished and will
+// not log any more; otherwise, any further logs may be lost. To flush the
+// current buffered task logs, call Flush instead.
 func (l *logHarness) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()

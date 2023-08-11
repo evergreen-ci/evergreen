@@ -121,9 +121,9 @@ type timeoutWatcherOptions struct {
 // startTimeoutWatcher waits until the given timeout is hit for an operation. If
 // the watcher has run for longer than the timeout, then it marks the task as
 // having hit the timeout and cancels the running operation.
-func (a *Agent) startTimeoutWatcher(ctx context.Context, cancelOperation context.CancelFunc, opts timeoutWatcherOptions) {
+func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context.CancelFunc, opts timeoutWatcherOptions) {
 	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", opts.kind))
-	defer cancelOperation()
+	defer operationCancel()
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()

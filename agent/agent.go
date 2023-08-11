@@ -67,6 +67,9 @@ type Options struct {
 	SetupData              apimodels.AgentSetupData
 	CloudProvider          string
 	TraceCollectorEndpoint string
+	// SendTaskLogsToGlobalSender indicates whether task logs should also be
+	// sent to the global agent file log.
+	SendTaskLogsToGlobalSender bool
 }
 
 // Mode represents a mode that the agent will run in.
@@ -269,6 +272,8 @@ func (a *Agent) loop(ctx context.Context) error {
 	needPostGroup := false
 	defer func() {
 		if tc.logger != nil {
+			// If the logger from the task is still open and the agent is
+			// shutting down, close the logger to flush the remaining logs.
 			grip.Error(errors.Wrap(tc.logger.Close(), "closing logger"))
 		}
 	}()
@@ -515,6 +520,12 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
 
+	// If the agent is logging to a file, this will re-initialize the sender to
+	// log to a new file for the new task.
+	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	grip.Error(errors.Wrap(err, "getting sender"))
+	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
+
 	if tc.logger != nil {
 		grip.Error(errors.Wrap(tc.logger.Close(), "closing the logger producer"))
 	}
@@ -528,10 +539,6 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "making the logger producer")
 	}
-
-	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix)
-	grip.Error(errors.Wrap(err, "getting sender"))
-	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
 
 	return nil
 }
@@ -593,9 +600,8 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	grip.Info(message.Fields{
-		"message":     "running task",
-		"task_id":     tc.task.ID,
-		"task_secret": tc.task.Secret,
+		"message": "running_task",
+		"task_id": tc.task.ID,
 	})
 
 	defer a.killProcs(ctx, tc, false, "task is finished")
@@ -1031,6 +1037,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
 	defer func() {
 		if tc.logger != nil {
+			// If the logger from the task is still open, running the teardown
+			// group is the last thing that a task can do, so close the logger
+			// to indicate logging is complete for the task.
 			grip.Error(tc.logger.Close())
 		}
 	}()
