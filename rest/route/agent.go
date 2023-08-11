@@ -111,6 +111,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkServerURL:   h.settings.Splunk.SplunkConnectionInfo.ServerURL,
 		SplunkClientToken: h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:     h.settings.Splunk.SplunkConnectionInfo.Channel,
+		Buckets:           h.settings.Buckets,
 		TaskSync:          h.settings.Providers.AWS.TaskSync,
 		EC2Keys:           h.settings.Providers.AWS.EC2Keys,
 	}
@@ -187,17 +188,7 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	if err = p.UpdateMergeCommitSHA(pr.GetMergeCommitSHA()); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating merge commit SHA for patch '%s'", p.Id.Hex()))
 	}
-	if h.req.LastRetry && (!utility.FromBoolPtr(resp.Mergeable) || resp.MergeCommitSHA == "") {
-		grip.Debug(message.Fields{
-			"message":         "last attempt to retry getting pull request",
-			"route":           "/pull_request",
-			"ticket":          "EVG-19723",
-			"pr_state":        pr.State,
-			"pr_last_updated": pr.UpdatedAt,
-			"resp":            resp,
-			"request":         h.req,
-		})
-	}
+
 	return gimlet.NewJSONResponse(resp)
 }
 

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -260,14 +259,12 @@ type PublicKeyInput struct {
 }
 
 type SaveDistroInput struct {
-	DistroID string                       `json:"distroId"`
-	Changes  *model.APIDistro             `json:"changes,omitempty"`
-	Section  distro.DistroSettingsSection `json:"section"`
-	OnSave   DistroOnSaveOperation        `json:"onSave"`
+	Distro *model.APIDistro      `json:"distro"`
+	OnSave DistroOnSaveOperation `json:"onSave"`
 }
 
 // Return type representing the updated distro and the number of hosts that were updated.
-type SaveDistroSectionPayload struct {
+type SaveDistroPayload struct {
 	Distro    *model.APIDistro `json:"distro"`
 	HostCount int              `json:"hostCount"`
 }
@@ -389,12 +386,13 @@ type TestFilter struct {
 // TestFilterOptions is an input for the task.Tests query.
 // It's used to filter, sort, and paginate test results of a task.
 type TestFilterOptions struct {
-	TestName *string            `json:"testName,omitempty"`
-	Statuses []string           `json:"statuses,omitempty"`
-	GroupID  *string            `json:"groupID,omitempty"`
-	Sort     []*TestSortOptions `json:"sort,omitempty"`
-	Limit    *int               `json:"limit,omitempty"`
-	Page     *int               `json:"page,omitempty"`
+	TestName            *string            `json:"testName,omitempty"`
+	ExcludeDisplayNames *bool              `json:"excludeDisplayNames,omitempty"`
+	Statuses            []string           `json:"statuses,omitempty"`
+	GroupID             *string            `json:"groupID,omitempty"`
+	Sort                []*TestSortOptions `json:"sort,omitempty"`
+	Limit               *int               `json:"limit,omitempty"`
+	Page                *int               `json:"page,omitempty"`
 }
 
 // TestSortOptions is an input for the task.Tests query.

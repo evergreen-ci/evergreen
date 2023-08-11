@@ -44,7 +44,7 @@
         "BatchMode=yes",
         "ConnectTimeout=10"
       ],
-      "spawn_allowed": true,
+      "spawn_allowed": false,
       "expansions": [
         {
           "key": "decompress",
@@ -309,6 +309,14 @@
       "status": "running",
       "tag": "",
       "user": "mci-exec"
+    }
+  ],
+  "admin": [
+    {
+      "_id": "global",
+      "keys": {
+        "mci": "key"
+      }
     }
   ]
 }

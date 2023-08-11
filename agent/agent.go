@@ -67,6 +67,9 @@ type Options struct {
 	SetupData              apimodels.AgentSetupData
 	CloudProvider          string
 	TraceCollectorEndpoint string
+	// SendTaskLogsToGlobalSender indicates whether task logs should also be
+	// sent to the global agent file log.
+	SendTaskLogsToGlobalSender bool
 }
 
 // Mode represents a mode that the agent will run in.
@@ -101,22 +104,23 @@ const (
 )
 
 type taskContext struct {
-	currentCommand command.Command
-	expansions     util.Expansions
-	privateVars    map[string]bool
-	logger         client.LoggerProducer
-	jasper         jasper.Manager
-	statsCollector *StatsCollector
-	task           client.TaskData
-	taskGroup      string
-	ranSetupGroup  bool
-	taskConfig     *internal.TaskConfig
-	taskDirectory  string
-	timeout        timeoutInfo
-	project        *model.Project
-	taskModel      *task.Task
-	oomTracker     jasper.OOMTracker
-	traceID        string
+	currentCommand            command.Command
+	expansions                util.Expansions
+	privateVars               map[string]bool
+	logger                    client.LoggerProducer
+	jasper                    jasper.Manager
+	statsCollector            *StatsCollector
+	task                      client.TaskData
+	taskGroup                 string
+	ranSetupGroup             bool
+	taskConfig                *internal.TaskConfig
+	taskDirectory             string
+	timeout                   timeoutInfo
+	project                   *model.Project
+	taskModel                 *task.Task
+	oomTracker                jasper.OOMTracker
+	traceID                   string
+	unsetFunctionVarsDisabled bool
 	sync.RWMutex
 }
 
@@ -254,6 +258,8 @@ func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 	a.ec2InstanceID = instanceID
 }
 
+// loop is responsible for continually polling for new tasks and processing them.
+// and then tries again.
 func (a *Agent) loop(ctx context.Context) error {
 	agentSleepInterval := minAgentSleepInterval
 
@@ -264,6 +270,8 @@ func (a *Agent) loop(ctx context.Context) error {
 	needPostGroup := false
 	defer func() {
 		if tc.logger != nil {
+			// If the logger from the task is still open and the agent is
+			// shutting down, close the logger to flush the remaining logs.
 			grip.Error(errors.Wrap(tc.logger.Close(), "closing logger"))
 		}
 	}()
@@ -305,78 +313,120 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				return errors.Wrap(err, "getting next task")
 			}
-			if nextTask.ShouldExit {
-				grip.Notice("Next task response indicates agent should exit.")
+			ntr, err := a.processNextTask(ctx, nextTask, tc, needPostGroup)
+			if err != nil {
+				return errors.Wrap(err, "processing next task")
+			}
+			needPostGroup = ntr.needPostGroup
+			if ntr.tc != nil {
+				tc = ntr.tc
+			}
+
+			if ntr.shouldExit {
 				return nil
 			}
-			// if the host's current task group is finished we teardown
-			if nextTask.ShouldTeardownGroup {
-				a.runPostGroupCommands(ctx, tc)
-				needPostGroup = false
-				// Running the post group commands implies exiting the group, so
-				// destroy prior task information.
-				tc = &taskContext{}
-				timer.Reset(0)
-				agentSleepInterval = minAgentSleepInterval
+
+			if ntr.noTaskToRun {
+				jitteredSleep := utility.JitterInterval(agentSleepInterval)
+				grip.Debugf("Agent found no task to run, sleeping %s.", jitteredSleep)
+				timer.Reset(jitteredSleep)
+				agentSleepInterval = agentSleepInterval * 2
+				if agentSleepInterval > maxAgentSleepInterval {
+					agentSleepInterval = maxAgentSleepInterval
+				}
 				continue
 			}
-			if nextTask.TaskId != "" {
-				if nextTask.TaskSecret == "" {
-					grip.Critical(message.WrapError(err, message.Fields{
-						"message": "task response missing secret",
-						"task":    tc.task.ID,
-					}))
-					timer.Reset(0)
-					agentSleepInterval = minAgentSleepInterval
-					continue
-				}
-				prevLogger := tc.logger
-				tc = a.prepareNextTask(ctx, nextTask, tc)
-				if prevLogger != nil {
-					grip.Error(errors.Wrap(prevLogger.Close(), "closing the previous logger producer"))
-				}
+			timer.Reset(0)
+			agentSleepInterval = minAgentSleepInterval
 
-				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
-					"message": "error fetching project config; will attempt at a later point",
-					"task":    tc.task.ID,
-				}))
-
-				a.jasper.Clear(ctx)
-				tc.jasper = a.jasper
-				shouldExit, err := a.runTask(ctx, tc)
-				if err != nil {
-					grip.Critical(message.WrapError(err, message.Fields{
-						"message": "error running task",
-						"task":    tc.task.ID,
-					}))
-					timer.Reset(0)
-					agentSleepInterval = minAgentSleepInterval
-					continue
-				}
-				if shouldExit {
-					return nil
-				}
-				needPostGroup = true
-				timer.Reset(0)
-				agentSleepInterval = minAgentSleepInterval
-				continue
-			} else if needPostGroup {
-				a.runPostGroupCommands(ctx, tc)
-				needPostGroup = false
-				// Running the post group commands implies exiting the group, so
-				// destroy prior task information.
-				tc = &taskContext{}
-			}
-
-			jitteredSleep := utility.JitterInterval(agentSleepInterval)
-			grip.Debugf("Agent sleeping %s.", jitteredSleep)
-			timer.Reset(jitteredSleep)
-			agentSleepInterval = agentSleepInterval * 2
-			if agentSleepInterval > maxAgentSleepInterval {
-				agentSleepInterval = maxAgentSleepInterval
-			}
 		}
 	}
+}
+
+type processNextResponse struct {
+	shouldExit    bool
+	noTaskToRun   bool
+	needPostGroup bool
+	tc            *taskContext
+}
+
+func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskResponse, tc *taskContext, needPostGroup bool) (processNextResponse, error) {
+	if nt.ShouldExit {
+		grip.Notice("Next task response indicates agent should exit.")
+		return processNextResponse{shouldExit: true}, nil
+	}
+	// if the host's current task group is finished we teardown
+	if nt.ShouldTeardownGroup {
+		a.runPostGroupCommands(ctx, tc)
+		return processNextResponse{
+			// Running the post group commands implies exiting the group, so
+			// destroy prior task information.
+			tc:            &taskContext{},
+			needPostGroup: false,
+		}, nil
+	}
+
+	if nt.TaskId == "" && needPostGroup {
+		a.runPostGroupCommands(ctx, tc)
+		return processNextResponse{
+			needPostGroup: false,
+			// Running the post group commands implies exiting the group, so
+			// destroy prior task information.
+			tc:          &taskContext{},
+			noTaskToRun: true,
+		}, nil
+	}
+
+	if nt.TaskId == "" {
+		return processNextResponse{
+			noTaskToRun: true,
+		}, nil
+	}
+
+	if nt.TaskSecret == "" {
+		grip.Critical(message.Fields{
+			"message": "task response missing secret",
+			"task":    tc.task.ID,
+		})
+		return processNextResponse{
+			noTaskToRun: true,
+		}, nil
+	}
+
+	prevLogger := tc.logger
+	tc = a.prepareNextTask(ctx, nt, tc)
+	tc.unsetFunctionVarsDisabled = nt.UnsetFunctionVarsDisabled
+	if prevLogger != nil {
+		grip.Error(errors.Wrap(prevLogger.Close(), "closing the previous logger producer"))
+	}
+
+	grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
+		"message": "error fetching project config; will attempt at a later point",
+		"task":    tc.task.ID,
+	}))
+
+	a.jasper.Clear(ctx)
+	tc.jasper = a.jasper
+	shouldExit, err := a.runTask(ctx, tc)
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "error running task",
+			"task":    tc.task.ID,
+		}))
+		return processNextResponse{
+			tc: tc,
+		}, nil
+	}
+	if shouldExit {
+		return processNextResponse{
+			shouldExit: true,
+			tc:         tc,
+		}, nil
+	}
+	return processNextResponse{
+		tc:            tc,
+		needPostGroup: true,
+	}, nil
 }
 
 func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) *taskContext {
@@ -468,6 +518,12 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
 
+	// If the agent is logging to a file, this will re-initialize the sender to
+	// log to a new file for the new task.
+	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	grip.Error(errors.Wrap(err, "getting sender"))
+	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
+
 	if tc.logger != nil {
 		grip.Error(errors.Wrap(tc.logger.Close(), "closing the logger producer"))
 	}
@@ -481,10 +537,6 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "making the logger producer")
 	}
-
-	sender, err := a.GetSender(ctx, a.opts.LogOutput, a.opts.LogPrefix)
-	grip.Error(errors.Wrap(err, "getting sender"))
-	grip.Error(errors.Wrap(grip.SetSender(sender), "setting sender"))
 
 	return nil
 }
@@ -546,9 +598,8 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	grip.Info(message.Fields{
-		"message":     "running task",
-		"task_id":     tc.task.ID,
-		"task_secret": tc.task.Secret,
+		"message": "running_task",
+		"task_id": tc.task.ID,
 	})
 
 	defer a.killProcs(ctx, tc, false, "task is finished")
@@ -948,6 +999,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
 	defer func() {
 		if tc.logger != nil {
+			// If the logger from the task is still open, running the teardown
+			// group is the last thing that a task can do, so close the logger
+			// to indicate logging is complete for the task.
 			grip.Error(tc.logger.Close())
 		}
 	}()
@@ -1067,29 +1121,22 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	return true
 }
 
-// logPanic logs and returns a panic error, along with the original error (if
-// any). If there was no panic error, this is a no-op.
+// logPanic logs a panic to the task log and returns the panic error, along with
+// the original error (if any). If there was no panic error, this is a no-op.
 func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, op string) error {
 	if pErr == nil {
 		return nil
 	}
 
-	msg := message.Fields{
-		"message":   "programmatic error: agent hit panic",
-		"operation": op,
-		"stack":     message.NewStack(2, "").Raw(),
-	}
-
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	grip.Alert(message.WrapError(catcher.Resolve(), msg))
 	if logger != nil && !logger.Closed() {
 		logMsg := message.Fields{
 			"message":   "programmatic error: Evergreen agent hit panic",
 			"operation": op,
 		}
-		logger.Execution().Error(logMsg)
+		logger.Task().Error(logMsg)
 	}
 
 	return catcher.Resolve()

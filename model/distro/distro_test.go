@@ -596,6 +596,15 @@ func TestAddPermissions(t *testing.T) {
 func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.EventCollection))
 
+	oldDistro := Distro{
+		Id:       "rainbow-lollipop",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument().Set(birch.EC.String("ami", "ami-0")),
+			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
+		},
+	}
+
 	d := Distro{
 		Id:       "rainbow-lollipop",
 		Provider: evergreen.ProviderNameEc2OnDemand,
@@ -604,17 +613,47 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
 		},
 	}
-	event.LogDistroModified(d.Id, "user1", d.NewDistroData())
+	event.LogDistroModified(d.Id, "user1", oldDistro.DistroData(), d.DistroData())
 	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(d.Id, 10)
 	assert.NoError(t, err)
 	require.Len(t, eventsForDistro, 1)
 	eventData, ok := eventsForDistro[0].Data.(*event.DistroEventData)
 	assert.True(t, ok)
 	assert.Equal(t, "user1", eventData.UserId)
+	assert.Equal(t, "user1", eventData.User)
 	assert.NotNil(t, eventData.Data)
+	assert.NotNil(t, eventData.Before)
+	assert.NotNil(t, eventData.After)
 
+	// Test legacy Data field
 	data := DistroData{}
 	body, err := bson.Marshal(eventData.Data)
+	assert.NoError(t, err)
+	assert.NoError(t, bson.Unmarshal(body, &data))
+	require.NotNil(t, data)
+	assert.Equal(t, d.Id, data.Distro.Id)
+	assert.Equal(t, d.Provider, data.Distro.Provider)
+	assert.Nil(t, data.Distro.ProviderSettingsList)
+	require.Len(t, data.ProviderSettingsMap, 2)
+	assert.EqualValues(t, d.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
+	assert.EqualValues(t, d.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+
+	// Test Before field
+	data = DistroData{}
+	body, err = bson.Marshal(eventData.Before)
+	assert.NoError(t, err)
+	assert.NoError(t, bson.Unmarshal(body, &data))
+	require.NotNil(t, data)
+	assert.Equal(t, oldDistro.Id, data.Distro.Id)
+	assert.Equal(t, oldDistro.Provider, data.Distro.Provider)
+	assert.Nil(t, data.Distro.ProviderSettingsList)
+	require.Len(t, data.ProviderSettingsMap, 2)
+	assert.EqualValues(t, oldDistro.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
+	assert.EqualValues(t, oldDistro.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+
+	// Test After field
+	data = DistroData{}
+	body, err = bson.Marshal(eventData.After)
 	assert.NoError(t, err)
 	assert.NoError(t, bson.Unmarshal(body, &data))
 	require.NotNil(t, data)
@@ -676,42 +715,4 @@ func TestGetAuthorizedKeysFile(t *testing.T) {
 		}
 		assert.Equal(t, expected, d.GetAuthorizedKeysFile())
 	})
-}
-
-func TestUpdateDistroSection(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for name, test := range map[string]func(t *testing.T, ctx context.Context, originalDistro *Distro){
-		"General section": func(t *testing.T, ctx context.Context, originalDistro *Distro) {
-			updated, err := UpdateDistroSection(ctx, originalDistro, &Distro{
-				Id:      originalDistro.Id,
-				Aliases: []string{"alias_1", "alias_2"},
-				Note:    "updated note",
-			}, DistroSettingsGeneral, "admin")
-			assert.NoError(t, err)
-			require.NotNil(t, updated)
-			assert.Equal(t, updated.SSHKey, "this should be unchanged")
-			assert.Equal(t, updated.Aliases, []string{"alias_1", "alias_2"})
-			assert.Equal(t, updated.Note, "updated note")
-
-			events, err := event.FindLatestPrimaryDistroEvents(originalDistro.Id, 10)
-			assert.NoError(t, err)
-			assert.Equal(t, len(events), 1)
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			tctx, tcancel := context.WithCancel(ctx)
-			defer tcancel()
-
-			assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
-			originalDistro := &Distro{
-				Id:     "distro",
-				SSHKey: "this should be unchanged",
-			}
-			assert.Nil(t, originalDistro.Insert(tctx))
-
-			test(t, tctx, originalDistro)
-		})
-	}
 }

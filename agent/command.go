@@ -40,6 +40,7 @@ type runCommandsOptions struct {
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
 func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
 	options runCommandsOptions, block string) (err error) {
+
 	defer func() {
 		op := fmt.Sprintf("running commands for block '%s'", block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
@@ -88,6 +89,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			return errors.Wrap(err, "making command logger")
 		}
 		defer func() {
+			// If the logger is a command-specific logger, when the command
+			// finishes, the loggers should have no more logs to send. Closing
+			// it ensure that the command logger flushes all logs and cleans up.
 			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
 		}()
 	}
@@ -147,8 +151,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
 	cmd command.Command, displayName string, options runCommandsOptions) error {
-
+	prevExp := map[string]string{}
 	for key, val := range commandInfo.Vars {
+		prevVal := tc.taskConfig.Expansions.Get(key)
+		prevExp[key] = prevVal
+
 		var newVal string
 		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
 		if err != nil {
@@ -156,6 +163,19 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		}
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
+	defer func() {
+		if !tc.unsetFunctionVarsDisabled {
+			// This defer ensures that the function vars do not persist in the expansions after the function is over.
+			for key, functionValue := range commandInfo.Vars {
+				currentValue := tc.taskConfig.Expansions.Get(key)
+				if currentValue != functionValue {
+					// If a command in the func updates the expansion value, persist it.
+					prevExp[key] = currentValue
+				}
+			}
+			tc.taskConfig.Expansions.Update(prevExp)
+		}
+	}()
 
 	tc.setCurrentCommand(cmd)
 	tc.setCurrentIdleTimeout(cmd)
@@ -172,10 +192,16 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	cmdChan := make(chan error, 1)
 	go func() {
 		defer func() {
-			// this channel will get read from twice even though we only send once, hence why it's buffered
-			cmdChan <- recovery.HandlePanicWithError(recover(), nil,
-				fmt.Sprintf("running command %s", displayName))
+			op := fmt.Sprintf("running command %s", displayName)
+			pErr := recovery.HandlePanicWithError(recover(), nil, op)
+			if pErr == nil {
+				return
+			}
+			_ = a.logPanic(tc.logger, pErr, nil, op)
+
+			cmdChan <- pErr
 		}()
+
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
 	select {

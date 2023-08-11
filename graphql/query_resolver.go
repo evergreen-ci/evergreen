@@ -266,7 +266,19 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		limitParam = *limit
 	}
 
-	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostIDParam, distroParam, currentTaskParam, statuses, startedByParam, sorter, sortDirParam, pageParam, limitParam)
+	hostsFilterOpts := host.HostsFilterOptions{
+		HostID:        hostIDParam,
+		DistroID:      distroParam,
+		CurrentTaskID: currentTaskParam,
+		Statuses:      statuses,
+		StartedBy:     startedByParam,
+		SortBy:        sorter,
+		SortDir:       sortDirParam,
+		Page:          pageParam,
+		Limit:         limitParam,
+	}
+
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(ctx, hostsFilterOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
 	}
@@ -333,14 +345,14 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	}
 
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
-		statuses, err := task.GetTaskStatusesByVersion(ctx, id)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, id, false)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for patch: %s ", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
-				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
+				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id, false)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for child patch: %s ", err.Error()))
 				}

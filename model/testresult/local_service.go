@@ -262,8 +262,14 @@ func (s *localService) filterTestResults(results []TestResult, opts *FilterOptio
 
 	var filteredResults []TestResult
 	for _, result := range results {
-		if testNameRegex != nil && !testNameRegex.MatchString(result.GetDisplayTestName()) {
-			continue
+		if testNameRegex != nil {
+			if opts.ExcludeDisplayNames {
+				if !testNameRegex.MatchString(result.TestName) {
+					continue
+				}
+			} else if !testNameRegex.MatchString(result.GetDisplayTestName()) {
+				continue
+			}
 		}
 		if len(opts.Statuses) > 0 && !utility.StringSliceContains(opts.Statuses, result.Status) {
 			continue

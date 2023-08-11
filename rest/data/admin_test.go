@@ -109,9 +109,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
-	s.EqualValues(testSettings.Alerts.SMTP.From, settingsFromConnector.Alerts.SMTP.From)
-	s.EqualValues(testSettings.Alerts.SMTP.Port, settingsFromConnector.Alerts.SMTP.Port)
-	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settingsFromConnector.Alerts.SMTP.AdminEmail))
 	s.EqualValues(testSettings.Amboy.Name, settingsFromConnector.Amboy.Name)
 	s.EqualValues(testSettings.Amboy.LocalStorage, settingsFromConnector.Amboy.LocalStorage)
 	s.EqualValues(testSettings.Amboy.GroupDefaultWorkers, settingsFromConnector.Amboy.GroupDefaultWorkers)
@@ -147,9 +144,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settingsFromConnector.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
-	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
-	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
-	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
+	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
@@ -164,6 +159,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
+	s.EqualValues(testSettings.ServiceFlags.UnsetFunctionVarsDisabled, settingsFromConnector.ServiceFlags.UnsetFunctionVarsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
@@ -176,7 +172,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// spot check events in the event log
 	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
 	s.NoError(err)
-	foundAlertsEvent := false
+	foundNotifyEvent := false
 	foundFlagsEvent := false
 	foundProvidersEvent := false
 	foundRootEvent := false
@@ -186,10 +182,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		data := evt.Data.(*event.AdminEventData)
 		s.Equal(u.Id, data.User)
 		switch v := data.Changes.After.(type) {
-		case *evergreen.AlertsConfig:
-			foundAlertsEvent = true
-			s.Equal(testSettings.Alerts.SMTP.From, v.SMTP.From)
-			s.Equal(testSettings.Alerts.SMTP.Username, v.SMTP.Username)
+		case *evergreen.NotifyConfig:
+			foundNotifyEvent = true
+			s.Equal(testSettings.Notify.SES.SenderAddress, v.SES.SenderAddress)
 		case *evergreen.ServiceFlags:
 			foundFlagsEvent = true
 			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
@@ -208,7 +203,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			s.Equal(testSettings.Ui.CacheTemplates, v.CacheTemplates)
 		}
 	}
-	s.True(foundAlertsEvent)
+	s.True(foundNotifyEvent)
 	s.True(foundFlagsEvent)
 	s.True(foundProvidersEvent)
 	s.True(foundRootEvent)
@@ -249,9 +244,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// old values should still be there
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
-	s.EqualValues(testSettings.Alerts.SMTP.From, settingsFromConnector.Alerts.SMTP.From)
-	s.EqualValues(testSettings.Alerts.SMTP.Port, settingsFromConnector.Alerts.SMTP.Port)
-	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settingsFromConnector.Alerts.SMTP.AdminEmail))
 	s.EqualValues(testSettings.Amboy.Name, settingsFromConnector.Amboy.Name)
 	s.EqualValues(testSettings.Amboy.LocalStorage, settingsFromConnector.Amboy.LocalStorage)
 	s.EqualValues(testSettings.Amboy.GroupDefaultWorkers, settingsFromConnector.Amboy.GroupDefaultWorkers)
@@ -277,9 +269,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settingsFromConnector.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
-	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
-	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
-	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
+	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
@@ -294,6 +284,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
+	s.EqualValues(testSettings.ServiceFlags.UnsetFunctionVarsDisabled, settingsFromConnector.ServiceFlags.UnsetFunctionVarsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)

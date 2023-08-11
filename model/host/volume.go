@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -122,6 +123,33 @@ func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
 	}
 
 	return findVolumes(q)
+}
+
+// FindVolumesWithTerminatedHost finds volumes that are attached to a host we have marked as terminated, indicating the
+// volume is stuck in an invalid state.
+func FindVolumesWithTerminatedHost() ([]Volume, error) {
+	match := bson.M{
+		"$match": bson.M{
+			VolumeHostKey: bson.M{"$exists": true},
+		}}
+	lookup := bson.M{
+		"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   "host",
+			"foreignField": "_id",
+			"as":           "host_doc",
+		}}
+	matchTerminatedHosts := bson.M{
+		"$match": bson.M{
+			"host_doc.status": evergreen.HostTerminated,
+		}}
+	project := bson.M{"$project": bson.M{"host_doc": 0}}
+	pipeline := []bson.M{match, lookup, matchTerminatedHosts, project}
+	volumes := []Volume{}
+	if err := db.Aggregate(VolumesCollection, pipeline, &volumes); err != nil {
+		return nil, err
+	}
+	return volumes, nil
 }
 
 func FindUnattachedExpirableVolumes() ([]Volume, error) {

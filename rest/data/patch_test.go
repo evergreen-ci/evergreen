@@ -281,7 +281,7 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "route", "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24731)
+	s.Len(s.prBody, 24692)
 }
 
 func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {

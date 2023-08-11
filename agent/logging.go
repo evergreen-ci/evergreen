@@ -39,17 +39,22 @@ func init() {
 
 func getInc() int { return <-idSource }
 
-// GetSender configures the agent's local logging to a file.
-func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string) (send.Sender, error) {
+// GetSender configures the agent's local logging, which can go to Splunk, a
+// file, or stdout.
+func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string, taskID string, taskExecution int) (send.Sender, error) {
 	var senders []send.Sender
-	if a.opts.SetupData.SplunkClientToken != "" && a.opts.SetupData.SplunkServerURL != "" && a.opts.SetupData.SplunkChannel != "" {
-		info := send.SplunkConnectionInfo{
-			ServerURL: a.opts.SetupData.SplunkServerURL,
-			Token:     a.opts.SetupData.SplunkClientToken,
-			Channel:   a.opts.SetupData.SplunkChannel,
-		}
-		grip.Info("Configuring splunk sender.")
-		sender, err := send.NewSplunkLogger("evergreen.agent", info, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
+
+	splunkInfo := send.SplunkConnectionInfo{
+		ServerURL: a.opts.SetupData.SplunkServerURL,
+		Token:     a.opts.SetupData.SplunkClientToken,
+		Channel:   a.opts.SetupData.SplunkChannel,
+	}
+	if splunkInfo.Populated() {
+		// Send alerts or higher from the agent to Splunk, since they are
+		// generally critical problems (e.g. panics) in the agent runtime.
+		grip.Info("Configuring Splunk sender.")
+		alertThreshold := send.LevelInfo{Default: level.Alert, Threshold: level.Alert}
+		sender, err := send.NewSplunkLogger("evergreen.agent", splunkInfo, alertThreshold)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating Splunk logger")
 		}
@@ -65,8 +70,15 @@ func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix stri
 
 		senders = append(senders, sender)
 	default:
+		var fileName string
+		if taskID != "" && taskExecution >= 0 {
+			fileName = fmt.Sprintf("%s-%d-%s-%d.log", prefix, os.Getpid(), taskID, taskExecution)
+		} else {
+			fileName = fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc())
+		}
 		sender, err := send.NewFileLogger("evergreen.agent",
-			fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc()), send.LevelInfo{Default: level.Info, Threshold: level.Debug})
+			fileName,
+			send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return nil, errors.Wrap(err, "creating file logger")
 		}
@@ -99,7 +111,9 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		logDir = filepath.Join(logDir, commandName)
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
 	}
-	config := client.LoggerConfig{}
+	config := client.LoggerConfig{
+		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
+	}
 
 	var defaultLogger string
 	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil {

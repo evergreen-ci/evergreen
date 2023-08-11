@@ -35,10 +35,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-07-27"
+	ClientVersion = "2023-08-04"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-07-27"
+	AgentVersion = "2023-08-08"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -58,7 +58,6 @@ type ConfigSection interface {
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
 	Id                  string                  `bson:"_id" json:"id" yaml:"id"`
-	Alerts              AlertsConfig            `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy               AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
 	ApiUrl              string                  `yaml:"api_url" bson:"api_url" json:"api_url"`
@@ -538,8 +537,8 @@ type githubAppAuth struct {
 	privateKey []byte
 }
 
-// getGithubAppAuth returns app id and app private key if it exists.
-func (s *Settings) getGithubAppAuth() *githubAppAuth {
+// GetGithubAppAuth returns app id and app private key if it exists.
+func (s *Settings) GetGithubAppAuth() *githubAppAuth {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
 		return nil
 	}
@@ -561,7 +560,7 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	if owner == "" || repo == "" {
 		return "", errors.New("no owner/repo specified to create installation token")
 	}
-	authFields := s.getGithubAppAuth()
+	authFields := s.GetGithubAppAuth()
 	if authFields == nil {
 		// TODO EVG-19966: Return error here
 		grip.Debug(message.Fields{

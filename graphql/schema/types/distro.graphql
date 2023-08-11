@@ -6,14 +6,6 @@ enum DistroSettingsAccess {
   VIEW
 }
 
-enum DistroSettingsSection {
-  GENERAL
-  PROVIDER
-  TASK
-  HOST
-  PROJECT
-}
-
 enum DistroOnSaveOperation {
   DECOMMISSION
   RESTART_JASPER
@@ -46,117 +38,117 @@ input DeleteDistroInput {
 }
 
 input SaveDistroInput {
-  distroId: String! @requireDistroAccess(access: EDIT), 
-  changes: DistroInput, 
-  section: DistroSettingsSection!, 
+  distro: DistroInput!
   onSave: DistroOnSaveOperation!
 }
 
 input DistroInput {
-  aliases: [String!]
-  arch: String
-  authorizedKeysFile: String
-  bootstrapSettings: BootstrapSettingsInput
-  cloneMethod: String
-  containerPool: String
-  disabled: Boolean
-  disableShallowClone: Boolean
-  dispatcherSettings: DispatcherSettingsInput
-  expansions: [ExpansionInput!]
-  finderSettings: FinderSettingsInput
-  homeVolumeSettings: HomeVolumeSettingsInput
-  hostAllocatorSettings: HostAllocatorSettingsInput
-  iceCreamSettings: IceCreamSettingsInput
-  isCluster: Boolean
-  isVirtualWorkStation: Boolean
-  name: String
-  note: String
-  plannerSettings: PlannerSettingsInput
-  provider: String
-  providerSettingsList: [Map!]
-  setup: String
-  setupAsSudo: Boolean
-  sshKey: String
-  sshOptions: [String!]
-  user: String
-  userSpawnAllowed: Boolean
-  validProjects: [String!]
-  workDir: String
+  aliases: [String!]!
+  arch: String!
+  authorizedKeysFile: String!
+  bootstrapSettings: BootstrapSettingsInput!
+  cloneMethod: String!
+  containerPool: String!
+  disabled: Boolean!
+  disableShallowClone: Boolean!
+  dispatcherSettings: DispatcherSettingsInput!
+  expansions: [ExpansionInput!]!
+  finderSettings: FinderSettingsInput!
+  homeVolumeSettings: HomeVolumeSettingsInput!
+  hostAllocatorSettings: HostAllocatorSettingsInput!
+  iceCreamSettings: IceCreamSettingsInput!
+  isCluster: Boolean!
+  isVirtualWorkStation: Boolean!
+  name: String! @requireDistroAccess(access: EDIT)
+  note: String!
+  plannerSettings: PlannerSettingsInput!
+  provider: String!
+  providerSettingsList: [Map!]!
+  setup: String!
+  setupAsSudo: Boolean!
+  sshKey: String!
+  sshOptions: [String!]!
+  user: String!
+  userSpawnAllowed: Boolean!
+  validProjects: [String!]!
+  workDir: String!
 }
 
 input BootstrapSettingsInput {
-  clientDir: String
-  communication: String
-  env: [EnvVarInput!]
-  jasperBinaryDir: String
-  jasperCredentialsPath: String
-  method: String
-  preconditionScripts: [PreconditionScriptInput!]
-  resourceLimits: ResourceLimitsInput
-  rootDir: String
-  serviceUser: String
-  shellPath: String
+  clientDir: String!
+  communication: String!
+  env: [EnvVarInput!]!
+  jasperBinaryDir: String!
+  jasperCredentialsPath: String!
+  method: String!
+  preconditionScripts: [PreconditionScriptInput!]!
+  resourceLimits: ResourceLimitsInput!
+  rootDir: String!
+  serviceUser: String!
+  shellPath: String!
 }
 
 input DispatcherSettingsInput {
-  version: String
+  version: String!
 }
 
 input EnvVarInput {
-  key: String
-  value: String
+  key: String!
+  value: String!
 }
 
 input ExpansionInput {
-  key: String
-  value: String
+  key: String!
+  value: String!
 }
 
 input FinderSettingsInput {
-  version: String
+  version: String!
 }
 
 input HomeVolumeSettingsInput {
-  formatCommand: String
+  formatCommand: String!
 }
 
 input HostAllocatorSettingsInput {
-  acceptableHostIdleTime: Duration
-  feedbackRule: String
-  hostsOverallocatedRule: String
-  maximumHosts: Int
-  minimumHosts: Int
-  roundingRule: String
-  version: String
+  acceptableHostIdleTime: Int!
+  feedbackRule: String!
+  futureHostFraction: Float!
+  hostsOverallocatedRule: String!
+  maximumHosts: Int!
+  minimumHosts: Int!
+  roundingRule: String!
+  version: String!
 }
 
 input IceCreamSettingsInput {
-  configPath: String
-  schedulerHost: String
+  configPath: String!
+  schedulerHost: String!
 }
 
 input PlannerSettingsInput {
-  expectedRuntimeFactor: Int
-  generateTaskFactor: Int
-  groupVersions: Boolean
-  mainlineTimeInQueueFactor: Int
-  patchFactor: Int
-  patchTimeInQueueFactor: Int
-  targetTime: Duration
-  version: String
+  commitQueueFactor: Int!
+  expectedRuntimeFactor: Int!
+  generateTaskFactor: Int!
+  groupVersions: Boolean!
+  mainlineTimeInQueueFactor: Int!
+  patchFactor: Int!
+  patchTimeInQueueFactor: Int!
+  targetTime: Int!
+  version: String!
 }
 
 input PreconditionScriptInput {
-  path: String
-  script: String
+  path: String!
+  script: String!
 }
 
 input ResourceLimitsInput {
-  lockedMemoryKb: Int
-  numFiles: Int
-  numProcesses: Int
-  numTasks: Int
-  virtualMemoryKb: Int
+  lockedMemoryKb: Int!
+  numFiles: Int!
+  numProcesses: Int!
+  numTasks: Int!
+  virtualMemoryKb: Int!
 }
 
 ###### TYPES ######
@@ -177,7 +169,7 @@ type DeleteDistroPayload {
 """
 Return type representing the updated distro and the number of hosts that were updated.
 """
-type SaveDistroSectionPayload {
+type SaveDistroPayload {
   distro: Distro!
   hostCount: Int!
 }
@@ -187,11 +179,11 @@ Distro models an environment configuration for a host.
 """
 type Distro {
   aliases: [String!]!
-  arch: String
-  authorizedKeysFile: String
+  arch: String!
+  authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettings!
-  cloneMethod: String
-  containerPool: String
+  cloneMethod: String!
+  containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!
   dispatcherSettings: DispatcherSettings!
@@ -202,93 +194,95 @@ type Distro {
   iceCreamSettings: IceCreamSettings!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
-  name: String
-  note: String
+  name: String!
+  note: String!
   plannerSettings: PlannerSettings!
-  provider: String
+  provider: String!
   providerSettingsList: [Map!]!
-  setup: String
+  setup: String!
   setupAsSudo: Boolean!
-  sshKey: String
+  sshKey: String!
   sshOptions: [String!]!
-  user: String
+  user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String]!
-  workDir: String
+  workDir: String!
 }
 
 type BootstrapSettings {
-  clientDir: String
-  communication: String
+  clientDir: String!
+  communication: String!
   env: [EnvVar!]!
-  jasperBinaryDir: String
-  jasperCredentialsPath: String
-  method: String
+  jasperBinaryDir: String!
+  jasperCredentialsPath: String!
+  method: String!
   preconditionScripts: [PreconditionScript!]!
-  resourceLimits: ResourceLimits
-  rootDir: String
-  serviceUser: String
-  shellPath: String
+  resourceLimits: ResourceLimits!
+  rootDir: String!
+  serviceUser: String!
+  shellPath: String!
 }
 
 type DispatcherSettings {
-  version: String
+  version: String!
 }
 
 type EnvVar {
-  key: String
-  value: String
+  key: String!
+  value: String!
 }
 
 type Expansion {
-  key: String
-  value: String
+  key: String!
+  value: String!
 }
 
 type FinderSettings {
-  version: String
+  version: String!
 }
 
 type HomeVolumeSettings {
-  formatCommand: String
+  formatCommand: String!
 }
 
 type HostAllocatorSettings {
-  acceptableHostIdleTime: Duration
-  feedbackRule: String
-  hostsOverallocatedRule: String
+  acceptableHostIdleTime: Duration!
+  feedbackRule: String!
+  futureHostFraction: Float!
+  hostsOverallocatedRule: String!
   maximumHosts: Int!
   minimumHosts: Int!
-  roundingRule: String
-  version: String
+  roundingRule: String!
+  version: String!
 }
 
 type IceCreamSettings {
-  configPath: String
-  schedulerHost: String
+  configPath: String!
+  schedulerHost: String!
 }
 
 type PlannerSettings {
-  expectedRuntimeFactor: Int
-  generateTaskFactor: Int
-  groupVersions: Boolean
-  mainlineTimeInQueueFactor: Int
-  patchFactor: Int
-  patchTimeInQueueFactor: Int
-  targetTime: Duration
-  version: String
+  commitQueueFactor: Int!
+  expectedRuntimeFactor: Int!
+  generateTaskFactor: Int!
+  groupVersions: Boolean!
+  mainlineTimeInQueueFactor: Int!
+  patchFactor: Int!
+  patchTimeInQueueFactor: Int!
+  targetTime: Duration!
+  version: String!
 }
 
 type PreconditionScript {
-  path: String
-  script: String
+  path: String!
+  script: String!
 }
 
 type ResourceLimits {
-  lockedMemoryKb: Int
-  numFiles: Int
-  numProcesses: Int
-  numTasks: Int
-  virtualMemoryKb: Int
+  lockedMemoryKb: Int!
+  numFiles: Int!
+  numProcesses: Int!
+  numTasks: Int!
+  virtualMemoryKb: Int!
 }
 

@@ -97,6 +97,7 @@ var (
 	GenerateTaskKey                = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	LogServiceVersionKey           = bsonutil.MustHaveTag(Task{}, "LogServiceVersion")
 	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
 	HasCedarResultsKey             = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
 	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
@@ -108,7 +109,6 @@ var (
 	GeneratedTasksToActivateKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
 	ResetWhenFinishedKey        = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	ResetFailedWhenFinishedKey  = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
-	LogsKey                     = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
@@ -334,6 +334,38 @@ var (
 		},
 		{"$unwind": "$tasks"},
 		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
+	}
+
+	// AddAnnotationsSlowLookup adds the annotations to the task document. This is a slower version of AddAnnotations that does not use a facet and does not run into the 104mb pipeline stage limit.
+	AddAnnotationsSlowLookup = []bson.M{
+		{
+			"$lookup": bson.M{
+				"from": annotations.Collection,
+				"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+				"pipeline": []bson.M{
+					{
+						"$match": bson.M{
+							"$expr": bson.M{
+								"$and": []bson.M{
+									{
+										"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+									},
+									{
+										"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+									},
+									{
+										"$ne": []interface{}{
+											bson.M{
+												"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+											}, 0,
+										},
+									},
+								},
+							},
+						}}},
+				"as": "annotation_docs",
+			},
+		},
 	}
 )
 
@@ -1008,7 +1040,6 @@ func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]
 
 	removeFields := bson.M{
 		"$project": bson.M{
-			LogsKey:      0,
 			OldTaskIdKey: 0,
 			DependsOnKey + "." + DependencyUnattainableKey: 0,
 		},
@@ -2112,7 +2143,13 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
+			opts.UseSlowAnnotationsLookup = true
+			return GetTasksByVersion(ctx, versionID, opts)
+		}
 		return nil, 0, err
 	}
 
@@ -2153,13 +2190,14 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 }
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
-func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
+func GetTaskStatusesByVersion(ctx context.Context, versionID string, useSlowAnnotationLookup bool) ([]string, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
 		FieldsToProject:            []string{DisplayStatusKey},
 		IncludeNeverActivatedTasks: true,
 		IncludeExecutionTasks:      false,
+		UseSlowAnnotationsLookup:   useSlowAnnotationLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 
@@ -2199,6 +2237,10 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, 
 	err = cursor.All(ctx, &results)
 
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !useSlowAnnotationLookup {
+			return GetTaskStatusesByVersion(ctx, versionID, true)
+		}
 		return nil, err
 	}
 	if len(results) == 0 {
@@ -2292,6 +2334,11 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
+			opts.UseSlowAnnotationsLookup = true
+			return GetTaskStatsByVersion(ctx, versionID, opts)
+		}
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	if err := cursor.All(ctx, &taskStats); err != nil {
@@ -2396,6 +2443,11 @@ func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts Ge
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
+			opts.UseSlowAnnotationsLookup = true
+			return GetGroupedTaskStatsByVersion(ctx, versionID, opts)
+		}
 		return nil, errors.Wrap(err, "aggregating task stats")
 	}
 	err = cursor.All(ctx, &result)
@@ -2480,6 +2532,7 @@ type HasMatchingTasksOptions struct {
 	Variants                   []string
 	Statuses                   []string
 	IncludeNeverActivatedTasks bool
+	UseSlowAnnotationsLookup   bool
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
@@ -2490,6 +2543,7 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 		Variants:                   opts.Variants,
 		Statuses:                   opts.Statuses,
 		IncludeNeverActivatedTasks: !opts.IncludeNeverActivatedTasks,
+		UseSlowAnnotationsLookup:   opts.UseSlowAnnotationsLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, options)
 	if err != nil {
@@ -2499,6 +2553,11 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
+		// If the pipeline stage is too large we should use the slow annotations lookup
+		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
+			opts.UseSlowAnnotationsLookup = true
+			return HasMatchingTasks(ctx, versionID, opts)
+		}
 		return false, err
 	}
 
@@ -2528,6 +2587,7 @@ type GetTasksByVersionOptions struct {
 	IncludeExecutionTasks      bool
 	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
 	BaseVersionID              string
+	UseSlowAnnotationsLookup   bool // In some cases, where there are many tasks, we can hit the 104mb limit on the aggregation pipeline. This flag allows us to use a slower lookup method to avoid this limit.
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
@@ -2545,8 +2605,10 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		GeneratedJSONAsStringKey: 0,
 	}
 
-	if len(opts.TaskNames) > 0 {
-		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
+	// Filter on task name if it exists
+	nonEmptyTaskNames := utility.FilterSlice(opts.TaskNames, func(s string) bool { return s != "" })
+	if len(nonEmptyTaskNames) > 0 {
+		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
@@ -2559,7 +2621,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	// Filter on Build Variants matching on display name or variant name if it exists
-	if len(opts.Variants) > 0 {
+	nonEmptyVariants := utility.FilterSlice(opts.Variants, func(s string) bool { return s != "" })
+	if len(nonEmptyVariants) > 0 {
 		// Allow searching by either variant name or variant display
 		variantsAsRegex := strings.Join(opts.Variants, "|")
 		match = bson.M{
@@ -2582,7 +2645,11 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	pipeline = append(pipeline, AddAnnotations...)
+	if opts.UseSlowAnnotationsLookup {
+		pipeline = append(pipeline, AddAnnotationsSlowLookup...)
+	} else {
+		pipeline = append(pipeline, AddAnnotations...)
+	}
 	pipeline = append(pipeline,
 		// Add a field for the display status of each task
 		addDisplayStatus,

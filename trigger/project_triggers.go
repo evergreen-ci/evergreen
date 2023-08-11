@@ -100,6 +100,9 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 	if err != nil {
 		return metadata, errors.Wrap(err, "finding most recent revision")
 	}
+	if repo == nil {
+		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
+	}
 	metadata.Revision.Revision = repo.LastRevision
 	author, err := user.FindOneById(args.SourceVersion.AuthorID)
 	if err != nil {

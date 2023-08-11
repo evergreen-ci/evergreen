@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -81,18 +82,18 @@ type Task struct {
 	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
-	Version           string              `bson:"version" json:"version,omitempty"`
-	Project           string              `bson:"branch" json:"branch,omitempty"`
-	Revision          string              `bson:"gitspec" json:"gitspec"`
-	Priority          int64               `bson:"priority" json:"priority"`
-	TaskGroup         string              `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	ResultsService    string              `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-	ResultsFailed     bool                `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	Version           string `bson:"version" json:"version,omitempty"`
+	Project           string `bson:"branch" json:"branch,omitempty"`
+	Revision          string `bson:"gitspec" json:"gitspec"`
+	Priority          int64  `bson:"priority" json:"priority"`
+	TaskGroup         string `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	LogServiceVersion *int   `bson:"log_service_version" json:"log_service_version"`
+	ResultsService    string `bson:"results_service,omitempty" json:"results_service,omitempty"`
+	HasCedarResults   bool   `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	ResultsFailed     bool   `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
+	MustHaveResults   bool   `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -575,6 +576,14 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 func (t *Task) AddDependency(d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
+		if d.TaskId == t.Id {
+			grip.Error(message.Fields{
+				"message": "task is attempting to add a dependency on itself, skipping this dependency",
+				"task_id": t.Id,
+				"stack":   string(debug.Stack()),
+			})
+			return nil
+		}
 		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
@@ -601,7 +610,10 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 	for i := len(t.DependsOn) - 1; i >= 0; i-- {
 		d := t.DependsOn[i]
 		if d.TaskId == dependencyId {
-			t.DependsOn = append(t.DependsOn[:i], t.DependsOn[i+1:]...)
+			var dependsOn []Dependency
+			dependsOn = append(dependsOn, t.DependsOn[:i]...)
+			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
+			t.DependsOn = dependsOn
 			found = true
 			break
 		}
@@ -1350,7 +1362,6 @@ func (t *Task) MarkFailed() error {
 }
 
 func (t *Task) MarkSystemFailed(description string) error {
-	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
 	t.Details = GetSystemFailureDetails(description)
 
@@ -1374,25 +1385,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 		"execution_platform": t.ExecutionPlatform,
 	})
 
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
-
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey:             evergreen.TaskFailed,
-				FinishTimeKey:         t.FinishTime,
-				DetailsKey:            t.Details,
-				ContainerAllocatedKey: false,
-			},
-			"$unset": bson.M{
-				ContainerAllocatedTimeKey: 1,
-			},
-		},
-	)
+	return t.MarkEnd(t.FinishTime, &t.Details)
 }
 
 // GetSystemFailureDetails returns a task's end details based on an input description.
@@ -1450,6 +1443,40 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
+// SetLogServiceVersion sets the log service version used to write logs for the
+// task.
+func (t *Task) SetLogServiceVersion(ctx context.Context, env evergreen.Environment, version int) error {
+	if t.DisplayOnly {
+		return errors.New("cannot set log service version on a display task")
+	}
+	if t.LogServiceVersion != nil {
+		return errors.New("log service version already set")
+	}
+
+	res, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, []bson.M{
+		{
+			"$set": bson.M{LogServiceVersionKey: bson.M{
+				"$ifNull": bson.A{
+					"$" + LogServiceVersionKey,
+					version,
+				}},
+			},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "setting the log service version")
+	}
+	if res.MatchedCount == 0 {
+		return errors.New("programmatic error: task not found")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("log service version already set")
+	}
+	t.LogServiceVersion = utility.ToIntPtr(version)
+
+	return nil
+}
+
 // SetResultsInfo sets the task's test results info.
 //
 // Note that if failedResults is false, ResultsFailed is not set. This is
@@ -1476,7 +1503,7 @@ func (t *Task) SetResultsInfo(service string, failedResults bool) error {
 		set[ResultsFailedKey] = true
 	}
 
-	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id}, bson.M{"$set": set}))
+	return errors.WithStack(UpdateOne(ById(t.Id), bson.M{"$set": set}))
 }
 
 // HasResults returns whether the task has test results or not.
@@ -2028,6 +2055,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
+		t.LogServiceVersion = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasCedarResults = false
@@ -2065,6 +2093,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		{
 			"$unset": []string{
 				DetailsKey,
+				LogServiceVersionKey,
 				ResultsServiceKey,
 				ResultsFailedKey,
 				HasCedarResultsKey,
@@ -2319,12 +2348,6 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-		grip.Debug(message.Fields{
-			"message":   "task is in incomplete state, skipping archiving",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-			"func":      "Archive",
-		})
 		return nil
 	}
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -2372,12 +2395,6 @@ func ArchiveMany(tasks []Task) error {
 
 	for _, t := range tasks {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-			grip.Debug(message.Fields{
-				"message":   "task is in incomplete state, skipping archiving",
-				"task_id":   t.Id,
-				"execution": t.Execution,
-				"func":      "ArchiveMany",
-			})
 			continue
 		}
 		allTaskIds = append(allTaskIds, t.Id)
@@ -3177,6 +3194,15 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
+		if depID == t.Id {
+			grip.Error(message.Fields{
+				"message": "task is attempting to add a dependency on itself, skipping this dependency",
+				"task_id": t.Id,
+				"stack":   string(debug.Stack()),
+			})
+			continue
+		}
+
 		newDependencies = append(newDependencies, Dependency{
 			TaskId: depID,
 			Status: status,
