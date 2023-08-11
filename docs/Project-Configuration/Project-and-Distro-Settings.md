@@ -243,6 +243,9 @@ Options:
     not have to be.
 -   Alias: Run a subset of tasks by specifying an alias. Otherwise, all
     tasks run.
+-   Unschedule Downstream Versions: If toggled, all tasks in the triggered 
+    downstream version will be unscheduled by default, requiring manual scheduling. 
+    Otherwise, all tasks will immediately scheduled once the downstream version is created.
 
 ### Patch Trigger Aliases
 
