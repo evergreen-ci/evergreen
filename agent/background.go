@@ -106,12 +106,24 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	}
 }
 
-// startTimeoutWatch waits until the given timeout is hit. If the watcher has
-// run for longer than the timeout, then it marks the task as having hit the
-// timeout and cancels the running operation.
-func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind timeoutType, getTimeout func() time.Duration, cancel context.CancelFunc) {
-	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", kind))
-	defer cancel()
+type timeoutWatcherOptions struct {
+	// tc is the task context for the current running task.
+	tc *taskContext
+	// kind is the kind of timeout that's being waited for.
+	kind timeoutType
+	// getTimeout returns the timeout.
+	getTimeout func() time.Duration
+	// canMarkTimeoutFailure indicates whether the timeout watcher can mark the
+	// task as having hit a timeout that can fail the task.
+	canMarkTimeoutFailure bool
+}
+
+// startTimeoutWatcher waits until the given timeout is hit for an operation. If
+// the watcher has run for longer than the timeout, then it marks the task as
+// having hit the timeout and cancels the running operation.
+func (a *Agent) startTimeoutWatcher(ctx context.Context, cancelOperation context.CancelFunc, opts timeoutWatcherOptions) {
+	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", opts.kind))
+	defer cancelOperation()
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
@@ -119,21 +131,16 @@ func (a *Agent) startTimeoutWatch(ctx context.Context, tc *taskContext, kind tim
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Infof("%s timeout watcher canceled.", kind)
+			grip.Infof("%s timeout watcher canceled.", opts.kind)
 			return
 		case <-ticker.C:
-			timeout := getTimeout()
+			timeout := opts.getTimeout()
 			timeSinceTickerStarted := time.Since(timeTickerStarted)
 
 			if timeSinceTickerStarted > timeout {
-				tc.logger.Task().Errorf("Hit %s timeout (%s).", kind, getTimeout())
-				if !tc.hadTimedOut() {
-					// Record a timeout only if one has not already been
-					// detected. This is because if the task encounters multiple
-					// timeouts (e.g. hits the idle timeout in the pre block,
-					// then hits callback timeout in the timeout block), it
-					// should fail due to the first timeout that occurs.
-					tc.reachTimeOut(kind, timeout)
+				opts.tc.logger.Task().Errorf("Hit %s timeout (%s).", opts.kind, timeout)
+				if opts.canMarkTimeoutFailure {
+					opts.tc.reachTimeOut(opts.kind, timeout)
 				}
 				return
 			}

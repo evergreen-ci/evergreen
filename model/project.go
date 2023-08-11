@@ -446,11 +446,6 @@ func GetModuleByName(moduleList ModuleList, moduleName string) (*Module, error) 
 	return nil, errors.Errorf("module '%s' doesn't exist", moduleName)
 }
 
-type TestSuite struct {
-	Name  string `yaml:"name,omitempty"`
-	Phase string `yaml:"phase,omitempty"`
-}
-
 type PluginCommandConf struct {
 	Function string `yaml:"func,omitempty" bson:"func,omitempty"`
 	// Type is used to differentiate between setup related commands and actual

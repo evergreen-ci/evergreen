@@ -52,30 +52,65 @@ func (s *BackgroundSuite) SetupTest() {
 	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)
 }
 
-func (s *BackgroundSuite) TestStartTimeoutWatchTimesOut() {
+func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOut() {
 	const testTimeout = 30 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 	const timeout = time.Nanosecond
 	startAt := time.Now()
-	s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, func() time.Duration { return timeout }, cancel)
+	timeoutOpts := timeoutWatcherOptions{
+		tc:                    s.tc,
+		kind:                  callbackTimeout,
+		getTimeout:            func() time.Duration { return timeout },
+		canMarkTimeoutFailure: true,
+	}
+	s.a.startTimeoutWatcher(ctx, cancel, timeoutOpts)
 
 	s.Less(time.Since(startAt), testTimeout)
+	s.Error(ctx.Err(), "should have cancelled operation to time out")
 	s.True(s.tc.hadTimedOut())
 	s.Equal(callbackTimeout, s.tc.getTimeoutType(), "should have hit callback timeout")
 	s.Equal(timeout, s.tc.getTimeoutDuration(), "should have recorded timeout duration")
 }
 
-func (s *BackgroundSuite) TestStartTimeoutWatchExitsWithoutTimeout() {
+func (s *BackgroundSuite) TestStartTimeoutWatcherExitsWithoutTimeout() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	timeoutWatcherDone := make(chan struct{})
 	go func() {
-		s.a.startTimeoutWatch(ctx, s.tc, callbackTimeout, func() time.Duration { return time.Hour }, cancel)
+		timeoutOpts := timeoutWatcherOptions{
+			tc:                    s.tc,
+			kind:                  callbackTimeout,
+			getTimeout:            func() time.Duration { return time.Hour },
+			canMarkTimeoutFailure: true,
+		}
+		s.a.startTimeoutWatcher(ctx, cancel, timeoutOpts)
 		close(timeoutWatcherDone)
 	}()
+
 	cancel()
+	<-timeoutWatcherDone
 
 	s.False(s.tc.hadTimedOut())
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
+}
+
+func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOutButDoesNotMarkTimeoutFailure() {
+	const testTimeout = 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	const timeout = time.Nanosecond
+	startAt := time.Now()
+	timeoutOpts := timeoutWatcherOptions{
+		tc:         s.tc,
+		kind:       callbackTimeout,
+		getTimeout: func() time.Duration { return timeout },
+	}
+	s.a.startTimeoutWatcher(ctx, cancel, timeoutOpts)
+
+	s.Less(time.Since(startAt), testTimeout)
+	s.Error(ctx.Err(), "should have cancelled operation to time out")
+	s.False(s.tc.hadTimedOut(), "should not have marked timeout failure")
 	s.Zero(s.tc.getTimeoutType())
 	s.Zero(s.tc.getTimeoutDuration())
 }
