@@ -191,34 +191,34 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	return gimlet.NewJSONResponse(resp)
 }
 
-// POST /rest/v2/task/{task_id}/set_log_service_version
-type setTaskLogServiceVersionHandler struct {
+// POST /rest/v2/task/{task_id}/set_task_build_version
+type setTaskBuildVersionHandler struct {
 	taskID string
-	req    apimodels.TaskLogServiceVersionRequest
+	req    apimodels.TaskBuildVersionRequest
 
 	env evergreen.Environment
 }
 
-func makeSetTaskLogServiceVersion(env evergreen.Environment) gimlet.RouteHandler {
-	return &setTaskLogServiceVersionHandler{env: env}
+func makeSetTaskBuildVersion(env evergreen.Environment) gimlet.RouteHandler {
+	return &setTaskBuildVersionHandler{env: env}
 }
 
-func (h *setTaskLogServiceVersionHandler) Factory() gimlet.RouteHandler {
-	return &setTaskLogServiceVersionHandler{env: h.env}
+func (h *setTaskBuildVersionHandler) Factory() gimlet.RouteHandler {
+	return &setTaskBuildVersionHandler{env: h.env}
 }
 
-func (h *setTaskLogServiceVersionHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *setTaskBuildVersionHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
 	if err := utility.ReadJSON(r.Body, &h.req); err != nil {
-		return errors.Wrap(err, "reading task log service version from JSON request body")
+		return errors.Wrap(err, "reading task build version from JSON request body")
 	}
 
 	return nil
 }
 
-func (h *setTaskLogServiceVersionHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *setTaskBuildVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
@@ -230,11 +230,11 @@ func (h *setTaskLogServiceVersionHandler) Run(ctx context.Context) gimlet.Respon
 		})
 	}
 
-	if err := t.SetLogServiceVersion(ctx, h.env, h.req.Version); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting log service version in task '%s'", h.taskID))
+	if err := t.SetTaskBuildVersion(ctx, h.env, h.req.Version); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting task build version in task '%s'", h.taskID))
 	}
 
-	return gimlet.NewTextResponse("Log service version set in task")
+	return gimlet.NewTextResponse("Task build version set in task")
 }
 
 // POST /task/{task_id}/update_push_status

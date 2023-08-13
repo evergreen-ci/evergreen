@@ -89,7 +89,6 @@ type Task struct {
 	TaskGroup         string `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	LogServiceVersion *int   `bson:"log_service_version" json:"log_service_version"`
 	ResultsService    string `bson:"results_service,omitempty" json:"results_service,omitempty"`
 	HasCedarResults   bool   `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
 	ResultsFailed     bool   `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
@@ -157,7 +156,8 @@ type Task struct {
 	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 
 	// The version of the agent this task was run on.
-	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+	AgentVersion     string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+	TaskBuildVersion *int   `bson:"task_build_version,omitempty" json:"task_build_version,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
@@ -1443,36 +1443,36 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
-// SetLogServiceVersion sets the log service version used to write logs for the
-// task.
-func (t *Task) SetLogServiceVersion(ctx context.Context, env evergreen.Environment, version int) error {
+// SetTaskBuildVersion sets the version of the task build. This should only be
+// called once at the beginning of a task run.
+func (t *Task) SetTaskBuildVersion(ctx context.Context, env evergreen.Environment, version int) error {
 	if t.DisplayOnly {
-		return errors.New("cannot set log service version on a display task")
+		return errors.New("cannot set task build version on a display task")
 	}
-	if t.LogServiceVersion != nil {
-		return errors.New("log service version already set")
+	if t.TaskBuildVersion != nil {
+		return errors.New("task build version already set")
 	}
 
 	res, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, []bson.M{
 		{
-			"$set": bson.M{LogServiceVersionKey: bson.M{
+			"$set": bson.M{TaskBuildVersionKey: bson.M{
 				"$ifNull": bson.A{
-					"$" + LogServiceVersionKey,
+					"$" + TaskBuildVersionKey,
 					version,
 				}},
 			},
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "setting the log service version")
+		return errors.Wrap(err, "setting the task build version")
 	}
 	if res.MatchedCount == 0 {
 		return errors.New("programmatic error: task not found")
 	}
 	if res.ModifiedCount == 0 {
-		return errors.New("log service version already set")
+		return errors.New("task build version already set")
 	}
-	t.LogServiceVersion = utility.ToIntPtr(version)
+	t.TaskBuildVersion = utility.ToIntPtr(version)
 
 	return nil
 }
@@ -2055,7 +2055,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
-		t.LogServiceVersion = nil
+		t.TaskBuildVersion = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasCedarResults = false
@@ -2093,7 +2093,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		{
 			"$unset": []string{
 				DetailsKey,
-				LogServiceVersionKey,
+				TaskBuildVersionKey,
 				ResultsServiceKey,
 				ResultsFailedKey,
 				HasCedarResultsKey,

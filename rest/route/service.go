@@ -70,7 +70,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
 	app.AddRoute("/agent/data_pipes_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentDataPipesConfig(settings.DataPipes))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
-	app.AddRoute("/task/{task_id}/set_log_service_version").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskLogServiceVersion(env))
+	app.AddRoute("/task/{task_id}/set_task_build_version").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskBuildVersion(env))
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/new_push").Version(2).Post().Wrap(requireTask).RouteHandler(makeNewPush())
 	app.AddRoute("/task/{task_id}/expansions_and_vars").Version(2).Get().Wrap(requireTask, requirePodOrHost).RouteHandler(makeGetExpansionsAndVars(settings))

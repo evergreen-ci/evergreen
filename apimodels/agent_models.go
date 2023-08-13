@@ -24,9 +24,9 @@ const (
 	DefaultRetries                  = 2
 )
 
-// TaskLogServiceVersionRequest holds information sent by the agent to the API
+// TaskBuildVersionRequest holds information sent by the agent to the API
 // server for the log service version used to store logs.
-type TaskLogServiceVersionRequest struct {
+type TaskBuildVersionRequest struct {
 	Version int `json:"version"`
 }
 

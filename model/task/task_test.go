@@ -4636,7 +4636,7 @@ func TestGenerateNotRun(t *testing.T) {
 	}
 }
 
-func TestSetLogServiceVersion(t *testing.T) {
+func TestSetTaskBuildVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := evergreen.GetEnvironment()
@@ -4661,23 +4661,23 @@ func TestSetLogServiceVersion(t *testing.T) {
 		{
 			name: "VersionAlreadySet",
 			tsk: &Task{
-				LogServiceVersion: utility.ToIntPtr(1),
+				TaskBuildVersion: utility.ToIntPtr(1),
 			},
 			hasErr: true,
 		},
 		{
 			name: "TaskDNE",
 			tsk: &Task{
-				Id:                "DNE",
-				LogServiceVersion: utility.ToIntPtr(1),
+				Id:               "DNE",
+				TaskBuildVersion: utility.ToIntPtr(1),
 			},
 			hasErr: true,
 		},
 		{
 			name: "VersionAlreadySetInDB",
 			dbTsk: &Task{
-				Id:                "task0",
-				LogServiceVersion: utility.ToIntPtr(1),
+				Id:               "task0",
+				TaskBuildVersion: utility.ToIntPtr(1),
 			},
 			tsk: &Task{
 				Id: "task0",
@@ -4700,13 +4700,13 @@ func TestSetLogServiceVersion(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err := test.tsk.SetLogServiceVersion(ctx, env, 0)
+			err := test.tsk.SetTaskBuildVersion(ctx, env, 0)
 			if test.hasErr {
 				require.Error(t, err)
-				assert.NotEqual(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+				assert.NotEqual(t, utility.ToIntPtr(0), test.tsk.TaskBuildVersion)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+				assert.Equal(t, utility.ToIntPtr(0), test.tsk.TaskBuildVersion)
 			}
 		})
 	}
