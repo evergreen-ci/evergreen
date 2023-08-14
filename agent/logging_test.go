@@ -23,7 +23,7 @@ func TestGetSenderLocal(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err := (&Agent{}).GetSender(ctx, LogOutputStdout, "agent")
+	_, err := (&Agent{}).GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	assert.NoError(err)
 }
 
