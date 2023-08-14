@@ -83,7 +83,7 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error
 	return "", err
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
+func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("idle timeout watcher")
 	defer cancel()
 	ticker := time.NewTicker(time.Second)

@@ -683,7 +683,13 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 	}
 	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
-	execTimeoutCtx, execTimeoutCancel := context.WithCancel(ctx)
+	timeoutWatcherCtx, timeoutWatcherCancel := context.WithCancel(ctx)
+	defer timeoutWatcherCancel()
+
+	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(timeoutWatcherCtx)
+	go a.startIdleTimeoutWatcher(timeoutWatcherCtx, idleTimeoutCancel, tc)
+
+	execTimeoutCtx, execTimeoutCancel := context.WithCancel(idleTimeoutCtx)
 	defer execTimeoutCancel()
 	timeoutOpts := timeoutWatcherOptions{
 		tc:                    tc,
@@ -691,7 +697,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 		getTimeout:            tc.getExecTimeout,
 		canMarkTimeoutFailure: true,
 	}
-	go a.startTimeoutWatcher(ctx, execTimeoutCancel, timeoutOpts)
+	go a.startTimeoutWatcher(timeoutWatcherCtx, execTimeoutCancel, timeoutOpts)
 
 	// set up the system stats collector
 	tc.statsCollector = NewSimpleStatsCollector(
