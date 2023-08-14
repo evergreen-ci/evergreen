@@ -299,6 +299,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		attribute.Int(fmt.Sprintf("%s.task_queue_length", hostAllocatorAttributePrefix), distroQueueInfo.Length),
 		attribute.Int(fmt.Sprintf("%s.overdue_tasks", hostAllocatorAttributePrefix), distroQueueInfo.CountWaitOverThreshold),
 		attribute.Float64(fmt.Sprintf("%s.seconds_to_empty", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.Seconds()),
+		attribute.Float64(fmt.Sprintf("%s.queue_ratio", hostAllocatorAttributePrefix), float64(noSpawnsRatio)),
 	)
 }
 
