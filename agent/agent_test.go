@@ -227,7 +227,7 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	}
 
 	endDetail := s.mockCommunicator.EndTaskResult.Detail
-	s.Equal("", endDetail.Message, "the end message should not include any errors")
+	s.Empty("", endDetail.Message, "the end message should not include any errors")
 	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
 }
 
