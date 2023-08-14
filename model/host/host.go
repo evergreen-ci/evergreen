@@ -241,7 +241,7 @@ type DockerOptions struct {
 	// list of container environment variables KEY=VALUE
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 	// StdinData is the data to pass to the container command's stdin.
-	StdinData []byte `mapstructure: "stdin_data" bson:"stdin_data,omitempty"`
+	StdinData []byte `mapstructure:"stdin_data" bson:"stdin_data,omitempty" json:"stdin_data,omitempty"`
 }
 
 // FromDistroSettings loads the Docker container options from the provider
