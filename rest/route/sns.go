@@ -649,10 +649,7 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 			return nil, errors.New("listing ECS tasks returned no response")
 		}
 
-		for _, arn := range resp.TaskArns {
-			taskARNs = append(taskARNs, arn)
-		}
-
+		taskARNs = append(taskARNs, resp.TaskArns...)
 		token = resp.NextToken
 		if token == nil {
 			return taskARNs, nil

@@ -395,7 +395,7 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 		require.Equal(t, containerOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
-		assert.Equal(t, ecsTypes.LogDriverAwslogs, utility.FromStringPtr(cDef.LogConfiguration.LogDriver))
+		assert.EqualValues(t, ecsTypes.LogDriverAwslogs, utility.FromStringPtr(cDef.LogConfiguration.LogDriver))
 		assert.Equal(t, "us-east-1", cDef.LogConfiguration.Options[awsLogsRegion])
 		assert.Equal(t, "log_group", cDef.LogConfiguration.Options[awsLogsGroup])
 
