@@ -17,11 +17,14 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	createHostJobName = "provisioning-create-host"
-	maxPollAttempts   = 100
+	createHostJobName                     = "provisioning-create-host"
+	maxPollAttempts                       = 100
+	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
 )
 
 func init() {
@@ -278,6 +281,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"max_attempts": j.RetryInfo().MaxAttempts,
 	})
 
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
+		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
+		attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), false),
+	)
+
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
 		return errors.Wrapf(err, "getting cloud manager options for distro '%s'", j.host.Distro.Id)
@@ -347,6 +357,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"job":          j.ID(),
 		"runtime_secs": time.Since(j.start).Seconds(),
 	})
+	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
 
 	return nil
 }
