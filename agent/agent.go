@@ -621,10 +621,14 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
-	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(tskCtx)
-	go a.startIdleTimeoutWatch(tskCtx, tc, idleTimeoutCancel)
+	// kim: TODO: we can probably just move the idle timeout watcher into
+	// startTask. It already has noeffect if idle timeout is hit afterwards
+	// (because idleTimeoutCancel only affects pre and main).
+	// idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(tskCtx)
+	// go a.startIdleTimeoutWatch(tskCtx, tc, idleTimeoutCancel)
 
-	preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
+	// preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
+	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
 	status := a.startTask(preAndMainCtx, tc)
