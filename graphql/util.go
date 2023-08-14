@@ -1065,22 +1065,22 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
 	data, ok := entry.Data.(*event.DistroEventData)
 	if !ok {
-		return nil, InternalServerError.Send(ctx, "casting distro event data")
+		return nil, errors.New("casting distro event data")
 	}
 
 	after, err := interfaceToMap(ctx, data.After)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting 'after' field to map: '%s'", err.Error()))
+		return nil, errors.Wrapf(err, "converting 'after' field to map")
 	}
 
 	before, err := interfaceToMap(ctx, data.Before)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting 'before' field to map: '%s'", err.Error()))
+		return nil, errors.Wrapf(err, "converting 'before' field to map")
 	}
 
 	legacyData, err := interfaceToMap(ctx, data.Data)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting legacy 'data' field to map: '%s'", err.Error()))
+		return nil, errors.Wrapf(err, "converting legacy 'data' field to map")
 	}
 
 	user := data.User
@@ -1106,12 +1106,12 @@ func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface
 	mapField := map[string]interface{}{}
 	marshalledData, err := bson.Marshal(data)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("marshalling data: %s", err.Error()))
+		return nil, errors.Wrapf(err, "marshalling data")
 	}
 
 	err = bson.Unmarshal(marshalledData, &mapField)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unmarshalling data: %s", err.Error()))
+		return nil, errors.Wrapf(err, "unmarshalling data")
 	}
 
 	return mapField, nil
