@@ -788,25 +788,36 @@ func needsContainerAllocation() bson.M {
 //     have been met.
 //  2. The container is allocated but the agent has not picked up the task yet.
 func IsContainerTaskScheduledQuery() bson.M {
+	query := IsUndispatchedContainerTasksQuery()
+	query["$or"] = dependenciesAreMetQuery()
+	return query
+}
+
+// IsUndispatchedContainerTasksQuery returns a query returning all tasks that
+// are undispatched container tasks.
+func IsUndispatchedContainerTasksQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
 		ActivatedKey:         true,
 		ExecutionPlatformKey: ExecutionPlatformContainer,
 		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
-		"$or": []bson.M{
-			{
-				DependsOnKey: bson.M{"$size": 0},
-			},
-			{
-				// Containers can only be allocated for tasks whose dependencies
-				// are all met. All dependencies are met if they're all finished
-				// running and are still attainable (i.e. the dependency's
-				// required status matched the task's actual ending status).
-				bsonutil.GetDottedKeyName(DependsOnKey, DependencyFinishedKey):     true,
-				bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
-			},
-			{OverrideDependenciesKey: true},
+	}
+}
+
+func dependenciesAreMetQuery() []bson.M {
+	return []bson.M{
+		{
+			DependsOnKey: bson.M{"$size": 0},
 		},
+		{
+			// Containers can only be allocated for tasks whose dependencies
+			// are all met. All dependencies are met if they're all finished
+			// running and are still attainable (i.e. the dependency's
+			// required status matched the task's actual ending status).
+			bsonutil.GetDottedKeyName(DependsOnKey, DependencyFinishedKey):     true,
+			bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
+		},
+		{OverrideDependenciesKey: true},
 	}
 }
 
