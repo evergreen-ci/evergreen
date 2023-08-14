@@ -137,38 +137,35 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 
 	go func() {
 		defer stdinCancel()
-		grip.Info(message.Fields{
-			"message":      "kim: stdin stream started running",
-			"container_id": container.Id,
-			"parent_id":    parent.Id,
-		})
-		m.runContainerStdinStream(stream, container.Id, container.DockerOptions.StdinData)
-		grip.Info(message.Fields{
-			"message":      "kim: stdin stream finished running",
-			"container_id": container.Id,
-			"parent_id":    parent.Id,
-		})
+		m.runContainerStdinStream(stream, container, container.DockerOptions.StdinData)
 	}()
 
 	return nil
 }
 
 // runContainerStdinStream streams data to the container's stdin.
-func (m *dockerManager) runContainerStdinStream(stream *types.HijackedResponse, containerID string, stdinData []byte) {
+func (m *dockerManager) runContainerStdinStream(stream *types.HijackedResponse, container *host.Host, stdinData []byte) {
 	defer func() {
 		if err := recovery.HandlePanicWithError(recover(), nil, "streaming stdin to container"); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "panicked while streaming stdin to container",
-				"container": containerID,
+				"message":        "panicked while streaming stdin to container",
+				"container":      container.Id,
+				"task_id":        container.SpawnOptions.TaskID,
+				"task_execution": container.SpawnOptions.TaskExecutionNumber,
+				"build_id":       container.SpawnOptions.BuildID,
 			}))
 		}
+
+		stream.Close()
 	}()
-	defer stream.Close()
 
 	_, err := io.Copy(stream.Conn, bytes.NewBuffer(stdinData))
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":   "could not stream stdin data to container",
-		"container": containerID,
+		"message":        "could not stream stdin data to container",
+		"container":      container.Id,
+		"task_id":        container.SpawnOptions.TaskID,
+		"task_execution": container.SpawnOptions.TaskExecutionNumber,
+		"build_id":       container.SpawnOptions.BuildID,
 	}))
 }
 

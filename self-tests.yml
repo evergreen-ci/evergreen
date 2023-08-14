@@ -1,5 +1,4 @@
 command_type: test
-exec_timeout_secs: 3600
 stepback: true
 ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
@@ -64,35 +63,10 @@ variables:
     # evergreen. The test name should correspond to a make target for
     # that suite
     name: test
-    # must_have_test_results: true
+    must_have_test_results: true
     commands:
       - func: get-project-and-modules
       - func: setup-credentials
-      - command: host.create
-        params:
-          num_hosts: 1
-          provider: docker
-          image: ubuntu
-          distro: ubuntu1604-container
-          command: tee
-          stdin_file_name: evergreen/README.md
-          stdout_file_name: evergreen/stdout.txt
-          stderr_file_name: evergreen/stderr.txt
-      - command: host.list
-        params:
-          path: evergreen/hosts.txt
-          wait: true
-          timeout_seconds: 1200
-          num_hosts: 1
-      - command: shell.exec
-        params:
-          script: |
-            cat evergreen/hosts.txt
-            cat evergreen/README.md
-            pwd
-            echo printing out logs from stdout/stderr
-            cat evergreen/stdout.txt
-            cat evergreen/stderr.txt
       - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-docker

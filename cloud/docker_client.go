@@ -540,10 +540,6 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 		return errors.Wrap(err, "generating Docker client")
 	}
 
-	// kim: NOTE: before starting the container, we have to attach the stdin
-	// stream and start a goroutine to stream to it. I can't think of a better
-	// way to do this since this is the only API that Docker gives us.
-
 	opts := types.ContainerStartOptions{}
 	if err := dockerClient.ContainerStart(ctx, containerID, opts); err != nil {
 		return errors.Wrapf(err, "starting container '%s'", containerID)
