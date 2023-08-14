@@ -42,6 +42,7 @@ func spanForRootTest(ctx context.Context, t *testing.T) context.Context {
 	traceIDString := os.Getenv(otelTraceIDEnvVar)
 	spanIDString := os.Getenv(otelParentIDEnvVar)
 	if collectorEndpoint == "" || traceIDString == "" || spanIDString == "" {
+		grip.Debug("collector is not configured. Skipping trace initialization")
 		return ctx
 	}
 
