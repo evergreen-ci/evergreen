@@ -18,7 +18,6 @@ var (
 	ParserProjectEnabledKey           = bsonutil.MustHaveTag(ParserProject{}, "Enabled")
 	ParserProjectStepbackKey          = bsonutil.MustHaveTag(ParserProject{}, "Stepback")
 	ParserProjectPreErrorFailsTaskKey = bsonutil.MustHaveTag(ParserProject{}, "PreErrorFailsTask")
-	ParserProjectUnsetFunctionVarsKey = bsonutil.MustHaveTag(ParserProject{}, "UnsetFunctionVars")
 	ParserProjectOomTracker           = bsonutil.MustHaveTag(ParserProject{}, "OomTracker")
 	ParserProjectBatchTimeKey         = bsonutil.MustHaveTag(ParserProject{}, "BatchTime")
 	ParserProjectOwnerKey             = bsonutil.MustHaveTag(ParserProject{}, "Owner")
