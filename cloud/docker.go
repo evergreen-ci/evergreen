@@ -110,13 +110,13 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 		return nil
 	}
 
-	// This needs to use a context that's not attached to the operation because
-	// the context may come from an operation that does not live as long as the
-	// container does. For example, the context could be from a REST request to
-	// start a container, and the container will still be starting/running after
-	// the REST request finishes. Streaming to stdin occurs asynchronously once
-	// the container is up and running, so we have to ensure that the attached
-	// stdin lives beyond the request.
+	// This needs to use a context that's not attached to the container creation
+	// request because the request does not live as long as the container does.
+	// For example, the context could be from a REST request to start a
+	// container, and the container will still be starting/running after the
+	// REST request finishes. Streaming to stdin occurs asynchronously once the
+	// container is up and running, so we have to ensure that the attached stdin
+	// lives beyond the request and eventually streams to the running container.
 	var timeoutAt time.Time
 	if !utility.IsZeroTime(container.ExpirationTime) {
 		timeoutAt = container.ExpirationTime
@@ -125,6 +125,9 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 		timeoutAt = container.SpawnOptions.TimeoutTeardown
 	}
 	if utility.IsZeroTime(timeoutAt) {
+		// There's no reasonable deadline to use, so just time out after a
+		// little bit. Realistically, the data will likely stream to the
+		// container well within this deadline.
 		timeoutAt = time.Now().Add(15 * time.Minute)
 	}
 	stdinCtx, stdinCancel := context.WithDeadline(context.Background(), timeoutAt)
