@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -106,6 +107,11 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	startTime := time.Now()
 
 	c.logAMI(ctx, comm, logger, taskData)
+	logger.Task().Info(message.Fields{
+		"message":            "kim: created host.create options with stdin",
+		"stdin_file":         c.CreateHost.StdinFile,
+		"stdin_file_content": string(c.CreateHost.StdinFileContents),
+	})
 	ids, err := comm.CreateHost(ctx, taskData, *c.CreateHost)
 	if err != nil {
 		return errors.Wrap(err, "creating host")

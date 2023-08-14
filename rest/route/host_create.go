@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -47,16 +48,56 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 	h.taskID = taskID
 
-	if err := utility.ReadJSON(r.Body, &h.createHost); err != nil {
+	grip.Info(message.Fields{
+		"message": "kim: parsing host.create request body",
+		"route":   "/hosts/{task_id}/create",
+	})
+
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		grip.Error(message.Fields{
+			"message": "kim: could not read host.create request body",
+			"route":   "/hosts/{task_id}/create",
+			"body":    string(b),
+		})
+	}
+
+	if err := json.Unmarshal(b, &h.createHost); err != nil {
+		grip.Error(message.Fields{
+			"message": "kim: could not unmarshal request body into host.create parameters",
+			"route":   "/hosts/{task_id}/create",
+			"body":    string(b),
+		})
+		// kim: TODO: re-add
+		// if err := utility.ReadJSON(r.Body, &h.createHost); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
 		}
 	}
-	return h.createHost.Validate(ctx)
+	if err := h.createHost.Validate(ctx); err != nil {
+		grip.Error(message.Fields{
+			"message": "kim: invalid host.create parameters",
+			"route":   "/hosts/{task_id}/create",
+			"body":    string(b),
+		})
+		return err
+	}
+	grip.Info(message.Fields{
+		"message": "kim: host.create parameters were valid",
+		"route":   "/hosts/{task_id}/create",
+		"body":    string(b),
+	})
+
+	return nil
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
+	grip.Info(message.Fields{
+		"message": "kim: running host.create host route handler",
+		"route":   "/hosts/{task_id}/create",
+		"params":  h.createHost,
+	})
 	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting number of hosts to create to integer value"))
@@ -64,8 +105,18 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
+		grip.Info(message.Fields{
+			"message": "kim: creating one host.create host",
+			"route":   "/hosts/{task_id}/create",
+			"params":  h.createHost,
+		})
 		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost)
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "kim: failed to create host.create host",
+				"route":   "/hosts/{task_id}/create",
+				"params":  h.createHost,
+			}))
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
 		}
 		ids = append(ids, intentHost.Id)

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -116,7 +117,17 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 	// the REST request finishes. Streaming to stdin occurs asynchronously once
 	// the container is up and running, so we have to ensure that the attached
 	// stdin lives beyond the request.
-	stdinCtx, stdinCancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	var timeoutAt time.Time
+	if !utility.IsZeroTime(container.ExpirationTime) {
+		timeoutAt = container.ExpirationTime
+	}
+	if !utility.IsZeroTime(container.SpawnOptions.TimeoutTeardown) {
+		timeoutAt = container.SpawnOptions.TimeoutTeardown
+	}
+	if utility.IsZeroTime(timeoutAt) {
+		timeoutAt = time.Now().Add(15 * time.Minute)
+	}
+	stdinCtx, stdinCancel := context.WithDeadline(context.Background(), timeoutAt)
 
 	stream, err := m.client.AttachToContainer(stdinCtx, parent, container.Id, container.DockerOptions)
 	if err != nil {
@@ -124,13 +135,26 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 		return errors.Wrap(err, "attaching stdin stream to container")
 	}
 
-	go m.runContainerStdinStream(stream, container.Id, container.DockerOptions.StdinData, stdinCancel)
+	go func() {
+		defer stdinCancel()
+		grip.Info(message.Fields{
+			"message":      "kim: stdin stream started running",
+			"container_id": container.Id,
+			"parent_id":    parent.Id,
+		})
+		m.runContainerStdinStream(stream, container.Id, container.DockerOptions.StdinData)
+		grip.Info(message.Fields{
+			"message":      "kim: stdin stream finished running",
+			"container_id": container.Id,
+			"parent_id":    parent.Id,
+		})
+	}()
 
 	return nil
 }
 
 // runContainerStdinStream streams data to the container's stdin.
-func (m *dockerManager) runContainerStdinStream(stream *types.HijackedResponse, containerID string, stdinData []byte, cancel context.CancelFunc) {
+func (m *dockerManager) runContainerStdinStream(stream *types.HijackedResponse, containerID string, stdinData []byte) {
 	defer func() {
 		if err := recovery.HandlePanicWithError(recover(), nil, "streaming stdin to container"); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -138,7 +162,6 @@ func (m *dockerManager) runContainerStdinStream(stream *types.HijackedResponse, 
 				"container": containerID,
 			}))
 		}
-		cancel()
 	}()
 	defer stream.Close()
 

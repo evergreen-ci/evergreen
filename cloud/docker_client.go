@@ -379,13 +379,15 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		PublishAllPorts: containerHost.DockerOptions.PublishPorts,
 		ExtraHosts:      containerHost.DockerOptions.ExtraHosts,
 	}
+	if len(containerHost.DockerOptions.StdinData) != 0 {
+		containerConf.AttachStdin = true
+		containerConf.StdinOnce = true
+		containerConf.OpenStdin = true
+	}
 
 	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
 
 	// Build container
-	// kim: NOTE: only way to send to the container's stdin is via AttachStdin
-	// and streaming the contents (see Jasper). It's not totally clear to me if
-	// this can be done for a remote process.
 	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, nil, containerHost.Id); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "Docker create API call failed",
