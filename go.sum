@@ -117,7 +117,6 @@ github.com/aws/aws-sdk-go v1.15.11/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZo
 github.com/aws/aws-sdk-go v1.41.11/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.41.12/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.44.89/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
-github.com/aws/aws-sdk-go v1.44.127/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aws/aws-sdk-go v1.44.266 h1:MWd775dcYf7NrwgcHLtlsIbWoWkX8p4vomfNHr88zH0=
 github.com/aws/aws-sdk-go v1.44.266/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aws/aws-sdk-go-v2 v1.18.0/go.mod h1:uzbQtefpm44goOPmdKyAlXSNcwlRgF3ePWVW6EtJvvw=
@@ -408,8 +407,8 @@ github.com/evergreen-ci/bond v0.0.0-20211109152423-ba2b6b207f56/go.mod h1:EO+Oqm
 github.com/evergreen-ci/certdepot v0.0.0-20211109153348-d681ebe95b66/go.mod h1:X72gmQuA1g8E1vWg1Jfve3zdHoPxJkpwXDMLV1COs5g=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10 h1:dVNSXGxztN6t1S3vGxbSKqb5vqIRM5LiM1O5JjnVuCA=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10/go.mod h1:KpN0y+4m4oplnmM/PQmKAG+NQDKUbtr1BbdR4mr+6Ww=
-github.com/evergreen-ci/cocoa v0.0.0-20230323210713-a34b158b096e h1:gF78PFpZWebIzDP42oKtnG6WOVLTBcOoG3eZKrhOdxA=
-github.com/evergreen-ci/cocoa v0.0.0-20230323210713-a34b158b096e/go.mod h1:9loFu7XeSsMF9tCQyJyUyjrVGkhQAEoOTgwniVzFzVI=
+github.com/evergreen-ci/cocoa v0.0.0-20230814170341-875b9d0419f3 h1:5C9s7PbF9x9k/dBQuqUP258Fdg8fNcLeT35HxYl3fcI=
+github.com/evergreen-ci/cocoa v0.0.0-20230814170341-875b9d0419f3/go.mod h1:biHWqESK1l8CJRr+aYtzOkdOvDUR4zixQfFCeUtS5Pk=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57 h1:CIUR6i5YWJ/z5RbZ11UomO7aZxQjeHqAjOqGwPh7sCY=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57/go.mod h1:lbmNkNEkJEuhIdctIEbJhx4hMzjRvbUg172mQRvNnKo=
 github.com/evergreen-ci/gimlet v0.0.0-20211018155143-ebbbff34990a/go.mod h1:F2dAoc1x1+JwZH9ylB9tpeOnztafEx2IbZjEz8GQzOM=
@@ -447,7 +446,6 @@ github.com/evergreen-ci/timber v0.0.0-20230731225120-893f8ec27fe3 h1:ZAXkjLIYuig
 github.com/evergreen-ci/timber v0.0.0-20230731225120-893f8ec27fe3/go.mod h1:UUzYp4MuW+uz87NoorR2FmC5xkB1s6uu4+poGYa3EL0=
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuEDytmDhOv+UCUwRPG/qD7mjVkUgx37KEv+thUgHVk=
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
-github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118/go.mod h1:J23DaXv/35hpeeDLK1ay9KX/7zMF0HdVMAitqXQW9j0=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
 github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c h1:1MsTaPMQ0eM9KXeqdbbFPPAeXuhckMDKo/DkKLFfzVA=
 github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
@@ -1467,7 +1465,6 @@ golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220908164124-27713097b956/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.1.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.2.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
