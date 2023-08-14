@@ -230,7 +230,7 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	s.tc.taskConfig.Project = p
 }
 
-func (s *CommandSuite) TestUnsetFunctionVarsProjectFlag() {
+func (s *CommandSuite) TestFunctionVarsUnsetWhenProjectFlagTrue() {
 	s.tc.unsetFunctionVarsDisabled = true
 	projYml := `
 unset_function_vars: true 
@@ -260,9 +260,12 @@ functions:
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
 	s.Equal("expansionVar", key1Value, "globalVar should be set back to what it was before the function ran")
 
+}
+
+func (s *CommandSuite) TestFunctionVarsDontUnsetWithoutFlag() {
 	s.tc.unsetFunctionVarsDisabled = true
 
-	projYml = `
+	projYml := `
 functions:
   yes:
     vars: 
@@ -273,11 +276,18 @@ functions:
         script: |
           echo "hi"
 `
+	func1 := model.PluginCommandConf{
+		Function:    "yes",
+		DisplayName: "function",
+		Vars:        map[string]string{"key1": "functionVar"},
+	}
+
+	cmds := []model.PluginCommandConf{func1}
 	s.setUpConfigAndProject(projYml)
-	err = s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
 
-	key1Value = s.tc.taskConfig.Expansions.Get("key1")
+	key1Value := s.tc.taskConfig.Expansions.Get("key1")
 	s.Equal("functionVar", key1Value, "globalVar should not be set back to what it was before if it's disabled")
 }
 
