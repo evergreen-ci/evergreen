@@ -18,13 +18,17 @@ import (
 
 // CloneMethod is the resolver for the cloneMethod field.
 func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error) {
-	switch *obj.CloneMethod {
+	if obj == nil {
+		return CloneMethodLegacySSH, InternalServerError.Send(ctx, "distro undefined when attempting to resolve clone method")
+	}
+
+	switch utility.FromStringPtr(obj.CloneMethod) {
 	case evergreen.CloneMethodLegacySSH:
 		return CloneMethodLegacySSH, nil
 	case evergreen.CloneMethodOAuth:
 		return CloneMethodOauth, nil
 	default:
-		return CloneMethodLegacySSH, InternalServerError.Send(ctx, fmt.Sprintf("Clone method '%s' is invalid", *obj.CloneMethod))
+		return CloneMethodLegacySSH, InternalServerError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", *obj.CloneMethod))
 	}
 }
 
