@@ -83,6 +83,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 				strings.Title(status.String())
 				tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 				defer tcancel()
+				tctx = testutil.TestSpan(tctx, t)
 
 				env := &mock.Environment{}
 				require.NoError(t, env.Configure(tctx))
@@ -245,6 +246,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
@@ -276,6 +278,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
@@ -379,12 +382,13 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			tctx := testutil.TestSpan(ctx, t)
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			require.NoError(t, testCase.t.Insert())
 
-			assert.NoError(t, handleTerminatedHostSpawnedByTask(ctx, testCase.h))
+			assert.NoError(t, handleTerminatedHostSpawnedByTask(tctx, testCase.h))
 
-			intent, err := host.FindOne(ctx, bson.M{})
+			intent, err := host.FindOne(tctx, bson.M{})
 			require.NoError(t, err)
 			if testCase.newIntentCreated {
 				require.NotNil(t, intent)
