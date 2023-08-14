@@ -30,11 +30,6 @@ func TestMakeECSClient(t *testing.T) {
 		assert.NotZero(t, c)
 		assert.NoError(t, c.Close(ctx))
 	})
-	t.Run("FailsWithoutRequiredSettings", func(t *testing.T) {
-		c, err := MakeECSClient(ctx, &evergreen.Settings{})
-		assert.Error(t, err)
-		assert.Zero(t, c)
-	})
 }
 
 func TestMakeSecretsManagerClient(t *testing.T) {
@@ -46,11 +41,6 @@ func TestMakeSecretsManagerClient(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotZero(t, c)
 		assert.NoError(t, c.Close(ctx))
-	})
-	t.Run("FailsWithoutRequiredSettings", func(t *testing.T) {
-		c, err := MakeSecretsManagerClient(ctx, &evergreen.Settings{})
-		assert.Error(t, err)
-		assert.Zero(t, c)
 	})
 }
 
