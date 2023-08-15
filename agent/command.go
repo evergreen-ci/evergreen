@@ -165,12 +165,20 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	}
 	defer func() {
 		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
-			// This defer ensures that the function vars do not persist in the expansions after the function is over.
-			for key, functionValue := range commandInfo.Vars {
-				currentValue := tc.taskConfig.Expansions.Get(key)
-				if currentValue != functionValue {
-					// If a command in the func updates the expansion value, don't reset it.
-					delete(prevExp, key)
+			// This defer ensures that the function vars do not persist in the expansions after the function is over
+			// unless they were updated using expansions.update
+
+			if cmd.Name() == "expansions.update" {
+				c, ok := cmd.(*command.Update)
+				if !ok {
+					tc.logger.Task().Errorf("unable to unset function vars, unexpected error getting commands.")
+					return
+				}
+				for _, v := range c.Updates {
+					if _, ok := commandInfo.Vars[v.Key]; ok {
+						// If expansions.update updated this key, don't reset it
+						delete(prevExp, v.Key)
+					}
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)

@@ -13,7 +13,7 @@ import (
 // update reads in a set of new expansions and updates the
 // task's expansions at runtime. update can take a list
 // of update expansion pairs and/or a file of expansion pairs
-type update struct {
+type Update struct {
 	// Key-value pairs for updating the task's parameters with
 	Updates []updateParams `mapstructure:"updates"`
 
@@ -40,12 +40,12 @@ type updateParams struct {
 	Concat string
 }
 
-func updateExpansionsFactory() Command { return &update{} }
-func (c *update) Name() string         { return "expansions.update" }
+func updateExpansionsFactory() Command { return &Update{} }
+func (c *Update) Name() string         { return "expansions.update" }
 
 // ParseParams validates the input to the update, returning and error
 // if something is incorrect. Fulfills Command interface.
-func (c *update) ParseParams(params map[string]interface{}) error {
+func (c *Update) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
@@ -60,7 +60,7 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
+func (c *Update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
 	for _, update := range c.Updates {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "operation aborted")
@@ -88,7 +88,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 }
 
 // Execute updates the expansions. Fulfills Command interface.
-func (c *update) Execute(ctx context.Context,
+func (c *Update) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	err := c.ExecuteUpdates(ctx, conf)
