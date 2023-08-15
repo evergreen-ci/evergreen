@@ -157,6 +157,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.PreErrorFailsTask = toMerge.PreErrorFailsTask
 	}
 
+	if pp.UnsetFunctionVars != nil && toMerge.UnsetFunctionVars != nil {
+		catcher.New("unset function vars can only be defined in one YAML")
+	} else if toMerge.UnsetFunctionVars != nil {
+		pp.UnsetFunctionVars = toMerge.UnsetFunctionVars
+	}
+
 	if pp.PostErrorFailsTask != nil && toMerge.PostErrorFailsTask != nil {
 		catcher.New("post error fails task can only be defined in one YAML")
 	} else if toMerge.PostErrorFailsTask != nil {

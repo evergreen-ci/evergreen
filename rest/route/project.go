@@ -475,7 +475,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var vault cocoa.Vault
 	if len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0 {
-		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
+		smClient, err := cloud.MakeSecretsManagerClient(ctx, h.settings)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
 		}

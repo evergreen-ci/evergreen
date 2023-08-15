@@ -33,7 +33,7 @@ func init() {
 
 const defaultProjYml = `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 tasks: 
  - name: this_is_a_task_name
    commands: 
@@ -78,7 +78,7 @@ func (s *AgentSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	const versionID = "v1"
-	const bvName = "some_build_variant"
+	const bvName = "mock_build_variant"
 	tsk := &task.Task{
 		Id:           "task_id",
 		DisplayName:  "some task",
@@ -210,6 +210,7 @@ func (s *AgentSuite) TestCanceledContext() {
 }
 
 func (s *AgentSuite) TestAgentEndTaskShouldExit() {
+	s.setupRunTask(defaultProjYml)
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{ShouldExit: true}
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
@@ -224,6 +225,10 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	case <-ctx.Done():
 		s.FailNow(ctx.Err().Error())
 	}
+
+	endDetail := s.mockCommunicator.EndTaskResult.Detail
+	s.Empty("", endDetail.Message, "the end message should not include any errors")
+	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
 }
 
 func (s *AgentSuite) TestNextTaskConflict() {
@@ -402,7 +407,7 @@ func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
 func (s *AgentSuite) TestPre() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 pre:
   - command: shell.exec
@@ -442,7 +447,7 @@ pre:
 func (s *AgentSuite) TestPostFailsTask() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 post:
@@ -488,12 +493,14 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 	s.tc.project = p
+	s.mockCommunicator.GetProjectResponse = p
 	t := &task.Task{
 		Id:           "task_id",
-		BuildVariant: "some_build_variant",
+		BuildVariant: "mock_build_variant",
 		DisplayName:  "this_is_a_task_name",
 		Version:      "my_version",
 	}
+	s.mockCommunicator.GetTaskResponse = t
 	s.tc.taskModel = t
 	s.tc.taskConfig.Task = t
 }
@@ -501,7 +508,7 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -531,7 +538,7 @@ post:
 func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 tasks: 
 - name: this_is_a_task_name
@@ -559,7 +566,7 @@ post:
 func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -588,7 +595,7 @@ post:
 func (s *AgentSuite) TestFailingMainAndPostShowsMainInEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -618,7 +625,7 @@ post:
 func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -1098,7 +1105,7 @@ func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
 
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 tasks:
 - name: this_is_a_task_name
@@ -1141,7 +1148,7 @@ func (s *AgentSuite) TestAbortExitsMainAndRunsTeardownTask() {
 
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 tasks:
 - name: this_is_a_task_name

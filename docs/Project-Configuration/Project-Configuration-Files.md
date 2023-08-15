@@ -700,7 +700,7 @@ Every task has some expansions available by default:
     queue task
 -   `${commit_message}` is the commit message if this is a commit queue
     task
--   `${requester}` is what triggered the task: patch, `github_pr`,
+-   `${requester}` is what triggered the task: `patch`, `github_pr`,
     `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
 -   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
     OTel collector. Tasks can send traces to this endpoint.
