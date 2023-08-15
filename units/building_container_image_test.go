@@ -17,12 +17,13 @@ func init() {
 }
 
 func TestBuildingContainerImageJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 
 	assert.NoError(db.Clear(host.Collection))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
 	h1 := &host.Host{

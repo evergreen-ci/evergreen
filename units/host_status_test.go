@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,7 @@ import (
 func TestCloudStatusJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -124,6 +126,7 @@ func TestCloudStatusJob(t *testing.T) {
 func TestTerminateUnknownHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	require.NoError(t, db.ClearCollections(host.Collection))
 	h1 := host.Host{
@@ -144,6 +147,7 @@ func TestTerminateUnknownHosts(t *testing.T) {
 func TestSetCloudHostStatus(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager){
 		"RunningStatusPreparesLegacyHostForProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
@@ -229,14 +233,15 @@ func TestSetCloudHostStatus(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
+
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			}()
 
 			env := &mock.Environment{}
-			ctx := context.Background()
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 
 			h := &host.Host{
 				Id:       "id",

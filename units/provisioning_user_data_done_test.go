@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,7 @@ import (
 func TestUserDataDoneJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
 		"NewUserDataSpawnHostReadyJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
@@ -61,6 +63,7 @@ func TestUserDataDoneJob(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))

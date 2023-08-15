@@ -15,11 +15,14 @@ import (
 )
 
 func TestPeriodicBuildsJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 	now := time.Now().Truncate(time.Second)
 	assert.NoError(db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, build.Collection, task.Collection))
 	j := makePeriodicBuildsJob()
-	ctx := context.Background()
 	env := evergreen.GetEnvironment()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
 	_ = env.DB().RunCommand(nil, map[string]string{"create": build.Collection})

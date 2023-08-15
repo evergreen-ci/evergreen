@@ -27,6 +27,8 @@ import (
 type commitQueueSuite struct {
 	suite.Suite
 	env      *mock.Environment
+	suiteCtx context.Context
+	cancel   context.CancelFunc
 	ctx      context.Context
 	settings *evergreen.Settings
 
@@ -37,7 +39,11 @@ type commitQueueSuite struct {
 
 func TestCommitQueueJob(t *testing.T) {
 	s := &commitQueueSuite{}
-	env := testutil.NewEnvironment(context.Background(), t)
+
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
+	env := testutil.NewEnvironment(s.suiteCtx, t)
 	settings := env.Settings()
 	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	s.settings = settings
@@ -64,12 +70,16 @@ func (s *commitQueueSuite) SetupSuite() {
 	s.Require().NoError(s.projectRef.Insert())
 
 	s.env = &mock.Environment{}
-	s.ctx = context.Background()
-	s.NoError(s.env.Configure(s.ctx))
+	s.NoError(s.env.Configure(s.suiteCtx))
+}
+
+func (s *commitQueueSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *commitQueueSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(commitqueue.Collection))
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
 	webhookInterface, err := github.ParseWebHook("pull_request", s.prBody)
 	s.NoError(err)
@@ -277,14 +287,11 @@ func (s *commitQueueSuite) TestValidateBranch() {
 }
 
 func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	s.NoError(db.ClearCollections(distro.Collection, evergreen.ConfigCollection))
-	config, err := evergreen.GetConfig(ctx)
+	config, err := evergreen.GetConfig(s.ctx)
 	s.NoError(err)
 	config.CommitQueue.MergeTaskDistro = "d"
-	s.NoError(config.CommitQueue.Set(ctx))
+	s.NoError(config.CommitQueue.Set(s.ctx))
 	s.NoError((&distro.Distro{
 		Id: config.CommitQueue.MergeTaskDistro,
 	}).Insert(s.ctx))

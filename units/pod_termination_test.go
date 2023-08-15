@@ -19,12 +19,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewPodTerminationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testutil.TestSpan(ctx, t)
+
 	podID := "id"
 	reason := "reason"
 	j, ok := NewPodTerminationJob(podID, reason, utility.RoundPartOfMinute(0)).(*podTerminationJob)
@@ -36,6 +41,10 @@ func TestNewPodTerminationJob(t *testing.T) {
 }
 
 func TestPodTerminationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.EventCollection))
 	}()
@@ -326,8 +335,9 @@ func TestPodTerminationJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
+			tctx, cancel := context.WithCancel(ctx)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			require.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.EventCollection))
 
@@ -356,16 +366,16 @@ func TestPodTerminationJob(t *testing.T) {
 			j.pod = &p
 			j.PodID = p.ID
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 			j.env = env
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
-				assert.NoError(t, j.ecsClient.Close(ctx))
+				assert.NoError(t, j.ecsClient.Close(tctx))
 			}()
-			j.ecsPod = generateTestingECSPod(ctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)
+			j.ecsPod = generateTestingECSPod(tctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)
 			j.pod.Resources = cloud.ImportECSPodResources(j.ecsPod.Resources())
 
-			tCase(ctx, t, j)
+			tCase(tctx, t, j)
 		})
 	}
 }
