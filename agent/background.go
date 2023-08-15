@@ -94,7 +94,7 @@ func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.Canc
 			grip.Info("Idle timeout watcher canceled.")
 			return
 		case <-ticker.C:
-			timeout := tc.getCurrentTimeout()
+			timeout := tc.getCurrentIdleTimeout()
 			timeSinceLastMessage := time.Since(a.comm.LastMessageAt())
 
 			if timeSinceLastMessage > timeout {

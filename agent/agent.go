@@ -621,13 +621,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
-	// kim: TODO: we can probably just move the idle timeout watcher into
-	// startTask. It already has noeffect if idle timeout is hit afterwards
-	// (because idleTimeoutCancel only affects pre and main).
-	// idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(tskCtx)
-	// go a.startIdleTimeoutWatch(tskCtx, tc, idleTimeoutCancel)
-
-	// preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
@@ -748,8 +741,6 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	ctx, preTaskSpan := a.tracer.Start(ctx, "pre-task-commands")
 	defer preTaskSpan.End()
 
-	opts := runCommandsOptions{}
-
 	if !tc.ranSetupGroup {
 		taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 		if err != nil {
@@ -758,7 +749,10 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 		if taskGroup != nil && taskGroup.SetupGroup != nil {
 			tc.logger.Task().Infof("Running setup group for task group '%s'.", taskGroup.Name)
-			opts.failPreAndPost = taskGroup.SetupGroupFailTask
+			opts := runCommandsOptions{
+				block:       setupGroupBlock,
+				canFailTask: taskGroup.SetupGroupFailTask,
+			}
 
 			setupGroupCtx, setupGroupCancel := context.WithCancel(ctx)
 			defer setupGroupCancel()
@@ -777,7 +771,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			}
 			go a.startTimeoutWatcher(setupGroupCtx, setupGroupCancel, timeoutOpts)
 
-			err = a.runCommandsInBlock(setupGroupCtx, tc, taskGroup.SetupGroup.List(), opts, setupGroupBlock)
+			err = a.runCommandsInBlock(setupGroupCtx, tc, taskGroup.SetupGroup.List(), opts)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "running task setup group"))
 				if taskGroup.SetupGroupFailTask {
@@ -796,16 +790,19 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if pre.Commands != nil {
-		opts.failPreAndPost = pre.CanFailTask
 		block := preBlock
 		if tc.taskGroup != "" {
 			block = setupTaskBlock
 		}
-		err = a.runCommandsInBlock(ctx, tc, pre.Commands.List(), opts, block)
+		opts := runCommandsOptions{
+			canFailTask: pre.CanFailTask,
+			block:       block,
+		}
+		err = a.runCommandsInBlock(ctx, tc, pre.Commands.List(), opts)
 		if err != nil {
 			err = errors.Wrap(err, "Running pre-task commands failed")
 			tc.logger.Task().Error(err)
-			if pre.CanFailTask {
+			if opts.canFailTask {
 				return err
 			}
 		}
@@ -869,7 +866,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 		}
 		go a.startTimeoutWatcher(timeoutCtx, timeoutCancel, timeoutOpts)
 
-		err := a.runCommandsInBlock(timeoutCtx, tc, timeout.List(), runCommandsOptions{}, taskTimeoutBlock)
+		err := a.runCommandsInBlock(timeoutCtx, tc, timeout.List(), runCommandsOptions{block: taskTimeoutBlock})
 		tc.logger.Execution().Error(errors.Wrap(err, "running timeout commands"))
 		tc.logger.Task().Infof("Finished running timeout commands in %s.", time.Since(start))
 	}
@@ -1006,9 +1003,6 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 		return nil
 	}
 	if post.Commands != nil {
-		opts := runCommandsOptions{
-			failPreAndPost: post.CanFailTask,
-		}
 		block := postBlock
 		if tc.taskGroup != "" {
 			block = teardownTaskBlock
@@ -1024,7 +1018,11 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 		}
 		go a.startTimeoutWatcher(ctx, postCancel, timeoutOpts)
 
-		err = a.runCommandsInBlock(postCtx, tc, post.Commands.List(), opts, block)
+		opts := runCommandsOptions{
+			canFailTask: post.CanFailTask,
+			block:       block,
+		}
+		err = a.runCommandsInBlock(postCtx, tc, post.Commands.List(), opts)
 		if err != nil {
 			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
 			if post.CanFailTask {
@@ -1073,7 +1071,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		}
 		go a.startTimeoutWatcher(teardownGroupCtx, teardownGroupCancel, timeoutOpts)
 
-		err := a.runCommandsInBlock(teardownGroupCtx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{}, teardownGroupBlock)
+		err := a.runCommandsInBlock(teardownGroupCtx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{block: teardownGroupBlock})
 		grip.Error(errors.Wrap(err, "running post-group commands"))
 		grip.Info("Finished running post-group commands.")
 	}
@@ -1102,7 +1100,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	}
 	defer cancel()
 
-	if err := a.runCommandsInBlock(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{}, taskSyncBlock); err != nil {
+	if err := a.runCommandsInBlock(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{block: taskSyncBlock}); err != nil {
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message":    "error running task sync",
 			"total_time": time.Since(start).String(),

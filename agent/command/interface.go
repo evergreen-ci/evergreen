@@ -39,6 +39,11 @@ type Command interface {
 	DisplayName() string
 	SetDisplayName(string)
 
+	// IdleTimeout is the user-configurable timeout for how long an individual
+	// command can run without writing output to the task logs. If the command
+	// hits this timeout, then it will time out and stop early.
+	// This timeout only applies in certain blocks, such as pre, setup group,
+	// setup task, and the main task block.
 	IdleTimeout() time.Duration
 	SetIdleTimeout(time.Duration)
 

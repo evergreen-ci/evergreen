@@ -33,16 +33,18 @@ var (
 )
 
 type runCommandsOptions struct {
-	isTaskCommands bool
-	failPreAndPost bool
+	// block is the name of the block that the command runs in.
+	block string
+	// canFailTask indicates whether the command can fail the task.
+	canFailTask bool
 }
 
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
 func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
-	options runCommandsOptions, block string) (err error) {
+	options runCommandsOptions) (err error) {
 
 	defer func() {
-		op := fmt.Sprintf("running commands for block '%s'", block)
+		op := fmt.Sprintf("running commands for block '%s'", options.block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
 		if pErr == nil {
 			return
@@ -56,7 +58,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 			return errors.Wrap(err, "canceled while running commands")
 		}
 		blockInfo := command.BlockInfo{
-			Block:     block,
+			Block:     options.block,
 			CmdNum:    i + 1,
 			TotalCmds: len(commands),
 		}
@@ -156,7 +158,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		prevVal := tc.taskConfig.Expansions.Get(key)
 		prevExp[key] = prevVal
 
-		var newVal string
 		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
 		if err != nil {
 			return errors.Wrapf(err, "expanding '%s'", val)
@@ -178,7 +179,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	}()
 
 	tc.setCurrentCommand(cmd)
-	tc.setCurrentIdleTimeout(cmd)
+	tc.setCurrentIdleTimeout(cmd, options.block)
 	a.comm.UpdateLastMessageTime()
 
 	start := time.Now()
@@ -204,11 +205,12 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
+
 	select {
 	case err := <-cmdChan:
 		if err != nil {
 			tc.logger.Task().Errorf("Command %s failed: %s.", displayName, err)
-			if options.isTaskCommands || options.failPreAndPost ||
+			if options.canFailTask ||
 				(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
 				// any git.get_project in the commit queue should fail
 				return errors.Wrap(err, "command failed")
@@ -228,8 +230,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
+
 	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
-	if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
+
+	if options.canFailTask && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
 		// only error if we're running a command that should fail, and we don't want to continue to run other tasks
 		return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
 	}
@@ -254,8 +258,8 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
-	opts := runCommandsOptions{isTaskCommands: true}
-	err := a.runCommandsInBlock(ctx, tc, task.Commands, opts, "")
+	opts := runCommandsOptions{block: "", canFailTask: true}
+	err := a.runCommandsInBlock(ctx, tc, task.Commands, opts)
 	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
 	if err != nil {
 		return err
