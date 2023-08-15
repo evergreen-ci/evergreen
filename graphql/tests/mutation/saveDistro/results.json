@@ -9,6 +9,7 @@
               "aliases": [
                 "new-alias"
               ],
+              "cloneMethod": "OAUTH",
               "disableShallowClone": true,
               "isCluster": true,
               "name": "rhel71-power8-large",

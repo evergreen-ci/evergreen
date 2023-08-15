@@ -1494,6 +1494,8 @@ type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type DistroResolver interface {
+	CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error)
+
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]interface{}, error)
 }
 type HostResolver interface {
@@ -1795,6 +1797,8 @@ type VolumeResolver interface {
 }
 
 type DistroInputResolver interface {
+	CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error
+
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error
 }
 type HostAllocatorSettingsInputResolver interface {
@@ -15280,7 +15284,7 @@ func (ec *executionContext) _Distro_cloneMethod(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.CloneMethod, nil
+		return ec.resolvers.Distro().CloneMethod(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15292,19 +15296,19 @@ func (ec *executionContext) _Distro_cloneMethod(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(CloneMethod)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Distro_cloneMethod(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type CloneMethod does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65170,11 +65174,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloneMethod"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.CloneMethod = data
+			if err = ec.resolvers.DistroInput().CloneMethod(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "containerPool":
 			var err error
 
@@ -70566,12 +70572,25 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "cloneMethod":
+			field := field
 
-			out.Values[i] = ec._Distro_cloneMethod(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_cloneMethod(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
 			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "containerPool":
 
 			out.Values[i] = ec._Distro_containerPool(ctx, field, obj)
@@ -81174,6 +81193,16 @@ func (ec *executionContext) marshalNChildPatchAlias2githubᚗcomᚋevergreenᚑc
 
 func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx context.Context, sel ast.SelectionSet, v model.APIClientBinary) graphql.Marshaler {
 	return ec._ClientBinary(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, v interface{}) (CloneMethod, error) {
+	var res CloneMethod
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, sel ast.SelectionSet, v CloneMethod) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNCommitQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueue(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueue) graphql.Marshaler {
