@@ -97,14 +97,14 @@ func (j *podDefinitionCleanupJob) populate(ctx context.Context) error {
 	j.settings = settings
 
 	if j.tagClient == nil {
-		client, err := cloud.MakeTagClient(&settings)
+		client, err := cloud.MakeTagClient(ctx, &settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing tag client")
 		}
 		j.tagClient = client
 	}
 	if j.ecsClient == nil {
-		client, err := cloud.MakeECSClient(&settings)
+		client, err := cloud.MakeECSClient(ctx, &settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}

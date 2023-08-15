@@ -33,7 +33,7 @@ func init() {
 
 const defaultProjYml = `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 tasks: 
  - name: this_is_a_task_name
    commands: 
@@ -78,7 +78,7 @@ func (s *AgentSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	const versionID = "v1"
-	const bvName = "some_build_variant"
+	const bvName = "mock_build_variant"
 	tsk := &task.Task{
 		Id:           "task_id",
 		DisplayName:  "some task",
@@ -210,6 +210,7 @@ func (s *AgentSuite) TestCanceledContext() {
 }
 
 func (s *AgentSuite) TestAgentEndTaskShouldExit() {
+	s.setupRunTask(defaultProjYml)
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{ShouldExit: true}
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
@@ -224,6 +225,10 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	case <-ctx.Done():
 		s.FailNow(ctx.Err().Error())
 	}
+
+	endDetail := s.mockCommunicator.EndTaskResult.Detail
+	s.Empty("", endDetail.Message, "the end message should not include any errors")
+	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
 }
 
 func (s *AgentSuite) TestNextTaskConflict() {
@@ -402,7 +407,7 @@ func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
 func (s *AgentSuite) TestPre() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 pre:
   - command: shell.exec
@@ -442,7 +447,7 @@ pre:
 func (s *AgentSuite) TestPostFailsTask() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 post:
@@ -488,12 +493,14 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 	s.tc.project = p
+	s.mockCommunicator.GetProjectResponse = p
 	t := &task.Task{
 		Id:           "task_id",
-		BuildVariant: "some_build_variant",
+		BuildVariant: "mock_build_variant",
 		DisplayName:  "this_is_a_task_name",
 		Version:      "my_version",
 	}
+	s.mockCommunicator.GetTaskResponse = t
 	s.tc.taskModel = t
 	s.tc.taskConfig.Task = t
 }
@@ -501,7 +508,7 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -531,7 +538,7 @@ post:
 func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 tasks: 
 - name: this_is_a_task_name
@@ -559,7 +566,7 @@ post:
 func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -588,7 +595,7 @@ post:
 func (s *AgentSuite) TestFailingMainAndPostShowsMainInEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -618,7 +625,7 @@ post:
 func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
@@ -837,7 +844,6 @@ task_groups:
 func (s *AgentSuite) TestSetupGroupFails() {
 	const taskGroup = "task_group_name"
 	s.tc.taskGroup = taskGroup
-	s.tc.ranSetupGroup = false
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -853,7 +859,70 @@ task_groups:
 	s.tc.taskConfig.Project = p
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 
-	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
+	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc), "setup group command error should fail task")
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running setup group for task group 'task_group_name'",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestSetupGroupTimeoutFailsTask() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_group_can_fail_task: true
+  setup_group_timeout_secs: 1
+  setup_group:
+  - command: shell.exec
+    params:
+      script: sleep 100
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	startAt := time.Now()
+	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc), "setup group timeout should fail task")
+
+	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
+	s.NoError(s.tc.logger.Close())
+	s.True(s.tc.hadTimedOut(), "should have hit task timeout")
+	s.Equal(setupGroupTimeout, s.tc.getTimeoutType())
+	s.Equal(time.Second, s.tc.getTimeoutDuration())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running setup group for task group 'task_group_name'",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestSetupGroupTimeoutDoesNotFailTask() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_group_timeout_secs: 1
+  setup_group:
+  - command: shell.exec
+    params:
+      script: sleep 100
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	startAt := time.Now()
+	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc), "setup group timeout should not fail task")
+
+	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
+	s.False(s.tc.hadTimedOut(), "should not have hit task timeout")
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running setup group for task group 'task_group_name'",
@@ -1036,7 +1105,7 @@ func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
 
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 tasks:
 - name: this_is_a_task_name
@@ -1079,7 +1148,7 @@ func (s *AgentSuite) TestAbortExitsMainAndRunsTeardownTask() {
 
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 tasks:
 - name: this_is_a_task_name

@@ -165,7 +165,7 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 	settings := j.env.Settings()
 
 	if j.ecsClient == nil {
-		client, err := cloud.MakeECSClient(settings)
+		client, err := cloud.MakeECSClient(ctx, settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}

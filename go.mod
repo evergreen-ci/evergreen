@@ -10,6 +10,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.27
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.26
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.98.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.27.1
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.12
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8
 	github.com/aws/smithy-go v1.13.5
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v20.10.12+incompatible
@@ -17,14 +20,14 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20230323210713-a34b158b096e
+	github.com/evergreen-ci/cocoa v0.0.0-20230814190926-efd8ab60efca
 	github.com/evergreen-ci/gimlet v0.0.0-20230626223442-f6f16b3a3a98
 	github.com/evergreen-ci/juniper v0.0.0-20230119161755-1aced8006202
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
 	github.com/evergreen-ci/timber v0.0.0-20230731225120-893f8ec27fe3
-	github.com/evergreen-ci/utility v0.0.0-20230726191623-866cb804386e
+	github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
