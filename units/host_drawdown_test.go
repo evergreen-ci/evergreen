@@ -50,6 +50,7 @@ func TestTerminatingHosts(t *testing.T) {
 	env := evergreen.GetEnvironment()
 
 	t.Run("SimpleTerminationTest", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
 		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
 		// insert two reference distro.Distro
@@ -61,7 +62,7 @@ func TestTerminatingHosts(t *testing.T) {
 				MinimumHosts: 2,
 			},
 		}
-		require.NoError(t, distro1.Insert(ctx))
+		require.NoError(t, distro1.Insert(tctx))
 
 		// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
 		host1 := host.Host{
@@ -106,11 +107,11 @@ func TestTerminatingHosts(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert(ctx))
-		require.NoError(t, host2.Insert(ctx))
-		require.NoError(t, host3.Insert(ctx))
-		require.NoError(t, host4.Insert(ctx))
-		require.NoError(t, host5.Insert(ctx))
+		require.NoError(t, host1.Insert(tctx))
+		require.NoError(t, host2.Insert(tctx))
+		require.NoError(t, host3.Insert(tctx))
+		require.NoError(t, host4.Insert(tctx))
+		require.NoError(t, host5.Insert(tctx))
 
 		// If we encounter missing distros, we decommission hosts from those
 		// distros.
@@ -120,7 +121,7 @@ func TestTerminatingHosts(t *testing.T) {
 			NewCapTarget: 3,
 		}
 		// 3 idle hosts, 2 need to be terminated to reach NewCapTarget
-		num, hosts := numHostsTerminated(ctx, env, drawdownInfo, t)
+		num, hosts := numHostsTerminated(tctx, env, drawdownInfo, t)
 		assert.Equal(t, 2, num)
 
 		assert.Contains(t, hosts, "h3")
