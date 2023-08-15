@@ -937,6 +937,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"
 	headSHA := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+	baseSHA := "7a45fe6ea28f5969d885bc913e551b8b3c4f09d1"
 	org := github.Organization{
 		Login: &orgName,
 	}
@@ -946,6 +947,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	mg := github.MergeGroup{
 		HeadSHA: &headSHA,
 		HeadRef: &headRef,
+		BaseSHA: &baseSHA,
 	}
 	mge := github.MergeGroupEvent{
 		MergeGroup: &mg,
@@ -974,13 +976,13 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 
 	variants := []string{"ubuntu2004"}
 	tasks := []string{"bynntask"}
-	s.verifyPatchDoc(dbPatch, j.PatchID, headSHA, false, variants, tasks)
+	s.verifyPatchDoc(dbPatch, j.PatchID, baseSHA, false, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
 
 	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
 	s.verifyParserProjectDoc(dbPatch, 4)
 
-	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, headSHA, 1)
+	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, baseSHA, 1)
 
 	out := []event.Subscription{}
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
