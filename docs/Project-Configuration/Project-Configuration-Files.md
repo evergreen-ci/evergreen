@@ -529,9 +529,10 @@ task to fail. If you want to enforce that failures during `pre` cause the task
 to fail, set the field `pre_error_fails_task` to true. If `pre_error_fails_task`
 is set to true and a command in `pre` fails, it will exit early and not run the
 main task commands, but it will still run the `post` block.
-`pre_error_fails_task` has no effect on tasks run in task groups because they do
-not run `pre`; instead, those tasks follow the settings defined for that task
-group.
+
+`pre_error_fails_task` has no effect on tasks run in task groups because task
+groups do not run `pre`; instead, those tasks follow the settings defined for
+that task group (i.e. `setup_group` and `setup_task`).
 
 Similar to `pre`, by default, a command failing during the `post` block will not
 cause the entire task to fail. If you want to enforce that failures during
@@ -539,9 +540,10 @@ cause the entire task to fail. If you want to enforce that failures during
 `post_error_fails_task` is set to true and both the main task and post block
 have failing commands, the task's failing command will be the command that
 failed in the main task block, not the failing post command.
-`post_error_fails_task` has no effect on tasks run in task groups because they
-do not run `post`; instead, those tasks, follow the settings defined for that
-task group.
+
+`post_error_fails_task` has no effect on tasks run in task groups because task
+groups do not run `post`; instead, those tasks, follow the settings defined for
+that task group (i.e. `teardown_group` and `teardown_task`).
 
 By default, commands in `post` or `timeout` will time out after 15 minutes. You
 can override this timeout by setting `callback_timeout_secs` at the root level
