@@ -117,7 +117,6 @@ github.com/aws/aws-sdk-go v1.15.11/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZo
 github.com/aws/aws-sdk-go v1.41.11/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.41.12/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.44.89/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
-github.com/aws/aws-sdk-go v1.44.127/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aws/aws-sdk-go v1.44.266 h1:MWd775dcYf7NrwgcHLtlsIbWoWkX8p4vomfNHr88zH0=
 github.com/aws/aws-sdk-go v1.44.266/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aws/aws-sdk-go-v2 v1.18.0/go.mod h1:uzbQtefpm44goOPmdKyAlXSNcwlRgF3ePWVW6EtJvvw=
@@ -141,6 +140,8 @@ github.com/aws/aws-sdk-go-v2/service/dynamodb v1.19.7 h1:yb2o8oh3Y+Gg2g+wlzrWS3p
 github.com/aws/aws-sdk-go-v2/service/dynamodb v1.19.7/go.mod h1:1MNss6sqoIsFGisX92do/5doiUCBrN7EjhZCS/8DUjI=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.98.0 h1:WblDV33AG9dhv0zFEPEmGtD5UECSNpKMxtdENULfR8M=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.98.0/go.mod h1:L3ZT0N/vBsw77mOAawXmRnREpEjcHd2v5Hzf7AkIH8M=
+github.com/aws/aws-sdk-go-v2/service/ecs v1.27.1 h1:54QSuWR3Pot7HqBRXd+c1yF97h2bqzDBID8qFSAkTlE=
+github.com/aws/aws-sdk-go-v2/service/ecs v1.27.1/go.mod h1:SB6YszwN1iKvyt/Qk+ICeKsfBxjd0CTEwwkmej9qoa0=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11 h1:y2+VQzC6Zh2ojtV2LoC0MNwHWc6qXv/j2vrQtlftkdA=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11/go.mod h1:iV4q2hsqtNECrfmlXyord9u4zyuFEJX9eLgLpSPzWA8=
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.27 h1:QmyPCRZNMR1pFbiOi9kBZWZuKrKB9LD4cxltxQk4tNE=
@@ -148,6 +149,10 @@ github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.27/go.mod 
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.27/go.mod h1:EOwBD4J4S5qYszS5/3DpkejfuK+Z5/1uzICfPaZLtqw=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.28 h1:bkRyG4a929RCnpVSTvLM2j/T4ls015ZhhYApbmYs15s=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.28/go.mod h1:jj7znCIg05jXlaGBlFMGP8+7UN3VtCkRBG2spnmRQkU=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.12 h1:/fvzwRqxxiNJwNK5XVE1NvnQFvNajNRYx82lkTqXlMM=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.12/go.mod h1:i/CXT+v8caoM60a7brYlrVG64srBa1Op0Q5Nl6askyo=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8 h1:eB91eEYUlh8+O2dXr189W8GJJd+/T8N/c5HocH2KzVo=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8/go.mod h1:3ARttS6G6U3auEdKfaN4GlnfS9UxYE9nqub1+0YGycA=
 github.com/aws/aws-sdk-go-v2/service/ses v1.15.11 h1:7/MtUTSdIdZuW3jRWwDq5kKVihe+VwBGEjWkuZbhlFg=
 github.com/aws/aws-sdk-go-v2/service/ses v1.15.11/go.mod h1:iI3tHe16kyXcYA6fcoct3hW1uB/XSoe46w29wupWwho=
 github.com/aws/aws-sdk-go-v2/service/sqs v1.22.0 h1:ikSvot5NdywduxtkOwOa2GJFzFuJq1ZjXsGjoIA82Ao=
@@ -402,8 +407,8 @@ github.com/evergreen-ci/bond v0.0.0-20211109152423-ba2b6b207f56/go.mod h1:EO+Oqm
 github.com/evergreen-ci/certdepot v0.0.0-20211109153348-d681ebe95b66/go.mod h1:X72gmQuA1g8E1vWg1Jfve3zdHoPxJkpwXDMLV1COs5g=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10 h1:dVNSXGxztN6t1S3vGxbSKqb5vqIRM5LiM1O5JjnVuCA=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10/go.mod h1:KpN0y+4m4oplnmM/PQmKAG+NQDKUbtr1BbdR4mr+6Ww=
-github.com/evergreen-ci/cocoa v0.0.0-20230323210713-a34b158b096e h1:gF78PFpZWebIzDP42oKtnG6WOVLTBcOoG3eZKrhOdxA=
-github.com/evergreen-ci/cocoa v0.0.0-20230323210713-a34b158b096e/go.mod h1:9loFu7XeSsMF9tCQyJyUyjrVGkhQAEoOTgwniVzFzVI=
+github.com/evergreen-ci/cocoa v0.0.0-20230814190926-efd8ab60efca h1:KBnECudr743p/yCpVLU0Ph3HCtrpzcvbio8godRgeu0=
+github.com/evergreen-ci/cocoa v0.0.0-20230814190926-efd8ab60efca/go.mod h1:FDr7ryMJV8Z7y0IdBQbJmGbzKa++WUGVDmgjlpm2L18=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57 h1:CIUR6i5YWJ/z5RbZ11UomO7aZxQjeHqAjOqGwPh7sCY=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57/go.mod h1:lbmNkNEkJEuhIdctIEbJhx4hMzjRvbUg172mQRvNnKo=
 github.com/evergreen-ci/gimlet v0.0.0-20211018155143-ebbbff34990a/go.mod h1:F2dAoc1x1+JwZH9ylB9tpeOnztafEx2IbZjEz8GQzOM=
@@ -441,10 +446,9 @@ github.com/evergreen-ci/timber v0.0.0-20230731225120-893f8ec27fe3 h1:ZAXkjLIYuig
 github.com/evergreen-ci/timber v0.0.0-20230731225120-893f8ec27fe3/go.mod h1:UUzYp4MuW+uz87NoorR2FmC5xkB1s6uu4+poGYa3EL0=
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuEDytmDhOv+UCUwRPG/qD7mjVkUgx37KEv+thUgHVk=
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
-github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118/go.mod h1:J23DaXv/35hpeeDLK1ay9KX/7zMF0HdVMAitqXQW9j0=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
-github.com/evergreen-ci/utility v0.0.0-20230726191623-866cb804386e h1:uhm66J3aNN2yIF2rLconhPk64WizMgD5Mf/DCiqMYhk=
-github.com/evergreen-ci/utility v0.0.0-20230726191623-866cb804386e/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
+github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c h1:1MsTaPMQ0eM9KXeqdbbFPPAeXuhckMDKo/DkKLFfzVA=
+github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
@@ -1461,7 +1465,6 @@ golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220908164124-27713097b956/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.1.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.2.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

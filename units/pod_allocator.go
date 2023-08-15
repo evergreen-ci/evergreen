@@ -232,7 +232,7 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 	}
 
 	if j.smClient == nil {
-		client, err := cloud.MakeSecretsManagerClient(&j.settings)
+		client, err := cloud.MakeSecretsManagerClient(ctx, &j.settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing Secrets Manager client")
 		}

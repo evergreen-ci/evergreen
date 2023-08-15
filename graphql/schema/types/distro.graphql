@@ -13,6 +13,11 @@ enum DistroOnSaveOperation {
   NONE
 }
 
+enum CloneMethod {
+  LEGACY_SSH
+  OAUTH
+}
+
 ###### INPUTS ######
 """
 CopyDistroInput is the input to the copyDistro mutation.
@@ -59,7 +64,7 @@ input DistroInput {
   arch: String!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!
-  cloneMethod: String!
+  cloneMethod: CloneMethod!
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!
@@ -208,7 +213,7 @@ type Distro {
   arch: String!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettings!
-  cloneMethod: String!
+  cloneMethod: CloneMethod!
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!

@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	awsECS "github.com/aws/aws-sdk-go/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsECS "github.com/aws/aws-sdk-go-v2/service/ecs"
+	ecsTypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
 	"github.com/evergreen-ci/cocoa"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -53,13 +54,13 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 		return *dbPodDef
 	}
-	createStrandedPodDef := func(ctx context.Context, t *testing.T, ecsClient cocoa.ECSClient, tags []*awsECS.Tag) awsECS.TaskDefinition {
+	createStrandedPodDef := func(ctx context.Context, t *testing.T, ecsClient cocoa.ECSClient, tags []ecsTypes.Tag) ecsTypes.TaskDefinition {
 		registerIn := awsECS.RegisterTaskDefinitionInput{
 			Family: aws.String("family"),
-			ContainerDefinitions: []*awsECS.ContainerDefinition{
+			ContainerDefinitions: []ecsTypes.ContainerDefinition{
 				{
 					Image:   aws.String("image"),
-					Command: []*string{aws.String("echo"), aws.String("hello")},
+					Command: []string{"echo", "hello"},
 				},
 			},
 			Tags: tags,
@@ -76,7 +77,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 		"DeletesStrandedPodDefinitionsWithMatchingTag": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			var podDefIDs []string
 			for i := 0; i < 5; i++ {
-				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(definition.PodDefinitionTag), Value: aws.String(strconv.FormatBool(false))}})
+				def := createStrandedPodDef(ctx, t, j.ecsClient, []ecsTypes.Tag{{Key: aws.String(definition.PodDefinitionTag), Value: aws.String(strconv.FormatBool(false))}})
 				podDefIDs = append(podDefIDs, utility.FromStringPtr(def.TaskDefinitionArn))
 			}
 
@@ -88,7 +89,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 					TaskDefinition: aws.String(podDefID),
 				})
 				require.NoError(t, err)
-				assert.Equal(t, awsECS.TaskDefinitionStatusInactive, utility.FromStringPtr(describeOut.TaskDefinition.Status))
+				assert.Equal(t, ecsTypes.TaskDefinitionStatusInactive, describeOut.TaskDefinition.Status)
 			}
 		},
 		"DeletesLimitedNumberOfStrandedPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
@@ -99,7 +100,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 			var podDefIDs []string
 			for i := 0; i < 5; i++ {
-				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(definition.PodDefinitionTag), Value: aws.String(strconv.FormatBool(false))}})
+				def := createStrandedPodDef(ctx, t, j.ecsClient, []ecsTypes.Tag{{Key: aws.String(definition.PodDefinitionTag), Value: aws.String(strconv.FormatBool(false))}})
 				podDefIDs = append(podDefIDs, utility.FromStringPtr(def.TaskDefinitionArn))
 			}
 
@@ -112,7 +113,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 					TaskDefinition: aws.String(podDefID),
 				})
 				require.NoError(t, err)
-				if utility.FromStringPtr(describeOut.TaskDefinition.Status) == awsECS.TaskDefinitionStatusInactive {
+				if describeOut.TaskDefinition.Status == ecsTypes.TaskDefinitionStatusInactive {
 					numDeleted++
 				}
 			}
@@ -129,7 +130,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 				TaskDefinition: def.TaskDefinitionArn,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status))
+			assert.Equal(t, ecsTypes.TaskDefinitionStatusActive, describeOut.TaskDefinition.Status)
 		},
 		"CleansUpStaleUnusedPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
@@ -144,7 +145,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			})
 			assert.NoError(t, err, "cloud pod definition should still exist even after it's been cleaned up")
 			require.NotZero(t, describeOut.TaskDefinition)
-			assert.Equal(t, awsECS.TaskDefinitionStatusInactive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should be inactive")
+			assert.Equal(t, ecsTypes.TaskDefinitionStatusInactive, describeOut.TaskDefinition.Status, "cloud pod definition should be inactive")
 
 			dbPodDef, err := definition.FindOneID(pd.ID)
 			assert.NoError(t, err)
@@ -162,7 +163,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			})
 			assert.NoError(t, err, "cloud pod definition should still exist")
 			require.NotZero(t, describeOut.TaskDefinition)
-			assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should still be active")
+			assert.Equal(t, ecsTypes.TaskDefinitionStatusActive, describeOut.TaskDefinition.Status, "cloud pod definition should still be active")
 
 			dbPodDef, err := definition.FindOneID(pd.ID)
 			assert.NoError(t, err)
@@ -188,7 +189,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			})
 			assert.NoError(t, err, "cloud pod definition should still exist")
 			require.NotZero(t, describeOut.TaskDefinition)
-			assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should still be active")
+			assert.Equal(t, ecsTypes.TaskDefinitionStatusActive, describeOut.TaskDefinition.Status, "cloud pod definition should still be active")
 
 			dbPodDef, err := definition.FindOneID(pd.ID)
 			assert.NoError(t, err)
