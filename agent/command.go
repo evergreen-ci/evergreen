@@ -89,6 +89,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			return errors.Wrap(err, "making command logger")
 		}
 		defer func() {
+			// If the logger is a command-specific logger, when the command
+			// finishes, the loggers should have no more logs to send. Closing
+			// it ensure that the command logger flushes all logs and cleans up.
 			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
 		}()
 	}
@@ -161,13 +164,13 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
 	defer func() {
-		if !tc.unsetFunctionVarsDisabled {
+		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
 			// This defer ensures that the function vars do not persist in the expansions after the function is over.
 			for key, functionValue := range commandInfo.Vars {
 				currentValue := tc.taskConfig.Expansions.Get(key)
 				if currentValue != functionValue {
-					// If a command in the func updates the expansion value, persist it.
-					prevExp[key] = currentValue
+					// If a command in the func updates the expansion value, don't reset it.
+					delete(prevExp, key)
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)
@@ -222,12 +225,8 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		case <-cmdChan:
 		}
 
-		if ctx.Err() == context.DeadlineExceeded {
-			tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", displayName, int(tc.timeout.idleTimeoutDuration.Seconds()))
-		} else {
-			tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
-		}
-		return errors.Wrap(ctx.Err(), "agent stopped early")
+		tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
+		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
 	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
 	if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {

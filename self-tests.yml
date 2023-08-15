@@ -1,3 +1,4 @@
+unset_function_vars: true
 command_type: test
 stepback: true
 ignore:
@@ -6,28 +7,6 @@ ignore:
 
 post:
   - func: attach-test-results
-  - command: s3.put
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["evergreen/bin/output.*.coverage.html"]
-      remote_file: evergreen/${task_id}/
-      bucket: mciuploads
-      content_type: text/html
-      permissions: public-read
-      display_name: "(html) coverage:"
-  - command: s3.put
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["evergreen/bin/output.*.coverage"]
-      remote_file: evergreen/${task_id}/
-      bucket: mciuploads
-      content_type: text/plain
-      permissions: public-read
-      display_name: "(txt) coverage:"
   - command: s3.put
     display_name: Upload smoke test's app server logs to S3
     type: system
@@ -38,8 +17,22 @@ post:
       remote_file: evergreen/${task_id}/app_server_logs.txt
       bucket: mciuploads
       content_type: text/plain
-      permissions: public-read
-      display_name: Evergreen test application server logs
+      permissions: private
+      visibility: signed
+      display_name: Evergreen smoke test application server logs
+  - command: s3.put
+    display_name: Upload smoke test agent logs to S3
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: evergreen/*.log
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: private
+      visibility: signed
+      display_name: (Evergreen smoke test agent logs)
 
 #######################################
 #         YAML Templates              #

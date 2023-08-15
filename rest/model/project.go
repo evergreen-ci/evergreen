@@ -40,28 +40,30 @@ type ProjectTaskExecutionResp struct {
 }
 
 type APITriggerDefinition struct {
-	Project           *string `json:"project"`
-	Level             *string `json:"level"` //build or task
-	DefinitionID      *string `json:"definition_id"`
-	BuildVariantRegex *string `json:"variant_regex"`
-	TaskRegex         *string `json:"task_regex"`
-	Status            *string `json:"status"`
-	DateCutoff        *int    `json:"date_cutoff"`
-	ConfigFile        *string `json:"config_file"`
-	Alias             *string `json:"alias"`
+	Project                      *string `json:"project"`
+	Level                        *string `json:"level"` //build or task
+	DefinitionID                 *string `json:"definition_id"`
+	BuildVariantRegex            *string `json:"variant_regex"`
+	TaskRegex                    *string `json:"task_regex"`
+	Status                       *string `json:"status"`
+	DateCutoff                   *int    `json:"date_cutoff"`
+	ConfigFile                   *string `json:"config_file"`
+	Alias                        *string `json:"alias"`
+	UnscheduleDownstreamVersions *bool   `json:"unschedule_downstream_versions"`
 }
 
 func (t *APITriggerDefinition) ToService() model.TriggerDefinition {
 	return model.TriggerDefinition{
-		Project:           utility.FromStringPtr(t.Project),
-		Level:             utility.FromStringPtr(t.Level),
-		DefinitionID:      utility.FromStringPtr(t.DefinitionID),
-		BuildVariantRegex: utility.FromStringPtr(t.BuildVariantRegex),
-		TaskRegex:         utility.FromStringPtr(t.TaskRegex),
-		Status:            utility.FromStringPtr(t.Status),
-		ConfigFile:        utility.FromStringPtr(t.ConfigFile),
-		Alias:             utility.FromStringPtr(t.Alias),
-		DateCutoff:        t.DateCutoff,
+		Project:                      utility.FromStringPtr(t.Project),
+		Level:                        utility.FromStringPtr(t.Level),
+		DefinitionID:                 utility.FromStringPtr(t.DefinitionID),
+		BuildVariantRegex:            utility.FromStringPtr(t.BuildVariantRegex),
+		TaskRegex:                    utility.FromStringPtr(t.TaskRegex),
+		Status:                       utility.FromStringPtr(t.Status),
+		ConfigFile:                   utility.FromStringPtr(t.ConfigFile),
+		Alias:                        utility.FromStringPtr(t.Alias),
+		UnscheduleDownstreamVersions: utility.FromBoolPtr(t.UnscheduleDownstreamVersions),
+		DateCutoff:                   t.DateCutoff,
 	}
 }
 
@@ -74,6 +76,7 @@ func (t *APITriggerDefinition) BuildFromService(triggerDef model.TriggerDefiniti
 	t.Status = utility.ToStringPtr(triggerDef.Status)
 	t.ConfigFile = utility.ToStringPtr(triggerDef.ConfigFile)
 	t.Alias = utility.ToStringPtr(triggerDef.Alias)
+	t.UnscheduleDownstreamVersions = utility.ToBoolPtr(triggerDef.UnscheduleDownstreamVersions)
 	t.DateCutoff = triggerDef.DateCutoff
 }
 

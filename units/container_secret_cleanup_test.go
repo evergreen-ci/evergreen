@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	secretsmanagerTypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -33,7 +34,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 				createOut, err := j.smClient.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 					Name:         aws.String(fmt.Sprintf("secret_name%d", i)),
 					SecretString: aws.String("secret_string"),
-					Tags: []*secretsmanager.Tag{{
+					Tags: []secretsmanagerTypes.Tag{{
 						Key:   aws.String(model.ContainerSecretTag),
 						Value: aws.String(strconv.FormatBool(false)),
 					}},
@@ -62,7 +63,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 				createOut, err := j.smClient.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 					Name:         aws.String(fmt.Sprintf("secret_name%d", i)),
 					SecretString: aws.String("secret_string"),
-					Tags: []*secretsmanager.Tag{{
+					Tags: []secretsmanagerTypes.Tag{{
 						Key:   aws.String(model.ContainerSecretTag),
 						Value: aws.String(strconv.FormatBool(false)),
 					}},
@@ -90,7 +91,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			createOut, err := j.smClient.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 				Name:         aws.String("secret_name"),
 				SecretString: aws.String("secret_string"),
-				Tags:         []*secretsmanager.Tag{{Key: aws.String("cherry"), Value: aws.String("tomato")}},
+				Tags:         []secretsmanagerTypes.Tag{{Key: aws.String("cherry"), Value: aws.String("tomato")}},
 			})
 			require.NoError(t, err)
 

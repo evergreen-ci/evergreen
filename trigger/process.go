@@ -88,14 +88,15 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 type projectProcessor func(context.Context, ProcessorArgs) (*model.Version, error)
 
 type ProcessorArgs struct {
-	SourceVersion     *model.Version
-	DownstreamProject model.ProjectRef
-	ConfigFile        string
-	TriggerID         string
-	TriggerType       string
-	EventID           string
-	DefinitionID      string
-	Alias             string
+	SourceVersion                *model.Version
+	DownstreamProject            model.ProjectRef
+	ConfigFile                   string
+	TriggerID                    string
+	TriggerType                  string
+	EventID                      string
+	DefinitionID                 string
+	Alias                        string
+	UnscheduleDownstreamVersions bool
 }
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
@@ -194,14 +195,15 @@ projectLoop:
 			}
 
 			args := ProcessorArgs{
-				SourceVersion:     sourceVersion,
-				DownstreamProject: ref,
-				ConfigFile:        trigger.ConfigFile,
-				TriggerType:       model.ProjectTriggerLevelTask,
-				TriggerID:         t.Id,
-				EventID:           e.ID,
-				DefinitionID:      trigger.DefinitionID,
-				Alias:             trigger.Alias,
+				SourceVersion:                sourceVersion,
+				DownstreamProject:            ref,
+				ConfigFile:                   trigger.ConfigFile,
+				TriggerType:                  model.ProjectTriggerLevelTask,
+				TriggerID:                    t.Id,
+				EventID:                      e.ID,
+				DefinitionID:                 trigger.DefinitionID,
+				Alias:                        trigger.Alias,
+				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
 			}
 			v, err := processor(ctx, args)
 			if err != nil {
@@ -263,14 +265,15 @@ projectLoop:
 			}
 
 			args := ProcessorArgs{
-				SourceVersion:     sourceVersion,
-				DownstreamProject: ref,
-				ConfigFile:        trigger.ConfigFile,
-				TriggerType:       model.ProjectTriggerLevelBuild,
-				TriggerID:         b.Id,
-				EventID:           e.ID,
-				DefinitionID:      trigger.DefinitionID,
-				Alias:             trigger.Alias,
+				SourceVersion:                sourceVersion,
+				DownstreamProject:            ref,
+				ConfigFile:                   trigger.ConfigFile,
+				TriggerType:                  model.ProjectTriggerLevelBuild,
+				TriggerID:                    b.Id,
+				EventID:                      e.ID,
+				DefinitionID:                 trigger.DefinitionID,
+				Alias:                        trigger.Alias,
+				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
 			}
 			v, err := processor(ctx, args)
 			if err != nil {

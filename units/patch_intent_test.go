@@ -988,7 +988,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Len(out, 2)
 	for _, subscription := range out {
-		s.Equal("github_check", subscription.Subscriber.Type)
+		s.Equal("github_merge", subscription.Subscriber.Type)
 	}
 }
 

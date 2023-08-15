@@ -238,8 +238,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -255,7 +255,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
 			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterID], 1)
-			assert.EqualValues(t, ecs.TaskStatusStopped, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod should have been stopped")
+			assert.EqualValues(t, ecs.TaskStatusStopped, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "unrecognized cloud pod should have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsTryingToStartInUnrecognizedCluster": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			originalFlags, err := evergreen.GetServiceFlags(ctx)
@@ -282,8 +282,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -298,7 +298,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod in unrecognized cluster should not have been stopped")
+			assert.EqualValues(t, status, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "unrecognized cloud pod in unrecognized cluster should not have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsDetectedButAlreadyShuttingDown": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			originalFlags, err := evergreen.GetServiceFlags(ctx)
@@ -331,8 +331,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -347,7 +347,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod in unrecognized cluster should not have been stopped")
+			assert.EqualValues(t, status, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "unrecognized cloud pod in unrecognized cluster should not have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsDetectedButUnrecognizedPodCleanupIsDisabled": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			originalFlags, err := evergreen.GetServiceFlags(ctx)
@@ -377,8 +377,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -393,7 +393,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "cloud pod should not be cleaned up when the service flag flag is disabled")
+			assert.EqualValues(t, status, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "cloud pod should not be cleaned up when the service flag flag is disabled")
 		},
 		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
@@ -459,7 +459,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ContainerInstance: utility.ToStringPtr(containerInstanceID),
 					Cluster:           utility.ToStringPtr(clusterID),
 					Created:           utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:            utility.ToStringPtr(status),
+					Status:            status,
 				},
 			}
 

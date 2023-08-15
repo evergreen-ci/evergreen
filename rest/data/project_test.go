@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"

@@ -55,7 +55,7 @@ mutation {
             serviceUser: "",
             shellPath: "/bin/fish"
           }
-          cloneMethod: "legacy-ssh",
+          cloneMethod: LEGACY_SSH,
           sshKey: "mci",
           sshOptions: [
             "StrictHostKeyChecking=no",

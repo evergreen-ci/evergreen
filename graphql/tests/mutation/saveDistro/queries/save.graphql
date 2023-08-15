@@ -54,7 +54,7 @@ mutation {
             serviceUser: "",
             shellPath: "/bin/fish"
           }
-          cloneMethod: "legacy-ssh",
+          cloneMethod: OAUTH,
           sshKey: "mci",
           sshOptions: [
             "StrictHostKeyChecking=no",
@@ -120,6 +120,7 @@ mutation {
     {
       distro {
         aliases
+        cloneMethod
         disableShallowClone
         isCluster
         name

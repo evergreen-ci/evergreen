@@ -414,7 +414,7 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 		catcher.Wrap(j.createGitHubSubscriptions(patchDoc), "creating GitHub PR patch subscriptions")
 	}
 	if patchDoc.IsGithubMergePatch() {
-		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub PR patch subscriptions")
+		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub merge queue subscriptions")
 	}
 	if patchDoc.IsBackport() {
 		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
@@ -521,16 +521,14 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
 // createGithubMergeSubscription creates a subscription on a commit for the GitHub merge queue.
 func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context, p *patch.Patch) error {
 	catcher := grip.NewBasicCatcher()
-	ghSub := event.NewGithubCheckAPISubscriber(event.GithubCheckSubscriber{
+	ghSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
 		Owner: p.GithubMergeData.Org,
 		Repo:  p.GithubMergeData.Repo,
 		Ref:   p.GithubMergeData.HeadSHA,
 	})
 
 	patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-	if err := patchSub.Upsert(); err != nil {
-		catcher.Wrap(err, "inserting patch subscription for GitHub merge queue")
-	}
+	catcher.Wrap(patchSub.Upsert(), "inserting patch subscription for GitHub merge queue")
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(buildSub.Upsert(), "inserting build subscription for GitHub merge queue")
 	input := thirdparty.SendGithubStatusInput{
