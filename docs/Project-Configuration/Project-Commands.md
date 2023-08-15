@@ -415,7 +415,7 @@ Parse From A File:
 
 Agent Parameters:
 
--   `num_hosts` - Number of hosts to start, 1 \<= `num_hosts` \<= 10.
+-   `num_hosts` - Number of hosts to start, 1 &lt;= `num_hosts` &lt;= 10.
     Defaults to 1 (must be 1 if provider is Docker).
 -   `provider` - Cloud provider. Must set `ec2` or `docker`.
 -   `retries` - How many times Evergreen should try to create this host
@@ -425,11 +425,11 @@ Agent Parameters:
     the task or build is finished. Must be either `task` or `build`.
     Defaults to `task` if not set.
 -   `timeout_setup_secs` - Stop waiting for hosts to be ready when
-    spawning. Must be 60 \<= `timeout_setup_secs` \<= 3600 (1 hour).
+    spawning. Must be 60 &lt;= `timeout_setup_secs` &lt;= 3600 (1 hour).
     Default to 600 (10 minutes).
 -   `timeout_teardown_secs` - Even if the task or build has not
     finished, tear down this host after this many seconds. Must be 60
-    \<= `timeout_teardown_secs` \<= 604800 (7 days). Default to 21600 (6
+    &lt;= `timeout_teardown_secs` &lt;= 604800 (7 days). Default to 21600 (6
     hours).
 
 EC2 Parameters:
@@ -470,7 +470,7 @@ Docker Parameters:
 -   `background` - Set to wait for logs in the background, rather than
     blocking. Default is true.
 -   `container_wait_timeout_secs` - Time to wait for the container to
-    finish running the given command. Must be \<= 3600 (1 hour). Default
+    finish running the given command. Must be &lt;= 3600 (1 hour). Default
     to 600 (10 minutes).
 -   `command` - The command to run on the container. Does not not
     support shell interpolation. If not specified, will use the default
@@ -480,7 +480,7 @@ Docker Parameters:
 -   `image` - Required. The image to use for the container. If image is
     a URL, then the image is imported, otherwise it is pulled.
 -   `poll_frequency_secs` - Check for running container and logs at this
-    interval. Must be \<= 60 (1 second). Default to 30.
+    interval. Must be &lt;= 60 (1 second). Default to 30.
 -   `publish_ports` - Set to make ports available by mapping container
     ports to ports on the Docker host. Default is false.
 -   `extra_hosts` - Optional. This is a list of hosts to be added to
@@ -492,10 +492,15 @@ Docker Parameters:
     requires authentication. Must set if `registry_password` is set.
 -   `registry_password` - Password for the `registry_name` if it
     requires authentication. Must set if `registry_username` is set.
+-   `stdin_file_name` - The file containing the content to provide as stdin to
+    the container command. By default, the container command has no input to
+    stdin. Note that if you try to start a spawn host and also choose to start
+    containers started by host.create for the task, the running container will
+    *not* have the stdin file content passed to it.
 -   `stdout_file_name` - The file path to write stdout logs from the
-    container. Default is \<container_id\>.out.log.
+    container. Default is &lt;container_id&gt;.out.log.
 -   `stderr_file_name` - The file path to write stderr logs from the
-    container. Default is \<container_id\>.err.log.
+    container. Default is &lt;container_id&gt;.err.log.
 -   `environment_vars` - Environment variables to pass to the container command.
     By default, no environment variables are passed.
 

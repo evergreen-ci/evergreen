@@ -31,10 +31,11 @@ import (
 )
 
 type PatchIntentUnitsSuite struct {
-	sender *send.InternalSender
-	env    *mock.Environment
-	ctx    context.Context
-	cancel context.CancelFunc
+	sender   *send.InternalSender
+	env      *mock.Environment
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
 
 	repo            string
 	headRepo        string
@@ -53,14 +54,21 @@ type PatchIntentUnitsSuite struct {
 }
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
-	suite.Run(t, new(PatchIntentUnitsSuite))
+	s := new(PatchIntentUnitsSuite)
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+	suite.Run(t, s)
+}
+
+func (s *PatchIntentUnitsSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.sender = send.MakeInternalLogger()
 	s.env = &mock.Environment{}
 
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.Require().NoError(s.env.Configure(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
@@ -200,9 +208,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NotNil(factory)
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, patchIntentJobName)
-}
-func (s *PatchIntentUnitsSuite) TearDownTest() {
-	s.cancel()
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
@@ -929,10 +934,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.NoError(evergreen.UpdateConfig(ctx, testutil.TestConfig()))
+	s.NoError(evergreen.UpdateConfig(s.ctx, testutil.TestConfig()))
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"

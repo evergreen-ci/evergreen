@@ -9,6 +9,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -17,13 +18,22 @@ import (
 type notificationsStatsCollectorSuite struct {
 	suite.Suite
 	expectedTime time.Time
+	suiteCtx     context.Context
+	cancel       context.CancelFunc
+	ctx          context.Context
 }
 
 func TestNotificationsStatsCollectorJob(t *testing.T) {
-	suite.Run(t, &notificationsStatsCollectorSuite{})
+	s := &notificationsStatsCollectorSuite{}
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
+	suite.Run(t, s)
 }
 
 func (s *notificationsStatsCollectorSuite) SetupTest() {
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
+
 	s.NoError(db.ClearCollections(event.EventCollection, notification.Collection))
 	s.expectedTime = time.Time{}.Add(time.Second)
 
@@ -106,9 +116,7 @@ func (s *notificationsStatsCollectorSuite) TestStatsCollector() {
 	job := makeNotificationsStatsCollector()
 	job.SetID(s.T().Name())
 	job.logger = logging.MakeGrip(sender)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	job.Run(ctx)
+	job.Run(s.ctx)
 	s.NoError(job.Error())
 
 	msg, ok := sender.GetMessageSafe()

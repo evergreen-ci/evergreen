@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -27,6 +28,7 @@ import (
 func TestTaskExecutionTimeoutJob(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	mp := cloud.GetMockProvider()
 
@@ -270,6 +272,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))

@@ -178,35 +178,15 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 }
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
-	// TODO EVG-19966 Delete fallback
-	appToken, err := j.env.Settings().CreateInstallationToken(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, nil)
-	if err != nil {
-		err = j.finishPatchWithToken(ctx, patchDoc, appToken)
-		if err == nil {
-			return nil
-		}
-	}
-	grip.Debug(message.WrapError(err, message.Fields{
-		"message": "failed to create app token, falling back to OAuth",
-		"ticket":  "EVG-19966",
-		"owner":   patchDoc.GithubPatchData.BaseOwner,
-		"repo":    patchDoc.GithubPatchData.BaseRepo,
-	}))
-
-	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
+	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token")
 	}
-
-	return j.finishPatchWithToken(ctx, patchDoc, githubOauthToken)
-}
-func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDoc *patch.Patch, token string) error {
 	catcher := grip.NewBasicCatcher()
 
 	canFinalize := true
 	var patchedProject *model.Project
 	var patchedParserProject *model.ParserProject
-	var err error
 	switch j.IntentType {
 	case patch.CliIntentType:
 		catcher.Wrap(j.buildCliPatchDoc(ctx, patchDoc, token), "building CLI patch document")
@@ -219,7 +199,7 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
-		if err := j.buildGithubMergeDoc(ctx, patchDoc, token); err != nil {
+		if err := j.buildGithubMergeDoc(ctx, patchDoc); err != nil {
 			catcher.Wrap(err, "building GitHub merge queue patch document")
 		}
 	case patch.TriggerIntentType:
@@ -974,7 +954,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",

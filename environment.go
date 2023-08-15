@@ -42,7 +42,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 )
 
 var (
@@ -60,8 +60,6 @@ const (
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
-
-	otelAttributeMaxLength = 10000
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -880,7 +878,7 @@ func (e *envState) initTracer(ctx context.Context) error {
 	}
 
 	spanLimits := trace.NewSpanLimits()
-	spanLimits.AttributeValueLengthLimit = otelAttributeMaxLength
+	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
 
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
