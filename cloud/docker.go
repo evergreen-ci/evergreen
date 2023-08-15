@@ -136,7 +136,13 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 
 	// Once the stdin data is used, clear it from the host to be safe in case it
 	// contains sensitive data.
-	grip.Error(container.ClearDockerStdinData(stdinCtx))
+	grip.Error(message.WrapError(container.ClearDockerStdinData(stdinCtx), message.Fields{
+		"message":        "could not clear Docker stdin data from container, so it may linger in the document",
+		"container":      container.Id,
+		"task_id":        container.SpawnOptions.TaskID,
+		"task_execution": container.SpawnOptions.TaskExecutionNumber,
+		"build_id":       container.SpawnOptions.BuildID,
+	}))
 
 	stream, err := m.client.AttachToContainer(stdinCtx, parent, container.Id, dockerOpts)
 	if err != nil {
