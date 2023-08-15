@@ -164,7 +164,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
 	defer func() {
-		if !tc.unsetFunctionVarsDisabled {
+		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
 			// This defer ensures that the function vars do not persist in the expansions after the function is over.
 			for key, functionValue := range commandInfo.Vars {
 				currentValue := tc.taskConfig.Expansions.Get(key)
