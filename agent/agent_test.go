@@ -27,8 +27,6 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-// kim: TODO: ensure consistency of block tests in terms of logging checks.
-
 func init() {
 	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
 }
@@ -333,10 +331,6 @@ func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
-// kim: TODO: add test for main block commands return error.
-// kim: TODO: add test for pre block commands return error if can fail task.
-// kim: TODO: add test for pre block commands continues on error if cannot fail
-// task.
 func (s *AgentSuite) TestRunCommandsEventuallyReturnsForCommandThatIgnoresContext() {
 	const cmdSleepSecs = 500
 	s.setupRunTask(`
@@ -496,6 +490,53 @@ post:
 	}, []string{
 		panicLog,
 		"Set idle timeout for 'shell.exec'",
+	})
+}
+
+func (s *AgentSuite) TestMainTask() {
+	projYml := `
+tasks:
+- name: this_is_a_task_name
+  commands:
+  - command: shell.exec
+    params:
+      script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	s.NoError(s.a.runTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Set idle timeout for 'shell.exec'",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Finished running task commands",
+	}, []string{
+		panicLog,
+	})
+}
+
+func (s *AgentSuite) TestMainTaskFails() {
+	projYml := `
+tasks:
+- name: this_is_a_task_name
+  commands:
+  - command: shell.exec
+    params:
+      script: exit 1
+`
+	s.setupRunTask(projYml)
+
+	s.Error(s.a.runTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Set idle timeout for 'shell.exec'",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished running task commands",
+	}, []string{
+		panicLog,
 	})
 }
 
