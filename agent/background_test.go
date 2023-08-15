@@ -326,7 +326,7 @@ func (s *BackgroundSuite) TestIdleTimeoutIsNotSetForPostBlockCommand() {
 	cmd := cmdFactory()
 	cmd.SetIdleTimeout(time.Second)
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd, postBlock)
+	s.tc.setCurrentIdleTimeout(cmd, command.PostBlock)
 	s.Equal(defaultIdleTimeout, s.tc.getCurrentIdleTimeout())
 }
 

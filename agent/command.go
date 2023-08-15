@@ -34,7 +34,7 @@ var (
 
 type runCommandsOptions struct {
 	// block is the name of the block that the command runs in.
-	block string
+	block command.BlockType
 	// canFailTask indicates whether the command can fail the task.
 	canFailTask bool
 }
@@ -258,9 +258,10 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
-	opts := runCommandsOptions{block: "", canFailTask: true}
+	opts := runCommandsOptions{block: command.MainTaskBlock, canFailTask: true}
 	err := a.runCommandsInBlock(ctx, tc, task.Commands, opts)
-	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
+	tc.logger.Task().Error(errors.Wrap(err, "Running task commands failed"))
+	tc.logger.Task().Infof("Finished running task commands in %s.", time.Since(start).String())
 	if err != nil {
 		return err
 	}

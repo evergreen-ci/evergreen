@@ -33,9 +33,10 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 // setCurrentIdleTimeout sets the idle timeout for the current running command.
 // This timeout only applies to commands running in specific blocks where idle
 // timeout is allowed.
-func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command, block string) {
-	idleTimeoutBlocks := []string{preBlock, setupGroupBlock, setupTaskBlock, ""}
-	if !utility.StringSliceContains(idleTimeoutBlocks, block) {
+func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command, block command.BlockType) {
+	switch block {
+	case command.PreBlock, command.SetupGroupBlock, command.SetupTaskBlock, command.MainTaskBlock:
+	default:
 		return
 	}
 
@@ -51,7 +52,6 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command, block string) 
 		timeout = defaultIdleTimeout
 	}
 
-	// kim: TODO: verify in staging that this is only set for pre/main.
 	tc.setIdleTimeout(timeout)
 
 	tc.logger.Execution().Debugf("Set idle timeout for %s (%s) to %s.",

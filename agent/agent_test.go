@@ -359,7 +359,7 @@ pre:
 	}()
 
 	startAt := time.Now()
-	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{block: preBlock})
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
 	cmdDuration := time.Since(startAt)
 
 	s.Error(err)

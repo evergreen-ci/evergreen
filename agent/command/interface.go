@@ -47,8 +47,10 @@ type Command interface {
 	IdleTimeout() time.Duration
 	SetIdleTimeout(time.Duration)
 
-	SetJasperManager(jasper.Manager)
+	// JasperManager is the Jasper process manager for the command. Jasper can
+	// be used to run and manage processes that are started within commands.
 	JasperManager() jasper.Manager
+	SetJasperManager(jasper.Manager)
 }
 
 // base contains a basic implementation of functionality that is

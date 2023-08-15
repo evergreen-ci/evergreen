@@ -207,12 +207,27 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	return out, nil
 }
 
+// BlockType
+type BlockType string
+
+const (
+	MainTaskBlock      BlockType = ""
+	TaskTimeoutBlock   BlockType = "timeout"
+	PreBlock           BlockType = "pre"
+	SetupTaskBlock     BlockType = "setup_task"
+	TeardownTaskBlock  BlockType = "teardown_task"
+	SetupGroupBlock    BlockType = "setup_group"
+	TeardownGroupBlock BlockType = "teardown_group"
+	PostBlock          BlockType = "post"
+	TaskSyncBlock      BlockType = "task_sync"
+)
+
 // BlockInfo contains information about the enclosing block in which a function
 // or standalone command runs. For example, this would contain information about
 // the pre block that contains a particular shell.exec command.
 type BlockInfo struct {
 	// Block is the name of the block that the command is part of.
-	Block string
+	Block BlockType
 	// CmdNum is the ordinal of a command in the block.
 	CmdNum int
 	// TotalCmds is the total number of commands in the block.
