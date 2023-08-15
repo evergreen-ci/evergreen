@@ -3186,3 +3186,25 @@ func CountVirtualWorkstationsByInstanceType(ctx context.Context) ([]VirtualWorks
 
 	return data, nil
 }
+
+// ClearDockerStdinData clears the Docker stdin data from the host.
+func (h *Host) ClearDockerStdinData(ctx context.Context) error {
+	if len(h.DockerOptions.StdinData) == 0 {
+		return nil
+	}
+
+	dockerStdinDataKey := bsonutil.GetDottedKeyName(DockerOptionsKey, DockerOptionsStdinDataKey)
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	},
+		bson.M{
+			"$unset": bson.M{dockerStdinDataKey: true},
+		},
+	); err != nil {
+		return err
+	}
+
+	h.DockerOptions.StdinData = nil
+
+	return nil
+}

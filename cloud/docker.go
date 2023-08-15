@@ -132,7 +132,13 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 	}
 	stdinCtx, stdinCancel := context.WithDeadline(context.Background(), timeoutAt)
 
-	stream, err := m.client.AttachToContainer(stdinCtx, parent, container.Id, container.DockerOptions)
+	dockerOpts := container.DockerOptions
+
+	// Once the stdin data is used, clear it from the host to be safe in case it
+	// contains sensitive data.
+	grip.Error(container.ClearDockerStdinData(stdinCtx))
+
+	stream, err := m.client.AttachToContainer(stdinCtx, parent, container.Id, dockerOpts)
 	if err != nil {
 		stdinCancel()
 		return errors.Wrap(err, "attaching stdin stream to container")
@@ -140,7 +146,7 @@ func (m *dockerManager) attachStdinStream(parent *host.Host, container *host.Hos
 
 	go func() {
 		defer stdinCancel()
-		m.runContainerStdinStream(stream, container, container.DockerOptions.StdinData)
+		m.runContainerStdinStream(stream, container, dockerOpts.StdinData)
 	}()
 
 	return nil
