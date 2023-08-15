@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -105,37 +106,56 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
-	defer recovery.LogStackTraceAndContinue("exec timeout watcher")
-	defer cancel()
+type timeoutWatcherOptions struct {
+	// tc is the task context for the current running task.
+	tc *taskContext
+	// kind is the kind of timeout that's being waited for.
+	kind timeoutType
+	// getTimeout returns the timeout.
+	getTimeout func() time.Duration
+	// canMarkTimeoutFailure indicates whether the timeout watcher can mark the
+	// task as having hit a timeout that can fail the task.
+	canMarkTimeoutFailure bool
+}
+
+// startTimeoutWatcher waits until the given timeout is hit for an operation. If
+// the watcher has run for longer than the timeout, then it marks the task as
+// having hit the timeout and cancels the running operation.
+func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context.CancelFunc, opts timeoutWatcherOptions) {
+	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", opts.kind))
+	defer operationCancel()
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Exec timeout watcher canceled.")
+			grip.Infof("%s timeout watcher canceled.", opts.kind)
 			return
 		case <-ticker.C:
-			timeout := tc.getExecTimeout()
+			timeout := opts.getTimeout()
 			timeSinceTickerStarted := time.Since(timeTickerStarted)
 
 			if timeSinceTickerStarted > timeout {
-				tc.logger.Execution().Errorf("Hit exec timeout (%s).", timeout)
-				tc.reachTimeOut(execTimeout, timeout)
+				opts.tc.logger.Task().Errorf("Hit %s timeout (%s).", opts.kind, timeout)
+				if opts.canMarkTimeoutFailure {
+					opts.tc.reachTimeOut(opts.kind, timeout)
+				}
 				return
 			}
 		}
 	}
 }
 
-// withCallbackTimeout creates a context with a timeout set either to the project's
-// callback timeout if it has one or to the defaultCallbackCmdTimeout.
-func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (context.Context, context.CancelFunc) {
-	timeout := defaultCallbackCmdTimeout
+// getCallbackTimeout returns the callback timeout for the task.
+func (tc *taskContext) getCallbackTimeout() time.Duration {
+	tc.RLock()
+	defer tc.RUnlock()
+
 	taskConfig := tc.getTaskConfig()
 	if taskConfig != nil && taskConfig.Project != nil && taskConfig.Project.CallbackTimeout != 0 {
-		timeout = time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
+		return time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
 	}
-	return context.WithTimeout(ctx, timeout)
+	return defaultCallbackCmdTimeout
 }
