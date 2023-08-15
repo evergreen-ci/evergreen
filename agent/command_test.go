@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -313,7 +314,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: preBlock})
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -339,7 +340,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: preBlock})
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
