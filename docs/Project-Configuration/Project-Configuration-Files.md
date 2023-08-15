@@ -443,13 +443,6 @@ group. For task groups, `setup_task` and `teardown_task` will run instead of
 `pre` and `post`. These are incredibly useful as a place for results commands or
 for cleanup and setup tasks.
 
-**NOTE:** failures in `pre` and `post` commands will be ignored by
-default, so only use commands you know will succeed. See
-`pre_error_fails_task` and `post_error_fails_task` below. By default,
-commands in pre and post will time out after 15 minutes. You can
-override this timeout by setting `callback_timeout_secs` at the root
-level of the yaml config.
-
 ``` yaml
 pre:
   - command: shell.exec
@@ -523,27 +516,38 @@ tasks:
           sleep 1000
 ```
 
-By default, a command failing during the `pre` step will not cause the
-entire task to fail. If you want to enforce that failures during `pre`
-cause the task to fail, set the field `pre_error_fails_task` to true.
-Likewise, setting the field `post_error_fails_task` to true will enforce
-that failures in `post` cause the task to fail.
-
-If pre_error_fails_task is set to true and pre fails, it will exit early 
-and not run the main task commands, but it will still run the post block.
-
-If post_error_fails_task is set to true and both the main task and post 
-block fail, the failing command in the main task will be displayed as the 
-failing command, not the failing post command.  The value set for 
-pre_error_fails_task and post_error_fails_task has no effect on tasks run
-in task groups which instead use the settings defined for that task group.
-
 ```yaml
 exec_timeout_secs: 60
 pre_error_fails_task: true
 pre:
   - ...
 ```
+
+#### Special Behavior for Pre, Post, and Timeout
+By default, a command failing during the `pre` block will not cause the entire
+task to fail. If you want to enforce that failures during `pre` cause the task
+to fail, set the field `pre_error_fails_task` to true. If `pre_error_fails_task`
+is set to true and a command in `pre` fails, it will exit early and not run the
+main task commands, but it will still run the `post` block.
+
+`pre_error_fails_task` has no effect on tasks run in task groups because task
+groups do not run `pre`; instead, those tasks follow the settings defined for
+that task group (i.e. `setup_group` and `setup_task`).
+
+Similar to `pre`, by default, a command failing during the `post` block will not
+cause the entire task to fail. If you want to enforce that failures during
+`post` cause the task to fail, set the field `post_error_fails_task` to true. If
+`post_error_fails_task` is set to true and both the main task and post block
+have failing commands, the task's failing command will be the command that
+failed in the main task block, not the failing post command.
+
+`post_error_fails_task` has no effect on tasks run in task groups because task
+groups do not run `post`; instead, those tasks, follow the settings defined for
+that task group (i.e. `teardown_group` and `teardown_task`).
+
+By default, commands in `post` or `timeout` will time out after 15 minutes. You
+can override this timeout by setting `callback_timeout_secs` at the root level
+of the yaml config (warning: `callback_timeout_secs` will be deprecated soon).
 
 ### Limiting When a Task Will Run
 
@@ -1318,9 +1322,8 @@ Parameters:
     timeout handler will run if a top-level timeout handler exists.
 -   `setup_group_can_fail_task`: if true, task will fail if setup group
     fails. Defaults to false.
--   `setup_group_timeout_secs`: override default timeout for setup
-    group. (This only fails task if `setup_group_can_fail_task` is also
-    set.)
+-   `setup_group_timeout_secs`: set a timeout for the setup setup group. (If it
+    times out, this only fails task if `setup_group_can_fail_task` is also set.)
 -   `share_processes`: by default, processes and Docker state changes
     (e.g. containers, images, volumes) are cleaned up between each
     task's execution. If this is set to true, cleanup will be deferred

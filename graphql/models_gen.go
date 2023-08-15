@@ -456,6 +456,47 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type CloneMethod string
+
+const (
+	CloneMethodLegacySSH CloneMethod = "LEGACY_SSH"
+	CloneMethodOauth     CloneMethod = "OAUTH"
+)
+
+var AllCloneMethod = []CloneMethod{
+	CloneMethodLegacySSH,
+	CloneMethodOauth,
+}
+
+func (e CloneMethod) IsValid() bool {
+	switch e {
+	case CloneMethodLegacySSH, CloneMethodOauth:
+		return true
+	}
+	return false
+}
+
+func (e CloneMethod) String() string {
+	return string(e)
+}
+
+func (e *CloneMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CloneMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CloneMethod", str)
+	}
+	return nil
+}
+
+func (e CloneMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type DistroOnSaveOperation string
 
 const (
