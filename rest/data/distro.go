@@ -69,10 +69,13 @@ func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) erro
 			Message:    errors.Wrapf(err, "deleting distro '%s'", distroId).Error(),
 		}
 	}
-	if err = model.ClearTaskQueue(distroId); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
+	// If a task queue exists for the distro, clear it.
+	if _, err := model.GetDistroQueueInfo(distroId); err == nil {
+		if clearQueueErr := model.ClearTaskQueue(distroId); clearQueueErr != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
+			}
 		}
 	}
 
