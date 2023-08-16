@@ -120,8 +120,7 @@ func (c *update) Execute(ctx context.Context,
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		err = conf.DynamicExpansions.UpdateFromYaml(filename)
-		if err != nil {
+		if err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
 			return errors.WithStack(err)
 		}
 	}

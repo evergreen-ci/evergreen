@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -167,7 +168,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
 			// This defer ensures that the function vars do not persist in the expansions after the function is over
 			// unless they were updated using expansions.update
-			if cmd.Name() == "expansions.update" && tc.taskConfig.DynamicExpansions != nil {
+			if cmd.Name() == "expansions.update" {
 				updatedExpansions := tc.taskConfig.DynamicExpansions.Map()
 				for k := range updatedExpansions {
 					if _, ok := commandInfo.Vars[k]; ok {
@@ -177,7 +178,8 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)
-			tc.taskConfig.DynamicExpansions.Update(map[string]string{})
+			tc.taskConfig.DynamicExpansions = util.EmptyExpansion()
+
 		}
 	}()
 

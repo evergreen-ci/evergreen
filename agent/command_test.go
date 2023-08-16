@@ -82,6 +82,7 @@ func (s *CommandSuite) SetupTest() {
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
 	s.Require().NoError(err)
+	s.Equal(&util.Expansions{}, taskConfig.DynamicExpansions)
 
 	s.tc = &taskContext{
 		taskConfig: taskConfig,
@@ -206,7 +207,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	config := &internal.TaskConfig{
-		Expansions:        &util.Expansions{"key_1": "expansionVar", "key_2": "expansionVar2", "key_3": "expansionVar3"},
+		Expansions:        &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
 		DynamicExpansions: &util.Expansions{},
 		BuildVariant: &model.BuildVariant{
 			Name: "some_build_variant",
@@ -238,7 +239,7 @@ unset_function_vars: true
 functions:
   yes:
     vars: 
-      key_1: "functionVar"
+      key1: "functionVar"
     command: shell.exec
     params:
         shell: bash
@@ -251,14 +252,14 @@ functions:
 	func1 := model.PluginCommandConf{
 		Function:    "yes",
 		DisplayName: "function",
-		Vars:        map[string]string{"key_1": "functionVar"},
+		Vars:        map[string]string{"key1": "functionVar"},
 	}
 
 	cmds := []model.PluginCommandConf{func1}
 	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
 
-	key1Value := s.tc.taskConfig.Expansions.Get("key_1")
+	key1Value := s.tc.taskConfig.Expansions.Get("key1")
 	s.Equal("expansionVar", key1Value, "globalVar should be set back to what it was before the function ran")
 
 }
@@ -270,7 +271,7 @@ func (s *CommandSuite) TestFunctionVarsDontUnsetWithoutFlag() {
 functions:
   yes:
     vars: 
-      key_1: "functionVar"
+      key1: "functionVar"
     command: shell.exec
     params:
         shell: bash
@@ -280,7 +281,7 @@ functions:
 	func1 := model.PluginCommandConf{
 		Function:    "yes",
 		DisplayName: "function",
-		Vars:        map[string]string{"key_1": "functionVar"},
+		Vars:        map[string]string{"key1": "functionVar"},
 	}
 
 	cmds := []model.PluginCommandConf{func1}
@@ -288,7 +289,7 @@ functions:
 	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
 
-	key1Value := s.tc.taskConfig.Expansions.Get("key_1")
+	key1Value := s.tc.taskConfig.Expansions.Get("key1")
 	s.Equal("functionVar", key1Value, "globalVar should not be set back to what it was before if it's disabled")
 }
 
@@ -297,7 +298,7 @@ func (s *CommandSuite) TestVarsAreUnsetAfterRunning() {
 functions:
   yes:
     vars: 
-      key_1: "functionVar"
+      key1: "functionVar"
     command: shell.exec
     params:
         shell: bash
@@ -310,14 +311,14 @@ functions:
 	func1 := model.PluginCommandConf{
 		Function:    "yes",
 		DisplayName: "function",
-		Vars:        map[string]string{"key_1": "functionVar"},
+		Vars:        map[string]string{"key1": "functionVar"},
 	}
 
 	cmds := []model.PluginCommandConf{func1}
 	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
 
-	key1Value := s.tc.taskConfig.Expansions.Get("key_1")
+	key1Value := s.tc.taskConfig.Expansions.Get("key1")
 	s.Equal("expansionVar", key1Value, "globalVar should be set back to what it was before the function ran")
 }
 
@@ -328,31 +329,33 @@ functions:
     command: expansions.update
     params:
       updates: 
-      - key: key_1
-        value: ${key_1}
-      - key: key_2
-        value: ${key_2}
+      - key: key1
+        value: ${key1}
+      - key: key2
+        value: ${key2}
 `
 	s.setUpConfigAndProject(projYml)
 
 	func1 := model.PluginCommandConf{
 		Function:    "yes",
 		DisplayName: "function",
-		Vars:        map[string]string{"key_1": "functionVar1", "key_2": "functionVar2", "key_3": "functionVar3"},
+		Vars:        map[string]string{"key1": "functionVar1", "key2": "functionVar2", "key3": "functionVar3"},
 	}
 
 	cmds := []model.PluginCommandConf{func1}
 	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
 
-	key1Value := s.tc.taskConfig.Expansions.Get("key_1")
-	s.Equal("functionVar1", key1Value, "key_1 should be set to what it was updated to with expansions.update")
+	key1Value := s.tc.taskConfig.Expansions.Get("key1")
+	s.Equal("functionVar1", key1Value, "key1 should be set to what it was updated to with expansions.update")
 
-	key2Value := s.tc.taskConfig.Expansions.Get("key_2")
-	s.Equal("functionVar2", key2Value, "key_2 should be set to what it was updated to with expansions.update")
+	key2Value := s.tc.taskConfig.Expansions.Get("key2")
+	s.Equal("functionVar2", key2Value, "key2 should be set to what it was updated to with expansions.update")
 
-	key3Value := s.tc.taskConfig.Expansions.Get("key_3")
-	s.Equal("expansionVar3", key3Value, "key_3 should be the original expansion value")
+	key3Value := s.tc.taskConfig.Expansions.Get("key3")
+	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
+
+	s.Equal(&util.Expansions{}, s.tc.taskConfig.DynamicExpansions)
 }
 
 func (s *CommandSuite) TestVarsUnsetPreserveExpansionUpdatesFromFile() {
@@ -368,16 +371,20 @@ functions:
 	func1 := model.PluginCommandConf{
 		Function:    "yes",
 		DisplayName: "function",
-		Vars:        map[string]string{"key_1": "functionVar1", "key_2": "functionVar2", "key_3": "functionVar3"},
+		Vars:        map[string]string{"key1": "newValue1", "key2": "newValue2", "key3": "newValue3"},
 	}
 
 	cmds := []model.PluginCommandConf{func1}
 	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
 	s.NoError(err)
 
-	key1Value := s.tc.taskConfig.Expansions.Get("key_1")
-	s.Equal("value_1", key1Value, "key_1 should be set to what it was updated to with expansions.update")
+	key1Value := s.tc.taskConfig.Expansions.Get("key1")
+	s.Equal("newValue1", key1Value, "key1 should be set to what it was updated to with expansions.update")
 
-	key2Value := s.tc.taskConfig.Expansions.Get("key_2")
-	s.Equal("expansionVar2", key2Value, "key_2 should be the original expansion value")
+	key2Value := s.tc.taskConfig.Expansions.Get("key2")
+	s.Equal("newValue2", key2Value, "key2 should be set to what it was updated to with expansions.update")
+
+	key3Value := s.tc.taskConfig.Expansions.Get("key3")
+	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
+	s.Equal(&util.Expansions{}, s.tc.taskConfig.DynamicExpansions)
 }
