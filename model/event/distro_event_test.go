@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -94,7 +95,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 
 			LogDistroModified(distroId, userId, oldData, data)
 
-			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, time.Now())
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, utility.ZeroTime)
 			So(err, ShouldBeNil)
 			So(len(eventsForDistro), ShouldEqual, 0)
 		})
@@ -111,7 +112,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogDistroModified(distroId, userId, oldData, data)
 
-			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, time.Now())
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, utility.ZeroTime)
 			So(err, ShouldBeNil)
 			So(len(eventsForDistro), ShouldEqual, 2)
 

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -189,7 +190,10 @@ func latestDistroEventsPipeline(id string, n int, amiOnly bool, before time.Time
 	// We use two different match stages to use the most efficient index.
 	resourceFilter := ResourceTypeKeyIs(ResourceTypeDistro)
 	resourceFilter[ResourceIdKey] = id
-	resourceFilter[TimestampKey] = bson.M{"$lt": before}
+
+	if !utility.IsZeroTime(before) {
+		resourceFilter[TimestampKey] = bson.M{"$lt": before}
+	}
 
 	var eventFilter = bson.M{}
 	if amiOnly {

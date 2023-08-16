@@ -121,10 +121,7 @@ func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel
 
 // DistroEvents is the resolver for the distroEvents field.
 func (r *queryResolver) DistroEvents(ctx context.Context, opts DistroEventsInput) (*DistroEventsPayload, error) {
-	before := time.Now()
-	if opts.Before != nil {
-		before = *opts.Before
-	}
+	before := utility.FromTimePtr(opts.Before)
 
 	limit := 10
 	if opts.Limit != nil {
