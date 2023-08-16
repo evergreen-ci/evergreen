@@ -72,14 +72,14 @@ func (t *TaskConfig) GetExecTimeout() int {
 }
 
 func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
-	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
 	}
-
-	// check on if the project ref is empty
 	if r == nil {
 		return nil, errors.Errorf("project ref '%s' is nil", p.Identifier)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task cannot be nil")
 	}
 
 	bv := p.FindBuildVariant(t.BuildVariant)

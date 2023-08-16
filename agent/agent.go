@@ -781,7 +781,6 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		tc.ranSetupGroup = true
 	}
 
-	// kim: TODO: use pre block timeout for callback watcher
 	pre, err := tc.taskConfig.GetPre(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for pre-task commands"))
@@ -791,7 +790,6 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	if pre.Commands != nil {
 		preCtx, preCancel := context.WithCancel(ctx)
 		defer preCancel()
-		// kim: TODO: test pre timeout (explicit vs default)
 		timeoutOpts := timeoutWatcherOptions{
 			tc:                    tc,
 			kind:                  preTimeout,
@@ -1020,7 +1018,6 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 
 		postCtx, postCancel := context.WithCancel(ctx)
 		defer postCancel()
-		// kim: TODO: test post timeout (explicit vs default)
 		timeoutOpts := timeoutWatcherOptions{
 			tc:                    tc,
 			kind:                  postTimeout,
@@ -1031,7 +1028,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 
 		err = a.runCommandsInBlock(postCtx, tc, post.Commands.List(), opts, block)
 		if err != nil {
-			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
+			tc.logger.Task().Error(errors.Wrap(err, "Running post-task commands failed"))
 			if post.CanFailTask {
 				return err
 			}
