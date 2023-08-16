@@ -74,7 +74,7 @@ func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) erro
 		if clearQueueErr := model.ClearTaskQueue(distroId); clearQueueErr != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
+				Message:    errors.Wrapf(clearQueueErr, "clearing task queue for distro '%s'", distroId).Error(),
 			}
 		}
 	}
