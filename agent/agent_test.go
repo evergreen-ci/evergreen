@@ -33,13 +33,15 @@ func init() {
 
 const defaultProjYml = `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
+
 tasks: 
- - name: this_is_a_task_name
-   commands: 
-    - command: shell.exec
-      params:
-        script: "echo hi"
+  - name: this_is_a_task_name
+    commands: 
+      - command: shell.exec
+        params:
+          script: "echo hi"
+
 post:
   - command: shell.exec
     params:
@@ -333,9 +335,9 @@ func (s *AgentSuite) TestRunCommandsEventuallyReturnsForCommandThatIgnoresContex
 	const cmdSleepSecs = 500
 	s.setupRunTask(`
 pre:
-- command: command.mock
-  params:
-    sleep_seconds: 500
+  - command: command.mock
+    params:
+      sleep_seconds: 500
 `)
 
 	cmd := model.PluginCommandConf{
@@ -407,12 +409,12 @@ func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
 func (s *AgentSuite) TestPre() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 pre:
-- command: shell.exec
-  params:
-    script: echo hi
+  - command: shell.exec
+    params:
+      script: echo hi
 `
 	s.setupRunTask(projYml)
 
@@ -430,7 +432,7 @@ pre:
 func (s *AgentSuite) TestPreTimeoutDoesNotFailTask() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 pre_timeout_secs: 1
 pre:
@@ -443,8 +445,11 @@ pre:
 	startAt := time.Now()
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.Less(time.Since(startAt), 5*time.Second, "pre command should have stopped early")
-	s.NoError(s.tc.logger.Close())
+	s.False(s.tc.hadTimedOut(), "should not record pre timeout when pre cannot fail task")
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
 
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running pre-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'pre'",
@@ -476,7 +481,7 @@ pre:
 func (s *AgentSuite) TestPreTimeoutFailsTask() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 pre_timeout_secs: 1
 pre_error_fails_task: true
@@ -488,6 +493,9 @@ pre:
 	s.setupRunTask(projYml)
 
 	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
+	s.True(s.tc.hadTimedOut(), "should have recorded pre timeout because it fails the task")
+	s.EqualValues(preTimeout, s.tc.getTimeoutType())
+	s.Equal(time.Second, s.tc.getTimeoutDuration())
 	s.NoError(s.tc.logger.Close())
 
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -521,7 +529,7 @@ post:
 func (s *AgentSuite) TestPostTimeoutDoesNotFailTask() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 post_timeout_secs: 1
 post:
@@ -534,6 +542,9 @@ post:
 	startAt := time.Now()
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.Less(time.Since(startAt), 5*time.Second, "post command should have stopped early")
+	s.False(s.tc.hadTimedOut(), "should not record post timeout when post cannot fail task")
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
 
@@ -547,7 +558,7 @@ post:
 func (s *AgentSuite) TestPostFailsTask() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 post_error_fails_task: true
 post:
@@ -569,7 +580,7 @@ post:
 func (s *AgentSuite) TestPostTimeoutFailsTask() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 post_timeout_secs: 1
 post_error_fails_task: true
@@ -583,6 +594,9 @@ post:
 	startAt := time.Now()
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.Less(time.Since(startAt), 5*time.Second, "post command should have stopped early")
+	s.True(s.tc.hadTimedOut(), "should have recorded post timeout because it fails the task")
+	s.Equal(postTimeout, s.tc.getTimeoutType())
+	s.Equal(time.Second, s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
 
@@ -614,19 +628,21 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
+
+tasks: 
+  - name: this_is_a_task_name
+    commands: 
+      - command: shell.exec
+        params:
+          script: "exit 0"
 
 post_error_fails_task: true
-tasks: 
-- name: this_is_a_task_name
-  commands: 
-   - command: shell.exec
-     params:
-       script: "exit 0"
+post_timeout_secs: 1
 post:
-- command: shell.exec
-  params:
-    script: "exit 1"
+  - command: shell.exec
+    params:
+      script: sleep 5
 `
 	s.setupRunTask(projYml)
 	_, err := s.a.runTask(s.ctx, s.tc)
@@ -634,6 +650,9 @@ post:
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut)
+	s.EqualValues(postTimeout, s.mockCommunicator.EndTaskResult.Detail.TimeoutType)
+	s.Equal(time.Second, s.mockCommunicator.EndTaskResult.Detail.TimeoutDuration)
 
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
@@ -644,18 +663,19 @@ post:
 func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 tasks: 
-- name: this_is_a_task_name
-  commands: 
-   - command: shell.exec
-     params:
-       script: "exit 0"
+  - name: this_is_a_task_name
+    commands: 
+      - command: shell.exec
+        params:
+          script: "exit 0"
+
 post:
-- command: shell.exec
-  params:
-    script: "exit 1"
+  - command: shell.exec
+    params:
+      script: "exit 1"
 `
 	s.setupRunTask(projYml)
 	_, err := s.a.runTask(s.ctx, s.tc)
@@ -672,19 +692,20 @@ post:
 func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
-- name: this_is_a_task_name
-  commands: 
-   - command: shell.exec
-     params:
-       script: "exit 0"
+  - name: this_is_a_task_name
+    commands: 
+      - command: shell.exec
+        params:
+          script: "exit 0"
+
 post:
-- command: shell.exec
-  params:
-    script: "exit 0"
+  - command: shell.exec
+    params:
+      script: "exit 0"
 `
 	s.setupRunTask(projYml)
 	_, err := s.a.runTask(s.ctx, s.tc)
@@ -701,19 +722,20 @@ post:
 func (s *AgentSuite) TestFailingMainAndPostShowsMainInEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
-- name: this_is_a_task_name
-  commands: 
-   - command: shell.exec
-     params:
-       script: "exit 1"
+  - name: this_is_a_task_name
+    commands: 
+      - command: shell.exec
+        params:
+          script: "exit 1"
+
 post:
- - command: shell.exec
-   params:
-     script: "exit 1"
+  - command: shell.exec
+    params:
+      script: "exit 1"
 `
 	s.setupRunTask(projYml)
 	_, err := s.a.runTask(s.ctx, s.tc)
@@ -728,22 +750,56 @@ post:
 	}, nil)
 }
 
-func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
+func (s *AgentSuite) TestTimedOutMainAndFailingPostShowsMainInEndTaskResults() {
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 post_error_fails_task: true
 tasks: 
-- name: this_is_a_task_name
-  commands: 
-   - command: shell.exec
-     params:
-       script: "exit 1"
+  - name: this_is_a_task_name
+    commands: 
+      - command: shell.exec
+        timeout_secs: 1
+        params:
+          script: sleep 5
+
 post:
-- command: shell.exec
-  params:
-    script: "exit 0"
+  - command: shell.exec
+    params:
+       script: exit 1
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
+	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut, "should show main block command hitting timeout")
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 1s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	}, nil)
+}
+
+func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+post_error_fails_task: true
+tasks: 
+  - name: this_is_a_task_name
+    commands: 
+      - command: shell.exec
+        params:
+          script: "exit 1"
+
+post:
+  - command: shell.exec
+    params:
+      script: "exit 0"
 `
 	s.setupRunTask(projYml)
 	_, err := s.a.runTask(s.ctx, s.tc)
@@ -761,12 +817,12 @@ post:
 func (s *AgentSuite) TestPostContinuesOnError() {
 	projYml := `
 post:
-- command: shell.exec
-  params:
-    script: "exit 1"
-- command: shell.exec
-  params:
-    script: "exit 0"
+  - command: shell.exec
+    params:
+      script: "exit 1"
+  - command: shell.exec
+    params:
+      script: "exit 0"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -903,11 +959,11 @@ func (s *AgentSuite) TestSetupGroup() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "echo hi"
+  - name: task_group_name
+    setup_group:
+      - command: shell.exec
+        params:
+          script: "echo hi"
 `
 
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
@@ -928,13 +984,13 @@ func (s *AgentSuite) TestSetupGroupTimeout() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  setup_group_timeout_secs: 3
-  setup_group_can_fail_task: true
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "sleep 10"
+  - name: task_group_name
+    setup_group_timeout_secs: 3
+    setup_group_can_fail_task: true
+    setup_group:
+      - command: shell.exec
+        params:
+          script: "sleep 10"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -952,12 +1008,12 @@ func (s *AgentSuite) TestSetupGroupFails() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  setup_group_can_fail_task: true
-  setup_group:
-  - command: thisisnotarealcommand
-    params:
-      script: "echo hi"
+  - name: task_group_name
+    setup_group_can_fail_task: true
+    setup_group:
+      - command: thisisnotarealcommand
+        params:
+          script: "echo hi"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -977,13 +1033,13 @@ func (s *AgentSuite) TestSetupGroupTimeoutFailsTask() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  setup_group_can_fail_task: true
-  setup_group_timeout_secs: 1
-  setup_group:
-  - command: shell.exec
-    params:
-      script: sleep 100
+  - name: task_group_name
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1
+    setup_group:
+      - command: shell.exec
+        params:
+          script: sleep 100
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -1009,12 +1065,12 @@ func (s *AgentSuite) TestSetupGroupTimeoutDoesNotFailTask() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  setup_group_timeout_secs: 1
-  setup_group:
-  - command: shell.exec
-    params:
-      script: sleep 100
+  - name: task_group_name
+    setup_group_timeout_secs: 1
+    setup_group:
+      - command: shell.exec
+        params:
+          script: sleep 100
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -1040,12 +1096,12 @@ func (s *AgentSuite) TestTeardownTaskFails() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  teardown_task_can_fail_task: true
-  teardown_task:
-  - command: thisisnotarealcommand
-    params:
-      script: "echo hi"
+  - name: task_group_name
+    teardown_task_can_fail_task: true
+    teardown_task:
+      - command: thisisnotarealcommand
+        params:
+          script: "echo hi"
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
@@ -1062,11 +1118,11 @@ func (s *AgentSuite) TestSetupTask() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  setup_task:
-  - command: shell.exec
-    params:
-      script: "echo hi"
+  - name: task_group_name
+    setup_task:
+      - command: shell.exec
+        params:
+          script: "echo hi"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -1087,11 +1143,11 @@ func (s *AgentSuite) TestTeardownTask() {
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
-- name: task_group_name
-  teardown_task:
-  - command: shell.exec
-    params:
-      script: "echo hi"
+  - name: task_group_name
+    teardown_task:
+      - command: shell.exec
+        params:
+          script: "echo hi"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -1112,11 +1168,11 @@ func (s *AgentSuite) TestTeardownGroup() {
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
-- name: task_group_name
-  teardown_group:
-  - command: shell.exec
-    params:
-      script: "echo hi"
+  - name: task_group_name
+    teardown_group:
+      - command: shell.exec
+        params:
+          script: "echo hi"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -1140,11 +1196,11 @@ func (s *AgentSuite) TestTaskGroupTimeout() {
 	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
-- name: task_group_name
-  timeout:
-  - command: shell.exec
-    params:
-      script: "echo hi"
+  - name: task_group_name
+    timeout:
+      - command: shell.exec
+        params:
+          script: "echo hi"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -1169,13 +1225,13 @@ func (s *AgentSuite) TestTimeoutDoesNotWaitForCommandsToFinish() {
 
 	projYml := `
 timeout:
-- command: shell.exec
-  params:
-    shell: bash
-    script: |
-      echo "hi"
-      sleep 20
-      echo "bye"
+  - command: shell.exec
+    params:
+      shell: bash
+      script: |
+        echo "hi"
+        sleep 20
+        echo "bye"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -1211,24 +1267,24 @@ func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
 
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 tasks:
-- name: this_is_a_task_name
-  commands:
-  - command: shell.exec
-    params:
-      script: sleep 10
+  - name: this_is_a_task_name
+    commands:
+    - command: shell.exec
+      params:
+        script: sleep 10
 
 post:
-- command: shell.exec
-  params:
-    script: sleep 1
+  - command: shell.exec
+    params:
+      script: sleep 1
 
 timeout:
-- commands: shell.exec
-  params:
-    script: exit 0
+  - commands: shell.exec
+    params:
+      script: exit 0
 `
 	s.setupRunTask(projYml)
 	start := time.Now()
@@ -1254,28 +1310,28 @@ func (s *AgentSuite) TestAbortExitsMainAndRunsTeardownTask() {
 
 	projYml := `
 buildvariants:
-- name: mock_build_variant
+  - name: mock_build_variant
 
 tasks:
-- name: this_is_a_task_name
-  commands:
-  - command: shell.exec
-    params:
-      script: sleep 5
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: sleep 5
 
 task_groups:
-- name: some_task_group
-  tasks:
-  - this_is_a_task_name
-  teardown_task:
-  - command: shell.exec
-    params:
-      script: sleep 1
+  - name: some_task_group
+    tasks:
+      - this_is_a_task_name
+    teardown_task:
+      - command: shell.exec
+        params:
+          script: sleep 1
 
 timeout:
-- commands: shell.exec
-  params:
-    script: exit 0
+  - commands: shell.exec
+    params:
+      script: exit 0
 `
 	s.setupRunTask(projYml)
 	s.tc.taskGroup = "some_task_group"
