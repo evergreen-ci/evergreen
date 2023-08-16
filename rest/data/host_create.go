@@ -259,7 +259,6 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 	return createHost, nil
 }
 
-// MakeHost creates a host or container to run for host.create.
 func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if evergreen.IsDockerProvider(createHost.CloudProvider) {
 		return makeDockerIntentHost(ctx, env, taskID, userID, createHost)
@@ -310,7 +309,6 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 		RegistryName:     createHost.Registry.Name,
 		RegistryUsername: createHost.Registry.Username,
 		RegistryPassword: createHost.Registry.Password,
-		StdinData:        createHost.StdinFileContents,
 		Method:           method,
 		SkipImageBuild:   true,
 		EnvironmentVars:  envVars,

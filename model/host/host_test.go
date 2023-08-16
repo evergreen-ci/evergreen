@@ -5936,28 +5936,3 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 		})
 	}
 }
-
-func TestClearDockerStdinData(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
-	}()
-	require.NoError(t, db.ClearCollections(Collection))
-	h := Host{
-		Id: "host_id",
-		DockerOptions: DockerOptions{
-			StdinData: []byte("stdin data"),
-		},
-	}
-	require.NoError(t, h.Insert(ctx))
-
-	require.NoError(t, h.ClearDockerStdinData(ctx))
-	assert.Empty(t, h.DockerOptions.StdinData)
-
-	dbHost, err := FindOneId(ctx, h.Id)
-	require.NoError(t, err)
-	require.NotZero(t, dbHost)
-	assert.Empty(t, dbHost.DockerOptions.StdinData)
-}

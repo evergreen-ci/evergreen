@@ -95,14 +95,6 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 			return err
 		}
 	}
-	if c.CreateHost.StdinFile != "" {
-		c.CreateHost.StdinFile = getJoinedWithWorkDir(conf, c.CreateHost.StdinFile)
-		fileContent, err := os.ReadFile(c.CreateHost.StdinFile)
-		if err != nil {
-			return errors.Wrapf(err, "reading stdin file '%s'", c.CreateHost.StdinFile)
-		}
-		c.CreateHost.StdinFileContents = fileContent
-	}
 	startTime := time.Now()
 
 	c.logAMI(ctx, comm, logger, taskData)

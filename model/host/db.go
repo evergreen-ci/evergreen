@@ -82,7 +82,6 @@ var (
 	TotalIdleTimeKey                   = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
 	HasContainersKey                   = bsonutil.MustHaveTag(Host{}, "HasContainers")
 	ParentIDKey                        = bsonutil.MustHaveTag(Host{}, "ParentID")
-	DockerOptionsKey                   = bsonutil.MustHaveTag(Host{}, "DockerOptions")
 	ContainerImagesKey                 = bsonutil.MustHaveTag(Host{}, "ContainerImages")
 	ContainerBuildAttempt              = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
 	LastContainerFinishTimeKey         = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
@@ -110,7 +109,6 @@ var (
 	VolumeMigratingKey                 = bsonutil.MustHaveTag(Volume{}, "Migrating")
 	VolumeAttachmentIDKey              = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey                = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
-	DockerOptionsStdinDataKey          = bsonutil.MustHaveTag(DockerOptions{}, "StdinData")
 )
 
 var (

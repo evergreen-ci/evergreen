@@ -240,8 +240,6 @@ type DockerOptions struct {
 	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
-	// StdinData is the data to pass to the container command's stdin.
-	StdinData []byte `mapstructure:"stdin_data" bson:"stdin_data,omitempty" json:"stdin_data,omitempty"`
 }
 
 // FromDistroSettings loads the Docker container options from the provider
@@ -3185,26 +3183,4 @@ func CountVirtualWorkstationsByInstanceType(ctx context.Context) ([]VirtualWorks
 	}
 
 	return data, nil
-}
-
-// ClearDockerStdinData clears the Docker stdin data from the host.
-func (h *Host) ClearDockerStdinData(ctx context.Context) error {
-	if len(h.DockerOptions.StdinData) == 0 {
-		return nil
-	}
-
-	dockerStdinDataKey := bsonutil.GetDottedKeyName(DockerOptionsKey, DockerOptionsStdinDataKey)
-	if err := UpdateOne(ctx, bson.M{
-		IdKey: h.Id,
-	},
-		bson.M{
-			"$unset": bson.M{dockerStdinDataKey: true},
-		},
-	); err != nil {
-		return err
-	}
-
-	h.DockerOptions.StdinData = nil
-
-	return nil
 }

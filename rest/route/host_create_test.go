@@ -278,6 +278,12 @@ func TestHostCreateDocker(t *testing.T) {
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
 	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
+	assert.NoError(err)
 
 	handler := hostCreateHandler{env: env}
 
@@ -312,14 +318,13 @@ func TestHostCreateDocker(t *testing.T) {
 
 	extraHosts := []string{"localhost:127.0.0.1"}
 	c := apimodels.CreateHost{
-		CloudProvider:     apimodels.ProviderDocker,
-		NumHosts:          "1",
-		Distro:            "distro",
-		Image:             "my-image",
-		Command:           "echo hello",
-		StdinFileContents: []byte("hello!"),
-		EnvironmentVars:   map[string]string{"env_key": "env_value"},
-		ExtraHosts:        extraHosts,
+		CloudProvider:   apimodels.ProviderDocker,
+		NumHosts:        "1",
+		Distro:          "distro",
+		Image:           "my-image",
+		Command:         "echo hello",
+		EnvironmentVars: map[string]string{"env_key": "env_value"},
+		ExtraHosts:      extraHosts,
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
@@ -330,12 +335,11 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.Equal("distro", h.Distro.Id)
 	assert.Equal("my-image", h.DockerOptions.Image)
 	assert.Equal("echo hello", h.DockerOptions.Command)
-	assert.Equal("hello!", string(h.DockerOptions.StdinData))
 	assert.Equal("myregistry", h.DockerOptions.RegistryName)
 	assert.Equal([]string{"env_key=env_value"}, h.DockerOptions.EnvironmentVars)
 	assert.Equal(extraHosts, h.DockerOptions.ExtraHosts)
 
-	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+	assert.Equal(200, handler.Run(context.Background()).Status())
 
 	hosts, err := host.Find(ctx, bson.M{})
 	assert.NoError(err)
