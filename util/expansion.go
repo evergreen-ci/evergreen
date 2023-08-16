@@ -31,8 +31,7 @@ func (exp *Expansions) Update(newItems map[string]string) {
 	}
 }
 
-// Update all of the specified keys in the expansions to point to the specified
-// values.
+// Return an empty expansion
 func EmptyExpansion() *Expansions {
 	empty := Expansions(map[string]string{})
 	return &empty
