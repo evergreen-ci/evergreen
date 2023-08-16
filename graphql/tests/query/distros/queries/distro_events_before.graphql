@@ -1,0 +1,18 @@
+
+query {
+  distroEvents(
+    opts: {
+      distroId: "rhel71-power8-large",
+      before: "2020-08-09T17:00:06.819-04:00"
+    }
+  ) {
+    count
+    eventLogEntries {
+      after
+      before
+      data
+      timestamp
+      user
+    }
+  }
+}

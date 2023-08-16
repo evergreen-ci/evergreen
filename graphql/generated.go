@@ -256,6 +256,19 @@ type ComplexityRoot struct {
 		WorkDir               func(childComplexity int) int
 	}
 
+	DistroEvent struct {
+		After     func(childComplexity int) int
+		Before    func(childComplexity int) int
+		Data      func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+		User      func(childComplexity int) int
+	}
+
+	DistroEventsPayload struct {
+		Count           func(childComplexity int) int
+		EventLogEntries func(childComplexity int) int
+	}
+
 	DistroInfo struct {
 		BootstrapMethod      func(childComplexity int) int
 		Id                   func(childComplexity int) int
@@ -926,6 +939,7 @@ type ComplexityRoot struct {
 		ClientConfig             func(childComplexity int) int
 		CommitQueue              func(childComplexity int, projectIdentifier string) int
 		Distro                   func(childComplexity int, distroID string) int
+		DistroEvents             func(childComplexity int, opts DistroEventsInput) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
 		GithubProjectConflicts   func(childComplexity int, projectID string) int
@@ -1639,6 +1653,7 @@ type QueryResolver interface {
 	SpruceConfig(ctx context.Context) (*model.APIAdminSettings, error)
 	SubnetAvailabilityZones(ctx context.Context) ([]string, error)
 	Distro(ctx context.Context, distroID string) (*model.APIDistro, error)
+	DistroEvents(ctx context.Context, opts DistroEventsInput) (*DistroEventsPayload, error)
 	Distros(ctx context.Context, onlySpawnable bool) ([]*model.APIDistro, error)
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
 	Host(ctx context.Context, hostID string) (*model.APIHost, error)
@@ -2588,6 +2603,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.WorkDir(childComplexity), true
+
+	case "DistroEvent.after":
+		if e.complexity.DistroEvent.After == nil {
+			break
+		}
+
+		return e.complexity.DistroEvent.After(childComplexity), true
+
+	case "DistroEvent.before":
+		if e.complexity.DistroEvent.Before == nil {
+			break
+		}
+
+		return e.complexity.DistroEvent.Before(childComplexity), true
+
+	case "DistroEvent.data":
+		if e.complexity.DistroEvent.Data == nil {
+			break
+		}
+
+		return e.complexity.DistroEvent.Data(childComplexity), true
+
+	case "DistroEvent.timestamp":
+		if e.complexity.DistroEvent.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.DistroEvent.Timestamp(childComplexity), true
+
+	case "DistroEvent.user":
+		if e.complexity.DistroEvent.User == nil {
+			break
+		}
+
+		return e.complexity.DistroEvent.User(childComplexity), true
+
+	case "DistroEventsPayload.count":
+		if e.complexity.DistroEventsPayload.Count == nil {
+			break
+		}
+
+		return e.complexity.DistroEventsPayload.Count(childComplexity), true
+
+	case "DistroEventsPayload.eventLogEntries":
+		if e.complexity.DistroEventsPayload.EventLogEntries == nil {
+			break
+		}
+
+		return e.complexity.DistroEventsPayload.EventLogEntries(childComplexity), true
 
 	case "DistroInfo.bootstrapMethod":
 		if e.complexity.DistroInfo.BootstrapMethod == nil {
@@ -6022,6 +6086,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Distro(childComplexity, args["distroId"].(string)), true
 
+	case "Query.distroEvents":
+		if e.complexity.Query.DistroEvents == nil {
+			break
+		}
+
+		args, err := ec.field_Query_distroEvents_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.DistroEvents(childComplexity, args["opts"].(DistroEventsInput)), true
+
 	case "Query.distroTaskQueue":
 		if e.complexity.Query.DistroTaskQueue == nil {
 			break
@@ -8996,6 +9072,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDispatcherSettingsInput,
 		ec.unmarshalInputDisplayTask,
+		ec.unmarshalInputDistroEventsInput,
 		ec.unmarshalInputDistroInput,
 		ec.unmarshalInputDistroPermissionsOptions,
 		ec.unmarshalInputEditSpawnHostInput,
@@ -10720,6 +10797,21 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 		}
 	}
 	args["projectIdentifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_distroEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 DistroEventsInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalNDistroEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEventsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -16427,6 +16519,317 @@ func (ec *executionContext) fieldContext_Distro_workDir(ctx context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroEvent_after(ctx context.Context, field graphql.CollectedField, obj *DistroEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroEvent_after(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.After, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroEvent_after(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroEvent_before(ctx context.Context, field graphql.CollectedField, obj *DistroEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroEvent_before(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Before, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroEvent_before(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroEvent_data(ctx context.Context, field graphql.CollectedField, obj *DistroEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroEvent_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroEvent_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroEvent_timestamp(ctx context.Context, field graphql.CollectedField, obj *DistroEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroEvent_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroEvent_timestamp(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroEvent_user(ctx context.Context, field graphql.CollectedField, obj *DistroEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroEvent_user(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroEvent_user(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroEventsPayload_count(ctx context.Context, field graphql.CollectedField, obj *DistroEventsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroEventsPayload_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroEventsPayload_count(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroEventsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroEventsPayload_eventLogEntries(ctx context.Context, field graphql.CollectedField, obj *DistroEventsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistroEventsPayload_eventLogEntries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EventLogEntries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*DistroEvent)
+	fc.Result = res
+	return ec.marshalNDistroEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEventᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistroEventsPayload_eventLogEntries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroEventsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "after":
+				return ec.fieldContext_DistroEvent_after(ctx, field)
+			case "before":
+				return ec.fieldContext_DistroEvent_before(ctx, field)
+			case "data":
+				return ec.fieldContext_DistroEvent_data(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_DistroEvent_timestamp(ctx, field)
+			case "user":
+				return ec.fieldContext_DistroEvent_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DistroEvent", field.Name)
 		},
 	}
 	return fc, nil
@@ -41219,6 +41622,67 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_distroEvents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_distroEvents(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().DistroEvents(rctx, fc.Args["opts"].(DistroEventsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*DistroEventsPayload)
+	fc.Result = res
+	return ec.marshalNDistroEventsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEventsPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_distroEvents(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "count":
+				return ec.fieldContext_DistroEventsPayload_count(ctx, field)
+			case "eventLogEntries":
+				return ec.fieldContext_DistroEventsPayload_eventLogEntries(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DistroEventsPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_distroEvents_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_distros(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_distros(ctx, field)
 	if err != nil {
@@ -65120,6 +65584,70 @@ func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj i
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDistroEventsInput(ctx context.Context, obj interface{}) (DistroEventsInput, error) {
+	var it DistroEventsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"before", "distroId", "limit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "before":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Before = data
+		case "distroId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distroId"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, "VIEW")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireDistroAccess == nil {
+					return nil, errors.New("directive requireDistroAccess is not implemented")
+				}
+				return ec.directives.RequireDistroAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.DistroID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "limit":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj interface{}) (model.APIDistro, error) {
 	var it model.APIDistro
 	asMap := map[string]interface{}{}
@@ -70783,6 +71311,88 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var distroEventImplementors = []string{"DistroEvent"}
+
+func (ec *executionContext) _DistroEvent(ctx context.Context, sel ast.SelectionSet, obj *DistroEvent) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, distroEventImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DistroEvent")
+		case "after":
+
+			out.Values[i] = ec._DistroEvent_after(ctx, field, obj)
+
+		case "before":
+
+			out.Values[i] = ec._DistroEvent_before(ctx, field, obj)
+
+		case "data":
+
+			out.Values[i] = ec._DistroEvent_data(ctx, field, obj)
+
+		case "timestamp":
+
+			out.Values[i] = ec._DistroEvent_timestamp(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "user":
+
+			out.Values[i] = ec._DistroEvent_user(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var distroEventsPayloadImplementors = []string{"DistroEventsPayload"}
+
+func (ec *executionContext) _DistroEventsPayload(ctx context.Context, sel ast.SelectionSet, obj *DistroEventsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, distroEventsPayloadImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DistroEventsPayload")
+		case "count":
+
+			out.Values[i] = ec._DistroEventsPayload_count(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "eventLogEntries":
+
+			out.Values[i] = ec._DistroEventsPayload_eventLogEntries(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var distroInfoImplementors = []string{"DistroInfo"}
 
 func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSet, obj *model.DistroInfo) graphql.Marshaler {
@@ -75766,6 +76376,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_distro(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "distroEvents":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_distroEvents(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -81364,6 +81997,79 @@ func (ec *executionContext) marshalNDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 	return ec._Distro(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNDistroEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*DistroEvent) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDistroEvent2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEvent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNDistroEvent2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEvent(ctx context.Context, sel ast.SelectionSet, v *DistroEvent) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DistroEvent(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDistroEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEventsInput(ctx context.Context, v interface{}) (DistroEventsInput, error) {
+	res, err := ec.unmarshalInputDistroEventsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDistroEventsPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEventsPayload(ctx context.Context, sel ast.SelectionSet, v DistroEventsPayload) graphql.Marshaler {
+	return ec._DistroEventsPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDistroEventsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroEventsPayload(ctx context.Context, sel ast.SelectionSet, v *DistroEventsPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DistroEventsPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNDistroInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, v interface{}) (*model.APIDistro, error) {
 	res, err := ec.unmarshalInputDistroInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -84269,6 +84975,21 @@ func (ec *executionContext) marshalNTicketFields2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._TicketFields(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
+	res, err := graphql.UnmarshalTime(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	res := graphql.MarshalTime(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
