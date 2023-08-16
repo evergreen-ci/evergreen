@@ -186,10 +186,13 @@ func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
 		return nil, err
 	}
 
-	canFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
 	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Pre, CanFailTask: canFailTask}, nil
+		return &CommandBlock{
+			Commands:    tc.Project.Pre,
+			CanFailTask: tc.Project.PreErrorFailsTask,
+		}, nil
 	}
+
 	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
@@ -204,10 +207,13 @@ func (tc *TaskConfig) GetPost(taskGroup string) (*CommandBlock, error) {
 		return nil, err
 	}
 
-	canFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
 	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Post, CanFailTask: canFailTask}, nil
+		return &CommandBlock{
+			Commands:    tc.Project.Post,
+			CanFailTask: tc.Project.PostErrorFailsTask,
+		}, nil
 	}
+
 	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)

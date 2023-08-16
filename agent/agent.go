@@ -140,6 +140,8 @@ const (
 	execTimeout       timeoutType = "exec"
 	idleTimeout       timeoutType = "idle"
 	callbackTimeout   timeoutType = "callback"
+	preTimeout        timeoutType = "pre"
+	postTimeout       timeoutType = "post"
 	setupGroupTimeout timeoutType = "setup_group"
 )
 
@@ -779,6 +781,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		tc.ranSetupGroup = true
 	}
 
+	// kim: TODO: use pre block timeout for callback watcher
 	pre, err := tc.taskConfig.GetPre(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for pre-task commands"))
@@ -786,12 +789,23 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if pre.Commands != nil {
+		preCtx, preCancel := context.WithCancel(ctx)
+		defer preCancel()
+		// kim: TODO: test pre timeout (explicit vs default)
+		timeoutOpts := timeoutWatcherOptions{
+			tc:                    tc,
+			kind:                  preTimeout,
+			getTimeout:            tc.getPreTimeout,
+			canMarkTimeoutFailure: pre.CanFailTask,
+		}
+		go a.startTimeoutWatcher(ctx, preCancel, timeoutOpts)
+
 		opts.failPreAndPost = pre.CanFailTask
 		block := preBlock
 		if tc.taskGroup != "" {
 			block = setupTaskBlock
 		}
-		err = a.runCommandsInBlock(ctx, tc, pre.Commands.List(), opts, block)
+		err = a.runCommandsInBlock(preCtx, tc, pre.Commands.List(), opts, block)
 		if err != nil {
 			err = errors.Wrap(err, "Running pre-task commands failed")
 			tc.logger.Task().Error(err)
@@ -1006,10 +1020,11 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 
 		postCtx, postCancel := context.WithCancel(ctx)
 		defer postCancel()
+		// kim: TODO: test post timeout (explicit vs default)
 		timeoutOpts := timeoutWatcherOptions{
 			tc:                    tc,
-			kind:                  callbackTimeout,
-			getTimeout:            tc.getCallbackTimeout,
+			kind:                  postTimeout,
+			getTimeout:            tc.getPostTimeout,
 			canMarkTimeoutFailure: post.CanFailTask,
 		}
 		go a.startTimeoutWatcher(ctx, postCancel, timeoutOpts)

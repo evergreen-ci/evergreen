@@ -37,6 +37,7 @@ const (
 	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
+// Project represents the fully hydrated project configuration
 type Project struct {
 	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`         // deprecated
 	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`        // deprecated
@@ -45,6 +46,8 @@ type Project struct {
 	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`      // deprecated
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
 	UnsetFunctionVars  bool                       `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
+	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
+	PostTimeoutSecs    int                        `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`

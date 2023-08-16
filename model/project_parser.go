@@ -77,8 +77,11 @@ type ParserProject struct {
 	Enabled *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
-	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	UnsetFunctionVars  *bool                      `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
+	Stepback          *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	UnsetFunctionVars *bool `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
+	// kim: TODO: add documentation for each block timeout
+	PreTimeoutSecs     *int                       `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
+	PostTimeoutSecs    *int                       `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
@@ -901,6 +904,8 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Enabled:            utility.FromBoolPtr(pp.Enabled),
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
 		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
+		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
+		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolPtr(pp.OomTracker),

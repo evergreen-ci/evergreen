@@ -33,6 +33,9 @@ var (
 	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
+// kim: TODO: instead of initializing a timeout watcher above each call to
+// runCommandsInBlock, consider passing in timeout watcher options so the
+// timeout watcher can be set up within runCommandsInBlock.
 type runCommandsOptions struct {
 	isTaskCommands bool
 	failPreAndPost bool
