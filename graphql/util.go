@@ -1109,8 +1109,7 @@ func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface
 		return nil, errors.Wrapf(err, "marshalling data")
 	}
 
-	err = bson.Unmarshal(marshalledData, &mapField)
-	if err != nil {
+	if err = bson.Unmarshal(marshalledData, &mapField); err != nil {
 		return nil, errors.Wrapf(err, "unmarshalling data")
 	}
 

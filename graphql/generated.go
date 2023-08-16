@@ -65591,10 +65591,6 @@ func (ec *executionContext) unmarshalInputDistroEventsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	if _, present := asMap["limit"]; !present {
-		asMap["limit"] = 10
-	}
-
 	fieldsInOrder := [...]string{"before", "distroId", "limit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]

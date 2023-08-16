@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -46,7 +47,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		loggedEvents, err = event.FindLatestPrimaryDistroEvents(resourceID, 200, nil)
+		loggedEvents, err = event.FindLatestPrimaryDistroEvents(resourceID, 200, time.Now())
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

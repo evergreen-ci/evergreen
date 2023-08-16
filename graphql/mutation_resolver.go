@@ -197,6 +197,8 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	event.LogDistroModified(d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
+
+	// AMI events are not displayed in the event log, but are used by the backend to determine if hosts have become stale.
 	if d.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
 		event.LogDistroAMIModified(d.Id, usr.Username())
 	}

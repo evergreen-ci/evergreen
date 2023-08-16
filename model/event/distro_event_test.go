@@ -31,7 +31,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, nil)
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, time.Now())
 			So(err, ShouldBeNil)
 
 			event := eventsForDistro[2]
@@ -94,7 +94,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 
 			LogDistroModified(distroId, userId, oldData, data)
 
-			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, nil)
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, time.Now())
 			So(err, ShouldBeNil)
 			So(len(eventsForDistro), ShouldEqual, 0)
 		})
@@ -111,11 +111,11 @@ func TestLoggingDistroEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogDistroModified(distroId, userId, oldData, data)
 
-			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, nil)
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10, time.Now())
 			So(err, ShouldBeNil)
 			So(len(eventsForDistro), ShouldEqual, 2)
 
-			eventsForDistro, err = FindLatestPrimaryDistroEvents(distroId, 10, &timeBeforeEvents)
+			eventsForDistro, err = FindLatestPrimaryDistroEvents(distroId, 10, timeBeforeEvents)
 			So(err, ShouldBeNil)
 			So(len(eventsForDistro), ShouldEqual, 0)
 		})

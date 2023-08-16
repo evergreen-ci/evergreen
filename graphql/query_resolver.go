@@ -121,7 +121,17 @@ func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel
 
 // DistroEvents is the resolver for the distroEvents field.
 func (r *queryResolver) DistroEvents(ctx context.Context, opts DistroEventsInput) (*DistroEventsPayload, error) {
-	events, err := event.FindLatestPrimaryDistroEvents(opts.DistroID, utility.FromIntPtr(opts.Limit), opts.Before)
+	before := time.Now()
+	if opts.Before != nil {
+		before = *opts.Before
+	}
+
+	limit := 10
+	if opts.Limit != nil {
+		limit = utility.FromIntPtr(opts.Limit)
+	}
+
+	events, err := event.FindLatestPrimaryDistroEvents(opts.DistroID, limit, before)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving events for distro '%s': %s", opts.DistroID, err.Error()))
 	}
