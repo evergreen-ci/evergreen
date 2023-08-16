@@ -37,6 +37,8 @@ const (
 	podCreationQueueGroup           = "service.pod.create"
 )
 
+type jobFactory func(context.Context, time.Time) ([]amboy.Job, error)
+
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags(ctx)
@@ -371,132 +373,114 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
-
-		if flags.HostAllocatorDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "host allocation is disabled",
-				"impact":  "new hosts cannot be allocated",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		config, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		// find all active distros
-		distros, err := distro.Find(ctx, distro.ByNeedsHostsPlanning(config.ContainerPools.Pools))
-		if err != nil {
-			return errors.Wrap(err, "finding distros that need planning")
-		}
-
-		ts := utility.RoundPartOfMinute(15)
-		catcher := grip.NewBasicCatcher()
-
-		for _, d := range distros {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostAllocatorJob(env, d.Id, ts)), "enqueueing host allocator job for distro '%s'", d.Id)
-		}
-
-		return errors.Wrap(catcher.Resolve(), "populating host allocator jobs")
+func hostAllocatorJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
+
+	if config.ServiceFlags.HostAllocatorDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "host allocation is disabled",
+			"impact":  "new hosts cannot be allocated",
+			"mode":    "degraded",
+		})
+		return nil, nil
+	}
+
+	// find all active distros
+	distros, err := distro.Find(ctx, distro.ByNeedsHostsPlanning(config.ContainerPools.Pools))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding distros that need planning")
+	}
+
+	jobs := make([]amboy.Job, 0, len(distros))
+	for _, d := range distros {
+		jobs = append(jobs, NewHostAllocatorJob(nil, d.Id, ts))
+	}
+
+	return jobs, nil
 }
 
-func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		config, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
-		}
-
-		if config.ServiceFlags.SchedulerDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "scheduler is disabled",
-				"impact":  "new tasks are not enqueued",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		// find all active distros
-		distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
-		if err != nil {
-			return errors.Wrap(err, "finding distros that need planning")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(15)
-		for _, d := range distros {
-			if d.IsParent(config) {
-				continue
-			}
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewDistroSchedulerJob(env, d.Id, ts)), "enqueueing scheduler job for distro '%s'", d.Id)
-		}
-
-		return errors.Wrap(catcher.Resolve(), "populating distro scheduler jobs")
+func schedulerJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting admin settings")
 	}
+
+	if config.ServiceFlags.SchedulerDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "scheduler is disabled",
+			"impact":  "new tasks are not enqueued",
+			"mode":    "degraded",
+		})
+		return nil, nil
+	}
+
+	// find all active distros
+	distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding distros that need planning")
+	}
+
+	jobs := make([]amboy.Job, 0, len(distros))
+	for _, d := range distros {
+		if d.IsParent(config) {
+			continue
+		}
+		jobs = append(jobs, NewDistroSchedulerJob(d.Id, ts.Format(TSFormat)))
+	}
+	return jobs, nil
 }
 
-func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		config, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
-		}
-
-		if config.ServiceFlags.SchedulerDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "scheduler is disabled",
-				"impact":  "new tasks are not enqueued",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		// find all active distros
-		distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
-		if err != nil {
-			return errors.Wrap(err, "finding distros that need planning")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(15)
-		for _, d := range distros {
-			if d.IsParent(config) {
-				continue
-			}
-
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewDistroAliasSchedulerJob(d.Id, ts)), "enqueueing secondary scheduler for distro '%s'", d.Id)
-		}
-
-		return errors.Wrap(catcher.Resolve(), "populating distro secondary scheduler jobs")
+func aliasSchedulerJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting admin settings")
 	}
+
+	if config.ServiceFlags.SchedulerDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "scheduler is disabled",
+			"impact":  "new tasks are not enqueued",
+			"mode":    "degraded",
+		})
+		return nil, nil
+	}
+
+	// find all active distros
+	distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding distros that need planning")
+	}
+
+	jobs := make([]amboy.Job, 0, len(distros))
+	for _, d := range distros {
+		if d.IsParent(config) {
+			continue
+		}
+		jobs = append(jobs, NewDistroAliasSchedulerJob(d.Id, ts.Format(TSFormat)))
+	}
+
+	return jobs, nil
 }
 
-func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
-
-		if flags.MonitorDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "monitor is disabled",
-				"impact":  "not submitting detecting idle hosts",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		return queue.Put(ctx, NewIdleHostTerminationJob(env, utility.RoundPartOfMinute(15).Format(TSFormat)))
+func idleHostJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
 	}
+
+	if flags.MonitorDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "monitor is disabled",
+			"impact":  "not submitting detecting idle hosts",
+			"mode":    "degraded",
+		})
+		return nil, nil
+	}
+
+	return []amboy.Job{NewIdleHostTerminationJob(nil, ts.Format(TSFormat))}, nil
 }
 
 func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
@@ -547,118 +531,108 @@ func PopulateHostStatJobs(parts int) amboy.QueueOperation {
 	}
 }
 
-func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
+func agentDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
 
-		if flags.AgentStartDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "agent start disabled",
-				"impact":  "agents are not deployed",
-				"mode":    "degraded",
-			})
-			return nil
-		}
+	if flags.AgentStartDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "agent start disabled",
+			"impact":  "agents are not deployed",
+			"mode":    "degraded",
+		})
+		return nil, nil
+	}
 
-		err = host.UpdateAll(ctx, host.NeedsAgentDeploy(time.Now()), bson.M{"$set": bson.M{
-			host.NeedsNewAgentKey: true,
-		}})
-		if err != nil && !adb.ResultsNotFound(err) {
-			grip.Error(message.WrapError(err, message.Fields{
-				"operation": "background task creation",
-				"cron":      agentDeployJobName,
-				"impact":    "agents cannot start",
-				"message":   "problem updating hosts with elapsed last communication time",
-			}))
-			return errors.WithStack(err)
-		}
-
-		hosts, err := host.Find(ctx, host.ShouldDeployAgent())
+	// For each host, set its last communication time to now and its needs new agent
+	// flag to true. This ensures a consistent state in the agent-deploy job. That job
+	// uses setting the NeedsNewAgent field to false to prevent other jobs from running
+	// concurrently.
+	err = host.UpdateAll(ctx, host.NeedsAgentDeploy(time.Now()), bson.M{"$set": bson.M{
+		host.NeedsNewAgentKey: true,
+	}})
+	if err != nil && !adb.ResultsNotFound(err) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
 			"impact":    "agents cannot start",
-			"message":   "problem finding hosts that need a new agent",
+			"message":   "problem updating hosts with elapsed last communication time",
 		}))
-		if err != nil {
-			return errors.Wrap(err, "finding hosts that should be deployed new agents")
-		}
-
-		ts := utility.RoundPartOfMinute(15).Format(TSFormat)
-		catcher := grip.NewBasicCatcher()
-
-		// For each host, set its last communication time to now and its needs new agent
-		// flag to true. This ensures a consistent state in the agent-deploy job. That job
-		// uses setting the NeedsNewAgent field to false to prevent other jobs from running
-		// concurrently. If we didn't set one or the other of those fields, then
-		for _, h := range hosts {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewAgentDeployJob(env, h, ts)), "enqueueing agent deploy job for host '%s'", h.Id)
-		}
-
-		return catcher.Resolve()
+		return nil, errors.WithStack(err)
 	}
 
+	hosts, err := host.Find(ctx, host.ShouldDeployAgent())
+	grip.Error(message.WrapError(err, message.Fields{
+		"operation": "background task creation",
+		"cron":      agentDeployJobName,
+		"impact":    "agents cannot start",
+		"message":   "problem finding hosts that need a new agent",
+	}))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding hosts that should be deployed new agents")
+	}
+
+	jobs := make([]amboy.Job, 0, len(hosts))
+	for _, h := range hosts {
+		jobs = append(jobs, NewAgentDeployJob(nil, h, ts.Format(TSFormat)))
+	}
+
+	return jobs, nil
 }
 
-// PopulateAgentMonitorDeployJobs enqueues the jobs to deploy the agent monitor
+// agentMonitorDeployJobs enqueues the jobs to deploy the agent monitor
 // to any host in which: (1) the agent monitor has not been deployed yet, (2)
 // the agent's last communication time has exceeded the threshold or (3) has
 // already been marked as needing to redeploy a new agent monitor.
-func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
-
-		if flags.AgentStartDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "agent start disabled",
-				"impact":  "agents are not deployed",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		// The agent monitor deploy job will atomically clear the
-		// NeedsNewAgentMonitor field to prevent other jobs from running
-		// concurrently.
-		if err = host.UpdateAll(ctx, host.NeedsAgentMonitorDeploy(time.Now()), bson.M{"$set": bson.M{
-			host.NeedsNewAgentMonitorKey: true,
-		}}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"operation": "background task creation",
-				"cron":      agentMonitorDeployJobName,
-				"impact":    "agent monitors cannot start",
-				"message":   "problem updating hosts with elapsed last communication time",
-			}))
-			return errors.WithStack(err)
-		}
-
-		hosts, err := host.Find(ctx, host.ShouldDeployAgentMonitor())
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"operation": "background task creation",
-				"cron":      agentMonitorDeployJobName,
-				"impact":    "agent monitors cannot start",
-				"message":   "problem finding hosts that need a new agent",
-			}))
-			return errors.Wrap(err, "finding hosts that should be deployed new agent monitors")
-		}
-
-		ts := utility.RoundPartOfMinute(15).Format(TSFormat)
-		catcher := grip.NewBasicCatcher()
-
-		for _, h := range hosts {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewAgentMonitorDeployJob(env, h, ts)), "enqueueing agent monitor deploy job for host '%s'", h.Id)
-		}
-
-		return catcher.Resolve()
+func agentMonitorDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
 	}
 
+	if flags.AgentStartDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "agent start disabled",
+			"impact":  "agents are not deployed",
+			"mode":    "degraded",
+		})
+		return nil, nil
+	}
+
+	// The agent monitor deploy job will atomically clear the
+	// NeedsNewAgentMonitor field to prevent other jobs from running
+	// concurrently.
+	if err = host.UpdateAll(ctx, host.NeedsAgentMonitorDeploy(time.Now()), bson.M{"$set": bson.M{
+		host.NeedsNewAgentMonitorKey: true,
+	}}); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      agentMonitorDeployJobName,
+			"impact":    "agent monitors cannot start",
+			"message":   "problem updating hosts with elapsed last communication time",
+		}))
+		return nil, errors.WithStack(err)
+	}
+
+	hosts, err := host.Find(ctx, host.ShouldDeployAgentMonitor())
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      agentMonitorDeployJobName,
+			"impact":    "agent monitors cannot start",
+			"message":   "problem finding hosts that need a new agent",
+		}))
+		return nil, errors.Wrap(err, "finding hosts that should be deployed new agent monitors")
+	}
+
+	jobs := make([]amboy.Job, 0, len(hosts))
+	for _, h := range hosts {
+		jobs = append(jobs, NewAgentMonitorDeployJob(nil, h, ts.Format(TSFormat)))
+	}
+
+	return jobs, nil
 }
 
 // PopulateFallbackGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
@@ -1186,95 +1160,81 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
-// PopulatePodAllocatorJobs returns the queue operation to enqueue jobs to
+// podAllocatorJobs returns the queue operation to enqueue jobs to
 // allocate pods to tasks and disable container tasks that exceed the stale
 // undispatched threshold.
-func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
-
-		if flags.PodAllocatorDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "pod allocation disabled",
-				"impact":  "container tasks will not be allocated any pods to run them",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		if err := model.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not disable stale container tasks",
-				"context": "pod allocation",
-			}))
-		}
-
-		numInitializing, err := pod.CountByInitializing()
-		if err != nil {
-			return errors.Wrap(err, "counting initializing pods")
-		}
-
-		grip.Info(message.Fields{
-			"message":          "tracking statistics for number of parallel pods being requested",
-			"num_initializing": numInitializing,
-		})
-
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
-		}
-		remaining := settings.PodLifecycle.MaxParallelPodRequests - numInitializing
-
-		ctq, err := model.NewContainerTaskQueue()
-		if err != nil {
-			return errors.Wrap(err, "getting container task queue")
-		}
-
-		catcher := grip.NewBasicCatcher()
-
-		for ctq.HasNext() && remaining > 0 {
-			t := ctq.Next()
-			if t == nil {
-				break
-			}
-
-			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(15).Format(TSFormat))
-			if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
-				catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing pod allocator job for task '%s'", t.Id)
-				continue
-			}
-
-			remaining--
-		}
-
-		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
-			"message":             "reached max parallel pod request limit, not allocating any more",
-			"included_on":         evergreen.ContainerHealthDashboard,
-			"context":             "pod allocation",
-			"num_remaining_tasks": ctq.Len(),
-		})
-
-		return catcher.Resolve()
+func podAllocatorJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting admin settings")
 	}
+
+	if settings.ServiceFlags.PodAllocatorDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "pod allocation disabled",
+			"impact":  "container tasks will not be allocated any pods to run them",
+			"mode":    "degraded",
+		})
+		return nil, nil
+	}
+
+	if err := model.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not disable stale container tasks",
+			"context": "pod allocation",
+		}))
+	}
+
+	numInitializing, err := pod.CountByInitializing()
+	if err != nil {
+		return nil, errors.Wrap(err, "counting initializing pods")
+	}
+
+	grip.Info(message.Fields{
+		"message":          "tracking statistics for number of parallel pods being requested",
+		"num_initializing": numInitializing,
+	})
+
+	remaining := settings.PodLifecycle.MaxParallelPodRequests - numInitializing
+
+	ctq, err := model.NewContainerTaskQueue()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting container task queue")
+	}
+
+	var jobs []amboy.Job
+	for ctq.HasNext() && remaining > 0 {
+		t := ctq.Next()
+		if t == nil {
+			break
+		}
+
+		jobs = append(jobs, NewPodAllocatorJob(t.Id, ts.Format(TSFormat)))
+		remaining--
+	}
+
+	grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
+		"message":             "reached max parallel pod request limit, not allocating any more",
+		"included_on":         evergreen.ContainerHealthDashboard,
+		"context":             "pod allocation",
+		"num_remaining_tasks": ctq.Len(),
+	})
+
+	return jobs, nil
 }
 
-func PopulatePodCreationJobs() amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		pods, err := pod.FindByInitializing()
-		if err != nil {
-			return errors.Wrap(err, "finding initializing pods")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(15).Format(TSFormat))), "enqueueing pod creation job for pod '%s'", p.ID)
-		}
-
-		return catcher.Resolve()
+func podCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	pods, err := pod.FindByInitializing()
+	if err != nil {
+		return nil, errors.Wrap(err, "finding initializing pods")
 	}
+
+	jobs := make([]amboy.Job, 0, len(pods))
+	for _, p := range pods {
+		jobs = append(jobs, NewPodCreationJob(p.ID, ts.Format(TSFormat)))
+	}
+
+	return jobs, nil
 }
 
 func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
@@ -1292,22 +1252,21 @@ func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation 
 	}
 }
 
-// PopulatePodDefinitionCreationJobs populates the jobs to create pod
+// podDefinitionCreationJobs populates the jobs to create pod
 // definitions.
-func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		pods, err := pod.FindByInitializing()
-		if err != nil {
-			return errors.Wrap(err, "finding initializing pods")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(15).Format(TSFormat))), "pod '%s'", p.ID)
-		}
-
-		return errors.Wrap(catcher.Resolve(), "enqueueing pod definition creation jobs")
+func podDefinitionCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+	pods, err := pod.FindByInitializing()
+	if err != nil {
+		return nil, errors.Wrap(err, "finding initializing pods")
 	}
+
+	env := evergreen.GetEnvironment()
+	jobs := make([]amboy.Job, 0, len(pods))
+	for _, p := range pods {
+		jobs = append(jobs, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, ts.Format(TSFormat)))
+	}
+
+	return jobs, nil
 }
 
 // PopulatePodResourceCleanupJobs populates the jobs to clean up pod

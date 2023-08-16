@@ -355,7 +355,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			doesNotNeedAllocation.Project = ref.Id
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			require.NoError(t, PopulatePodAllocatorJobs(env)(ctx, env.Remote))
+			require.NoError(t, podAllocatorJobs(env)(ctx, env.Remote))
 
 			assert.Zero(t, env.Remote.Stats(ctx))
 		},
@@ -367,7 +367,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			staleNeedsAllocation.Project = ref.Id
 			require.NoError(t, staleNeedsAllocation.Insert())
 
-			require.NoError(t, PopulatePodAllocatorJobs(env)(ctx, env.Remote))
+			require.NoError(t, podAllocatorJobs(env)(ctx, env.Remote))
 			assert.Zero(t, env.Remote.Stats(ctx))
 
 			dbTask, err := task.FindOneId(staleNeedsAllocation.Id)
@@ -392,7 +392,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			require.NoError(t, PopulatePodAllocatorJobs(env)(ctx, env.Remote))
+			require.NoError(t, podAllocatorJobs(env)(ctx, env.Remote))
 
 			assert.Zero(t, env.Remote.Stats(ctx), "should not enqueue more pod allocator jobs when max parallel pod request limit is reached")
 		},
@@ -410,7 +410,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			require.NoError(t, PopulatePodAllocatorJobs(env)(ctx, env.Remote))
+			require.NoError(t, podAllocatorJobs(env)(ctx, env.Remote))
 
 			assert.Zero(t, env.Remote.Stats(ctx), "pod allocator job should not be created when max parallel pod requset limit is reached")
 		},

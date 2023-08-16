@@ -24,7 +24,7 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 	require.NoError(t, queue.Start(ctx))
 	defer queue.Runner().Close(ctx)
 
-	require.NoError(t, PopulateIdleHostJobs(env)(ctx, queue))
+	require.NoError(t, idleHostJobs(env)(ctx, queue))
 
 	amboy.WaitInterval(ctx, queue, 50*time.Millisecond)
 	out := []string{}

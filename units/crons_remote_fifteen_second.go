@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
@@ -45,55 +46,55 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	ops := []amboy.QueueOperation{
-		PopulateSchedulerJobs(j.env),
-		PopulateAliasSchedulerJobs(j.env),
-		PopulateHostAllocatorJobs(j.env),
-		PopulateIdleHostJobs(j.env),
-		PopulateAgentDeployJobs(j.env),
-		PopulateAgentMonitorDeployJobs(j.env),
+	ops := map[string]jobFactory{
+		"scheduler":            schedulerJobs,
+		"alias scheduler":      aliasSchedulerJobs,
+		"host allocator":       hostAllocatorJobs,
+		"idle host":            idleHostJobs,
+		"agent deploy":         agentDeployJobs,
+		"agent monitor deploy": agentMonitorDeployJobs,
 	}
 
-	queue := j.env.RemoteQueue()
-
+	var allJobs []amboy.Job
 	catcher := grip.NewBasicCatcher()
-	for _, op := range ops {
+	ts := utility.RoundPartOfMinute(15)
+	for name, op := range ops {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
+			return
 		}
-
-		catcher.Add(op(ctx, queue))
+		jobs, err := op(ctx, ts)
+		if err != nil {
+			catcher.Wrapf(err, "getting '%s' jobs", name)
+			continue
+		}
+		allJobs = append(allJobs, jobs...)
 	}
+	catcher.Wrap(amboy.EnqueueManyUniqueJobs(ctx, j.env.RemoteQueue(), allJobs), "populating main queue")
 
-	// Create dedicated queue for pod allocation.
+	// Create dedicated queues for pod allocation.
 	appCtx, _ := j.env.Context()
-	podAllocationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, podAllocationQueueGroup)
-	if err != nil {
-		catcher.Wrap(err, "getting pod allocator queue")
-	} else {
-		catcher.Wrap(PopulatePodAllocatorJobs(j.env)(ctx, podAllocationQueue), "populating pod allocator jobs")
-	}
-
-	podDefCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, podDefinitionCreationQueueGroup)
-	if err != nil {
-		catcher.Wrap(err, "getting pod definition creation queue")
-	} else {
-		catcher.Wrap(PopulatePodDefinitionCreationJobs(j.env)(ctx, podDefCreationQueue), "populating pod definition creation jobs")
-	}
-	podCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, podCreationQueueGroup)
-	if err != nil {
-		catcher.Wrap(err, "getting pod creation queue")
-	} else {
-		catcher.Wrap(PopulatePodCreationJobs()(ctx, podCreationQueue), "populating pod creation jobs")
-	}
+	catcher.Add(populateQueueGroup(appCtx, j.env, podAllocationQueueGroup, podAllocatorJobs, ts))
+	catcher.Add(populateQueueGroup(appCtx, j.env, podDefinitionCreationQueueGroup, podDefinitionCreationJobs, ts))
+	catcher.Add(populateQueueGroup(appCtx, j.env, podCreationQueueGroup, podCreationJobs, ts))
 
 	j.ErrorCount = catcher.Len()
-
-	grip.Debug(message.Fields{
+	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"id":    j.ID(),
 		"type":  j.Type().Name,
 		"queue": "service",
-		"num":   len(ops),
-		"errs":  j.ErrorCount,
-	})
+	}))
+}
+
+func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory jobFactory, ts time.Time) error {
+	queueGroup, err := env.RemoteQueueGroup().Get(ctx, queueGroupName)
+	if err != nil {
+		return errors.Wrapf(err, "getting '%s' queue", queueGroupName)
+	}
+	jobs, err := factory(ctx, ts)
+	if err != nil {
+		return errors.Wrapf(err, "getting '%s' jobs", queueGroupName)
+	}
+
+	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
 }
