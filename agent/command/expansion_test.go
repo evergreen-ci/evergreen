@@ -38,7 +38,8 @@ func TestExpansionsPlugin(t *testing.T) {
 		expansions.Put("topping", "bacon")
 
 		taskConfig := internal.TaskConfig{
-			Expansions: &expansions,
+			Expansions:        &expansions,
+			DynamicExpansions: &util.Expansions{},
 		}
 
 		So(updateCommand.ExecuteUpdates(ctx, &taskConfig), ShouldBeNil)
