@@ -11,16 +11,19 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandlePoisonedHost(t *testing.T) {
 	ctx := context.Background()
+	ctx = testutil.TestSpan(ctx, t)
+
 	env := &mock.Environment{}
 
-	for testCase, test := range map[string]func(*testing.T){
-		"parent with a container running a task": func(t *testing.T) {
+	for testCase, test := range map[string]func(context.Context, *testing.T){
+		"parent with a container running a task": func(ctx context.Context, t *testing.T) {
 			t1 := &task.Task{
 				Id:      "t1",
 				Status:  evergreen.TaskStarted,
@@ -73,7 +76,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},
-		"running task": func(t *testing.T) {
+		"running task": func(ctx context.Context, t *testing.T) {
 			t1 := &task.Task{
 				Id:      "t1",
 				Status:  evergreen.TaskStarted,
@@ -105,7 +108,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},
-		"static host": func(t *testing.T) {
+		"static host": func(ctx context.Context, t *testing.T) {
 			static := &host.Host{
 				Id:       "static",
 				Status:   evergreen.HostRunning,
@@ -118,7 +121,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, static.Status)
 		},
-		"already decommissioned": func(t *testing.T) {
+		"already decommissioned": func(ctx context.Context, t *testing.T) {
 			decommissioned := &host.Host{
 				Id:     "decommissioned",
 				Status: evergreen.HostDecommissioned,
@@ -130,7 +133,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, decommissioned.Status)
 		},
-		"already terminated": func(t *testing.T) {
+		"already terminated": func(ctx context.Context, t *testing.T) {
 			terminated := &host.Host{
 				Id:     "terminated",
 				Status: evergreen.HostTerminated,
@@ -143,10 +146,17 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.Equal(t, evergreen.HostTerminated, terminated.Status)
 		},
 	} {
-		require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection))
-		require.NoError(t, env.Configure(ctx))
+		t.Run(testCase, func(t *testing.T) {
+			tctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
-		t.Run(testCase, test)
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection))
+			require.NoError(t, env.Configure(ctx))
+
+			test(tctx, t)
+		})
+
 	}
 
 }

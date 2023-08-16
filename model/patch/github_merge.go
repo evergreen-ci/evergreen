@@ -51,6 +51,9 @@ type githubMergeIntent struct {
 	// HeadHash is the SHA of the head of the merge group. Evergreen checks this out.
 	HeadSHA string `bson:"head_hash"`
 
+	// BaseSHA is the SHA of the base of the merge group.
+	BaseSHA string `bson:"base_hash"`
+
 	// Owner is the GitHub repository organization name.
 	Org string `bson:"org"`
 
@@ -79,6 +82,9 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 	if mg.GetMergeGroup().GetHeadSHA() == "" {
 		catcher.Add(errors.New("head SHA cannot be empty"))
 	}
+	if mg.GetMergeGroup().GetBaseSHA() == "" {
+		catcher.Add(errors.New("base SHA cannot be empty"))
+	}
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
@@ -92,6 +98,7 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 		"Repo":       mg.GetRepo().GetName(),
 		"HeadRef":    mg.GetMergeGroup().GetHeadRef(),
 		"HeadSHA":    mg.GetMergeGroup().GetHeadSHA(),
+		"BaseSHA":    mg.GetMergeGroup().GetBaseSHA(),
 		"CalledBy":   caller,
 	})
 	return &githubMergeIntent{
@@ -102,6 +109,7 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 		Repo:       mg.GetRepo().GetName(),
 		HeadRef:    mg.GetMergeGroup().GetHeadRef(),
 		HeadSHA:    mg.GetMergeGroup().GetHeadSHA(),
+		BaseSHA:    mg.GetMergeGroup().GetBaseSHA(),
 		CalledBy:   caller,
 	}, nil
 }
@@ -194,7 +202,7 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 		Alias:   g.GetAlias(),
 		Status:  evergreen.PatchCreated,
 		Author:  evergreen.GithubMergeUser,
-		Githash: g.HeadSHA,
+		Githash: g.BaseSHA,
 		GithubMergeData: thirdparty.GithubMergeGroup{
 			Org:        g.Org,
 			Repo:       g.Repo,

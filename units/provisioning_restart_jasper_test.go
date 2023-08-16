@@ -14,7 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/service/testutil"
+	serviceTestutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/remote"
@@ -29,7 +30,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jmock.
 	if _, err := h.Upsert(ctx); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	port := testutil.NextPort()
+	port := serviceTestutil.NextPort()
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -126,6 +127,7 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 func TestRestartJasperJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
 		"NewRestartJasperJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
@@ -141,6 +143,7 @@ func TestRestartJasperJob(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			mngr := &jmock.Manager{}
 			mngr.ManagerID = "mock-manager-id"

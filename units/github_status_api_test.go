@@ -27,18 +27,27 @@ type githubStatusUpdateSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
 	buildDoc *build.Build
-	ctx      context.Context
+	suiteCtx context.Context
 	cancel   context.CancelFunc
+	ctx      context.Context
 
 	suite.Suite
 }
 
 func TestGithubStatusUpdate(t *testing.T) {
-	suite.Run(t, new(githubStatusUpdateSuite))
+	s := &githubStatusUpdateSuite{}
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
+	suite.Run(t, s)
+}
+
+func (s *githubStatusUpdateSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.NoError(db.ClearCollections(patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
 	uiConfig := evergreen.UIConfig{}
@@ -77,10 +86,6 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(s.buildDoc.Insert())
 }
 
-func (s *githubStatusUpdateSuite) TearDownTest() {
-	s.cancel()
-}
-
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
@@ -91,7 +96,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "GitHub status updates are disabled, not updating status")
@@ -107,7 +112,7 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeNewPatch, job.UpdateType)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.msgToStatus(s.env.InternalSender)
@@ -127,7 +132,7 @@ func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
 	prNum := 1
 	job := NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref, prNum, "").(*githubStatusUpdateJob)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.msgToStatus(s.env.InternalSender)
@@ -147,7 +152,7 @@ func (s *githubStatusUpdateSuite) TestForDeleteFromCommitQueue() {
 	prNum := 1
 	job := NewGithubStatusUpdateJobForDeleteFromCommitQueue(owner, repo, ref, prNum).(*githubStatusUpdateJob)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.msgToStatus(s.env.InternalSender)
@@ -174,7 +179,7 @@ func (s *githubStatusUpdateSuite) TestForProcessingError() {
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeProcessingError, job.UpdateType)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.msgToStatus(s.env.InternalSender)
@@ -197,7 +202,7 @@ func (s *githubStatusUpdateSuite) TestRequestForAuth() {
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeRequestAuth, job.UpdateType)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.msgToStatus(s.env.InternalSender)
@@ -245,12 +250,8 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	// this test in the suite will fail after the 1000th time).
 	// It's still useful for manual testing
 	s.T().Skip("Github Status API is limited")
-	s.cancel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
-
-	env := testutil.NewEnvironment(ctx, s.T())
+	env := testutil.NewEnvironment(s.ctx, s.T())
 	settings := testutil.TestConfig()
 
 	testutil.ConfigureIntegrationTest(s.T(), settings, "TestWithGithub")
@@ -269,7 +270,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	job, ok := NewGithubStatusUpdateJobForNewPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.NoError(job.Error())
 
 	githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
@@ -278,7 +279,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubOauthToken},
 	)
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
 	defer cancel()
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)

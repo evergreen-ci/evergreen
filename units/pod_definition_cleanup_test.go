@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	evgMock "github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,10 @@ import (
 )
 
 func TestPodDefinitionCleanupJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	defer func() {
 		cocoaMock.ResetGlobalECSService()
 
@@ -215,15 +220,16 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
+			tctx, cancel := context.WithCancel(ctx)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			cocoaMock.ResetGlobalECSService()
 
 			require.NoError(t, db.ClearCollections(definition.Collection))
 
 			env := &evgMock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 			env.EvergreenSettings.PodLifecycle.MaxPodDefinitionCleanupRate = 1000
 
 			j, ok := NewPodDefinitionCleanupJob(utility.RoundPartOfMinute(0).Format(TSFormat)).(*podDefinitionCleanupJob)
@@ -234,18 +240,18 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
-				assert.NoError(t, j.ecsClient.Close(ctx))
+				assert.NoError(t, j.ecsClient.Close(tctx))
 			}()
 			j.tagClient = &cocoaMock.TagClient{}
 			defer func() {
-				assert.NoError(t, j.tagClient.Close(ctx))
+				assert.NoError(t, j.tagClient.Close(tctx))
 			}()
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 			require.NoError(t, err)
 			j.podDefMgr = cocoaMock.NewECSPodDefinitionManager(pdm)
 
-			tCase(ctx, t, j)
+			tCase(tctx, t, j)
 		})
 	}
 }

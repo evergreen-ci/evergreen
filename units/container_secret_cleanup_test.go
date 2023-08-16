@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,10 @@ import (
 
 func TestContainerSecretCleanupJob(t *testing.T) {
 	defer cocoaMock.ResetGlobalSecretCache()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *containerSecretCleanupJob){
 		"DeletesStrandedSecretsWithMatchingTag": func(ctx context.Context, t *testing.T, j *containerSecretCleanupJob) {
@@ -99,8 +104,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			tctx := testutil.TestSpan(ctx, t)
 
 			cocoaMock.ResetGlobalSecretCache()
 
@@ -108,11 +112,11 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			require.True(t, ok)
 			j.tagClient = &cocoaMock.TagClient{}
 			defer func() {
-				assert.NoError(t, j.tagClient.Close(ctx))
+				assert.NoError(t, j.tagClient.Close(tctx))
 			}()
 			j.smClient = &cocoaMock.SecretsManagerClient{}
 			defer func() {
-				assert.NoError(t, j.smClient.Close(ctx))
+				assert.NoError(t, j.smClient.Close(tctx))
 			}()
 			v, err := secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
 				SetClient(j.smClient).
@@ -121,12 +125,12 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			j.vault = cocoaMock.NewVault(v)
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 
 			env.EvergreenSettings.PodLifecycle.MaxSecretCleanupRate = 1000
 			j.env = env
 
-			tCase(ctx, t, j)
+			tCase(tctx, t, j)
 		})
 	}
 }
