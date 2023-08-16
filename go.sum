@@ -836,8 +836,8 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/mongodb/amboy v0.0.0-20200527191935-07fdffff5b8c/go.mod h1:SfpzZNF2KZUT5zO0/q4eUqW+EQe64MiY8xXmkBHZDqk=
 github.com/mongodb/amboy v0.0.0-20211101161704-2b42087d24e6/go.mod h1:aYcnjrBUtbgB+naQ6FlVltCdprHv9Td2GOkQkZUqPvY=
-github.com/mongodb/amboy v0.0.0-20230524145255-082f8fd5857e h1:ZuKyZD+ZENSw7yG3JFDfV//XO0zUcX19vUFeNqbKTqg=
-github.com/mongodb/amboy v0.0.0-20230524145255-082f8fd5857e/go.mod h1:G20baATH9lHkoYG4HslUZz986ESan44YA5hy9my3xfg=
+github.com/mongodb/amboy v0.0.0-20230816163444-5a4b04514646 h1:6849QXRkEon3naPy5BK0i+ASX7TGE5/qbLk20smPOlY=
+github.com/mongodb/amboy v0.0.0-20230816163444-5a4b04514646/go.mod h1:G20baATH9lHkoYG4HslUZz986ESan44YA5hy9my3xfg=
 github.com/mongodb/anser v0.0.0-20190422213746-1fb43a6d9968/go.mod h1:ESqf0zBEuYrqL0xADbIAFgdEOaBFpwZ4tkzY84ge+QA=
 github.com/mongodb/anser v0.0.0-20211116195831-fdc43007b59f/go.mod h1:jDikxuo5FKbiTMAb8B5AMT3QqFSNrim2+GiRTSCdazU=
 github.com/mongodb/anser v0.0.0-20230703201237-774f6f436c11 h1:MKfTjWx2x3WLdl5f9SEhyN7haXjkXlpTWe5XNaHCneQ=
