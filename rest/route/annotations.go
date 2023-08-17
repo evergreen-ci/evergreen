@@ -224,7 +224,6 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 	if err != nil {
 		return errors.Wrap(err, "reading bulk annotation creation options from JSON request body")
 	}
-	projectIds := map[string]bool{}
 	for _, update := range h.opts.TaskUpdates {
 		for _, t := range update.TaskData {
 			// check if the task exists
@@ -241,19 +240,6 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 			if !evergreen.IsFailedTaskStatus(foundTask.Status) {
 				return errors.Errorf("cannot create annotation when task status is '%s'", foundTask.Status)
 			}
-			projectIds[foundTask.Project] = true
-		}
-	}
-	for projectId := range projectIds {
-		hasPermissionForProject := u.HasPermission(gimlet.PermissionOpts{
-			Resource:      projectId,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionAnnotations,
-			RequiredLevel: evergreen.AnnotationsModify.Value,
-		})
-		if !hasPermissionForProject {
-			return errors.Errorf("user doesn't have permission to edit annotations for project '%s'", projectId)
-
 		}
 	}
 
