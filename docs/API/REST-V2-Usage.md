@@ -340,7 +340,7 @@ already exists. A list of updates to a task annotation is provided in
 the request body, where each list item specifies a set of task id /
 execution pairs, and an annotation update to apply to all tasks matching
 that criteria. Note that usage of this endpoint requires that the
-requesting user have security to modify task annotations. Example
+requesting user have security to modify task annotations for all task projects. Example
 request body:
 
     {
