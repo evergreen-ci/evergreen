@@ -26,10 +26,11 @@ import (
 )
 
 type CommitQueueSuite struct {
-	client client.Communicator
-	conf   *ClientSettings
-	ctx    context.Context
-	server *service.TestServer
+	client       client.Communicator
+	conf         *ClientSettings
+	ctx          context.Context
+	settingsFile string
+	server       *service.TestServer
 	suite.Suite
 }
 
@@ -63,6 +64,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 	}
 	settingsFile, err := os.CreateTemp("", "settings")
 	s.Require().NoError(err)
+	s.settingsFile = settingsFile.Name()
 	settingsBytes, err := yaml.Marshal(settings)
 	s.Require().NoError(err)
 	_, err = settingsFile.Write(settingsBytes)
@@ -75,6 +77,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 }
 
 func (s *CommitQueueSuite) TearDownSuite() {
+	s.NoError(os.RemoveAll(s.settingsFile))
 	testutil.EnablePermissionsForTests()
 	s.server.Close()
 	s.client.Close()
