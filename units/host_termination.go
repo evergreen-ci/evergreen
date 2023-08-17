@@ -318,6 +318,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		attribute.Float64(fmt.Sprintf("%s.idle_secs", hostTerminationAttributePrefix), j.host.TotalIdleTime.Seconds()),
 		attribute.Float64(fmt.Sprintf("%s.running_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.StartTime).Seconds()),
 		attribute.Bool(fmt.Sprintf("%s.user_host", hostTerminationAttributePrefix), j.host.UserHost),
+		attribute.Int(fmt.Sprintf("%s.task_count", hostTerminationAttributePrefix), j.host.TaskCount),
 	)
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		span.SetAttributes(attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()))

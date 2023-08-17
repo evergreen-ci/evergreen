@@ -73,6 +73,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 				return errors.WithStack(err)
 			}
 			conf.Expansions.Put(update.Key, newValue)
+			conf.DynamicExpansions.Put(update.Key, newValue)
 		} else {
 			newValue, err := conf.Expansions.ExpandString(update.Concat)
 			if err != nil {
@@ -81,6 +82,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 
 			oldValue := conf.Expansions.Get(update.Key)
 			conf.Expansions.Put(update.Key, oldValue+newValue)
+			conf.DynamicExpansions.Put(update.Key, oldValue+newValue)
 		}
 	}
 
@@ -116,6 +118,9 @@ func (c *update) Execute(ctx context.Context,
 		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
 		err := conf.Expansions.UpdateFromYaml(filename)
 		if err != nil {
+			return errors.WithStack(err)
+		}
+		if err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
 			return errors.WithStack(err)
 		}
 	}

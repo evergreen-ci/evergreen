@@ -69,6 +69,26 @@ type DisplayTask struct {
 	Name      string   `json:"Name"`
 }
 
+type DistroEvent struct {
+	After     map[string]interface{} `json:"after,omitempty"`
+	Before    map[string]interface{} `json:"before,omitempty"`
+	Data      map[string]interface{} `json:"data,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	User      string                 `json:"user"`
+}
+
+// DistroEventsInput is the input to the distroEvents query.
+type DistroEventsInput struct {
+	Before   *time.Time `json:"before,omitempty"`
+	DistroID string     `json:"distroId"`
+	Limit    *int       `json:"limit,omitempty"`
+}
+
+type DistroEventsPayload struct {
+	Count           int            `json:"count"`
+	EventLogEntries []*DistroEvent `json:"eventLogEntries"`
+}
+
 type DistroPermissions struct {
 	Admin bool `json:"admin"`
 	Edit  bool `json:"edit"`
@@ -258,6 +278,7 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+// SaveDistroInput is the input to the saveDistro mutation.
 type SaveDistroInput struct {
 	Distro *model.APIDistro      `json:"distro"`
 	OnSave DistroOnSaveOperation `json:"onSave"`
