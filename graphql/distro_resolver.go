@@ -19,7 +19,7 @@ import (
 // Version is the resolver for the version field.
 func (r *dispatcherSettingsResolver) Version(ctx context.Context, obj *model.APIDispatcherSettings) (DispatcherVersion, error) {
 	if obj == nil {
-		return DispatcherVersionRevisedWithDependencies, InternalServerError.Send(ctx, "distro undefined when attempting to resolve dispatcher version")
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve dispatcher version")
 	}
 
 	switch utility.FromStringPtr(obj.Version) {
@@ -28,14 +28,14 @@ func (r *dispatcherSettingsResolver) Version(ctx context.Context, obj *model.API
 	case evergreen.DispatcherVersionRevisedWithDependencies:
 		return DispatcherVersionRevisedWithDependencies, nil
 	default:
-		return DispatcherVersionRevisedWithDependencies, InternalServerError.Send(ctx, fmt.Sprintf("dispatcher version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("dispatcher version '%s' is invalid", utility.FromStringPtr(obj.Version)))
 	}
 }
 
 // CloneMethod is the resolver for the cloneMethod field.
 func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error) {
 	if obj == nil {
-		return CloneMethodLegacySSH, InternalServerError.Send(ctx, "distro undefined when attempting to resolve clone method")
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve clone method")
 	}
 
 	switch utility.FromStringPtr(obj.CloneMethod) {
@@ -44,7 +44,7 @@ func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) 
 	case evergreen.CloneMethodOAuth:
 		return CloneMethodOauth, nil
 	default:
-		return CloneMethodLegacySSH, InternalServerError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", *obj.CloneMethod))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", *obj.CloneMethod))
 	}
 }
 
@@ -61,7 +61,7 @@ func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.AP
 // Version is the resolver for the version field.
 func (r *finderSettingsResolver) Version(ctx context.Context, obj *model.APIFinderSettings) (FinderVersion, error) {
 	if obj == nil {
-		return FinderVersionLegacy, InternalServerError.Send(ctx, "distro undefined when attempting to resolve finder version")
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve finder version")
 	}
 
 	switch utility.FromStringPtr(obj.Version) {
@@ -74,14 +74,14 @@ func (r *finderSettingsResolver) Version(ctx context.Context, obj *model.APIFind
 	case evergreen.FinderVersionAlternate:
 		return FinderVersionAlternate, nil
 	default:
-		return FinderVersionLegacy, InternalServerError.Send(ctx, fmt.Sprintf("finder version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("finder version '%s' is invalid", utility.FromStringPtr(obj.Version)))
 	}
 }
 
 // Version is the resolver for the version field.
 func (r *plannerSettingsResolver) Version(ctx context.Context, obj *model.APIPlannerSettings) (PlannerVersion, error) {
 	if obj == nil {
-		return PlannerVersionTunable, InternalServerError.Send(ctx, "distro undefined when attempting to resolve planner version")
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve planner version")
 	}
 
 	switch utility.FromStringPtr(obj.Version) {
@@ -90,7 +90,7 @@ func (r *plannerSettingsResolver) Version(ctx context.Context, obj *model.APIPla
 	case evergreen.PlannerVersionTunable:
 		return PlannerVersionTunable, nil
 	default:
-		return PlannerVersionTunable, InternalServerError.Send(ctx, fmt.Sprintf("planner version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("planner version '%s' is invalid", utility.FromStringPtr(obj.Version)))
 	}
 }
 
