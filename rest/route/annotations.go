@@ -215,9 +215,6 @@ func (h *bulkPatchAnnotationHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request) error {
-	u := MustHaveUser(ctx)
-	h.user = u
-
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 	err := json.NewDecoder(body).Decode(&h.opts)
