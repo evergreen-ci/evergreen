@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -599,6 +600,13 @@ func updateHostAccessTime(ctx context.Context, h *host.Host) {
 // canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
 // or is authorized specifically to patch on behalf of other users.
 func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
+	if projectId == "" {
+		grip.Error(message.Fields{
+			"message": "projectID is empty",
+			"op":      "middleware",
+			"stack":   string(debug.Stack()),
+		})
+	}
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,
@@ -619,8 +627,9 @@ func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -639,8 +648,9 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -658,8 +668,9 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -914,6 +925,62 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		if !user.HasPermission(opts) {
 			http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
 			return
+		}
+	}
+
+	next(rw, r)
+}
+
+type bulkUpdateAnnotations struct{}
+
+// NewBulkupdateAnnotationsMiddleware returns a middleware that verifies if the user can bulk update annotations.
+func NewBulkUpdateAnnotationsMiddleware() gimlet.Middleware {
+	return &bulkUpdateAnnotations{}
+}
+
+func (a *bulkUpdateAnnotations) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	u := MustHaveUser(ctx)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
+		return
+	}
+
+	var updates bulkCreateAnnotationsOpts
+	if err = json.Unmarshal(body, &updates); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON payload")))
+		return
+	}
+
+	projectIds := map[string]bool{}
+	for _, update := range updates.TaskUpdates {
+		for _, t := range update.TaskData {
+			// check if the task exists
+			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
+			if err != nil {
+				gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
+					"finding task '%s' with execution %d", t.TaskId, t.Execution)))
+				return
+			}
+			if foundTask == nil {
+				gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err,
+					"task '%s' with execution %d not found", t.TaskId, t.Execution)))
+				return
+			}
+			projectIds[foundTask.Project] = true
+		}
+	}
+	for projectId := range projectIds {
+		hasPermissionForProject := u.HasPermission(gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionAnnotations,
+			RequiredLevel: evergreen.AnnotationsModify.Value,
+		})
+		if !hasPermissionForProject {
+			http.Error(rw, fmt.Sprintf("user doesn't have permission to edit annotations for project '%s'",
+				projectId), http.StatusUnauthorized)
 		}
 	}
 
