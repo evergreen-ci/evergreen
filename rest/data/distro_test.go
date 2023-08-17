@@ -19,6 +19,10 @@ func TestDeleteDistroById(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	defer func() {
+		assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection, model.TaskQueuesCollection, host.Collection))
+	}()
+
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
 		"Successfully deletes distro and clears task queue": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			assert.NoError(t, DeleteDistroById(ctx, &u, "distro"))
