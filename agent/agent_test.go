@@ -266,7 +266,7 @@ func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 		s.NoError(s.tc.logger.Close())
 
 		s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "normal task completion should record the task status")
-		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{"Running post-task commands"}, nil)
+		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{"Running post-task commands"}, []string{panicLog})
 	}
 }
 
@@ -332,22 +332,13 @@ func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
 }
 
 func (s *AgentSuite) TestRunCommandsEventuallyReturnsForCommandThatIgnoresContext() {
-	const cmdSleepSecs = 500
+	const cmdSleepSecs = 100
 	s.setupRunTask(`
 pre:
   - command: command.mock
     params:
-      sleep_seconds: 500
+      sleep_seconds: 100
 `)
-
-	cmd := model.PluginCommandConf{
-		Command: "command.mock",
-		Params: map[string]interface{}{
-			"sleep_seconds": cmdSleepSecs,
-		},
-	}
-	cmds := []model.PluginCommandConf{cmd}
-
 	ctx, cancel := context.WithCancel(s.ctx)
 
 	const waitUntilAbort = 2 * time.Second
@@ -359,7 +350,7 @@ pre:
 	}()
 
 	startAt := time.Now()
-	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(ctx, s.tc, s.tc.taskConfig.Project.Pre.List(), runCommandsOptions{}, "")
 	cmdDuration := time.Since(startAt)
 
 	s.Error(err)
@@ -372,33 +363,36 @@ pre:
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
-	cmd := model.PluginCommandConf{
-		Command: "shell.exec",
-		Params: map[string]interface{}{
-			"script": "echo hi",
-		},
-	}
-	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+
+	s.setupRunTask(`
+pre:
+  - command: shell.exec
+    params:
+      script: exit 0
+`)
+	err := s.a.runCommandsInBlock(ctx, s.tc, s.tc.taskConfig.Project.Pre.List(), runCommandsOptions{}, "")
 	s.Require().Error(err)
 
 	s.True(utility.IsContextError(errors.Cause(err)))
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
 func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
-	tc := &taskContext{
+	s.setupRunTask(`
+pre:
+  - command: shell.exec
+    params:
+      script: exit 0
+`)
+	tcMissingInfo := &taskContext{
 		logger: s.tc.logger,
 	}
-	cmd := model.PluginCommandConf{
-		Command: "shell.exec",
-		Params: map[string]interface{}{
-			"script": "echo hi",
-		},
-	}
-	cmds := []model.PluginCommandConf{cmd}
 	s.NotPanics(func() {
-		err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
+		// Intentionally provide in a task context which is lacking a lot of
+		// information necessary to run commands for that task, which should
+		// force a panic.
+		err := s.a.runCommandsInBlock(s.ctx, tcMissingInfo, s.tc.taskConfig.Project.Pre.List(), runCommandsOptions{}, "")
 		s.Require().Error(err)
 	})
 
@@ -623,6 +617,10 @@ post:
 	}, []string{panicLog})
 }
 
+// setupRunTask sets up a project YAML to run in an agent suite test by reading
+// the YAML, parsing it, and setting the necessary fields for it to run.
+// Note that the task data is hard-coded, so the input YAML will potentially
+// have to include that hard-coded task information for the test to run.
 func (s *AgentSuite) setupRunTask(projYml string) {
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -673,7 +671,7 @@ post:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
-	}, nil)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
@@ -702,7 +700,7 @@ post:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
-	}, nil)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
@@ -732,7 +730,7 @@ post:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
-	}, nil)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestFailingMainAndPostShowsMainInEndTaskResults() {
@@ -763,7 +761,7 @@ post:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
-	}, nil)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestTimedOutMainAndFailingPostShowsMainInEndTaskResults() {
@@ -794,9 +792,11 @@ post:
 	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut, "should show main block command hitting timeout")
 
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running command 'shell.exec' (step 1 of 1)",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 1s.",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
-	}, nil)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
@@ -827,7 +827,7 @@ post:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
-	}, nil)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestPostContinuesOnError() {
@@ -1193,7 +1193,7 @@ task_groups:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
-	}, nil)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestTaskGroupTimeout() {
