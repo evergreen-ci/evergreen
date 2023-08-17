@@ -227,7 +227,6 @@ functions:
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
 
-
   setup-credentials:
     command: subprocess.exec
     type: setup
