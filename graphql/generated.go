@@ -47,13 +47,16 @@ type Config struct {
 
 type ResolverRoot interface {
 	Annotation() AnnotationResolver
+	DispatcherSettings() DispatcherSettingsResolver
 	Distro() DistroResolver
+	FinderSettings() FinderSettingsResolver
 	Host() HostResolver
 	IssueLink() IssueLinkResolver
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
 	Permissions() PermissionsResolver
+	PlannerSettings() PlannerSettingsResolver
 	Pod() PodResolver
 	PodEventLogData() PodEventLogDataResolver
 	Project() ProjectResolver
@@ -70,7 +73,9 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
+	DispatcherSettingsInput() DispatcherSettingsInputResolver
 	DistroInput() DistroInputResolver
+	FinderSettingsInput() FinderSettingsInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	SubscriberInput() SubscriberInputResolver
@@ -1507,10 +1512,16 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
+type DispatcherSettingsResolver interface {
+	Version(ctx context.Context, obj *model.APIDispatcherSettings) (DispatcherVersion, error)
+}
 type DistroResolver interface {
 	CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error)
 
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]interface{}, error)
+}
+type FinderSettingsResolver interface {
+	Version(ctx context.Context, obj *model.APIFinderSettings) (FinderVersion, error)
 }
 type HostResolver interface {
 	Ami(ctx context.Context, obj *model.APIHost) (*string, error)
@@ -1616,6 +1627,9 @@ type PermissionsResolver interface {
 	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
 	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
 	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
+}
+type PlannerSettingsResolver interface {
+	Version(ctx context.Context, obj *model.APIPlannerSettings) (PlannerVersion, error)
 }
 type PodResolver interface {
 	Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error)
@@ -1811,16 +1825,23 @@ type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
+type DispatcherSettingsInputResolver interface {
+	Version(ctx context.Context, obj *model.APIDispatcherSettings, data DispatcherVersion) error
+}
 type DistroInputResolver interface {
 	CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error
 
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error
+}
+type FinderSettingsInputResolver interface {
+	Version(ctx context.Context, obj *model.APIFinderSettings, data FinderVersion) error
 }
 type HostAllocatorSettingsInputResolver interface {
 	AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error
 }
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
+	Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error
 }
 type SubscriberInputResolver interface {
 	Target(ctx context.Context, obj *model.APISubscriber, data string) error
@@ -15132,7 +15153,7 @@ func (ec *executionContext) _DispatcherSettings_version(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Version, nil
+		return ec.resolvers.DispatcherSettings().Version(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15144,19 +15165,19 @@ func (ec *executionContext) _DispatcherSettings_version(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(DispatcherVersion)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_DispatcherSettings_version(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DispatcherSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type DispatcherVersion does not have child fields")
 		},
 	}
 	return fc, nil
@@ -18063,7 +18084,7 @@ func (ec *executionContext) _FinderSettings_version(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Version, nil
+		return ec.resolvers.FinderSettings().Version(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18075,19 +18096,19 @@ func (ec *executionContext) _FinderSettings_version(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(FinderVersion)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_FinderSettings_version(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "FinderSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type FinderVersion does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35166,7 +35187,7 @@ func (ec *executionContext) _PlannerSettings_version(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Version, nil
+		return ec.resolvers.PlannerSettings().Version(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35178,19 +35199,19 @@ func (ec *executionContext) _PlannerSettings_version(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(PlannerVersion)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PlannerSettings_version(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PlannerSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type PlannerVersion does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65535,11 +65556,13 @@ func (ec *executionContext) unmarshalInputDispatcherSettingsInput(ctx context.Co
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Version = data
+			if err = ec.resolvers.DispatcherSettingsInput().Version(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -66241,11 +66264,13 @@ func (ec *executionContext) unmarshalInputFinderSettingsInput(ctx context.Contex
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Version = data
+			if err = ec.resolvers.FinderSettingsInput().Version(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -67319,11 +67344,13 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Version = data
+			if err = ec.resolvers.PlannerSettingsInput().Version(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -71044,12 +71071,25 @@ func (ec *executionContext) _DispatcherSettings(ctx context.Context, sel ast.Sel
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("DispatcherSettings")
 		case "version":
+			field := field
 
-			out.Values[i] = ec._DispatcherSettings_version(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._DispatcherSettings_version(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
 			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -71771,12 +71811,25 @@ func (ec *executionContext) _FinderSettings(ctx context.Context, sel ast.Selecti
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("FinderSettings")
 		case "version":
+			field := field
 
-			out.Values[i] = ec._FinderSettings_version(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._FinderSettings_version(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
 			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -75046,64 +75099,77 @@ func (ec *executionContext) _PlannerSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._PlannerSettings_commitQueueFactor(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "expectedRuntimeFactor":
 
 			out.Values[i] = ec._PlannerSettings_expectedRuntimeFactor(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "generateTaskFactor":
 
 			out.Values[i] = ec._PlannerSettings_generateTaskFactor(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "groupVersions":
 
 			out.Values[i] = ec._PlannerSettings_groupVersions(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "mainlineTimeInQueueFactor":
 
 			out.Values[i] = ec._PlannerSettings_mainlineTimeInQueueFactor(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "patchFactor":
 
 			out.Values[i] = ec._PlannerSettings_patchFactor(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "patchTimeInQueueFactor":
 
 			out.Values[i] = ec._PlannerSettings_patchTimeInQueueFactor(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "targetTime":
 
 			out.Values[i] = ec._PlannerSettings_targetTime(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "version":
+			field := field
 
-			out.Values[i] = ec._PlannerSettings_version(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PlannerSettings_version(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
 			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -81927,6 +81993,16 @@ func (ec *executionContext) unmarshalNDispatcherSettingsInput2githubᚗcomᚋeve
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx context.Context, v interface{}) (DispatcherVersion, error) {
+	var res DispatcherVersion
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx context.Context, sel ast.SelectionSet, v DispatcherVersion) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx context.Context, v interface{}) ([]*DisplayTask, error) {
 	var vSlice []interface{}
 	if v != nil {
@@ -82397,6 +82473,16 @@ func (ec *executionContext) marshalNFinderSettings2githubᚗcomᚋevergreenᚑci
 func (ec *executionContext) unmarshalNFinderSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFinderSettings(ctx context.Context, v interface{}) (model.APIFinderSettings, error) {
 	res, err := ec.unmarshalInputFinderSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx context.Context, v interface{}) (FinderVersion, error) {
+	var res FinderVersion
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx context.Context, sel ast.SelectionSet, v FinderVersion) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
@@ -83633,6 +83719,16 @@ func (ec *executionContext) marshalNPlannerSettings2githubᚗcomᚋevergreenᚑc
 func (ec *executionContext) unmarshalNPlannerSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPlannerSettings(ctx context.Context, v interface{}) (model.APIPlannerSettings, error) {
 	res, err := ec.unmarshalInputPlannerSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx context.Context, v interface{}) (PlannerVersion, error) {
+	var res PlannerVersion
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx context.Context, sel ast.SelectionSet, v PlannerVersion) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNPod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPod(ctx context.Context, sel ast.SelectionSet, v model.APIPod) graphql.Marshaler {
