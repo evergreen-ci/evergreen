@@ -44,7 +44,7 @@ func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) 
 	case evergreen.CloneMethodOAuth:
 		return CloneMethodOauth, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", *obj.CloneMethod))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", utility.FromStringPtr(obj.CloneMethod)))
 	}
 }
 
@@ -115,7 +115,7 @@ func (r *distroInputResolver) CloneMethod(ctx context.Context, obj *model.APIDis
 	case CloneMethodOauth:
 		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodOAuth)
 	default:
-		return InputValidationError.Send(ctx, fmt.Sprintf("Clone method '%s' is invalid", data))
+		return InputValidationError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", data))
 	}
 	return nil
 }
