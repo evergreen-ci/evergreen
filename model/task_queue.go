@@ -333,9 +333,8 @@ func ClearTaskQueue(distroId string) error {
 
 	// Task queue should always exist, so proceed with clearing
 	distroQueueInfo, err := GetDistroQueueInfo(distroId)
-	if err != nil {
-		catcher.Wrap(err, "getting task queue info")
-	}
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "getting task queue info"))
+
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)
 	if err != nil {
