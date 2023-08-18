@@ -39,7 +39,7 @@ func TestExpansionsPlugin(t *testing.T) {
 
 		taskConfig := internal.TaskConfig{
 			Expansions:        &expansions,
-			DynamicExpansions: &util.Expansions{},
+			DynamicExpansions: util.Expansions{},
 		}
 
 		So(updateCommand.ExecuteUpdates(ctx, &taskConfig), ShouldBeNil)
@@ -54,7 +54,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, DynamicExpansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, DynamicExpansions: util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	Convey("When running Update commands", t, func() {
