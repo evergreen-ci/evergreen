@@ -837,15 +837,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		for _, et := range dt.ExecTasks {
 			execTaskId := execTable.GetId(creationInfo.Build.BuildVariant, et)
 			if execTaskId == "" {
-				grip.Error(message.Fields{
-					"message":                     "execution task not found",
-					"variant":                     creationInfo.Build.BuildVariant,
-					"exec_task":                   et,
-					"available_tasks":             execTable,
-					"project":                     creationInfo.Project.Identifier,
-					"display_task":                id,
-					"display_task_already_exists": displayTaskAlreadyExists,
-				})
 				continue
 			}
 			execTaskIds = append(execTaskIds, execTaskId)
