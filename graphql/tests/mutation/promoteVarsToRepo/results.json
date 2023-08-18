@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "query_file": "promote_vars.graphql",
+      "result": {
+        "data": {
+          "promoteVarsToRepo": true
+        }
+      }
+    }
+  ]
+}
