@@ -92,7 +92,6 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 // Execute updates the expansions. Fulfills Command interface.
 func (c *update) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-
 	err := c.ExecuteUpdates(ctx, conf)
 
 	if err != nil {
