@@ -43,7 +43,7 @@ func TestExpansionsPlugin(t *testing.T) {
 		}
 
 		So(updateCommand.ExecuteUpdates(ctx, &taskConfig), ShouldBeNil)
-		So(taskConfig.DynamicExpansions, ShouldResemble, &util.Expansions{"base": "eggs", "topping": "bacon,sausage"})
+		So(taskConfig.DynamicExpansions, ShouldResemble, util.Expansions{"base": "eggs", "topping": "bacon,sausage"})
 		So(expansions.Get("base"), ShouldEqual, "eggs")
 		So(expansions.Get("topping"), ShouldEqual, "bacon,sausage")
 	})
@@ -63,7 +63,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 			cmd := &update{YamlFile: "foo"}
 			So(cmd.Execute(ctx, comm, logger, conf), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "foo")
-			So(conf.DynamicExpansions, ShouldResemble, &util.Expansions{})
+			So(conf.DynamicExpansions, ShouldResemble, util.Expansions{})
 		})
 
 		Convey("With an Expansion, the file name is expanded", func() {
