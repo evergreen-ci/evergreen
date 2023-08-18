@@ -8,7 +8,7 @@ packages += model-annotations model-patch model-artifact model-host model-pod mo
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
-testOnlyPackages := service-graphql # has only test files so can't undergo all operations
+testOnlyPackages := service-graphql smoke-host smoke-container smoke-agentmonitor smoke-endpoint # has only test files so can't undergo all operations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
@@ -166,35 +166,6 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
 	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
 	@touch $@
-smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
-	# Start the smoke test's Evergreen app server.
-	./$< service deploy start-evergreen --web --binary ./$< &
-	# Start the smoke test's agent monitor, which will run the Evergreen agent based on the locally-compiled Evergreen
-	# executable. This agent will coordinate with the app server to run the smoke test's tasks.
-	# It is necessary to set up this locally-running agent because the app server can't actually start hosts to run
-	# tasks.
-	# Note that the distro comes from the smoke test's DB files.
-	./$< service deploy start-evergreen --monitor --binary ./$< --distro localhost &
-	# Run the smoke test's actual tests.
-	# The username/password to is used to authenticate to the app server, and these credentials come from the smoke
-	# test's DB files.
-	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0
-	# Clean up all smoke test Evergreen executable processes.
-	pkill -f $<
-smoke-test-host-task:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy start-evergreen --mode host --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode host
-	pkill -f $<
-smoke-test-container-task:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy start-evergreen --mode pod --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode pod
-	pkill -f $<
-smoke-test-endpoints:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints
-	pkill -f $<
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
 # end smoke test rules
@@ -366,8 +337,11 @@ $(buildDir)/output.%.test: .FORCE
 $(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 # test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
-$(buildDir)/output.agent-command.test: build .FORCE
+$(buildDir)/output.agent-command.test: cli .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./agent/command 2>&1 | tee $@
+# Smoke tests are special because they require that the Evergreen binary is compiled and the smoke test data is loaded.
+$(buildDir)/output.smoke-%.test: cli load-smoke-data
+	$(testRunEnv) $(gobin) test $(testArgs) ./smoke/$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
