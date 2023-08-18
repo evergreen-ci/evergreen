@@ -231,8 +231,12 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		case <-cmdChan:
 		}
 
-		tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
-		return errors.Wrap(ctx.Err(), "command stopped early")
+		if ctx.Err() == context.DeadlineExceeded {
+			tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", displayName, int(tc.timeout.idleTimeoutDuration.Seconds()))
+		} else {
+			tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
+		}
+		return errors.Wrap(ctx.Err(), "agent stopped early")
 	}
 	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
 	if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {

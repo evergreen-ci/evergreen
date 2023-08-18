@@ -33,7 +33,7 @@ const (
 	defaultStatsInterval = time.Minute
 
 	// defaultCallbackCmdTimeout specifies the duration after when the "post" or
-	// "timeout" block sets should be shut down.
+	// "timeout" command sets should be shut down.
 	defaultCallbackCmdTimeout = 15 * time.Minute
 
 	// maxHeartbeats is the number of failed heartbeats after which an agent
