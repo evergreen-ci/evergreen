@@ -69,7 +69,7 @@ func NewPodHealthCheckJob(podID string, ts time.Time) amboy.Job {
 func (j *podHealthCheckJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
@@ -90,7 +90,7 @@ func (j *podHealthCheckJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if err := j.populateIfUnset(); err != nil {
+	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -154,7 +154,7 @@ func (j *podHealthCheckJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *podHealthCheckJob) populateIfUnset() error {
+func (j *podHealthCheckJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -171,7 +171,7 @@ func (j *podHealthCheckJob) populateIfUnset() error {
 	}
 
 	if j.ecsClient == nil {
-		client, err := cloud.MakeECSClient(j.env.Settings())
+		client, err := cloud.MakeECSClient(ctx, j.env.Settings())
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}

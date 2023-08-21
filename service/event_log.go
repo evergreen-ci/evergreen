@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +32,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var h *host.Host
-		h, err = host.FindOneByIdOrTag(resourceID)
+		h, err = host.FindOneByIdOrTag(ctx, resourceID)
 		if err != nil {
 			http.Error(w, errors.Wrap(err, "error finding host '%s'").Error(), http.StatusInternalServerError)
 			return
@@ -46,7 +47,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		loggedEvents, err = event.FindLatestPrimaryDistroEvents(resourceID, 200)
+		loggedEvents, err = event.FindLatestPrimaryDistroEvents(resourceID, 200, utility.ZeroTime)
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

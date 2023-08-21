@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go/aws"
-	awsECS "github.com/aws/aws-sdk-go/service/ecs"
+	awsECS "github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
@@ -200,7 +200,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 }
 
 func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 			instanceType = stringVal
 		}
 	}
-	existingHostCount, err := host.CountRunningHosts(h.Distro.Id)
+	existingHostCount, err := host.CountRunningHosts(ctx, h.Distro.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":               "database error counting running hosts by distro_id",
@@ -240,7 +240,7 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 }
 
 func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 	// The host is going to imminently stop work anyways. Decommissioning
 	// ensures that even if the external state check does not terminate the
 	// host, the host is eventually picked up for termination.
-	if err := h.SetDecommissioned(evergreen.User, false, "SNS notification indicates host is terminated"); err != nil {
+	if err := h.SetDecommissioned(ctx, evergreen.User, false, "SNS notification indicates host is terminated"); err != nil {
 		return errors.Wrap(err, "decommissioning host")
 	}
 
@@ -268,7 +268,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 }
 
 func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventTimestamp string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -288,14 +288,14 @@ func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventT
 		runningTime = time.Now()
 	}
 
-	return errors.Wrap(h.SetBillingStartTime(runningTime), "setting billing start time")
+	return errors.Wrap(h.SetBillingStartTime(ctx, runningTime), "setting billing start time")
 }
 
 // handleInstanceStopped handles an agent host when AWS reports that it is
 // stopped. Agent hosts that are stopped externally are treated the same as an
 // externally-terminated host.
 func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := host.FindOneId(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -320,7 +320,7 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 	// The host is going to imminently stop work anyways. Decommissioning
 	// ensures that even if the external state check does not terminate the
 	// host, the host is eventually picked up for termination.
-	if err := h.SetDecommissioned(evergreen.User, false, "SNS notification indicates host is stopped"); err != nil {
+	if err := h.SetDecommissioned(ctx, evergreen.User, false, "SNS notification indicates host is stopped"); err != nil {
 		return errors.Wrap(err, "decommissioning host")
 	}
 
@@ -547,7 +547,7 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEve
 		return nil
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flag for unrecognized pod cleanup")
 	}
@@ -568,7 +568,7 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEve
 		return nil
 	}
 
-	c, err := cloud.MakeECSClient(sns.env.Settings())
+	c, err := cloud.MakeECSClient(ctx, sns.env.Settings())
 	if err != nil {
 		return errors.Wrap(err, "getting ECS client")
 	}
@@ -622,7 +622,7 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 		return nil, nil
 	}
 
-	c, err := cloud.MakeECSClient(sns.env.Settings())
+	c, err := cloud.MakeECSClient(ctx, sns.env.Settings())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting ECS client")
 	}
@@ -649,13 +649,7 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 			return nil, errors.New("listing ECS tasks returned no response")
 		}
 
-		for _, arn := range resp.TaskArns {
-			if arn == nil {
-				continue
-			}
-			taskARNs = append(taskARNs, utility.FromStringPtr(arn))
-		}
-
+		taskARNs = append(taskARNs, resp.TaskArns...)
 		token = resp.NextToken
 		if token == nil {
 			return taskARNs, nil

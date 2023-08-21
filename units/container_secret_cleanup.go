@@ -66,7 +66,7 @@ func (j *containerSecretCleanupJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(j.tagClient.Close(ctx), "closing tag client"))
 		}
 	}()
-	if err := j.populate(); err != nil {
+	if err := j.populate(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -87,13 +87,13 @@ func (j *containerSecretCleanupJob) Run(ctx context.Context) {
 	j.AddError(errors.Wrap(catcher.Resolve(), "deleting secrets"))
 }
 
-func (j *containerSecretCleanupJob) populate() error {
+func (j *containerSecretCleanupJob) populate(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	if j.smClient == nil {
-		client, err := cloud.MakeSecretsManagerClient(j.env.Settings())
+		client, err := cloud.MakeSecretsManagerClient(ctx, j.env.Settings())
 		if err != nil {
 			return errors.Wrap(err, "initializing Secrets Manager client")
 		}
@@ -109,7 +109,7 @@ func (j *containerSecretCleanupJob) populate() error {
 	}
 
 	if j.tagClient == nil {
-		client, err := cloud.MakeTagClient(j.env.Settings())
+		client, err := cloud.MakeTagClient(ctx, j.env.Settings())
 		if err != nil {
 			return errors.Wrap(err, "initializing tag client")
 		}

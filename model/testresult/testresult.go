@@ -138,7 +138,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			}
 		}
 
-		return fmt.Sprintf("%s/test/%s/%d/%s?shareLine=%d", parsleyURL, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.LineNum)
+		return fmt.Sprintf("%s/test/%s/%d/%s?shareLine=%d", parsleyURL, url.PathEscape(tr.TaskID), tr.Execution, url.QueryEscape(tr.TestName), tr.LineNum)
 	default:
 		if tr.RawLogURL != "" {
 			// Some test results may have internal URLs that are
@@ -300,11 +300,12 @@ const (
 
 // FilterOptions represents the filtering arguments for fetching test results.
 type FilterOptions struct {
-	TestName  string
-	Statuses  []string
-	GroupID   string
-	Sort      []SortBy
-	Limit     int
-	Page      int
-	BaseTasks []TaskOptions
+	TestName            string
+	ExcludeDisplayNames bool
+	Statuses            []string
+	GroupID             string
+	Sort                []SortBy
+	Limit               int
+	Page                int
+	BaseTasks           []TaskOptions
 }

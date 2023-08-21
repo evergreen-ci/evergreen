@@ -232,7 +232,7 @@ func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
 	}

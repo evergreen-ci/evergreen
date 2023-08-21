@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"html/template"
 	"time"
 
@@ -148,8 +149,8 @@ func getBuildVariantHistoryLastSuccess(buildId string) (*build.Build, error) {
 	return b, errors.WithStack(err)
 }
 
-func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
-	dbHosts, err := host.FindRunningHosts(includeSpawnedHosts)
+func getHostsData(ctx context.Context, includeSpawnedHosts bool) (*hostsData, error) {
+	dbHosts, err := host.FindRunningHosts(ctx, includeSpawnedHosts)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding hosts")
 	}

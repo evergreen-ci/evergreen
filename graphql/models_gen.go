@@ -41,6 +41,21 @@ type BuildVariantOptions struct {
 	Variants         []string `json:"variants,omitempty"`
 }
 
+// CreateDistroInput is the input to the createDistro mutation.
+type CreateDistroInput struct {
+	NewDistroID string `json:"newDistroId"`
+}
+
+// DeleteDistroInput is the input to the deleteDistro mutation.
+type DeleteDistroInput struct {
+	DistroID string `json:"distroId"`
+}
+
+// Return type representing whether a distro was deleted.
+type DeleteDistroPayload struct {
+	DeletedDistroID string `json:"deletedDistroId"`
+}
+
 type Dependency struct {
 	BuildVariant   string         `json:"buildVariant"`
 	MetStatus      MetStatus      `json:"metStatus"`
@@ -52,6 +67,36 @@ type Dependency struct {
 type DisplayTask struct {
 	ExecTasks []string `json:"ExecTasks"`
 	Name      string   `json:"Name"`
+}
+
+type DistroEvent struct {
+	After     map[string]interface{} `json:"after,omitempty"`
+	Before    map[string]interface{} `json:"before,omitempty"`
+	Data      map[string]interface{} `json:"data,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	User      string                 `json:"user"`
+}
+
+// DistroEventsInput is the input to the distroEvents query.
+type DistroEventsInput struct {
+	Before   *time.Time `json:"before,omitempty"`
+	DistroID string     `json:"distroId"`
+	Limit    *int       `json:"limit,omitempty"`
+}
+
+type DistroEventsPayload struct {
+	Count           int            `json:"count"`
+	EventLogEntries []*DistroEvent `json:"eventLogEntries"`
+}
+
+type DistroPermissions struct {
+	Admin bool `json:"admin"`
+	Edit  bool `json:"edit"`
+	View  bool `json:"view"`
+}
+
+type DistroPermissionsOptions struct {
+	DistroID string `json:"distroId"`
 }
 
 // EditSpawnHostInput is the input to the editSpawnHost mutation.
@@ -150,6 +195,11 @@ type MoveProjectInput struct {
 	ProjectID string `json:"projectId"`
 }
 
+// Return type representing whether a distro was created and any validation errors
+type NewDistroPayload struct {
+	NewDistroID string `json:"newDistroId"`
+}
+
 // PatchConfigure is the input to the schedulePatch mutation.
 // It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 type PatchConfigure struct {
@@ -194,8 +244,10 @@ type PatchesInput struct {
 }
 
 type Permissions struct {
-	CanCreateProject bool   `json:"canCreateProject"`
-	UserID           string `json:"userId"`
+	CanCreateDistro   bool               `json:"canCreateDistro"`
+	CanCreateProject  bool               `json:"canCreateProject"`
+	DistroPermissions *DistroPermissions `json:"distroPermissions"`
+	UserID            string             `json:"userId"`
 }
 
 // PodEvents is the return value for the events query.
@@ -224,6 +276,18 @@ type ProjectEvents struct {
 type PublicKeyInput struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
+}
+
+// SaveDistroInput is the input to the saveDistro mutation.
+type SaveDistroInput struct {
+	Distro *model.APIDistro      `json:"distro"`
+	OnSave DistroOnSaveOperation `json:"onSave"`
+}
+
+// Return type representing the updated distro and the number of hosts that were updated.
+type SaveDistroPayload struct {
+	Distro    *model.APIDistro `json:"distro"`
+	HostCount int              `json:"hostCount"`
 }
 
 // SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
@@ -343,12 +407,13 @@ type TestFilter struct {
 // TestFilterOptions is an input for the task.Tests query.
 // It's used to filter, sort, and paginate test results of a task.
 type TestFilterOptions struct {
-	TestName *string            `json:"testName,omitempty"`
-	Statuses []string           `json:"statuses,omitempty"`
-	GroupID  *string            `json:"groupID,omitempty"`
-	Sort     []*TestSortOptions `json:"sort,omitempty"`
-	Limit    *int               `json:"limit,omitempty"`
-	Page     *int               `json:"page,omitempty"`
+	TestName            *string            `json:"testName,omitempty"`
+	ExcludeDisplayNames *bool              `json:"excludeDisplayNames,omitempty"`
+	Statuses            []string           `json:"statuses,omitempty"`
+	GroupID             *string            `json:"groupID,omitempty"`
+	Sort                []*TestSortOptions `json:"sort,omitempty"`
+	Limit               *int               `json:"limit,omitempty"`
+	Page                *int               `json:"page,omitempty"`
 }
 
 // TestSortOptions is an input for the task.Tests query.
@@ -412,6 +477,133 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type CloneMethod string
+
+const (
+	CloneMethodLegacySSH CloneMethod = "LEGACY_SSH"
+	CloneMethodOauth     CloneMethod = "OAUTH"
+)
+
+var AllCloneMethod = []CloneMethod{
+	CloneMethodLegacySSH,
+	CloneMethodOauth,
+}
+
+func (e CloneMethod) IsValid() bool {
+	switch e {
+	case CloneMethodLegacySSH, CloneMethodOauth:
+		return true
+	}
+	return false
+}
+
+func (e CloneMethod) String() string {
+	return string(e)
+}
+
+func (e *CloneMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CloneMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CloneMethod", str)
+	}
+	return nil
+}
+
+func (e CloneMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type DispatcherVersion string
+
+const (
+	DispatcherVersionRevised                 DispatcherVersion = "REVISED"
+	DispatcherVersionRevisedWithDependencies DispatcherVersion = "REVISED_WITH_DEPENDENCIES"
+)
+
+var AllDispatcherVersion = []DispatcherVersion{
+	DispatcherVersionRevised,
+	DispatcherVersionRevisedWithDependencies,
+}
+
+func (e DispatcherVersion) IsValid() bool {
+	switch e {
+	case DispatcherVersionRevised, DispatcherVersionRevisedWithDependencies:
+		return true
+	}
+	return false
+}
+
+func (e DispatcherVersion) String() string {
+	return string(e)
+}
+
+func (e *DispatcherVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DispatcherVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DispatcherVersion", str)
+	}
+	return nil
+}
+
+func (e DispatcherVersion) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type DistroOnSaveOperation string
+
+const (
+	DistroOnSaveOperationDecommission  DistroOnSaveOperation = "DECOMMISSION"
+	DistroOnSaveOperationRestartJasper DistroOnSaveOperation = "RESTART_JASPER"
+	DistroOnSaveOperationReprovision   DistroOnSaveOperation = "REPROVISION"
+	DistroOnSaveOperationNone          DistroOnSaveOperation = "NONE"
+)
+
+var AllDistroOnSaveOperation = []DistroOnSaveOperation{
+	DistroOnSaveOperationDecommission,
+	DistroOnSaveOperationRestartJasper,
+	DistroOnSaveOperationReprovision,
+	DistroOnSaveOperationNone,
+}
+
+func (e DistroOnSaveOperation) IsValid() bool {
+	switch e {
+	case DistroOnSaveOperationDecommission, DistroOnSaveOperationRestartJasper, DistroOnSaveOperationReprovision, DistroOnSaveOperationNone:
+		return true
+	}
+	return false
+}
+
+func (e DistroOnSaveOperation) String() string {
+	return string(e)
+}
+
+func (e *DistroOnSaveOperation) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DistroOnSaveOperation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DistroOnSaveOperation", str)
+	}
+	return nil
+}
+
+func (e DistroOnSaveOperation) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type DistroSettingsAccess string
 
 const (
@@ -454,6 +646,51 @@ func (e *DistroSettingsAccess) UnmarshalGQL(v interface{}) error {
 }
 
 func (e DistroSettingsAccess) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type FinderVersion string
+
+const (
+	FinderVersionLegacy    FinderVersion = "LEGACY"
+	FinderVersionParallel  FinderVersion = "PARALLEL"
+	FinderVersionPipeline  FinderVersion = "PIPELINE"
+	FinderVersionAlternate FinderVersion = "ALTERNATE"
+)
+
+var AllFinderVersion = []FinderVersion{
+	FinderVersionLegacy,
+	FinderVersionParallel,
+	FinderVersionPipeline,
+	FinderVersionAlternate,
+}
+
+func (e FinderVersion) IsValid() bool {
+	switch e {
+	case FinderVersionLegacy, FinderVersionParallel, FinderVersionPipeline, FinderVersionAlternate:
+		return true
+	}
+	return false
+}
+
+func (e FinderVersion) String() string {
+	return string(e)
+}
+
+func (e *FinderVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = FinderVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid FinderVersion", str)
+	}
+	return nil
+}
+
+func (e FinderVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -552,6 +789,47 @@ func (e *MetStatus) UnmarshalGQL(v interface{}) error {
 }
 
 func (e MetStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type PlannerVersion string
+
+const (
+	PlannerVersionLegacy  PlannerVersion = "LEGACY"
+	PlannerVersionTunable PlannerVersion = "TUNABLE"
+)
+
+var AllPlannerVersion = []PlannerVersion{
+	PlannerVersionLegacy,
+	PlannerVersionTunable,
+}
+
+func (e PlannerVersion) IsValid() bool {
+	switch e {
+	case PlannerVersionLegacy, PlannerVersionTunable:
+		return true
+	}
+	return false
+}
+
+func (e PlannerVersion) String() string {
+	return string(e)
+}
+
+func (e *PlannerVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PlannerVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PlannerVersion", str)
+	}
+	return nil
+}
+
+func (e PlannerVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

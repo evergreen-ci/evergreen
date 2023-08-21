@@ -78,6 +78,7 @@ type ParserProject struct {
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	UnsetFunctionVars  *bool                      `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
@@ -742,7 +743,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		return fileContents, nil
 	default:
 		if opts.Token == "" {
-			conf, err := evergreen.GetConfig()
+			conf, err := evergreen.GetConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen configuration")
 			}
@@ -780,7 +781,10 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module for module name '%s'", moduleName)
 	}
-	repoOwner, repoName := module.GetRepoOwnerAndName()
+	repoOwner, repoName, err := thirdparty.ParseGitUrl(module.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+	}
 	moduleOpts := GetProjectOpts{
 		Ref: &ProjectRef{
 			Owner: repoOwner,
@@ -896,6 +900,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	proj := &Project{
 		Enabled:            utility.FromBoolPtr(pp.Enabled),
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
+		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolPtr(pp.OomTracker),

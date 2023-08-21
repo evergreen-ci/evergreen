@@ -42,9 +42,9 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(t.Id, t.Execution)
+	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(ctx, t.Id, t.Execution)
 	catcher.Add(err)
-	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(t.BuildId)
+	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(ctx, t.BuildId)
 	catcher.Add(err)
 	if catcher.HasErrors() {
 		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: catcher.String()}
@@ -54,7 +54,7 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	hosts = append(hosts, hostsSpawnedByTask...)
 	for idx, h := range hosts {
 		if h.IsContainer() {
-			p, err := h.GetParent()
+			p, err := h.GetParent(ctx)
 			if err != nil {
 				return nil, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
@@ -136,7 +136,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 	}
 
 	for _, createHost := range createHostCmds {
-		err = createHost.Validate()
+		err = createHost.Validate(ctx)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -169,7 +169,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading project")
 	}
-	h, err := host.FindOne(host.ById(t.HostId))
+	h, err := host.FindOne(ctx, host.ById(t.HostId))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding host running task")
 	}
@@ -259,6 +259,7 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 	return createHost, nil
 }
 
+// MakeHost creates a host or container to run for host.create.
 func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if evergreen.IsDockerProvider(createHost.CloudProvider) {
 		return makeDockerIntentHost(ctx, env, taskID, userID, createHost)
@@ -270,7 +271,7 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 	var d *distro.Distro
 	var err error
 
-	d, err = distro.FindOneId(createHost.Distro)
+	d, err = distro.FindOneId(ctx, createHost.Distro)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
 	}
@@ -309,26 +310,28 @@ func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID
 		RegistryName:     createHost.Registry.Name,
 		RegistryUsername: createHost.Registry.Username,
 		RegistryPassword: createHost.Registry.Password,
+		StdinData:        createHost.StdinFileContents,
 		Method:           method,
 		SkipImageBuild:   true,
 		EnvironmentVars:  envVars,
+		ExtraHosts:       createHost.ExtraHosts,
 	}
 
 	containerPool := env.Settings().ContainerPools.GetContainerPool(d.ContainerPool)
 	if containerPool == nil {
 		return nil, errors.Errorf("distro '%s' doesn't have a container pool", d.Id)
 	}
-	containerIntents, parentIntents, err := host.MakeContainersAndParents(*d, containerPool, 1, *options)
+	containerIntents, parentIntents, err := host.MakeContainersAndParents(ctx, *d, containerPool, 1, *options)
 	if err != nil {
 		return nil, errors.Wrap(err, "generating container and parent intent hosts")
 	}
 	if len(containerIntents) != 1 {
 		return nil, errors.Errorf("programmatic error: should have created one new container, not %d", len(containerIntents))
 	}
-	if err = host.InsertMany(containerIntents); err != nil {
+	if err = host.InsertMany(ctx, containerIntents); err != nil {
 		return nil, errors.Wrap(err, "inserting container intents")
 	}
-	if err = host.InsertMany(parentIntents); err != nil {
+	if err = host.InsertMany(ctx, parentIntents); err != nil {
 		return nil, errors.Wrap(err, "inserting parent intent hosts")
 	}
 
@@ -350,7 +353,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	var err error
 	if distroID := createHost.Distro; distroID != "" {
 		var dat distro.AliasLookupTable
-		dat, err = distro.NewDistroAliasesLookupTable()
+		dat, err = distro.NewDistroAliasesLookupTable(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting distro lookup table")
 		}
@@ -358,7 +361,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		if len(distroIDs) == 0 {
 			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
 		}
-		foundDistro, err := distro.FindOneId(distroIDs[0])
+		foundDistro, err := distro.FindOneId(ctx, distroIDs[0])
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}
@@ -438,7 +441,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		return nil, errors.Wrap(err, "making intent host options")
 	}
 	intent := host.NewIntent(*options)
-	if err = intent.Insert(); err != nil {
+	if err = intent.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
 

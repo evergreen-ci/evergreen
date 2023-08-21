@@ -61,7 +61,7 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 	if h.hostID = gimlet.GetVars(r)["host_id"]; h.hostID == "" {
 		return errors.New("missing host ID")
 	}
-	host, err := host.FindOneId(h.hostID)
+	host, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -92,9 +92,9 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	begin := time.Now()
 
-	setAgentFirstContactTime(h.host)
+	setAgentFirstContactTime(ctx, h.host)
 
-	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(), message.Fields{
+	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(ctx), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
 		"host_id":      h.host.Id,
 		"distro":       h.host.Distro.Id,
@@ -159,7 +159,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
-	nextTaskResponse, err = handleOldAgentRevision(nextTaskResponse, h.details, h.host)
+	nextTaskResponse, err = handleOldAgentRevision(ctx, nextTaskResponse, h.details, h.host)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -167,7 +167,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "retrieving admin settings")
 		grip.Error(err)
@@ -245,6 +245,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	setNextTask(nextTask, &nextTaskResponse)
+	nextTaskResponse.UnsetFunctionVarsDisabled = flags.UnsetFunctionVarsDisabled
 	return gimlet.NewJSONResponse(nextTaskResponse)
 }
 
@@ -263,7 +264,7 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 			return true, errors.Wrap(err, "stopping agent monitor")
 		}
 
-		if err := params.host.SetNeedsAgentDeploy(true); err != nil {
+		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
 
@@ -422,7 +423,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 	}
 
-	d, err := distro.FindOneId(currentHost.Distro.Id)
+	d, err := distro.FindOneId(ctx, currentHost.Distro.Id)
 	if err != nil || d == nil {
 		// Should we bailout if there is a database error leaving us unsure if the distro document actually exists?
 		m := "database error while retrieving distro document;"
@@ -472,12 +473,12 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		var queueItem *model.TaskQueueItem
 		switch d.DispatcherSettings.Version {
 		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
-			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec, amiUpdatedTime)
+			queueItem, err = dispatcher.RefreshFindNextTask(ctx, d.Id, spec, amiUpdatedTime)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			queueItem, _ = taskQueue.FindNextTask(spec)
+			queueItem, _ = taskQueue.FindNextTask(ctx, spec)
 		}
 
 		if queueItem == nil {
@@ -617,7 +618,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			// hosts are running tasks in the task group. Only check the number
 			// of hosts running this task group if the task group is new to the
 			// host.
-			if err := checkHostTaskGroupAfterDispatch(currentHost, nextTask); err != nil {
+			if err := checkHostTaskGroupAfterDispatch(ctx, currentHost, nextTask); err != nil {
 				grip.Debug(message.Fields{
 					"message":              "failed dispatch task group check due to race, not dispatching",
 					"task_distro_id":       nextTask.DistroId,
@@ -681,13 +682,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 // number of hosts running this task group does not exceed the max after
 // assigning the task to the host. If it exceeds the max host limit, this will
 // return true to indicate that the host should not run this task.
-func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
+func checkHostTaskGroupAfterDispatch(ctx context.Context, h *host.Host, t *task.Task) error {
 	var minTaskGroupOrderNum int
 	if t.IsPartOfSingleHostTaskGroup() {
 		var err error
 		// Regardless of how many hosts are running tasks, if this host is
 		// running the earliest task in the task group we should continue.
-		minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+		minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(ctx, t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
 			return errors.Wrap(err, "getting min task group order")
 		}
@@ -720,7 +721,7 @@ func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
 	// For multiple-host task groups and single-host task groups without order
 	// cached in the host, check that max hosts is respected.
 	if minTaskGroupOrderNum == 0 {
-		numHosts, err := host.NumHostsByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+		numHosts, err := host.NumHostsByTaskSpec(ctx, t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
 			return errors.Wrap(err, "getting number of hosts running task group")
 		}
@@ -914,7 +915,7 @@ func getDetails(h *host.Host, r *http.Request) (*apimodels.GetNextTaskDetails, e
 	details := &apimodels.GetNextTaskDetails{}
 	if err := utility.ReadJSON(r.Body, details); err != nil {
 		if isOldAgent {
-			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
+			if innerErr := h.SetNeedsNewAgent(r.Context(), true); innerErr != nil {
 				grip.Error(message.WrapError(innerErr, message.Fields{
 					"host_id":       h.Id,
 					"operation":     "next_task",
@@ -944,7 +945,7 @@ func getDetails(h *host.Host, r *http.Request) (*apimodels.GetNextTaskDetails, e
 
 // prepareForReprovision readies a host for reprovisioning.
 func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *host.Host) error {
-	if err := h.MarkAsReprovisioning(); err != nil {
+	if err := h.MarkAsReprovisioning(ctx); err != nil {
 		return errors.Wrap(err, "marking host as ready for reprovisioning")
 	}
 
@@ -960,12 +961,12 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *ho
 	return nil
 }
 
-func setAgentFirstContactTime(h *host.Host) {
+func setAgentFirstContactTime(ctx context.Context, h *host.Host) {
 	if !h.AgentStartTime.IsZero() {
 		return
 	}
 
-	if err := h.SetAgentStartTime(); err != nil {
+	if err := h.SetAgentStartTime(ctx); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not set host's agent start time for first contact",
 			"host_id": h.Id,
@@ -985,7 +986,7 @@ func setAgentFirstContactTime(h *host.Host) {
 	})
 }
 
-func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimodels.GetNextTaskDetails, h *host.Host) (apimodels.NextTaskResponse, error) {
+func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResponse, details *apimodels.GetNextTaskDetails, h *host.Host) (apimodels.NextTaskResponse, error) {
 	if !agentRevisionIsOld(h) {
 		return response, nil
 	}
@@ -994,7 +995,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	// running an agent on the current revision, but the database host has
 	// yet to be updated.
 	if !h.Distro.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
-		err := h.SetAgentRevision(details.AgentRevision)
+		err := h.SetAgentRevision(ctx, details.AgentRevision)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":        "problem updating host agent revision",
@@ -1023,7 +1024,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	}
 
 	if details.TaskGroup == "" {
-		if err := h.SetNeedsNewAgent(true); err != nil {
+		if err := h.SetNeedsNewAgent(ctx, true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":        h.Id,
 				"operation":      "NextTask",
@@ -1036,7 +1037,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 			return apimodels.NextTaskResponse{}, err
 
 		}
-		if err := h.ClearRunningTask(); err != nil {
+		if err := h.ClearRunningTask(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":        h.Id,
 				"operation":      "next_task",
@@ -1077,7 +1078,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 	if t == nil {
 		grip.Notice(getMessage("clearing host's running task because it does not exist"))
-		if err := h.ClearRunningTask(); err != nil {
+		if err := h.ClearRunningTask(ctx); err != nil {
 			grip.Error(message.WrapError(err, getMessage("could not clear host's nonexistent running task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
@@ -1086,7 +1087,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if isTaskGroupNewToHost(h, t) {
-		if err := checkHostTaskGroupAfterDispatch(h, t); err != nil {
+		if err := checkHostTaskGroupAfterDispatch(ctx, h, t); err != nil {
 			if err := undoHostTaskDispatchAtomically(ctx, env, h, t); err != nil {
 				grip.Error(message.WrapError(err, getMessage("could not undo dispatch after task group check failed")))
 				return gimlet.MakeJSONInternalErrorResponder(err)
@@ -1111,7 +1112,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	// The task is inactive, so the host's running task should be unset so it
 	// can retrieve a new task.
-	if err = h.ClearRunningTask(); err != nil {
+	if err = h.ClearRunningTask(ctx); err != nil {
 		grip.Error(message.WrapError(err, getMessage("could not clear host's running task after it was found to be inactive")))
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1185,7 +1186,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	currentHost, err := host.FindOneId(h.hostID)
+	currentHost, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
 	}
@@ -1255,7 +1256,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// This is a more difficult check because it will require cross-referencing
 	// the host's state against the task's state. Doing the former order of
 	// operations avoids this expensive check.
-	if err = currentHost.ClearRunningAndSetLastTask(t); err != nil {
+	if err = currentHost.ClearRunningAndSetLastTask(ctx, t); err != nil {
 		err = errors.Wrapf(err, "clearing running task '%s' for host '%s'", t.Id, currentHost.Id)
 		grip.Errorf(err.Error())
 		return gimlet.MakeJSONInternalErrorResponder(err)
@@ -1269,14 +1270,14 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Description: evergreen.TaskDescriptionAborted,
 		}
 	}
-	err = model.MarkEnd(h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
+	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	if evergreen.IsCommitQueueRequester(t.Requester) {
-		if err = model.HandleEndTaskForCommitQueueTask(t, h.details.Status); err != nil {
+		if err = model.HandleEndTaskForCommitQueueTask(ctx, t, h.details.Status); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
@@ -1372,7 +1373,7 @@ func prepareHostForAgentExit(ctx context.Context, params agentExitParams, env ev
 			return true, errors.Wrap(err, "stopping agent monitor")
 		}
 
-		if err := params.host.SetNeedsAgentDeploy(true); err != nil {
+		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
 

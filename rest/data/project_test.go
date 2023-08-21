@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -481,17 +481,20 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 }
 
 func TestRequestS3Creds(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
-	assert.Error(t, RequestS3Creds("", ""))
-	assert.NoError(t, RequestS3Creds("identifier", "user@email.com"))
+	assert.Error(t, RequestS3Creds(ctx, "", ""))
+	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
 	n, err := notification.FindUnprocessed()
 	assert.NoError(t, err)
 	assert.Len(t, n, 0)
 	projectCreationConfig := evergreen.ProjectCreationConfig{
 		JiraProject: "BUILD",
 	}
-	assert.NoError(t, projectCreationConfig.Set())
-	assert.NoError(t, RequestS3Creds("identifier", "user@email.com"))
+	assert.NoError(t, projectCreationConfig.Set(ctx))
+	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
 	n, err = notification.FindUnprocessed()
 	assert.NoError(t, err)
 	assert.Len(t, n, 1)

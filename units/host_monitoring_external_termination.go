@@ -67,7 +67,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
@@ -78,7 +78,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	}
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
@@ -125,7 +125,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			})
-			return false, errors.Wrapf(h.MarkReachable(), "updating reachability for host '%s'", h.Id)
+			return false, errors.Wrapf(h.MarkReachable(ctx), "updating reachability for host '%s'", h.Id)
 		}
 		return false, nil
 	case cloud.StatusStopping, cloud.StatusStopped, cloud.StatusTerminated, cloud.StatusNonExistent:
@@ -141,7 +141,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.New("non-agent host is not already terminated and should not be terminated")
 		}
 
-		if err := handleTerminatedHostSpawnedByTask(h); err != nil {
+		if err := handleTerminatedHostSpawnedByTask(ctx, h); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":      "handling prematurely terminated task host",
 				"cloud_status": cloudStatus.String(),
@@ -190,12 +190,12 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 // handleTerminatedHostSpawnedByTask re-creates a new intent host if possible when this host.create host fails.
 // If it cannot create a new host, it will populate the reason that host.create failed.
-func handleTerminatedHostSpawnedByTask(h *host.Host) error {
+func handleTerminatedHostSpawnedByTask(ctx context.Context, h *host.Host) error {
 	if !h.SpawnOptions.SpawnedByTask {
 		return nil
 	}
 
-	intent, err := insertNewHostForTask(h)
+	intent, err := insertNewHostForTask(ctx, h)
 	if err != nil || intent == nil {
 		grip.Info(message.Fields{
 			"message":        "host was externally terminated",
@@ -223,7 +223,7 @@ func handleTerminatedHostSpawnedByTask(h *host.Host) error {
 	return nil
 }
 
-func insertNewHostForTask(h *host.Host) (*host.Host, error) {
+func insertNewHostForTask(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.SpawnOptions.Respawns == 0 {
 		return nil, nil
 	}
@@ -243,5 +243,5 @@ func insertNewHostForTask(h *host.Host) (*host.Host, error) {
 	opts := h.GetCreateOptions()
 	opts.SpawnOptions.Respawns--
 	intent := host.NewIntent(opts)
-	return intent, errors.Wrap(intent.Insert(), "inserting intent")
+	return intent, errors.Wrap(intent.Insert(ctx), "inserting intent")
 }

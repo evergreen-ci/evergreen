@@ -103,7 +103,7 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 
 	// known host
 	hostToAdd := host.Host{Id: "i-0123456789"}
-	assert.NoError(t, hostToAdd.Insert())
+	assert.NoError(t, hostToAdd.Insert(ctx))
 
 	assert.NoError(t, rh.handleNotification(ctx))
 	require.Equal(t, 1, rh.queue.Stats(ctx).Total)
@@ -133,11 +133,11 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	messageID := "m0"
 	rh := ec2SNS{}
 	rh.payload.MessageId = messageID
-	assert.NoError(t, agentHost.Insert())
-	assert.NoError(t, spawnHost.Insert())
+	assert.NoError(t, agentHost.Insert(ctx))
+	assert.NoError(t, spawnHost.Insert(ctx))
 
 	checkStatus := func(t *testing.T, hostID, status string) {
-		dbHost, err := host.FindOneId(hostID)
+		dbHost, err := host.FindOneId(ctx, hostID)
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 		assert.Equal(t, status, dbHost.Status)
@@ -208,15 +208,15 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.Equal(t, pod.StatusDecommissioned, p.Status)
 		},
 		"CleansUpUnrecognizedPodTryingToStart": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = false
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			// Set up the fake ECS testing service and the route's ECS client so
 			// that it tests cleaning up the pod in the fake service rather than
@@ -238,8 +238,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -255,18 +255,18 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
 			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterID], 1)
-			assert.EqualValues(t, ecs.TaskStatusStopped, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod should have been stopped")
+			assert.EqualValues(t, ecs.TaskStatusStopped, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "unrecognized cloud pod should have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsTryingToStartInUnrecognizedCluster": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = false
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			// Set up the fake ECS testing service and the route's ECS client so
 			// that it tests cleaning up the pod in the fake service rather than
@@ -282,8 +282,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -298,18 +298,18 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod in unrecognized cluster should not have been stopped")
+			assert.EqualValues(t, status, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "unrecognized cloud pod in unrecognized cluster should not have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsDetectedButAlreadyShuttingDown": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = false
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			// Set up the fake ECS testing service and the route's ECS client so
 			// that it tests cleaning up the pod in the fake service rather than
@@ -331,8 +331,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -347,18 +347,18 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod in unrecognized cluster should not have been stopped")
+			assert.EqualValues(t, status, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "unrecognized cloud pod in unrecognized cluster should not have been stopped")
 		},
 		"NoopsWhenUnrecognizedPodIsDetectedButUnrecognizedPodCleanupIsDisabled": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			originalFlags, err := evergreen.GetServiceFlags()
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, originalFlags.Set())
+				require.NoError(t, originalFlags.Set(ctx))
 			}()
 
 			updatedFlags := *originalFlags
 			updatedFlags.UnrecognizedPodCleanupDisabled = true
-			require.NoError(t, updatedFlags.Set())
+			require.NoError(t, updatedFlags.Set(ctx))
 
 			const (
 				clusterID     = "ecs-cluster"
@@ -377,8 +377,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(status),
-					GoalStatus: utility.ToStringPtr(desiredStatus),
+					Status:     status,
+					GoalStatus: desiredStatus,
 				},
 			}
 
@@ -393,7 +393,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "cloud pod should not be cleaned up when the service flag flag is disabled")
+			assert.EqualValues(t, status, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "cloud pod should not be cleaned up when the service flag flag is disabled")
 		},
 		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
@@ -459,7 +459,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ContainerInstance: utility.ToStringPtr(containerInstanceID),
 					Cluster:           utility.ToStringPtr(clusterID),
 					Created:           utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:            utility.ToStringPtr(status),
+					Status:            status,
 				},
 			}
 

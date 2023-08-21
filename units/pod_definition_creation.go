@@ -141,13 +141,13 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 
 	// Use the latest service flags instead of those cached in the environment.
 	settings := *j.env.Settings()
-	if err := settings.ServiceFlags.Get(j.env); err != nil {
+	if err := settings.ServiceFlags.Get(ctx); err != nil {
 		return errors.Wrap(err, "getting service flags")
 	}
 	j.settings = settings
 
 	if j.ecsClient == nil {
-		client, err := cloud.MakeECSClient(&settings)
+		client, err := cloud.MakeECSClient(ctx, &settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}

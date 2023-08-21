@@ -7,10 +7,15 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOldestImageJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 
 	assert.NoError(db.Clear(host.Collection))
@@ -30,14 +35,14 @@ func TestOldestImageJob(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		ParentID: "parent-1",
 	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
 
 	j := NewOldestImageRemovalJob(h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)
 
-	j.Run(context.Background())
+	j.Run(ctx)
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)

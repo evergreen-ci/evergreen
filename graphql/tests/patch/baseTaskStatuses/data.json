@@ -1,7 +1,7 @@
 {
   "versions": [
     {
-      "_id": "5e4ff3abe3c3317e352062e4",
+      "_id": "5dd2e89cd1fe07048e43bb9c",
       "create_time": {
         "$date": "2020-02-21T15:13:48.801Z"
       },
@@ -61,98 +61,108 @@
   "tasks": [
     {
       "_id": "1",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_task_id": ""
     },
     {
       "_id": "2",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "display_task_id": ""
     },
     {
       "_id": "XYZ",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "silver",
       "r": "github_pull_request",
-      "status": "setup-failed"
+      "status": "setup-failed",
+      "display_task_id": ""
     },
     {
       "_id": "X",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "gold",
       "r": "github_pull_request",
-      "status": "undispatched"
+      "status": "undispatched",
+      "display_task_id": ""
     },
     {
       "_id": "3",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_task_id": ""
     },
     {
       "_id": "4",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-1",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-2",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-3",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_task_id": ""
     },
     {
       "_id": "base-task-4",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_task_id": ""
     }
   ],
   "patches": [
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "_id": { "$oid": "5dd2e89cd1fe07048e43bb9c" },
       "desc": "'evergreen-ci/spruce' pull request #27 by tgrander: Refactor App + Use Context for global state (https://github.com/evergreen-ci/spruce/pull/27)",
       "branch": "spruce",
       "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
@@ -205,6 +215,16 @@
         "author_uid": 15262143,
         "merge_commit_sha": ""
       }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
     }
   ]
 }

@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"context"
+
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -36,7 +38,6 @@ var (
 	authConfigKey         = bsonutil.MustHaveTag(Settings{}, "AuthConfig")
 	repoTrackerConfigKey  = bsonutil.MustHaveTag(Settings{}, "RepoTracker")
 	apiKey                = bsonutil.MustHaveTag(Settings{}, "Api")
-	alertsConfigKey       = bsonutil.MustHaveTag(Settings{}, "Alerts")
 	uiKey                 = bsonutil.MustHaveTag(Settings{}, "Ui")
 	hostInitConfigKey     = bsonutil.MustHaveTag(Settings{}, "HostInit")
 	notifyKey             = bsonutil.MustHaveTag(Settings{}, "Notify")
@@ -94,7 +95,9 @@ var (
 	backgroundCleanupDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
 	legacyUIPublicAccessDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIPublicAccessDisabled")
+	globalGitHubTokenDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GlobalGitHubTokenDisabled")
 	unrecognizedPodCleanupDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
+	unsetFunctionVarsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "UnsetFunctionVarsDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
@@ -121,14 +124,31 @@ func byId(id string) bson.M {
 	return bson.M{idKey: id}
 }
 
+func byIDs(ids []string) bson.M {
+	return bson.M{idKey: bson.M{"$in": ids}}
+}
+
+func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
+	cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding configuration sections")
+	}
+
+	var docs = make([]bson.Raw, 0, len(ids))
+	for cur.Next(ctx) {
+		docs = append(docs, cur.Current)
+	}
+	if cur.Err() != nil {
+		return nil, errors.Wrap(err, "getting configuration sections")
+	}
+
+	return docs, nil
+}
+
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
-func SetBanner(bannerText string) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
+func SetBanner(ctx context.Context, bannerText string) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerKey: bannerText},
 	}, options.Update().SetUpsert(true))
@@ -138,12 +158,8 @@ func SetBanner(bannerText string) error {
 
 // SetBannerTheme sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
-func SetBannerTheme(theme BannerTheme) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
+func SetBannerTheme(ctx context.Context, theme BannerTheme) error {
+	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerThemeKey: theme},
 	}, options.Update().SetUpsert(true))
@@ -151,7 +167,15 @@ func SetBannerTheme(theme BannerTheme) error {
 	return errors.WithStack(err)
 }
 
-// SetServiceFlags sets whether each of the runner/API server processes is enabled
-func SetServiceFlags(flags ServiceFlags) error {
-	return flags.Set()
+func GetServiceFlags(ctx context.Context) (*ServiceFlags, error) {
+	flags := &ServiceFlags{}
+	if err := flags.Get(ctx); err != nil {
+		return nil, errors.Wrapf(err, "getting section '%s'", flags.SectionId())
+	}
+	return flags, nil
+}
+
+// SetServiceFlags sets whether each of the runner/API server processes is enabled.
+func SetServiceFlags(ctx context.Context, flags ServiceFlags) error {
+	return flags.Set(ctx)
 }

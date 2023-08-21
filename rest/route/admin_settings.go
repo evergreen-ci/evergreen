@@ -28,7 +28,7 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
@@ -57,7 +57,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
@@ -85,13 +85,13 @@ func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	oldSettings, err := evergreen.GetConfig()
+	oldSettings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting existing admin settings"))
 	}
 
 	// validate the changes
-	newSettings, err := data.SetEvergreenSettings(h.model, oldSettings, u, false)
+	newSettings, err := data.SetEvergreenSettings(ctx, h.model, oldSettings, u, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "dry run applying new settings"))
 	}
@@ -99,12 +99,12 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "new settings are invalid"))
 	}
 
-	err = distro.ValidateContainerPoolDistros(newSettings)
+	err = distro.ValidateContainerPoolDistros(ctx, newSettings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "container pool distros are invalid"))
 	}
 
-	_, err = data.SetEvergreenSettings(h.model, oldSettings, u, true)
+	_, err = data.SetEvergreenSettings(ctx, h.model, oldSettings, u, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "applying new settings"))
 	}

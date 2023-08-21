@@ -243,7 +243,7 @@ func makeUserData(ctx context.Context, settings *evergreen.Settings, h *host.Hos
 		return "", nil
 	}
 
-	provisionOpts, err := h.GenerateFetchProvisioningScriptUserData(settings)
+	provisionOpts, err := h.GenerateFetchProvisioningScriptUserData(ctx, settings)
 	if err != nil {
 		return "", errors.Wrap(err, "creating user data script to fetch provisioning script")
 	}

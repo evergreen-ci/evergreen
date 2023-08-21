@@ -29,9 +29,8 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 		return nil, errors.Wrap(err, "reading end task response")
 	}
 	grip.Info(message.Fields{
-		"message":     "finished EndTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
+		"message": "finished EndTask",
+		"task_id": taskData.ID,
 	})
 	return &taskEndResp, nil
 }

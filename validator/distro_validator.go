@@ -49,23 +49,17 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	var allDistroIDs, allDistroAliases []string
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		allDistroIDs, allDistroAliases, err = getDistros()
+		allDistroIDs, allDistroAliases, err = getDistros(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Parent and container distros do not support aliases.
-	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
-		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
-	}
-
 	if newDistro {
 		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs)...)
 	}
-	if len(d.Aliases) > 0 {
-		validationErrs = append(validationErrs, ensureValidAliases(d)...)
-	}
+
+	validationErrs = append(validationErrs, validateAliases(d, allDistroAliases)...)
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
@@ -366,7 +360,7 @@ func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergree
 			return ValidationErrors{{Error, "distro container pool does not exist"}}
 		}
 		// warn if container pool exists without valid distro
-		err := distro.ValidateContainerPoolDistros(s)
+		err := distro.ValidateContainerPoolDistros(ctx, s)
 		if err != nil {
 			return ValidationErrors{{Error, "error in container pool settings: " + err.Error()}}
 		}
@@ -548,4 +542,16 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 		})
 	}
 	return errs
+}
+
+func validateAliases(d *distro.Distro, allDistroAliases []string) ValidationErrors {
+	var validationErrs ValidationErrors
+	// Parent and container distros do not support aliases.
+	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
+		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
+	}
+	if len(d.Aliases) > 0 {
+		validationErrs = append(validationErrs, ensureValidAliases(d)...)
+	}
+	return validationErrs
 }

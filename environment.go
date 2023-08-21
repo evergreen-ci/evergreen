@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -35,12 +36,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 )
 
 var (
@@ -132,7 +134,7 @@ type Environment interface {
 	ClientConfig() *ClientConfig
 
 	// SaveConfig persists the configuration settings.
-	SaveConfig() error
+	SaveConfig(context.Context) error
 
 	// GetSender provides a grip Sender configured with the environment's
 	// settings. These Grip senders must be used with Composers that specify
@@ -193,9 +195,11 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
+		// Persist the environment early so the db will be available for initSettings.
+		SetEnvironment(e)
 	}
 
-	if err := e.initSettings(confPath); err != nil {
+	if err := e.initSettings(ctx, confPath); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -263,7 +267,7 @@ type closerOp struct {
 	closerFn   func(context.Context) error
 }
 
-func (e *envState) initSettings(path string) error {
+func (e *envState) initSettings(ctx context.Context, path string) error {
 	// read configuration from either the file or DB and validate
 	// if the file path is blank, the DB session must be configured already
 
@@ -277,7 +281,7 @@ func (e *envState) initSettings(path string) error {
 				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
-			e.settings, err = BootstrapConfig(e)
+			e.settings, err = GetConfig(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting config settings from DB")
 			}
@@ -368,7 +372,7 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetReadPreference(readpref.Primary()).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
 	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
 		opts.SetAuth(options.Credential{
@@ -696,40 +700,35 @@ func (e *envState) initSenders(ctx context.Context) error {
 		Threshold: level.Notice,
 	}
 
-	if e.settings.Notify.SMTP.From != "" {
-		smtp := e.settings.Notify.SMTP
-		opts := send.SMTPOptions{
-			Name:              "evergreen",
-			Server:            smtp.Server,
-			Port:              smtp.Port,
-			UseSSL:            smtp.UseSSL,
-			Username:          smtp.Username,
-			Password:          smtp.Password,
-			From:              smtp.From,
-			PlainTextContents: false,
-			NameAsSubject:     true,
+	if e.settings.Notify.SES.SenderAddress != "" {
+		config, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(DefaultEC2Region),
+		)
+		if err != nil {
+			return errors.Wrap(err, "loading AWS config")
 		}
-		if len(smtp.AdminEmail) == 0 {
-			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
-				return errors.Wrap(err, "adding email logger test recipient")
-			}
-
-		} else {
-			for i := range smtp.AdminEmail {
-				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
-					return errors.Wrap(err, "adding email logger recipient")
-				}
-			}
-		}
-		sender, err := send.NewSMTPLogger(&opts, levelInfo)
+		otelaws.AppendMiddlewares(&config.APIOptions)
+		sesSender, err := send.NewSESLogger(ctx,
+			send.SESOptions{
+				Name:          "evergreen",
+				AWSConfig:     config,
+				SenderAddress: e.settings.Notify.SES.SenderAddress,
+			}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up email logger")
 		}
-		e.senders[SenderEmail] = sender
+		e.senders[SenderEmail] = sesSender
 	}
 
 	var sender send.Sender
-	githubToken, err := e.settings.GetGithubOauthToken()
+	githubToken, err := e.settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+	if err != nil || githubToken == "" {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error creating token",
+			"ticket":  "EVG-19966",
+		}))
+		githubToken, err = e.settings.GetGithubOauthToken()
+	}
 	if err == nil && len(githubToken) > 0 {
 		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
@@ -862,7 +861,6 @@ func (e *envState) initTracer(ctx context.Context) error {
 	}
 
 	resource, err := resource.New(ctx,
-		resource.WithProcess(),
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen")),
 		resource.WithAttributes(semconv.ServiceVersion(BuildRevision)),
@@ -879,12 +877,19 @@ func (e *envState) initTracer(ctx context.Context) error {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
 
+	spanLimits := trace.NewSpanLimits()
+	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
+
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
 		trace.WithResource(resource),
+		trace.WithRawSpanLimits(spanLimits),
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		grip.Error(errors.Wrap(err, "otel error"))
+	}))
 
 	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
 		catcher := grip.NewBasicCatcher()
@@ -1014,7 +1019,7 @@ type WebHook struct {
 	Secret   string `mapstructure:"secret" bson:"secret" json:"secret" yaml:"secret"`
 }
 
-func (e *envState) SaveConfig() error {
+func (e *envState) SaveConfig(ctx context.Context) error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot persist to DB")
 	}
@@ -1049,7 +1054,7 @@ func (e *envState) SaveConfig() error {
 		}
 	}
 
-	return errors.WithStack(UpdateConfig(&copy))
+	return errors.WithStack(UpdateConfig(ctx, &copy))
 }
 
 func (e *envState) GetSender(key SenderKey) (send.Sender, error) {

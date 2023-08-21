@@ -73,7 +73,7 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
 		return
@@ -88,7 +88,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.populateIfUnset(); err != nil {
+	if err = j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -106,7 +106,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.host.UpdateLastCommunicated(); err != nil {
+	if err = j.host.UpdateLastCommunicated(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update host communication time",
 			"host_id": j.host.Id,
@@ -159,7 +159,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			"distro":  j.host.Distro.Id,
 			"job_id":  j.ID(),
 		})
-		j.AddRetryableError(j.host.SetNeedsNewAgentMonitor(false))
+		j.AddRetryableError(j.host.SetNeedsNewAgentMonitor(ctx, false))
 		return
 	}
 
@@ -181,7 +181,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.AddError(j.host.SetNeedsNewAgentMonitor(false))
+	j.AddError(j.host.SetNeedsNewAgentMonitor(ctx, false))
 }
 
 // hostDown checks if the host is down.
@@ -300,7 +300,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings *evergreen.Settings) error {
 	// Generate the host secret if none exists.
 	if j.host.Secret == "" {
-		if err := j.host.CreateSecret(); err != nil {
+		if err := j.host.CreateSecret(ctx); err != nil {
 			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
 		}
 	}
@@ -360,9 +360,9 @@ func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 }
 
 // populateIfUnset populates the unset job fields.
-func (j *agentMonitorDeployJob) populateIfUnset() error {
+func (j *agentMonitorDeployJob) populateIfUnset(ctx context.Context) error {
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}

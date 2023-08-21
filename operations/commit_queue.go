@@ -604,6 +604,9 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 	if !ref.CommitQueue.IsEnabled() {
 		return errors.New("commit queue not enabled for project")
 	}
+	if ref.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		return errors.New("Commit queue merge method is set to GitHub, not Evergreen, in the project settings. You must merge from a GitHub PR.")
+	}
 
 	commitCount, err := gitCommitCount(ref.Branch, p.ref, p.commits)
 	if err != nil {

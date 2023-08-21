@@ -765,6 +765,31 @@ Fetch the raw diff for a patch
 |--------|--------|-------------------------------------------------------------------------------------------------------|
 | module | string | Optional. A module to get the diff for. Returns the empty string when no patch exists for the module. |
 
+##### Get Patch Diff with Module Diffs
+
+    GET /patches/<patch_id>/raw_modules
+
+Fetch the raw diff for a patch along with the module diffs. 
+
+#### Response
+
+| Name             | Type                   | Description                                                                                                      |
+|------------------|------------------------|------------------------------------------------------------------------------------------------------------------|
+| patch          | RawModule                 | The main patch                                                                |
+| raw_modules   | []RawModule                   | The list of module diffs                                                |
+
+#### Objects
+
+**RawModule**
+
+| Name             | Type                   | Description                                                                                                      |
+|------------------|------------------------|------------------------------------------------------------------------------------------------------------------|
+| name          | string                 | The module name                                                                |
+| diff   | string                    | The module diff                                               |
+| githash         | string | The githash for the module |
+
+
+
 ##### Abort a Patch
 
     POST /patches/<patch_id>/abort
@@ -1040,6 +1065,7 @@ exception of project variables, task annotation settings, workstation settings, 
 |--------------|--------|-------------------------------------------|
 | enabled      | bool   | Enable/disable the commit queue           |
 | merge_method | string | method of merging (squash, merge, rebase) |
+| merge_queue  | string | merge queue to use (EVERGREEN or GITHUB)  |
 | patch_type   | string | type of patch (PR, CLI)                   |
 
 
@@ -1649,7 +1675,7 @@ Project is mongodb-mongo-master, task is lint. Assuming today is
 
 ### Notifications
 
-Create custom notifications for email, slack, JIRA comments, and JIRA
+Create custom notifications for email or Slack.
 issues.
 
 #### Objects
@@ -1702,42 +1728,11 @@ issues.
 This corresponds with documentation for the [Slack API for
 attachments](https://api.slack.com/reference/messaging/attachments).
 
-**JIRA Issue**
-
-| Name          | Type                   | Description                                     |
-|---------------|------------------------|-------------------------------------------------|
-| `issue_key`   | string                 | Optional.                                       |
-| `project`     | string                 | Optional. The project name.                     |
-| `summary`     | string                 | Optional. The summary text.                     |
-| `description` | string                 | Optional. The issue description.                |
-| `reporter`    | string                 | Optional. The issue reporter.                   |
-| `assignee`    | string                 | Optional. The issue assignee.                   |
-| `type`        | string                 | Optional. The issue type.                       |
-| `components`  | string                 | Optional. The project components.               |
-| `labels`      | string                 | Optional. The issue labels.                     |
-| `fields`      | map[string]interface{} | Optional. Arbitrary map of custom field values. |
-
-
-This corresponds with the documentation in the [JIRA API for creating
-issues](https://docs.atlassian.com/software/jira/docs/api/REST/7.6.1/#api/2/issue-createIssue).
-
-**JIRA Comment**
-
-| Name       | Type   | Description                                                       |
-|------------|--------|-------------------------------------------------------------------|
-| `issue_id` | string | Optional. The ID of the issue where the comment should be posted. |
-| `body`     | string | Optional. The comment text.                                       |
-
-
-This corresponds with the documentation in the [JIRA API for adding
-comments](https://docs.atlassian.com/software/jira/docs/api/REST/7.6.1/#api/2/issue-addComment).
-
 #### Endpoints
 
     POST /notifications/<type>
 
-The type can be "email", "slack", "jira_issue", or
-"jira_comment".
+The type can be "email" or "slack".
 
 ### Permissions
 

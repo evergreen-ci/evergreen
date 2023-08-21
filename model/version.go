@@ -582,6 +582,11 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 
 	// initial projection of version items
 	project := bson.M{
+		VersionIdentifierKey:          1,
+		VersionOwnerNameKey:           1,
+		VersionRepoKey:                1,
+		VersionBranchKey:              1,
+		VersionActivatedKey:           1,
 		VersionCreateTimeKey:          1,
 		VersionStartTimeKey:           1,
 		VersionFinishTimeKey:          1,
@@ -734,7 +739,10 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 			}
 		}
 		var sha, url string
-		owner, repo := module.GetRepoOwnerAndName()
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+		}
 		if module.Ref == "" {
 			var commit *github.RepositoryCommit
 			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)

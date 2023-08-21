@@ -156,8 +156,9 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 		Branch:            utility.ToStringPtr(p.Branch),
 		WorkstationConfig: wc,
 		CommitQueue: restModel.APICommitQueueParams{
-			Message: utility.ToStringPtr(p.CommitQueue.Message),
-			Enabled: p.CommitQueue.Enabled,
+			Message:    utility.ToStringPtr(p.CommitQueue.Message),
+			Enabled:    p.CommitQueue.Enabled,
+			MergeQueue: p.CommitQueue.MergeQueue,
 		},
 	}
 
@@ -247,7 +248,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 			errs = append(errs, validationErr)
 		} else {
 			isConfigDefined := projectConfig != nil
-			errs = append(errs, validator.CheckProjectSettings(evergreen.GetEnvironment().Settings(), project, projectRef, isConfigDefined)...)
+			errs = append(errs, validator.CheckProjectSettings(ctx, evergreen.GetEnvironment().Settings(), project, projectRef, isConfigDefined)...)
 		}
 	} else {
 		validationErr = validator.ValidationError{
@@ -257,7 +258,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = append(errs, validationErr)
 	}
 
-	errs = append(errs, validator.CheckProjectErrors(project, input.IncludeLong)...)
+	errs = append(errs, validator.CheckProjectErrors(r.Context(), project, input.IncludeLong)...)
 	if projectConfig != nil {
 		errs = append(errs, validator.CheckProjectConfigErrors(projectConfig)...)
 	}
@@ -356,7 +357,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/projects").Wrap(requireUser).Handler(as.listProjects).Get()
 
 	// Patches
-	app.PrefixRoute("/patches").Route("/").Wrap(requireUser, submitPatch).Handler(as.submitPatch).Put()
+	app.PrefixRoute("/patches").Route("/").Wrap(requireUser).Handler(as.submitPatch).Put()
 	app.PrefixRoute("/patches").Route("/mine").Wrap(requireUser).Handler(as.listPatches).Get()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, viewTasks).Handler(as.summarizePatch).Get()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, submitPatch).Handler(as.existingPatchRequest).Post()

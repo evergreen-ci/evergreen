@@ -31,10 +31,11 @@ import (
 )
 
 type PatchIntentUnitsSuite struct {
-	sender *send.InternalSender
-	env    *mock.Environment
-	ctx    context.Context
-	cancel context.CancelFunc
+	sender   *send.InternalSender
+	env      *mock.Environment
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
 
 	repo            string
 	headRepo        string
@@ -53,14 +54,21 @@ type PatchIntentUnitsSuite struct {
 }
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
-	suite.Run(t, new(PatchIntentUnitsSuite))
+	s := new(PatchIntentUnitsSuite)
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+	suite.Run(t, s)
+}
+
+func (s *PatchIntentUnitsSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.sender = send.MakeInternalLogger()
 	s.env = &mock.Environment{}
 
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.Require().NoError(s.env.Configure(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
@@ -149,22 +157,22 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Task:      "^bynntask$",
 	}).Upsert())
 
-	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert())
-	s.NoError((&distro.Distro{Id: "archlinux-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "archlinux-build"}).Insert())
-	s.NoError((&distro.Distro{Id: "windows-64-vs2015-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel71-power8-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel72-zseries-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "ubuntu1604-arm64-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel62-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel70-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel62-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "linux-64-amzn-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "debian81-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "debian71-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "ubuntu1404-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "macos-1012"}).Insert())
+	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "archlinux-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "archlinux-build"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "windows-64-vs2015-small"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "rhel71-power8-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "rhel72-zseries-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "ubuntu1604-arm64-small"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "rhel62-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "rhel70-small"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "rhel62-small"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "linux-64-amzn-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "debian81-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "debian71-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "ubuntu1404-test"}).Insert(s.ctx))
+	s.NoError((&distro.Distro{Id: "macos-1012"}).Insert(s.ctx))
 
 	s.repo = "hadjri/evergreen"
 	s.headRepo = "tychoish/evergreen"
@@ -200,9 +208,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NotNil(factory)
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, patchIntentJobName)
-}
-func (s *PatchIntentUnitsSuite) TearDownTest() {
-	s.cancel()
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
@@ -929,10 +934,12 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
+	s.NoError(evergreen.UpdateConfig(s.ctx, testutil.TestConfig()))
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"
 	headSHA := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+	baseSHA := "7a45fe6ea28f5969d885bc913e551b8b3c4f09d1"
 	org := github.Organization{
 		Login: &orgName,
 	}
@@ -942,6 +949,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	mg := github.MergeGroup{
 		HeadSHA: &headSHA,
 		HeadRef: &headRef,
+		BaseSHA: &baseSHA,
 	}
 	mge := github.MergeGroupEvent{
 		MergeGroup: &mg,
@@ -970,19 +978,19 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 
 	variants := []string{"ubuntu2004"}
 	tasks := []string{"bynntask"}
-	s.verifyPatchDoc(dbPatch, j.PatchID, headSHA, false, variants, tasks)
+	s.verifyPatchDoc(dbPatch, j.PatchID, baseSHA, false, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
 
 	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
 	s.verifyParserProjectDoc(dbPatch, 4)
 
-	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, headSHA, 1)
+	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, baseSHA, 1)
 
 	out := []event.Subscription{}
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Len(out, 2)
 	for _, subscription := range out {
-		s.Equal("github_check", subscription.Subscriber.Type)
+		s.Equal("github_merge", subscription.Subscriber.Type)
 	}
 }
 
@@ -993,7 +1001,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
 	s.Require().NoError(err)
@@ -1061,7 +1069,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
 	s.Require().NoError(err)
@@ -1240,7 +1248,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(evergreen.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
@@ -1271,7 +1279,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
 	}
-	s.Require().NoError(evergreen.SetServiceFlags(flags))
+	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
@@ -1327,6 +1335,10 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 		Project: s.project,
 		Githash: s.hash,
 		Alias:   evergreen.CommitQueueAlias,
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+		},
 		Patches: []patch.ModulePatch{
 			{
 				Githash: "revision",

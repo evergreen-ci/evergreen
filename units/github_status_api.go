@@ -160,12 +160,12 @@ func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref,
 	return job
 }
 
-func (j *githubStatusUpdateJob) preamble() error {
+func (j *githubStatusUpdateJob) preamble(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(j.env); err != nil {
+	if err := uiConfig.Get(ctx); err != nil {
 		return err
 	}
 	j.urlBase = uiConfig.Url
@@ -181,7 +181,7 @@ func (j *githubStatusUpdateJob) preamble() error {
 		}
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
 	}
@@ -255,10 +255,10 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	return &status, nil
 }
 
-func (j *githubStatusUpdateJob) Run(_ context.Context) {
+func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	j.AddError(j.preamble())
+	j.AddError(j.preamble(ctx))
 	if j.HasErrors() {
 		return
 	}

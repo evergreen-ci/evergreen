@@ -39,10 +39,13 @@ endif
 
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
+nativeGobin := $(shell cygpath -m $(gobin))
 goCache := $(shell cygpath -m $(goCache))
 goModCache := $(shell cygpath -m $(goModCache))
 lintCache := $(shell cygpath -m $(lintCache))
 export GOROOT := $(shell cygpath -m $(GOROOT))
+else
+nativeGobin := $(gobin)
 endif
 
 ifneq ($(goCache),$(GOCACHE))
@@ -120,7 +123,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
@@ -140,11 +143,21 @@ $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
 	$(gobin) build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
+
+# set-smoke-vars is necessary for the smoke test to run correctly. The AWS credentials are needed to run AWS-related
+# commands such as s3.put. The agent revision must be set to the current version because the agent will have to exit
+# under the expectation that it will be redeployed if it's outdated (and the smoke test cannot deploy agents).
 set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildDir)/set-var
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
+
+# set-smoke-git-config is necessary for the smoke test to submit a manual patch because the patch command uses git
+# metadata.
+set-smoke-git-config:
+	git config user.name username
+	git config user.email email
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
@@ -171,16 +184,16 @@ smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 smoke-test-host-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --mode host --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode host --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	./$< service deploy test-endpoints --check-build --mode host
 	pkill -f $<
 smoke-test-container-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --mode pod --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode pod --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	./$< service deploy test-endpoints --check-build --mode pod
 	pkill -f $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	./$< service deploy test-endpoints
 	pkill -f $<
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
@@ -305,7 +318,7 @@ html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
-# end convienence targets
+# end convenience targets
 
 
 # start test and coverage artifacts
@@ -352,6 +365,9 @@ $(buildDir)/output.%.test: .FORCE
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
 $(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+# test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
+$(buildDir)/output.agent-command.test: build .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./agent/command 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE

@@ -13,14 +13,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestHostMonitoringCheckJob(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -40,7 +43,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 		Provider:              evergreen.ProviderNameMock,
 		StartedBy:             evergreen.User,
 	}
-	require.NoError(h.Insert())
+	require.NoError(h.Insert(ctx))
 
 	mockInstance := cloud.MockInstance{
 		IsSSHReachable: true,
@@ -59,7 +62,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 
 	require.True(amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
-	dbHost, err := host.FindOneId(h.Id)
+	dbHost, err := host.FindOneId(ctx, h.Id)
 	require.NoError(err)
 	require.NotZero(t, dbHost)
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
@@ -68,6 +71,8 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 func TestHandleExternallyTerminatedHost(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	for _, status := range []cloud.CloudStatus{
 		cloud.StatusTerminated,
 		cloud.StatusNonExistent,
@@ -78,6 +83,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 				strings.Title(status.String())
 				tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 				defer tcancel()
+				tctx = testutil.TestSpan(tctx, t)
 
 				env := &mock.Environment{}
 				require.NoError(t, env.Configure(tctx))
@@ -112,7 +118,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 				}
 				cloud.GetMockProvider().Set(h.Id, mockInstance)
 
-				require.NoError(t, h.Insert())
+				require.NoError(t, h.Insert(ctx))
 
 				terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
 				require.NoError(t, err)
@@ -120,7 +126,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 
 				require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
-				dbHost, err := host.FindOneId(h.Id)
+				dbHost, err := host.FindOneId(ctx, h.Id)
 				require.NoError(t, err)
 				require.NotZero(t, dbHost)
 
@@ -137,7 +143,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		}
 		require.NoError(t, tsk.Insert())
 		h.RunningTask = tsk.Id
-		require.NoError(t, h.Insert())
+		require.NoError(t, h.Insert(ctx))
 
 		mockInstance := cloud.MockInstance{
 			Status: status,
@@ -150,7 +156,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 
 		require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
-		dbHost, err := host.FindOneId(h.Id)
+		dbHost, err := host.FindOneId(ctx, h.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 
@@ -170,7 +176,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		"NonexistentInstanceStatusTerminatesSpawnHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.UserHost = true
 			h.StartedBy = "user"
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
 			require.NoError(t, err)
@@ -178,7 +184,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -186,7 +192,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		"StoppedInstanceStatusErrorsWithSpawnHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.UserHost = true
 			h.StartedBy = "user"
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusStopped,
@@ -197,13 +203,13 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.Error(t, err)
 			assert.False(t, terminated)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"RunningInstanceNoops": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusRunning,
@@ -214,13 +220,13 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.False(t, terminated)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"UnexpectedInstanceStatusErrors": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusUnknown,
@@ -231,7 +237,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			assert.Error(t, err)
 			assert.False(t, terminated)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
@@ -240,6 +246,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
@@ -269,6 +276,10 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 }
 
 func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 	}()
@@ -371,12 +382,13 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			tctx := testutil.TestSpan(ctx, t)
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			require.NoError(t, testCase.t.Insert())
 
-			assert.NoError(t, handleTerminatedHostSpawnedByTask(testCase.h))
+			assert.NoError(t, handleTerminatedHostSpawnedByTask(tctx, testCase.h))
 
-			intent, err := host.FindOne(db.Query(nil))
+			intent, err := host.FindOne(tctx, bson.M{})
 			require.NoError(t, err)
 			if testCase.newIntentCreated {
 				require.NotNil(t, intent)

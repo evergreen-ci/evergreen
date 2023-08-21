@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Distro struct {
@@ -60,9 +62,9 @@ type DistroData struct {
 	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
 }
 
-// NewDistroData creates distro data from this distro. The provider settings are
+// DistroData creates distro data from this distro. The provider settings are
 // converted into maps instead of Birch BSON documents.
-func (d *Distro) NewDistroData() DistroData {
+func (d *Distro) DistroData() DistroData {
 	res := DistroData{ProviderSettingsMap: []map[string]interface{}{}}
 	res.Distro = *d
 	for _, each := range d.ProviderSettingsList {
@@ -534,11 +536,11 @@ func (d *Distro) GetPoolSize() int {
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
-func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+func ValidateContainerPoolDistros(ctx context.Context, s *evergreen.Settings) error {
 	catcher := grip.NewSimpleCatcher()
 
 	for _, pool := range s.ContainerPools.Pools {
-		d, err := FindOneId(pool.Distro)
+		d, err := FindOneId(ctx, pool.Distro)
 		if err != nil {
 			catcher.Add(fmt.Errorf("error finding distro for container pool '%s'", pool.Id))
 		}
@@ -750,8 +752,8 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	return resolved, nil
 }
 
-func (d *Distro) Add(creator *user.DBUser) error {
-	err := d.Insert()
+func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
+	err := d.Insert(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error inserting distro")
 	}
@@ -865,4 +867,12 @@ func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
 		evergreen.BuildRevision,
 		d.ExecutableSubPath(),
 	}, "/")
+}
+
+func AllDistros(ctx context.Context) ([]Distro, error) {
+	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}))
+}
+
+func AllDistroIDs(ctx context.Context) ([]Distro, error) {
+	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
 }

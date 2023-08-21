@@ -27,6 +27,25 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+func init() {
+	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
+}
+
+const defaultProjYml = `
+buildvariants:
+- name: mock_build_variant
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "echo hi"
+post:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+
 type AgentSuite struct {
 	suite.Suite
 	a                *Agent
@@ -59,9 +78,10 @@ func (s *AgentSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	const versionID = "v1"
-	const bvName = "some_build_variant"
+	const bvName = "mock_build_variant"
 	tsk := &task.Task{
 		Id:           "task_id",
+		DisplayName:  "some task",
 		BuildVariant: bvName,
 		Version:      versionID,
 	}
@@ -69,9 +89,15 @@ func (s *AgentSuite) SetupTest() {
 	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 
-	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, &model.Project{
+	project := &model.Project{
+		Tasks: []model.ProjectTask{
+			{
+				Name: tsk.DisplayName,
+			},
+		},
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
-	}, tsk, &model.ProjectRef{
+	}
+	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, project, tsk, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
@@ -83,6 +109,7 @@ func (s *AgentSuite) SetupTest() {
 			Secret: "task_secret",
 		},
 		taskConfig:    taskConfig,
+		project:       project,
 		taskModel:     tsk,
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
@@ -101,7 +128,7 @@ func (s *AgentSuite) SetupTest() {
 	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 	s.tc.taskDirectory = s.tmpDirName
-	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent")
+	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
 }
@@ -133,26 +160,17 @@ func (s *AgentSuite) TestNextTaskResponseShouldExit() {
 }
 
 func (s *AgentSuite) TestTaskWithoutSecret() {
-	s.mockCommunicator.NextTaskResponse = &apimodels.NextTaskResponse{
+	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
 		ShouldExit: false}
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-	defer cancel()
 
-	agentCtx, agentCancel := context.WithCancel(ctx)
-	errs := make(chan error, 1)
-	go func() {
-		errs <- s.a.loop(agentCtx)
-	}()
-	time.Sleep(1 * time.Second)
-	agentCancel()
-	select {
-	case err := <-errs:
-		s.NoError(err)
-	case <-ctx.Done():
-		s.FailNow(ctx.Err().Error())
-	}
+	ntr, err := s.a.processNextTask(s.ctx, nextTask, s.tc, false)
+
+	s.NoError(err)
+	s.Require().NotNil(ntr)
+	s.False(ntr.shouldExit)
+	s.True(ntr.noTaskToRun)
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {
@@ -173,8 +191,6 @@ func (s *AgentSuite) TestErrorGettingNextTask() {
 }
 
 func (s *AgentSuite) TestCanceledContext() {
-	s.a.opts.AgentSleepInterval = time.Millisecond
-	s.a.opts.MaxAgentSleepInterval = time.Millisecond
 	s.mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
@@ -194,6 +210,7 @@ func (s *AgentSuite) TestCanceledContext() {
 }
 
 func (s *AgentSuite) TestAgentEndTaskShouldExit() {
+	s.setupRunTask(defaultProjYml)
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{ShouldExit: true}
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
@@ -208,6 +225,10 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	case <-ctx.Done():
 		s.FailNow(ctx.Err().Error())
 	}
+
+	endDetail := s.mockCommunicator.EndTaskResult.Detail
+	s.Empty("", endDetail.Message, "the end message should not include any errors")
+	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
 }
 
 func (s *AgentSuite) TestNextTaskConflict() {
@@ -233,33 +254,49 @@ func (s *AgentSuite) TestNextTaskConflict() {
 	}
 }
 
-func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
+func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
 
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
+	for _, status := range evergreen.TaskCompletedStatuses {
+		resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+		s.Equal(&apimodels.EndTaskResponse{}, resp)
+		s.NoError(err)
+		s.NoError(s.tc.logger.Close())
+
+		s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "normal task completion should record the task status")
+		checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{"Running post-task commands"}, nil)
+	}
+}
+
+func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+
+	const status = evergreen.TaskSystemFailed
+	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
+	s.NoError(s.tc.logger.Close())
+
+	s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{"Running post-task commands"})
 }
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
 	s.Nil(resp)
 	s.Error(err)
 }
 
+const panicLog = "hit panic"
+
 func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
-	complete := make(chan string, 1)
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task that aborts before it even can run should system fail")
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
 func (s *AgentSuite) TestStartTaskIsPanicSafe() {
@@ -269,14 +306,15 @@ func (s *AgentSuite) TestStartTaskIsPanicSafe() {
 	tc := &taskContext{
 		logger: s.tc.logger,
 	}
-	s.a.startTask(s.ctx, tc, nil)
+	s.NotPanics(func() {
+		status := s.a.startTask(s.ctx, tc)
+		s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
+	})
 	s.NoError(tc.logger.Close())
-	s.NotEmpty(s.getPanicLogs())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
-func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
-	complete := make(chan string, 1)
-
+func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
@@ -284,17 +322,49 @@ func (s *AgentSuite) TestStartTaskResultChannelIsNonBlocking() {
 	// result in system failure. Also, startTask should not block if there is
 	// no consumer running in parallel to pick up the complete status.
 	s.mockCommunicator.StartTaskShouldFail = true
-	s.a.startTask(ctx, s.tc, complete)
+	status := s.a.startTask(ctx, s.tc)
+	s.Equal(evergreen.TaskSystemFailed, status, "task should system-fail when it cannot start the task")
 
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+}
 
-	select {
-	case <-ctx.Done():
-		s.Fail("test context cancelled before startTask returned: %s", ctx.Err())
-	case status := <-complete:
-		s.Equal(evergreen.TaskSystemFailed, status)
+func (s *AgentSuite) TestRunCommandsEventuallyReturnsForCommandThatIgnoresContext() {
+	const cmdSleepSecs = 500
+	s.setupRunTask(`
+pre:
+- command: command.mock
+  params:
+    sleep_seconds: 500
+`)
+
+	cmd := model.PluginCommandConf{
+		Command: "command.mock",
+		Params: map[string]interface{}{
+			"sleep_seconds": cmdSleepSecs,
+		},
 	}
+	cmds := []model.PluginCommandConf{cmd}
+
+	ctx, cancel := context.WithCancel(s.ctx)
+
+	const waitUntilAbort = 2 * time.Second
+	go func() {
+		// Cancel the long-running command after giving the command some time to
+		// start running.
+		time.Sleep(waitUntilAbort)
+		cancel()
+	}()
+
+	startAt := time.Now()
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmds, runCommandsOptions{}, "")
+	cmdDuration := time.Since(startAt)
+
+	s.Error(err)
+	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
+
+	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
+	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -311,7 +381,7 @@ func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
 	s.Require().Error(err)
 
 	s.True(utility.IsContextError(errors.Cause(err)))
-	s.Empty(s.getPanicLogs())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
 func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
@@ -325,38 +395,36 @@ func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
-	s.NoError(s.tc.logger.Close())
+	s.NotPanics(func() {
+		err := s.a.runCommandsInBlock(s.ctx, tc, cmds, runCommandsOptions{}, "")
+		s.Require().Error(err)
+	})
 
-	s.Require().Error(err)
-	s.NotEmpty(s.getPanicLogs())
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
 func (s *AgentSuite) TestPre() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 pre:
   - command: shell.exec
     params:
       script: "echo hi"
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running pre-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'pre'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'pre'",
 		"Finished running pre-task commands",
-	)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestPreFailsTask() {
@@ -373,13 +441,13 @@ pre:
 	s.tc.taskConfig.Project = p
 	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
 func (s *AgentSuite) TestPostFailsTask() {
 	projYml := `
 buildvariants:
-- name: some_build_variant
+- name: mock_build_variant
 
 post_error_fails_task: true
 post:
@@ -393,9 +461,9 @@ post:
 	s.tc.taskConfig.Project = p
 	err = s.a.runPostTaskCommands(s.ctx, s.tc)
 	s.Require().Error(err)
-	s.NotContains(err.Error(), "panic")
+	s.NotContains(err.Error(), panicLog)
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
 func (s *AgentSuite) TestPost() {
@@ -411,24 +479,188 @@ post:
 	s.tc.taskConfig.Project = p
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished running post-task commands",
-	)
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) setupRunTask(projYml string) {
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.project = p
+	s.mockCommunicator.GetProjectResponse = p
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "mock_build_variant",
+		DisplayName:  "this_is_a_task_name",
+		Version:      "my_version",
+	}
+	s.mockCommunicator.GetTaskResponse = t
+	s.tc.taskModel = t
+	s.tc.taskConfig.Task = t
+}
+
+func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+post_error_fails_task: true
+tasks: 
+- name: this_is_a_task_name
+  commands: 
+   - command: shell.exec
+     params:
+       script: "exit 0"
+post:
+- command: shell.exec
+  params:
+    script: "exit 1"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	}, nil)
+}
+
+func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+tasks: 
+- name: this_is_a_task_name
+  commands: 
+   - command: shell.exec
+     params:
+       script: "exit 0"
+post:
+- command: shell.exec
+  params:
+    script: "exit 1"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	}, nil)
+}
+
+func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+post_error_fails_task: true
+tasks: 
+- name: this_is_a_task_name
+  commands: 
+   - command: shell.exec
+     params:
+       script: "exit 0"
+post:
+- command: shell.exec
+  params:
+    script: "exit 0"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	}, nil)
+}
+
+func (s *AgentSuite) TestFailingMainAndPostShowsMainInEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+post_error_fails_task: true
+tasks: 
+- name: this_is_a_task_name
+  commands: 
+   - command: shell.exec
+     params:
+       script: "exit 1"
+post:
+ - command: shell.exec
+   params:
+     script: "exit 1"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	}, nil)
+}
+
+func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+post_error_fails_task: true
+tasks: 
+- name: this_is_a_task_name
+  commands: 
+   - command: shell.exec
+     params:
+       script: "exit 1"
+post:
+- command: shell.exec
+  params:
+    script: "exit 0"
+`
+	s.setupRunTask(projYml)
+	_, err := s.a.runTask(s.ctx, s.tc)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post' (test) to 2h0m0s.",
+	}, nil)
 }
 
 func (s *AgentSuite) TestPostContinuesOnError() {
 	projYml := `
 post:
-  - command: shell.exec
-    params:
-      script: "exit 1"
-  - command: shell.exec
-    params:
-      script: "exit 0"
+- command: shell.exec
+  params:
+    script: "exit 1"
+- command: shell.exec
+  params:
+    script: "exit 0"
 `
 	p := &model.Project{}
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
@@ -436,13 +668,12 @@ post:
 	s.tc.taskConfig.Project = p
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
 		"Running command 'shell.exec' (step 1 of 2) in block 'post'",
 		"Running command 'shell.exec' (step 2 of 2) in block 'post'",
 		"Finished running post-task commands",
-	)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestEndTaskResponse() {
@@ -451,57 +682,33 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.tc.setCurrentCommand(factory())
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
+	detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
+	detail = s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
+	detail = s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal("message", detail.Message)
 }
 
-func (s *AgentSuite) TestAbort() {
-	s.mockCommunicator.HeartbeatShouldAbort = true
-	s.a.opts.HeartbeatInterval = time.Nanosecond
-	// TODO (EVG-19590): fix this test by splitting runTask.
-	// This is a little weird, but it's necessary for now because the test loads
-	// mock data, which changes the task ID.
-	// Once this is fixed, we should uncomment the assertion below about
-	// post-task commands (an aborted task should not run post).
-	originalTaskID := s.tc.taskConfig.Task.Id
-	_, err := s.a.runTask(s.ctx, s.tc)
-	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "aborting a task should send a failed status")
-
-	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, originalTaskID,
-		"Heartbeat received signal to abort task",
-		"Task completed - FAILURE",
-		"Sending final task status: 'failed'",
-	)
-
-	// for _, msg := range s.mockCommunicator.GetMockMessages()[originalTaskID] {
-	//     s.NotContains(msg.Message, "Running post-task commands", "aborted task should not run post block")
-	// }
-}
-
 func (s *AgentSuite) TestOOMTracker() {
+	s.setupRunTask(defaultProjYml)
+	s.tc.project.OomTracker = true
 	pids := []int{1, 2, 3}
 	lines := []string{"line 1", "line 2", "line 3"}
 	s.tc.oomTracker = &mock.OOMTracker{
@@ -514,82 +721,6 @@ func (s *AgentSuite) TestOOMTracker() {
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
-}
-
-func (s *AgentSuite) TestWaitCompleteSuccess() {
-	heartbeat := make(chan string, 1)
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskSucceeded:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskSucceeded, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitCompleteFailure() {
-	heartbeat := make(chan string, 1)
-	complete := make(chan string, 1)
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case complete <- evergreen.TaskFailed:
-		}
-	}()
-	s.tc.project = &model.Project{}
-	status := s.a.wait(s.ctx, s.ctx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestWaitIdleTimeout() {
-	var err error
-	s.tc = &taskContext{
-		task: client.TaskData{
-			ID:     "task_id",
-			Secret: "task_secret",
-		},
-		taskConfig: &internal.TaskConfig{
-			BuildVariant: &model.BuildVariant{
-				Name: "buildvariant_id",
-			},
-			Task: &task.Task{
-				Id: "task_id",
-			},
-			Project: &model.Project{
-				Timeout: &model.YAMLCommandSet{
-					SingleCommand: &model.PluginCommandConf{
-						Command: "shell.exec",
-						Params: map[string]interface{}{
-							"script": "echo hi",
-						},
-					},
-				},
-			},
-		},
-		oomTracker: &mock.OOMTracker{},
-		project:    &model.Project{},
-	}
-
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
-	s.NoError(err)
-	factory, ok := command.GetCommandFactory("setup.initial")
-	s.True(ok)
-	s.tc.setCurrentCommand(factory())
-
-	heartbeat := make(chan string, 1)
-	complete := make(chan string, 1)
-	var idleTimeoutCtx context.Context
-	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(s.ctx)
-	idleTimeoutCancel()
-
-	status := s.a.wait(s.ctx, idleTimeoutCtx, s.tc, heartbeat, complete)
-	s.Equal(evergreen.TaskFailed, status)
-	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentSuite) TestPrepareNextTask() {
@@ -623,7 +754,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc.ranSetupGroup = false
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
 	s.False(tc.ranSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be false")
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("", tc.taskDirectory)
@@ -672,21 +803,18 @@ task_groups:
     params:
       script: "echo hi"
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
+
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running pre-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'setup_group'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_group'",
 		"Finished running pre-task commands",
-	)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestSetupGroupTimeout() {
@@ -716,7 +844,6 @@ task_groups:
 func (s *AgentSuite) TestSetupGroupFails() {
 	const taskGroup = "task_group_name"
 	s.tc.taskGroup = taskGroup
-	s.tc.ranSetupGroup = false
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -732,10 +859,74 @@ task_groups:
 	s.tc.taskConfig.Project = p
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 
-	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc))
+	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc), "setup group command error should fail task")
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, "running task setup group")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running setup group for task group 'task_group_name'",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestSetupGroupTimeoutFailsTask() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_group_can_fail_task: true
+  setup_group_timeout_secs: 1
+  setup_group:
+  - command: shell.exec
+    params:
+      script: sleep 100
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	startAt := time.Now()
+	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc), "setup group timeout should fail task")
+
+	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
+	s.NoError(s.tc.logger.Close())
+	s.True(s.tc.hadTimedOut(), "should have hit task timeout")
+	s.Equal(setupGroupTimeout, s.tc.getTimeoutType())
+	s.Equal(time.Second, s.tc.getTimeoutDuration())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running setup group for task group 'task_group_name'",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestSetupGroupTimeoutDoesNotFailTask() {
+	const taskGroup = "task_group_name"
+	s.tc.taskGroup = taskGroup
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_group_timeout_secs: 1
+  setup_group:
+  - command: shell.exec
+    params:
+      script: sleep 100
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	startAt := time.Now()
+	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc), "setup group timeout should not fail task")
+
+	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
+	s.False(s.tc.hadTimedOut(), "should not have hit task timeout")
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running setup group for task group 'task_group_name'",
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestTeardownTaskFails() {
@@ -750,16 +941,14 @@ task_groups:
     params:
       script: "echo hi"
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, "running post-task commands")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running post-task commands",
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestSetupTask() {
@@ -780,13 +969,12 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running pre-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'setup_task'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_task'",
 		"Finished running pre-task commands",
-	)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestTeardownTask() {
@@ -806,12 +994,11 @@ task_groups:
 	s.tc.taskConfig.Project = p
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Finished running post-task commands",
-	)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestTeardownGroup() {
@@ -832,10 +1019,10 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = s.tc.taskGroup
 	s.a.runPostGroupCommands(s.ctx, s.tc)
 	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
-	)
+	}, nil)
 }
 
 func (s *AgentSuite) TestTaskGroupTimeout() {
@@ -860,13 +1047,12 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id,
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task-timeout commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Finished running timeout commands",
-	)
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestTimeoutDoesNotWaitForCommandsToFinish() {
@@ -882,7 +1068,7 @@ timeout:
     shell: bash
     script: |
       echo "hi"
-      sleep 5
+      sleep 20
       echo "bye"
 `
 	p := &model.Project{}
@@ -890,12 +1076,11 @@ timeout:
 	s.NoError(err)
 	p.CallbackTimeout = 2
 	s.tc.taskConfig.Project = p
-	now := time.Now()
+	startAt := time.Now()
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
-	then := time.Now()
-	s.True(then.Sub(now) < 4*time.Second)
+	s.WithinDuration(time.Now(), startAt, 20*time.Second, "timeout command should have stopped before it finished running due to callback timeout")
 	s.NoError(s.tc.logger.Close())
-	s.Empty(s.getPanicLogs())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
 func (s *AgentSuite) TestFetchProjectConfig() {
@@ -914,40 +1099,135 @@ func (s *AgentSuite) TestFetchProjectConfig() {
 	s.True(s.tc.privateVars["some_private_var"], "should include mock communicator private variables")
 }
 
-// getPanicLogs returns any panic-related mock logging.
-func (s *AgentSuite) getPanicLogs() []string {
-	var panicLogs []string
-	msgsByTask := s.mockCommunicator.GetMockMessages()
-	for _, msgs := range msgsByTask {
-		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "panic") {
-				panicLogs = append(panicLogs, msg.Message)
-			}
-		}
-	}
-	return panicLogs
+func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
+	s.mockCommunicator.HeartbeatShouldAbort = true
+	s.a.opts.HeartbeatInterval = 500 * time.Millisecond
+
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+tasks:
+- name: this_is_a_task_name
+  commands:
+  - command: shell.exec
+    params:
+      script: sleep 10
+
+post:
+- command: shell.exec
+  params:
+    script: sleep 1
+
+timeout:
+- commands: shell.exec
+  params:
+    script: exit 0
+`
+	s.setupRunTask(projYml)
+	start := time.Now()
+	_, err := s.a.runTask(s.ctx, s.tc)
+	s.NoError(err)
+
+	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
+	// The exact count is not of particular importance, we're only interested in
+	// knowing that the heartbeat is still going despite receiving an abort.
+	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 1, "heartbeat should be still running for teardown_task block even when initial abort signal is received")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Heartbeat received signal to abort task.",
+		"Task completed - FAILURE",
+		"Running post-task commands",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+	}, []string{"Running task-timeout commands"})
 }
 
-func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind ...string) {
-	logFound := make(map[string]bool)
+func (s *AgentSuite) TestAbortExitsMainAndRunsTeardownTask() {
+	s.mockCommunicator.HeartbeatShouldAbort = true
+	s.a.opts.HeartbeatInterval = 500 * time.Millisecond
+
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+tasks:
+- name: this_is_a_task_name
+  commands:
+  - command: shell.exec
+    params:
+      script: sleep 5
+
+task_groups:
+- name: some_task_group
+  tasks:
+  - this_is_a_task_name
+  teardown_task:
+  - command: shell.exec
+    params:
+      script: sleep 1
+
+timeout:
+- commands: shell.exec
+  params:
+    script: exit 0
+`
+	s.setupRunTask(projYml)
+	s.tc.taskGroup = "some_task_group"
+	start := time.Now()
+	_, err := s.a.runTask(s.ctx, s.tc)
+	s.NoError(err)
+
+	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that aborts during main block should fail")
+	// The exact count is not of particular importance, we're only interested in
+	// knowing that the heartbeat is still going despite receiving an abort.
+	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 1, "heartbeat should be still running for teardown_task block even when initial abort signal is received")
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Heartbeat received signal to abort task.",
+		"Task completed - FAILURE",
+		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+	}, []string{"Running task-timeout commands"})
+}
+
+// checkMockLogs checks the mock communicator's received task logs. Note that
+// callers should flush the task logs before checking them to ensure that they
+// are up-to-date.
+func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []string, logsToNotFind []string) {
+	expectedLog := make(map[string]bool)
 	for _, log := range logsToFind {
-		logFound[log] = false
+		expectedLog[log] = false
 	}
+	unexpectedLog := make(map[string]bool)
+	for _, log := range logsToNotFind {
+		unexpectedLog[log] = false
+	}
+
 	var allLogs []string
 	for _, msg := range mc.GetMockMessages()[taskID] {
-		for log := range logFound {
+		for log := range expectedLog {
 			if strings.Contains(msg.Message, log) {
-				logFound[log] = true
+				expectedLog[log] = true
 			}
-			allLogs = append(allLogs, msg.Message)
 		}
+		for log := range unexpectedLog {
+			if strings.Contains(msg.Message, log) {
+				unexpectedLog[log] = true
+			}
+		}
+		allLogs = append(allLogs, msg.Message)
 	}
 	var displayLogs bool
-	for log, found := range logFound {
-		if !assert.True(t, found, "expected log not found: %s", log) {
+	for log, found := range expectedLog {
+		if !assert.True(t, found, "expected log, but was not found: %s", log) {
 			displayLogs = true
 		}
 	}
+	for log, found := range unexpectedLog {
+		if !assert.False(t, found, "expected log to NOT be found, but it was found: %s", log) {
+			displayLogs = true
+		}
+	}
+
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}

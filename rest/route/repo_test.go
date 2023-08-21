@@ -148,7 +148,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.NoError(t, independentAlias.Upsert())
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "the amazing Annie"})
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{repoRef.Owner}
 	h := repoIDPatchHandler{
@@ -309,10 +309,10 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.Contains(t, allProjectsScope.Resources, "branch1")
 	assert.Contains(t, allProjectsScope.Resources, "branch2")
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{branchProject.Owner}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 	attachProjectHandler := attachProjectToRepoHandler{}
 	// Test that turning on repo settings doesn't impact existing restricted values
 	req, _ := http.NewRequest(http.MethodPost, "rest/v2/projects/branch2/attach_to_repo", nil)

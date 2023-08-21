@@ -55,11 +55,11 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 
 // RequestS3Creds creates a JIRA ticket that requests S3 credentials to be added for the specified project.
 // TODO PM-3212: Remove the function after project completion.
-func RequestS3Creds(projectIdentifier, userEmail string) error {
+func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) error {
 	if projectIdentifier == "" {
 		return errors.New("project identifier cannot be empty")
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting evergreen settings")
 	}
@@ -165,7 +165,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 }
 
 func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
-	smClient, err := cloud.MakeSecretsManagerClient(settings)
+	smClient, err := cloud.MakeSecretsManagerClient(ctx, settings)
 	if err != nil {
 		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
 	}
@@ -214,7 +214,7 @@ func VerifyUniqueProject(name string) error {
 }
 
 // GetProjectTasksWithOptions finds the previous tasks that have run on a project that adhere to the passed in options.
-func GetProjectTasksWithOptions(projectName string, taskName string, opts model.GetProjectTasksOpts) ([]restModel.APITask, error) {
+func GetProjectTasksWithOptions(ctx context.Context, projectName string, taskName string, opts model.GetProjectTasksOpts) ([]restModel.APITask, error) {
 	tasks, err := model.GetTasksWithOptions(projectName, taskName, opts)
 	if err != nil {
 		return nil, err
@@ -222,7 +222,7 @@ func GetProjectTasksWithOptions(projectName string, taskName string, opts model.
 	res := []restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+		if err = apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 		}); err != nil {

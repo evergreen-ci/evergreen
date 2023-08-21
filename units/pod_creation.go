@@ -94,14 +94,14 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			})
 		}
 	}()
-	if err := j.populateIfUnset(); err != nil {
+	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
 
 	settings := *j.env.Settings()
 	// Use the latest service flags instead of those cached in the environment.
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
 		return
@@ -155,7 +155,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *podCreationJob) populateIfUnset() error {
+func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -178,7 +178,7 @@ func (j *podCreationJob) populateIfUnset() error {
 	settings := j.env.Settings()
 
 	if j.ecsClient == nil {
-		client, err := cloud.MakeECSClient(settings)
+		client, err := cloud.MakeECSClient(ctx, settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}

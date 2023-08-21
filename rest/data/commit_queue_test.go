@@ -109,12 +109,18 @@ func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 }
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveNonexistentItem() {
-	found, err := FindAndRemoveCommitQueueItem("mci", "not_here", "user", "reason")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	found, err := FindAndRemoveCommitQueueItem(ctx, "mci", "not_here", "user", "reason")
 	s.Error(err)
 	s.Nil(found)
 }
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveUnfinalizedItem() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	const project = "mci"
 
 	for i := 0; i < 3; i++ {
@@ -134,7 +140,7 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveUnfinalizedItem() {
 		s.Require().Equal(i, pos)
 	}
 
-	found, err := FindAndRemoveCommitQueueItem(project, "0", "user", "reason")
+	found, err := FindAndRemoveCommitQueueItem(ctx, project, "0", "user", "reason")
 	s.NoError(err)
 	s.NotNil(found)
 	cq, err := FindCommitQueueForProject(project)
@@ -145,6 +151,9 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveUnfinalizedItem() {
 }
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveFinalizedItem() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	const project = "mci"
 
 	for i := 0; i < 3; i++ {
@@ -186,7 +195,7 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveFinalizedItem() {
 		s.Require().Equal(i, pos)
 	}
 
-	found, err := FindAndRemoveCommitQueueItem(project, "0", "user", "reason")
+	found, err := FindAndRemoveCommitQueueItem(ctx, project, "0", "user", "reason")
 	s.NoError(err)
 	s.NotNil(found)
 	cq, err := FindCommitQueueForProject(project)
@@ -357,6 +366,9 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 }
 
 func TestConcludeMerge(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(commitqueue.Collection))
 	projectID := "evergreen"
 	itemID := bson.NewObjectId()
@@ -371,7 +383,7 @@ func TestConcludeMerge(t *testing.T) {
 	}
 	require.NoError(t, commitqueue.InsertQueue(queue))
 
-	assert.NoError(t, ConcludeMerge(itemID.Hex(), "foo"))
+	assert.NoError(t, ConcludeMerge(ctx, itemID.Hex(), "foo"))
 
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)

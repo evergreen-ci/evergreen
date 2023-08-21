@@ -101,6 +101,25 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	patchDoc := j.intent.NewPatch()
 
+	// set owner and repo for child patches
+	if j.IntentType == patch.TriggerIntentType || j.IntentType == patch.CliIntentType {
+		if patchDoc.Project == "" {
+			j.AddError(errors.New("cannot search for an empty project"))
+			return
+		}
+		p, err := model.FindBranchProjectRef(patchDoc.Project)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
+			return
+		}
+		if p == nil {
+			j.AddError(errors.Errorf("project '%s' not found", patchDoc.Project))
+			return
+		}
+		patchDoc.GithubPatchData.BaseOwner = p.Owner
+		patchDoc.GithubPatchData.BaseRepo = p.Repo
+	}
+
 	if err = j.finishPatch(ctx, patchDoc); err != nil {
 		if j.IntentType == patch.GithubIntentType || j.IntentType == patch.GithubMergeIntentType {
 			if j.gitHubError == "" {
@@ -152,18 +171,17 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			"source":             "patch intents",
 		}))
 
-		j.AddError(model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
+		j.AddError(model.AbortPatchesWithGithubPatchData(ctx, patchDoc.CreateTime,
 			false, patchDoc.Id.Hex(), patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber))
 	}
 }
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
-	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
+	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token")
 	}
-
 	catcher := grip.NewBasicCatcher()
 
 	canFinalize := true
@@ -171,9 +189,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	var patchedParserProject *model.ParserProject
 	switch j.IntentType {
 	case patch.CliIntentType:
-		catcher.Wrap(j.buildCliPatchDoc(ctx, patchDoc, githubOauthToken), "building CLI patch document")
+		catcher.Wrap(j.buildCliPatchDoc(ctx, patchDoc, token), "building CLI patch document")
 	case patch.GithubIntentType:
-		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, githubOauthToken)
+		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, token)
 		if err != nil {
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
@@ -181,7 +199,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
-		if err := j.buildGithubMergeDoc(ctx, patchDoc, githubOauthToken); err != nil {
+		if err := j.buildGithubMergeDoc(ctx, patchDoc); err != nil {
 			catcher.Wrap(err, "building GitHub merge queue patch document")
 		}
 	case patch.TriggerIntentType:
@@ -252,23 +270,23 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// Get and validate patched config
 	var patchedProjectConfig string
 	if patchedParserProject != nil {
-		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, j.env.Settings(), patchDoc, githubOauthToken)
+		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, j.env.Settings(), patchDoc, token)
 		if err != nil {
 			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project config")
 		}
 	} else {
 		var patchConfig *model.PatchConfig
-		patchedProject, patchConfig, err = model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubOauthToken)
+		patchedProject, patchConfig, err = model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, token)
 		if err != nil {
 			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project")
 		}
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	if errs := validator.CheckProjectErrors(patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectErrors(ctx, patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckProjectSettings(j.env.Settings(), patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
 	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig); len(errs.AtLevel(validator.Error)) != 0 {
@@ -327,7 +345,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.IsCommitQueuePatch() {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch())
+		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData.HeadSHA)
 	}
 
 	if patchDoc.IsBackport() {
@@ -376,7 +394,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		catcher.Wrap(j.createGitHubSubscriptions(patchDoc), "creating GitHub PR patch subscriptions")
 	}
 	if patchDoc.IsGithubMergePatch() {
-		catcher.Wrap(j.createGitHubMergeSubscription(patchDoc), "creating GitHub PR patch subscriptions")
+		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub merge queue subscriptions")
 	}
 	if patchDoc.IsBackport() {
 		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
@@ -398,7 +416,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
+		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), token); err != nil {
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
@@ -481,18 +499,16 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
 }
 
 // createGithubMergeSubscription creates a subscription on a commit for the GitHub merge queue.
-func (j *patchIntentProcessor) createGitHubMergeSubscription(p *patch.Patch) error {
+func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context, p *patch.Patch) error {
 	catcher := grip.NewBasicCatcher()
-	ghSub := event.NewGithubCheckAPISubscriber(event.GithubCheckSubscriber{
+	ghSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
 		Owner: p.GithubMergeData.Org,
 		Repo:  p.GithubMergeData.Repo,
 		Ref:   p.GithubMergeData.HeadSHA,
 	})
 
 	patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-	if err := patchSub.Upsert(); err != nil {
-		catcher.Wrap(err, "inserting patch subscription for GitHub merge queue")
-	}
+	catcher.Wrap(patchSub.Upsert(), "inserting patch subscription for GitHub merge queue")
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(buildSub.Upsert(), "inserting build subscription for GitHub merge queue")
 	input := thirdparty.SendGithubStatusInput{
@@ -504,7 +520,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(p *patch.Patch) err
 		Caller:    j.Name,
 		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(input, j.env.Settings().Ui.Url)
+	err := thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url)
 	if err != nil {
 		catcher.Wrap(err, "failed to send patch status to GitHub")
 	}
@@ -524,6 +540,9 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, reusePatchId, failedOnly)
 		if err != nil {
 			return err
+		}
+		if j.IntentType == patch.GithubIntentType {
+			patchDoc.GithubPatchData.RepeatPatchIdNextPatch = reusePatchId
 		}
 	}
 
@@ -604,6 +623,8 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		if err = setTasksToPreviousFailed(patchDoc, reusePatch, project); err != nil {
 			return "", errors.Wrap(err, "settings tasks to previous failed")
 		}
+	} else if j.IntentType == patch.GithubIntentType {
+		patchDoc.Tasks = reusePatch.Tasks
 	} else {
 		// Only add activated tasks from previous patch
 		query := db.Query(bson.M{
@@ -840,7 +861,7 @@ func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projec
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "checking if GitHub PR testing is disabled")
 	}
@@ -933,7 +954,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",
@@ -1147,13 +1168,27 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
-	update := NewGithubStatusUpdateJobForProcessingError(
-		evergreenContext,
-		patchDoc.GithubPatchData.BaseOwner,
-		patchDoc.GithubPatchData.BaseRepo,
-		patchDoc.GithubPatchData.HeadHash,
-		j.gitHubError,
-	)
+	var update amboy.Job
+	if j.IntentType == patch.GithubIntentType {
+		update = NewGithubStatusUpdateJobForProcessingError(
+			evergreenContext,
+			patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo,
+			patchDoc.GithubPatchData.HeadHash,
+			j.gitHubError,
+		)
+	} else if j.IntentType == patch.GithubMergeIntentType {
+		update = NewGithubStatusUpdateJobForProcessingError(
+			evergreenContext,
+			patchDoc.GithubMergeData.Org,
+			patchDoc.GithubMergeData.Repo,
+			patchDoc.GithubMergeData.HeadSHA,
+			j.gitHubError,
+		)
+	} else {
+		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
+		return
+	}
 	update.Run(ctx)
 
 	j.AddError(update.Error())

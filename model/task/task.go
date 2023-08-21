@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -81,18 +82,18 @@ type Task struct {
 	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
-	Version           string              `bson:"version" json:"version,omitempty"`
-	Project           string              `bson:"branch" json:"branch,omitempty"`
-	Revision          string              `bson:"gitspec" json:"gitspec"`
-	Priority          int64               `bson:"priority" json:"priority"`
-	TaskGroup         string              `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	ResultsService    string              `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-	ResultsFailed     bool                `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	Version           string `bson:"version" json:"version,omitempty"`
+	Project           string `bson:"branch" json:"branch,omitempty"`
+	Revision          string `bson:"gitspec" json:"gitspec"`
+	Priority          int64  `bson:"priority" json:"priority"`
+	TaskGroup         string `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	LogServiceVersion *int   `bson:"log_service_version" json:"log_service_version"`
+	ResultsService    string `bson:"results_service,omitempty" json:"results_service,omitempty"`
+	HasCedarResults   bool   `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	ResultsFailed     bool   `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
+	MustHaveResults   bool   `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -180,7 +181,13 @@ type Task struct {
 	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
 	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
 
-	// Status represents the various stages the task could be in
+	// Status represents the various stages the task could be in. Note that this
+	// task status is distinct from the way a task status is displayed in the
+	// UI. For example, a task that has failed will have a status of
+	// evergreen.TaskFailed regardless of the specific cause of failure.
+	// However, in the UI, the displayed status supports more granular failure
+	// type such as system failed and setup failed by checking this status and
+	// the task status details.
 	Status    string                  `bson:"status" json:"status"`
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
@@ -227,7 +234,9 @@ type Task struct {
 	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
-	// scheduler will use to prioritize this task.
+	// scheduler will use to prioritize this task. This will not be set for
+	// tasks where the generate.tasks command runs outside of the main task
+	// block (e.g. pre, timeout).
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
 	// GeneratedTasks indicates that the task has already generated other tasks. This fields
 	// allows us to noop future requests, since a task should only generate others once.
@@ -251,6 +260,13 @@ type Task struct {
 
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
+
+	// IsEssentialToSucceed indicates that this task must finish in order for
+	// its build and version to be considered successful. For example, tasks
+	// selected by the GitHub PR alias must succeed for the GitHub PR requester
+	// before its build or version can be reported as successful, but tasks
+	// manually scheduled by the user afterwards are not required.
+	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -420,7 +436,7 @@ func (t *Task) IsDispatchable() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return t.IsHostTask() && t.Status == evergreen.TaskUndispatched && t.Activated
+	return t.IsHostTask() && t.WillRun()
 }
 
 // IsHostTask returns true if it's a task that runs on hosts.
@@ -466,8 +482,15 @@ func (t *Task) IsContainerDispatchable() bool {
 	return t.isContainerScheduled()
 }
 
-// isContainerTaskScheduled returns whether the task is in a state
-// where it should eventually dispatch to run on a container.
+// isContainerTaskScheduled returns whether the task is in a state where it
+// should eventually dispatch to run on a container and is logically equivalent
+// to IsContainerTaskScheduledQuery. This encompasses two potential states:
+//  1. A container is not yet allocated to the task but it's ready to be
+//     allocated one. Note that this is a subset of all container tasks that
+//     could eventually run (i.e. evergreen.TaskWillRun from
+//     (Task).GetDisplayStatus), because a container task is not scheduled until
+//     all of its dependencies have been met.
+//  2. The container is allocated but the agent has not picked up the task yet.
 func (t *Task) isContainerScheduled() bool {
 	if !t.IsContainerTask() {
 		return false
@@ -553,6 +576,14 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 func (t *Task) AddDependency(d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
+		if d.TaskId == t.Id {
+			grip.Error(message.Fields{
+				"message": "task is attempting to add a dependency on itself, skipping this dependency",
+				"task_id": t.Id,
+				"stack":   string(debug.Stack()),
+			})
+			return nil
+		}
 		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
@@ -579,7 +610,10 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 	for i := len(t.DependsOn) - 1; i >= 0; i-- {
 		d := t.DependsOn[i]
 		if d.TaskId == dependencyId {
-			t.DependsOn = append(t.DependsOn[:i], t.DependsOn[i+1:]...)
+			var dependsOn []Dependency
+			dependsOn = append(dependsOn, t.DependsOn[:i]...)
+			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
+			t.DependsOn = dependsOn
 			found = true
 			break
 		}
@@ -1143,13 +1177,13 @@ func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 	return errors.Wrap(err, "setting generate.tasks error")
 }
 
+// GenerateNotRun returns tasks that have requested to generate tasks.
 func GenerateNotRun() ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(db.Query(bson.M{
 		StatusKey:                evergreen.TaskStarted,                              // task is running
 		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GenerateTaskKey:          true,                                               // task contains generate.tasks command
-		GeneratedTasksKey:        bson.M{"$exists": false},                           // generate.tasks has not yet run
+		GeneratedTasksKey:        bson.M{"$ne": true},                                // generate.tasks has not yet run
 		GeneratedJSONAsStringKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
 }
@@ -1230,10 +1264,10 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
-func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
+func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (int, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return 0, errors.WithStack(err)
 	}
 
@@ -1246,7 +1280,7 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 		},
 	}
 
-	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_depends_on.unattainable_1'
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
 	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
@@ -1328,7 +1362,6 @@ func (t *Task) MarkFailed() error {
 }
 
 func (t *Task) MarkSystemFailed(description string) error {
-	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
 	t.Details = GetSystemFailureDetails(description)
 
@@ -1352,25 +1385,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 		"execution_platform": t.ExecutionPlatform,
 	})
 
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
-
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey:             evergreen.TaskFailed,
-				FinishTimeKey:         t.FinishTime,
-				DetailsKey:            t.Details,
-				ContainerAllocatedKey: false,
-			},
-			"$unset": bson.M{
-				ContainerAllocatedTimeKey: 1,
-			},
-		},
-	)
+	return t.MarkEnd(t.FinishTime, &t.Details)
 }
 
 // GetSystemFailureDetails returns a task's end details based on an input description.
@@ -1428,6 +1443,40 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
+// SetLogServiceVersion sets the log service version used to write logs for the
+// task.
+func (t *Task) SetLogServiceVersion(ctx context.Context, env evergreen.Environment, version int) error {
+	if t.DisplayOnly {
+		return errors.New("cannot set log service version on a display task")
+	}
+	if t.LogServiceVersion != nil {
+		return errors.New("log service version already set")
+	}
+
+	res, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, []bson.M{
+		{
+			"$set": bson.M{LogServiceVersionKey: bson.M{
+				"$ifNull": bson.A{
+					"$" + LogServiceVersionKey,
+					version,
+				}},
+			},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "setting the log service version")
+	}
+	if res.MatchedCount == 0 {
+		return errors.New("programmatic error: task not found")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("log service version already set")
+	}
+	t.LogServiceVersion = utility.ToIntPtr(version)
+
+	return nil
+}
+
 // SetResultsInfo sets the task's test results info.
 //
 // Note that if failedResults is false, ResultsFailed is not set. This is
@@ -1454,7 +1503,7 @@ func (t *Task) SetResultsInfo(service string, failedResults bool) error {
 		set[ResultsFailedKey] = true
 	}
 
-	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id}, bson.M{"$set": set}))
+	return errors.WithStack(UpdateOne(ById(t.Id), bson.M{"$set": set}))
 }
 
 // HasResults returns whether the task has test results or not.
@@ -1499,8 +1548,14 @@ func (t *Task) ActivateTask(caller string) error {
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		// Activating an activated task is a noop.
+		if t.Activated {
+			continue
+		}
+		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
 	}
 	err := activateTasks(taskIDs, caller, activationTime)
@@ -1508,7 +1563,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		return errors.Wrap(err, "activating tasks")
 	}
 	logs := []event.EventLogEntry{}
-	for _, t := range tasks {
+	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
 	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
@@ -1530,7 +1585,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		StatusKey: evergreen.TaskUndispatched,
 	})
 
-	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey))
+	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}
@@ -1626,14 +1681,22 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	}
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
-		bson.M{"$set": bson.M{
-			ActivatedKey:                true,
-			DeactivatedForDependencyKey: false,
-			ActivatedByKey:              caller,
-			ActivatedTimeKey:            time.Now(),
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-		}},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:                true,
+					DeactivatedForDependencyKey: false,
+					ActivatedByKey:              caller,
+					ActivatedTimeKey:            time.Now(),
+					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+					UnattainableDependencyKey: bson.M{"$cond": bson.M{
+						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+						"else": false,
+					}},
+				},
+			},
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating activation for dependencies")
@@ -1938,8 +2001,8 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
-func (t *Task) Reset() error {
-	return UpdateOne(
+func (t *Task) Reset(ctx context.Context) error {
+	return UpdateOneContext(ctx,
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -1974,7 +2037,7 @@ func ResetTasks(tasks []Task) error {
 	return nil
 }
 
-func resetTaskUpdate(t *Task) bson.M {
+func resetTaskUpdate(t *Task) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
@@ -1992,6 +2055,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
+		t.LogServiceVersion = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasCedarResults = false
@@ -2003,36 +2067,45 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
 	}
-	update := bson.M{
-		"$set": bson.M{
-			ActivatedKey:                   true,
-			ActivatedTimeKey:               now,
-			SecretKey:                      newSecret,
-			StatusKey:                      evergreen.TaskUndispatched,
-			DispatchTimeKey:                utility.ZeroTime,
-			StartTimeKey:                   utility.ZeroTime,
-			ScheduledTimeKey:               utility.ZeroTime,
-			FinishTimeKey:                  utility.ZeroTime,
-			DependenciesMetTimeKey:         utility.ZeroTime,
-			TimeTakenKey:                   0,
-			LastHeartbeatKey:               utility.ZeroTime,
-			ContainerAllocationAttemptsKey: 0,
-			// TODO: (EVG-20334) Remove once old tasks without the UnattainableDependency field have TTLed.
-			UnattainableDependencyKey: bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+	update := []bson.M{
+		{
+			"$set": bson.M{
+				ActivatedKey:                   true,
+				ActivatedTimeKey:               now,
+				SecretKey:                      newSecret,
+				StatusKey:                      evergreen.TaskUndispatched,
+				DispatchTimeKey:                utility.ZeroTime,
+				StartTimeKey:                   utility.ZeroTime,
+				ScheduledTimeKey:               utility.ZeroTime,
+				FinishTimeKey:                  utility.ZeroTime,
+				DependenciesMetTimeKey:         utility.ZeroTime,
+				TimeTakenKey:                   0,
+				LastHeartbeatKey:               utility.ZeroTime,
+				ContainerAllocationAttemptsKey: 0,
+				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
+				UnattainableDependencyKey: bson.M{"$cond": bson.M{
+					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"else": false,
+				}},
+			},
 		},
-		"$unset": bson.M{
-			DetailsKey:                 "",
-			ResultsServiceKey:          "",
-			ResultsFailedKey:           "",
-			HasCedarResultsKey:         "",
-			ResetWhenFinishedKey:       "",
-			ResetFailedWhenFinishedKey: "",
-			AgentVersionKey:            "",
-			HostIdKey:                  "",
-			PodIDKey:                   "",
-			HostCreateDetailsKey:       "",
-			OverrideDependenciesKey:    "",
-			CanResetKey:                "",
+		{
+			"$unset": []string{
+				DetailsKey,
+				LogServiceVersionKey,
+				ResultsServiceKey,
+				ResultsFailedKey,
+				HasCedarResultsKey,
+				ResetWhenFinishedKey,
+				ResetFailedWhenFinishedKey,
+				AgentVersionKey,
+				HostIdKey,
+				PodIDKey,
+				HostCreateDetailsKey,
+				OverrideDependenciesKey,
+				CanResetKey,
+			},
 		},
 	}
 	return update
@@ -2091,7 +2164,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey)
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
@@ -2203,7 +2276,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2215,7 +2288,7 @@ func AbortBuildTasks(buildId string, reason AbortInfo) error {
 // abortable state
 func AbortVersionTasks(versionId string, reason AbortInfo) error {
 	q := ByVersionWithChildTasks(versionId)
-	q[StatusKey] = bson.M{"$in": evergreen.TaskAbortableStatuses}
+	q[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
@@ -2275,12 +2348,6 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-		grip.Debug(message.Fields{
-			"message":   "task is in incomplete state, skipping archiving",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-			"func":      "Archive",
-		})
 		return nil
 	}
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -2328,12 +2395,6 @@ func ArchiveMany(tasks []Task) error {
 
 	for _, t := range tasks {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-			grip.Debug(message.Fields{
-				"message":   "task is in incomplete state, skipping archiving",
-				"task_id":   t.Id,
-				"execution": t.Execution,
-				"func":      "ArchiveMany",
-			})
 			continue
 		}
 		allTaskIds = append(allTaskIds, t.Id)
@@ -2626,22 +2687,22 @@ func (t *Task) SetResetFailedWhenFinished() error {
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro
 // primary queue.
-func FindHostSchedulable(distroID string) ([]Task, error) {
+func FindHostSchedulable(ctx context.Context, distroID string) ([]Task, error) {
 	query := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	return Find(query)
 }
 
-func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
+func addApplicableDistroFilter(ctx context.Context, id string, fieldName string, query bson.M) error {
 	if id == "" {
 		return nil
 	}
 
-	aliases, err := distro.FindApplicableDistroIDs(id)
+	aliases, err := distro.FindApplicableDistroIDs(ctx, id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -2657,10 +2718,10 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 
 // FindHostSchedulableForAlias finds all tasks that can be scheduled for a
 // distro secondary queue.
-func FindHostSchedulableForAlias(id string) ([]Task, error) {
+func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error) {
 	q := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(id, SecondaryDistrosKey, q); err != nil {
+	if err := addApplicableDistroFilter(ctx, id, SecondaryDistrosKey, q); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -2929,9 +2990,24 @@ func (t *Task) Blocked() bool {
 	return false
 }
 
-// isUnscheduled returns true if a task is unscheduled and will not run
+// WillRun returns true if the task will run eventually, but has not started
+// running yet. This is logically equivalent to evergreen.TaskWillRun from
+// (Task).GetDisplayStatus.
+func (t *Task) WillRun() bool {
+	return t.Status == evergreen.TaskUndispatched && t.Activated && !t.Blocked()
+}
+
+// IsUnscheduled returns true if a task is unscheduled and will not run. This is
+// logically equivalent to evergreen.TaskUnscheduled from
+// (Task).GetDisplayStatus.
 func (t *Task) IsUnscheduled() bool {
 	return t.Status == evergreen.TaskUndispatched && !t.Activated
+}
+
+// IsInProgress returns true if the task has been dispatched and is about to
+// run, or is already running.
+func (t *Task) IsInProgress() bool {
+	return utility.StringSliceContains(evergreen.TaskInProgressStatuses, t.Status)
 }
 
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
@@ -3118,6 +3194,15 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
+		if depID == t.Id {
+			grip.Error(message.Fields{
+				"message": "task is attempting to add a dependency on itself, skipping this dependency",
+				"task_id": t.Id,
+				"stack":   string(debug.Stack()),
+			})
+			continue
+		}
+
 		newDependencies = append(newDependencies, Dependency{
 			TaskId: depID,
 			Status: status,

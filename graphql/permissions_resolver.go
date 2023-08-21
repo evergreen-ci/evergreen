@@ -8,8 +8,25 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 )
+
+// CanCreateDistro is the resolver for the canCreateDistro field.
+func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error) {
+	usr, err := user.FindOneById(obj.UserID)
+	if err != nil {
+		return false, ResourceNotFound.Send(ctx, "user not found")
+	}
+	opts := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionDistroCreate,
+		RequiredLevel: evergreen.DistroCreate.Value,
+	}
+	return usr.HasPermission(opts), nil
+}
 
 // CanCreateProject is the resolver for the canCreateProject field.
 func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permissions) (bool, error) {
@@ -22,6 +39,19 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error checking user permission: %s", err.Error()))
 	}
 	return canCreate, nil
+}
+
+// DistroPermissions is the resolver for the distroPermissions field.
+func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error) {
+	usr, err := user.FindOneById(obj.UserID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, "user not found")
+	}
+	return &DistroPermissions{
+		Admin: userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
+		Edit:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
+		View:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsView.Value),
+	}, nil
 }
 
 // Permissions returns PermissionsResolver implementation.

@@ -11,16 +11,19 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandlePoisonedHost(t *testing.T) {
 	ctx := context.Background()
+	ctx = testutil.TestSpan(ctx, t)
+
 	env := &mock.Environment{}
 
-	for testCase, test := range map[string]func(*testing.T){
-		"parent with a container running a task": func(t *testing.T) {
+	for testCase, test := range map[string]func(context.Context, *testing.T){
+		"parent with a container running a task": func(ctx context.Context, t *testing.T) {
 			t1 := &task.Task{
 				Id:      "t1",
 				Status:  evergreen.TaskStarted,
@@ -53,19 +56,19 @@ func TestHandlePoisonedHost(t *testing.T) {
 				RunningTask: t1.Id,
 			}
 
-			require.NoError(t, parent.Insert())
-			require.NoError(t, container1.Insert())
-			require.NoError(t, container2.Insert())
+			require.NoError(t, parent.Insert(ctx))
+			require.NoError(t, container1.Insert(ctx))
+			require.NoError(t, container2.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, container1, ""))
 
-			parent, err := host.FindOneId(parent.Id)
+			parent, err := host.FindOneId(ctx, parent.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, parent.Status)
-			container1, err = host.FindOneId(container1.Id)
+			container1, err = host.FindOneId(ctx, container1.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, container1.Status)
-			container2, err = host.FindOneId(container2.Id)
+			container2, err = host.FindOneId(ctx, container2.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, container2.Status)
 
@@ -73,7 +76,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},
-		"running task": func(t *testing.T) {
+		"running task": func(ctx context.Context, t *testing.T) {
 			t1 := &task.Task{
 				Id:      "t1",
 				Status:  evergreen.TaskStarted,
@@ -94,10 +97,10 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Status:      evergreen.HostRunning,
 				RunningTask: t1.Id,
 			}
-			require.NoError(t, hostRunningTask.Insert())
+			require.NoError(t, hostRunningTask.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, hostRunningTask, ""))
-			hostRunningTask, err := host.FindOneId(hostRunningTask.Id)
+			hostRunningTask, err := host.FindOneId(ctx, hostRunningTask.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, hostRunningTask.Status)
 
@@ -105,48 +108,55 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},
-		"static host": func(t *testing.T) {
+		"static host": func(ctx context.Context, t *testing.T) {
 			static := &host.Host{
 				Id:       "static",
 				Status:   evergreen.HostRunning,
 				Provider: evergreen.ProviderNameStatic,
 			}
-			require.NoError(t, static.Insert())
+			require.NoError(t, static.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, static, ""))
-			static, err := host.FindOneId(static.Id)
+			static, err := host.FindOneId(ctx, static.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, static.Status)
 		},
-		"already decommissioned": func(t *testing.T) {
+		"already decommissioned": func(ctx context.Context, t *testing.T) {
 			decommissioned := &host.Host{
 				Id:     "decommissioned",
 				Status: evergreen.HostDecommissioned,
 			}
-			require.NoError(t, decommissioned.Insert())
+			require.NoError(t, decommissioned.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, decommissioned, ""))
-			decommissioned, err := host.FindOneId(decommissioned.Id)
+			decommissioned, err := host.FindOneId(ctx, decommissioned.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, decommissioned.Status)
 		},
-		"already terminated": func(t *testing.T) {
+		"already terminated": func(ctx context.Context, t *testing.T) {
 			terminated := &host.Host{
 				Id:     "terminated",
 				Status: evergreen.HostTerminated,
 			}
-			require.NoError(t, terminated.Insert())
+			require.NoError(t, terminated.Insert(ctx))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, terminated, ""))
-			terminated, err := host.FindOneId(terminated.Id)
+			terminated, err := host.FindOneId(ctx, terminated.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, terminated.Status)
 		},
 	} {
-		require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection))
-		require.NoError(t, env.Configure(ctx))
+		t.Run(testCase, func(t *testing.T) {
+			tctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
-		t.Run(testCase, test)
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection))
+			require.NoError(t, env.Configure(ctx))
+
+			test(tctx, t)
+		})
+
 	}
 
 }

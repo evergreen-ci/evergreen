@@ -1,1 +1,1 @@
-{ "key_1": "value_1", "my_docker_image": "my_image" }
+{ "key1": "newValue1", "key2": "newValue2" }

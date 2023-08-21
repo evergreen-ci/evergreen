@@ -75,6 +75,31 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
+		"SetsFirstTaskScheduledTime": func(t *testing.T) {
+			ref := getProjectRef()
+			require.NoError(t, ref.Insert())
+
+			needsAllocation := getTaskThatNeedsContainerAllocation()
+			needsAllocation.Project = ref.Id
+			require.NoError(t, needsAllocation.Insert())
+
+			ctq, err := NewContainerTaskQueue()
+			require.NoError(t, err)
+
+			assert.Equal(t, 1, ctq.Len())
+			assert.True(t, ctq.HasNext())
+
+			first := ctq.Next()
+			require.NotZero(t, first)
+			assert.Equal(t, needsAllocation.Id, first.Id, "should return task in need of allocation")
+
+			dbFirstTask, err := task.FindOneId(first.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbFirstTask)
+			assert.False(t, utility.IsZeroTime(dbFirstTask.ScheduledTime))
+
+			checkEmpty(t, ctq)
+		},
 		"ReturnsNoTask": func(t *testing.T) {
 			ctq, err := NewContainerTaskQueue()
 			require.NoError(t, err)

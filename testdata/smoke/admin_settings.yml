@@ -12,7 +12,9 @@ database:
     wmode: majority
 
 amboy:
-  database: amboy_smoke
+  db_connection:
+    url: mongodb://localhost:27017
+    database: amboy_smoke
   name: evg.service
   skip_preferred_indexes: true
 
@@ -75,8 +77,8 @@ keys:
   test: "/dev/null"
 
 repotracker:
-  numnewreporevisionstofetch: 10
-  maxreporevisionstosearch: 10
+  revs_to_fetch: 10
+  max_revs_to_search: 10
 
 shutdown_wait_seconds: 10
 

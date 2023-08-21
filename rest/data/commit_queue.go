@@ -29,7 +29,7 @@ import (
 type DBCommitQueueConnector struct{}
 
 func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
 	}
@@ -53,9 +53,9 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 		return nil, err
 	}
 
-	errs := validator.CheckProjectErrors(proj, false)
+	errs := validator.CheckProjectErrors(ctx, proj, false)
 	isConfigDefined := len(patchDoc.PatchedProjectConfig) > 0
-	errs = append(errs, validator.CheckProjectSettings(settings, proj, &projectRef, isConfigDefined)...)
+	errs = append(errs, validator.CheckProjectSettings(ctx, settings, proj, &projectRef, isConfigDefined)...)
 	errs = append(errs, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range errs.AtLevel(validator.Error) {
@@ -116,7 +116,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 
 	catcher = grip.NewBasicCatcher()
 	for _, modulePR := range modulePRs {
-		catcher.Add(thirdparty.SendCommitQueueGithubStatus(env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
+		catcher.Add(thirdparty.SendCommitQueueGithubStatus(ctx, env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
 	}
 
 	return patchDoc, catcher.Resolve()
@@ -208,7 +208,7 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 // FindAndRemoveCommitQueueItem dequeues an item from the commit queue and returns the
 // removed item. If the item is already being tested in a batch, later items in
 // the batch are restarted.
-func FindAndRemoveCommitQueueItem(cqId, issue, user, reason string) (*restModel.APICommitQueueItem, error) {
+func FindAndRemoveCommitQueueItem(ctx context.Context, cqId, issue, user, reason string) (*restModel.APICommitQueueItem, error) {
 	cq, err := commitqueue.FindOneId(cqId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting commit queue '%s'", cqId)
@@ -226,7 +226,7 @@ func FindAndRemoveCommitQueueItem(cqId, issue, user, reason string) (*restModel.
 	}
 	item := cq.Queue[itemIdx]
 
-	removed, err := model.CommitQueueRemoveItem(cq, item, user, reason)
+	removed, err := model.CommitQueueRemoveItem(ctx, cq, item, user, reason)
 	if err != nil {
 		return nil, err
 	}
@@ -340,6 +340,10 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 	}
 	if projectRef == nil {
 		return nil, pr, errors.Wrapf(errNoCommitQueueForBranch, "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+
+	if projectRef.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		return nil, pr, errors.Wrapf(errors.New("project is using GitHub merge queue"), "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
 	}
 
 	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))
@@ -466,7 +470,7 @@ func sendGitHubCommitQueueError(ctx context.Context, env evergreen.Environment, 
 	}
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Wrap(thirdparty.SendCommitQueueGithubStatus(env, pr, message.GithubStateFailure, err.Error(), ""), "sending GitHub status update")
+	catcher.Wrap(thirdparty.SendCommitQueueGithubStatus(ctx, env, pr, message.GithubStateFailure, err.Error(), ""), "sending GitHub status update")
 
 	comment := fmt.Sprintf("Evergreen could not enqueue your PR in the commit queue. The error:\n%s", err)
 	catcher.Wrap(sc.AddCommentToPR(ctx, userRepo.Owner, userRepo.Repo, pr.GetNumber(), comment), "writing error comment back to PR")
@@ -497,7 +501,7 @@ func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, exis
 	return apiPatch, nil
 }
 
-func ConcludeMerge(patchID, status string) error {
+func ConcludeMerge(ctx context.Context, patchID, status string) error {
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
 		return errors.Wrap(err, "finding patch")
@@ -524,7 +528,7 @@ func ConcludeMerge(patchID, status string) error {
 		githubStatus = message.GithubStateSuccess
 		description = "merge test succeeded"
 	}
-	err = model.SendCommitQueueResult(p, githubStatus, description)
+	err = model.SendCommitQueueResult(ctx, p, githubStatus, description)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "unable to send github status",
 		"patch":   patchID,

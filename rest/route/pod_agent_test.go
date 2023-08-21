@@ -34,15 +34,15 @@ func TestPodProvisioningScript(t *testing.T) {
 
 	// Since the tests depend on the global service flags, reset it to its
 	// initial state afterwards.
-	originalFlags, err := evergreen.GetServiceFlags()
+	originalFlags, err := evergreen.GetServiceFlags(ctx)
 	require.NoError(t, err)
 	if originalFlags.S3BinaryDownloadsDisabled {
 		defer func() {
-			assert.NoError(t, originalFlags.Set())
+			assert.NoError(t, originalFlags.Set(ctx))
 		}()
 		s3ClientDownloadsEnabled := *originalFlags
 		s3ClientDownloadsEnabled.S3BinaryDownloadsDisabled = false
-		require.NoError(t, s3ClientDownloadsEnabled.Set())
+		require.NoError(t, s3ClientDownloadsEnabled.Set(ctx))
 	}
 
 	getRoute := func(t *testing.T, settings *evergreen.Settings, podID string) *podProvisioningScript {
@@ -307,11 +307,11 @@ func TestPodAgentNextTask(t *testing.T) {
 		"DegradedModeSetShouldTerminatePod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			defer func() {
 				// unset degraded mode
-				require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{
+				require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{
 					TaskDispatchDisabled: false,
 				}))
 			}()
-			require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{
+			require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{
 				TaskDispatchDisabled: true,
 			}))
 			p := getPod()

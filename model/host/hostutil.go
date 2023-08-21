@@ -398,13 +398,13 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // is provisioning in user data. If, for some reason, this script gets
 // interrupted, there's no guarantee that it will succeed if run again, since we
 // cannot enforce idempotency on the setup script.
-func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
+func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
 	var err error
 	checkProvisioningStarted := h.CheckUserDataProvisioningStartedCommand()
 
 	var setupUserCmds string
 	if h.Distro.IsWindows() {
-		setupUserCmds, err = h.SetupServiceUserCommands()
+		setupUserCmds, err = h.SetupServiceUserCommands(ctx)
 		if err != nil {
 			return "", errors.Wrap(err, "getting commands to set up service user")
 		}
@@ -413,7 +413,7 @@ func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, 
 	var postFetchClient string
 	if h.StartedBy == evergreen.User {
 		// Start the host with an agent monitor to run tasks.
-		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
+		if postFetchClient, err = h.StartAgentMonitorRequest(ctx, settings); err != nil {
 			return "", errors.Wrap(err, "creating command to start agent monitor")
 		}
 	} else if h.ProvisionOptions != nil && h.UserHost {
@@ -531,7 +531,7 @@ func (h *Host) CheckUserDataProvisioningStartedCommand() string {
 // SetupServiceUserCommands returns the commands to create a passwordless
 // service user in the Administrator group in Windows. It also creates the
 // service user's password if none is set.
-func (h *Host) SetupServiceUserCommands() (string, error) {
+func (h *Host) SetupServiceUserCommands(ctx context.Context) (string, error) {
 	if !h.Distro.IsWindows() {
 		return "", nil
 	}
@@ -539,7 +539,7 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 		return "", errors.New("distro is missing service user name")
 	}
 	if h.ServicePassword == "" {
-		if err := h.CreateServicePassword(); err != nil {
+		if err := h.CreateServicePassword(ctx); err != nil {
 			return "", errors.Wrap(err, "generating service user's password")
 		}
 	}
@@ -572,7 +572,7 @@ func generatePassword(length int) string {
 }
 
 // CreateServicePassword creates the password for the host's service user.
-func (h *Host) CreateServicePassword() error {
+func (h *Host) CreateServicePassword(ctx context.Context) error {
 	var password string
 	var valid bool
 	for i := 0; i < 1000; i++ {
@@ -586,6 +586,7 @@ func (h *Host) CreateServicePassword() error {
 	}
 
 	err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ServicePasswordKey: password}},
 	)
@@ -879,9 +880,9 @@ func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error)
 // StartAgentMonitorRequest builds the Jasper client request that starts the
 // agent monitor on the host. The host secret is created if it doesn't exist
 // yet.
-func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, error) {
+func (h *Host) StartAgentMonitorRequest(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	if h.Secret == "" {
-		if err := h.CreateSecret(); err != nil {
+		if err := h.CreateSecret(ctx); err != nil {
 			return "", errors.Wrap(err, "creating host secret")
 		}
 	}
@@ -1184,7 +1185,7 @@ func (h *Host) MarkUserDataProvisioningDoneCommand() string {
 
 // SetUserDataHostProvisioned sets the host to running if it was bootstrapped
 // with user data but has not yet been marked as done provisioning.
-func (h *Host) SetUserDataHostProvisioned() error {
+func (h *Host) SetUserDataHostProvisioned(ctx context.Context) error {
 	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
 		return nil
 	}
@@ -1197,7 +1198,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 		return nil
 	}
 
-	if err := h.UpdateStartingToRunning(); err != nil {
+	if err := h.UpdateStartingToRunning(ctx); err != nil {
 		return errors.Wrap(err, "marking host as done provisioning itself and now running")
 	}
 
@@ -1213,9 +1214,9 @@ func (h *Host) SetUserDataHostProvisioned() error {
 
 // GenerateFetchProvisioningScriptUserData creates the user data script to fetch
 // the host provisioning script.
-func (h *Host) GenerateFetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
+func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, settings *evergreen.Settings) (*userdata.Options, error) {
 	if h.Secret == "" {
-		if err := h.CreateSecret(); err != nil {
+		if err := h.CreateSecret(ctx); err != nil {
 			return nil, errors.Wrap(err, "creating host secret")
 		}
 	}

@@ -17,8 +17,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GetBanner() (string, string, error) {
-	settings, err := evergreen.GetConfig()
+func GetBanner(ctx context.Context) (string, string, error) {
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", "", errors.Wrap(err, "retrieving admin settings from DB")
 	}
@@ -26,7 +26,7 @@ func GetBanner() (string, string, error) {
 }
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
-func SetEvergreenSettings(changes *restModel.APIAdminSettings,
+func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
 
 	settingsAPI := restModel.NewConfigModel()
@@ -61,7 +61,7 @@ func SetEvergreenSettings(changes *restModel.APIAdminSettings,
 		if err = newSettings.Validate(); err != nil {
 			return nil, errors.Wrap(err, "new admin settings are invalid")
 		}
-		err = evergreen.UpdateConfig(&newSettings)
+		err = evergreen.UpdateConfig(ctx, &newSettings)
 		if err != nil {
 			return nil, errors.Wrap(err, "saving new admin settings")
 		}
@@ -125,22 +125,22 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 }
 
 // SetBannerTheme sets the banner theme in the DB and event logs it
-func SetBannerTheme(themeString string, u *user.DBUser) error {
+func SetBannerTheme(ctx context.Context, themeString string, u *user.DBUser) error {
 	valid, theme := evergreen.IsValidBannerTheme(themeString)
 	if !valid {
 		return errors.Errorf("invalid banner theme '%s'", themeString)
 	}
 
-	return evergreen.SetBannerTheme(theme)
+	return evergreen.SetBannerTheme(ctx, theme)
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
+func RestartFailedTasks(ctx context.Context, queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	var results model.RestartResults
 	var err error
 
 	if opts.DryRun {
-		results, err = model.RestartFailedTasks(opts)
+		results, err = model.RestartFailedTasks(ctx, opts)
 		if err != nil {
 			return nil, err
 		}

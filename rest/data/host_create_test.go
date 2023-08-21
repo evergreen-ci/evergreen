@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -22,9 +21,13 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestListHostsForTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(host.Collection, build.Collection, task.Collection))
@@ -82,7 +85,7 @@ func TestListHostsForTask(t *testing.T) {
 		},
 	}
 	for i := range hosts {
-		require.NoError(hosts[i].Insert())
+		require.NoError(hosts[i].Insert(ctx))
 	}
 	require.NoError((&task.Task{Id: "task_1", BuildId: "build_1"}).Insert())
 	require.NoError((&build.Build{Id: "build_1"}).Insert())
@@ -114,7 +117,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 		Id:                   "distro",
 		ProviderSettingsList: settingsList,
 	}
-	assert.NoError(t, d.Insert())
+	assert.NoError(t, d.Insert(ctx))
 	p := model.ProjectRef{
 		Id: "p",
 	}
@@ -170,7 +173,7 @@ buildvariants:
 			Id:          "h1",
 			RunningTask: t1.Id,
 		}
-		assert.NoError(t, h1.Insert())
+		assert.NoError(t, h1.Insert(ctx))
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
@@ -178,7 +181,7 @@ buildvariants:
 		assert.NoError(t, pp.Insert())
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -238,7 +241,7 @@ buildvariants:
 			Id:          "h2",
 			RunningTask: t2.Id,
 		}
-		assert.NoError(t, h2.Insert())
+		assert.NoError(t, h2.Insert(ctx))
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
@@ -247,7 +250,7 @@ buildvariants:
 
 		err = CreateHostsFromTask(ctx, env, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -307,7 +310,7 @@ buildvariants:
 			Id:          "h3",
 			RunningTask: t3.Id,
 		}
-		assert.NoError(t, h3.Insert())
+		assert.NoError(t, h3.Insert(ctx))
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
@@ -317,10 +320,10 @@ buildvariants:
 		settings := &evergreen.Settings{
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
+		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t3, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 2)
 		for _, h := range createdHosts {
@@ -374,7 +377,7 @@ buildvariants:
 			Id:          "h4",
 			RunningTask: t4.Id,
 		}
-		assert.NoError(t, h4.Insert())
+		assert.NoError(t, h4.Insert(ctx))
 
 		pp := &model.ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
@@ -385,10 +388,10 @@ buildvariants:
 		settings := &evergreen.Settings{
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
-		assert.NoError(t, evergreen.UpdateConfig(settings))
+		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t4, user.DBUser{Id: "me"}, ""))
-		createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
 		for _, h := range createdHosts {
@@ -457,7 +460,7 @@ buildvariants:
 		Id:          "h1",
 		RunningTask: t1.Id,
 	}
-	assert.NoError(h1.Insert())
+	assert.NoError(h1.Insert(ctx))
 	pp := model.ParserProject{}
 	err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 	require.NoError(err)
@@ -471,7 +474,7 @@ buildvariants:
 			MaximumHosts: 3,
 		},
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 
@@ -494,14 +497,14 @@ buildvariants:
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameDockerMock,
 		ContainerPool: pool.Id,
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	p := model.ProjectRef{
 		Id: "p",
@@ -514,7 +517,7 @@ buildvariants:
 
 	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 
-	createdHosts, err := host.Find(db.Query(bson.M{host.StartedByKey: "me"}))
+	createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
 	assert.NoError(err)
 	require.Len(createdHosts, 1)
 	h := createdHosts[0]

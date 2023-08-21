@@ -86,8 +86,7 @@ func TestGetTaskInfo(t *testing.T) {
 	}()
 
 	Convey("When finding info on a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection),
-			"Error clearing '%v' collection", task.Collection)
+		require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, testresult.Collection))
 
 		taskId := "my-task"
 		versionId := "my-version"
@@ -105,15 +104,20 @@ func TestGetTaskInfo(t *testing.T) {
 		testTask, err := insertTaskForTesting(ctx, env, taskId, versionId, projectName, []testresult.TestResult{testResult})
 		So(err, ShouldBeNil)
 
-		file := artifact.File{
+		publicFile := artifact.File{
 			Name: "Some Artifact",
 			Link: "some-url",
 		}
-		a := artifact.Entry{
-			TaskId: taskId,
-			Files:  []artifact.File{file},
+		noVisibilityFile := artifact.File{
+			Name:       "Secret Artifact",
+			Link:       "some-secret-url",
+			Visibility: artifact.None,
 		}
-		So(a.Upsert(), ShouldBeNil)
+		taskArtifacts := artifact.Entry{
+			TaskId: taskId,
+			Files:  []artifact.File{publicFile, noVisibilityFile},
+		}
+		So(taskArtifacts.Upsert(), ShouldBeNil)
 
 		url := "/rest/v1/tasks/" + taskId
 
@@ -128,7 +132,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 		So(response.Code, ShouldEqual, http.StatusOK)
 
-		Convey("response should match contents of database", func() {
+		Convey("response should match contents of database and should omit hidden artifacts", func() {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
@@ -193,38 +197,38 @@ func TestGetTaskInfo(t *testing.T) {
 			So(jsonBody["requester"], ShouldEqual, testTask.Requester)
 			So(jsonBody["status"], ShouldEqual, testTask.Status)
 
-			_jsonStatusDetails, ok := jsonBody["status_details"]
+			jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
-			jsonStatusDetails, ok := _jsonStatusDetails.(map[string]interface{})
+			statusDetails, ok := jsonStatusDetails.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonStatusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
-			So(jsonStatusDetails["timeout_stage"], ShouldEqual, testTask.Details.Description)
+			So(statusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
+			So(statusDetails["timeout_stage"], ShouldEqual, testTask.Details.Description)
 
 			So(jsonBody["aborted"], ShouldEqual, testTask.Aborted)
 			So(jsonBody["time_taken"], ShouldEqual, testTask.TimeTaken)
 			So(jsonBody["expected_duration"], ShouldEqual, testTask.ExpectedDuration)
 
-			_jsonTestResults, ok := jsonBody["test_results"]
+			jsonTestResults, ok := jsonBody["test_results"]
 			So(ok, ShouldBeTrue)
-			jsonTestResults, ok := _jsonTestResults.(map[string]interface{})
+			testResults, ok := jsonTestResults.(map[string]interface{})
 			So(ok, ShouldBeTrue)
-			So(len(jsonTestResults), ShouldEqual, 1)
+			So(len(testResults), ShouldEqual, 1)
 
-			_jsonTestResult, ok := jsonTestResults[testResult.TestName]
+			jsonTestResult, ok := testResults[testResult.TestName]
 			So(ok, ShouldBeTrue)
-			jsonTestResult, ok := _jsonTestResult.(map[string]interface{})
-			So(ok, ShouldBeTrue)
-
-			So(jsonTestResult["status"], ShouldEqual, testResult.Status)
-			So(jsonTestResult["time_taken"], ShouldNotBeNil) // value correctness is unchecked
-
-			_jsonTestResultLogs, ok := jsonTestResult["logs"]
-			So(ok, ShouldBeTrue)
-			jsonTestResultLogs, ok := _jsonTestResultLogs.(map[string]interface{})
+			testResultForTestName, ok := jsonTestResult.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonTestResultLogs["url"], ShouldEqual, testResult.LogURL)
+			So(testResultForTestName["status"], ShouldEqual, testResult.Status)
+			So(testResultForTestName["time_taken"], ShouldNotBeNil) // value correctness is unchecked
+
+			jsonTestResultLogs, ok := testResultForTestName["logs"]
+			So(ok, ShouldBeTrue)
+			testResultLogs, ok := jsonTestResultLogs.(map[string]interface{})
+			So(ok, ShouldBeTrue)
+
+			So(testResultLogs["url"], ShouldEqual, testResult.LogURL)
 
 			var jsonFiles []map[string]interface{}
 			err = json.Unmarshal(*rawJSONBody["files"], &jsonFiles)
@@ -232,8 +236,8 @@ func TestGetTaskInfo(t *testing.T) {
 			So(len(jsonFiles), ShouldEqual, 1)
 
 			jsonFile := jsonFiles[0]
-			So(jsonFile["name"], ShouldEqual, file.Name)
-			So(jsonFile["url"], ShouldEqual, file.Link)
+			So(jsonFile["name"], ShouldEqual, publicFile.Name)
+			So(jsonFile["url"], ShouldEqual, publicFile.Link)
 		})
 	})
 
@@ -324,34 +328,34 @@ func TestGetTaskStatus(t *testing.T) {
 			So(jsonBody["task_name"], ShouldEqual, testTask.DisplayName)
 			So(jsonBody["status"], ShouldEqual, testTask.Status)
 
-			_jsonStatusDetails, ok := jsonBody["status_details"]
+			jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
-			jsonStatusDetails, ok := _jsonStatusDetails.(map[string]interface{})
-			So(ok, ShouldBeTrue)
-
-			So(jsonStatusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
-			So(jsonStatusDetails["timeout_stage"], ShouldEqual, testTask.Details.Description)
-
-			_jsonTestResults, ok := jsonBody["tests"]
-			So(ok, ShouldBeTrue)
-			jsonTestResults, ok := _jsonTestResults.(map[string]interface{})
-			So(ok, ShouldBeTrue)
-			So(len(jsonTestResults), ShouldEqual, 1)
-
-			_jsonTestResult, ok := jsonTestResults[testResult.TestName]
-			So(ok, ShouldBeTrue)
-			jsonTestResult, ok := _jsonTestResult.(map[string]interface{})
+			statusDetails, ok := jsonStatusDetails.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonTestResult["status"], ShouldEqual, testResult.Status)
-			So(jsonTestResult["time_taken"], ShouldNotBeNil) // value correctness is unchecked
+			So(statusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
+			So(statusDetails["timeout_stage"], ShouldEqual, testTask.Details.Description)
 
-			_jsonTestResultLogs, ok := jsonTestResult["logs"]
+			jsonTestResults, ok := jsonBody["tests"]
 			So(ok, ShouldBeTrue)
-			jsonTestResultLogs, ok := _jsonTestResultLogs.(map[string]interface{})
+			testResults, ok := jsonTestResults.(map[string]interface{})
+			So(ok, ShouldBeTrue)
+			So(len(testResults), ShouldEqual, 1)
+
+			jsonTestResult, ok := testResults[testResult.TestName]
+			So(ok, ShouldBeTrue)
+			testResultForTestName, ok := jsonTestResult.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonTestResultLogs["url"], ShouldEqual, testResult.LogURL)
+			So(testResultForTestName["status"], ShouldEqual, testResult.Status)
+			So(testResultForTestName["time_taken"], ShouldNotBeNil) // value correctness is unchecked
+
+			jsonTestResultLogs, ok := testResultForTestName["logs"]
+			So(ok, ShouldBeTrue)
+			testResultLogs, ok := jsonTestResultLogs.(map[string]interface{})
+			So(ok, ShouldBeTrue)
+
+			So(testResultLogs["url"], ShouldEqual, testResult.LogURL)
 		})
 	})
 

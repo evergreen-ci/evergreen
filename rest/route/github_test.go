@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -17,12 +19,14 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -82,7 +86,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24731)
+	s.Len(s.prBody, 24692)
 	s.pushBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
 	s.Len(s.pushBody, 7597)
@@ -504,6 +508,94 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 		},
 	} {
 
+		t.Run(testCase, test)
+	}
+}
+
+func TestPRDef(t *testing.T) {
+	assert.NoError(t, db.Clear(patch.Collection))
+	owner := "owner"
+	repo := "repo"
+	patchId := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	p := &patch.Patch{
+		Id:      patchId,
+		Project: "mci",
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber:               5,
+			BaseOwner:              owner,
+			BaseRepo:               repo,
+			RepeatPatchIdNextPatch: patchId.Hex(),
+		},
+	}
+	assert.NoError(t, p.Insert())
+	err := keepPRPatchDefinition(owner, repo, 5)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOne(patch.ById(patchId))
+	assert.NoError(t, err)
+	assert.Equal(t, patchId.Hex(), p.GithubPatchData.RepeatPatchIdNextPatch)
+
+	err = resetPRPatchDefinition(owner, repo, 5)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOne(patch.ById(patchId))
+	assert.NoError(t, err)
+	assert.Equal(t, "", p.GithubPatchData.RepeatPatchIdNextPatch)
+
+}
+
+func TestHandleGitHubMergeGroup(t *testing.T) {
+	org := "evergreen-ci"
+	repo := "evergreen"
+	branch := "main"
+	baseRef := "refs/heads/main"
+	baseSha := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	trueBool := true
+	event := &github.MergeGroupEvent{
+		Org: &github.Organization{
+			Login: &org,
+		},
+		Repo: &github.Repository{
+			Name: &repo,
+		},
+		MergeGroup: &github.MergeGroup{
+			BaseRef: &baseRef,
+			BaseSHA: &baseSha,
+			HeadRef: &headRef,
+		},
+	}
+	gh := &githubHookApi{}
+	p := model.ProjectRef{
+		Owner:   org,
+		Repo:    repo,
+		Branch:  branch,
+		Enabled: true,
+		CommitQueue: model.CommitQueueParams{
+			Enabled: &trueBool,
+		},
+	}
+	for testCase, test := range map[string]func(*testing.T){
+		"githubMergeQueueSelected": func(t *testing.T) {
+			p.CommitQueue.MergeQueue = model.MergeQueueGitHub
+			require.NoError(t, p.Insert())
+			response := gh.handleMergeGroupEvent(event)
+			// check for error returned by GitHub merge queue handler
+			str := fmt.Sprintf("%#v", response)
+			assert.Contains(t, str, "message ID cannot be empty")
+			assert.NotContains(t, str, "200")
+		},
+		"evergreenMergeQueueSelected": func(t *testing.T) {
+			p.CommitQueue.MergeQueue = model.MergeQueueEvergreen
+			require.NoError(t, p.Insert())
+			response := gh.handleMergeGroupEvent(event)
+			// check for 200 returned in noop case
+			str := fmt.Sprintf("%#v", response)
+			assert.Contains(t, str, "200")
+			assert.NotContains(t, str, "message ID cannot be empty")
+		},
+	} {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 		t.Run(testCase, test)
 	}
 }

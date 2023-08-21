@@ -132,9 +132,10 @@ type TaskData struct {
 }
 
 type LoggerConfig struct {
-	System []LogOpts
-	Agent  []LogOpts
-	Task   []LogOpts
+	System             []LogOpts
+	Agent              []LogOpts
+	Task               []LogOpts
+	SendToGlobalSender bool
 }
 
 type LogOpts struct {

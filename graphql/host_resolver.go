@@ -18,7 +18,7 @@ import (
 
 // Ami is the resolver for the ami field.
 func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string, error) {
-	host, err := host.FindOneId(utility.FromStringPtr(obj.Id))
+	host, err := host.FindOneId(ctx, utility.FromStringPtr(obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,7 @@ import (
 func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host){
 		"PopulatesFields": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
@@ -34,7 +36,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 		},
 		"NoopsIfAgentIsUp": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.NeedsNewAgent = false
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)
 			convertJob, ok := j.(*convertHostToLegacyProvisioningJob)
@@ -46,7 +48,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 		},
 		"NoopsIfHostIsNotProvisioningOrRunning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)
 			convertJob, ok := j.(*convertHostToLegacyProvisioningJob)
@@ -58,7 +60,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 		},
 		"NoopsIfDoesNotNeedLegacyProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.NeedsReprovision = host.ReprovisionNone
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)
 			convertJob, ok := j.(*convertHostToLegacyProvisioningJob)
@@ -72,6 +74,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
@@ -83,7 +86,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 				BinaryName: "binary",
 			}
 
-			require.NoError(t, setupHostCredentials(ctx, env))
+			require.NoError(t, setupHostCredentials(tctx, env))
 			defer func() {
 				assert.NoError(t, teardownHostCredentials())
 			}()

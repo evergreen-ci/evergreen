@@ -37,6 +37,7 @@ import (
 const (
 	globalGitHubToken  = "GLOBALTOKEN"
 	projectGitHubToken = "PROJECTTOKEN"
+	githubAppToken     = "APPTOKEN"
 )
 
 type GitGetProjectSuite struct {
@@ -621,7 +622,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056/head:evg-mg-test-"))
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056:evg-mg-test-"))
 	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-mg-test-"))
 	s.Equal("git reset --hard d2a90288ad96adca4a7d0122d8d4fd1deb24db11", cmds[7])
 	s.Equal("git log --oneline -n 10", cmds[8])
@@ -920,60 +921,60 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	var method string
 	var err error
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, githubAppToken, evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, githubAppToken, evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", "", evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken("", globalGitHubToken, evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken("", globalGitHubToken, githubAppToken, evergreen.CloneMethodOAuth)
 	s.NoError(err)
-	s.Equal(globalGitHubToken, token)
+	s.Equal(githubAppToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "")
+	method, token, err = getProjectMethodAndToken("", "", "", "")
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "foobar")
+	method, token, err = getProjectMethodAndToken("", "", "", "foobar")
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal("", method)
 
-	_, _, err = getProjectMethodAndToken("", "token this is an invalid token", evergreen.CloneMethodOAuth)
+	_, _, err = getProjectMethodAndToken("", "token this is an invalid token", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 
-	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", evergreen.CloneMethodOAuth)
+	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 }
 

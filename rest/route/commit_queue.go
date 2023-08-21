@@ -88,7 +88,7 @@ func (h *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reques
 
 func (h *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
 	username := gimlet.GetUser(ctx).DisplayName()
-	removed, err := data.FindAndRemoveCommitQueueItem(h.project, h.item, username, fmt.Sprintf("removed by user '%s'", username))
+	removed, err := data.FindAndRemoveCommitQueueItem(ctx, h.project, h.item, username, fmt.Sprintf("removed by user '%s'", username))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting commit queue item '%s' from commit queue for project '%s'", h.item, h.project))
 	}
@@ -266,7 +266,7 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
-	err := data.ConcludeMerge(p.patchId, p.Status)
+	err := data.ConcludeMerge(ctx, p.patchId, p.Status)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "concluding merge"))
 	}

@@ -281,7 +281,7 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "route", "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24731)
+	s.Len(s.prBody, 24692)
 }
 
 func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
@@ -318,17 +318,20 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbortByPullRequest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	eventInterface, err := github.ParseWebHook("pull_request", s.prBody)
 	s.NoError(err)
 	event, ok := eventInterface.(*github.PullRequestEvent)
 	s.True(ok)
-	s.Contains(AbortPatchesFromPullRequest(event).Error(), "pull request data is malformed")
+	s.Contains(AbortPatchesFromPullRequest(ctx, event).Error(), "pull request data is malformed")
 
 	now := github.Timestamp{
 		Time: time.Now().Round(time.Millisecond),
 	}
 	event.PullRequest.ClosedAt = &now
-	s.NoError(AbortPatchesFromPullRequest(event))
+	s.NoError(AbortPatchesFromPullRequest(ctx, event))
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {

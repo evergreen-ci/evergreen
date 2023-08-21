@@ -205,13 +205,14 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		}
 		viewData.Project = *project
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to retrieve admin settings",
 			"url":     r.URL,
 			"request": gimlet.GetRequestID(r.Context()),
 		}))
+		return ViewData{}
 	}
 
 	if u, ok := userCtx.(*user.DBUser); ok {
@@ -296,7 +297,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// Lobster
-	app.AddPrefixRoute("/lobster").Handler(uis.lobsterPage).Get()
+	app.AddPrefixRoute("/lobster").Wrap(needsLogin).Handler(uis.lobsterPage).Get()
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()

@@ -182,12 +182,12 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Patch not found", http.StatusNotFound)
 				return
 			}
-			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
+			err = model.SendCommitQueueResult(r.Context(), p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to send github status",
 				"patch":   projCtx.Build.Version,
 			}))
-			err = model.RestartItemsAfterVersion(nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
+			err = model.RestartItemsAfterVersion(r.Context(), nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -218,7 +218,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		err = model.SetBuildPriority(projCtx.Build.Id, priority, user.Id)
+		err = model.SetBuildPriority(r.Context(), projCtx.Build.Id, priority, user.Id)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error setting priority on build %v", projCtx.Build.Id),
 				http.StatusInternalServerError)
@@ -250,12 +250,12 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Patch not found", http.StatusNotFound)
 				return
 			}
-			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
+			err = model.SendCommitQueueResult(r.Context(), p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to send github status",
 				"patch":   projCtx.Build.Version,
 			}))
-			err = model.RestartItemsAfterVersion(nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
+			err = model.RestartItemsAfterVersion(r.Context(), nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -267,7 +267,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case evergreen.RestartAction:
-		if err = model.RestartBuild(projCtx.Build, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
+		if err = model.RestartBuild(r.Context(), projCtx.Build, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}

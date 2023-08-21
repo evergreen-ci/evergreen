@@ -26,6 +26,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestMakeHost(t *testing.T) {
@@ -59,7 +60,7 @@ func TestMakeHost(t *testing.T) {
 			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 		)},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	sampleTask := &task.Task{
 		Id: "task-id",
@@ -96,7 +97,7 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal(true, ec2Settings.IsVpc)
 
 	// test roundtripping
-	h, err = host.FindOneByIdOrTag(h.Id)
+	h, err = host.FindOneByIdOrTag(ctx, h.Id)
 	assert.NoError(err)
 	require.NotNil(h)
 	ec2Settings2 := &cloud.EC2ProviderSettings{}
@@ -234,7 +235,7 @@ func TestMakeHost(t *testing.T) {
 	require.Len(d.ProviderSettingsList, 1)
 	doc2 := d.ProviderSettingsList[0].Copy().Set(birch.EC.String("region", "us-west-1")).Set(birch.EC.String("ami", "ami-987654"))
 	d.ProviderSettingsList = append(d.ProviderSettingsList, doc2)
-	require.NoError(d.Update())
+	require.NoError(d.ReplaceOne(ctx))
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",
@@ -277,12 +278,6 @@ func TestHostCreateDocker(t *testing.T) {
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
 	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
-	var err error
-	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
-		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
-			return queue.NewLocalLimitedSize(2, 1048), nil
-		}}})
-	assert.NoError(err)
 
 	handler := hostCreateHandler{env: env}
 
@@ -294,7 +289,7 @@ func TestHostCreateDocker(t *testing.T) {
 		},
 		ContainerPool: pool.Id,
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	parentHost := &host.Host{
 		Id:                    "host1",
@@ -305,35 +300,44 @@ func TestHostCreateDocker(t *testing.T) {
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	sampleTask := &task.Task{
 		Id: handler.taskID,
 	}
 	require.NoError(sampleTask.Insert())
+
+	extraHosts := []string{"localhost:127.0.0.1"}
 	c := apimodels.CreateHost{
-		CloudProvider: apimodels.ProviderDocker,
-		NumHosts:      "1",
-		Distro:        "distro",
-		Image:         "my-image",
-		Command:       "echo hello",
+		CloudProvider:     apimodels.ProviderDocker,
+		NumHosts:          "1",
+		Distro:            "distro",
+		Image:             "my-image",
+		Command:           "echo hello",
+		StdinFileContents: []byte("hello!"),
+		EnvironmentVars:   map[string]string{"env_key": "env_value"},
+		ExtraHosts:        extraHosts,
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
+
 	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	require.NotNil(h)
 	assert.Equal("distro", h.Distro.Id)
 	assert.Equal("my-image", h.DockerOptions.Image)
 	assert.Equal("echo hello", h.DockerOptions.Command)
+	assert.Equal("hello!", string(h.DockerOptions.StdinData))
 	assert.Equal("myregistry", h.DockerOptions.RegistryName)
+	assert.Equal([]string{"env_key=env_value"}, h.DockerOptions.EnvironmentVars)
+	assert.Equal(extraHosts, h.DockerOptions.ExtraHosts)
 
-	assert.Equal(200, handler.Run(context.Background()).Status())
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 
-	hosts, err := host.Find(db.Q{})
+	hosts, err := host.Find(ctx, bson.M{})
 	assert.NoError(err)
 	require.Len(hosts, 3)
 	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)
@@ -367,7 +371,7 @@ func TestGetDockerLogs(t *testing.T) {
 		},
 		ContainerPool: pool.Id,
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	parentHost := &host.Host{
 		Id:                    "host1",
@@ -378,10 +382,10 @@ func TestGetDockerLogs(t *testing.T) {
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	myTask := task.Task{
 		Id:      "task-id",
@@ -481,7 +485,7 @@ func TestGetDockerStatus(t *testing.T) {
 		},
 		ContainerPool: pool.Id,
 	}
-	require.NoError(parent.Insert())
+	require.NoError(parent.Insert(ctx))
 
 	parentHost := &host.Host{
 		Id:                    "host1",
@@ -492,10 +496,10 @@ func TestGetDockerStatus(t *testing.T) {
 		HasContainers:         true,
 		ContainerPoolSettings: &pool,
 	}
-	require.NoError(parentHost.Insert())
+	require.NoError(parentHost.Insert(ctx))
 
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
 	myTask := task.Task{
 		Id:      "task-id",

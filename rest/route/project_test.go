@@ -83,7 +83,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		TotalProjectLimit: 1,
 		RepoProjectLimit:  1,
 	}
-	s.NoError(projectSetting.Set())
+	s.NoError(projectSetting.Set(ctx))
 	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)
 	projectAdminRole := gimlet.Role{
 		ID:    "dimoxinil",
@@ -440,7 +440,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
 
-	smClient, err := cloud.MakeSecretsManagerClient(s.env.Settings())
+	smClient, err := cloud.MakeSecretsManagerClient(ctx, s.env.Settings())
 	s.Require().NoError(err)
 	defer func() {
 		s.Require().NoError(smClient.Close(ctx))
@@ -558,13 +558,16 @@ func TestProjectPutSuite(t *testing.T) {
 }
 
 func (s *ProjectPutSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
 	s.NoError(getTestProjectRef().Insert())
 
 	settings := s.env.Settings()
 	s.settings = settings
 	settings.GithubOrgs = []string{"Rembrandt Q. Einstein"}
-	s.NoError(evergreen.UpdateConfig(settings))
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
 	s.rm = makePutProjectByID(s.env).(*projectIDPutHandler)
 }

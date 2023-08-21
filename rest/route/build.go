@@ -148,7 +148,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		if err = serviceModel.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
+		if err = serviceModel.SetBuildPriority(ctx, b.buildId, priority, user.Username()); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting build priority"))
 		}
 	}
@@ -260,7 +260,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	err = serviceModel.RestartBuild(foundBuild, taskIds, true, usr.Id)
+	err = serviceModel.RestartBuild(ctx, foundBuild, taskIds, true, usr.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
 	}

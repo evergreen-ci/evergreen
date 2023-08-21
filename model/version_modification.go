@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -20,15 +21,15 @@ type VersionModification struct {
 	TaskIds           []string                     `json:"task_ids"` // deprecated
 }
 
-func ModifyVersion(version Version, user user.DBUser, modifications VersionModification) (int, error) {
+func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
 	case evergreen.RestartAction:
 		if modifications.VersionsToRestart == nil { // To maintain backwards compatibility with legacy UI
-			if err := RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
+			if err := RestartVersion(ctx, version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 			}
 		}
-		if err := RestartVersions(modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
+		if err := RestartVersions(ctx, modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 		}
 	case evergreen.SetActiveAction:
@@ -54,7 +55,7 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 			if cq == nil {
 				return http.StatusNotFound, errors.Errorf("commit queue '%s' for version '%s' not found", version.Identifier, version.Id)
 			}
-			if _, err := DequeueAndRestartForVersion(cq, version.Identifier, version.Id, user.Id, "merge task is being deactivated"); err != nil {
+			if _, err := DequeueAndRestartForVersion(ctx, cq, version.Identifier, version.Id, user.Id, "merge task is being deactivated"); err != nil {
 				return http.StatusInternalServerError, err
 			}
 		}
@@ -74,7 +75,7 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 				return http.StatusUnauthorized, errors.Errorf("insufficient access to set priority %d, can only set priority less than or equal to %d", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
-		if err := SetVersionsPriority([]string{version.Id}, modifications.Priority, user.Id); err != nil {
+		if err := SetVersionsPriority(ctx, []string{version.Id}, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting version priority")
 		}
 	default:

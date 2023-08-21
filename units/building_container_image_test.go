@@ -17,12 +17,13 @@ func init() {
 }
 
 func TestBuildingContainerImageJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 
 	assert.NoError(db.Clear(host.Collection))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
 	h1 := &host.Host{
@@ -40,9 +41,9 @@ func TestBuildingContainerImageJob(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		ParentID: "parent-1",
 	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
 
 	j := NewBuildingContainerImageJob(env, h1, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport}, evergreen.ProviderNameDockerMock)
 	assert.False(j.Status().Completed)

@@ -129,7 +129,7 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 	apiEventLogPointers := []*restModel.TaskAPIEventLogEntry{}
 	for _, e := range loggedEvents {
 		apiEventLog := restModel.TaskAPIEventLogEntry{}
-		err = apiEventLog.BuildFromService(e)
+		err = apiEventLog.BuildFromService(ctx, e)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
 		}

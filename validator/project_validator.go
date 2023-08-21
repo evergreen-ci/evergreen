@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -21,13 +22,15 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type projectValidator func(*model.Project) ValidationErrors
 
 type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
 
-type projectSettingsValidator func(*evergreen.Settings, *model.Project, *model.ProjectRef, bool) ValidationErrors
+type projectSettingsValidator func(context.Context, *evergreen.Settings, *model.Project, *model.ProjectRef, bool) ValidationErrors
 
 // bool indicates if we should still run the validator if the project is complex
 type longValidator func(*model.Project, bool) ValidationErrors
@@ -183,16 +186,16 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 }
 
 // getDistros creates a slice of all distro IDs and aliases.
-func getDistros() (ids []string, aliases []string, err error) {
-	return getDistrosForProject("")
+func getDistros(ctx context.Context) (ids []string, aliases []string, err error) {
+	return getDistrosForProject(ctx, "")
 }
 
 // getDistrosForProject creates a slice of all valid distro IDs and a slice of
 // all valid aliases for a project. If projectID is empty, it returns all distro
 // IDs and all aliases.
-func getDistrosForProject(projectID string) (ids []string, aliases []string, err error) {
+func getDistrosForProject(ctx context.Context, projectID string) (ids []string, aliases []string, err error) {
 	// create a slice of all known distros
-	distros, err := distro.Find(distro.All)
+	distros, err := distro.AllDistros(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -233,7 +236,7 @@ func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) Va
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErrors {
+func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong bool) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectErrorValidator := range projectErrorValidators {
 		validationErrs = append(validationErrs,
@@ -245,7 +248,7 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
-	distroIDs, distroAliases, err := getDistrosForProject(project.Identifier)
+	distroIDs, distroAliases, err := getDistrosForProject(ctx, project.Identifier)
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
@@ -290,25 +293,30 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 
 // CheckProjectSettings checks the project configuration against the project
 // settings.
-func CheckProjectSettings(settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
+func CheckProjectSettings(ctx context.Context, settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
 	for _, validateSettings := range projectSettingsValidators {
-		errs = append(errs, validateSettings(settings, p, ref, isConfigDefined)...)
+		errs = append(errs, validateSettings(ctx, settings, p, ref, isConfigDefined)...)
 	}
 	return errs
 }
 
-// checks if the project configuration has errors
-func CheckProjectConfigurationIsValid(settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
+// CheckProjectConfigurationIsValid checks if the project configuration has errors
+func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.Settings, project *model.Project, pref *model.ProjectRef) error {
+	_, span := tracer.Start(ctx, "check-configuration", trace.WithAttributes(
+		attribute.String(evergreen.ProjectIDOtelAttribute, pref.Id),
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, pref.Identifier),
+	))
+	defer span.End()
 	catcher := grip.NewBasicCatcher()
-	projectErrors := CheckProjectErrors(project, false)
+	projectErrors := CheckProjectErrors(ctx, project, false)
 	if len(projectErrors) != 0 {
 		if errs := projectErrors.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors: %s", ValidationErrorsToString(errs))
 		}
 	}
 
-	if settingsErrs := CheckProjectSettings(settings, project, pref, false); len(settingsErrs) != 0 {
+	if settingsErrs := CheckProjectSettings(ctx, settings, project, pref, false); len(settingsErrs) != 0 {
 		if errs := settingsErrs.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors related to project settings: %s", ValidationErrorsToString(errs))
 		}
@@ -343,9 +351,18 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateContainers(settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+func validateContainers(ctx context.Context, _ *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return ValidationErrors{
+			ValidationError{
+				Message: errors.Wrap(err, "getting evergreen settings").Error(),
+				Level:   Error,
+			},
+		}
+	}
 	errs := ValidationErrors{}
-	err := model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
+	err = model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
@@ -1390,62 +1407,95 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateTaskDependencies ensures that the dependencies for the tasks have the
-// correct fields, and that the fields have valid values
+// validateTaskDependencies checks that, for all tasks that have
+// dependencies, those dependencies set the expected fields and all dependencies
+// reference tasks that will actually run. For example, if task t1 in build
+// variant bv1 depends on task t2, t2 should also be listed under bv1.
 func validateTaskDependencies(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	for _, task := range project.Tasks {
-		// create a set of the dependencies, to check for duplicates
-		depNames := map[model.TVPair]bool{}
+	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
+	bvs := map[string]struct{}{}
+	tasks := map[string]struct{}{}
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		bvtus[model.TVPair{Variant: bvtu.Variant, TaskName: bvtu.Name}] = bvtu
+		bvs[bvtu.Variant] = struct{}{}
+		tasks[bvtu.Name] = struct{}{}
+	}
 
-		for _, dep := range task.DependsOn {
-			pair := model.TVPair{TaskName: dep.Name, Variant: dep.Variant}
-			// make sure the dependency is not specified more than once
-			if depNames[pair] {
+	var errs ValidationErrors
+	for _, bvtu := range bvtus {
+		for _, d := range bvtu.DependsOn {
+			validDepStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, ""}
+			if !utility.StringSliceContains(validDepStatuses, d.Status) {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("duplicate dependency '%s' specified for task '%s'",
-							dep.Name, task.Name),
+						Level:   Error,
+						Message: fmt.Sprintf("invalid dependency status '%s' for task '%s' in build variant '%s'", d.Status, d.Name, bvtu.Variant),
 					},
 				)
 			}
-			depNames[pair] = true
 
-			// check that the status is valid
-			switch dep.Status {
-			case evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, "":
-				// these are all valid
-			default:
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("invalid dependency status for task '%s': %s",
-							task.Name, dep.Status)})
+			// Dependencies can be specified in different places, which can
+			// overwrite each other. Each build variant task unit already takes
+			// into account these precedence rules, so after resolving the
+			// dependencies defined at the different levels, check that the
+			// final dependencies all reference valid tasks.
+
+			dep := model.TVPair{Variant: d.Variant, TaskName: d.Name}
+
+			if dep.Variant == "" {
+				// Implicit build variant - if no build variant is explicitly
+				// stated, the task and dependency should both run in the same
+				// build variant.
+				dep.Variant = bvtu.Variant
 			}
 
-			// check that name of the dependency task is valid
-			if dep.Name != model.AllDependencies && project.FindProjectTask(dep.Name) == nil {
-				errs = append(errs,
-					ValidationError{
-						Level: Error,
-						Message: fmt.Sprintf("non-existent task name '%s' in dependencies for task '%s'",
-							dep.Name, task.Name),
-					},
-				)
+			if dep.TaskName == model.AllDependencies && dep.Variant == model.AllVariants {
+				// If it depends on all other tasks, there's no referential
+				// integrity to check because it can depend on any other task.
+				continue
 			}
-			if dep.Variant != "" && dep.Variant != model.AllVariants && project.FindBuildVariant(dep.Variant) == nil {
+			if dep.TaskName == model.AllDependencies {
+				// If it depends on all tasks in a specific build variant, make
+				// sure the build variant exists.
+				if _, ok := bvs[dep.Variant]; !ok {
+					errs = append(errs, ValidationError{
+						Level:   Warning,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' depends on '%s' tasks in build variant '%s', but the build variant was not found", bvtu.Name, bvtu.Variant, dep.TaskName, dep.Variant),
+					})
+				}
+				continue
+			}
+			if dep.Variant == model.AllDependencies {
+				// If it depends on a specific task in all build variants, make
+				// sure at least one build variant lists the task.
+				if _, ok := tasks[dep.TaskName]; !ok {
+					errs = append(errs, ValidationError{
+						Level:   Warning,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s' in '%s' build variants, but no build variant contains that task", bvtu.Name, bvtu.Variant, dep.TaskName, dep.Variant),
+					})
+				}
+				continue
+			}
+
+			// If it depends on a specific task and build variant, check that
+			// the build variant contains that task.
+			if _, ok := bvtus[dep]; !ok {
 				errs = append(errs, ValidationError{
-					Level: Error,
-					Message: fmt.Sprintf("non-existent variant name '%s' in dependencies for task '%s'",
-						dep.Variant, task.Name),
+					Level:   Warning,
+					Message: fmt.Sprintf("task '%s' in build variant '%s' depends on task '%s' in build variant '%s', but it was not found", bvtu.Name, bvtu.Variant, dep.TaskName, dep.Variant),
 				})
 			}
-
 		}
 	}
+
 	return errs
 }
 
-func checkTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
+// checkRequestersForTaskDependencies checks that each task's dependencies will
+// run for the same requesters. For example, a task that runs in a mainline
+// commit cannot depend on a patch only task since the dependency will only be
+// satisfiable in patches.
+func checkRequestersForTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, dep := range task.DependsOn {
@@ -1771,7 +1821,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
-func validateTaskSyncSettings(_ *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+func validateTaskSyncSettings(_ context.Context, _ *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
@@ -1794,7 +1844,7 @@ func validateTaskSyncSettings(_ *evergreen.Settings, p *model.Project, ref *mode
 }
 
 // validateVersionControl checks if a project with defined project config fields has version control enabled on the project ref.
-func validateVersionControl(_ *evergreen.Settings, _ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
+func validateVersionControl(_ context.Context, _ *evergreen.Settings, _ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
 	if ref.IsVersionControlEnabled() && !isConfigDefined {
 		errs = append(errs, ValidationError{
@@ -2115,7 +2165,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 			execTimeoutWarningAdded = true
 		}
 		errs = append(errs, checkLoggerConfig(&task)...)
-		errs = append(errs, checkTaskDependencies(&task, allTasks)...)
+		errs = append(errs, checkRequestersForTaskDependencies(&task, allTasks)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
 	}
 	if project.Loggers != nil {

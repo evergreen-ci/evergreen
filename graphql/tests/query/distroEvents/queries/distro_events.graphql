@@ -1,0 +1,14 @@
+query {
+  distroEvents(
+    opts: { distroId: "rhel71-power8-large" }
+  ) {
+    count
+    eventLogEntries {
+      after
+      before
+      data
+      timestamp
+      user
+    }
+  }
+}

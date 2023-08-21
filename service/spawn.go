@@ -21,6 +21,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -71,7 +73,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 
 	if len(r.FormValue("distro_id")) > 0 {
 		var dat distro.AliasLookupTable
-		dat, err = distro.NewDistroAliasesLookupTable()
+		dat, err = distro.NewDistroAliasesLookupTable(r.Context())
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error getting distro lookup table"))
@@ -80,7 +82,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		// Make a best-effort attempt to find a matching distro, but don't error
 		// if we can't find one.
 		for _, distroID := range dat.Expand([]string{r.FormValue("distro_id")}) {
-			foundSpawnDistro, err := distro.FindOneId(distroID)
+			foundSpawnDistro, err := distro.FindOneId(r.Context(), distroID)
 			if err == nil {
 				break
 			}
@@ -116,7 +118,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	maxHosts := evergreen.DefaultMaxSpawnHostsPerUser
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 		return
@@ -147,7 +149,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 
-	hosts, err := host.Find(host.ByUserWithRunningStatus(user.Username()))
+	hosts, err := host.Find(r.Context(), host.ByUserWithRunningStatus(user.Username()))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "Error finding running hosts for user %v", user.Username()))
@@ -164,7 +166,7 @@ func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Request) {
 	hostId := r.FormValue("host_id")
-	h, err := host.FindOneByIdOrTag(hostId)
+	h, err := host.FindOneByIdOrTag(r.Context(), hostId)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "Error finding host '%s'", hostId))
@@ -193,7 +195,12 @@ func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Requ
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := distro.Find(distro.BySpawnAllowed().WithFields(distro.IdKey, distro.IsVirtualWorkstationKey, distro.IsClusterKey, distro.ProviderSettingsListKey))
+	distros, err := distro.Find(r.Context(), distro.BySpawnAllowed(), options.Find().SetProjection(bson.M{
+		distro.IdKey:                   1,
+		distro.IsVirtualWorkstationKey: 1,
+		distro.IsClusterKey:            1,
+		distro.ProviderSettingsListKey: 1,
+	}))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading distros"))
 		return
@@ -335,7 +342,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hostId := utility.FromStringPtr(updateParams.HostID)
-	h, err := host.FindOne(host.ById(hostId))
+	h, err := host.FindOne(ctx, host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
 		return
@@ -411,13 +418,13 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	case HostExpirationExtension:
 		if updateParams.Expiration == nil || updateParams.Expiration.IsZero() { // set expiration to never expire
 			var settings *evergreen.Settings
-			settings, err = evergreen.GetConfig()
+			settings, err = evergreen.GetConfig(ctx)
 			if err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 				return
 			}
-			if err = route.CheckUnexpirableHostLimitExceeded(u.Id, settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
+			if err = route.CheckUnexpirableHostLimitExceeded(ctx, u.Id, settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return
@@ -450,7 +457,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		if err = h.SetExpirationTime(futureExpiration); err != nil {
+		if err = h.SetExpirationTime(ctx, futureExpiration); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration time"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
@@ -495,7 +502,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, "Successfully updated host tags.")
 		return
 	case HostRename:
-		if err = h.SetDisplayName(utility.FromStringPtr(updateParams.NewName)); err != nil {
+		if err = h.SetDisplayName(ctx, utility.FromStringPtr(updateParams.NewName)); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating display name"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem renaming spawn host"))
 			return

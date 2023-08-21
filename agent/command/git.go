@@ -136,9 +136,13 @@ func (opts *cloneOpts) setLocation() error {
 
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over global settings.
-func getProjectMethodAndToken(projectToken, globalToken, globalCloneMethod string) (string, string, error) {
+func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMethod string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
+		return evergreen.CloneMethodOAuth, token, err
+	}
+	if appToken != "" {
+		token, err := parseToken(appToken)
 		return evergreen.CloneMethodOAuth, token, err
 	}
 	token, err := parseToken(globalToken)
@@ -197,7 +201,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
 	if opts.useVerbose {
-		clone = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", clone)
+		clone = fmt.Sprintf("GIT_TRACE=1 %s", clone)
 	}
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
@@ -301,7 +305,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 
 	// if there's a PR checkout the ref containing the changes
 	if isGitHub(conf) {
-		var ref, localBranchName, remoteBranchName, commitToTest string
+		var suffix, localBranchName, remoteBranchName, commitToTest string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			// If opts indicates this is the first attempt (of five), start by trying the patch's
 			// cached MergeCommitSHA from when it was created and skip the agent route.
@@ -317,18 +321,18 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 					logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
 				}
 			}
-			ref = "merge"
+			suffix = "/merge"
 			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
 		} else if conf.Task.Requester == evergreen.GithubPRRequester {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
-			ref = "head"
+			suffix = "/head"
 			commitToTest = conf.GithubPatchData.HeadHash
 			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
 		} else if conf.Task.Requester == evergreen.GithubMergeRequester {
-			ref = "head"
+			suffix = "" // redundant, included for clarity
 			commitToTest = conf.GithubMergeData.HeadSHA
 			localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
 			// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
@@ -336,7 +340,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 		}
 		if commitToTest != "" {
 			gitCommands = append(gitCommands, []string{
-				fmt.Sprintf(`git fetch origin "%s/%s:%s"`, remoteBranchName, ref, localBranchName),
+				fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
 				fmt.Sprintf(`git checkout "%s"`, localBranchName),
 				fmt.Sprintf("git reset --hard %s", commitToTest),
 			}...)
@@ -492,7 +496,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
+	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Expansions.Get(evergreen.GithubAppToken), conf.GetCloneMethod())
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
@@ -617,7 +621,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
 	jpm jasper.Manager,
-	projectMethod string,
 	projectToken string,
 	p *patch.Patch,
 	moduleName string) error {
@@ -695,7 +698,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if strings.Contains(opts.location, "git@github.com:") {
 		opts.method = evergreen.CloneMethodLegacySSH
 	} else {
-		opts.method = projectMethod
+		opts.method = evergreen.CloneMethodOAuth
 		opts.token = projectToken
 	}
 	if err = opts.validate(); err != nil {
@@ -810,7 +813,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
 		}
-		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.method, opts.token, p, moduleName)
+		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.token, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
 		}

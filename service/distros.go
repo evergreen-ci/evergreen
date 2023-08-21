@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -22,7 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +35,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	distros, err := distro.Find(distro.All.Project(bson.M{"_id": 1}))
+	distros, err := distro.AllDistroIDs(r.Context())
 	if err != nil {
 		message := fmt.Sprintf("error fetching distro ids: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -61,7 +59,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	}
 	createDistro := u.HasPermission(opts)
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		message := fmt.Sprintf("error fetching evergreen settings: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -114,7 +112,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oldDistro, err := distro.FindOneId(id)
+	oldDistro, err := distro.FindOneId(r.Context(), id)
 	if err != nil {
 		message := fmt.Sprintf("error finding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -128,7 +126,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newDistro := oldDistro
+	newDistro := *oldDistro
 	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
@@ -154,13 +152,13 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		newDistro.PlannerSettings.Version = evergreen.FinderVersionLegacy
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	// check that the resulting distro is valid
-	vErrs, err := validator.CheckDistro(r.Context(), newDistro, settings, false)
+	vErrs, err := validator.CheckDistro(r.Context(), &newDistro, settings, false)
 	if err != nil {
 		message := fmt.Sprintf("error retrieving distroIds: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -176,7 +174,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = newDistro.Update(); err != nil {
+	if err = newDistro.ReplaceOne(r.Context()); err != nil {
 		message := fmt.Sprintf("error updating distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusBadRequest)
@@ -184,7 +182,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if shouldDeco || shouldRestartJasper || shouldReprovisionToNew {
-		hosts, err := host.Find(db.Query(host.ByDistroIDs(newDistro.Id)))
+		hosts, err := host.Find(r.Context(), host.ByDistroIDs(newDistro.Id))
 		if err != nil {
 			message := fmt.Sprintf("error finding hosts: %s", err.Error())
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -193,7 +191,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if shouldDeco {
-			err = host.DecommissionHostsWithDistroId(newDistro.Id)
+			err = host.DecommissionHostsWithDistroId(r.Context(), newDistro.Id)
 			if err != nil {
 				message := fmt.Sprintf("error decommissioning hosts: %s", err.Error())
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -250,7 +248,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	if newDistro.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
 		event.LogDistroAMIModified(id, u.Username())
 	}
-	event.LogDistroModified(id, u.Username(), newDistro.NewDistroData())
+	event.LogDistroModified(id, u.Username(), oldDistro.DistroData(), newDistro.DistroData())
 
 	message := fmt.Sprintf("Distro %v successfully updated.", id)
 	if shouldDeco {
@@ -265,7 +263,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	d, err := distro.FindOneId(id)
+	d, err := distro.FindOneId(r.Context(), id)
 	if err != nil {
 		message := fmt.Sprintf("error finding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -279,13 +277,13 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = host.MarkInactiveStaticHosts([]string{}, d); err != nil {
+	if err = host.MarkInactiveStaticHosts(r.Context(), []string{}, d); err != nil {
 		message := fmt.Sprintf("error removing hosts for distro '%s': %s", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
-	if err = distro.Remove(id); err != nil {
+	if err = distro.Remove(r.Context(), id); err != nil {
 		message := fmt.Sprintf("error removing distro '%v': %v", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
@@ -297,7 +295,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event.LogDistroRemoved(id, u.Username(), d.NewDistroData())
+	event.LogDistroRemoved(id, u.Username(), d.DistroData())
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully removed.", id)))
 	gimlet.WriteJSON(w, "distro successfully removed")
@@ -308,7 +306,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	d, err := distro.FindOneId(id)
+	d, err := distro.FindOneId(r.Context(), id)
 	if err != nil {
 		message := fmt.Sprintf("error fetching distro '%v': %v", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -367,7 +365,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 	if hasId {
 		d.Id = id
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -388,7 +386,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = d.Add(u); err != nil {
+	if err = d.Add(r.Context(), u); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error adding distro",
 		}))
@@ -398,7 +396,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event.LogDistroAdded(d.Id, u.Username(), d.NewDistroData())
+	event.LogDistroAdded(d.Id, u.Username(), d.DistroData())
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully added.", d.Id)))
 	gimlet.WriteJSON(w, "distro successfully added")

@@ -71,7 +71,7 @@ func NewVolumeMigrationJob(env evergreen.Environment, volumeID string, modifyOpt
 func (j *volumeMigrationJob) Run(ctx context.Context) {
 	defer j.finishJob(ctx)
 
-	if err := j.populateIfUnset(); err != nil {
+	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -101,7 +101,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 
 	if j.volume.Host != "" {
 		// Unmount volume from initial host
-		if err := j.initialHost.UnsetHomeVolume(); err != nil {
+		if err := j.initialHost.UnsetHomeVolume(ctx); err != nil {
 			j.AddError(errors.Wrapf(err, "unsetting home volume '%s' from host '%s'", j.VolumeID, j.InitialHostID))
 			return
 		}
@@ -125,7 +125,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 	}
 
 	// Avoid recreating new host on retry
-	newHost, err := host.FindUpHostWithHomeVolume(j.VolumeID)
+	newHost, err := host.FindUpHostWithHomeVolume(ctx, j.VolumeID)
 	if err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "finding host with volume '%s'", j.VolumeID))
 		return
@@ -139,7 +139,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 
 	// If not terminated, set initial host to have expiration in 24 hours
 	if j.initialHost.Status == evergreen.HostStopped {
-		err := j.initialHost.SetExpirationTime(time.Now().Add(evergreen.DefaultSpawnHostExpiration))
+		err := j.initialHost.SetExpirationTime(ctx, time.Now().Add(evergreen.DefaultSpawnHostExpiration))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "setting expiration for host '%s'", j.InitialHostID))
 			return
@@ -180,7 +180,7 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		return
 	}
 
-	if err := intentHost.Insert(); err != nil {
+	if err := intentHost.Insert(ctx); err != nil {
 		j.AddError(errors.Wrap(err, "inserting new intent host"))
 		return
 	}
@@ -194,7 +194,7 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 // finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt.
 func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 	if !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
-		volumeHost, err := host.FindUpHostWithHomeVolume(j.VolumeID)
+		volumeHost, err := host.FindUpHostWithHomeVolume(ctx, j.VolumeID)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding host with volume '%s'", j.VolumeID))
 			return
@@ -222,7 +222,7 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 	j.MarkComplete()
 }
 
-func (j *volumeMigrationJob) populateIfUnset() error {
+func (j *volumeMigrationJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -241,7 +241,7 @@ func (j *volumeMigrationJob) populateIfUnset() error {
 	if j.InitialHostID == "" {
 		// If volume was initially attached to a now-terminated host, query for this host by its home volume field.
 		if j.volume.Host == "" {
-			initialHost, err := host.FindLatestTerminatedHostWithHomeVolume(j.VolumeID, evergreen.User)
+			initialHost, err := host.FindLatestTerminatedHostWithHomeVolume(ctx, j.VolumeID, evergreen.User)
 			if err != nil {
 				return errors.Wrapf(err, "getting host attached to volume '%s'", j.VolumeID)
 			}
@@ -256,7 +256,7 @@ func (j *volumeMigrationJob) populateIfUnset() error {
 	}
 
 	if j.initialHost == nil {
-		initialHost, err := host.FindOneId(j.InitialHostID)
+		initialHost, err := host.FindOneId(ctx, j.InitialHostID)
 		if err != nil {
 			return errors.Wrapf(err, "getting host with ID '%s'", j.InitialHostID)
 		}

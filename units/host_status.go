@@ -67,12 +67,12 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	}
 
 	// Collect hosts by provider and region
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
-	startingHostsByClient, err := host.StartingHostsByClient(settings.HostInit.CloudStatusBatchSize)
+	startingHostsByClient, err := host.StartingHostsByClient(ctx, settings.HostInit.CloudStatusBatchSize)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting starting hosts"))
 		return
@@ -152,15 +152,11 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 	if len(pieces) != 3 {
 		return errors.Errorf("expected AWS error message to contain three single quotes, but actual error message is: %s", awsErr)
 	}
+
 	instanceIDs := strings.Split(pieces[1], ",")
-	grip.Warning(message.Fields{
-		"message": "host IDs not found in AWS, will terminate",
-		"hosts":   instanceIDs,
-		"job":     j.ID(),
-	})
 	catcher := grip.NewBasicCatcher()
 	for _, hostID := range instanceIDs {
-		h, err := host.FindOneId(hostID)
+		h, err := host.FindOneId(ctx, hostID)
 		if err != nil {
 			catcher.Wrapf(err, "finding host '%s'", h.Id)
 			continue
@@ -168,16 +164,19 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 		if h == nil {
 			continue
 		}
-		// Decommission the host to prevent this job from checking it again.
-		catcher.Wrap(h.SetDecommissioned(evergreen.User, false, "cloud host has no status"), "setting nonexistent host to decommissioned in preparation for termination")
 
-		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
-			TerminateIfBusy:   true,
-			TerminationReason: "instance ID not found",
+		grip.Info(message.Fields{
+			"message":   "host ID not found in AWS, will terminate",
+			"operation": "terminateUnknownHosts",
+			"host_id":   h.Id,
+			"host_tag":  h.Tag,
+			"distro":    h.Distro.Id,
+			"job":       j.ID(),
 		})
-		catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob), "enqueueing termination job for host '%s'", hostID)
+
+		catcher.Wrapf(j.prepareToTerminateHost(ctx, h, "cannot get instance status because instance does not exist in AWS", false), "host '%s'", h.Id)
 	}
-	return catcher.Resolve()
+	return errors.Wrap(catcher.Resolve(), "terminating unknown hosts")
 }
 
 // setCloudHostStatus checks the status of the host's cloud instance to
@@ -188,30 +187,19 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 	switch cloudStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping, cloud.StatusNonExistent:
 		j.logHostStatusMessage(&h, cloudStatus)
-
-		event.LogHostTerminatedExternally(h.Id, h.Status)
 		grip.Info(message.Fields{
-			"message":      "host terminated externally",
-			"operation":    "setCloudHostStatus",
-			"host_id":      h.Id,
-			"host_tag":     h.Tag,
-			"distro":       h.Distro.Id,
-			"provider":     h.Provider,
-			"status":       h.Status,
-			"cloud_status": cloudStatus,
+			"message":   "host was terminated externally",
+			"operation": "setCloudHostStatus",
+			"host_id":   h.Id,
+			"host_tag":  h.Tag,
+			"distro":    h.Distro.Id,
+			"provider":  h.Provider,
+			"status":    h.Status,
 		})
 
-		catcher := grip.NewBasicCatcher()
-		catcher.Wrap(handleTerminatedHostSpawnedByTask(&h), "handling host.create host that was terminating before it was running")
-		catcher.Wrap(h.SetDecommissioned(evergreen.User, false, fmt.Sprintf("host status is '%s'", cloudStatus.String())), "decommissioning host")
-		terminationJob := NewHostTerminationJob(j.env, &h, HostTerminationOptions{
-			TerminateIfBusy:          true,
-			TerminationReason:        "instance was found in stopped state",
-			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated || cloudStatus == cloud.StatusNonExistent,
-		})
-		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob), "enqueueing job to terminate host")
-
-		return catcher.Resolve()
+		terminationReason := fmt.Sprintf("instance was found in state '%s'", cloudStatus)
+		skipCloudHostTermination := cloudStatus == cloud.StatusTerminated || cloudStatus == cloud.StatusNonExistent
+		return j.prepareToTerminateHost(ctx, &h, terminationReason, skipCloudHostTermination)
 	case cloud.StatusRunning:
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrapf(j.setNextState(ctx, &h), "transitioning host state")
@@ -239,14 +227,14 @@ func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) erro
 		// From the app server's perspective, it is done provisioning a user
 		// data host once the instance is running. The user data script will
 		// handle the rest of host provisioning.
-		return errors.Wrap(h.SetProvisionedNotRunning(), "marking host as provisioned but not yet running")
+		return errors.Wrap(h.SetProvisionedNotRunning(ctx), "marking host as provisioned but not yet running")
 	case distro.BootstrapMethodNone:
 		// A host created by a task goes through no further provisioning, so we
 		// can just set it as running.
-		return errors.Wrap(h.MarkAsProvisioned(), "marking host as running")
+		return errors.Wrap(h.MarkAsProvisioned(ctx), "marking host as running")
 	default:
 		// All other host types must be manually provisioned by the app server.
-		if err := h.SetProvisioning(); err != nil {
+		if err := h.SetProvisioning(ctx); err != nil {
 			return errors.Wrap(err, "marking host as provisioning")
 		}
 
@@ -311,4 +299,23 @@ func (j *cloudHostReadyJob) logHostStatusMessage(h *host.Host, cloudStatus cloud
 			"job":          j.ID(),
 		})
 	}
+}
+
+// prepareToTerminateHost handles a host that is an unrecoverable state by
+// marking it for termination and handling any other cleanup necessary for a
+// host that fails to start up.
+func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.Host, terminationReason string, skipCloudHostTermination bool) error {
+	event.LogHostTerminatedExternally(h.Id, h.Status)
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(handleTerminatedHostSpawnedByTask(ctx, h), "handling host.create host that was terminating before it was running")
+	catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, terminationReason), "decommissioning host")
+	terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
+		TerminateIfBusy:          true,
+		TerminationReason:        terminationReason,
+		SkipCloudHostTermination: skipCloudHostTermination,
+	})
+	catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob), "enqueueing job to terminate host")
+
+	return catcher.Resolve()
 }

@@ -270,7 +270,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	h, err := host.FindOneId(hostID)
+	h, err := host.FindOneId(r.Context(), hostID)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -337,7 +337,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	updateHostAccessTime(h)
+	updateHostAccessTime(r.Context(), h)
 	next(rw, r)
 }
 
@@ -380,7 +380,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 			}))
 			return
 		}
-		updateHostAccessTime(h)
+		updateHostAccessTime(r.Context(), h)
 		next(rw, r)
 		return
 	}
@@ -580,8 +580,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
-func updateHostAccessTime(h *host.Host) {
-	if err := h.UpdateLastCommunicated(); err != nil {
+func updateHostAccessTime(ctx context.Context, h *host.Host) {
+	if err := h.UpdateLastCommunicated(ctx); err != nil {
 		grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 	}
 	// Since the host has contacted the app server, we should prevent the
@@ -589,10 +589,10 @@ func updateHostAccessTime(h *host.Host) {
 	// Deciding whether we should redeploy agents or agent monitors
 	// is handled within the REST route handler.
 	if h.NeedsNewAgent {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
+		grip.Warning(message.WrapError(h.SetNeedsNewAgent(ctx, false), "problem clearing host needs new agent"))
 	}
 	if h.NeedsNewAgentMonitor {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
+		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
 	}
 }
 
@@ -804,7 +804,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 
 	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
 	if distroID == "" && hostID != "" {
-		distroID, err = host.FindDistroForHost(hostID)
+		distroID, err = host.FindDistroForHost(r.Context(), hostID)
 		if err != nil {
 			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
 		}
@@ -815,7 +815,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable()
+	dat, err := distro.NewDistroAliasesLookupTable(r.Context())
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
 	}
@@ -826,7 +826,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	// Verify that all the concrete distros that this request is accessing
 	// exist.
 	for _, resolvedDistroID := range distroIDs {
-		d, err := distro.FindOneId(resolvedDistroID)
+		d, err := distro.FindOneId(r.Context(), resolvedDistroID)
 		if err != nil {
 			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
 		}

@@ -69,7 +69,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
 		{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 	}
-	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "project_grumpyCat", "project_happyAbyssinian"}
+	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "project_grumpyCat", "project_happyAbyssinian", "superuser_distro_access"}
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
@@ -121,10 +121,21 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.AllDistrosScope,
 		Name:      "modify host scope",
 		Type:      evergreen.DistroResourceType,
-		Resources: []string{"ubuntu1604-small", "ubuntu1604-large"},
+		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small"},
 	}
 	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)
+
+	superUserDistroRole := gimlet.Role{
+		ID:    evergreen.SuperUserDistroAccessRole,
+		Name:  "admin access",
+		Scope: evergreen.AllDistrosScope,
+		Permissions: map[string]int{
+			"distro_settings": 30,
+			"distro_hosts":    20,
+		},
+	}
+	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
 
 	modifyHostRole := gimlet.Role{
 		ID:          "modify_host",
@@ -334,11 +345,14 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 
 func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	persistTestSettings := func(t *testing.T) {
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
-		require.NoError(t, state.Settings.Set())
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": build.Collection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": task.Collection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.VersionCollection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
+		require.NoError(t, state.Settings.Set(ctx))
 
 	}
 	type setupFn func(*testing.T)
@@ -372,6 +386,9 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 }
 
 func spawnTestHostAndVolume(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Initialize Spawn Host and Spawn Volume used in tests
 	volExp, err := time.Parse(time.RFC3339, "2020-06-06T14:43:06.287Z")
 	require.NoError(t, err)
@@ -416,8 +433,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 		Zone:               "us-east-1a",
 		Provisioned:        true,
 	}
-	require.NoError(t, h.Insert())
-	ctx := context.Background()
+	require.NoError(t, h.Insert(ctx))
 	err = spawnHostForTestCode(ctx, &mountedVolume, &h)
 	require.NoError(t, err)
 }

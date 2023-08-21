@@ -33,11 +33,18 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	baseTasks, err := getVersionBaseTasks(*obj.Id)
+	baseVersion, err := model.FindBaseVersionForVersion(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version base tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base version for version '%s': %s", *obj.Id, err.Error()))
 	}
-	return getAllTaskStatuses(baseTasks), nil
+	if baseVersion == nil {
+		return nil, nil
+	}
+	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, *obj.Id, baseVersion.Id)
+	if err != nil {
+		return nil, nil
+	}
+	return statuses, nil
 }
 
 // Builds is the resolver for the builds field.
@@ -162,19 +169,11 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 
 // TaskStatuses is the resolver for the taskStatuses field.
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(ctx, *obj.Id, opts)
+	statuses, err := task.GetTaskStatusesByVersion(ctx, utility.FromStringPtr(obj.Id), false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+		return nil, nil
 	}
-	return getAllTaskStatuses(tasks), nil
+	return statuses, nil
 }
 
 // Time is the resolver for the time field.

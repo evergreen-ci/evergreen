@@ -325,7 +325,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	return errors.Wrap(h.Terminate(user, reason), "terminating instance in DB")
+	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating instance in DB")
 }
 
 // StopInstance should do nothing for EC2 Fleet.
@@ -473,7 +473,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 
 	settings := *m.settings
 	// Use the latest service flags instead of those cached in the environment.
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
 	}

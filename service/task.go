@@ -61,7 +61,6 @@ type uiTaskData struct {
 	IngestTime           time.Time               `json:"ingest_time"`
 	EstWaitTime          time.Duration           `json:"wait_time"`
 	UpstreamData         *uiUpstreamData         `json:"upstream_data,omitempty"`
-	Logs                 *apimodels.TaskLogs     `json:"logs,omitempty"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -268,7 +267,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		VersionId:            projCtx.Version.Id,
 		RepoOwner:            projCtx.ProjectRef.Owner,
 		Repo:                 projCtx.ProjectRef.Repo,
-		Logs:                 projCtx.Task.Logs,
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
@@ -293,7 +291,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		uiTask.MinQueuePos = 0
 	}
 	if uiTask.Status == evergreen.TaskUndispatched {
-		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(*projCtx.Task)
+		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(ctx, *projCtx.Task)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -313,7 +311,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Task.HostId != "" {
 		uiTask.HostDNS = projCtx.Task.HostId
 		uiTask.HostId = projCtx.Task.HostId
-		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
+		taskHost, err = host.FindOne(ctx, host.ById(projCtx.Task.HostId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -323,7 +321,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			// ensure that the ability to spawn is updated from the existing distro
 			taskHost.Distro.SpawnAllowed = false
 			var d *distro.Distro
-			d, err = distro.FindOneId(taskHost.Distro.Id)
+			d, err = distro.FindOneId(ctx, taskHost.Distro.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -688,7 +686,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case evergreen.RestartAction:
-		if err = model.TryResetTask(uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
+		if err = model.TryResetTask(ctx, uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -701,7 +699,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case evergreen.AbortAction:
-		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
+		if err = model.AbortTask(ctx, projCtx.Task.Id, authName); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -720,7 +718,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
 			return
 		}
-		if err = model.SetActiveState(authUser.Username(), active, *projCtx.Task); err != nil {
+		if err = model.SetActiveState(r.Context(), authUser.Username(), active, *projCtx.Task); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return
@@ -747,7 +745,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if err = model.SetTaskPriority(*projCtx.Task, priority, authUser.Username()); err != nil {
+		if err = model.SetTaskPriority(r.Context(), *projCtx.Task, priority, authUser.Username()); err != nil {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}

@@ -111,6 +111,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkServerURL:   h.settings.Splunk.SplunkConnectionInfo.ServerURL,
 		SplunkClientToken: h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:     h.settings.Splunk.SplunkConnectionInfo.Channel,
+		Buckets:           h.settings.Buckets,
 		TaskSync:          h.settings.Providers.AWS.TaskSync,
 		EC2Keys:           h.settings.Providers.AWS.EC2Keys,
 	}
@@ -187,17 +188,7 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	if err = p.UpdateMergeCommitSHA(pr.GetMergeCommitSHA()); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating merge commit SHA for patch '%s'", p.Id.Hex()))
 	}
-	if h.req.LastRetry && (!utility.FromBoolPtr(resp.Mergeable) || resp.MergeCommitSHA == "") {
-		grip.Debug(message.Fields{
-			"message":         "last attempt to retry getting pull request",
-			"route":           "/pull_request",
-			"ticket":          "EVG-19723",
-			"pr_state":        pr.State,
-			"pr_last_updated": pr.UpdatedAt,
-			"resp":            resp,
-			"request":         h.req,
-		})
-	}
+
 	return gimlet.NewJSONResponse(resp)
 }
 
@@ -370,7 +361,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 	var foundHost *host.Host
 	if h.hostID != "" {
-		foundHost, err = host.FindOneId(h.hostID)
+		foundHost, err = host.FindOneId(ctx, h.hostID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting host '%s'", h.hostID))
 		}
@@ -589,7 +580,7 @@ func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOneId(h.hostID)
+	host, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
 	}
@@ -951,7 +942,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var msg string
 	if h.hostID != "" {
-		host, err := host.FindOneByTaskIdAndExecution(t.Id, t.Execution)
+		host, err := host.FindOneByTaskIdAndExecution(ctx, t.Id, t.Execution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host running task %s", t.Id))
 		}
@@ -1014,6 +1005,10 @@ func logTaskStartMessage(h *host.Host, t *task.Task) {
 		"task":                   t.DisplayName,
 		"display_task":           t.DisplayOnly,
 		"variant":                t.BuildVariant,
+	}
+
+	if !t.DependenciesMetTime.IsZero() {
+		msg["dependencies_met_time"] = t.DependenciesMetTime
 	}
 
 	if strings.HasPrefix(h.Distro.Provider, "ec2") {

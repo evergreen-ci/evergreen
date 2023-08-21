@@ -181,13 +181,13 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 // in the same repository, at the pull request's close time. This returns
 // whether or not one of the GitHub patches is a commit queue item and is
 // currently merging the PR.
-func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
+func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestEvent) error {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
 		return err
 	}
 
-	if err = model.AbortPatchesWithGithubPatchData(event.PullRequest.GetClosedAt().Time, true, "", owner, repo, *event.Number); err != nil {
+	if err = model.AbortPatchesWithGithubPatchData(ctx, event.PullRequest.GetClosedAt().Time, true, "", owner, repo, *event.Number); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "aborting patches").Error(),
@@ -197,8 +197,8 @@ func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	return nil
 }
 
-// GetPatchRawPatches fetches the raw patches for a patch
-func GetPatchRawPatches(patchID string) (map[string]string, error) {
+// GetRawPatches fetches the raw patches for a patch.
+func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -219,13 +219,21 @@ func GetPatchRawPatches(patchID string) (map[string]string, error) {
 			Message:    errors.Wrap(err, "getting patch contents").Error(),
 		}
 	}
-
-	patchMap := make(map[string]string)
+	var rawPatch restModel.APIRawPatch
 	for _, raw := range patchDoc.Patches {
-		patchMap[raw.ModuleName] = raw.PatchSet.Patch
+		module := restModel.APIRawModule{
+			Name:    raw.ModuleName,
+			Diff:    raw.PatchSet.Patch,
+			Githash: raw.Githash,
+		}
+		if raw.ModuleName == "" {
+			rawPatch.Patch = module
+		} else {
+			rawPatch.RawModules = append(rawPatch.RawModules, module)
+		}
 	}
 
-	return patchMap, nil
+	return &rawPatch, nil
 }
 
 func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, string, error) {

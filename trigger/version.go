@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -51,9 +52,9 @@ func makeVersionTriggers() eventHandler {
 	return t
 }
 
-func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *versionTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var err error
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 
@@ -156,7 +157,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
 		githubContext:     "evergreen",
-		githubDescription: "tasks are running",
+		githubDescription: evergreen.PRTasksRunningDescription,
 	}
 	if t.data.GithubCheckStatus != "" {
 		data.PastTenseStatus = t.data.GithubCheckStatus

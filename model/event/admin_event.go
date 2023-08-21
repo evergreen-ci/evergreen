@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -139,7 +140,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	}
 
 	// get the correct implementation of the interface from the registry
-	section := evergreen.ConfigRegistry.GetSection(out.Section)
+	section := evergreen.NewConfigSections().Sections[out.Section]
 	if section == nil {
 		return nil, errors.Errorf("getting section '%s' from config registry", out.Section)
 	}
@@ -164,7 +165,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 }
 
 // RevertConfig reverts one config section to the before state of the specified GUID in the event log
-func RevertConfig(guid string, user string) error {
+func RevertConfig(ctx context.Context, guid string, user string) error {
 	events, err := FindAdmin(ByAdminGuid(guid))
 	if err != nil {
 		return errors.Wrap(err, "finding events")
@@ -174,15 +175,15 @@ func RevertConfig(guid string, user string) error {
 	}
 	evt := events[0]
 	data := evt.Data.(*AdminEventData)
-	current := evergreen.ConfigRegistry.GetSection(data.Section)
+	current := evergreen.NewConfigSections().Sections[data.Section]
 	if current == nil {
 		return errors.Errorf("finding section '%s'", data.Section)
 	}
-	err = current.Get(evergreen.GetEnvironment())
+	err = current.Get(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "reading section '%s'", current.SectionId())
 	}
-	err = data.Changes.Before.Set()
+	err = data.Changes.Before.Set(ctx)
 	if err != nil {
 		return errors.Wrap(err, "reverting to before settings")
 	}

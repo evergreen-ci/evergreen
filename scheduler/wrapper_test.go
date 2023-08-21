@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -188,6 +189,9 @@ func makeStaticHostProviderSettings(t *testing.T, names ...string) *birch.Docume
 }
 
 func TestDoStaticHostUpdate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	legacyHost := func() *host.Host {
 		return &host.Host{
 			Id:   "host1",
@@ -228,12 +232,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				User:                 user,
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, name, hosts[0])
 
-			dbHost, err := host.FindOneId(name)
+			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
 			assert.Equal(t, user, dbHost.User)
 			assert.Equal(t, evergreen.User, dbHost.StartedBy)
@@ -255,12 +259,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, name, hosts[0])
 
-			dbHost, err := host.FindOneId(name)
+			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
 			assert.Equal(t, dbHost.Status, evergreen.HostRunning)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -278,12 +282,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, name, hosts[0])
 
-			dbHost, err := host.FindOneId(name)
+			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
 			assert.Equal(t, dbHost.Status, evergreen.HostProvisioning)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -291,7 +295,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"LegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -301,12 +305,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodLegacySSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -314,7 +318,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"LegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -324,12 +328,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodSSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -337,7 +341,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"NonLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -347,12 +351,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodLegacySSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
@@ -360,7 +364,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		},
 		"NonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -371,12 +375,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -385,7 +389,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -396,12 +400,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -410,7 +414,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -421,12 +425,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -435,7 +439,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -446,12 +450,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -460,7 +464,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"TerminatedNonLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -471,12 +475,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
@@ -485,7 +489,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -496,12 +500,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -510,7 +514,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -521,12 +525,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
@@ -535,7 +539,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -546,12 +550,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -560,7 +564,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"QuarantinedNonLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostQuarantined
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -571,12 +575,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 				},
 			}
 
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
@@ -585,7 +589,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"ProvisioningLegacyHostOnLegacyDistro": func(t *testing.T) {
 			h := legacyHost()
 			h.Status = evergreen.HostProvisioning
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -595,12 +599,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodLegacySSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
@@ -609,7 +613,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"ProvisioningNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
 			h := nonLegacyHost()
 			h.Status = evergreen.HostProvisioning
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			d := distro.Distro{
 				Id:                   "distro",
 				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
@@ -619,12 +623,12 @@ func TestDoStaticHostUpdate(t *testing.T) {
 					Communication: distro.BootstrapMethodSSH,
 				},
 			}
-			hosts, err := doStaticHostUpdate(d)
+			hosts, err := doStaticHostUpdate(ctx, d)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0])
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)

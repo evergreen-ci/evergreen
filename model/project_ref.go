@@ -148,14 +148,23 @@ type ProjectBanner struct {
 }
 
 type ExternalLink struct {
-	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
+	DisplayName string   `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Requesters  []string `bson:"requesters,omitempty" json:"requesters,omitempty" yaml:"requesters,omitempty"`
+	URLTemplate string   `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
+type MergeQueue string
+
+const (
+	MergeQueueEvergreen MergeQueue = "EVERGREEN"
+	MergeQueueGitHub    MergeQueue = "GITHUB"
+)
+
 type CommitQueueParams struct {
-	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
-	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
+	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
+	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
+	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
@@ -246,8 +255,9 @@ type TriggerDefinition struct {
 	DateCutoff        *int   `bson:"date_cutoff,omitempty" json:"date_cutoff,omitempty"`
 
 	// definitions for tasks to run for this trigger
-	ConfigFile string `bson:"config_file,omitempty" json:"config_file,omitempty"`
-	Alias      string `bson:"alias,omitempty" json:"alias,omitempty"`
+	ConfigFile                   string `bson:"config_file,omitempty" json:"config_file,omitempty"`
+	Alias                        string `bson:"alias,omitempty" json:"alias,omitempty"`
+	UnscheduleDownstreamVersions bool   `bson:"unschedule_downstream_versions,omitempty" json:"unschedule_downstream_versions,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -719,9 +729,9 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting config")
 	}
@@ -1638,7 +1648,7 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		return true, nil
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "finding evergreen settings")
 	}
@@ -2751,7 +2761,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	conf, err := evergreen.GetConfig()
+	conf, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get evergreen configuration")
 	}
@@ -2873,9 +2883,9 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
+		catcher.NewWhen(container.WorkingDir == "", "working directory must be defined")
 		catcher.NewWhen(container.Name == "", "name must be defined")
-		catcher.ErrorfWhen(!utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
-
+		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
 	}
 	return catcher.Resolve()
 }

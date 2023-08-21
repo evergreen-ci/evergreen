@@ -72,7 +72,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := dbModel.SetVersionsPriority([]string{p.patchId}, priority, ""); err != nil {
+		if err := dbModel.SetVersionsPriority(ctx, []string{p.patchId}, priority, ""); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch priority"))
 		}
 	}
@@ -142,12 +142,59 @@ func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchRawHandler) Run(ctx context.Context) gimlet.Responder {
-	patchMap, err := data.GetPatchRawPatches(p.patchID)
+	rawPatches, err := data.GetRawPatches(p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting raw patches for patch '%s'", p.patchID))
 	}
+	if rawPatches == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("raw patch not found for '%s'", p.patchID),
+		})
+	}
 
-	return gimlet.NewTextResponse(patchMap[p.moduleName])
+	if p.moduleName == "" {
+		return gimlet.NewTextResponse(rawPatches.Patch.Diff)
+	}
+	modules := rawPatches.RawModules
+	for _, m := range modules {
+		if m.Name == p.moduleName {
+			return gimlet.NewTextResponse(m.Diff)
+		}
+	}
+	return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("module '%s' not found", p.moduleName),
+	})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/patches/{patch_id}/raw_modules
+
+type moduleRawHandler struct {
+	patchID string
+}
+
+func makeModuleRawHandler() gimlet.RouteHandler {
+	return &moduleRawHandler{}
+}
+
+func (p *moduleRawHandler) Factory() gimlet.RouteHandler {
+	return &moduleRawHandler{}
+}
+
+func (p *moduleRawHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.patchID = gimlet.GetVars(r)["patch_id"]
+	return nil
+}
+
+func (p *moduleRawHandler) Run(ctx context.Context) gimlet.Responder {
+	rawPatches, err := data.GetRawPatches(p.patchID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting raw patches for patch '%s'", p.patchID))
+	}
+	return gimlet.NewJSONResponse(rawPatches)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -365,7 +412,7 @@ func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-	if err := dbModel.RestartTasksInVersion(p.patchId, true, usr.Id); err != nil {
+	if err := dbModel.RestartTasksInVersion(ctx, p.patchId, true, usr.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in patch '%s'", p.patchId))
 	}
 

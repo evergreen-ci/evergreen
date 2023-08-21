@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -114,6 +115,7 @@ type ApiTaskEndDetail struct {
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
+	TraceID     *string           `json:"trace_id"`
 }
 
 func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
@@ -126,6 +128,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	apiOomTracker := APIOomTrackerInfo{}
 	apiOomTracker.BuildFromService(t.OOMTracker)
 	at.OOMTracker = apiOomTracker
+	at.TraceID = utility.ToStringPtr(t.TraceID)
 
 	return nil
 }
@@ -138,6 +141,7 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 		TimedOut:    ad.TimedOut,
 		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
 		OOMTracker:  ad.OOMTracker.ToService(),
+		TraceID:     utility.FromStringPtr(ad.TraceID),
 	}
 }
 
@@ -161,10 +165,10 @@ func (ad *APIOomTrackerInfo) ToService() *apimodels.OOMTrackerInfo {
 }
 
 // BuildPreviousExecutions adds the given previous executions to the given API task.
-func (at *APITask) BuildPreviousExecutions(tasks []task.Task, logURL, parsleyURL string) error {
+func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Task, logURL, parsleyURL string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
-		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i], &APITaskArgs{
+		if err := at.PreviousExecutions[i].BuildFromService(ctx, &tasks[i], &APITaskArgs{
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
@@ -313,7 +317,7 @@ type APITaskArgs struct {
 // BuildFromService converts from a service level task by loading the data
 // into the appropriate fields of the APITask. It takes optional arguments to populate
 // additional fields.
-func (at *APITask) BuildFromService(t *task.Task, args *APITaskArgs) error {
+func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *APITaskArgs) error {
 	err := at.buildTask(t)
 	if err != nil {
 		return err
@@ -345,7 +349,7 @@ func (at *APITask) BuildFromService(t *task.Task, args *APITaskArgs) error {
 		at.ParsleyLogs = ll
 	}
 	if args.IncludeAMI {
-		if err := at.GetAMI(); err != nil {
+		if err := at.GetAMI(ctx); err != nil {
 			return errors.Wrap(err, "getting AMI")
 		}
 	}
@@ -361,12 +365,12 @@ func (at *APITask) BuildFromService(t *task.Task, args *APITaskArgs) error {
 	return nil
 }
 
-func (at *APITask) GetAMI() error {
+func (at *APITask) GetAMI(ctx context.Context) error {
 	if at.AMI != nil {
 		return nil
 	}
 	if utility.FromStringPtr(at.HostId) != "" {
-		h, err := host.FindOneId(utility.FromStringPtr(at.HostId))
+		h, err := host.FindOneId(ctx, utility.FromStringPtr(at.HostId))
 		if err != nil {
 			return errors.Wrapf(err, "finding host '%s' for task", utility.FromStringPtr(at.HostId))
 		}

@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -22,6 +23,9 @@ import (
 )
 
 func TestFindDistroById(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
@@ -35,14 +39,17 @@ func TestFindDistroById(t *testing.T) {
 	d := &Distro{
 		Id: id,
 	}
-	assert.Nil(d.Insert())
-	found, err := FindOneId(id)
+	assert.Nil(d.Insert(ctx))
+	found, err := FindOneId(ctx, id)
 	assert.NoError(err)
 	assert.Equal(found.Id, id, "The _ids should match")
 	assert.NotEqual(found.Id, -1, "The _ids should not match")
 }
 
 func TestFindAllDistros(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
@@ -56,10 +63,10 @@ func TestFindAllDistros(t *testing.T) {
 		d := &Distro{
 			Id: fmt.Sprintf("distro_%d", rand.Int()),
 		}
-		assert.Nil(d.Insert())
+		assert.Nil(d.Insert(ctx))
 	}
 
-	found, err := Find(All)
+	found, err := AllDistros(ctx)
 	assert.NoError(err)
 	assert.Len(found, numDistros)
 }
@@ -107,6 +114,9 @@ func TestGenerateGceName(t *testing.T) {
 }
 
 func TestIsParent(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
 	assert.NoError(db.Clear(evergreen.ConfigCollection))
@@ -120,9 +130,9 @@ func TestIsParent(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(conf.Set())
+	assert.NoError(conf.Set(ctx))
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	assert.NoError(err)
 
 	d1 := &Distro{
@@ -135,9 +145,9 @@ func TestIsParent(t *testing.T) {
 		Id:            "distro-3",
 		ContainerPool: "test-pool",
 	}
-	assert.NoError(d1.Insert())
-	assert.NoError(d2.Insert())
-	assert.NoError(d3.Insert())
+	assert.NoError(d1.Insert(ctx))
+	assert.NoError(d2.Insert(ctx))
+	assert.NoError(d3.Insert(ctx))
 
 	assert.True(d1.IsParent(settings))
 	assert.False(d2.IsParent(settings))
@@ -164,6 +174,9 @@ func TestGetDefaultAMI(t *testing.T) {
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
 
@@ -174,8 +187,8 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 		Id:            "invalid-distro",
 		ContainerPool: "test-pool-1",
 	}
-	assert.NoError(d1.Insert())
-	assert.NoError(d2.Insert())
+	assert.NoError(d1.Insert(ctx))
+	assert.NoError(d2.Insert(ctx))
 
 	testSettings := &evergreen.Settings{
 		ContainerPools: evergreen.ContainerPoolsConfig{
@@ -199,7 +212,7 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 		},
 	}
 
-	err := ValidateContainerPoolDistros(testSettings)
+	err := ValidateContainerPoolDistros(ctx, testSettings)
 	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
 	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }
@@ -550,6 +563,9 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 }
 
 func TestAddPermissions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	env := evergreen.GetEnvironment()
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -560,7 +576,7 @@ func TestAddPermissions(t *testing.T) {
 	d := Distro{
 		Id: "myDistro",
 	}
-	require.NoError(t, d.Add(&u))
+	require.NoError(t, d.Add(ctx, &u))
 
 	rm := env.RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.DistroResourceType, d.Id)
@@ -580,6 +596,15 @@ func TestAddPermissions(t *testing.T) {
 func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.EventCollection))
 
+	oldDistro := Distro{
+		Id:       "rainbow-lollipop",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument().Set(birch.EC.String("ami", "ami-0")),
+			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
+		},
+	}
+
 	d := Distro{
 		Id:       "rainbow-lollipop",
 		Provider: evergreen.ProviderNameEc2OnDemand,
@@ -588,17 +613,47 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
 		},
 	}
-	event.LogDistroModified(d.Id, "user1", d.NewDistroData())
-	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(d.Id, 10)
+	event.LogDistroModified(d.Id, "user1", oldDistro.DistroData(), d.DistroData())
+	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(d.Id, 10, utility.ZeroTime)
 	assert.NoError(t, err)
 	require.Len(t, eventsForDistro, 1)
 	eventData, ok := eventsForDistro[0].Data.(*event.DistroEventData)
 	assert.True(t, ok)
 	assert.Equal(t, "user1", eventData.UserId)
+	assert.Equal(t, "user1", eventData.User)
 	assert.NotNil(t, eventData.Data)
+	assert.NotNil(t, eventData.Before)
+	assert.NotNil(t, eventData.After)
 
+	// Test legacy Data field
 	data := DistroData{}
 	body, err := bson.Marshal(eventData.Data)
+	assert.NoError(t, err)
+	assert.NoError(t, bson.Unmarshal(body, &data))
+	require.NotNil(t, data)
+	assert.Equal(t, d.Id, data.Distro.Id)
+	assert.Equal(t, d.Provider, data.Distro.Provider)
+	assert.Nil(t, data.Distro.ProviderSettingsList)
+	require.Len(t, data.ProviderSettingsMap, 2)
+	assert.EqualValues(t, d.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
+	assert.EqualValues(t, d.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+
+	// Test Before field
+	data = DistroData{}
+	body, err = bson.Marshal(eventData.Before)
+	assert.NoError(t, err)
+	assert.NoError(t, bson.Unmarshal(body, &data))
+	require.NotNil(t, data)
+	assert.Equal(t, oldDistro.Id, data.Distro.Id)
+	assert.Equal(t, oldDistro.Provider, data.Distro.Provider)
+	assert.Nil(t, data.Distro.ProviderSettingsList)
+	require.Len(t, data.ProviderSettingsMap, 2)
+	assert.EqualValues(t, oldDistro.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
+	assert.EqualValues(t, oldDistro.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+
+	// Test After field
+	data = DistroData{}
+	body, err = bson.Marshal(eventData.After)
 	assert.NoError(t, err)
 	assert.NoError(t, bson.Unmarshal(body, &data))
 	require.NotNil(t, data)

@@ -265,6 +265,9 @@ func TestGetSSHOptions(t *testing.T) {
 }
 
 func TestJasperCommands(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
@@ -289,14 +292,14 @@ func TestJasperCommands(t *testing.T) {
 		},
 		"GenerateUserDataProvisioningScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = evergreen.User
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			checkRerun := h.CheckUserDataProvisioningStartedCommand()
 
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
-			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
+			startAgentMonitor, err := h.StartAgentMonitorRequest(ctx, settings)
 			require.NoError(t, err)
 
 			markDone := h.MarkUserDataProvisioningDoneCommand()
@@ -315,7 +318,7 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.GenerateUserDataProvisioningScript(settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -336,7 +339,7 @@ func TestJasperCommands(t *testing.T) {
 				TaskId:   "task_id",
 				TaskSync: true,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			checkRerun := h.CheckUserDataProvisioningStartedCommand()
 
@@ -373,7 +376,7 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.GenerateUserDataProvisioningScript(settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -491,6 +494,9 @@ func TestJasperCommands(t *testing.T) {
 }
 
 func TestJasperCommandsWindows(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
@@ -514,11 +520,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"UserDataProvisioningScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			checkRerun := h.CheckUserDataProvisioningStartedCommand()
 
-			setupUser, err := h.SetupServiceUserCommands()
+			setupUser, err := h.SetupServiceUserCommands(ctx)
 			require.NoError(t, err)
 
 			setupScript, err := h.setupScriptCommands(settings)
@@ -529,7 +535,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 			require.NoError(t, err)
 
-			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
+			startAgentMonitor, err := h.StartAgentMonitorRequest(ctx, settings)
 			require.NoError(t, err)
 
 			markDone := h.MarkUserDataProvisioningDoneCommand()
@@ -544,7 +550,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				markDone,
 			)
 
-			script, err := h.GenerateUserDataProvisioningScript(settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -562,11 +568,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 			h.ProvisionOptions = &ProvisionOptions{
 				OwnerId: userID,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			checkRerun := h.CheckUserDataProvisioningStartedCommand()
 
-			setupUser, err := h.SetupServiceUserCommands()
+			setupUser, err := h.SetupServiceUserCommands(ctx)
 			require.NoError(t, err)
 
 			setupScript, err := h.setupScriptCommands(settings)
@@ -592,15 +598,15 @@ func TestJasperCommandsWindows(t *testing.T) {
 				markDone,
 			)
 
-			script, err := h.GenerateUserDataProvisioningScript(settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
 		},
 		"ForceReinstallJasperCommandSSH": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-			require.NoError(t, h.Insert())
-			require.NoError(t, h.CreateServicePassword())
+			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.CreateServicePassword(ctx))
 			cmd := h.ForceReinstallJasperCommand(settings)
 			assert.True(t, strings.HasPrefix(cmd, "/foo/jasper_cli.exe jasper service force-reinstall rpc"))
 			assert.Contains(t, cmd, "--host=0.0.0.0")
@@ -963,13 +969,16 @@ func TestBuildLocalJasperClientRequest(t *testing.T) {
 }
 
 func TestStartAgentMonitorRequest(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
 
 	h := &Host{Id: "id", Distro: distro.Distro{WorkDir: "/foo"}}
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	settings := &evergreen.Settings{
 		ApiUrl:            "www.example0.com",
@@ -988,11 +997,11 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 		},
 	}
 
-	cmd, err := h.StartAgentMonitorRequest(settings)
+	cmd, err := h.StartAgentMonitorRequest(ctx, settings)
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, h.Secret)
-	dbHost, err := FindOneId(h.Id)
+	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
 	assert.Equal(t, h.Secret, dbHost.Secret)
 
@@ -1101,6 +1110,9 @@ func TestStopAgentMonitor(t *testing.T) {
 }
 
 func TestSpawnHostSetupCommands(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, user.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
@@ -1125,7 +1137,7 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		},
 		User: user.Id,
 	}
-	require.NoError(t, h.Insert())
+	require.NoError(t, h.Insert(ctx))
 
 	settings := &evergreen.Settings{
 		ApiUrl: "www.example0.com",
@@ -1220,44 +1232,47 @@ func TestMarkUserDataProvisioningDoneCommand(t *testing.T) {
 }
 
 func TestSetUserDataHostProvisioned(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"Succeeds": func(t *testing.T, h *Host) {
-			require.NoError(t, h.SetUserDataHostProvisioned())
+			require.NoError(t, h.SetUserDataHostProvisioned(ctx))
 			assert.Equal(t, evergreen.HostRunning, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"IgnoresNonUserDataBootstrappedHost": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-			_, err := h.Upsert()
+			_, err := h.Upsert(ctx)
 			require.NoError(t, err)
 
-			require.NoError(t, h.SetUserDataHostProvisioned())
+			require.NoError(t, h.SetUserDataHostProvisioned(ctx))
 			assert.Equal(t, evergreen.HostStarting, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 		},
 		"IgnoresHostsNeverProvisioned": func(t *testing.T, h *Host) {
 			h.Provisioned = false
 
-			require.NoError(t, h.SetUserDataHostProvisioned())
+			require.NoError(t, h.SetUserDataHostProvisioned(ctx))
 			assert.Equal(t, evergreen.HostStarting, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 		},
 		"IgnoresNonStartingHosts": func(t *testing.T, h *Host) {
-			require.NoError(t, h.SetDecommissioned(evergreen.User, false, ""))
+			require.NoError(t, h.SetDecommissioned(ctx, evergreen.User, false, ""))
 
-			require.NoError(t, h.SetUserDataHostProvisioned())
+			require.NoError(t, h.SetUserDataHostProvisioned(ctx))
 			assert.Equal(t, evergreen.HostDecommissioned, h.Status)
 
-			dbHost, err := FindOneId(h.Id)
+			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status)
 		},
@@ -1275,13 +1290,16 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 				Status:      evergreen.HostStarting,
 				Provisioned: true,
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			testCase(t, h)
 		})
 	}
 }
 
 func TestCreateServicePassword(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -1289,34 +1307,37 @@ func TestCreateServicePassword(t *testing.T) {
 	h := &Host{Distro: distro.Distro{
 		Id: "foo",
 	}}
-	require.NoError(t, h.Insert())
-	require.NoError(t, h.CreateServicePassword())
+	require.NoError(t, h.Insert(ctx))
+	require.NoError(t, h.CreateServicePassword(ctx))
 	assert.True(t, ValidateRDPPassword(h.ServicePassword))
 	assert.NotEmpty(t, h.ServicePassword)
-	dbHost, err := FindOneId(h.Id)
+	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
 	assert.Equal(t, h.ServicePassword, dbHost.ServicePassword)
 }
 
 func TestSetupServiceUserCommands(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"GeneratesCommandsAndPassword": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
-			cmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, h.Insert(ctx))
+			cmds, err := h.SetupServiceUserCommands(ctx)
 			require.NoError(t, err)
 			assert.NotEmpty(t, cmds)
 			assert.NotEmpty(t, h.ServicePassword)
 		},
 		"FailsWithoutServiceUser": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.ServiceUser = ""
-			require.NoError(t, h.Insert())
-			_, err := h.SetupServiceUserCommands()
+			require.NoError(t, h.Insert(ctx))
+			_, err := h.SetupServiceUserCommands(ctx)
 			assert.Error(t, err)
 		},
 		"NoopsIfNotWindows": func(t *testing.T, h *Host) {
 			h.Distro.Arch = evergreen.ArchLinuxAmd64
-			require.NoError(t, h.Insert())
-			cmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, h.Insert(ctx))
+			cmds, err := h.SetupServiceUserCommands(ctx)
 			assert.NoError(t, err)
 			assert.Empty(t, cmds)
 		},
@@ -1382,13 +1403,16 @@ func TestChangeJasperDirsOwnerCommand(t *testing.T) {
 }
 
 func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	settings := &evergreen.Settings{
 		ApiUrl: "https://example.com",
 	}
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"Linux": func(t *testing.T, h *Host) {
 			h.Distro.Arch = evergreen.ArchLinuxAmd64
-			opts, err := h.GenerateFetchProvisioningScriptUserData(settings)
+			opts, err := h.GenerateFetchProvisioningScriptUserData(ctx, settings)
 			require.NoError(t, err)
 
 			makeJasperDirs := h.MakeJasperDirsCommand()
@@ -1414,7 +1438,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 		"Windows": func(t *testing.T, h *Host) {
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
 
-			opts, err := h.GenerateFetchProvisioningScriptUserData(settings)
+			opts, err := h.GenerateFetchProvisioningScriptUserData(ctx, settings)
 			require.NoError(t, err)
 
 			makeJasperDirs := h.MakeJasperDirsCommand()
@@ -1457,7 +1481,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 				Secret: "host_secret",
 				User:   "user",
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			testCase(t, h)
 		})
@@ -1481,7 +1505,7 @@ func newMockCredentials() (*certdepot.Credentials, error) {
 // setupJasperService performs the necessary setup to start a local Jasper
 // service associated with this host.
 func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *Host) (jutil.CloseFunc, error) {
-	if err := h.Insert(); err != nil {
+	if err := h.Insert(ctx); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	port := testutil.NextPort()

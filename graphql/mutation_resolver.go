@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -30,6 +31,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -123,11 +125,103 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 	return true, nil
 }
 
+// DeleteDistro is the resolver for the deleteDistro field.
+func (r *mutationResolver) DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+	if err := data.DeleteDistroById(ctx, usr, opts.DistroID); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting distro: %s", err.Error()))
+	}
+	return &DeleteDistroPayload{
+		DeletedDistroID: opts.DistroID,
+	}, nil
+}
+
+// CopyDistro is the resolver for the copyDistro field.
+func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	if err := data.CopyDistro(ctx, usr, opts); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("copying distro: %s", err.Error()))
+	}
+
+	return &NewDistroPayload{
+		NewDistroID: opts.NewDistroId,
+	}, nil
+}
+
+// CreateDistro is the resolver for the createDistro field.
+func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	if err := data.CreateDistro(ctx, usr, opts.NewDistroID); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating distro: %s", err.Error()))
+	}
+
+	return &NewDistroPayload{
+		NewDistroID: opts.NewDistroID,
+	}, nil
+}
+
+// SaveDistro is the resolver for the saveDistro field. The entire distro object is provided as input (not just the updated fields) in order to validate all distro settings.
+func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput) (*SaveDistroPayload, error) {
+	usr := mustHaveUser(ctx)
+	d := opts.Distro.ToService()
+	oldDistro, err := distro.FindOneId(ctx, d.Id)
+	if err != nil || oldDistro == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find distro '%s'", d.Id))
+	}
+
+	settings, err := evergreen.GetConfig(ctx)
+	validationErrs, err := validator.CheckDistro(ctx, d, settings, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if len(validationErrs) != 0 {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': '%s'", d.Id, validationErrs.String()))
+	}
+
+	if err = data.UpdateDistro(ctx, oldDistro, d); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating distro: %s", err.Error()))
+	}
+	event.LogDistroModified(d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
+
+	// AMI events are not displayed in the event log, but are used by the backend to determine if hosts have become stale.
+	if d.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
+		event.LogDistroAMIModified(d.Id, usr.Username())
+	}
+
+	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
+	if err != nil {
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
+	}
+
+	return &SaveDistroPayload{
+		Distro:    opts.Distro,
+		HostCount: numHostsUpdated,
+	}, nil
+}
+
 // ReprovisionToNew is the resolver for the reprovisionToNew field.
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(ctx, user, hostIds)
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -144,7 +238,7 @@ func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []strin
 func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(ctx, user, hostIds)
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -161,7 +255,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
 	user := mustHaveUser(ctx)
 
-	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(ctx, user, hostIds)
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -284,10 +378,8 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 // ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       evergreen.TaskFailureStatuses,
-		IncludeExecutionTasks:          true,
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
+		Statuses:              evergreen.TaskFailureStatuses,
+		IncludeExecutionTasks: true,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, patchID, opts)
 	if err != nil {
@@ -428,7 +520,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
-	if err = pRef.AttachToRepo(usr); err != nil {
+	if err = pRef.AttachToRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
 	}
 
@@ -473,7 +565,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	if utility.FromBoolPtr(requestS3Creds) {
-		if err = data.RequestS3Creds(*apiProjectRef.Identifier, u.EmailAddress); err != nil {
+		if err = data.RequestS3Creds(ctx, *apiProjectRef.Identifier, u.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
 		}
 	}
@@ -502,7 +594,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	}
 	if utility.FromBoolPtr(requestS3Creds) {
 		usr := mustHaveUser(ctx)
-		if err = data.RequestS3Creds(*projectRef.Identifier, usr.EmailAddress); err != nil {
+		if err = data.RequestS3Creds(ctx, *projectRef.Identifier, usr.EmailAddress); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
 	}
@@ -644,7 +736,7 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*restModel.APIHost, error) {
 	var v *host.Volume
 	usr := mustHaveUser(ctx)
-	h, err := host.FindOneByIdOrTag(spawnHost.HostID)
+	h, err := host.FindOneByIdOrTag(ctx, spawnHost.HostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
@@ -668,7 +760,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 	if spawnHost.InstanceType != nil {
 		var config *evergreen.Settings
-		config, err = evergreen.GetConfig()
+		config, err = evergreen.GetConfig(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
 		}
@@ -821,7 +913,7 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 
 // UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
 func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
-	h, err := host.FindOneByIdOrTag(hostID)
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
@@ -918,7 +1010,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	user := gimlet.GetUser(ctx).DisplayName()
-	err = model.AbortTask(taskID, user)
+	err = model.AbortTask(ctx, taskID, user)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
@@ -960,7 +1052,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
 	}
-	if err := model.ResetTaskOrDisplayTask(evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
+	if err := model.ResetTaskOrDisplayTask(ctx, evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task '%s': %s", taskID, err.Error()))
 	}
 	t, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
@@ -1007,7 +1099,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
 		}
 	}
-	if err = model.SetTaskPriority(*t, int64(priority), authUser.Username()); err != nil {
+	if err = model.SetTaskPriority(ctx, *t, int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
 
@@ -1174,7 +1266,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 // RemoveItemFromCommitQueue is the resolver for the removeItemFromCommitQueue field.
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
 	username := gimlet.GetUser(ctx).DisplayName()
-	result, err := data.FindAndRemoveCommitQueueItem(commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
+	result, err := data.FindAndRemoveCommitQueueItem(ctx, commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))
