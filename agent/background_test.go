@@ -319,17 +319,6 @@ func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
 	s.Equal(time.Second, s.tc.getCurrentIdleTimeout())
 }
 
-func (s *BackgroundSuite) TestIdleTimeoutIsNotSetForPostBlockCommand() {
-	s.tc.taskConfig.Timeout = &internal.Timeout{}
-	cmdFactory, exists := command.GetCommandFactory("shell.exec")
-	s.True(exists)
-	cmd := cmdFactory()
-	cmd.SetIdleTimeout(time.Second)
-	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd, command.PostBlock)
-	s.Equal(defaultIdleTimeout, s.tc.getCurrentIdleTimeout())
-}
-
 func (s *BackgroundSuite) TestGetTimeoutDefault() {
 	s.Equal(defaultIdleTimeout, s.tc.getCurrentIdleTimeout())
 }

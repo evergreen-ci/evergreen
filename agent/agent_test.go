@@ -190,7 +190,7 @@ func (s *AgentSuite) TestErrorGettingNextTask() {
 	}
 }
 
-func (s *AgentSuite) TestCanceledContext() {
+func (s *AgentSuite) TestLoopWithCancelledContext() {
 	s.mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
@@ -406,7 +406,7 @@ func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
-func (s *AgentSuite) TestPre() {
+func (s *AgentSuite) TestPreSucceeds() {
 	projYml := `
 buildvariants:
 - name: mock_build_variant
@@ -447,29 +447,7 @@ pre:
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
-func (s *AgentSuite) TestPostFailsTask() {
-	projYml := `
-buildvariants:
-- name: mock_build_variant
-
-post_error_fails_task: true
-post:
-  - command: subprocess.exec
-    params:
-      command: "doesntexist"
-`
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
-	err = s.a.runPostTaskCommands(s.ctx, s.tc)
-	s.Require().Error(err)
-	s.NotContains(err.Error(), panicLog)
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
-}
-
-func (s *AgentSuite) TestPost() {
+func (s *AgentSuite) TestPostSucceeds() {
 	projYml := `
 post:
   - command: shell.exec
@@ -493,7 +471,29 @@ post:
 	})
 }
 
-func (s *AgentSuite) TestMainTask() {
+func (s *AgentSuite) TestPostFailsTask() {
+	projYml := `
+buildvariants:
+- name: mock_build_variant
+
+post_error_fails_task: true
+post:
+  - command: subprocess.exec
+    params:
+      command: "doesntexist"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	err = s.a.runPostTaskCommands(s.ctx, s.tc)
+	s.Require().Error(err)
+	s.NotContains(err.Error(), panicLog)
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+}
+
+func (s *AgentSuite) TestMainTaskSucceeds() {
 	projYml := `
 tasks:
 - name: this_is_a_task_name
@@ -886,7 +886,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.Empty(tc.taskDirectory)
 }
 
-func (s *AgentSuite) TestSetupGroup() {
+func (s *AgentSuite) TestSetupGroupSucceeds() {
 	const taskGroup = "task_group_name"
 	s.tc.taskGroup = taskGroup
 	projYml := `
@@ -1053,7 +1053,7 @@ task_groups:
 	}, []string{panicLog})
 }
 
-func (s *AgentSuite) TestSetupTask() {
+func (s *AgentSuite) TestSetupTaskSucceeds() {
 	const taskGroup = "task_group_name"
 	s.tc.taskGroup = taskGroup
 	projYml := `
@@ -1080,7 +1080,7 @@ task_groups:
 	}, []string{panicLog})
 }
 
-func (s *AgentSuite) TestTeardownTask() {
+func (s *AgentSuite) TestTeardownTaskSucceeds() {
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
@@ -1108,7 +1108,7 @@ task_groups:
 	})
 }
 
-func (s *AgentSuite) TestTeardownGroup() {
+func (s *AgentSuite) TestTeardownGroupSucceeds() {
 	s.tc.taskModel = &task.Task{}
 	s.tc.taskGroup = "task_group_name"
 	projYml := `

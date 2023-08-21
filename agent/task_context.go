@@ -34,12 +34,6 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 // This timeout only applies to commands running in specific blocks where idle
 // timeout is allowed.
 func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command, block command.BlockType) {
-	switch block {
-	case command.PreBlock, command.SetupGroupBlock, command.SetupTaskBlock, command.MainTaskBlock:
-	default:
-		return
-	}
-
 	tc.Lock()
 	defer tc.Unlock()
 
