@@ -37,7 +37,8 @@ const (
 	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
-// Project represents the fully hydrated project configuration
+// Project represents the fully hydrated project configuration after translating
+// the ParserProject.
 type Project struct {
 	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`         // deprecated
 	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`        // deprecated
