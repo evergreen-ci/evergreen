@@ -1213,7 +1213,7 @@ func TestTaskResetExecute(t *testing.T) {
 			resTask, ok := res.Data().(*model.APITask)
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
-			So(resTask.DispatchTime, ShouldEqual, nil)
+			So(resTask.DispatchTime, ShouldBeNil)
 			dbTask2, err := task.FindOneId("testTaskId2")
 			So(err, ShouldBeNil)
 			So(dbTask2.Secret, ShouldNotResemble, "initialSecret")
