@@ -6,14 +6,14 @@ require (
 	github.com/99designs/gqlgen v0.17.31
 	github.com/PuerkitoBio/rehttp v1.2.0
 	github.com/aws/aws-sdk-go v1.44.266
-	github.com/aws/aws-sdk-go-v2 v1.18.1
+	github.com/aws/aws-sdk-go-v2 v1.20.3
 	github.com/aws/aws-sdk-go-v2/config v1.18.27
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.26
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.98.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.27.1
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.12
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8
-	github.com/aws/smithy-go v1.13.5
+	github.com/aws/smithy-go v1.14.2
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/go-connections v0.4.0
