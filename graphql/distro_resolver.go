@@ -48,6 +48,26 @@ func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) 
 	}
 }
 
+// Provider is the resolver for the provider field.
+func (r *distroResolver) Provider(ctx context.Context, obj *model.APIDistro) (Provider, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve provider")
+	}
+
+	switch utility.FromStringPtr(obj.Provider) {
+	case evergreen.ProviderNameDocker:
+		return ProviderDocker, nil
+	case evergreen.ProviderNameEc2Fleet:
+		return ProviderEc2Fleet, nil
+	case evergreen.ProviderNameEc2OnDemand:
+		return ProviderEc2Ondemand, nil
+	case evergreen.ProviderNameStatic:
+		return ProviderStatic, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("provider '%s' is invalid", utility.FromStringPtr(obj.Provider)))
+	}
+}
+
 // ProviderSettingsList is the resolver for the providerSettingsList field.
 func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]interface{}, error) {
 	settings := []map[string]interface{}{}
@@ -116,6 +136,23 @@ func (r *distroInputResolver) CloneMethod(ctx context.Context, obj *model.APIDis
 		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodOAuth)
 	default:
 		return InputValidationError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", data))
+	}
+	return nil
+}
+
+// Provider is the resolver for the provider field.
+func (r *distroInputResolver) Provider(ctx context.Context, obj *model.APIDistro, data Provider) error {
+	switch data {
+	case ProviderDocker:
+		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameDocker)
+	case ProviderEc2Fleet:
+		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameEc2Fleet)
+	case ProviderEc2Ondemand:
+		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameEc2OnDemand)
+	case ProviderStatic:
+		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameStatic)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("provider '%s' is invalid", data))
 	}
 	return nil
 }

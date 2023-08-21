@@ -935,6 +935,51 @@ func (e ProjectSettingsSection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type Provider string
+
+const (
+	ProviderDocker      Provider = "DOCKER"
+	ProviderEc2Fleet    Provider = "EC2_FLEET"
+	ProviderEc2Ondemand Provider = "EC2_ONDEMAND"
+	ProviderStatic      Provider = "STATIC"
+)
+
+var AllProvider = []Provider{
+	ProviderDocker,
+	ProviderEc2Fleet,
+	ProviderEc2Ondemand,
+	ProviderStatic,
+}
+
+func (e Provider) IsValid() bool {
+	switch e {
+	case ProviderDocker, ProviderEc2Fleet, ProviderEc2Ondemand, ProviderStatic:
+		return true
+	}
+	return false
+}
+
+func (e Provider) String() string {
+	return string(e)
+}
+
+func (e *Provider) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Provider(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Provider", str)
+	}
+	return nil
+}
+
+func (e Provider) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type RequiredStatus string
 
 const (
