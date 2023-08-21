@@ -38,8 +38,7 @@ func TestExpansionsPlugin(t *testing.T) {
 		expansions.Put("topping", "bacon")
 
 		taskConfig := internal.TaskConfig{
-			Expansions:        &expansions,
-			DynamicExpansions: util.Expansions{},
+			Expansions: &expansions,
 		}
 
 		So(updateCommand.ExecuteUpdates(ctx, &taskConfig), ShouldBeNil)
@@ -54,7 +53,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, DynamicExpansions: util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	Convey("When running Update commands", t, func() {
@@ -63,7 +62,6 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 			cmd := &update{YamlFile: "foo"}
 			So(cmd.Execute(ctx, comm, logger, conf), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "foo")
-			So(conf.DynamicExpansions, ShouldResemble, util.Expansions{})
 		})
 
 		Convey("With an Expansion, the file name is expanded", func() {

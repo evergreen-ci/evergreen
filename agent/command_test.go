@@ -206,8 +206,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	config := &internal.TaskConfig{
-		Expansions:        &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
-		DynamicExpansions: util.Expansions{},
+		Expansions: &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
 		BuildVariant: &model.BuildVariant{
 			Name: "some_build_variant",
 		},

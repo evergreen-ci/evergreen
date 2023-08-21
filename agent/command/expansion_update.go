@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -61,6 +62,9 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
+	if conf.DynamicExpansions == nil {
+		conf.DynamicExpansions = util.Expansions{}
+	}
 	for _, update := range c.Updates {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "operation aborted")
