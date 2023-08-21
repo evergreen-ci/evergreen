@@ -36,7 +36,6 @@ type Mock struct {
 
 	// mock behavior
 	NextTaskShouldFail          bool
-	NextTaskShouldConflict      bool
 	GetPatchFileShouldFail      bool
 	loggingShouldFail           bool
 	NextTaskResponse            *apimodels.NextTaskResponse
@@ -280,9 +279,6 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}
 	if c.NextTaskShouldFail {
 		return nil, errors.New("NextTaskShouldFail is true")
-	}
-	if c.NextTaskShouldConflict {
-		return nil, errors.WithStack(HTTPConflictError)
 	}
 	if c.NextTaskResponse != nil {
 		return c.NextTaskResponse, nil
