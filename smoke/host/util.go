@@ -141,7 +141,7 @@ func triggerRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 		return
 	}
 
-	require.FailNow(t, "could not successfully trigger repotracker after %d attempts", repotrackerAttempts)
+	require.FailNow(t, "ran out of attempts to trigger repotracker", "could not successfully trigger repotracker after %d attempts", repotrackerAttempts)
 }
 
 // waitForRepotracker waits for the repotracker to pick up new commits and
@@ -188,7 +188,7 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 		return
 	}
 
-	require.FailNow(t, "timed out waiting for repotracker to pick up new commits and create versions after %d attempts", repotrackerAttempts)
+	require.FailNow(t, "ran out of attempts to wait for repotracker", "timed out waiting for repotracker to pick up new commits and create versions after %d attempts", repotrackerAttempts)
 }
 
 // submitSmokeTestPatch submits a manual patch to the app server to run the
@@ -247,7 +247,7 @@ func getSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams
 		return latestPatchID
 	}
 
-	require.FailNow(t, "timed out waiting for repotracker to pick up new commits and create versions after %d attempts", patchCheckAttempts)
+	require.FailNow(t, "ran out of attempts to get smoke test patch", "timed out waiting patch to exist after %d attempts", patchCheckAttempts)
 
 	return ""
 }

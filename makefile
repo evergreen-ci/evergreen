@@ -8,6 +8,7 @@ packages += model-annotations model-patch model-artifact model-host model-pod mo
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
+lintOnlyPackages += smoke-host smoke-container smoke-agentmonitor smoke-endpoint
 testOnlyPackages := service-graphql smoke-host smoke-container smoke-agentmonitor smoke-endpoint # has only test files so can't undergo all operations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)

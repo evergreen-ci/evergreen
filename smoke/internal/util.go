@@ -135,7 +135,7 @@ checkTasks:
 		return
 	}
 
-	require.FailNow(t, "task status and task log checks were incomplete after %d attempts - this might indicate an underlying issue with the app server, the agent, or the smoke test's configuration setup", taskCheckAttempts)
+	require.FailNow(t, "ran out of attempts to check task statuses and task logs", "task status and task log checks were incomplete after %d attempts - this might indicate an underlying issue with the app server, the agent, or the smoke test's configuration setup", taskCheckAttempts)
 }
 
 // smokeAPITask represents part of a task from the REST API for use in the smoke
@@ -185,7 +185,7 @@ func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, cli
 		return
 	}
 
-	require.FailNow(t, "task log check failed after %d attempts", taskLogCheckAttempts)
+	require.FailNow(t, "ran out of attempts to check task logs", "task log check failed after %d attempts", taskLogCheckAttempts)
 }
 
 // checkTaskLogContent compares the expected result of running the smoke test

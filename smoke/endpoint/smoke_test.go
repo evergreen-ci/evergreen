@@ -105,7 +105,7 @@ func waitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 		return
 	}
 
-	require.FailNow(t, "Evergreen app server was not up after %d check attempts.", attempts)
+	require.FailNow(t, "ran out of attempts to wait for Evergreen", "Evergreen app server was not up after %d check attempts.", attempts)
 }
 
 // smokeEndpointTestDefinitions describes the UI and API endpoints to verify,

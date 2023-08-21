@@ -75,6 +75,10 @@ func getSmokeTestParamsFromEnv(t *testing.T) smokeTestParams {
 	if execModeID == "" {
 		execModeID = "localhost"
 	}
+	execModeSecret := os.Getenv("EXEC_MODE_SECRET")
+	if execModeSecret == "" {
+		execModeSecret = "de249183582947721fdfb2ea1796574b"
+	}
 
 	taskID := os.Getenv("TASK_ID")
 	if taskID == "" {
@@ -82,9 +86,10 @@ func getSmokeTestParamsFromEnv(t *testing.T) smokeTestParams {
 	}
 
 	return smokeTestParams{
-		APIParams:  internal.GetAPIParamsFromEnv(t, evgHome),
-		execModeID: execModeID,
-		taskID:     taskID,
+		APIParams:      internal.GetAPIParamsFromEnv(t, evgHome),
+		execModeID:     execModeID,
+		execModeSecret: execModeSecret,
+		taskID:         taskID,
 	}
 
 }
