@@ -823,6 +823,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 	// Create and update display tasks
 	tasks := task.Tasks{}
+	loggedExecutionTaskNotFound := false
 	for _, dt := range creationInfo.BuildVariant.DisplayTasks {
 		id := displayTable.GetId(creationInfo.Build.BuildVariant, dt.Name)
 		if id == "" {
@@ -837,6 +838,17 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		for _, et := range dt.ExecTasks {
 			execTaskId := execTable.GetId(creationInfo.Build.BuildVariant, et)
 			if execTaskId == "" {
+				if !loggedExecutionTaskNotFound {
+					grip.Debug(message.Fields{
+						"message":                     "execution task not found",
+						"variant":                     creationInfo.Build.BuildVariant,
+						"exec_task":                   et,
+						"project":                     creationInfo.Project.Identifier,
+						"display_task":                id,
+						"display_task_already_exists": displayTaskAlreadyExists,
+					})
+					loggedExecutionTaskNotFound = true
+				}
 				continue
 			}
 			execTaskIds = append(execTaskIds, execTaskId)
