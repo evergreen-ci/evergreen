@@ -290,16 +290,16 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 
 const panicLog = "hit panic"
 
-func (s *AgentSuite) TestCancelledStartTaskIsNonBlocking() {
+func (s *AgentSuite) TestCancelledRunPreAndMainIsNonBlocking() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
-	status := s.a.startTask(ctx, s.tc)
+	status := s.a.runPreAndMain(ctx, s.tc)
 	s.Equal(evergreen.TaskSystemFailed, status, "task that aborts before it even can run should system fail")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
 
-func (s *AgentSuite) TestStartTaskIsPanicSafe() {
+func (s *AgentSuite) TestRunPreAndMainIsPanicSafe() {
 	// Just having the logger is enough to verify if a panic gets logged, but
 	// still produces a panic since it relies on a lot of taskContext
 	// fields.
@@ -307,22 +307,22 @@ func (s *AgentSuite) TestStartTaskIsPanicSafe() {
 		logger: s.tc.logger,
 	}
 	s.NotPanics(func() {
-		status := s.a.startTask(s.ctx, tc)
+		status := s.a.runPreAndMain(s.ctx, tc)
 		s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
 	})
 	s.NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
-func (s *AgentSuite) TestStartTaskFailureCausesSystemFailure() {
+func (s *AgentSuite) TestRunPreAndMainFailureCausesSystemFailure() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
 	// Simulate a situation where the task is not allowed to start, which should
-	// result in system failure. Also, startTask should not block if there is
+	// result in system failure. Also, runPreAndMain should not block if there is
 	// no consumer running in parallel to pick up the complete status.
 	s.mockCommunicator.StartTaskShouldFail = true
-	status := s.a.startTask(ctx, s.tc)
+	status := s.a.runPreAndMain(ctx, s.tc)
 	s.Equal(evergreen.TaskSystemFailed, status, "task should system-fail when it cannot start the task")
 
 	s.NoError(s.tc.logger.Close())
@@ -494,6 +494,7 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 	s.tc.taskConfig.Project = p
 	s.tc.project = p
 	s.mockCommunicator.GetProjectResponse = p
+
 	t := &task.Task{
 		Id:           "task_id",
 		BuildVariant: "mock_build_variant",
@@ -523,7 +524,12 @@ post:
     script: "exit 1"
 `
 	s.setupRunTask(projYml)
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -552,7 +558,13 @@ post:
     script: "exit 1"
 `
 	s.setupRunTask(projYml)
-	_, err := s.a.runTask(s.ctx, s.tc)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -581,7 +593,12 @@ post:
     script: "exit 0"
 `
 	s.setupRunTask(projYml)
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -610,7 +627,12 @@ post:
      script: "exit 1"
 `
 	s.setupRunTask(projYml)
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -640,7 +662,12 @@ post:
     script: "exit 0"
 `
 	s.setupRunTask(projYml)
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -707,8 +734,23 @@ func (s *AgentSuite) TestEndTaskResponse() {
 }
 
 func (s *AgentSuite) TestOOMTracker() {
-	s.setupRunTask(defaultProjYml)
-	s.tc.project.OomTracker = true
+	projYml := `
+oom_tracker: true
+buildvariants:
+- name: mock_build_variant
+tasks: 
+ - name: this_is_a_task_name
+   commands: 
+    - command: shell.exec
+      params:
+        script: "echo hi"
+post:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	s.setupRunTask(projYml)
+	s.a.opts.CloudProvider = "provider"
 	pids := []int{1, 2, 3}
 	lines := []string{"line 1", "line 2", "line 3"}
 	s.tc.oomTracker = &mock.OOMTracker{
@@ -716,11 +758,35 @@ func (s *AgentSuite) TestOOMTracker() {
 		PIDs:  pids,
 	}
 
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+}
+
+func (s *AgentSuite) TestSetupTask() {
+	nextTask := &apimodels.NextTaskResponse{}
+	s.setupRunTask(defaultProjYml)
+	s.tc.taskDirectory = "task_directory"
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
+	_, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
+	s.False(shouldExit)
+	s.NoError(err)
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Current command set to initial task setup (system).",
+		"Making new folder",
+		"Task logger initialized",
+		"Execution logger initialized.",
+		"System logger initialized.",
+		"Starting task 'task_id', execution 0.",
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestPrepareNextTask() {
@@ -736,10 +802,9 @@ func (s *AgentSuite) TestPrepareNextTask() {
 		},
 	}
 	tc.taskDirectory = "task_directory"
-	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
-	s.False(tc.ranSetupGroup, "if the next task is not in a group, ranSetupGroup should be false")
-	s.Equal("", tc.taskGroup)
-	s.Empty(tc.taskDirectory)
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+	s.True(shouldSetupGroup, "if the next task is not in a group, shouldSetupGroup should be true")
+	s.Empty(taskDirectory)
 
 	const versionID = "task_group_version"
 	nextTask.TaskGroup = "foo"
@@ -754,10 +819,9 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc.ranSetupGroup = false
-	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
-	s.False(tc.ranSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be false")
-	s.Equal("foo", tc.taskGroup)
-	s.Equal("", tc.taskDirectory)
+	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
+	s.True(shouldSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be true")
+	s.Empty(taskDirectory)
 
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
@@ -766,10 +830,9 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.ranSetupGroup = true
 	tc.taskDirectory = "task_directory"
-	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
-	s.True(tc.ranSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, ranSetupGroup should be true")
-	s.Equal("foo", tc.taskGroup)
-	s.Equal("task_directory", tc.taskDirectory)
+	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
+	s.False(shouldSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, shouldSetupGroup should be false")
+	s.Equal("task_directory", taskDirectory)
 
 	const newVersionID = "new_task_group_version"
 	tc.taskConfig = &internal.TaskConfig{
@@ -786,10 +849,9 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc.taskGroup = "bar"
 	tc.taskDirectory = "task_directory"
 	tc.taskModel = &task.Task{}
-	tc = s.a.prepareNextTask(s.ctx, nextTask, tc)
-	s.False(tc.ranSetupGroup, "if the next task in the same version but a different build, ranSetupGroup should be false")
-	s.Equal("bar", tc.taskGroup)
-	s.Empty(tc.taskDirectory)
+	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
+	s.True(shouldSetupGroup, "if the next task is in the same version and task group name but a different build, shouldSetupGroup should be true")
+	s.Empty(taskDirectory)
 }
 
 func (s *AgentSuite) TestSetupGroup() {
@@ -951,7 +1013,7 @@ task_groups:
 	}, []string{panicLog})
 }
 
-func (s *AgentSuite) TestSetupTask() {
+func (s *AgentSuite) TestRunPreTaskCommands() {
 	const taskGroup = "task_group_name"
 	s.tc.taskGroup = taskGroup
 	projYml := `
@@ -1126,7 +1188,12 @@ timeout:
 `
 	s.setupRunTask(projYml)
 	start := time.Now()
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
@@ -1174,7 +1241,12 @@ timeout:
 	s.setupRunTask(projYml)
 	s.tc.taskGroup = "some_task_group"
 	start := time.Now()
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")

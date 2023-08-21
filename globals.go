@@ -320,6 +320,10 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
+	// HeartbeatTimeoutThreshold is the timeout for how long a task can run without sending
+	// a heartbeat
+	HeartbeatTimeoutThreshold = 7 * time.Minute
+
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 	KeyTooLargeToIndexError    = "key too large to index"
