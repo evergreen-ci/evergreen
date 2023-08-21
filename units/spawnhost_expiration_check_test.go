@@ -20,6 +20,7 @@ import (
 func TestSpawnhostExpirationCheckJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	config := testutil.TestConfig()
 	assert.NoError(t, evergreen.UpdateConfig(ctx, config))

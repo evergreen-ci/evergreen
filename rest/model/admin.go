@@ -1012,6 +1012,7 @@ func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
 type APIJiraConfig struct {
 	Host            *string           `json:"host"`
 	DefaultProject  *string           `json:"default_project"`
+	Email           *string           `json:"email"`
 	BasicAuthConfig *APIJiraBasicAuth `json:"basic_auth"`
 	OAuth1Config    *APIJiraOAuth1    `json:"oauth1"`
 }
@@ -1021,6 +1022,7 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	case evergreen.JiraConfig:
 		a.Host = utility.ToStringPtr(v.Host)
 		a.DefaultProject = utility.ToStringPtr(v.DefaultProject)
+		a.Email = utility.ToStringPtr(v.Email)
 		a.BasicAuthConfig = &APIJiraBasicAuth{}
 		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
 		a.OAuth1Config = &APIJiraOAuth1{}
@@ -1035,6 +1037,7 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 	c := evergreen.JiraConfig{
 		Host:           utility.FromStringPtr(a.Host),
 		DefaultProject: utility.FromStringPtr(a.DefaultProject),
+		Email:          utility.FromStringPtr(a.Email),
 	}
 	if a.BasicAuthConfig != nil {
 		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
@@ -2225,6 +2228,7 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
 	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled      bool `json:"global_github_token_disabled"`
+	UnsetFunctionVarsDisabled      bool `json:"unset_function_vars_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2513,6 +2517,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
+		as.UnsetFunctionVarsDisabled = v.UnsetFunctionVarsDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2554,6 +2559,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:           as.CloudCleanupDisabled,
 		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:      as.GlobalGitHubTokenDisabled,
+		UnsetFunctionVarsDisabled:      as.UnsetFunctionVarsDisabled,
 	}, nil
 }
 

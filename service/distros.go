@@ -126,7 +126,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newDistro := oldDistro
+	newDistro := *oldDistro
 	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
@@ -158,7 +158,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// check that the resulting distro is valid
-	vErrs, err := validator.CheckDistro(r.Context(), newDistro, settings, false)
+	vErrs, err := validator.CheckDistro(r.Context(), &newDistro, settings, false)
 	if err != nil {
 		message := fmt.Sprintf("error retrieving distroIds: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -248,7 +248,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	if newDistro.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
 		event.LogDistroAMIModified(id, u.Username())
 	}
-	event.LogDistroModified(id, u.Username(), newDistro.NewDistroData())
+	event.LogDistroModified(id, u.Username(), oldDistro.DistroData(), newDistro.DistroData())
 
 	message := fmt.Sprintf("Distro %v successfully updated.", id)
 	if shouldDeco {
@@ -295,7 +295,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event.LogDistroRemoved(id, u.Username(), d.NewDistroData())
+	event.LogDistroRemoved(id, u.Username(), d.DistroData())
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully removed.", id)))
 	gimlet.WriteJSON(w, "distro successfully removed")
@@ -396,7 +396,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event.LogDistroAdded(d.Id, u.Username(), d.NewDistroData())
+	event.LogDistroAdded(d.Id, u.Username(), d.DistroData())
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully added.", d.Id)))
 	gimlet.WriteJSON(w, "distro successfully added")

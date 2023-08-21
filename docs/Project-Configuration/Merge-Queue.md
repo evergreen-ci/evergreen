@@ -1,7 +1,5 @@
 # GitHub Merge Queue
 
-**This feature is not currently working, pending [EVG-20515](https://jira.mongodb.org/browse/EVG-20515) and [EVG-20516](https://jira.mongodb.org/browse/EVG-20516).**
-
 [GitHub's merge queue](https://github.blog/2023-07-12-github-merge-queue-is-generally-available/)
 ensures that all pull requests pass required tests, rebased on HEAD, and it
 batches pull requests to test them as a unit to increase throughput.
@@ -17,7 +15,7 @@ Gating every merge on a green build means every commit on the tracked branch had
 To turn it on, you must turn on Evergreen's merge queue integration, and then
 turn on the GitHub merge queue in GitHub.
 
-Note that you cannot use Evergreen's commit queue if the GitHub merge queue is on.
+You cannot use Evergreen's commit queue if the GitHub merge queue is on.
 
 ## Enable the merge queue
 
@@ -54,3 +52,24 @@ all variants.
 
 For more information on GitHub's merge queue feature and how to customize its
 settings, refer to the [official GitHub documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue).
+
+## FAQ
+
+**Q:** Is there a plan to have Evergreen send merge notifications? 
+
+**A:** No. We believe it makes more sense for notifications to come from GitHub,
+since it manages the queue, and supports sending notifications. 
+
+**Q:** Is it possible to attribute the merge queue patch to your Evergreen user?
+
+**A:** There’s a many-to-many relationship between versions and PRs. A version
+can have multiple authors because GitHub’s merge queue supports concurrency, and a PR can
+have multiple versions for the same reason. It’s also possible for a version to
+succeed and not yield a merge on GitHub’s side. This makes it difficult to link back
+from Evergreen versions to PRs. Instead, users can use the GitHub UI as the primary
+starting point, and link to Evergreen builds from there.
+
+**Q:** Is it possible to get a notification for a merge?
+
+**A:** You can set up email notifications, but the Slack integration does not
+send notifications for merges done by the GitHub merge queue.

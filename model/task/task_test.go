@@ -911,9 +911,6 @@ func TestEndingTask(t *testing.T) {
 			So(t.Status, ShouldEqual, evergreen.TaskFailed)
 			So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
 			So(t.StartTime.Unix(), ShouldEqual, now.Add(-5*time.Minute).Unix())
-			Convey("if no logs are present, it should not be nil", func() {
-				So(t.Logs, ShouldBeNil)
-			})
 		})
 		Convey("a task with no start time set should have one added", func() {
 			now := time.Now()
@@ -1542,41 +1539,78 @@ func TestFindVariantsWithTask(t *testing.T) {
 }
 
 func TestAddDependency(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-	t1 := &Task{Id: "t1", DependsOn: depTaskIds}
-	assert.NoError(t, t1.Insert())
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
+		"AddingDuplicateDependencyIsNoop": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(depTaskIds[0]))
 
-	assert.NoError(t, t1.AddDependency(depTaskIds[0]))
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			assert.Equal(t, tsk.DependsOn, updated.DependsOn)
+			assert.Len(t, updated.DependsOn, len(depTaskIds))
+		},
+		"UpdatesDuplicateDependencyForUnattainability": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(Dependency{
+				TaskId:       depTaskIds[0].TaskId,
+				Status:       evergreen.TaskSucceeded,
+				Unattainable: true,
+			}))
 
-	updated, err := FindOneId(t1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, t1.DependsOn, updated.DependsOn)
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			require.Len(t, updated.DependsOn, len(depTaskIds))
+			assert.True(t, updated.DependsOn[0].Unattainable)
+		},
+		"AddsDependencyForSameTaskButDifferentStatus": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(Dependency{
+				TaskId: depTaskIds[0].TaskId,
+				Status: evergreen.TaskFailed,
+			}))
 
-	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskSucceeded, Unattainable: true}))
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			assert.Len(t, updated.DependsOn, len(depTaskIds)+1)
+		},
+		"AddingSelfDependencyShouldNoop": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.AddDependency(Dependency{
+				TaskId: tsk.Id,
+			}))
 
-	updated, err = FindOneId(t1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, len(depTaskIds), len(updated.DependsOn))
-	assert.True(t, updated.DependsOn[0].Unattainable)
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			assert.Len(t, updated.DependsOn, len(depTaskIds))
+			for _, d := range updated.DependsOn {
+				assert.NotEqual(t, d.TaskId, tsk.Id, "task should not add dependency on itself")
+			}
+		},
+		"RemoveDependency": func(t *testing.T, tsk *Task) {
+			assert.NoError(t, tsk.RemoveDependency(depTaskIds[2].TaskId))
+			for _, d := range tsk.DependsOn {
+				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
+			}
 
-	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskFailed}))
+			updated, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updated)
+			for _, d := range updated.DependsOn {
+				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
+			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
 
-	updated, err = FindOneId(t1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, len(depTaskIds)+1, len(updated.DependsOn))
+			tsk := &Task{Id: "t1", DependsOn: depTaskIds}
+			require.NoError(t, tsk.Insert())
 
-	assert.NoError(t, t1.RemoveDependency("td3"))
-	for _, d := range t1.DependsOn {
-		if d.TaskId == "td3" {
-			assert.Fail(t, "did not remove dependency from in-memory task")
-		}
-	}
-	updated, err = FindOneId(t1.Id)
-	assert.NoError(t, err)
-	for _, d := range updated.DependsOn {
-		if d.TaskId == "td3" {
-			assert.Fail(t, "did not remove dependency from db task")
-		}
+			tCase(t, tsk)
+		})
 	}
 }
 
@@ -1746,6 +1780,16 @@ func TestUpdateDependsOn(t *testing.T) {
 	t2, err = FindOneId("t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 4)
+
+	t.Run("AddingSelfDependencyShouldNoop", func(t *testing.T) {
+		assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{t1.Id}))
+		dbTask1, err := FindOneId(t1.Id)
+		assert.NoError(t, err)
+		require.NotZero(t, dbTask1)
+		for _, d := range dbTask1.DependsOn {
+			assert.NotEqual(t, t1.Id, d.TaskId, "task should not add dependency on itself")
+		}
+	})
 }
 
 func TestDisplayTaskCache(t *testing.T) {
@@ -4021,9 +4065,9 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 }
 
 func TestHasResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
 	}()
 
 	for _, test := range []struct {
@@ -4150,9 +4194,9 @@ func TestHasResults(t *testing.T) {
 }
 
 func TestCreateTestResultsTaskOptions(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
 	}()
 
 	for _, test := range []struct {
@@ -4588,6 +4632,82 @@ func TestGenerateNotRun(t *testing.T) {
 				GeneratedTasks:        false,
 				GeneratedJSONAsString: []string{"some_generated_json"},
 			})
+		})
+	}
+}
+
+func TestSetLogServiceVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := evergreen.GetEnvironment()
+	defer func() {
+		assert.NoError(t, env.DB().Collection(Collection).Drop(ctx))
+	}()
+	require.NoError(t, env.DB().Collection(Collection).Drop(ctx))
+
+	for _, test := range []struct {
+		name   string
+		dbTsk  *Task
+		tsk    *Task
+		hasErr bool
+	}{
+		{
+			name: "DisplayTask",
+			tsk: &Task{
+				DisplayOnly: true,
+			},
+			hasErr: true,
+		},
+		{
+			name: "VersionAlreadySet",
+			tsk: &Task{
+				LogServiceVersion: utility.ToIntPtr(1),
+			},
+			hasErr: true,
+		},
+		{
+			name: "TaskDNE",
+			tsk: &Task{
+				Id:                "DNE",
+				LogServiceVersion: utility.ToIntPtr(1),
+			},
+			hasErr: true,
+		},
+		{
+			name: "VersionAlreadySetInDB",
+			dbTsk: &Task{
+				Id:                "task0",
+				LogServiceVersion: utility.ToIntPtr(1),
+			},
+			tsk: &Task{
+				Id: "task0",
+			},
+			hasErr: true,
+		},
+		{
+			name: "UnsetVersion",
+			dbTsk: &Task{
+				Id: "task1",
+			},
+			tsk: &Task{
+				Id: "task1",
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if test.dbTsk != nil {
+				_, err := env.DB().Collection(Collection).InsertOne(ctx, test.dbTsk)
+				require.NoError(t, err)
+			}
+
+			err := test.tsk.SetLogServiceVersion(ctx, env, 0)
+			if test.hasErr {
+				require.Error(t, err)
+				assert.NotEqual(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+			}
 		})
 	}
 }

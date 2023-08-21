@@ -83,7 +83,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
-		Activate:            true,
+		Activate:            !args.UnscheduleDownstreamVersions,
 		TriggerID:           args.TriggerID,
 		TriggerType:         args.TriggerType,
 		EventID:             args.EventID,
@@ -99,6 +99,9 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 	repo, err := model.FindRepository(args.DownstreamProject.Id)
 	if err != nil {
 		return metadata, errors.Wrap(err, "finding most recent revision")
+	}
+	if repo == nil {
+		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
 	}
 	metadata.Revision.Revision = repo.LastRevision
 	author, err := user.FindOneById(args.SourceVersion.AuthorID)

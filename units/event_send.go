@@ -139,7 +139,7 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 
 func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	switch n.Subscriber.Type {
-	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		return checkFlag(j.flags.GithubStatusAPIDisabled)
 
 	case event.SlackSubscriberType:

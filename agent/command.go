@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -89,6 +90,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			return errors.Wrap(err, "making command logger")
 		}
 		defer func() {
+			// If the logger is a command-specific logger, when the command
+			// finishes, the loggers should have no more logs to send. Closing
+			// it ensure that the command logger flushes all logs and cleans up.
 			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
 		}()
 	}
@@ -148,8 +152,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
 	cmd command.Command, displayName string, options runCommandsOptions) error {
-
+	prevExp := map[string]string{}
 	for key, val := range commandInfo.Vars {
+		prevVal := tc.taskConfig.Expansions.Get(key)
+		prevExp[key] = prevVal
+
 		var newVal string
 		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
 		if err != nil {
@@ -157,6 +164,24 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		}
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
+	defer func() {
+		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
+			// This defer ensures that the function vars do not persist in the expansions after the function is over
+			// unless they were updated using expansions.update
+			if cmd.Name() == "expansions.update" {
+				updatedExpansions := tc.taskConfig.DynamicExpansions.Map()
+				for k := range updatedExpansions {
+					if _, ok := commandInfo.Vars[k]; ok {
+						// If expansions.update updated this key, don't reset it
+						delete(prevExp, k)
+					}
+				}
+			}
+			tc.taskConfig.Expansions.Update(prevExp)
+			tc.taskConfig.DynamicExpansions = util.EmptyExpansion()
+
+		}
+	}()
 
 	tc.setCurrentCommand(cmd)
 	tc.setCurrentIdleTimeout(cmd)
@@ -206,12 +231,8 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		case <-cmdChan:
 		}
 
-		if ctx.Err() == context.DeadlineExceeded {
-			tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", displayName, int(tc.timeout.idleTimeoutDuration.Seconds()))
-		} else {
-			tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
-		}
-		return errors.Wrap(ctx.Err(), "agent stopped early")
+		tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
+		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
 	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
 	if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {

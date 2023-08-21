@@ -3,6 +3,7 @@ package apimodels
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -74,12 +75,6 @@ type OOMTrackerInfo struct {
 	Pids     []int `bson:"pids" json:"pids"`
 }
 
-type TaskLogs struct {
-	AgentLogURLs  []LogInfo `bson:"agent" json:"agent"`
-	SystemLogURLs []LogInfo `bson:"system" json:"system"`
-	TaskLogURLs   []LogInfo `bson:"task" json:"task"`
-}
-
 type LogInfo struct {
 	Command string `bson:"command" json:"command"`
 	URL     string `bson:"url" json:"url"`
@@ -110,6 +105,7 @@ type AgentSetupData struct {
 	SplunkServerURL        string                  `json:"splunk_server_url"`
 	SplunkClientToken      string                  `json:"splunk_client_token"`
 	SplunkChannel          string                  `json:"splunk_channel"`
+	Buckets                evergreen.BucketConfig  `json:"buckets"`
 	TaskSync               evergreen.S3Credentials `json:"task_sync"`
 	EC2Keys                []evergreen.EC2Key      `json:"ec2_keys"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
@@ -117,13 +113,14 @@ type AgentSetupData struct {
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
-	TaskId              string `json:"task_id,omitempty"`
-	TaskSecret          string `json:"task_secret,omitempty"`
-	TaskGroup           string `json:"task_group,omitempty"`
-	Version             string `json:"version,omitempty"`
-	Build               string `json:"build,omitempty"`
-	ShouldExit          bool   `json:"should_exit,omitempty"`
-	ShouldTeardownGroup bool   `json:"should_teardown_group,omitempty"`
+	TaskId                    string `json:"task_id,omitempty"`
+	TaskSecret                string `json:"task_secret,omitempty"`
+	TaskGroup                 string `json:"task_group,omitempty"`
+	Version                   string `json:"version,omitempty"`
+	Build                     string `json:"build,omitempty"`
+	ShouldExit                bool   `json:"should_exit,omitempty"`
+	ShouldTeardownGroup       bool   `json:"should_teardown_group,omitempty"`
+	UnsetFunctionVarsDisabled bool   `json:"unset_function_vars_disabled"`
 }
 
 // EndTaskResponse is what is returned when the task ends
@@ -156,16 +153,21 @@ type CreateHost struct {
 	KeyName         string      `mapstructure:"key_name" json:"key_name" yaml:"key_name" plugin:"expand"`
 
 	// docker-related settings
-	Image                    string            `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
-	Command                  string            `mapstructure:"command" json:"command" yaml:"command" plugin:"expand"`
-	PublishPorts             bool              `mapstructure:"publish_ports" json:"publish_ports" yaml:"publish_ports"`
-	Registry                 RegistrySettings  `mapstructure:"registry" json:"registry" yaml:"registry" plugin:"expand"`
-	Background               bool              `mapstructure:"background" json:"background" yaml:"background"` // default is true
-	ContainerWaitTimeoutSecs int               `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs" yaml:"container_wait_timeout_secs"`
-	PollFrequency            int               `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
-	StdoutFile               string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
-	StderrFile               string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
-	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"environment_vars"`
+	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
+	Command                  string           `mapstructure:"command" json:"command" yaml:"command" plugin:"expand"`
+	PublishPorts             bool             `mapstructure:"publish_ports" json:"publish_ports" yaml:"publish_ports"`
+	Registry                 RegistrySettings `mapstructure:"registry" json:"registry" yaml:"registry" plugin:"expand"`
+	Background               bool             `mapstructure:"background" json:"background" yaml:"background"` // default is true
+	ContainerWaitTimeoutSecs int              `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs" yaml:"container_wait_timeout_secs"`
+	PollFrequency            int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
+	StdinFile                string           `mapstructure:"stdin_file_name" json:"stdin_file_name" yaml:"stdin_file_name" plugin:"expand"`
+	// StdinFileContents is the full file content of the StdinFile on the host,
+	// which is then sent to the app server.
+	StdinFileContents []byte            `mapstructure:"-" json:"stdin_file_contents" yaml:"-"`
+	StdoutFile        string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
+	StderrFile        string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
+	EnvironmentVars   map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"expand"`
+	ExtraHosts        []string          `mapstructure:"extra_hosts" json:"extra_hosts" yaml:"extra_hosts" plugin:"expand"`
 }
 
 type EbsDevice struct {
@@ -186,7 +188,7 @@ func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
 
-func (ch *CreateHost) ValidateDocker(ctx context.Context) error {
+func (ch *CreateHost) validateDocker(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -220,10 +222,15 @@ func (ch *CreateHost) ValidateDocker(ctx context.Context) error {
 		(ch.Registry.Username == "" && ch.Registry.Password != "") {
 		catcher.New("username and password must both be set or unset")
 	}
+
+	for _, h := range ch.ExtraHosts {
+		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
+	}
+
 	return catcher.Resolve()
 }
 
-func (ch *CreateHost) ValidateEC2() error {
+func (ch *CreateHost) validateEC2() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -307,11 +314,11 @@ func (ch *CreateHost) setNumHosts() error {
 func (ch *CreateHost) Validate(ctx context.Context) error {
 	if ch.CloudProvider == ProviderEC2 || ch.CloudProvider == "" { //default
 		ch.CloudProvider = ProviderEC2
-		return ch.ValidateEC2()
+		return ch.validateEC2()
 	}
 
 	if ch.CloudProvider == ProviderDocker {
-		return ch.ValidateDocker(ctx)
+		return ch.validateDocker(ctx)
 	}
 
 	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)

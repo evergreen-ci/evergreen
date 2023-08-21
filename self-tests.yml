@@ -1,3 +1,4 @@
+unset_function_vars: true
 command_type: test
 stepback: true
 ignore:
@@ -6,28 +7,6 @@ ignore:
 
 post:
   - func: attach-test-results
-  - command: s3.put
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["evergreen/bin/output.*.coverage.html"]
-      remote_file: evergreen/${task_id}/
-      bucket: mciuploads
-      content_type: text/html
-      permissions: public-read
-      display_name: "(html) coverage:"
-  - command: s3.put
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["evergreen/bin/output.*.coverage"]
-      remote_file: evergreen/${task_id}/
-      bucket: mciuploads
-      content_type: text/plain
-      permissions: public-read
-      display_name: "(txt) coverage:"
   - command: s3.put
     display_name: Upload smoke test's app server logs to S3
     type: system
@@ -38,8 +17,22 @@ post:
       remote_file: evergreen/${task_id}/app_server_logs.txt
       bucket: mciuploads
       content_type: text/plain
-      permissions: public-read
-      display_name: Evergreen test application server logs
+      permissions: private
+      visibility: signed
+      display_name: Evergreen smoke test application server logs
+  - command: s3.put
+    display_name: Upload smoke test agent logs to S3
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: evergreen/*.log
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: private
+      visibility: signed
+      display_name: (Evergreen smoke test agent logs)
 
 #######################################
 #         YAML Templates              #
@@ -197,6 +190,16 @@ functions:
         - RUN_TEST
         - RUN_EC2_SPECIFIC_TESTS
         - IS_DOCKER
+        - task_id
+        - task_name
+        - execution
+        - version_id
+        - requester
+        - build_id
+        - build_variant
+        - project
+        - project_id
+        - distro_id
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -220,6 +223,9 @@ functions:
         MACOS_NOTARY_SECRET: ${notary_server_secret}
         EVERGREEN_BUNDLE_ID: ${evergreen_bundle_id}
         SIGN_MACOS: ${sign_macos}
+        OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
+        OTEL_TRACE_ID: ${otel_trace_id}
+        OTEL_PARENT_ID: ${otel_parent_id}
 
   setup-credentials:
     command: subprocess.exec
@@ -738,11 +744,10 @@ buildvariants:
       - name: ".agent .test"
       - name: ".cli .test"
 
-# TODO: EVG-19745 Use a security-vetted image once one is available
 containers:
   - name: evg-container
     working_dir: /
-    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/production-ecs:latest"
+    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/production-ecs:1635b8ecdd264fb4f5fde38d88931b4e9a677b06"
     resources:
       cpu: 4096
       memory_mb: 8192

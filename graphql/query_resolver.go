@@ -108,15 +108,44 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel.APIDistro, error) {
 	d, err := distro.FindOneId(ctx, distroID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching distro '%s': %s", distroID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", distroID, err.Error()))
 	}
 	if d == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find distro '%s'", distroID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding distro '%s'", distroID))
 	}
 
 	apiDistro := restModel.APIDistro{}
 	apiDistro.BuildFromService(*d)
 	return &apiDistro, nil
+}
+
+// DistroEvents is the resolver for the distroEvents field.
+func (r *queryResolver) DistroEvents(ctx context.Context, opts DistroEventsInput) (*DistroEventsPayload, error) {
+	before := utility.FromTimePtr(opts.Before)
+
+	limit := 10
+	if opts.Limit != nil {
+		limit = utility.FromIntPtr(opts.Limit)
+	}
+
+	events, err := event.FindLatestPrimaryDistroEvents(opts.DistroID, limit, before)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving events for distro '%s': %s", opts.DistroID, err.Error()))
+	}
+
+	eventLogEntries := []*DistroEvent{}
+	for _, e := range events {
+		entry, err := makeDistroEvent(ctx, e)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		eventLogEntries = append(eventLogEntries, entry)
+	}
+
+	return &DistroEventsPayload{
+		EventLogEntries: eventLogEntries,
+		Count:           len(eventLogEntries),
+	}, nil
 }
 
 // Distros is the resolver for the distros field.
@@ -266,7 +295,19 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		limitParam = *limit
 	}
 
-	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostIDParam, distroParam, currentTaskParam, statuses, startedByParam, sorter, sortDirParam, pageParam, limitParam)
+	hostsFilterOpts := host.HostsFilterOptions{
+		HostID:        hostIDParam,
+		DistroID:      distroParam,
+		CurrentTaskID: currentTaskParam,
+		Statuses:      statuses,
+		StartedBy:     startedByParam,
+		SortBy:        sorter,
+		SortDir:       sortDirParam,
+		Page:          pageParam,
+		Limit:         limitParam,
+	}
+
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(ctx, hostsFilterOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
 	}

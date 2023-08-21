@@ -1539,13 +1539,14 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 		return pr, nil
 	}
 	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(true, message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
-		"message": "failed to get PR from GitHub",
-		"caller":  "GetGithubPullRequest",
-		"owner":   baseOwner,
-		"repo":    baseRepo,
-		"pr_num":  prNumber,
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
+		"ticket":         "EVG-19966",
+		"message":        "failed to get PR from GitHub",
+		"caller":         "GetGithubPullRequest",
+		"owner":          baseOwner,
+		"repo":           baseRepo,
+		"pr_num":         prNumber,
+		"token is empty": token == "",
 	}))
 
 	return getPullRequest(ctx, token, baseOwner, baseRepo, prNumber)

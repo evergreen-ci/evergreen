@@ -16,6 +16,10 @@ import (
 )
 
 func TestHostTerminationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	checkTerminationEvent := func(t *testing.T, hostID, reason string) {
 		events, err := event.Find(event.MostRecentHostEvents(hostID, "", 50))
 		require.NoError(t, err)
@@ -236,10 +240,9 @@ func TestHostTerminationJob(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			tctx := testutil.TestSpan(ctx, t)
 
-			env := testutil.NewEnvironment(ctx, t)
+			env := testutil.NewEnvironment(tctx, t)
 
 			h := &host.Host{
 				Id:          "i-12345",
@@ -252,7 +255,7 @@ func TestHostTerminationJob(t *testing.T) {
 			provider := cloud.GetMockProvider()
 			provider.Reset()
 
-			tCase(ctx, t, env, provider, h)
+			tCase(tctx, t, env, provider, h)
 		})
 	}
 }

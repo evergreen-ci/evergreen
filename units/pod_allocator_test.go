@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,7 @@ import (
 func TestPodAllocatorJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	defer func() {
 		cocoaMock.ResetGlobalSecretCache()
@@ -256,6 +258,7 @@ func TestPodAllocatorJob(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			cocoaMock.ResetGlobalSecretCache()
 
@@ -314,6 +317,7 @@ func TestPodAllocatorJob(t *testing.T) {
 func TestPopulatePodAllocatorJobs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	getProjectRef := func() model.ProjectRef {
 		return model.ProjectRef{
@@ -414,6 +418,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))

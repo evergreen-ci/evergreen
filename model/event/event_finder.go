@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -161,9 +162,10 @@ func TaskEventsInOrder(id string) db.Q {
 // Distro Events
 
 // FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
-func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
+// The before parameter returns only events before the specified time and is used for pagination on the UI.
+func FindLatestPrimaryDistroEvents(id string, n int, before time.Time) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, n, false), &events)
+	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, n, false, before), &events)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +176,7 @@ func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
 func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
 	events := []EventLogEntry{}
 	res := EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, 1, true), &events)
+	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, 1, true, time.Now()), &events)
 	if err != nil {
 		return res, err
 	}
@@ -184,10 +186,15 @@ func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
 	return res, nil
 }
 
-func latestDistroEventsPipeline(id string, n int, amiOnly bool) []bson.M {
+func latestDistroEventsPipeline(id string, n int, amiOnly bool, before time.Time) []bson.M {
 	// We use two different match stages to use the most efficient index.
 	resourceFilter := ResourceTypeKeyIs(ResourceTypeDistro)
 	resourceFilter[ResourceIdKey] = id
+
+	if !utility.IsZeroTime(before) {
+		resourceFilter[TimestampKey] = bson.M{"$lt": before}
+	}
+
 	var eventFilter = bson.M{}
 	if amiOnly {
 		eventFilter[TypeKey] = EventDistroAMIModfied

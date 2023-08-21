@@ -40,6 +40,7 @@ type DockerClient interface {
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
 	StartContainer(context.Context, *host.Host, string) error
+	AttachToContainer(context.Context, *host.Host, string, host.DockerOptions) (*types.HijackedResponse, error)
 	ListImages(context.Context, *host.Host) ([]types.ImageSummary, error)
 }
 
@@ -378,6 +379,11 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		PublishAllPorts: containerHost.DockerOptions.PublishPorts,
 		ExtraHosts:      containerHost.DockerOptions.ExtraHosts,
 	}
+	if len(containerHost.DockerOptions.StdinData) != 0 {
+		containerConf.AttachStdin = true
+		containerConf.StdinOnce = true
+		containerConf.OpenStdin = true
+	}
 
 	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
 
@@ -540,6 +546,26 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 	}
 
 	return nil
+}
+
+func (c *dockerClientImpl) AttachToContainer(ctx context.Context, h *host.Host, containerID string, opts host.DockerOptions) (*types.HijackedResponse, error) {
+	if len(opts.StdinData) == 0 {
+		return nil, nil
+	}
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "generating Docker client")
+	}
+
+	stream, err := dockerClient.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
+		Stream: true,
+		Stdin:  true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "attaching stdin to container")
+	}
+
+	return &stream, nil
 }
 
 func makeDockerLogMessage(name, parent string, data interface{}) message.Fields {

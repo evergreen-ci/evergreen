@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/jasper"
@@ -23,6 +24,8 @@ type TimeoutSuite struct {
 	tmpFile          *os.File
 	tmpFileName      string
 	tmpDirName       string
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 func TestTimeoutSuite(t *testing.T) {
@@ -53,9 +56,11 @@ func (s *TimeoutSuite) SetupTest() {
 	s.Require().NoError(s.tmpFile.Close())
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
 func (s *TimeoutSuite) TearDownTest() {
+	s.cancel()
 	s.Require().NoError(os.Remove(s.tmpFileName))
 }
 
@@ -69,6 +74,12 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
+		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
@@ -78,11 +89,9 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 0
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, tc)
+	_, err := s.a.runTask(s.ctx, tc)
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -112,15 +121,18 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 // TestExecTimeoutTask tests exec_timeout_secs set on a task. exec_timeout_secs
 // has an effect only on a project or a task.
 func (s *TimeoutSuite) TestExecTimeoutTask() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	taskID := "exec_timeout_task"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
+		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
 		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
@@ -131,9 +143,9 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 1
 
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, tc)
+	_, err := s.a.runTask(s.ctx, tc)
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -163,15 +175,18 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 
 // TestIdleTimeoutFunc tests timeout_secs set in a function.
 func (s *TimeoutSuite) TestIdleTimeoutFunc() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	taskID := "idle_timeout_func"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
+		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
 		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
@@ -182,9 +197,9 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 2
 
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, tc)
+	_, err := s.a.runTask(s.ctx, tc)
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -214,15 +229,18 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 
 // TestIdleTimeout tests timeout_secs set on a function in a command.
 func (s *TimeoutSuite) TestIdleTimeoutCommand() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	taskID := "idle_timeout_task"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
+		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
 		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
@@ -233,9 +251,9 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 3
 
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, tc)
+	_, err := s.a.runTask(s.ctx, tc)
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -265,15 +283,18 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 
 // TestDynamicIdleTimeout tests that the `update.timeout` command sets timeout_secs.
 func (s *TimeoutSuite) TestDynamicIdleTimeout() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	taskID := "dynamic_idle_timeout_task"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
+		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
 		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
@@ -284,9 +305,9 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 3
 
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, tc)
+	_, err := s.a.runTask(s.ctx, tc)
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -315,15 +336,18 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 
 // TestDynamicExecTimeout tests that the `update.timeout` command sets exec_timeout_secs.
 func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	taskID := "dynamic_exec_timeout_task"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
+		},
+		taskConfig: &internal.TaskConfig{
+			Task: &task.Task{
+				Id:        taskID,
+				Execution: 0,
+			},
 		},
 		taskModel:     &task.Task{},
 		ranSetupGroup: false,
@@ -334,9 +358,9 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 1
 
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, tc)
+	_, err := s.a.runTask(s.ctx, tc)
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())

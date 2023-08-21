@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -24,18 +25,27 @@ type githubStatusRefreshSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
 
 	suite.Suite
 }
 
 func TestGithubStatusRefresh(t *testing.T) {
-	suite.Run(t, new(githubStatusRefreshSuite))
+	s := &githubStatusRefreshSuite{}
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
+	suite.Run(t, s)
+}
+
+func (s *githubStatusRefreshSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *githubStatusRefreshSuite) SetupTest() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
@@ -75,10 +85,6 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 
 }
 
-func (s *githubStatusRefreshSuite) TearDownTest() {
-	s.cancel()
-}
-
 func (s *githubStatusRefreshSuite) TestRunInDegradedMode() {
 	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
@@ -89,7 +95,7 @@ func (s *githubStatusRefreshSuite) TestRunInDegradedMode() {
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 
 	s.False(job.HasErrors())
 }
@@ -157,7 +163,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 	s.Require().True(ok)
 	s.Require().NotNil(job.patch)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.getAndValidateStatus(s.env.InternalSender)
@@ -207,7 +213,7 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToEssentialTaskThatWillRu
 	s.Require().True(ok)
 	s.Require().NotNil(job.patch)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.getAndValidateStatus(s.env.InternalSender)
@@ -250,7 +256,7 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToAllUnscheduledEssential
 	s.Require().True(ok)
 	s.Require().NotNil(job.patch)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	// Patch status
@@ -306,7 +312,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailedDueToMixOfFailedAndUnschedule
 	s.Require().True(ok)
 	s.Require().NotNil(job.patch)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	// Patch status
@@ -365,7 +371,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	s.Require().NotNil(job.patch)
 
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.Zero(job.Error())
 
 	// Patch status
@@ -433,7 +439,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	s.Require().NotNil(job.patch)
 
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	// Patch status

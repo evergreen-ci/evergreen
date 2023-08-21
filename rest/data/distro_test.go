@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,8 +19,12 @@ func TestDeleteDistroById(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	defer func() {
+		assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection, model.TaskQueuesCollection, host.Collection))
+	}()
+
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
-		"Successfully deletes distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
+		"Successfully deletes distro and clears task queue": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			assert.NoError(t, DeleteDistroById(ctx, &u, "distro"))
 
 			dbDistro, err := distro.FindOneId(ctx, "distro")
@@ -34,7 +39,15 @@ func TestDeleteDistroById(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, dbQueue.Queue)
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
+			assert.NoError(t, err)
+			assert.Equal(t, len(events), 1)
+		},
+		"Succeeds even if task queue for distro does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
+			err := DeleteDistroById(ctx, &u, "distro-no-task-queue")
+			assert.NoError(t, err)
+
+			events, err := event.FindLatestPrimaryDistroEvents("distro-no-task-queue", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 1)
 		},
@@ -43,16 +56,7 @@ func TestDeleteDistroById(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, err.Error(), "400 (Bad Request): distro 'nonexistent' not found")
 
-			events, err := event.FindLatestPrimaryDistroEvents("nonexistent", 10)
-			assert.NoError(t, err)
-			assert.Equal(t, len(events), 0)
-		},
-		"Fails when task queue for distro does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			err := DeleteDistroById(ctx, &u, "distro-no-task-queue")
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "500 (Internal Server Error): clearing task queue for distro 'distro-no-task-queue'")
-
-			events, err := event.FindLatestPrimaryDistroEvents("distro-no-task-queue", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("nonexistent", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 0)
 		},
@@ -122,7 +126,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, newDistro)
 
-			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 1)
 		},
@@ -136,7 +140,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, err.Error(), "validator encountered errors: 'ERROR: distro 'distro2' uses an existing identifier'")
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 0)
 		},
@@ -149,7 +153,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, err.Error(), "400 (Bad Request): new and existing distro IDs are identical")
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 0)
 		},
@@ -163,7 +167,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, err.Error(), "404 (Not Found): distro 'my-distro' not found")
 
-			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 0)
 		},
@@ -236,7 +240,7 @@ func TestCreateDistro(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, newDistro)
 
-			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 1)
 		},
@@ -245,7 +249,7 @@ func TestCreateDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, err.Error(), "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'")
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10)
+			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 0)
 		},

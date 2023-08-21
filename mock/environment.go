@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -58,14 +59,25 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	e.EvergreenSettings = testutil.TestConfig()
 
-	e.Remote = queue.NewLocalLimitedSize(2, 1048)
+	e.Remote = queue.NewLocalLimitedSize(2, 1024)
 	if err := e.Remote.Start(ctx); err != nil {
 		return errors.WithStack(err)
 	}
-	e.Local = queue.NewLocalLimitedSize(2, 1048)
+	e.Local = queue.NewLocalLimitedSize(2, 1024)
 	if err := e.Local.Start(ctx); err != nil {
 		return errors.WithStack(err)
 	}
+	qg, err := queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{
+			Constructor: func(ctx context.Context) (amboy.Queue, error) {
+				return queue.NewLocalLimitedSize(2, 1024), nil
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	e.RemoteGroup = qg
 
 	e.InternalSender = send.MakeInternalLogger()
 
@@ -79,7 +91,9 @@ func (e *Environment) Configure(ctx context.Context) error {
 	e.MongoClient, err = mongo.Connect(ctx, options.Client().
 		ApplyURI(e.EvergreenSettings.Database.Url).
 		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
-		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()))
+		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))))
+
 	if err != nil {
 		return errors.WithStack(err)
 	}

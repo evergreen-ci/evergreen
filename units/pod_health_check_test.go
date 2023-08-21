@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +18,7 @@ import (
 func TestPodHealthCheckJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(pod.Collection))
@@ -75,6 +77,7 @@ func TestPodHealthCheckJob(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			require.NoError(t, db.ClearCollections(pod.Collection))
 			cocoaMock.ResetGlobalECSService()
@@ -83,7 +86,7 @@ func TestPodHealthCheckJob(t *testing.T) {
 			cocoaMock.GlobalECSService.Clusters[cluster] = cocoaMock.ECSCluster{}
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 
 			p := pod.Pod{
 				ID:     "pod_id",
@@ -103,11 +106,11 @@ func TestPodHealthCheckJob(t *testing.T) {
 			j.env = env
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
-				assert.NoError(t, j.ecsClient.Close(ctx))
+				assert.NoError(t, j.ecsClient.Close(tctx))
 			}()
 			j.pod = &p
 
-			j.ecsPod = generateTestingECSPod(ctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)
+			j.ecsPod = generateTestingECSPod(tctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)
 			j.pod.Resources = cloud.ImportECSPodResources(j.ecsPod.Resources())
 
 			tCase(tctx, t, j)

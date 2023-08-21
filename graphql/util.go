@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -936,13 +937,14 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 	}
 
 	return &testresult.FilterOptions{
-		TestName:  utility.FromStringPtr(opts.TestName),
-		Statuses:  opts.Statuses,
-		GroupID:   utility.FromStringPtr(opts.GroupID),
-		Sort:      sort,
-		Limit:     utility.FromIntPtr(opts.Limit),
-		Page:      utility.FromIntPtr(opts.Page),
-		BaseTasks: baseTaskOpts,
+		TestName:            utility.FromStringPtr(opts.TestName),
+		ExcludeDisplayNames: utility.FromBoolPtr(opts.ExcludeDisplayNames),
+		Statuses:            opts.Statuses,
+		GroupID:             utility.FromStringPtr(opts.GroupID),
+		Sort:                sort,
+		Limit:               utility.FromIntPtr(opts.Limit),
+		Page:                utility.FromIntPtr(opts.Page),
+		BaseTasks:           baseTaskOpts,
 	}, nil
 }
 
@@ -1058,4 +1060,58 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 		RequiredLevel: requiredLevel,
 	}
 	return u.HasPermission(opts)
+}
+
+func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
+	data, ok := entry.Data.(*event.DistroEventData)
+	if !ok {
+		return nil, errors.New("casting distro event data")
+	}
+
+	after, err := interfaceToMap(ctx, data.After)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'after' field to map")
+	}
+
+	before, err := interfaceToMap(ctx, data.Before)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'before' field to map")
+	}
+
+	legacyData, err := interfaceToMap(ctx, data.Data)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting legacy 'data' field to map")
+	}
+
+	user := data.User
+	if user == "" {
+		// Use legacy UserId field if User is undefined
+		user = data.UserId
+	}
+
+	return &DistroEvent{
+		After:     after,
+		Before:    before,
+		Data:      legacyData,
+		Timestamp: entry.Timestamp,
+		User:      user,
+	}, nil
+}
+
+func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface{}, error) {
+	if data == nil {
+		return nil, nil
+	}
+
+	mapField := map[string]interface{}{}
+	marshalledData, err := bson.Marshal(data)
+	if err != nil {
+		return nil, errors.Wrapf(err, "marshalling data")
+	}
+
+	if err = bson.Unmarshal(marshalledData, &mapField); err != nil {
+		return nil, errors.Wrapf(err, "unmarshalling data")
+	}
+
+	return mapField, nil
 }

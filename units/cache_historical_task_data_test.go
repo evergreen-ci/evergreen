@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/taskstats"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,7 @@ import (
 func TestCacheHistoricalTaskDataJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, taskstats.DailyTaskStatsCollection, taskstats.DailyStatsStatusCollection))
@@ -27,19 +29,19 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 	t0 := utility.GetUTCDay(now.Add(-7 * 24 * time.Hour))
 	for _, test := range []struct {
 		name   string
-		pre    func(t *testing.T)
-		post   func(t *testing.T)
+		pre    func(ctx context.Context, t *testing.T)
+		post   func(ctx context.Context, t *testing.T)
 		hasErr bool
 	}{
 		{
 			name: "CacheStatsJobDisabled",
-			pre: func(t *testing.T) {
+			pre: func(ctx context.Context, t *testing.T) {
 				flags, err := evergreen.GetServiceFlags(ctx)
 				require.NoError(t, err)
 				flags.CacheStatsJobDisabled = true
 				require.NoError(t, flags.Set(ctx))
 			},
-			post: func(t *testing.T) {
+			post: func(ctx context.Context, t *testing.T) {
 				flags, err := evergreen.GetServiceFlags(ctx)
 				require.NoError(t, err)
 				flags.CacheStatsJobDisabled = false
@@ -49,7 +51,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 		},
 		{
 			name: "OnlyMainlineCommits",
-			pre: func(t *testing.T) {
+			pre: func(ctx context.Context, t *testing.T) {
 				for i, requester := range evergreen.AllRequesterTypes {
 					tsk := task.Task{
 						Id:           fmt.Sprintf("id%d", i),
@@ -67,7 +69,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				lastJobTime := now.Add(-time.Hour)
 				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
 			},
-			post: func(t *testing.T) {
+			post: func(ctx context.Context, t *testing.T) {
 				for _, requester := range evergreen.AllRequesterTypes {
 					ts, err := taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
 						TaskName:     "task0",
@@ -94,7 +96,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 		},
 		{
 			name: "UpdateWindowNoMoreThan24Hours",
-			pre: func(t *testing.T) {
+			pre: func(ctx context.Context, t *testing.T) {
 				for _, tsk := range []task.Task{
 					{
 						Id:           "id0",
@@ -124,7 +126,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				lastJobTime := t0.Add(-2 * time.Hour)
 				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
 			},
-			post: func(t *testing.T) {
+			post: func(ctx context.Context, t *testing.T) {
 				ts, err := taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
 					TaskName:     "task0",
 					BuildVariant: "variant",
@@ -154,7 +156,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 		},
 		{
 			name: "MultipleTasksAndDates",
-			pre: func(t *testing.T) {
+			pre: func(ctx context.Context, t *testing.T) {
 				for _, tsk := range []task.Task{
 					{
 						Id:           "id0",
@@ -205,7 +207,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				lastJobTime := now.Add(-2 * time.Hour)
 				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
 			},
-			post: func(t *testing.T) {
+			post: func(ctx context.Context, t *testing.T) {
 				ts, err := taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
 					TaskName:     "task0",
 					BuildVariant: "variant",
@@ -247,22 +249,24 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			tctx := testutil.TestSpan(ctx, t)
+
 			require.NoError(t, db.ClearCollections(task.Collection, taskstats.DailyTaskStatsCollection, taskstats.DailyStatsStatusCollection))
 			if test.pre != nil {
-				test.pre(t)
+				test.pre(tctx, t)
 			}
 
 			j := NewCacheHistoricalTaskDataJob("id", "p0")
 			if test.hasErr {
-				j.Run(context.TODO())
+				j.Run(tctx)
 				require.Error(t, j.Error())
 			} else {
-				j.Run(context.TODO())
+				j.Run(tctx)
 				require.NoError(t, j.Error())
 			}
 
 			if test.post != nil {
-				test.post(t)
+				test.post(tctx, t)
 			}
 		})
 	}

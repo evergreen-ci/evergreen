@@ -14,12 +14,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewPodCreationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testutil.TestSpan(ctx, t)
+
 	podID := utility.RandomString()
 
 	j, ok := NewPodCreationJob(podID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podCreationJob)
@@ -30,6 +35,10 @@ func TestNewPodCreationJob(t *testing.T) {
 }
 
 func TestPodCreationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	defer func() {
 		cocoaMock.ResetGlobalECSService()
 		cocoaMock.ResetGlobalSecretCache()
@@ -132,8 +141,9 @@ func TestPodCreationJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
+			tctx, cancel := context.WithCancel(ctx)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			require.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.EventCollection))
 
@@ -142,7 +152,7 @@ func TestPodCreationJob(t *testing.T) {
 			cocoaMock.GlobalECSService.Clusters[clusterName] = cocoaMock.ECSCluster{}
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 			env.EvergreenSettings.Providers.AWS.Pod.ECS.Clusters = []evergreen.ECSClusterConfig{
 				{
 					Name: clusterName,
@@ -180,13 +190,13 @@ func TestPodCreationJob(t *testing.T) {
 
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
-				assert.NoError(t, j.ecsClient.Close(ctx))
+				assert.NoError(t, j.ecsClient.Close(tctx))
 			}()
 			pc, err := cloud.MakeECSPodCreator(j.ecsClient, nil)
 			require.NoError(t, err)
 			j.ecsPodCreator = cocoaMock.NewECSPodCreator(pc)
 
-			tCase(ctx, t, j)
+			tCase(tctx, t, j)
 		})
 	}
 }

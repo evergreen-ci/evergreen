@@ -240,6 +240,8 @@ type DockerOptions struct {
 	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
+	// StdinData is the data to pass to the container command's stdin.
+	StdinData []byte `mapstructure:"stdin_data" bson:"stdin_data,omitempty" json:"stdin_data,omitempty"`
 }
 
 // FromDistroSettings loads the Docker container options from the provider
@@ -261,10 +263,6 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 func (opts *DockerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.ErrorfWhen(opts.Image == "", "image must not be empty")
-
-	for _, h := range opts.ExtraHosts {
-		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
-	}
 
 	return catcher.Resolve()
 }
@@ -2986,9 +2984,21 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	return &hosts[0], nil
 }
 
-// GetPaginatedRunningHosts gets running hosts with pagination and applies any
-// filters.
-func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
+// HostsFilterOptions represents the filtering arguments for fetching hosts.
+type HostsFilterOptions struct {
+	HostID        string
+	DistroID      string
+	CurrentTaskID string
+	Statuses      []string
+	StartedBy     string
+	SortBy        string
+	SortDir       int
+	Page          int
+	Limit         int
+}
+
+// GetPaginatedRunningHosts gets running hosts with pagination and applies any filters.
+func GetPaginatedRunningHosts(ctx context.Context, opts HostsFilterOptions) ([]Host, *int, int, error) {
 	runningHostsPipeline := []bson.M{
 		{
 			"$match": bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}},
@@ -3009,15 +3019,12 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		},
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
 	countPipeline := []bson.M{}
 	countPipeline = append(countPipeline, runningHostsPipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	tmp := []counter{}
+	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
 	if err != nil {
 		return nil, nil, 0, err
@@ -3033,53 +3040,56 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	hasFilters := false
 
-	if len(hostID) > 0 {
+	if len(opts.HostID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				IdKey: hostID,
+				"$or": []bson.M{
+					{IdKey: opts.HostID},
+					{DNSKey: opts.HostID},
+				},
 			},
 		})
 	}
 
-	if len(distroID) > 0 {
+	if len(opts.DistroID) > 0 {
 		hasFilters = true
 
 		distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				distroIDKey: bson.M{"$regex": distroID, "$options": "i"},
+				distroIDKey: bson.M{"$regex": opts.DistroID, "$options": "i"},
 			},
 		})
 	}
 
-	if len(currentTaskID) > 0 {
+	if len(opts.CurrentTaskID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				RunningTaskKey: currentTaskID,
+				RunningTaskKey: opts.CurrentTaskID,
 			},
 		})
 	}
 
-	if len(startedBy) > 0 {
+	if len(opts.StartedBy) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				StartedByKey: startedBy,
+				StartedByKey: opts.StartedBy,
 			},
 		})
 	}
 
-	if len(statuses) > 0 {
+	if len(opts.Statuses) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				StatusKey: bson.M{"$in": statuses},
+				StatusKey: bson.M{"$in": opts.Statuses},
 			},
 		})
 	}
@@ -3106,8 +3116,8 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	}
 
 	sorters := bson.D{}
-	if len(sortBy) > 0 {
-		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
+	if len(opts.SortBy) > 0 {
+		sorters = append(sorters, bson.E{Key: opts.SortBy, Value: opts.SortDir})
 	}
 	// _id must be the last item in the sort array to ensure a consistent sort
 	// order when previous sort keys result in a tie.
@@ -3116,12 +3126,12 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		"$sort": sorters,
 	})
 
-	if limit > 0 {
+	if opts.Limit > 0 {
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
-			"$skip": page * limit,
+			"$skip": opts.Page * opts.Limit,
 		})
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
-			"$limit": limit,
+			"$limit": opts.Limit,
 		})
 	}
 
@@ -3175,4 +3185,26 @@ func CountVirtualWorkstationsByInstanceType(ctx context.Context) ([]VirtualWorks
 	}
 
 	return data, nil
+}
+
+// ClearDockerStdinData clears the Docker stdin data from the host.
+func (h *Host) ClearDockerStdinData(ctx context.Context) error {
+	if len(h.DockerOptions.StdinData) == 0 {
+		return nil
+	}
+
+	dockerStdinDataKey := bsonutil.GetDottedKeyName(DockerOptionsKey, DockerOptionsStdinDataKey)
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	},
+		bson.M{
+			"$unset": bson.M{dockerStdinDataKey: true},
+		},
+	); err != nil {
+		return err
+	}
+
+	h.DockerOptions.StdinData = nil
+
+	return nil
 }

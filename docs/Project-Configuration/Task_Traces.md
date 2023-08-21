@@ -13,10 +13,10 @@ Evergreen provides two ways to send traces to the trace backend, 1) an [OTel col
 Evergreen provides an [OTel collector](https://opentelemetry.io/docs/collector/) to capture traces. The gRPC endpoint is exposed to tasks as the `${otel_collector_endpoint}` [default expansion](Project-Configuration-Files.md#default-expansions).
 
 ### Trace file parsing
-When a task finishes Evergreen will check if any [encoded](#json-protobuf-encoding) trace files have been written to a `{task_working_directory}/build/trace` directory, parse them, and send them to the collector. This can be useful if a test is running without a connection to the network. Only trace files are supported, and OTel metrics/logs files in the directory will be skipped.
+When a task finishes Evergreen will check the task's [working directory](../Reference/Glossary.md) for any [encoded](#json-protobuf-encoding) trace files written to a `${workdir}/build/OTelTraces` directory, parse them, and send them to the collector. This can be useful if a test is running without a connection to the network. Only trace files are supported, and OTel metrics/logs files in the directory will be skipped.
 
 #### JSON protobuf encoding 
-OTel defines [JSON protobuf encoding](https://opentelemetry.io/docs/specs/otel/protocol/otlp/#json-protobuf-encoding) for serializing traces to files. Some OTel SDKs support this natively (e.g. the Java SDK provides the [OtlpJsonLoggingSpanExporter exporter](https://javadoc.io/static/io.opentelemetry/opentelemetry-exporter-logging-otlp/1.10.0-rc.2/io/opentelemetry/exporter/logging/otlp/OtlpJsonLoggingSpanExporter.html)). If this isn't an option (e.g. the SDK for go doesn't provide a JSON protobuf exporter) another option is to configure the test to send its traces to a local collector running alongside the test and configure the collector to use the [file exporter](https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter). The file exporter is only available in [the collector's "contrib" distribution](https://github.com/open-telemetry/opentelemetry-collector-contrib) (release builds for many OS/architectures are available [here](https://github.com/open-telemetry/opentelemetry-collector-releases/releases)).
+OTel defines [JSON protobuf encoding](https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding) for serializing traces to files. Some OTel SDKs support this natively (e.g. the Java SDK provides the [OtlpJsonLoggingSpanExporter exporter](https://javadoc.io/static/io.opentelemetry/opentelemetry-exporter-logging-otlp/1.10.0-rc.2/io/opentelemetry/exporter/logging/otlp/OtlpJsonLoggingSpanExporter.html)). If this isn't an option (e.g. the SDK for go doesn't provide a JSON protobuf exporter) another option is to configure the test to send its traces to a local collector running alongside the test and configure the collector to use the [file exporter](https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter). The file exporter is only available in [the collector's "contrib" distribution](https://github.com/open-telemetry/opentelemetry-collector-contrib) (release builds for many OS/architectures are available [here](https://github.com/open-telemetry/opentelemetry-collector-releases/releases)).
 
 ## Hooking tests into command spans
 Evergreen exposes every command's trace and span IDs to a running command as hex encoded strings in the `${otel_trace_id}` and `${otel_parent_id}` [default expansions](Project-Configuration/Project-Configuration-Files.md#default-expansions). To hook a test's spans into the command's span the trace id and parent id can be added to the current context.
@@ -31,8 +31,9 @@ from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
 
 span_context = SpanContext(
     trace_id = int("${otel_trace_id}", 16),
-    span_id = int(("${otel_parent_id}", 16),
-    trace_flags = TraceFlags(0x01)
+    span_id = int("${otel_parent_id}", 16),
+    trace_flags = TraceFlags(0x01),
+    is_remote = False,
 )
 ctx = trace.set_span_in_context(NonRecordingSpan(span_context))
 

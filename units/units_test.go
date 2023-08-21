@@ -1,8 +1,10 @@
 package units
 
 import (
+	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
@@ -11,6 +13,10 @@ import (
 )
 
 func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 
 	disabled := []string{

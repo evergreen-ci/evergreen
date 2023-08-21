@@ -243,6 +243,9 @@ Options:
     not have to be.
 -   Alias: Run a subset of tasks by specifying an alias. Otherwise, all
     tasks run.
+-   Unschedule Downstream Versions: If toggled, all tasks in the triggered 
+    downstream version will be unscheduled by default, requiring manual scheduling. 
+    Otherwise, all tasks will immediately scheduled once the downstream version is created.
 
 ### Patch Trigger Aliases
 
@@ -279,7 +282,7 @@ To pass information from the upstream patch to the downstream patch use
 ### Periodic Builds
 
 Evergreen has the capability to periodically run a set of tasks in the
-project. This section holds settings allowing you to specify
+project. The Periodic Builds section of the Project Settings page allows you to specify
 what should be run periodically, and how often. **This is different than build variant crons** because
 a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify
 (so if you want it to run daily, it’ll activate the most recent build variant at that time daily),

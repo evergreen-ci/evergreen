@@ -153,6 +153,7 @@ func (s *createHostSuite) TestParamValidation() {
 	delete(s.params, "instance_type")
 	s.NoError(s.cmd.ParseParams(s.params))
 	err := s.cmd.expandAndValidate(ctx, s.conf)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "must specify security group IDs if AMI is set")
 	s.Contains(err.Error(), "subnet ID must be set if AMI is set")
 	s.Contains(err.Error(), "instance type must be set if AMI is set")
@@ -176,13 +177,21 @@ func (s *createHostSuite) TestParamValidation() {
 	// verify errors for things controlled by the agent
 	s.params["num_hosts"] = "11"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "num hosts must be between 1 and 10")
+	err = s.cmd.expandAndValidate(ctx, s.conf)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "num hosts must be between 1 and 10")
+
 	s.params["scope"] = "idk"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "scope must be build or task")
+	err = s.cmd.expandAndValidate(ctx, s.conf)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "scope must be build or task")
+
 	s.params["timeout_teardown_secs"] = 55
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "timeout teardown (seconds) must be between 60 and 604800")
+	err = s.cmd.expandAndValidate(ctx, s.conf)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "timeout teardown (seconds) must be between 60 and 604800")
 
 	// Validate num_hosts can be an int
 	s.params["timeout_teardown_secs"] = 60
@@ -195,19 +204,32 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["provider"] = apimodels.ProviderDocker
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.params["distro"] = ""
-	settings, err := evergreen.GetConfig(ctx)
+	originalSettings, err := evergreen.GetConfig(ctx)
+	defer func() {
+		s.NoError(evergreen.UpdateConfig(ctx, originalSettings))
+	}()
 	s.NoError(err)
+	settings := *originalSettings
 	settings.Providers.Docker.DefaultDistro = "my-default-distro"
-	s.NoError(evergreen.UpdateConfig(ctx, settings))
+	s.NoError(evergreen.UpdateConfig(ctx, &settings))
 
-	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "Docker image must be set")
-	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "num hosts cannot be greater than 1")
+	err = s.cmd.expandAndValidate(ctx, s.conf)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "Docker image must be set")
+	s.Contains(err.Error(), "num hosts cannot be greater than 1")
+
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.params["num_hosts"] = 1
 	s.params["distro"] = "my-default-distro"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
+
+	s.params["extra_hosts"] = []string{"invalid extra host"}
+	s.NoError(s.cmd.ParseParams(s.params))
+	err = s.cmd.expandAndValidate(ctx, s.conf)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "extra host")
 }
 
 func (s *createHostSuite) TestPopulateUserdata() {
