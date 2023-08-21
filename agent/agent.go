@@ -455,13 +455,12 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// the task failed during initial task setup.
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
-		return tc, shouldExit, errors.New("setup.initial command is not registered")
+		grip.Alert(errors.New("setup.initial command is not registered"))
 	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
-	var taskConfig *internal.TaskConfig
-	taskConfig, err = a.makeTaskConfig(setupCtx, tc)
+	taskConfig, err := a.makeTaskConfig(setupCtx, tc)
 	if err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
@@ -475,20 +474,14 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	if !tc.ranSetupGroup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory"))
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
 	tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
-	factory, ok = command.GetCommandFactory("setup.initial")
-	if !ok {
-		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
-		return tc, shouldExit, errors.New("setup.initial command is not registered")
-	}
+	// We are only calling this again to get the log for the current command after logging has been set up.
 	tc.setCurrentCommand(factory())
-	a.comm.UpdateLastMessageTime()
 
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
@@ -514,10 +507,11 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error) (*taskContext, bool, error) {
 	catcher := grip.NewBasicCatcher()
 	grip.Error(err)
-	catcher.Add(err)
+	catcher.Wrap(err, "handling setup error")
+	tc.logger.Execution().Error(err)
 	grip.Infof("Task complete: '%s'.", tc.task.ID)
 	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
-	catcher.Add(err)
+	catcher.Wrap(err, "handling task response")
 	return tc, shouldExit, catcher.Resolve()
 }
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {

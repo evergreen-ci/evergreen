@@ -314,7 +314,7 @@ func (s *AgentSuite) TestRunPreAndMainIsPanicSafe() {
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
 }
 
-func (s *AgentSuite) TestRunPreAndMainFailureCausesSystemFailure() {
+func (s *AgentSuite) TestStartTaskFailureInRunPreAndMainCausesSystemFailure() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
@@ -737,7 +737,7 @@ func (s *AgentSuite) TestOOMTracker() {
 	projYml := `
 oom_tracker: true
 buildvariants:
-- name: mock_build_variant
+ - name: mock_build_variant
 tasks: 
  - name: this_is_a_task_name
    commands: 
