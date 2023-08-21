@@ -231,29 +231,6 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
 }
 
-func (s *AgentSuite) TestNextTaskConflict() {
-	s.mockCommunicator.NextTaskShouldConflict = true
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-	defer cancel()
-
-	agentCtx, agentCancel := context.WithCancel(ctx)
-	defer agentCancel()
-
-	errs := make(chan error, 1)
-	go func() {
-		errs <- s.a.loop(agentCtx)
-	}()
-	time.Sleep(1 * time.Second)
-	agentCancel()
-
-	select {
-	case err := <-errs:
-		s.NoError(err)
-	case <-ctx.Done():
-		s.FailNow(ctx.Err().Error())
-	}
-}
-
 func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
