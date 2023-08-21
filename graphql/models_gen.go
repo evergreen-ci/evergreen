@@ -940,20 +940,20 @@ type Provider string
 const (
 	ProviderDocker      Provider = "DOCKER"
 	ProviderEc2Fleet    Provider = "EC2_FLEET"
-	ProviderEc2Ondemand Provider = "EC2_ONDEMAND"
+	ProviderEc2OnDemand Provider = "EC2_ON_DEMAND"
 	ProviderStatic      Provider = "STATIC"
 )
 
 var AllProvider = []Provider{
 	ProviderDocker,
 	ProviderEc2Fleet,
-	ProviderEc2Ondemand,
+	ProviderEc2OnDemand,
 	ProviderStatic,
 }
 
 func (e Provider) IsValid() bool {
 	switch e {
-	case ProviderDocker, ProviderEc2Fleet, ProviderEc2Ondemand, ProviderStatic:
+	case ProviderDocker, ProviderEc2Fleet, ProviderEc2OnDemand, ProviderStatic:
 		return true
 	}
 	return false

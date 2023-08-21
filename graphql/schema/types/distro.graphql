@@ -33,7 +33,7 @@ enum PlannerVersion {
 enum Provider {
   DOCKER
   EC2_FLEET
-  EC2_ONDEMAND
+  EC2_ON_DEMAND
   STATIC
 }
 

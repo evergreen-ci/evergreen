@@ -60,7 +60,7 @@ func (r *distroResolver) Provider(ctx context.Context, obj *model.APIDistro) (Pr
 	case evergreen.ProviderNameEc2Fleet:
 		return ProviderEc2Fleet, nil
 	case evergreen.ProviderNameEc2OnDemand:
-		return ProviderEc2Ondemand, nil
+		return ProviderEc2OnDemand, nil
 	case evergreen.ProviderNameStatic:
 		return ProviderStatic, nil
 	default:
@@ -147,7 +147,7 @@ func (r *distroInputResolver) Provider(ctx context.Context, obj *model.APIDistro
 		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameDocker)
 	case ProviderEc2Fleet:
 		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameEc2Fleet)
-	case ProviderEc2Ondemand:
+	case ProviderEc2OnDemand:
 		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameEc2OnDemand)
 	case ProviderStatic:
 		obj.Provider = utility.ToStringPtr(evergreen.ProviderNameStatic)

@@ -12,7 +12,7 @@ mutation {
           authorizedKeysFile: "",
           containerPool: "",
           disabled: true,
-          provider: EC2_ONDEMAND,
+          provider: EC2_ON_DEMAND,
           providerSettingsList: [
             {
               ami: "who-ami",
