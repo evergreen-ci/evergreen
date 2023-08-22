@@ -64,3 +64,28 @@ job](https://github.com/evergreen-ci/evergreen/blob/main/units/patch_intent.go).
 * New clone logic in the agent will clone the merge group branch.
 * Evergreen will post the result to the GitHub checks API.
 * A new UI element will allow users to opt into the GitHub merge queue.
+
+## Pending Status Checks
+
+Evergreen doesn't behave in the way that GitHub designers intended: For PRs,
+instead of sending a pending and then a success/fail status for each check, it
+sends a single "evergreen" pending status, and then it sends "evergreen"
+success/failure as well as "evergreen/\<variant\>" status for each variant. This
+is fine for PRs because "evergreen" links to the version in Evergreen.
+
+However, for GitHub merge queue builds, sending an "evergreen" pending check
+only works if "evergreen" is configured as a branch protection rule. If instead
+the user has configured an "evergreen/\<variant\>" branch protection rule but
+_not_ an "evergreen" branch protection rule, the "evergreen" pending check does
+not show up in the GitHub UI, which means the user can't click a link to the
+Evergreen version. They eventually can, when it completes, but not while it's running.
+
+There are several options to handle this:
+
+1. Accept the problem that there is no link to the version until it finishes.
+2. Send status pending for variants in the version.
+3. Send status pending for branch protection rules.
+
+The first will be frustrating to users. The second will not work if the branch
+protection rule depends on a variant created by generate.tasks. Only the third
+posts a link immediately.
