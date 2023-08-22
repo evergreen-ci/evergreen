@@ -913,8 +913,18 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		// its failure type to system failed, as that is within a task's
 		// control.
 		tc.logger.Task().Error("Task encountered unexpected task lifecycle system failure.")
+		detail.Status = evergreen.TaskFailed
+		detail.Type = evergreen.CommandTypeSystem
+		if detail.Description == "" {
+			detail.Description = "task system-failed for unknown reasons"
+		}
 	default:
-		tc.logger.Task().Errorf("Programmer error: invalid task status '%s'.", detail.Status)
+		tc.logger.Task().Errorf("Programmatic error: ending task with invalid task status '%s', defaulting to system failure.", detail.Status)
+		detail.Status = evergreen.TaskFailed
+		detail.Type = evergreen.CommandTypeSystem
+		if detail.Description == "" {
+			detail.Description = "task has invalid status"
+		}
 	}
 
 	a.killProcs(ctx, tc, false, "task is ending")

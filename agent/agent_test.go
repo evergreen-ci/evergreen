@@ -279,8 +279,10 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	s.NoError(err)
 	s.NoError(s.tc.logger.Close())
 
-	s.Equal(status, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{"Running post-task commands"})
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
+	s.Equal(evergreen.CommandTypeSystem, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.NotEmpty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog, "Running post-task commands"})
 }
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {

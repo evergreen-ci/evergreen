@@ -2035,7 +2035,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			reset()
 			testTask.ResultsService = testresult.TestResultsServiceLocal
 			testTask.ResultsFailed = true
-			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
@@ -2049,6 +2048,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
+			So(taskData.Details.Type, ShouldEqual, evergreen.CommandTypeTest)
+			So(taskData.Details.Description, ShouldEqual, evergreen.TaskDescriptionResultsFailed)
 		})
 
 		Convey("incomplete versions report updates", func() {
