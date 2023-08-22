@@ -376,7 +376,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
