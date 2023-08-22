@@ -162,7 +162,6 @@ func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroIn
 	usr := mustHaveUser(ctx)
 
 	if err := data.CreateDistro(ctx, usr, opts.NewDistroID); err != nil {
-
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
@@ -193,10 +192,19 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("validating changes for distro '%s': '%s'", d.Id, validationErrs.String()))
 	}
 
-	if err = d.ReplaceOne(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+	if err = data.UpdateDistro(ctx, oldDistro, d); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating distro: %s", err.Error()))
 	}
 	event.LogDistroModified(d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
+
+	// AMI events are not displayed in the event log, but are used by the backend to determine if hosts have become stale.
+	if d.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
+		event.LogDistroAMIModified(d.Id, usr.Username())
+	}
 
 	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
 	if err != nil {

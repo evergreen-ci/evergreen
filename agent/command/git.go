@@ -201,7 +201,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
 	if opts.useVerbose {
-		clone = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", clone)
+		clone = fmt.Sprintf("GIT_TRACE=1 %s", clone)
 	}
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
