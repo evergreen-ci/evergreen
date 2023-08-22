@@ -18,6 +18,24 @@ enum CloneMethod {
   OAUTH
 }
 
+enum FinderVersion {
+  LEGACY
+  PARALLEL
+  PIPELINE
+  ALTERNATE
+}
+
+enum PlannerVersion {
+  LEGACY
+  TUNABLE
+}
+
+enum DispatcherVersion {
+  REVISED
+  REVISED_WITH_DEPENDENCIES
+}
+
+
 ###### INPUTS ######
 """
 CopyDistroInput is the input to the copyDistro mutation.
@@ -106,7 +124,7 @@ input BootstrapSettingsInput {
 }
 
 input DispatcherSettingsInput {
-  version: String!
+  version: DispatcherVersion!
 }
 
 input EnvVarInput {
@@ -120,7 +138,7 @@ input ExpansionInput {
 }
 
 input FinderSettingsInput {
-  version: String!
+  version: FinderVersion!
 }
 
 input HomeVolumeSettingsInput {
@@ -152,7 +170,7 @@ input PlannerSettingsInput {
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Int!
-  version: String!
+  version: PlannerVersion!
 }
 
 input PreconditionScriptInput {
@@ -255,7 +273,7 @@ type BootstrapSettings {
 }
 
 type DispatcherSettings {
-  version: String!
+  version: DispatcherVersion!
 }
 
 type EnvVar {
@@ -269,7 +287,7 @@ type Expansion {
 }
 
 type FinderSettings {
-  version: String!
+  version: FinderVersion!
 }
 
 type HomeVolumeSettings {
@@ -301,7 +319,7 @@ type PlannerSettings {
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Duration!
-  version: String!
+  version: PlannerVersion!
 }
 
 type PreconditionScript {

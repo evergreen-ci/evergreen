@@ -28,7 +28,7 @@ type TaskConfig struct {
 	Task               *task.Task
 	BuildVariant       *model.BuildVariant
 	Expansions         *util.Expansions
-	DynamicExpansions  *util.Expansions
+	DynamicExpansions  util.Expansions
 	Redacted           map[string]bool
 	WorkDir            string
 	GithubPatchData    thirdparty.GithubPatch
@@ -94,7 +94,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		Task:              t,
 		BuildVariant:      bv,
 		Expansions:        &e,
-		DynamicExpansions: &util.Expansions{},
+		DynamicExpansions: util.Expansions{},
 		WorkDir:           workDir,
 	}
 	if patchDoc != nil {
