@@ -185,7 +185,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		// respected. In all other blocks, setting the idle timeout should have
 		// no effect.
 		tc.setCurrentIdleTimeout(cmd, options.block)
-	default:
 	}
 	a.comm.UpdateLastMessageTime()
 
