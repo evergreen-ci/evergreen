@@ -331,50 +331,6 @@ Creates a task annotation, or updates an existing task annotation, appending iss
     }
 
 
-Bulk Create or Update Many Task Annotations
-
-    PATCH tasks/annotations
-
-Creates many new task annotations, or updates the annotation if it
-already exists. A list of updates to a task annotation is provided in
-the request body, where each list item specifies a set of task id /
-execution pairs, and an annotation update to apply to all tasks matching
-that criteria. Note that usage of this endpoint requires that the
-requesting user have security to modify task annotations for all task projects. Example
-request body:
-
-    {
-      "tasks_updates": [
-       {
-         "task_data": [{"task_id": "t1", "execution":3}],
-         "annotation": {
-           "note": {
-             "message": "this is a note about my_task_id's failure"
-           },
-           "issues":[
-            {
-              "url": "https://link.com",
-              "issue_key": "link-1234"
-            }
-           ]
-         }
-       },
-       {
-         "task_data": [{"task_id": "t2", "execution":0}, {"task_id": "t2", "execution":1}],
-         "annotation": {
-           "note": {
-             "message": "this is a note about my_task_id's failure"
-           },
-           "issues":[
-            {
-              "url": "https://other-link.com",
-              "issue_key": "link-4567"
-            }
-           ]
-         }
-       }]
-    }
-
 List Task Annotations By Build 
 
     GET /builds/<build_id>/annotations
