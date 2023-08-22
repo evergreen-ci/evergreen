@@ -195,64 +195,6 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// PATCH /rest/v2/tasks/annotations
-
-type bulkCreateAnnotationsOpts struct {
-	TaskUpdates []annotations.TaskUpdate `bson:"task_updates" json:"task_updates"`
-}
-
-type bulkPatchAnnotationHandler struct {
-	user gimlet.User
-	opts bulkCreateAnnotationsOpts
-}
-
-func makeBulkPatchAnnotations() gimlet.RouteHandler {
-	return &bulkPatchAnnotationHandler{}
-}
-
-func (h *bulkPatchAnnotationHandler) Factory() gimlet.RouteHandler {
-	return &bulkPatchAnnotationHandler{}
-}
-
-func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-	err := json.NewDecoder(body).Decode(&h.opts)
-	if err != nil {
-		return errors.Wrap(err, "reading bulk annotation creation options from JSON request body")
-	}
-	for _, update := range h.opts.TaskUpdates {
-		for _, t := range update.TaskData {
-			// check if the task exists
-			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
-			if err != nil {
-				return gimlet.ErrorResponse{
-					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrapf(err, "finding task '%s' with execution %d", t.TaskId, t.Execution).Error(),
-				}
-			}
-			if foundTask == nil {
-				return errors.Errorf("task '%s' with execution %d not found", t.TaskId, t.Execution)
-			}
-			if !evergreen.IsFailedTaskStatus(foundTask.Status) {
-				return errors.Errorf("cannot create annotation when task status is '%s'", foundTask.Status)
-			}
-		}
-	}
-
-	return nil
-}
-
-func (h *bulkPatchAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := annotations.InsertManyAnnotations(h.opts.TaskUpdates); err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "bulk inserting annotations"))
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
-}
-
-////////////////////////////////////////////////////////////////////////
-//
 // PUT /rest/v2/tasks/{task_id}/annotation
 
 // Parsing logic for task annotation put and patch routes.

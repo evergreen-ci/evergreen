@@ -931,62 +931,6 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 	next(rw, r)
 }
 
-type bulkUpdateAnnotations struct{}
-
-// NewBulkupdateAnnotationsMiddleware returns a middleware that verifies if the user can bulk update annotations.
-func NewBulkUpdateAnnotationsMiddleware() gimlet.Middleware {
-	return &bulkUpdateAnnotations{}
-}
-
-func (a *bulkUpdateAnnotations) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-	u := MustHaveUser(ctx)
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
-		return
-	}
-
-	var updates bulkCreateAnnotationsOpts
-	if err = json.Unmarshal(body, &updates); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON payload")))
-		return
-	}
-
-	projectIds := map[string]bool{}
-	for _, update := range updates.TaskUpdates {
-		for _, t := range update.TaskData {
-			// check if the task exists
-			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
-			if err != nil {
-				gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
-					"finding task '%s' with execution %d", t.TaskId, t.Execution)))
-				return
-			}
-			if foundTask == nil {
-				gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err,
-					"task '%s' with execution %d not found", t.TaskId, t.Execution)))
-				return
-			}
-			projectIds[foundTask.Project] = true
-		}
-	}
-	for projectId := range projectIds {
-		hasPermissionForProject := u.HasPermission(gimlet.PermissionOpts{
-			Resource:      projectId,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionAnnotations,
-			RequiredLevel: evergreen.AnnotationsModify.Value,
-		})
-		if !hasPermissionForProject {
-			http.Error(rw, fmt.Sprintf("user doesn't have permission to edit annotations for project '%s'",
-				projectId), http.StatusUnauthorized)
-		}
-	}
-
-	next(rw, r)
-}
-
 // NewGithubAuthMiddleware returns a middleware that verifies the payload.
 func NewGithubAuthMiddleware() gimlet.Middleware {
 	return &githubAuthMiddleware{}
