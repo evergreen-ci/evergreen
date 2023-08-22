@@ -810,7 +810,12 @@ post:
        script: exit 1
 `
 	s.setupRunTask(projYml)
-	_, err := s.a.runTask(s.ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
