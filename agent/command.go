@@ -33,6 +33,8 @@ var (
 	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
+// TODO (EVG-20629): remember to move the block timeout watcher into a helper
+// for runCommandsInBlock to reduce duplication.
 type runCommandsOptions struct {
 	// block is the name of the block that the command runs in.
 	block command.BlockType
@@ -179,8 +181,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)
-			tc.taskConfig.DynamicExpansions = util.EmptyExpansion()
-
+			tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
 		}
 	}()
 

@@ -83,7 +83,6 @@ func (s *CommandSuite) SetupTest() {
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
 	s.Require().NoError(err)
-	s.Equal(&util.Expansions{}, taskConfig.DynamicExpansions)
 
 	s.tc = &taskContext{
 		taskConfig: taskConfig,
@@ -208,8 +207,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	config := &internal.TaskConfig{
-		Expansions:        &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
-		DynamicExpansions: &util.Expansions{},
+		Expansions: &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
 		BuildVariant: &model.BuildVariant{
 			Name: "some_build_variant",
 		},
@@ -356,7 +354,7 @@ functions:
 	key3Value := s.tc.taskConfig.Expansions.Get("key3")
 	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
 
-	s.Equal(&util.Expansions{}, s.tc.taskConfig.DynamicExpansions)
+	s.Empty(s.tc.taskConfig.DynamicExpansions)
 }
 
 func (s *CommandSuite) TestVarsUnsetPreserveExpansionUpdatesFromFile() {
@@ -387,5 +385,5 @@ functions:
 
 	key3Value := s.tc.taskConfig.Expansions.Get("key3")
 	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
-	s.Equal(&util.Expansions{}, s.tc.taskConfig.DynamicExpansions)
+	s.Empty(s.tc.taskConfig.DynamicExpansions)
 }

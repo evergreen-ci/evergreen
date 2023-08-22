@@ -159,6 +159,10 @@ func (apiPatch *APIPatch) GetCommitQueuePosition() error {
 	if apiPatch.CommitQueuePosition != nil {
 		return nil
 	}
+	// GitHub merge patches use the commit queue alias but do not have commit queue positions.
+	if utility.FromStringPtr(apiPatch.Requester) == evergreen.GithubMergeRequester {
+		return nil
+	}
 	if utility.FromStringPtr(apiPatch.Alias) == evergreen.CommitQueueAlias {
 		cq, err := commitqueue.FindOneId(utility.FromStringPtr(apiPatch.ProjectId))
 		if err != nil {

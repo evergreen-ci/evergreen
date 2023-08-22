@@ -526,12 +526,22 @@ tasks:
 
 ```yaml
 exec_timeout_secs: 60
+
 pre_error_fails_task: true
+pre_timeout_secs: 1800 # 30 minutes
 pre:
+  - ...
+
+post_error_fails_task: true
+post_timeout_secs: 1800 # 30 minutes
+post:
   - ...
 ```
 
 #### Special Behavior for Pre, Post, and Timeout
+
+Failing commands:
+
 By default, a command failing during the `pre` block will not cause the entire
 task to fail. If you want to enforce that failures during `pre` cause the task
 to fail, set the field `pre_error_fails_task` to true. If `pre_error_fails_task`
@@ -553,9 +563,19 @@ failed in the main task block, not the failing post command.
 groups do not run `post`; instead, those tasks, follow the settings defined for
 that task group (i.e. `teardown_group` and `teardown_task`).
 
-By default, commands in `post` or `timeout` will time out after 15 minutes. You
-can override this timeout by setting `callback_timeout_secs` at the root level
-of the yaml config (warning: `callback_timeout_secs` will be deprecated soon).
+Timeouts:
+
+By default, the `pre` block will time out if it runs for longer than 2 hours
+total. You can override this timeout by setting `pre_timeout_secs` at the root
+level of the YAML config.
+
+By default, the `post` block will time out if it runs for longer than 2 hours
+total. You can override this timeout by setting `post_timeout_secs` at the root
+level of the YAML config.
+
+By default, commands `timeout` will time out after 15 minutes. You can override
+this timeout by setting `callback_timeout_secs` at the root level of the YAML
+config (warning: `callback_timeout_secs` will be deprecated soon).
 
 ### Limiting When a Task Will Run
 
