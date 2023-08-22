@@ -38,10 +38,9 @@ type createHostJob struct {
 	BuildImageStarted bool   `bson:"build_image_started" json:"build_image_started" yaml:"build_image_started"`
 	job.Base          `bson:"metadata" json:"metadata" yaml:"metadata"`
 
-	start    time.Time
-	host     *host.Host
-	env      evergreen.Environment
-	settings evergreen.Settings
+	start time.Time
+	host  *host.Host
+	env   evergreen.Environment
 }
 
 func makeCreateHostJob() *createHostJob {
