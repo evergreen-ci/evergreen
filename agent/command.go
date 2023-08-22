@@ -178,8 +178,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)
-			tc.taskConfig.DynamicExpansions = util.EmptyExpansion()
-
+			tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
 		}
 	}()
 
