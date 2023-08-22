@@ -16,6 +16,7 @@
                         "plannerSettings": {
                             "mainlineTimeInQueueFactor": 0
                         },
+                        "provider": "STATIC",
                         "providerSettingsList": [
                             {
                                 "hosts": [

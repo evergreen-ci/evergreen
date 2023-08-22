@@ -104,17 +104,18 @@ func disableStartingSettings(p *model.ProjectRef) {
 // PromoteVarsToRepo moves variables from an attached project to its repo.
 // Promoted vars are removed from the project as part of this operation.
 // Variables whose names already appear in the repo settings will be overwritten.
-func PromoteVarsToRepo(projectId string, varNames []string, userId string) error {
-	project, err := model.GetProjectSettingsById(projectId, false)
+func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId string) error {
+	project, err := model.GetProjectSettingsById(projectIdentifier, false)
 	if err != nil {
-		return errors.Wrapf(err, "getting project settings for project '%s'", projectId)
+		return errors.Wrapf(err, "getting project settings for project '%s'", projectIdentifier)
 	}
 
+	projectId := project.ProjectRef.Id
 	repoId := project.ProjectRef.RepoRefId
 
 	projectVars, err := model.FindOneProjectVars(projectId)
 	if err != nil {
-		return errors.Wrapf(err, "getting project variables for project '%s'", projectId)
+		return errors.Wrapf(err, "getting project variables for project '%s'", projectIdentifier)
 	}
 
 	repo, err := model.GetProjectSettingsById(repoId, true)
@@ -145,7 +146,7 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	}
 
 	if err = UpdateProjectVars(repoId, apiRepoVars, true); err != nil {
-		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectId)
+		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
 
 	// Log repo update
@@ -182,15 +183,15 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	}
 
 	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
-		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectId)
+		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
 
 	projectAfter, err := model.GetProjectSettingsById(projectId, false)
 	if err != nil {
-		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectId)
+		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectIdentifier)
 	}
 	if err = model.LogProjectModified(projectId, userId, project, projectAfter); err != nil {
-		return errors.Wrapf(err, "logging project '%s' modified", projectId)
+		return errors.Wrapf(err, "logging project '%s' modified", projectIdentifier)
 	}
 
 	return nil

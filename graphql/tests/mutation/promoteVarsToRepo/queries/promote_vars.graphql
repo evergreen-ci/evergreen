@@ -1,0 +1,3 @@
+mutation {
+  promoteVarsToRepo(projectId: "sandbox", varNames: ["hello", "foo"])
+}
