@@ -1,6 +1,6 @@
-# Materialized Intelligence
+# Evergreen Data for Analytics
 
-Materialized Intelligence is R&D Developer Productivity's data offering for downstream analytics and business intelligence. We aim to provide a self-service platform for users to access and analyze data from Evergreen and other Dev Prod projects. This platform leverages [Mongo Trino](https://docs.dataplatform.prod.corp.mongodb.com/docs/Trino/Introduction) and [Mongo Automated Reporting System](https://docs.dataplatform.prod.corp.mongodb.com/docs/MARS/Introduction) (MARS) so that users can access any quantity of data without waiting on Dev Prod teams and without impacting production Dev Prod systems.
+We aim to provide a self-service platform for users to access and analyze data from Evergreen and other Dev Prod projects. Evergreen leverages [Mongo Trino](https://docs.dataplatform.prod.corp.mongodb.com/docs/Trino/Introduction) and [Mongo Automated Reporting System](https://docs.dataplatform.prod.corp.mongodb.com/docs/MARS/Introduction) (MARS) so that users can access any quantity of data without waiting on Dev Prod teams and without impacting production Dev Prod systems.
 
 ## Getting Started
 
