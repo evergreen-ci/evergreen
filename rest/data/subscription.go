@@ -45,13 +45,6 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 			}
 		}
 
-		if ok, msg := event.IsSubscriptionAllowed(dbSubscription); !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    msg,
-			}
-		}
-
 		err = dbSubscription.Validate()
 		if err != nil {
 			return gimlet.ErrorResponse{
