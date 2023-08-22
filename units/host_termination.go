@@ -100,7 +100,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	if !j.host.IsEphemeral() && !j.host.IsStatic() {
+	if j.host.IsStatic() {
+		if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
+			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
+		}
+		return
+	}
+
+	if !j.host.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
 			"host_id":  j.HostID,

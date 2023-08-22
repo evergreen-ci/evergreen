@@ -476,7 +476,7 @@ func (h *Host) IsEphemeral() bool {
 }
 
 func (h *Host) IsStatic() bool {
-	return h.Provider == evergreen.ProviderNameStatic
+	return h.Distro.Provider == evergreen.ProviderNameStatic
 }
 
 func (h *Host) IsContainer() bool {
