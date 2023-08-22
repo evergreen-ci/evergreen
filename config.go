@@ -554,6 +554,66 @@ func (s *Settings) GetGithubAppAuth() *githubAppAuth {
 	}
 }
 
+// HasAppInstalled returns true if the GitHub app is installed on the repo.
+func (s *Settings) HasAppInstalled(ctx context.Context, owner, repo string) bool {
+	authFields := s.GetGithubAppAuth()
+	if authFields == nil {
+		grip.Debug(message.Fields{
+			"message": "could not parse key from PEM",
+			"caller":  "HasAppInstalled",
+			"owner":   owner,
+			"repo":    repo,
+			"appId":   authFields.AppId,
+			"ticket":  "EVG-19966",
+		})
+		return false
+	}
+
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "could not parse key from PEM",
+			"caller":  "HasAppInstalled",
+			"owner":   owner,
+			"repo":    repo,
+			"appId":   authFields.AppId,
+			"ticket":  "EVG-19966",
+		}))
+		return false
+	}
+
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppId, key)
+	httpClient.Transport = itr
+	client := github.NewClient(httpClient)
+	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error finding installation id",
+			"caller":  "HasAppInstalled",
+			"owner":   owner,
+			"repo":    repo,
+			"appId":   authFields.AppId,
+			"ticket":  "EVG-19966",
+		}))
+		return false
+	}
+	if installationId == nil {
+		grip.Debug(message.Fields{
+			"message": "installation id not found",
+			"caller":  "HasAppInstalled",
+			"owner":   owner,
+			"repo":    repo,
+			"appId":   authFields.AppId,
+			"ticket":  "EVG-19966",
+		})
+		return false
+	}
+	return true
+}
+
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
