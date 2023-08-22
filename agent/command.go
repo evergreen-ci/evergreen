@@ -33,6 +33,8 @@ var (
 	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
+// TODO (EVG-20629): remember to move the block timeout watcher into a helper
+// for runCommandsInBlock to reduce duplication.
 type runCommandsOptions struct {
 	isTaskCommands bool
 	failPreAndPost bool

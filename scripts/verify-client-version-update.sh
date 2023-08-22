@@ -10,7 +10,7 @@ fi
 # have changed in the operations directory.
 common_ancestor=$(git merge-base ${BRANCH_NAME}@{upstream} HEAD);
 # Exclude tests, agent, and smoke test files, because those do not result in user-facing CLI changes.
-files_changed="$(git diff --name-only "${common_ancestor}" -- 'operations/**.go' ':!operations/**_test.go', ':!operations/*agent*.go' ':!operations/*smoke*.go')"
+files_changed="$(git diff --name-only "${common_ancestor}" -- 'operations/**.go' ':!operations/**_test.go' ':!operations/*agent*.go' ':!operations/*smoke*.go')"
 if [[ "${files_changed}" == "" ]]; then
     exit 0;
 fi

@@ -72,14 +72,14 @@ func (t *TaskConfig) GetExecTimeout() int {
 }
 
 func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
-	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
 	}
-
-	// check on if the project ref is empty
 	if r == nil {
 		return nil, errors.Errorf("project ref '%s' is nil", p.Identifier)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task cannot be nil")
 	}
 
 	bv := p.FindBuildVariant(t.BuildVariant)
@@ -186,10 +186,13 @@ func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
 		return nil, err
 	}
 
-	canFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
 	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Pre, CanFailTask: canFailTask}, nil
+		return &CommandBlock{
+			Commands:    tc.Project.Pre,
+			CanFailTask: tc.Project.PreErrorFailsTask,
+		}, nil
 	}
+
 	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
@@ -204,10 +207,13 @@ func (tc *TaskConfig) GetPost(taskGroup string) (*CommandBlock, error) {
 		return nil, err
 	}
 
-	canFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
 	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Post, CanFailTask: canFailTask}, nil
+		return &CommandBlock{
+			Commands:    tc.Project.Post,
+			CanFailTask: tc.Project.PostErrorFailsTask,
+		}, nil
 	}
+
 	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
