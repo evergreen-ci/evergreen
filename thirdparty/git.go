@@ -304,6 +304,14 @@ func ParseGitUrl(url string) (string, string, error) {
 
 func FormGitUrl(host, owner, repo, token string) string {
 	if token != "" {
+		return fmt.Sprintf("https://%s:x-oauth-basic@%s/%s/%s.git", token, host, owner, repo)
+	}
+
+	return fmt.Sprintf("git@%s:%s/%s.git", host, owner, repo)
+}
+
+func FormGitUrlForApp(host, owner, repo, token string) string {
+	if token != "" {
 		return fmt.Sprintf("https://x-access-token:%s@%s/%s/%s.git", token, host, owner, repo)
 	}
 

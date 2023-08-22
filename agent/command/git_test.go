@@ -458,7 +458,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 		cloneParams: "--filter=tree:0 --single-branch",
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := opts.buildHTTPCloneCommand()
+	cmds, err := opts.buildHTTPCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
@@ -469,7 +469,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	opts.branch = ""
-	cmds, err = opts.buildHTTPCloneCommand()
+	cmds, err = opts.buildHTTPCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
@@ -482,7 +482,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// been forced to use https
 	opts.location = "http://github.com/deafgoat/mci_test.git"
 	opts.branch = projectRef.Branch
-	cmds, err = opts.buildHTTPCloneCommand()
+	cmds, err = opts.buildHTTPCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("echo \"git clone https://x-access-token:[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
@@ -491,7 +491,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// ensure that we aren't sending the github oauth token to other
 	// servers
 	opts.location = "http://someothergithost.com/something/else.git"
-	cmds, err = opts.buildHTTPCloneCommand()
+	cmds, err = opts.buildHTTPCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("echo \"git clone https://x-access-token:[redacted oauth token]@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
