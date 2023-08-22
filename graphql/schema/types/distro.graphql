@@ -30,6 +30,13 @@ enum PlannerVersion {
   TUNABLE
 }
 
+enum Provider {
+  DOCKER
+  EC2_FLEET
+  EC2_ON_DEMAND
+  STATIC
+}
+
 enum DispatcherVersion {
   REVISED
   REVISED_WITH_DEPENDENCIES
@@ -97,7 +104,7 @@ input DistroInput {
   name: String! @requireDistroAccess(access: EDIT)
   note: String!
   plannerSettings: PlannerSettingsInput!
-  provider: String!
+  provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -246,7 +253,7 @@ type Distro {
   name: String!
   note: String!
   plannerSettings: PlannerSettings!
-  provider: String!
+  provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!

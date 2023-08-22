@@ -140,6 +140,8 @@ const (
 	execTimeout       timeoutType = "exec"
 	idleTimeout       timeoutType = "idle"
 	callbackTimeout   timeoutType = "callback"
+	preTimeout        timeoutType = "pre"
+	postTimeout       timeoutType = "post"
 	setupGroupTimeout timeoutType = "setup_group"
 )
 
@@ -780,12 +782,22 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if pre.Commands != nil {
+		preCtx, preCancel := context.WithCancel(ctx)
+		defer preCancel()
+		timeoutOpts := timeoutWatcherOptions{
+			tc:                    tc,
+			kind:                  preTimeout,
+			getTimeout:            tc.getPreTimeout,
+			canMarkTimeoutFailure: pre.CanFailTask,
+		}
+		go a.startTimeoutWatcher(ctx, preCancel, timeoutOpts)
+
 		opts.failPreAndPost = pre.CanFailTask
 		block := preBlock
 		if tc.taskGroup != "" {
 			block = setupTaskBlock
 		}
-		err = a.runCommandsInBlock(ctx, tc, pre.Commands.List(), opts, block)
+		err = a.runCommandsInBlock(preCtx, tc, pre.Commands.List(), opts, block)
 		if err != nil {
 			err = errors.Wrap(err, "Running pre-task commands failed")
 			tc.logger.Task().Error(err)
@@ -867,13 +879,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
-			// TODO (EVG-20629): if pre_error_fails_task is true and
-			// post/teardown_task hits a timeout, it should indicate to the end
-			// task response that it failed because it hit a timeout, not
-			// because the command errored.
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
-			detail.Status = evergreen.TaskFailed
-			setEndTaskCommand(tc, detail, "", "")
+			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
@@ -921,48 +928,46 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 }
 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
-	var description string
-	var failureType string
+	var userDefinedDescription string
+	var userDefinedFailureType string
 	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", a.endTaskResp.Status)
 		if !evergreen.IsValidTaskEndStatus(a.endTaskResp.Status) {
 			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", a.endTaskResp.Status)
 			status = evergreen.TaskFailed
-			failureType = evergreen.CommandTypeSystem
+			userDefinedFailureType = evergreen.CommandTypeSystem
 		} else {
 			status = a.endTaskResp.Status
 			if len(a.endTaskResp.Description) > endTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), defaulting to command display name.", endTaskMessageLimit)
 			} else {
-				description = a.endTaskResp.Description
+				userDefinedDescription = a.endTaskResp.Description
 			}
 
 			if a.endTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, a.endTaskResp.Type) {
 				tc.logger.Task().Warningf("'%s' is not a valid failure type, defaulting to command failure type.", a.endTaskResp.Type)
 			} else {
-				failureType = a.endTaskResp.Type
+				userDefinedFailureType = a.endTaskResp.Type
 			}
 		}
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		TimedOut:        tc.hadTimedOut(),
-		TimeoutType:     string(tc.getTimeoutType()),
-		TimeoutDuration: tc.getTimeoutDuration(),
-		OOMTracker:      tc.getOomTrackerInfo(),
-		Status:          status,
-		Message:         message,
-		TraceID:         tc.traceID,
+		OOMTracker: tc.getOomTrackerInfo(),
+		Message:    message,
+		TraceID:    tc.traceID,
 	}
-	setEndTaskCommand(tc, detail, description, failureType)
+	setEndTaskFailureDetails(tc, detail, status, userDefinedDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
 }
 
-func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, description, failureType string) {
+func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
 	if tc.getCurrentCommand() != nil {
+		// If there is no explicit user-defined description or failure type,
+		// infer that information from the last command that ran.
 		if description == "" {
 			description = tc.getCurrentCommand().DisplayName()
 		}
@@ -970,8 +975,21 @@ func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, descrip
 			failureType = tc.getCurrentCommand().Type()
 		}
 	}
+
+	detail.Status = status
 	detail.Description = description
 	detail.Type = failureType
+
+	if !detail.TimedOut {
+		// Only set timeout details if a prior command in the task hasn't
+		// already recorded a timeout. For example, if a command times out in
+		// the main block, then another command times out in the post block, the
+		// main block command should preserve the main block timeout.
+		detail.TimedOut = tc.hadTimedOut()
+		detail.TimeoutType = string(tc.getTimeoutType())
+		detail.TimeoutDuration = tc.getTimeoutDuration()
+	}
+
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
@@ -1002,15 +1020,15 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 		defer postCancel()
 		timeoutOpts := timeoutWatcherOptions{
 			tc:                    tc,
-			kind:                  callbackTimeout,
-			getTimeout:            tc.getCallbackTimeout,
+			kind:                  postTimeout,
+			getTimeout:            tc.getPostTimeout,
 			canMarkTimeoutFailure: post.CanFailTask,
 		}
 		go a.startTimeoutWatcher(ctx, postCancel, timeoutOpts)
 
 		err = a.runCommandsInBlock(postCtx, tc, post.Commands.List(), opts, block)
 		if err != nil {
-			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
+			tc.logger.Task().Error(errors.Wrap(err, "Running post-task commands failed"))
 			if post.CanFailTask {
 				return err
 			}
