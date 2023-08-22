@@ -606,6 +606,7 @@ func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool 
 			"op":      "middleware",
 			"stack":   string(debug.Stack()),
 		})
+		return false
 	}
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      projectId,
