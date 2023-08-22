@@ -556,6 +556,17 @@ func (s *Settings) GetGithubAppAuth() *githubAppAuth {
 
 // HasAppInstalled returns true if the GitHub app is installed on the repo.
 func (s *Settings) HasAppInstalled(ctx context.Context, owner, repo string) bool {
+	if owner == "" || repo == "" {
+		grip.Debug(message.Fields{
+			"message": "owner/repo not specified",
+			"caller":  "HasAppInstalled",
+			"owner":   owner,
+			"repo":    repo,
+			"ticket":  "EVG-19966",
+		})
+		return false
+	}
+
 	authFields := s.GetGithubAppAuth()
 	if authFields == nil {
 		grip.Debug(message.Fields{
