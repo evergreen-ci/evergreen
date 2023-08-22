@@ -574,7 +574,6 @@ func (s *Settings) HasAppInstalled(ctx context.Context, owner, repo string) bool
 			"caller":  "HasAppInstalled",
 			"owner":   owner,
 			"repo":    repo,
-			"appId":   authFields.AppId,
 			"ticket":  "EVG-19966",
 		})
 		return false
