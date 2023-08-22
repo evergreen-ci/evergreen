@@ -153,9 +153,31 @@ func (tc *taskContext) getCallbackTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	taskConfig := tc.getTaskConfig()
-	if taskConfig != nil && taskConfig.Project != nil && taskConfig.Project.CallbackTimeout != 0 {
-		return time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
+	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.CallbackTimeout != 0 {
+		return time.Duration(tc.taskConfig.Project.CallbackTimeout) * time.Second
 	}
 	return defaultCallbackCmdTimeout
+}
+
+// getPreTimeout returns the timeout for the pre block.
+func (tc *taskContext) getPreTimeout() time.Duration {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.PreTimeoutSecs != 0 {
+		return time.Duration(tc.taskConfig.Project.PreTimeoutSecs) * time.Second
+	}
+
+	return defaultPreTimeout
+}
+
+// getPostTimeout returns the timeout for the post block.
+func (tc *taskContext) getPostTimeout() time.Duration {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.PostTimeoutSecs != 0 {
+		return time.Duration(tc.taskConfig.Project.PostTimeoutSecs) * time.Second
+	}
+	return defaultPostTimeout
 }

@@ -990,6 +990,11 @@ func (p *Patch) GetRequester() string {
 	if p.IsGithubPRPatch() {
 		return evergreen.GithubPRRequester
 	}
+	// GitHub merge patches are technically considered commit queue patches since they use the
+	// commit queue alias, but they use a separate requester.
+	if p.IsGithubMergePatch() {
+		return evergreen.GithubMergeRequester
+	}
 	if p.IsCommitQueuePatch() {
 		return evergreen.MergeTestRequester
 	}
