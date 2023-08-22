@@ -207,7 +207,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	return out, nil
 }
 
-// BlockType
+// BlockType is the name of the block that a command runs in.
 type BlockType string
 
 const (
