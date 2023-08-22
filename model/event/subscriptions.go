@@ -503,7 +503,7 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 		query = bson.M{
 			"$or": []bson.M{
 				query,
-				bson.M{
+				{
 					subscriptionIDKey: mgobson.ObjectIdHex(id),
 				},
 			},
@@ -530,6 +530,7 @@ func RemoveSubscription(id string) error {
 	})
 }
 
+// IsSubscriptionAllowed disallows subscriptions that abuse Jira or webhooks.
 func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 	for _, selector := range sub.Selectors {
 		if selector.Type == SelectorObject {
@@ -539,6 +540,12 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 				}
 			}
 		}
+	}
+	// Disallow creating a JIRA comment type subscriber for every task in a project
+	if sub.OwnerType == OwnerTypeProject &&
+		sub.ResourceType == ResourceTypeTask &&
+		(sub.Subscriber.Type == JIRACommentSubscriberType || sub.Subscriber.Type == JIRAIssueSubscriberType) {
+		return false, "JIRA comment/issue subscription not allowed for all tasks in the project"
 	}
 
 	return true, ""
@@ -573,12 +580,7 @@ func (s *Subscription) Validate() error {
 	if !IsValidOwnerType(string(s.OwnerType)) {
 		catcher.Errorf("'%s' is not a valid owner type", s.OwnerType)
 	}
-	// Disallow creating a JIRA comment type subscriber for every task in a project
-	if s.OwnerType == OwnerTypeProject &&
-		s.ResourceType == ResourceTypeTask &&
-		s.Subscriber.Type == JIRACommentSubscriberType {
-		catcher.New("JIRA comment subscription not allowed for all tasks in the project")
-	}
+
 	catcher.Add(s.ValidateSelectors())
 	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
