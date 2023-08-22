@@ -114,7 +114,7 @@ func (opts cloneOpts) validate() error {
 }
 
 func (opts cloneOpts) sshLocation() string {
-	return thirdparty.FormGitUrl("github.com", opts.owner, opts.repo, "")
+	return thirdparty.FormGitURL("github.com", opts.owner, opts.repo, "")
 }
 
 func (opts cloneOpts) httpLocation() string {
@@ -204,13 +204,13 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
 	}
-	gitUrl := ""
+	var gitURL string
 	if forApp {
-		gitUrl = thirdparty.FormGitUrlForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
+		gitURL = thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	} else {
-		gitUrl = thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token)
+		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	}
-	clone := fmt.Sprintf("git clone %s '%s'", gitUrl, opts.dir)
+	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
