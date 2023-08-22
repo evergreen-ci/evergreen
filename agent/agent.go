@@ -457,7 +457,10 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	if !ok {
 		grip.Alert(errors.New("setup.initial command is not registered"))
 	}
-	tc.setCurrentCommand(factory())
+	if factory != nil {
+		tc.setCurrentCommand(factory())
+	}
+
 	a.comm.UpdateLastMessageTime()
 
 	taskConfig, err := a.makeTaskConfig(setupCtx, tc)
@@ -481,17 +484,16 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
-	tc.setCurrentCommand(factory())
+	if factory != nil {
+		tc.setCurrentCommand(factory())
+	}
 
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
 	if err := setupCtx.Err(); err != nil {
-		grip.Error(err)
-		tc.logger.Execution().Infof("Stopping task execution: %s", err)
-		shouldExit, err := a.handleTaskResponse(setupCtx, tc, evergreen.TaskSystemFailed, err.Error())
-		return tc, shouldExit, err
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 
 	hostname, err := os.Hostname()
