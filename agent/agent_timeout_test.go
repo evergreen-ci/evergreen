@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
@@ -91,7 +92,12 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(s.ctx, tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     taskID,
+		TaskSecret: taskSecret,
+	}
+	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
+
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -145,7 +151,11 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(s.ctx, tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     taskID,
+		TaskSecret: taskSecret,
+	}
+	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -199,7 +209,11 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(s.ctx, tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     taskID,
+		TaskSecret: taskSecret,
+	}
+	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -253,7 +267,11 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(s.ctx, tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     taskID,
+		TaskSecret: taskSecret,
+	}
+	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -307,7 +325,11 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(s.ctx, tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     taskID,
+		TaskSecret: taskSecret,
+	}
+	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
@@ -360,7 +382,11 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(s.ctx, tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     taskID,
+		TaskSecret: taskSecret,
+	}
+	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
