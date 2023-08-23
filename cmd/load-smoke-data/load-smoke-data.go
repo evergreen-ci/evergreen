@@ -221,7 +221,7 @@ func main() {
 		amboyDBName string
 	)
 
-	flag.StringVar(&path, "path", filepath.Join(wd, "smoke", "testdata", "db"), "load data from json files from these paths")
+	flag.StringVar(&path, "path", filepath.Join(wd, "smoke", "internal", "testdata", "db"), "load data from json files from these paths")
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
 	flag.StringVar(&logsDBName, "logsDBName", "logs", "logs database name for directory")
 	flag.StringVar(&amboyDBName, "amboyDBName", "amboy_smoke", "name of the Amboy DB to use")

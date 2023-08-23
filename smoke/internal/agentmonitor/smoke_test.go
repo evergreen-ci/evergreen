@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/smoke/host"
 	"github.com/evergreen-ci/evergreen/smoke/internal"
+	"github.com/evergreen-ci/evergreen/smoke/internal/host"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -29,19 +29,17 @@ func TestSmokeAgentMonitor(t *testing.T) {
 		"params":  fmt.Sprintf("%#v", params),
 	})
 
-	appServerCmd, err := internal.StartAppServer(ctx, t, params.APIParams)
-	require.NoError(t, err)
+	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
-		if appServerCmd != nil && appServerCmd.Process != nil {
+		if appServerCmd.Process != nil {
 			grip.Error(errors.Wrap(appServerCmd.Process.Signal(syscall.SIGTERM), "stopping app server after test completion"))
 		}
 	}()
 
-	agentCmd, err := startAgentMonitor(ctx, t, params)
-	require.NoError(t, err)
+	agentMonitorCmd := startAgentMonitor(ctx, t, params)
 	defer func() {
-		if agentCmd != nil && agentCmd.Process != nil {
-			grip.Error(errors.Wrap(agentCmd.Process.Signal(syscall.SIGTERM), "stopping agent monitor after test completion"))
+		if agentMonitorCmd.Process != nil {
+			grip.Error(errors.Wrap(agentMonitorCmd.Process.Signal(syscall.SIGTERM), "stopping agent monitor after test completion"))
 		}
 	}()
 
@@ -69,7 +67,7 @@ func getSmokeTestParamsFromEnv(t *testing.T) smokeTestParams {
 }
 
 // startAgentMonitor starts the smoke test agent monitor.
-func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams) (*exec.Cmd, error) {
+func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams) *exec.Cmd {
 	grip.Info("Starting smoke test agent monitor.")
 
 	agentCmd, err := internal.SmokeRunBinary(ctx,
@@ -86,11 +84,9 @@ func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams
 		fmt.Sprintf("--api_server=%s", params.AppServerURL),
 		fmt.Sprintf("--binary=%s", params.CLIPath),
 	)
-	if err != nil {
-		return nil, errors.Wrap(err, "starting Evergreen smoke test app server")
-	}
+	require.NoError(t, err, "should have started Evergreen smoke test agent monitor")
 
 	grip.Info("Successfully started smoke test agent monitor.")
 
-	return agentCmd, nil
+	return agentCmd
 }

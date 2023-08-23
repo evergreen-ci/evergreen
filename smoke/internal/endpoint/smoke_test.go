@@ -33,8 +33,7 @@ func TestSmokeEndpoints(t *testing.T) {
 		"params":  fmt.Sprintf("%#v", params),
 	})
 
-	appServerCmd, err := internal.StartAppServer(ctx, t, params.APIParams)
-	require.NoError(t, err)
+	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
 		if appServerCmd != nil && appServerCmd.Process != nil {
 			grip.Error(errors.Wrap(appServerCmd.Process.Signal(syscall.SIGTERM), "stopping app server after test completion"))
@@ -52,7 +51,7 @@ func TestSmokeEndpoints(t *testing.T) {
 	defer utility.PutHTTPClient(client)
 	client.Timeout = time.Second
 
-	waitForEvergreen(t, params.AppServerURL, client)
+	internal.WaitForEvergreen(t, params.AppServerURL, client)
 
 	grip.Info("Testing UI Endpoints")
 	for url, expected := range td.UI {
@@ -86,26 +85,6 @@ func getSmokeTestParamsFromEnv(t *testing.T) smokeTestParams {
 		APIParams: internal.GetAPIParamsFromEnv(t, evgHome),
 		testFile:  testFile,
 	}
-}
-
-// waitForEvergreen waits for the Evergreen app server to be up and accepting
-// requests.
-func waitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
-	const attempts = 10
-	for i := 0; i < attempts; i++ {
-		grip.Infof("Checking if Evergreen is up. (%d/%d)", i, attempts)
-		if _, err := client.Get(appServerURL); err != nil {
-			grip.Error(errors.Wrap(err, "connecting to Evergreen"))
-			time.Sleep(time.Second)
-			continue
-		}
-
-		grip.Info("Evergreen is up.")
-
-		return
-	}
-
-	require.FailNow(t, "ran out of attempts to wait for Evergreen", "Evergreen app server was not up after %d check attempts.", attempts)
 }
 
 // smokeEndpointTestDefinitions describes the UI and API endpoints to verify,

@@ -49,7 +49,7 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 
 	cliConfigPath := os.Getenv("CLI_CONFIG_PATH")
 	if cliConfigPath == "" {
-		cliConfigPath = filepath.Join(evgHome, "smoke", "testdata", "cli.yml")
+		cliConfigPath = filepath.Join(evgHome, "smoke", "internal", "testdata", "cli.yml")
 	}
 
 	projectID := os.Getenv("PROJECT_ID")
@@ -77,6 +77,9 @@ func GetSmokeTestParamsFromEnv(t *testing.T) SmokeTestParams {
 func RunHostTaskPatchTest(ctx context.Context, t *testing.T, params SmokeTestParams) {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
+
+	// Wait until Evergreen is accepting requests.
+	internal.WaitForEvergreen(t, params.AppServerURL, client)
 
 	// Triggering the repotracker causes the app server to pick up the latest
 	// available mainline commits.
@@ -172,7 +175,7 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 			continue
 		}
 		if len(latestVersions) == 0 {
-			grip.Error(errors.Errorf("listing latest versions for project '%s' yielded no results", params.ProjectID))
+			grip.Errorf("listing latest versions for project '%s' yielded no results", params.ProjectID)
 			continue
 		}
 
@@ -199,7 +202,7 @@ func submitSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestPar
 	grip.Info("Submitting patch to smoke test app server.")
 
 	cmd, err := internal.SmokeRunBinary(ctx, "smoke-patch-submission", params.EVGHome, params.CLIPath, "-c", params.CLIConfigPath, "patch", "-p", params.ProjectID, "-v", params.BVName, "-t", "all", "-f", "-y", "-d", "Smoke test patch")
-	require.NoError(t, err, "should have started Evergreen CLI to submit patch")
+	require.NoError(t, err, "should have submitted patch")
 	require.NoError(t, cmd.Wait(), "expected to finish successful CLI patch")
 
 	grip.Info("Successfully submitted patch to smoke test app server.")

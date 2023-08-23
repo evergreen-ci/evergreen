@@ -35,24 +35,24 @@ func TestSmokeContainerTask(t *testing.T) {
 		"params":  fmt.Sprintf("%#v", params),
 	})
 
-	appServerCmd, err := internal.StartAppServer(ctx, t, params.APIParams)
-	require.NoError(t, err)
+	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
-		if appServerCmd != nil && appServerCmd.Process != nil {
+		if appServerCmd.Process != nil {
 			grip.Error(errors.Wrap(appServerCmd.Process.Signal(syscall.SIGTERM), "stopping app server after test completion"))
 		}
 	}()
 
-	agentCmd, err := internal.StartAgent(ctx, t, params.APIParams, agent.PodMode, params.execModeID, params.execModeSecret)
-	require.NoError(t, err)
+	agentCmd := internal.StartAgent(ctx, t, params.APIParams, agent.PodMode, params.execModeID, params.execModeSecret)
 	defer func() {
-		if agentCmd != nil && agentCmd.Process != nil {
+		if agentCmd.Process != nil {
 			grip.Error(errors.Wrap(agentCmd.Process.Signal(syscall.SIGTERM), "stopping agent after test completion"))
 		}
 	}()
 
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
+
+	internal.WaitForEvergreen(t, params.AppServerURL, client)
 
 	internal.CheckTaskStatusAndLogs(ctx, t, params.APIParams, client, agent.PodMode, []string{params.taskID})
 }

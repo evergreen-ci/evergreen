@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 )
 
 // TestSmokeHostTask runs the smoke test for a host task.
@@ -25,18 +24,16 @@ func TestSmokeHostTask(t *testing.T) {
 		"params":  fmt.Sprintf("%#v", params),
 	})
 
-	appServerCmd, err := internal.StartAppServer(ctx, t, params.APIParams)
-	require.NoError(t, err)
+	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
-		if appServerCmd != nil && appServerCmd.Process != nil {
+		if appServerCmd.Process != nil {
 			grip.Error(errors.Wrap(appServerCmd.Process.Signal(syscall.SIGTERM), "stopping app server after test completion"))
 		}
 	}()
 
-	agentCmd, err := internal.StartAgent(ctx, t, params.APIParams, agent.HostMode, params.ExecModeID, params.ExecModeSecret)
-	require.NoError(t, err)
+	agentCmd := internal.StartAgent(ctx, t, params.APIParams, agent.HostMode, params.ExecModeID, params.ExecModeSecret)
 	defer func() {
-		if agentCmd != nil && agentCmd.Process != nil {
+		if agentCmd.Process != nil {
 			grip.Error(errors.Wrap(agentCmd.Process.Signal(syscall.SIGTERM), "stopping agent after test completion"))
 		}
 	}()

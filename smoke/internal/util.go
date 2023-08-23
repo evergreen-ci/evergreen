@@ -64,7 +64,7 @@ func GetAPIParamsFromEnv(t *testing.T, evgHome string) APIParams {
 
 	appConfigPath := os.Getenv("APP_CONFIG_PATH")
 	if appConfigPath == "" {
-		appConfigPath = filepath.Join(evgHome, "smoke", "testdata", "admin_settings.yml")
+		appConfigPath = filepath.Join(evgHome, "smoke", "internal", "testdata", "admin_settings.yml")
 	}
 
 	username := os.Getenv("USERNAME")
@@ -85,6 +85,26 @@ func GetAPIParamsFromEnv(t *testing.T, evgHome string) APIParams {
 		Username:      username,
 		APIKey:        apikey,
 	}
+}
+
+// WaitForEvergreen waits for the Evergreen app server to be up and accepting
+// requests.
+func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
+	const attempts = 10
+	for i := 0; i < attempts; i++ {
+		grip.Infof("Checking if Evergreen is up. (%d/%d)", i, attempts)
+		if _, err := client.Get(appServerURL); err != nil {
+			grip.Error(errors.Wrap(err, "connecting to Evergreen"))
+			time.Sleep(time.Second)
+			continue
+		}
+
+		grip.Info("Evergreen is up.")
+
+		return
+	}
+
+	require.FailNow(t, "ran out of attempts to wait for Evergreen", "Evergreen app server was not up after %d check attempts.", attempts)
 }
 
 // CheckTaskStatusAndLogs checks that all the expected tasks are finished,
@@ -135,7 +155,10 @@ checkTasks:
 		return
 	}
 
-	require.FailNow(t, "ran out of attempts to check task statuses and task logs", "task status and task log checks were incomplete after %d attempts - this might indicate an underlying issue with the app server, the agent, or the smoke test's configuration setup", taskCheckAttempts)
+	require.FailNow(t, "ran out of attempts to check task statuses and task logs",
+		"task status and task log checks were incomplete after %d attempts - "+
+			"this might indicate an underlying issue with the app server, the agent, "+
+			"or the smoke test's configuration setup", taskCheckAttempts)
 }
 
 // smokeAPITask represents part of a task from the REST API for use in the smoke
@@ -281,6 +304,8 @@ func MakeSmokeRequest(ctx context.Context, params APIParams, method string, clie
 	return body, nil
 }
 
+// SmokeRunBinary runs a smoke test binary. The name indicates the process name
+// so that it can be tracked in output logs.
 func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...string) (*exec.Cmd, error) {
 	grip.Infof("Running command: %s", append([]string{bin}, cmdParts...))
 	cmd := exec.CommandContext(ctx, bin, cmdParts...)
@@ -297,7 +322,7 @@ func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...strin
 }
 
 // StartAppServer starts the smoke test app server.
-func StartAppServer(ctx context.Context, t *testing.T, params APIParams) (*exec.Cmd, error) {
+func StartAppServer(ctx context.Context, t *testing.T, params APIParams) *exec.Cmd {
 	grip.Info("Starting smoke test app server.")
 
 	appServerCmd, err := SmokeRunBinary(ctx,
@@ -311,18 +336,16 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) (*exec.
 		fmt.Sprintf("--conf=%s", params.AppConfigPath),
 		fmt.Sprintf("--binary=%s", params.CLIPath),
 	)
-	if err != nil {
-		return nil, errors.Wrap(err, "starting Evergreen smoke test app server")
-	}
+	require.NoError(t, err, "should have started Evergreen smoke test app server")
 
 	grip.Info("Successfully started smoke test app server.")
 
-	return appServerCmd, nil
+	return appServerCmd
 }
 
 // StartAgent starts the smoke test agent with the given execution mode and
 // ID.
-func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode agent.Mode, execModeID, execModeSecret string) (*exec.Cmd, error) {
+func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode agent.Mode, execModeID, execModeSecret string) *exec.Cmd {
 	grip.Info("Starting smoke test agent.")
 
 	agentCmd, err := SmokeRunBinary(ctx,
@@ -339,11 +362,9 @@ func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode agent.
 		fmt.Sprintf("--api_server=%s", params.AppServerURL),
 		fmt.Sprintf("--binary=%s", params.CLIPath),
 	)
-	if err != nil {
-		return nil, errors.Wrap(err, "starting Evergreen smoke test app server")
-	}
+	require.NoError(t, err, "should have started Evergreen agent")
 
 	grip.Info("Successfully started smoke test agent.")
 
-	return agentCmd, nil
+	return agentCmd
 }

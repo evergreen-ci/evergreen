@@ -8,8 +8,8 @@ packages += model-annotations model-patch model-artifact model-host model-pod mo
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
-lintOnlyPackages += smoke-host smoke-container smoke-agentmonitor smoke-endpoint smoke-internal
-testOnlyPackages := service-graphql smoke-host smoke-container smoke-agentmonitor smoke-endpoint # has only test files so can't undergo all operations
+lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint
+testOnlyPackages := service-graphql smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
@@ -341,8 +341,8 @@ $(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
 $(buildDir)/output.agent-command.test: cli .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./agent/command 2>&1 | tee $@
 # Smoke tests are special because they require that the Evergreen binary is compiled and the smoke test data is loaded.
-$(buildDir)/output.smoke-%.test: cli load-smoke-data
-	$(testRunEnv) $(gobin) test $(testArgs) ./smoke/$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+$(buildDir)/output.smoke-internal-%.test: cli load-smoke-data
+	$(testRunEnv) $(gobin) test $(testArgs) ./smoke/internal/$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
