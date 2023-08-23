@@ -219,7 +219,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	s.Require().NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
 		"Task completed - FAILURE.",
-		"Hit idle timeout (no message on stdout for more than 1s).",
+		"Hit idle timeout (no message on stdout/stderr for more than 1s).",
 		"Running task-timeout commands.",
 		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
 	}, nil)
@@ -277,7 +277,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	s.Require().NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
 		"Task completed - FAILURE.",
-		"Hit idle timeout (no message on stdout for more than 1s).",
+		"Hit idle timeout (no message on stdout/stderr for more than 1s).",
 		"Running task-timeout commands.",
 		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
 	}, nil)
@@ -334,7 +334,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 
 	s.Require().NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
-		"Hit idle timeout (no message on stdout for more than 2s).",
+		"Hit idle timeout (no message on stdout/stderr for more than 2s).",
 		"Running task-timeout commands",
 		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
 	}, nil)

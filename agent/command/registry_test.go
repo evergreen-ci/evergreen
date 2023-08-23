@@ -179,7 +179,7 @@ func TestGetDefaultDisplayName(t *testing.T) {
 	})
 	t.Run("CommandNameAndBlockName", func(t *testing.T) {
 		assert.Equal(t, "'shell.exec' in block 'pre'", GetDefaultDisplayName("shell.exec", BlockInfo{
-			Block: "pre",
+			Block: PreBlock,
 		}, FunctionInfo{}))
 	})
 	t.Run("CommandNameAndBlockCommandNumber", func(t *testing.T) {
