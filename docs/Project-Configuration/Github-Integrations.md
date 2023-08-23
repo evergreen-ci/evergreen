@@ -26,9 +26,28 @@ You can read more about these options [here](../Project-Configuration/Project-an
 ```
 evergreen retry
 ```
-Sometimes Evergreen has trouble creating a PR patch, due to internal server errors or GitHub flakiness. Commenting `evergreen retry` will attempt to recreate this patch. 
+
+Sometimes Evergreen has trouble creating a PR patch, due to internal server errors or GitHub flakiness. Commenting `evergreen retry` will attempt to recreate this patch. This can also be used to submit a new patch.
 
 Note that this is specific to GitHub PR checks; it won't retry a commit queue patch. For that, re-type `evergreen merge` (detailed below).
+
+#### Set PR patches to reuse a patch definition
+
+```
+evergreen keep-definitions
+```
+
+By default, `evergreen retry` will create a new patch using the default GitHub PR patch definition. If you comment `evergreen keep-definitions`, the latest patch you ran (including all tasks that were manually scheduled) will be used to select tasks to run in newer PR patch definitions. Any new patches in the PR will reuse that template patch's definition.
+
+Note that if you schedule more tasks in a patch created after `evergreen keep-definitions` and wish to overwrite the existing patch definition to use the new one, you'll have to comment `evergreen keep-definitions` again.
+
+#### Stop PR patches from reusing a patch definition
+
+```
+evergreen reset-definitions
+```
+
+If you used `evergreen keep-definitions`, then `evergreen reset-definitions` will reset your PR patches back to using the original GitHub PR patch definition.
 
 #### Skip CI Testing
 
@@ -42,6 +61,7 @@ until the label is removed and a new comment or commit is pushed.
 ```
 evergreen patch
 ```
+
 If your project is configured for manual testing, then Evergreen will only add GitHub checks to the PR when prompted, as opposed to for every commit. Commenting `evergreen patch` will trigger this.
 
 #### Refresh GitHub checks
@@ -49,6 +69,7 @@ If your project is configured for manual testing, then Evergreen will only add G
 ```
 evergreen refresh
 ```
+
 Sometimes Evergreen has trouble sending updated GitHub statuses, so the checks on the PR may not accurately reflect the state of patch on Evergreen. This is especially troublesome when the repository requires passing checks. To re-sync the GitHub checks with Evergreen, comment `evergreen refresh` on the PR.
 
 ## Commit Queue 
@@ -63,7 +84,4 @@ evergreen merge
 ```
 
 To add a PR to the commit queue, comment `evergreen merge`. Any text after the newline will be added as the commit message.
-
-
-
 
