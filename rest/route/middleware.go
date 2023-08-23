@@ -521,13 +521,17 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	if !ok {
 		itemId, ok = vars["patch_id"]
 	}
+	if !ok || itemId == "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("no commit queue items provided")))
+		return
+	}
 
 	if err = data.CheckCanRemoveCommitQueueItem(ctx, m.sc, user, projRef, itemId); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-	} else {
-		next(rw, r)
+		return
 	}
-	return
+
+	next(rw, r)
 }
 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent

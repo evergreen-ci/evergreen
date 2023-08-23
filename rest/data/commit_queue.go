@@ -590,13 +590,6 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, user *user
 		}
 	}
 
-	if itemId == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "no commit queue item was provided",
-		}
-	}
-
 	if canAlwaysSubmitPatchesForProject(user, project.Id) {
 		return nil
 	}

@@ -394,7 +394,8 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	assert.NoError(t, db.ClearCollections(
+	require.NoError(t, db.ClearCollections(
+		user.Collection,
 		model.ProjectRefCollection,
 		model.ProjectVarsCollection,
 		evergreen.ScopeCollection,
@@ -403,7 +404,10 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 	))
 
 	basicUser := &user.DBUser{Id: "me"}
+	require.NoError(t, basicUser.Insert())
+
 	projectAdmin := &user.DBUser{Id: "admin"}
+	require.NoError(t, projectAdmin.Insert())
 
 	project := &model.ProjectRef{
 		Id:      "evergreen",
