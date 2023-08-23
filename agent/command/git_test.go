@@ -944,7 +944,7 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	method, token, err = getProjectMethodAndToken("", globalGitHubToken, githubAppToken, evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(githubAppToken, token)
-	s.Equal(evergreen.CloneMethodOAuth, method)
+	s.Equal(evergreen.CloneMethodAccessToken, method)
 
 	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
