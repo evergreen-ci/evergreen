@@ -561,7 +561,7 @@ By default, the `pre` block will time out if it runs for longer than 2 hours
 total. You can override this timeout by setting `pre_timeout_secs` at the root
 level of the YAML config.
 
-By default, the `post` block will time out if it runs for longer than 2 hours
+By default, the `post` block will time out if it runs for longer than 30 minutes
 total. You can override this timeout by setting `post_timeout_secs` at the root
 level of the YAML config.
 
