@@ -369,16 +369,16 @@ tasks:
   - <<: *run-build
     name: dist-unsigned
   - <<: *run-smoke-test
-    name: test-smoke-host
+    name: test-smoke-internal-host
     tags: ["smoke"]
   - <<: *run-smoke-test
-    name: test-smoke-container
+    name: test-smoke-internal-container
     tags: ["smoke"]
   - <<: *run-smoke-test
-    name: test-smoke-endpoint
+    name: test-smoke-internal-endpoint
     tags: ["smoke"]
   - <<: *run-smoke-test
-    name: test-smoke-agentmonitor
+    name: test-smoke-internal-agentmonitor
     tags: ["smoke"]
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
