@@ -21,7 +21,6 @@ import (
 )
 
 const (
-	heartbeatTimeoutThreshold             = 7 * time.Minute
 	taskExecutionTimeoutJobName           = "task-execution-timeout"
 	taskExecutionTimeoutPopulationJobName = "task-execution-timeout-populate"
 	maxTaskExecutionTimeoutAttempts       = 10
@@ -117,7 +116,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	}
 
 	// If the task has heartbeat since this job was queued, let it run.
-	if j.task.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
+	if j.task.LastHeartbeat.Add(evergreen.HeartbeatTimeoutThreshold).After(time.Now()) {
 		msg["message"] = "refusing to clean up timed-out task because it has a recent heartbeat"
 		grip.Info(msg)
 		return
@@ -267,7 +266,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	queue := j.env.RemoteQueue()
 
-	tasks, err := task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold), task.IdKey)
+	tasks, err := task.FindWithFields(task.ByStaleRunningTask(evergreen.HeartbeatTimeoutThreshold), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return

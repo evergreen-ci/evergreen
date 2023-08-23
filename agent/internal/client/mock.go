@@ -46,7 +46,7 @@ type Mock struct {
 	GetProjectResponse          *serviceModel.Project
 	EndTaskResponse             *apimodels.EndTaskResponse
 	EndTaskShouldFail           bool
-	EndTaskResult               endTaskResult
+	EndTaskResult               EndTaskResult
 	ShellExecFilename           string
 	TimeoutFilename             string
 	GenerateTasksShouldFail     bool
@@ -79,7 +79,7 @@ type Mock struct {
 	mu sync.RWMutex
 }
 
-type endTaskResult struct {
+type EndTaskResult struct {
 	Detail   *apimodels.TaskEndDetail
 	TaskData TaskData
 }

@@ -11,7 +11,7 @@ mutation {
           containerPool: "",
           disabled: true,
           workDir: "/data/mci",
-          provider: "ec2-ondemand",
+          provider: EC2_ON_DEMAND,
           providerSettingsList: [
             {
               ami: "who-ami",

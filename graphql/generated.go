@@ -1518,6 +1518,7 @@ type DispatcherSettingsResolver interface {
 type DistroResolver interface {
 	CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error)
 
+	Provider(ctx context.Context, obj *model.APIDistro) (Provider, error)
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]interface{}, error)
 }
 type FinderSettingsResolver interface {
@@ -1831,6 +1832,7 @@ type DispatcherSettingsInputResolver interface {
 type DistroInputResolver interface {
 	CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error
 
+	Provider(ctx context.Context, obj *model.APIDistro, data Provider) error
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error
 }
 type FinderSettingsInputResolver interface {
@@ -16156,7 +16158,7 @@ func (ec *executionContext) _Distro_provider(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Provider, nil
+		return ec.resolvers.Distro().Provider(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16168,19 +16170,19 @@ func (ec *executionContext) _Distro_provider(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(Provider)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Distro_provider(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Provider does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65918,11 +65920,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Provider = data
+			if err = ec.resolvers.DistroInput().Provider(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "providerSettingsList":
 			var err error
 
@@ -71412,10 +71416,41 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "provider":
-			out.Values[i] = ec._Distro_provider(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_provider(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "providerSettingsList":
 			field := field
 
@@ -86375,6 +86410,16 @@ func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋever
 }
 
 func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsSection) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx context.Context, v interface{}) (Provider, error) {
+	var res Provider
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx context.Context, sel ast.SelectionSet, v Provider) graphql.Marshaler {
 	return v
 }
 
