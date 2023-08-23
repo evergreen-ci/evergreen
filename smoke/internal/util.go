@@ -118,6 +118,8 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 
 checkTasks:
 	for i := 0; i < taskCheckAttempts; i++ {
+		// TODO (EVG-20315): rework the two loops to be less awkward, since the
+		// outer loop wait logic can just be absorbed into the inner loop.
 		// Poll the app server until the task is finished and check its task
 		// logs for the expected results.
 		// It's worth noting there that there is a substantial amount of

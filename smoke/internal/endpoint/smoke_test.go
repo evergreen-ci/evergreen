@@ -78,7 +78,7 @@ func getSmokeTestParamsFromEnv(t *testing.T) smokeTestParams {
 
 	testFile := os.Getenv("TEST_FILE")
 	if testFile == "" {
-		testFile = filepath.Join(evgHome, "smoke", "testdata", "smoke_test_endpoints.yml")
+		testFile = filepath.Join(evgHome, "smoke", "internal", "testdata", "smoke_test_endpoints.yml")
 	}
 
 	return smokeTestParams{
