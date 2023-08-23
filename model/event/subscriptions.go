@@ -545,6 +545,17 @@ func (s *Subscription) ValidateSelectors() error {
 		}
 	}
 
+	// There are certain subscribers we don't allow anymore at certain levels; verify that these aren't being used.
+	for _, selector := range s.Selectors {
+		if selector.Type == SelectorObject {
+			if selector.Data == ObjectBuild || selector.Data == ObjectVersion || selector.Data == ObjectTask {
+				if s.Subscriber.Type == JIRAIssueSubscriberType || s.Subscriber.Type == EvergreenWebhookSubscriberType {
+					catcher.Errorf("cannot notify by subscriber type '%s' for selector '%s'", s.Subscriber.Type, selector.Data)
+				}
+			}
+		}
+	}
+
 	return catcher.Resolve()
 }
 
