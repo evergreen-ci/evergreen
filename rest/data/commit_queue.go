@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -646,6 +647,14 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, user *user
 // canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
 // or is authorized specifically to patch on behalf of other users.
 func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
+	if projectId == "" {
+		grip.Error(message.Fields{
+			"message": "projectID is empty",
+			"op":      "middleware",
+			"stack":   string(debug.Stack()),
+		})
+		return false
+	}
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,
