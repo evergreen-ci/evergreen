@@ -50,7 +50,7 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	var err error
 	ctx := context.Background()
 	err = utility.Retry(ctx, func() (bool, error) {
-		err = s.client.pullImage(ctx, &s.host, "docker.io/library/hello-world", "", "")
+		err = s.client.pullImage(ctx, &s.host, "public.ecr.aws/docker/library/hello-world:latest", "", "")
 		if err != nil {
 			return true, err
 		}
