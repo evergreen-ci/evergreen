@@ -330,8 +330,9 @@ const (
 	InvalidDivideInputError    = "$divide only supports numeric types"
 
 	// Valid types of performing git clone
-	CloneMethodLegacySSH = "legacy-ssh"
-	CloneMethodOAuth     = "oauth"
+	CloneMethodLegacySSH   = "legacy-ssh"
+	CloneMethodOAuth       = "oauth"
+	CloneMethodAccessToken = "access-token"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -892,6 +893,7 @@ var (
 	ValidCloneMethods = []string{
 		CloneMethodLegacySSH,
 		CloneMethodOAuth,
+		CloneMethodAccessToken,
 	}
 )
 
