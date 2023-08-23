@@ -108,8 +108,6 @@ type taskContext struct {
 	expansions                util.Expansions
 	privateVars               map[string]bool
 	logger                    client.LoggerProducer
-	jasper                    jasper.Manager
-	statsCollector            *StatsCollector
 	task                      client.TaskData
 	taskGroup                 string
 	ranSetupGroup             bool
@@ -140,6 +138,8 @@ const (
 	execTimeout       timeoutType = "exec"
 	idleTimeout       timeoutType = "idle"
 	callbackTimeout   timeoutType = "callback"
+	preTimeout        timeoutType = "pre"
+	postTimeout       timeoutType = "post"
 	setupGroupTimeout timeoutType = "setup_group"
 )
 
@@ -394,22 +394,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 			noTaskToRun: true,
 		}, nil
 	}
+	shouldSetupGroup, taskDirectory := a.finishPrevTask(ctx, nt, tc)
 
-	prevLogger := tc.logger
-	tc = a.prepareNextTask(ctx, nt, tc)
-	tc.unsetFunctionVarsDisabled = nt.UnsetFunctionVarsDisabled
-	if prevLogger != nil {
-		grip.Error(errors.Wrap(prevLogger.Close(), "closing the previous logger producer"))
-	}
-
-	grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
-		"message": "error fetching project config; will attempt at a later point",
-		"task":    tc.task.ID,
-	}))
-
-	a.jasper.Clear(ctx)
-	tc.jasper = a.jasper
-	shouldExit, err := a.runTask(ctx, tc)
+	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "error running task",
@@ -431,7 +418,8 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}, nil
 }
 
-func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) *taskContext {
+// finishPrevTask finishes up the previous task and returns information needed for the next task.
+func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (bool, string) {
 	shouldSetupGroup := false
 	taskDirectory := tc.taskDirectory
 	if shouldRunSetupGroup(nextTask, tc) {
@@ -439,18 +427,97 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
 	}
-	return &taskContext{
-		task: client.TaskData{
-			ID:     nextTask.TaskId,
-			Secret: nextTask.TaskSecret,
-		},
-		taskGroup:     nextTask.TaskGroup,
-		ranSetupGroup: !shouldSetupGroup,
-		taskDirectory: taskDirectory,
-		oomTracker:    jasper.NewOOMTracker(),
+	if tc.logger != nil {
+		grip.Error(errors.Wrap(tc.logger.Close(), "closing the previous logger producer"))
 	}
+	a.jasper.Clear(ctx)
+	return shouldSetupGroup, taskDirectory
 }
 
+// setupTask does some initial setup that the task needs before running such as initializing the logger, loading the task config
+// data and setting the task directory.
+func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskContext, nt *apimodels.NextTaskResponse, shouldSetupGroup bool, taskDirectory string) (tc *taskContext, shouldExit bool, err error) {
+	if initialTC == nil {
+		tc = &taskContext{
+			task: client.TaskData{
+				ID:     nt.TaskId,
+				Secret: nt.TaskSecret,
+			},
+			taskGroup:                 nt.TaskGroup,
+			ranSetupGroup:             !shouldSetupGroup,
+			taskDirectory:             taskDirectory,
+			oomTracker:                jasper.NewOOMTracker(),
+			unsetFunctionVarsDisabled: nt.UnsetFunctionVarsDisabled,
+		}
+	} else {
+		tc = initialTC
+	}
+
+	// If the heartbeat aborts the task immediately, we should report that
+	// the task failed during initial task setup.
+	factory, ok := command.GetCommandFactory("setup.initial")
+	if !ok {
+		grip.Alert(errors.New("setup.initial command is not registered"))
+	}
+	if factory != nil {
+		tc.setCurrentCommand(factory())
+	}
+
+	a.comm.UpdateLastMessageTime()
+
+	taskConfig, err := a.makeTaskConfig(setupCtx, tc)
+	if err != nil {
+		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
+	}
+	tc.setTaskConfig(taskConfig)
+	if err := a.startLogging(agentCtx, tc); err != nil {
+		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
+	}
+
+	if !tc.ranSetupGroup {
+		tc.taskDirectory, err = a.createTaskDirectory(tc)
+		if err != nil {
+			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
+		}
+	}
+	tc.taskConfig.WorkDir = tc.taskDirectory
+	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
+
+	// We are only calling this again to get the log for the current command after logging has been set up.
+	if factory != nil {
+		tc.setCurrentCommand(factory())
+	}
+
+	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
+	tc.logger.Execution().Info("Execution logger initialized.")
+	tc.logger.System().Info("System logger initialized.")
+
+	if err := setupCtx.Err(); err != nil {
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
+	}
+
+	hostname, err := os.Hostname()
+	tc.logger.Execution().Info(errors.Wrap(err, "getting hostname"))
+	if hostname != "" {
+		tc.logger.Execution().Infof("Hostname is '%s'.", hostname)
+	}
+	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+
+	return tc, shouldExit, nil
+}
+
+func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error) (*taskContext, bool, error) {
+	catcher := grip.NewBasicCatcher()
+	grip.Error(err)
+	catcher.Wrap(err, "handling setup error")
+	tc.logger.Execution().Error(err)
+	grip.Infof("Task complete: '%s'.", tc.task.ID)
+	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
+	catcher.Wrap(err, "handling task response")
+	return tc, shouldExit, catcher.Resolve()
+}
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	if !tc.ranSetupGroup { // we didn't run setup group yet
 		return true
@@ -544,7 +611,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 }
 
 // runTask runs a task. It returns true if the agent should exit.
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, err error) {
+func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels.NextTaskResponse, shouldSetupGroup bool, taskDirectory string) (tc *taskContext, shouldExit bool, err error) {
 	// we want to have separate context trees for tasks and loggers, so
 	// when a task is canceled by a context, it can log its clean up.
 	tskCtx, tskCancel := context.WithCancel(ctx)
@@ -559,52 +626,20 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 		err = a.logPanic(tc.logger, pErr, err, op)
 	}()
 
-	// If the heartbeat aborts the task immediately, we should report that
-	// the task failed during initial task setup.
-	factory, ok := command.GetCommandFactory("setup.initial")
-	if !ok {
-		return false, errors.New("setup.initial command is not registered")
-	}
-	tc.setCurrentCommand(factory())
-
-	var taskConfig *internal.TaskConfig
-	taskConfig, err = a.makeTaskConfig(ctx, tc)
+	// Setup occurs before the task is actually running, so it's not abortable. If setup is taking
+	// a long time, timing it out after the heartbeat timeout ensures the operation will give up within
+	// the same timeout as the usual amount of time a task is allowed to run before it must heartbeat.
+	setupCtx, setupCancel := context.WithTimeout(tskCtx, evergreen.HeartbeatTimeoutThreshold)
+	defer setupCancel()
+	tc, shouldExit, err = a.setupTask(ctx, setupCtx, tcInput, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
-		err = errors.Wrap(err, "making task config")
-		grip.Error(err)
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
+		return tc, shouldExit, errors.Wrap(err, "setting up task")
 	}
-	tc.setTaskConfig(taskConfig)
-
-	if err = a.startLogging(ctx, tc); err != nil {
-		err = errors.Wrap(err, "setting up logger producer")
-		grip.Error(err)
-		grip.Infof("Task complete: '%s'.", tc.task.ID)
-		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
-	}
-
-	if !tc.ranSetupGroup {
-		tc.taskDirectory, err = a.createTaskDirectory(tc)
-		if err != nil {
-			err = errors.Wrap(err, "creating task directory")
-			grip.Error(err)
-			grip.Infof("Task complete: '%s'.", tc.task.ID)
-			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory"))
-			return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed, err.Error())
-		}
-	}
-	tc.taskConfig.WorkDir = tc.taskDirectory
-	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	grip.Info(message.Fields{
-		"message": "running_task",
+		"message": "running task",
 		"task_id": tc.task.ID,
 	})
-
-	defer a.killProcs(ctx, tc, false, "task is finished")
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
@@ -627,16 +662,16 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (shouldExit bool, 
 	preAndMainCtx, preAndMainCancel := context.WithCancel(idleTimeoutCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
-	status := a.startTask(preAndMainCtx, tc)
-
-	return a.handleTaskResponse(tskCtx, tc, status, "")
+	status := a.runPreAndMain(preAndMainCtx, tc)
+	shouldExit, err = a.handleTaskResponse(tskCtx, tc, status, "")
+	return tc, shouldExit, err
 }
 
 // startTask performs initial task setup and then runs the pre and main blocks
 // for the task. This method returns the status of the task after pre and main
 // have run. Also note that it's critical that all operations in this method
 // must respect the context. If the context errors, this must eventually return.
-func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) {
+func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status string) {
 	defer func() {
 		op := "running task pre and main blocks"
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
@@ -646,38 +681,12 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 		_ = a.logPanic(tc.logger, pErr, nil, op)
 		status = evergreen.TaskSystemFailed
 	}()
-
-	factory, ok := command.GetCommandFactory("setup.initial")
-	if !ok {
-		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
-		return evergreen.TaskSystemFailed
-	}
-
-	if ctx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution before setup: %s", ctx.Err())
-		return evergreen.TaskSystemFailed
-	}
-	tc.setCurrentCommand(factory())
-	a.comm.UpdateLastMessageTime()
+	defer a.killProcs(ctx, tc, false, "task is finished")
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution during setup: %s", ctx.Err())
 		return evergreen.TaskSystemFailed
 	}
-	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
-	tc.logger.Execution().Info("Execution logger initialized.")
-	tc.logger.System().Info("System logger initialized.")
-
-	if ctx.Err() != nil {
-		tc.logger.Execution().Infof("Stopping task execution: %s", ctx.Err())
-		return evergreen.TaskSystemFailed
-	}
-	hostname, err := os.Hostname()
-	tc.logger.Execution().Info(errors.Wrap(err, "getting hostname"))
-	if hostname != "" {
-		tc.logger.Execution().Infof("Hostname is '%s'.", hostname)
-	}
-	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
 	execTimeoutCtx, execTimeoutCancel := context.WithCancel(ctx)
 	defer execTimeoutCancel()
@@ -690,7 +699,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 	go a.startTimeoutWatcher(ctx, execTimeoutCancel, timeoutOpts)
 
 	// set up the system stats collector
-	tc.statsCollector = NewSimpleStatsCollector(
+	statsCollector := NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
 		defaultStatsInterval,
@@ -698,7 +707,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 		"df -h",
 		"${ps|ps}",
 	)
-	tc.statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
+
+	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 
 	if execTimeoutCtx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution after setup: %s", execTimeoutCtx.Err())
@@ -707,25 +717,25 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext) (status string) 
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-	if err = a.comm.StartTask(execTimeoutCtx, tc.task); err != nil {
+	if err := a.comm.StartTask(execTimeoutCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		return evergreen.TaskSystemFailed
 	}
 
 	a.killProcs(execTimeoutCtx, tc, false, "task is starting")
 
-	if err = a.runPreTaskCommands(execTimeoutCtx, tc); err != nil {
+	if err := a.runPreTaskCommands(execTimeoutCtx, tc); err != nil {
 		return evergreen.TaskFailed
 	}
 
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
 		tc.logger.Execution().Info("OOM tracker clearing system messages.")
-		if err = tc.oomTracker.Clear(execTimeoutCtx); err != nil {
+		if err := tc.oomTracker.Clear(execTimeoutCtx); err != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "clearing OOM tracker system messages"))
 		}
 	}
 
-	if err = a.runTaskCommands(execTimeoutCtx, tc); err != nil {
+	if err := a.runTaskCommands(execTimeoutCtx, tc); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
 		return evergreen.TaskFailed
 	}
@@ -786,12 +796,22 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if pre.Commands != nil {
+		preCtx, preCancel := context.WithCancel(ctx)
+		defer preCancel()
+		timeoutOpts := timeoutWatcherOptions{
+			tc:                    tc,
+			kind:                  preTimeout,
+			getTimeout:            tc.getPreTimeout,
+			canMarkTimeoutFailure: pre.CanFailTask,
+		}
+		go a.startTimeoutWatcher(ctx, preCancel, timeoutOpts)
+
 		opts.failPreAndPost = pre.CanFailTask
 		block := preBlock
 		if tc.taskGroup != "" {
 			block = setupTaskBlock
 		}
-		err = a.runCommandsInBlock(ctx, tc, pre.Commands.List(), opts, block)
+		err = a.runCommandsInBlock(preCtx, tc, pre.Commands.List(), opts, block)
 		if err != nil {
 			err = errors.Wrap(err, "Running pre-task commands failed")
 			tc.logger.Task().Error(err)
@@ -873,13 +893,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
-			// TODO (EVG-20629): if pre_error_fails_task is true and
-			// post/teardown_task hits a timeout, it should indicate to the end
-			// task response that it failed because it hit a timeout, not
-			// because the command errored.
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
-			detail.Status = evergreen.TaskFailed
-			setEndTaskCommand(tc, detail, "", "")
+			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
@@ -927,48 +942,46 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 }
 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
-	var description string
-	var failureType string
+	var userDefinedDescription string
+	var userDefinedFailureType string
 	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", a.endTaskResp.Status)
 		if !evergreen.IsValidTaskEndStatus(a.endTaskResp.Status) {
 			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", a.endTaskResp.Status)
 			status = evergreen.TaskFailed
-			failureType = evergreen.CommandTypeSystem
+			userDefinedFailureType = evergreen.CommandTypeSystem
 		} else {
 			status = a.endTaskResp.Status
 			if len(a.endTaskResp.Description) > endTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), defaulting to command display name.", endTaskMessageLimit)
 			} else {
-				description = a.endTaskResp.Description
+				userDefinedDescription = a.endTaskResp.Description
 			}
 
 			if a.endTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, a.endTaskResp.Type) {
 				tc.logger.Task().Warningf("'%s' is not a valid failure type, defaulting to command failure type.", a.endTaskResp.Type)
 			} else {
-				failureType = a.endTaskResp.Type
+				userDefinedFailureType = a.endTaskResp.Type
 			}
 		}
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		TimedOut:        tc.hadTimedOut(),
-		TimeoutType:     string(tc.getTimeoutType()),
-		TimeoutDuration: tc.getTimeoutDuration(),
-		OOMTracker:      tc.getOomTrackerInfo(),
-		Status:          status,
-		Message:         message,
-		TraceID:         tc.traceID,
+		OOMTracker: tc.getOomTrackerInfo(),
+		Message:    message,
+		TraceID:    tc.traceID,
 	}
-	setEndTaskCommand(tc, detail, description, failureType)
+	setEndTaskFailureDetails(tc, detail, status, userDefinedDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
 }
 
-func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, description, failureType string) {
+func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
 	if tc.getCurrentCommand() != nil {
+		// If there is no explicit user-defined description or failure type,
+		// infer that information from the last command that ran.
 		if description == "" {
 			description = tc.getCurrentCommand().DisplayName()
 		}
@@ -976,8 +989,21 @@ func setEndTaskCommand(tc *taskContext, detail *apimodels.TaskEndDetail, descrip
 			failureType = tc.getCurrentCommand().Type()
 		}
 	}
+
+	detail.Status = status
 	detail.Description = description
 	detail.Type = failureType
+
+	if !detail.TimedOut {
+		// Only set timeout details if a prior command in the task hasn't
+		// already recorded a timeout. For example, if a command times out in
+		// the main block, then another command times out in the post block, the
+		// main block command should preserve the main block timeout.
+		detail.TimedOut = tc.hadTimedOut()
+		detail.TimeoutType = string(tc.getTimeoutType())
+		detail.TimeoutDuration = tc.getTimeoutDuration()
+	}
+
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
@@ -1008,15 +1034,15 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 		defer postCancel()
 		timeoutOpts := timeoutWatcherOptions{
 			tc:                    tc,
-			kind:                  callbackTimeout,
-			getTimeout:            tc.getCallbackTimeout,
+			kind:                  postTimeout,
+			getTimeout:            tc.getPostTimeout,
 			canMarkTimeoutFailure: post.CanFailTask,
 		}
 		go a.startTimeoutWatcher(ctx, postCancel, timeoutOpts)
 
 		err = a.runCommandsInBlock(postCtx, tc, post.Commands.List(), opts, block)
 		if err != nil {
-			tc.logger.Task().Error(errors.Wrap(err, "running post-task commands"))
+			tc.logger.Task().Error(errors.Wrap(err, "Running post-task commands failed"))
 			if post.CanFailTask {
 				return err
 			}

@@ -82,7 +82,6 @@ func (s *CommandSuite) SetupTest() {
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
 	s.Require().NoError(err)
-	s.Equal(&util.Expansions{}, taskConfig.DynamicExpansions)
 
 	s.tc = &taskContext{
 		taskConfig: taskConfig,
@@ -104,7 +103,14 @@ func (s *CommandSuite) TestPreErrorFailsWithSetup() {
 	s.tc.ranSetupGroup = false
 
 	defer s.a.removeTaskDirectory(s.tc)
-	_, err := s.a.runTask(ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	shouldSetupGroup := !s.tc.ranSetupGroup
+	taskDirectory := s.tc.taskDirectory
+	_, _, err := s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -135,7 +141,14 @@ func (s *CommandSuite) TestShellExec() {
 
 	s.NoError(s.a.startLogging(ctx, s.tc))
 	defer s.a.removeTaskDirectory(s.tc)
-	_, err = s.a.runTask(ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	shouldSetupGroup := !s.tc.ranSetupGroup
+	taskDirectory := s.tc.taskDirectory
+	_, _, err = s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 
 	s.Require().NoError(s.tc.logger.Close())
@@ -207,8 +220,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	config := &internal.TaskConfig{
-		Expansions:        &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
-		DynamicExpansions: &util.Expansions{},
+		Expansions: &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
 		BuildVariant: &model.BuildVariant{
 			Name: "some_build_variant",
 		},
@@ -355,7 +367,7 @@ functions:
 	key3Value := s.tc.taskConfig.Expansions.Get("key3")
 	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
 
-	s.Equal(&util.Expansions{}, s.tc.taskConfig.DynamicExpansions)
+	s.Empty(s.tc.taskConfig.DynamicExpansions)
 }
 
 func (s *CommandSuite) TestVarsUnsetPreserveExpansionUpdatesFromFile() {
@@ -386,5 +398,5 @@ functions:
 
 	key3Value := s.tc.taskConfig.Expansions.Get("key3")
 	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
-	s.Equal(&util.Expansions{}, s.tc.taskConfig.DynamicExpansions)
+	s.Empty(s.tc.taskConfig.DynamicExpansions)
 }

@@ -31,12 +31,6 @@ func (exp *Expansions) Update(newItems map[string]string) {
 	}
 }
 
-// Return an empty expansion
-func EmptyExpansion() *Expansions {
-	empty := Expansions(map[string]string{})
-	return &empty
-}
-
 // Read a map of keys/values from the given file, and update the expansions
 // to include them (overwriting any duplicates with the new value).
 func (exp *Expansions) UpdateFromYaml(filename string) error {
