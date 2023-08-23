@@ -47,10 +47,11 @@ func TestDockerIntegrationSuite(t *testing.T) {
 }
 
 func (s *DockerIntegrationSuite) TestImagePull() {
+	const imageName = "public.ecr.aws/docker/library/hello-world:latest"
 	var err error
 	ctx := context.Background()
 	err = utility.Retry(ctx, func() (bool, error) {
-		err = s.client.pullImage(ctx, &s.host, "public.ecr.aws/docker/library/hello-world:latest", "", "")
+		err = s.client.pullImage(ctx, &s.host, imageName, "", "")
 		if err != nil {
 			return true, err
 		}
@@ -66,5 +67,5 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	s.NoError(err)
 	s.Require().Len(images, 1)
 	grip.Info(images)
-	s.Contains(images[0].RepoTags, "hello-world:latest")
+	s.Contains(images[0].RepoTags, imageName)
 }

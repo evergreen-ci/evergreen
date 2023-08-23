@@ -435,7 +435,7 @@ tasks:
   commands:
   - command: host.create
     params:
-	  image: public.ecr.aws/docker/library/hello-world:latest
+      image: public.ecr.aws/docker/library/hello-world:latest
       distro: distro
       command: echo hi
       provider: docker
