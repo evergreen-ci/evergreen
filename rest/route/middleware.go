@@ -551,8 +551,9 @@ func updateHostAccessTime(ctx context.Context, h *host.Host) {
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -571,8 +572,9 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -590,8 +592,9 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 

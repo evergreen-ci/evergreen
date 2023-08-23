@@ -42,7 +42,9 @@ const (
 
 	// defaultPostTimeout specifies the default duration after when the post
 	// block should time out and stop the current command.
-	defaultPostTimeout = 2 * time.Hour
+	// TODO (EVG-20629): incrementally increase this over the course of weeks so
+	// users can adjust expectations and set post timeout accordingly.
+	defaultPostTimeout = 30 * time.Minute
 
 	// maxHeartbeats is the number of failed heartbeats after which an agent
 	// reports an error
