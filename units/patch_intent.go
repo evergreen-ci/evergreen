@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -26,6 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -511,6 +511,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	catcher.Wrap(patchSub.Upsert(), "inserting patch subscription for GitHub merge queue")
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(buildSub.Upsert(), "inserting build subscription for GitHub merge queue")
+
 	input := thirdparty.SendGithubStatusInput{
 		VersionId: j.PatchID.Hex(),
 		Owner:     p.GithubMergeData.Org,
@@ -518,12 +519,34 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 		Ref:       p.GithubMergeData.HeadSHA,
 		Desc:      "patch created",
 		Caller:    j.Name,
-		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url)
-	if err != nil {
-		catcher.Wrap(err, "failed to send patch status to GitHub")
+
+	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.BaseBranch)
+	// We might have permission to send statuses but not to get branch
+	// protection rules, so log the error, but don't return it.
+	grip.Error(message.WrapError(err, message.Fields{
+		"job":      j.ID(),
+		"job_type": j.Type,
+		"message":  "failed to get branch protection rules",
+		"org":      p.GithubMergeData.Org,
+		"repo":     p.GithubMergeData.Repo,
+		"branch":   p.GithubMergeData.BaseBranch,
+	}))
+	// If we don't find any rules, send the default.
+	if len(rules) == 0 {
+		input.Context = "evergreen"
+		catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
+	} else {
+		for i, rule := range rules {
+			// Limit statuses to 10
+			if i >= 10 {
+				break
+			}
+			input.Context = rule
+			catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
+		}
 	}
+
 	return catcher.Resolve()
 }
 

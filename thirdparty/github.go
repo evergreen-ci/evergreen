@@ -1988,3 +1988,60 @@ func postComment(ctx context.Context, token, owner, repo string, prNum int, comm
 	}
 	return nil
 }
+
+// GetEvergreenBranchProtectionRules gets all Evergreen branch protection checks as a list of strings.
+func GetEvergreenBranchProtectionRules(ctx context.Context, token, owner, repo, branch string) ([]string, error) {
+	branchProtectionRules, err := GetBranchProtectionRules(ctx, token, owner, repo, branch)
+	if err != nil {
+		return nil, err
+	}
+	return getRulesWithEvergreenPrefix(branchProtectionRules), nil
+}
+
+func getRulesWithEvergreenPrefix(rules []string) []string {
+	rulesWithEvergreenPrefix := []string{}
+	for _, rule := range rules {
+		if strings.HasPrefix(rule, "evergreen") {
+			rulesWithEvergreenPrefix = append(rulesWithEvergreenPrefix, rule)
+		}
+	}
+	return rulesWithEvergreenPrefix
+}
+
+// GetBranchProtectionRules gets all branch protection checks as a list of strings.
+func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch string) ([]string, error) {
+	caller := "GetBranchProtection"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, branch),
+	))
+	defer span.End()
+
+	if token == "" {
+		var err error
+		token, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting installation token")
+		}
+	}
+	githubClient := getGithubClient(token, caller, retryConfig{})
+
+	protection, resp, err := githubClient.Repositories.GetBranchProtection(ctx, owner, repo, branch)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get branch protection rules")
+	}
+	checks := []string{}
+	if requiredStatusChecks := protection.GetRequiredStatusChecks(); requiredStatusChecks != nil {
+		for _, check := range requiredStatusChecks.Checks {
+			checks = append(checks, check.Context)
+		}
+		return checks, nil
+	}
+	return nil, nil
+}
