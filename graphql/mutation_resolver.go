@@ -1265,8 +1265,23 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 
 // RemoveItemFromCommitQueue is the resolver for the removeItemFromCommitQueue field.
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
-	username := gimlet.GetUser(ctx).DisplayName()
-	result, err := data.FindAndRemoveCommitQueueItem(ctx, commitQueueID, issue, username, fmt.Sprintf("removed by user '%s'", username))
+	user := mustHaveUser(ctx)
+
+	project, err := data.FindProjectById(commitQueueID, false, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("could not find project '%s': %s",
+			commitQueueID, err.Error()))
+	}
+
+	if err = data.CheckCanRemoveCommitQueueItem(ctx, r.sc, user, project, issue); err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing item: %s", err.Error()))
+	}
+
+	result, err := data.FindAndRemoveCommitQueueItem(ctx, commitQueueID, issue, user.DisplayName(), fmt.Sprintf("removed by user '%s'", user.DisplayName()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))

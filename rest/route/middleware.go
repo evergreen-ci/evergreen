@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -518,64 +516,18 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if !projRef.CommitQueue.IsEnabled() {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("commit queue is not enabled for project '%s'", projRef.Id)))
-		return
-	}
-
-	if canAlwaysSubmitPatchesForProject(user, opCtx.ProjectRef.Id) {
-		next(rw, r)
-		return
-	}
-
-	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
 	itemId, ok := vars["item"]
 	if !ok {
 		itemId, ok = vars["patch_id"]
 	}
-	if !ok || itemId == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("no commit queue items provided")))
-		return
-	}
 
-	if bson.IsObjectIdHex(itemId) {
-		patch, err := data.FindPatchById(itemId)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", itemId)))
-			return
-		}
-		if user.Id != *patch.Author {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of author",
-			}))
-			return
-		}
-	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
-		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "unable to get pull request info, PR number (%d) may be invalid", itemInt)))
-			return
-		}
-
-		var githubUID int
-		if pr != nil && pr.User != nil && pr.User.ID != nil {
-			githubUID = int(*pr.User.ID)
-		}
-		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of GitHub user",
-			}))
-			return
-		}
+	if err = data.CheckCanRemoveCommitQueueItem(ctx, m.sc, user, projRef, itemId); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 	} else {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("commit queue item is not a valid identifier")))
-		return
+		next(rw, r)
 	}
-
-	next(rw, r)
+	return
 }
 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
@@ -594,26 +546,6 @@ func updateHostAccessTime(ctx context.Context, h *host.Host) {
 	if h.NeedsNewAgentMonitor {
 		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
 	}
-}
-
-// canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
-// or is authorized specifically to patch on behalf of other users.
-func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
-	isAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if isAdmin {
-		return true
-	}
-	return user.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionPatches,
-		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
-	})
 }
 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
