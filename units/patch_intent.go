@@ -532,6 +532,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 		"repo":     p.GithubMergeData.Repo,
 		"branch":   p.GithubMergeData.BaseBranch,
 	}))
+	// If we don't find any rules, send the default.
 	if len(rules) == 0 {
 		input.Context = "evergreen"
 		catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
