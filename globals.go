@@ -320,14 +320,19 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
+	// HeartbeatTimeoutThreshold is the timeout for how long a task can run without sending
+	// a heartbeat
+	HeartbeatTimeoutThreshold = 7 * time.Minute
+
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
 
 	// Valid types of performing git clone
-	CloneMethodLegacySSH = "legacy-ssh"
-	CloneMethodOAuth     = "oauth"
+	CloneMethodLegacySSH   = "legacy-ssh"
+	CloneMethodOAuth       = "oauth"
+	CloneMethodAccessToken = "access-token"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -888,6 +893,7 @@ var (
 	ValidCloneMethods = []string{
 		CloneMethodLegacySSH,
 		CloneMethodOAuth,
+		CloneMethodAccessToken,
 	}
 )
 

@@ -103,7 +103,14 @@ func (s *CommandSuite) TestPreErrorFailsWithSetup() {
 	s.tc.ranSetupGroup = false
 
 	defer s.a.removeTaskDirectory(s.tc)
-	_, err := s.a.runTask(ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	shouldSetupGroup := !s.tc.ranSetupGroup
+	taskDirectory := s.tc.taskDirectory
+	_, _, err := s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -134,7 +141,14 @@ func (s *CommandSuite) TestShellExec() {
 
 	s.NoError(s.a.startLogging(ctx, s.tc))
 	defer s.a.removeTaskDirectory(s.tc)
-	_, err = s.a.runTask(ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	shouldSetupGroup := !s.tc.ranSetupGroup
+	taskDirectory := s.tc.taskDirectory
+	_, _, err = s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 
 	s.Require().NoError(s.tc.logger.Close())
@@ -206,7 +220,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	config := &internal.TaskConfig{
-		Expansions: &util.Expansions{"key1": "expansionVar"},
+		Expansions: &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
 		BuildVariant: &model.BuildVariant{
 			Name: "some_build_variant",
 		},
@@ -328,14 +342,16 @@ functions:
     params:
       updates: 
       - key: key1
-        value: "expansion-update-value"
+        value: ${key1}
+      - key: key2
+        value: ${key2}
 `
 	s.setUpConfigAndProject(projYml)
 
 	func1 := model.PluginCommandConf{
 		Function:    "yes",
 		DisplayName: "function",
-		Vars:        map[string]string{"key1": "functionVar"},
+		Vars:        map[string]string{"key1": "functionVar1", "key2": "functionVar2", "key3": "functionVar3"},
 	}
 
 	cmds := []model.PluginCommandConf{func1}
@@ -343,5 +359,44 @@ functions:
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
-	s.Equal("expansion-update-value", key1Value, "key1 should be set to what it was updated to with expansions.update")
+	s.Equal("functionVar1", key1Value, "key1 should be set to what it was updated to with expansions.update")
+
+	key2Value := s.tc.taskConfig.Expansions.Get("key2")
+	s.Equal("functionVar2", key2Value, "key2 should be set to what it was updated to with expansions.update")
+
+	key3Value := s.tc.taskConfig.Expansions.Get("key3")
+	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
+
+	s.Empty(s.tc.taskConfig.DynamicExpansions)
+}
+
+func (s *CommandSuite) TestVarsUnsetPreserveExpansionUpdatesFromFile() {
+	projYml := `
+functions:
+  yes:
+    command: expansions.update
+    params:
+      file: command/testdata/git/test_expansions.yml
+`
+	s.setUpConfigAndProject(projYml)
+
+	func1 := model.PluginCommandConf{
+		Function:    "yes",
+		DisplayName: "function",
+		Vars:        map[string]string{"key1": "newValue1", "key2": "newValue2", "key3": "newValue3"},
+	}
+
+	cmds := []model.PluginCommandConf{func1}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	s.NoError(err)
+
+	key1Value := s.tc.taskConfig.Expansions.Get("key1")
+	s.Equal("newValue1", key1Value, "key1 should be set to what it was updated to with expansions.update")
+
+	key2Value := s.tc.taskConfig.Expansions.Get("key2")
+	s.Equal("newValue2", key2Value, "key2 should be set to what it was updated to with expansions.update")
+
+	key3Value := s.tc.taskConfig.Expansions.Get("key3")
+	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
+	s.Empty(s.tc.taskConfig.DynamicExpansions)
 }

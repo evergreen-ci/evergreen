@@ -19,8 +19,12 @@ func TestDeleteDistroById(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	defer func() {
+		assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection, model.TaskQueuesCollection, host.Collection))
+	}()
+
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
-		"Successfully deletes distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
+		"Successfully deletes distro and clears task queue": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			assert.NoError(t, DeleteDistroById(ctx, &u, "distro"))
 
 			dbDistro, err := distro.FindOneId(ctx, "distro")
@@ -39,21 +43,20 @@ func TestDeleteDistroById(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 1)
 		},
+		"Succeeds even if task queue for distro does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
+			err := DeleteDistroById(ctx, &u, "distro-no-task-queue")
+			assert.NoError(t, err)
+
+			events, err := event.FindLatestPrimaryDistroEvents("distro-no-task-queue", 10, utility.ZeroTime)
+			assert.NoError(t, err)
+			assert.Equal(t, len(events), 1)
+		},
 		"Fails when distro does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			err := DeleteDistroById(ctx, &u, "nonexistent")
 			assert.Error(t, err)
 			assert.Equal(t, err.Error(), "400 (Bad Request): distro 'nonexistent' not found")
 
 			events, err := event.FindLatestPrimaryDistroEvents("nonexistent", 10, utility.ZeroTime)
-			assert.NoError(t, err)
-			assert.Equal(t, len(events), 0)
-		},
-		"Fails when task queue for distro does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			err := DeleteDistroById(ctx, &u, "distro-no-task-queue")
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "500 (Internal Server Error): clearing task queue for distro 'distro-no-task-queue'")
-
-			events, err := event.FindLatestPrimaryDistroEvents("distro-no-task-queue", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Equal(t, len(events), 0)
 		},

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -32,6 +33,8 @@ var (
 	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
+// TODO (EVG-20629): remember to move the block timeout watcher into a helper
+// for runCommandsInBlock to reduce duplication.
 type runCommandsOptions struct {
 	isTaskCommands bool
 	failPreAndPost bool
@@ -165,15 +168,19 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	}
 	defer func() {
 		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
-			// This defer ensures that the function vars do not persist in the expansions after the function is over.
-			for key, functionValue := range commandInfo.Vars {
-				currentValue := tc.taskConfig.Expansions.Get(key)
-				if currentValue != functionValue {
-					// If a command in the func updates the expansion value, don't reset it.
-					delete(prevExp, key)
+			// This defer ensures that the function vars do not persist in the expansions after the function is over
+			// unless they were updated using expansions.update
+			if cmd.Name() == "expansions.update" {
+				updatedExpansions := tc.taskConfig.DynamicExpansions.Map()
+				for k := range updatedExpansions {
+					if _, ok := commandInfo.Vars[k]; ok {
+						// If expansions.update updated this key, don't reset it
+						delete(prevExp, k)
+					}
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)
+			tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
 		}
 	}()
 

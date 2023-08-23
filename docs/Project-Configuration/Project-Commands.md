@@ -77,10 +77,21 @@ An additional "ignore_for_fetch" parameter controls whether the file
 will be downloaded when spawning a host from the spawn link on a test
 page.
 
--   `files`: an array of gitignore file globs. All files that are
+- `files`: an array of gitignore file globs. All files that are
     matched - ones that would be ignored by gitignore - are included.
--   `prefix`: an optional path to start processing the files, relative
+- `prefix`: an optional path to start processing the files, relative
     to the working directory.
+
+#### Lifecycle Policy 
+
+These artifacts are stored in an S3 bucket which has the following lifecycle policy:
+
+* Day 0 - Object uploaded
+* Day 60 - Object moved to Standard-IA
+* Day 365 - Object moved to Deep Glacier Archive
+* Day 1095 - Object expires
+
+If you would like to download an artifact after it has been moved to Glacier, please create a BUILD ticket requesting download as it will no longer be available via the link under the Files tab on the task page.
 
 ## attach.results
 
