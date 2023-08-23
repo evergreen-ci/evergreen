@@ -159,9 +159,9 @@ func (s *CommandSuite) TestShellExec() {
 	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
-	s.Equal("success", detail.Status)
-	s.Equal("test", detail.Type)
-	s.Contains(detail.Description, "shell.exec")
+	s.Equal(evergreen.TaskSucceeded, detail.Status)
+	s.Zero(detail.Type, "should not include failure command type for successful task")
+	s.Zero(detail.Description, "should not include failure description for successful task")
 	s.False(detail.TimedOut)
 
 	data, err := os.ReadFile(tmpFile)

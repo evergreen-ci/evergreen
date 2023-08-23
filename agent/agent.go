@@ -989,20 +989,31 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 }
 
 func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
+	var isDefaultInfo bool
 	if tc.getCurrentCommand() != nil {
 		// If there is no explicit user-defined description or failure type,
 		// infer that information from the last command that ran.
 		if description == "" {
 			description = tc.getCurrentCommand().DisplayName()
+			isDefaultInfo = true
 		}
 		if failureType == "" {
 			failureType = tc.getCurrentCommand().Type()
+			isDefaultInfo = true
 		}
 	}
 
 	detail.Status = status
-	detail.Description = description
-	detail.Type = failureType
+	if status != evergreen.TaskSucceeded || status == evergreen.TaskSucceeded && !isDefaultInfo {
+		// If the task failed, always set the task failure information, because
+		// the user will want to see which command failed. If the task
+		// succeeded, the additional information is only necessary if a user
+		// explicitly defined custom info to display. This avoids a potentially
+		// confusing scenario where a task succeeds but has unnecesssary
+		// information about the last command that succeeded.
+		detail.Description = description
+		detail.Type = failureType
+	}
 
 	if !detail.TimedOut {
 		// Only set timeout details if a prior command in the task hasn't
