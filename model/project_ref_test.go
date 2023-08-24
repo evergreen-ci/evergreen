@@ -43,7 +43,7 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(projectRefFromDB)
 
-	assert.Equal(projectRefFromDB.Owner, "mongodb")
+	assert.Equal(projectRefFromDB.Owner, "bongodb")
 	assert.Equal(projectRefFromDB.Repo, "mci")
 	assert.Equal(projectRefFromDB.Branch, "main")
 	assert.True(projectRefFromDB.Enabled)
