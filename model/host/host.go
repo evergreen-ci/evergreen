@@ -475,10 +475,6 @@ func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
-func (h *Host) IsStatic() bool {
-	return h.Distro.Provider == evergreen.ProviderNameStatic
-}
-
 func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
 }
