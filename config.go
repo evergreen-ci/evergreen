@@ -597,7 +597,7 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	}
 	if installationId == nil {
 		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
-	}
+	}asdfasdf
 	token, _, err := client.Apps.CreateInstallationToken(ctx, installationId.GetID(), opts)
 	if err != nil || token == nil {
 		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationId.GetID())
