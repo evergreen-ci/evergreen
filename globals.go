@@ -128,8 +128,13 @@ const (
 	// underlying runtime environment (i.e. container or host) encountered an
 	// issue. For example, if a host is terminated while the task is still
 	// running, the task is considered stranded.
-	TaskDescriptionStranded  = "stranded"
+	TaskDescriptionStranded = "stranded"
+	// TaskDescriptionNoResults indicates that a task failed because it did not
+	// post any test results.
 	TaskDescriptionNoResults = "expected test results, but none attached"
+	// TaskDescriptionResultsFailed indicates that a task failed because the
+	// test results contained a failure.
+	TaskDescriptionResultsFailed = "test results contained failing test"
 	// TaskDescriptionContainerUnallocatable indicates that the reason a
 	// container task failed is because it cannot be allocated a container.
 	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"

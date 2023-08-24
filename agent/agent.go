@@ -902,8 +902,18 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		// its failure type to system failed, as that is within a task's
 		// control.
 		tc.logger.Task().Error("Task encountered unexpected task lifecycle system failure.")
+		detail.Status = evergreen.TaskFailed
+		detail.Type = evergreen.CommandTypeSystem
+		if detail.Description == "" {
+			detail.Description = "task system-failed for unknown reasons"
+		}
 	default:
-		tc.logger.Task().Errorf("Programmer error: invalid task status '%s'.", detail.Status)
+		tc.logger.Task().Errorf("Programmatic error: ending task with invalid task status '%s', defaulting to system failure.", detail.Status)
+		detail.Status = evergreen.TaskFailed
+		detail.Type = evergreen.CommandTypeSystem
+		if detail.Description == "" {
+			detail.Description = "task has invalid status"
+		}
 	}
 
 	a.killProcs(ctx, tc, false, "task is ending")
@@ -968,20 +978,31 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 }
 
 func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
+	var isDefaultInfo bool
 	if tc.getCurrentCommand() != nil {
 		// If there is no explicit user-defined description or failure type,
 		// infer that information from the last command that ran.
 		if description == "" {
 			description = tc.getCurrentCommand().DisplayName()
+			isDefaultInfo = true
 		}
 		if failureType == "" {
 			failureType = tc.getCurrentCommand().Type()
+			isDefaultInfo = true
 		}
 	}
 
 	detail.Status = status
-	detail.Description = description
-	detail.Type = failureType
+	if status != evergreen.TaskSucceeded || status == evergreen.TaskSucceeded && !isDefaultInfo {
+		// If the task failed, always set the task failure information, because
+		// the user will want to see which command failed. If the task
+		// succeeded, the additional information is only necessary if a user
+		// explicitly defined custom info to display. This avoids a potentially
+		// confusing scenario where a task succeeds but has unnecesssary
+		// information about the last command that succeeded.
+		detail.Description = description
+		detail.Type = failureType
+	}
 
 	if !detail.TimedOut {
 		// Only set timeout details if a prior command in the task hasn't
