@@ -534,6 +534,14 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	}))
 	// If we don't find any rules, send the default.
 	if len(rules) == 0 {
+		grip.Debug(message.Fields{
+			"job":      j.ID(),
+			"job_type": j.Type,
+			"message":  "could not find branch protection rules, sending default status",
+			"org":      p.GithubMergeData.Org,
+			"repo":     p.GithubMergeData.Repo,
+			"branch":   p.GithubMergeData.BaseBranch,
+		})
 		input.Context = "evergreen"
 		catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
 	} else {
