@@ -96,6 +96,7 @@ func TestHostTerminationJob(t *testing.T) {
 		},
 		"TerminatesStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Distro.Provider = evergreen.ProviderNameStatic
+			h.Provider = evergreen.ProviderNameStatic
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{

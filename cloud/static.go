@@ -82,9 +82,6 @@ func (m *staticManager) SetPortMappings(context.Context, *host.Host, *host.Host)
 
 // terminate an instance
 func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
-	if host.Status == evergreen.HostTerminated {
-		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", host.Id)
-	}
 	// a decommissioned static host will be removed from the database
 	if host.Status == evergreen.HostDecommissioned {
 		event.LogHostStatusChanged(host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User, reason)
@@ -109,8 +106,7 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 		"distro":  host.Distro.Id,
 	})
 
-	// We should still internally set the host status to terminated
-	return errors.Wrap(host.Terminate(ctx, user, reason), "terminating instance in DB")
+	return nil
 }
 
 func (staticMgr *staticManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
