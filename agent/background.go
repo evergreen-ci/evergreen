@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -77,7 +76,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 
 func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
 	resp, err := a.comm.Heartbeat(ctx, tc.task)
-	if resp == evergreen.TaskFailed || resp == client.TaskConflict {
+	if resp == evergreen.TaskFailed {
 		return resp, err
 	}
 	return "", err
