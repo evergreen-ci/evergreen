@@ -3,11 +3,11 @@ package agent
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -83,22 +83,29 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error
 	return "", err
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
+// startIdleTimeoutWatcher waits until the idle timeout is hit for a running
+// command. If the watcher detects that the command has been idle for longer
+// than the idle timeout (i.e. no task log output), then it arks the task as
+// having hit the timeout and cancels the command.
+func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("idle timeout watcher")
 	defer cancel()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+
+	tc.logger.Execution().Info("Starting idle timeout watcher.")
+
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Idle timeout watcher canceled.")
+			tc.logger.Execution().Info("Idle timeout watcher canceled.")
 			return
 		case <-ticker.C:
-			timeout := tc.getCurrentTimeout()
+			timeout := tc.getCurrentIdleTimeout()
 			timeSinceLastMessage := time.Since(a.comm.LastMessageAt())
 
 			if timeSinceLastMessage > timeout {
-				tc.logger.Execution().Errorf("Hit idle timeout (no message on stdout for more than %s).", timeout)
+				tc.logger.Task().Errorf("Hit idle timeout (no message on stdout/stderr for more than %s).", timeout)
 				tc.reachTimeOut(idleTimeout, timeout)
 				return
 			}
@@ -106,6 +113,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	}
 }
 
+// timeoutWatcherOptions specify options for a background timeout watcher.
 type timeoutWatcherOptions struct {
 	// tc is the task context for the current running task.
 	tc *taskContext
@@ -128,10 +136,12 @@ func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
 
+	opts.tc.logger.Execution().Infof("Starting %s timeout watcher.", opts.kind)
+
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Infof("%s timeout watcher canceled.", opts.kind)
+			opts.tc.logger.Execution().Infof("%s timeout watcher canceled.", strings.Title(string(opts.kind)))
 			return
 		case <-ticker.C:
 			timeout := opts.getTimeout()

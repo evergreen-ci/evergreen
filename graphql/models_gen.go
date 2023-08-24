@@ -701,7 +701,7 @@ const (
 	HostSortByCurrentTask HostSortBy = "CURRENT_TASK"
 	HostSortByDistro      HostSortBy = "DISTRO"
 	HostSortByElapsed     HostSortBy = "ELAPSED"
-	HostSortByIDLeTime    HostSortBy = "IDLE_TIME"
+	HostSortByIdleTime    HostSortBy = "IDLE_TIME"
 	HostSortByOwner       HostSortBy = "OWNER"
 	HostSortByStatus      HostSortBy = "STATUS"
 	HostSortByUptime      HostSortBy = "UPTIME"
@@ -712,7 +712,7 @@ var AllHostSortBy = []HostSortBy{
 	HostSortByCurrentTask,
 	HostSortByDistro,
 	HostSortByElapsed,
-	HostSortByIDLeTime,
+	HostSortByIdleTime,
 	HostSortByOwner,
 	HostSortByStatus,
 	HostSortByUptime,
@@ -720,7 +720,7 @@ var AllHostSortBy = []HostSortBy{
 
 func (e HostSortBy) IsValid() bool {
 	switch e {
-	case HostSortByID, HostSortByCurrentTask, HostSortByDistro, HostSortByElapsed, HostSortByIDLeTime, HostSortByOwner, HostSortByStatus, HostSortByUptime:
+	case HostSortByID, HostSortByCurrentTask, HostSortByDistro, HostSortByElapsed, HostSortByIdleTime, HostSortByOwner, HostSortByStatus, HostSortByUptime:
 		return true
 	}
 	return false

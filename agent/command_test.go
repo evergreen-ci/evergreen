@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -103,7 +104,14 @@ func (s *CommandSuite) TestPreErrorFailsWithSetup() {
 	s.tc.ranSetupGroup = false
 
 	defer s.a.removeTaskDirectory(s.tc)
-	_, err := s.a.runTask(ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	shouldSetupGroup := !s.tc.ranSetupGroup
+	taskDirectory := s.tc.taskDirectory
+	_, _, err := s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
@@ -134,7 +142,14 @@ func (s *CommandSuite) TestShellExec() {
 
 	s.NoError(s.a.startLogging(ctx, s.tc))
 	defer s.a.removeTaskDirectory(s.tc)
-	_, err = s.a.runTask(ctx, s.tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+		TaskGroup:  s.tc.taskGroup,
+	}
+	shouldSetupGroup := !s.tc.ranSetupGroup
+	taskDirectory := s.tc.taskDirectory
+	_, _, err = s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 
 	s.Require().NoError(s.tc.logger.Close())
@@ -254,7 +269,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -284,7 +299,7 @@ functions:
 
 	cmds := []model.PluginCommandConf{func1}
 	s.setUpConfigAndProject(projYml)
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -313,7 +328,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -341,7 +356,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -373,7 +388,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
