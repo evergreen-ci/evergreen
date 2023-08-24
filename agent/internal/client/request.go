@@ -24,8 +24,6 @@ type requestInfo struct {
 	taskData *TaskData
 }
 
-var HTTPConflictError = errors.New(TaskConflict)
-
 func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path, evergreen.APIRoutePrefixV2)
 	r, err := http.NewRequest(method, url, nil)

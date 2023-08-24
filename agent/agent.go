@@ -298,12 +298,6 @@ func (a *Agent) loop(ctx context.Context) error {
 				EC2InstanceID: a.ec2InstanceID,
 			})
 			if err != nil {
-				// task secret doesn't match, get another task
-				if errors.Cause(err) == client.HTTPConflictError {
-					timer.Reset(0)
-					agentSleepInterval = minAgentSleepInterval
-					continue
-				}
 				return errors.Wrap(err, "getting next task")
 			}
 			ntr, err := a.processNextTask(ctx, nextTask, tc, needPostGroup)
