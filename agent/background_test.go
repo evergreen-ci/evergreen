@@ -308,19 +308,19 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	})
 }
 
-func (s *BackgroundSuite) TestGetCurrentTimeout() {
+func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
 	s.tc.taskConfig.Timeout = &internal.Timeout{}
 	cmdFactory, exists := command.GetCommandFactory("shell.exec")
 	s.True(exists)
 	cmd := cmdFactory()
 	cmd.SetIdleTimeout(time.Second)
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd)
-	s.Equal(time.Second, s.tc.getCurrentTimeout())
+	s.tc.setCurrentIdleTimeout(cmd, "")
+	s.Equal(time.Second, s.tc.getCurrentIdleTimeout())
 }
 
 func (s *BackgroundSuite) TestGetTimeoutDefault() {
-	s.Equal(defaultIdleTimeout, s.tc.getCurrentTimeout())
+	s.Equal(defaultIdleTimeout, s.tc.getCurrentIdleTimeout())
 }
 
 type heartbeatCheckOptions struct {

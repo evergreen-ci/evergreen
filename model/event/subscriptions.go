@@ -503,7 +503,7 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 		query = bson.M{
 			"$or": []bson.M{
 				query,
-				bson.M{
+				{
 					subscriptionIDKey: mgobson.ObjectIdHex(id),
 				},
 			},
@@ -530,20 +530,6 @@ func RemoveSubscription(id string) error {
 	})
 }
 
-func IsSubscriptionAllowed(sub Subscription) (bool, string) {
-	for _, selector := range sub.Selectors {
-		if selector.Type == SelectorObject {
-			if selector.Data == ObjectBuild || selector.Data == ObjectVersion || selector.Data == ObjectTask {
-				if sub.Subscriber.Type == JIRAIssueSubscriberType || sub.Subscriber.Type == EvergreenWebhookSubscriberType {
-					return false, fmt.Sprintf("cannot notify by subscriber type '%s' for selector '%s'", sub.Subscriber.Type, selector.Data)
-				}
-			}
-		}
-	}
-
-	return true, ""
-}
-
 func (s *Subscription) ValidateSelectors() error {
 	catcher := grip.NewBasicCatcher()
 	if s.Filter == (Filter{}) {
@@ -556,6 +542,17 @@ func (s *Subscription) ValidateSelectors() error {
 		}
 		if selector.Data == "" {
 			catcher.Errorf("selector '%s' has no data", selector.Type)
+		}
+	}
+
+	// There are certain subscribers we don't allow anymore at certain levels; verify that these aren't being used.
+	for _, selector := range s.Selectors {
+		if selector.Type == SelectorObject {
+			if selector.Data == ObjectBuild || selector.Data == ObjectVersion || selector.Data == ObjectTask {
+				if s.Subscriber.Type == JIRAIssueSubscriberType || s.Subscriber.Type == EvergreenWebhookSubscriberType {
+					catcher.Errorf("cannot notify by subscriber type '%s' for selector '%s'", s.Subscriber.Type, selector.Data)
+				}
+			}
 		}
 	}
 
@@ -573,12 +570,14 @@ func (s *Subscription) Validate() error {
 	if !IsValidOwnerType(string(s.OwnerType)) {
 		catcher.Errorf("'%s' is not a valid owner type", s.OwnerType)
 	}
-	// Disallow creating a JIRA comment type subscriber for every task in a project
+
+	// Disallow creating a JIRA comment type subscriber for every task in a project.
 	if s.OwnerType == OwnerTypeProject &&
 		s.ResourceType == ResourceTypeTask &&
-		s.Subscriber.Type == JIRACommentSubscriberType {
-		catcher.New("JIRA comment subscription not allowed for all tasks in the project")
+		(s.Subscriber.Type == JIRACommentSubscriberType || s.Subscriber.Type == JIRAIssueSubscriberType) {
+		catcher.New("JIRA comment/issue subscription not allowed for all tasks in the project")
 	}
+
 	catcher.Add(s.ValidateSelectors())
 	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())

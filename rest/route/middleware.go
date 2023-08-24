@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -599,6 +600,14 @@ func updateHostAccessTime(ctx context.Context, h *host.Host) {
 // canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
 // or is authorized specifically to patch on behalf of other users.
 func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
+	if projectId == "" {
+		grip.Error(message.Fields{
+			"message": "projectID is empty",
+			"op":      "middleware",
+			"stack":   string(debug.Stack()),
+		})
+		return false
+	}
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,
@@ -619,8 +628,9 @@ func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -639,8 +649,9 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -658,8 +669,9 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
