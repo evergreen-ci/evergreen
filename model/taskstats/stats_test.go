@@ -46,7 +46,7 @@ func (s *statsSuite) TestStatsStatus() {
 	// Check that we get a default status when there is no doc in the database.
 	status, err := GetStatsStatus("p1")
 	s.NoError(err)
-	s.NotNil(status)
+	s.Nil(status)
 	// The default value is rounded off to the day so use a delta of over one day to cover all cases.
 	oneDayOneMinute := 24*time.Hour + time.Minute
 	expected := time.Now().Add(-defaultBackFillPeriod)
