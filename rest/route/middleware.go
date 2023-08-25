@@ -768,6 +768,11 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
 	}
+	usr := gimlet.GetUser(r.Context())
+	if usr == nil && projectRef.IsPrivate() {
+		return nil, http.StatusUnauthorized, errors.New("unauthorized")
+	}
+
 	res := []string{projectRef.Id}
 	if destProjectID != "" {
 		res = append(res, destProjectID)
