@@ -243,7 +243,7 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
 	}
 	if opts.useVerbose {
-		cloneCmd = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", cloneCmd)
+		cloneCmd = fmt.Sprintf("GIT_TRACE=1 %s", cloneCmd)
 	}
 	if opts.cloneDepth > 0 {
 		cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, opts.cloneDepth)
@@ -942,7 +942,7 @@ func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskC
 	}
 	apply := fmt.Sprintf("git apply --binary --index < '%s'", patchFile)
 	if useVerbose {
-		apply = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", apply)
+		apply = fmt.Sprintf("GIT_TRACE=1 %s", apply)
 	}
 	return apply, nil
 }
