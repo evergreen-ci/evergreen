@@ -162,7 +162,7 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 			continue
 		}
 		if len(respBody) == 0 {
-			grip.Error(errors.Errorf("did not find any latest revisions yet for project '%s'", params.ProjectID))
+			grip.Errorf("did not find any latest revisions yet for project '%s'", params.ProjectID)
 			continue
 		}
 
@@ -222,7 +222,7 @@ func getSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams
 			continue
 		}
 		if len(respBody) == 0 {
-			grip.Error(errors.Errorf("did not find any latest patches yet for user '%s'", params.Username))
+			grip.Errorf("did not find any latest patches yet for user '%s'", params.Username)
 			continue
 		}
 
@@ -234,7 +234,7 @@ func getSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams
 			continue
 		}
 		if len(latestPatches) == 0 {
-			grip.Error(errors.Errorf("listing latest patches for user '%s' yielded no results", params.Username))
+			grip.Errorf("listing latest patches for user '%s' yielded no results", params.Username)
 			continue
 		}
 
