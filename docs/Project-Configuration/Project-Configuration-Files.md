@@ -361,7 +361,7 @@ We will maintain the following merge rules:
     yaml. Examples: pre, post, timeout, early termination.
 -   Non-list values cannot be defined for more than one yaml. Examples:
     stepback, batchtime, pre error fails task, OOM tracker, display
-    name, command type, and callback/exec timeout.
+    name, command type, and exec timeout.
 -   It is illegal to define a build variant multiple times except to add
     additional tasks to it. That is, a build variant should only be
     defined once, but other files can include this build variant's
@@ -435,15 +435,17 @@ Fields:
 -   `auto_update`: if true, the latest revision for the module will be
     dynamically retrieved for each Github PR and CLI patch submission
 
-### Pre, Post, and Timeout
+### Pre and Post
 
-All projects can have a `pre` and `post` field which define a list of
-command to run at the start and end of every task that isn't in a task
-group. For task groups, `setup_task` and `teardown_task` will run instead of
-`pre` and `post`. These are incredibly useful as a place for results commands or
-for cleanup and setup tasks.
+All projects can have a `pre` and `post` field which define a list of commands
+to run at the start and end of every task that isn't in a task group. For task
+groups, `setup_task` and `teardown_task` will run instead of `pre` and `post`
+(see [task groups](#task-groups) for more information). These are incredibly
+useful as a place for results commands or for task setup and cleanup.
 
 ``` yaml
+pre_error_fails_task: true
+pre_timeout_secs: 1800 # 30 minutes
 pre:
   - command: shell.exec
     params:
@@ -451,17 +453,33 @@ pre:
       script: |
         ## do setup
 
+post_error_fails_task: true
+post_timeout_secs: 1800 # 30 minutes
 post:
   - command: attach.results
     params:
       file_location: src/report.json
 ```
 
-Additionally, project configs offer a hook for running command when a
-task times out, allowing you to automatically run a debug script when
-something is stuck.
+Parameters:
+
+- `pre`: commands to run prior to the task. Note that `pre` does not run for
+  task group tasks.
+- `pre_error_fails_task`: if true, task will fail if a command in `pre` fails.
+  Defaults to false.
+- `pre_timeout_secs`: set a timeout for `pre`. Defaults to 2 hours.
+- `post`: commands to run after the task. Note that `post` does not run for task
+  group tasks.
+- `post_error_fails_task`: if true, task will fail if a command in `post` fails.
+- `post_timeout_secs`: set a timeout for `post`. Defaults to 30 minutes.
+
+### Timeout Handler
+
+Project configs offer a hook for running command when a task times out, allowing
+you to automatically run a debug script when something is stuck.
 
 ``` yaml
+callback_timeout_secs: 60
 timeout:
   - command: shell.exec
     params:
@@ -471,9 +489,17 @@ timeout:
         python buildscripts/hang_analyzer.py
 ```
 
-If a task is aborted, the task will stop running any `pre` or task commands
-early, but it still runs `post` (or the task group equivalent, `teardown_task`).
-This is done in order to perform any final cleanup for the task.
+Parameters:
+
+- `timeout`: commands to run when the task hits a timeout. The timeout commands
+  will only run if the timeout occurs in `pre`, `setup_group`, `setup_task`, or
+  the task commands. Furthermore, for `pre`, `setup_group`, and `setup_task`,
+  because they do not fail the task by default, they must be explicitly set to
+  fail for the timeout to trigger. For example, if a command in `pre`
+  hits the default 2 hour timeout for `pre` but `pre_error_fails_task` is not
+  set to true, then the timeout block will not trigger.
+- `callback_timeout_secs`: set a timeout for the `timeout` block. Defaults to
+  15 minutes.
 
 **Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
@@ -524,56 +550,14 @@ tasks:
 
 ```yaml
 exec_timeout_secs: 60
-
-pre_error_fails_task: true
-pre_timeout_secs: 1800 # 30 minutes
-pre:
-  - ...
-
-post_error_fails_task: true
-post_timeout_secs: 1800 # 30 minutes
-post:
-  - ...
 ```
 
-#### Special Behavior for Pre, Post, and Timeout
-
-Failing commands:
-
-By default, a command failing during the `pre` block will not cause the entire
-task to fail. If you want to enforce that failures during `pre` cause the task
-to fail, set the field `pre_error_fails_task` to true. If `pre_error_fails_task`
-is set to true and a command in `pre` fails, it will exit early and not run the
-main task commands, but it will still run the `post` block.
-
-`pre_error_fails_task` has no effect on tasks run in task groups because task
-groups do not run `pre`; instead, those tasks follow the settings defined for
-that task group (i.e. `setup_group` and `setup_task`).
-
-Similar to `pre`, by default, a command failing during the `post` block will not
-cause the entire task to fail. If you want to enforce that failures during
-`post` cause the task to fail, set the field `post_error_fails_task` to true. If
-`post_error_fails_task` is set to true and both the main task and post block
-have failing commands, the task's failing command will be the command that
-failed in the main task block, not the failing post command.
-
-`post_error_fails_task` has no effect on tasks run in task groups because task
-groups do not run `post`; instead, those tasks, follow the settings defined for
-that task group (i.e. `teardown_group` and `teardown_task`).
-
-Timeouts:
-
-By default, the `pre` block will time out if it runs for longer than 2 hours
-total. You can override this timeout by setting `pre_timeout_secs` at the root
-level of the YAML config.
-
-By default, the `post` block will time out if it runs for longer than 30 minutes
-total. You can override this timeout by setting `post_timeout_secs` at the root
-level of the YAML config.
-
-By default, commands `timeout` will time out after 15 minutes. You can override
-this timeout by setting `callback_timeout_secs` at the root level of the YAML
-config.
+### Aborting a Task
+If a task is aborted, the task will try to finish. The task will stop running
+any `pre` (or the task group equivalents, `setup_group` and `setup_task`) or
+task commands early, but it still runs `post` (or the task group equivalents,
+`teardown_task` and `teardown_group`). This is done in order to perform any
+final cleanup for the task.
 
 ### Limiting When a Task Will Run
 
@@ -1296,23 +1280,29 @@ task_groups:
     setup_group:
       - command: shell.exec
         params:
-        script: |
-          "echo setup_group"
+          script: echo setup_group
+    teardown_group_timeout_secs: 60
     teardown_group:
       - command: shell.exec
         params:
-        script:
-          "echo teardown_group"
+          script: echo teardown_group
+    setup_task_can_fail_task: true
+    setup_task_timeout_secs: 1200
     setup_task:
       - command: shell.exec
         params:
-        script: |
-          "echo setup_task"
+          script: echo setup_task
+    teardown_task_can_fail_task: true
+    teardown_task_timeout_secs: 1200
     teardown_task:
       - command: shell.exec
         params:
-        script: |
-          "echo teardown_task"
+          script: echo teardown_task
+    callback_timeout_secs: 60
+    timeout:
+      - command: shell.exec
+      - params:
+          script: echo timeout
     tasks:
       - example_task_1
       - example_task_2
@@ -1329,27 +1319,45 @@ buildvariants:
 
 Parameters:
 
--   `setup_group`: commands to run prior to running this task group.
-    Note that pre does not run for task group tasks.
--   `teardown_group`: commands to run after running this task group.
-    Note that post does not run for task group tasks.
--   `setup_task`: commands to run prior to running each task. Note that
-    pre does not run for task group tasks.
--   `teardown_task`: commands to run after running each task. Note that
-    post does not run for task group tasks.
+-   `setup_group`: commands to run prior to running this task group. These
+    commands run once per host that's running tasks in the task group. Note that
+    `pre` does not run for task group tasks.
+-   `setup_group_can_fail_task`: if true, task will fail if a command in
+    `setup_group` fails. Defaults to false.
+-   `setup_group_timeout_secs`: set a timeout for the `setup_group`. Defaults to
+    2 hours. (If it times out, this only fails the task if
+    `setup_group_can_fail_task` is also set.)
+-   `teardown_group`: commands to run after running this task group. These
+    commands run once per host that's running the task group tasks. Note that
+    `post` does not run for task group tasks.
+-   `teardown_group_timeout_secs`: set a timeout for the `teardown_group`.
+    Defaults to 15 minutes. (If it times out, this will not fail the task.)
+-   `setup_task`: commands to run prior to running each task in the task group.
+    Note that `pre` does not run for task group tasks.
+-   `setup_task_can_fail_task`: if true, task will fail if a command in
+    `setup_task` fails. Defaults to false.
+-   `setup_task_timeout_secs`: set a timeout for the `setup_task`. Defaults to 2
+    hours. (If it times out, this only fails the task if
+    `setup_task_can_fail_task` is also set.)
+-   `teardown_task`: commands to run after running each task in the task group.
+    Note that `post` does not run for task group tasks.
+-   `teardown_task_can_fail_task`: if true, task will fail if a command in
+    `teardown_task` fails. Defaults to false.
+-   `teardown_task_timeout_secs`: set a timeout for the `teardown_task`. (If it
+    times out, this only fails the task if `teardown_task_can_fail_task` is also
+    set.)
 -   `max_hosts`: number of hosts across which to distribute the tasks in
     this group. This defaults to 1. There will be a validation warning
     if max hosts is less than 1 or greater than the number of tasks in
     task group. When max hosts is 1, this is a special case where the tasks
     will run serially on a single host. If any task fails, the task group
     will stop, so the remaining tasks after the failed one will not run.
--   `timeout`: timeout handler which will be called instead of the
-    top-level timeout handler. If it is not present, the top-level
-    timeout handler will run if a top-level timeout handler exists.
--   `setup_group_can_fail_task`: if true, task will fail if setup group
-    fails. Defaults to false.
--   `setup_group_timeout_secs`: set a timeout for the setup setup group. (If it
-    times out, this only fails task if `setup_group_can_fail_task` is also set.)
+-   `timeout`: timeout handler which will be called instead of the top-level
+    timeout handler. If it is not present, the top-level timeout handler will
+    run if a top-level timeout handler exists. See [timeout
+    handler](#timeout-handler).
+-   `callback_timeout_secs`: set a timeout for the `timeout` block. Defaults to
+    15 minutes.
 -   `share_processes`: by default, processes and Docker state changes
     (e.g. containers, images, volumes) are cleaned up between each
     task's execution. If this is set to true, cleanup will be deferred
