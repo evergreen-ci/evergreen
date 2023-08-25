@@ -58,9 +58,8 @@ type SharedCommunicator interface {
 	// GetProject loads the project using the task's version ID.
 	GetProject(context.Context, TaskData) (*model.Project, error)
 	// Heartbeat will return a non-empty task status if the agent should stop running the task.
-	// Returning evergreen.TaskConflict means the agent is no longer authorized to run this task and
-	// should move on to the next available one. Returning evergreen.TaskFailed means that the task
-	// has been aborted. An empty string indicates the heartbeat has succeeded.
+	// Returning evergreen.TaskFailed means that the task has been aborted. An empty string
+	// indicates the heartbeat has succeeded.
 	Heartbeat(context.Context, TaskData) (string, error)
 	// GetExpansionsAndVars returns the expansions, project variables, and
 	// version parameters. For expansions, all expansions are loaded except for
