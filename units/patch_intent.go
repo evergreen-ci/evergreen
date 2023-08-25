@@ -541,6 +541,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 			"org":      p.GithubMergeData.Org,
 			"repo":     p.GithubMergeData.Repo,
 			"branch":   p.GithubMergeData.BaseBranch,
+			"project":  p.Project,
 		})
 		input.Context = "evergreen"
 		catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
