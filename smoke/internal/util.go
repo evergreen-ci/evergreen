@@ -149,6 +149,8 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 				grip.Infof("Successfully checked task '%s'", taskID)
 
 				nextTaskToCheckIdx = nextTaskToCheckIdx + 1
+
+				return
 			}
 		})
 	}
