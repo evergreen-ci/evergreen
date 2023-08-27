@@ -1,0 +1,25 @@
+{
+  "buildvariants": [
+    {
+      "name": "localhost",
+      "tasks": [
+        {
+          "name": "task_to_add_via_generator"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "task_to_add_via_generator",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "script": "echo generated_task"
+          }
+        }
+      ]
+    }
+  ]
+}

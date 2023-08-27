@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -159,9 +160,9 @@ func (s *CommandSuite) TestShellExec() {
 	}, nil)
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
-	s.Equal("success", detail.Status)
-	s.Equal("test", detail.Type)
-	s.Contains(detail.Description, "shell.exec")
+	s.Equal(evergreen.TaskSucceeded, detail.Status)
+	s.Zero(detail.Type, "should not include failure command type for successful task")
+	s.Zero(detail.Description, "should not include failure description for successful task")
 	s.False(detail.TimedOut)
 
 	data, err := os.ReadFile(tmpFile)
@@ -268,7 +269,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -298,7 +299,7 @@ functions:
 
 	cmds := []model.PluginCommandConf{func1}
 	s.setUpConfigAndProject(projYml)
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -327,7 +328,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -355,7 +356,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -387,7 +388,7 @@ functions:
 	}
 
 	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{}, "")
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")

@@ -479,20 +479,26 @@ This is done in order to perform any final cleanup for the task.
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
 within an allotted time, set the key `exec_timeout_secs` on the project
-or task to the maximum allowed length of execution time. This timeout
-defaults to 6 hours. `exec_timeout_secs` can only be set on the project
-or on a task. It cannot be set on functions.
+or task to the maximum allowed length of execution time. Exec timeout only
+applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
+task commands; it does not apply to the `post`, `teardown_task`, and
+`teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
+can only be set on the project or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](Project-Commands.md#timeoutupdate).
+You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
 
 **Idle timeout: timeout_secs**
-You may also force a specific command to trigger a failure if it does
-not appear to generate any output on `stdout`/`stderr` for more than a
-certain threshold, using the `timeout_secs` setting on the command. As
-long as the command does not appear to be idle it will be allowed to
-continue, but if it does not write any output for longer than
-`timeout_secs` then the timeout handler will be triggered. 
-This timeout defaults to 2 hours.
+You may also force a specific command to trigger a failure if it does not appear
+to generate any output on `stdout`/`stderr` for more than a certain threshold,
+using the `timeout_secs` setting on the command. As long as the command produces
+output to `stdout`/`stderr`, it will be allowed to continue, but if it does not
+write any output for longer than `timeout_secs` then the command will time out.
+Idle timeout only applies to commands that run in `pre`, `setup_group`,
+`setup_task` and the main task commands; it does not apply to the `post`,
+`teardown_task`, and `teardown_group` blocks. This timeout defaults to 2 hours.
+
+You can also overwrite the default `timeout_secs` for all later commands using
+[timeout.update](Project-Commands.md#timeoutupdate).
 
 Example:
 
@@ -567,7 +573,7 @@ level of the YAML config.
 
 By default, commands `timeout` will time out after 15 minutes. You can override
 this timeout by setting `callback_timeout_secs` at the root level of the YAML
-config (warning: `callback_timeout_secs` will be deprecated soon).
+config.
 
 ### Limiting When a Task Will Run
 
