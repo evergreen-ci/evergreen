@@ -25,8 +25,8 @@ const (
 )
 
 // TaskOutputVersionRequest holds information sent by the agent to the API
-// server for the task output version used to store output data collected
-// during a task run.
+// server for the task output version used to coordinate persistent storage of
+// output data collected during a task run.
 type TaskOutputVersionRequest struct {
 	Version int `json:"version"`
 }
