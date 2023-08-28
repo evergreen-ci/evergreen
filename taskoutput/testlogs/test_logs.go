@@ -46,13 +46,13 @@ type GetOptions struct {
 }
 
 // Get returns the test logs belonging to the specified task run.
-func (o TestLogs) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, opts GetOptions) (log.LogIterator, error) {
+func (o TestLogs) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts GetOptions) (log.LogIterator, error) {
 	return log.Get(ctx, env, log.GetOptions{
-		LogNames:  opts.LogPaths,
-		Start:     opts.Start,
-		End:       opts.End,
-		LineLimit: opts.LineLimit,
-		TailN:     opts.TailN,
+		LogNames:  o.getLogNames(taskOpts, getOpts.LogPaths),
+		Start:     getOpts.Start,
+		End:       getOpts.End,
+		LineLimit: getOpts.LineLimit,
+		TailN:     getOpts.TailN,
 		Version:   o.getLogServiceVersion(),
 	})
 }
