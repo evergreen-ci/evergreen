@@ -81,7 +81,7 @@ func (o TaskLogs) Get(ctx context.Context, env evergreen.Environment, taskOpts T
 }
 
 func (o TaskLogs) getLogName(taskOpts TaskOptions, logType TaskLogType) string {
-	prefix := fmt.Sprintf("%s/%s/%d/%s/%s", taskOpts.ProjectID, taskOpts.TaskID, taskOpts.Execution, o.ID())
+	prefix := fmt.Sprintf("%s/%s/%d/%s", taskOpts.ProjectID, taskOpts.TaskID, taskOpts.Execution, o.ID())
 
 	var filename string
 	switch logType {
