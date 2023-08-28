@@ -1546,7 +1546,7 @@ defined endpoints in evergreen source:
     }
 
 ### TaskStats (DEPRECATED)
-**IMPORTANT: The task stats REST API has been deprecated, please use [Trino task stats](../Project-Configuration/Materialized-Intelligence.md) instead.**
+**IMPORTANT: The task stats REST API has been deprecated, please use [Trino task stats](../Project-Configuration/Evergreen-Data-for-Analytics.md) instead.**
 
 Task stats are aggregated task execution statistics for a given project.
 The statistics can be grouped by time period and by task, variant,
