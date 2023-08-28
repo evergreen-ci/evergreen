@@ -15,7 +15,11 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/taskoutput"
+	"github.com/evergreen-ci/evergreen/taskoutput/tasklogs"
+	"github.com/evergreen-ci/evergreen/taskoutput/testlogs"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/tarjan"
 	"github.com/evergreen-ci/utility"
@@ -156,8 +160,8 @@ type Task struct {
 	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 
 	// The version of the agent this task was run on.
-	AgentVersion     string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
-	TaskBuildVersion *int   `bson:"task_build_version,omitempty" json:"task_build_version,omitempty"`
+	AgentVersion      string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+	TaskOutputVersion *int   `bson:"task_build_version,omitempty" json:"task_build_version,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
@@ -1443,38 +1447,84 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
-// SetTaskBuildVersion sets the version of the task build. This should only be
-// called once at the beginning of a task run.
-func (t *Task) SetTaskBuildVersion(ctx context.Context, env evergreen.Environment, version int) error {
+// SetTaskOutputVersion sets the version of the task output. This should only
+// be called once at the beginning of a task run.
+func (t *Task) SetTaskOutputVersion(ctx context.Context, env evergreen.Environment, version int) error {
 	if t.DisplayOnly {
-		return errors.New("cannot set task build version on a display task")
+		return errors.New("cannot set task output version on a display task")
 	}
-	if t.TaskBuildVersion != nil {
-		return errors.New("task build version already set")
+	if t.TaskOutputVersion != nil {
+		return errors.New("task output version already set")
 	}
 
 	res, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, []bson.M{
 		{
-			"$set": bson.M{TaskBuildVersionKey: bson.M{
+			"$set": bson.M{TaskOutputVersionKey: bson.M{
 				"$ifNull": bson.A{
-					"$" + TaskBuildVersionKey,
+					"$" + TaskOutputVersionKey,
 					version,
 				}},
 			},
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "setting the task build version")
+		return errors.Wrap(err, "setting the task output version")
 	}
 	if res.MatchedCount == 0 {
 		return errors.New("programmatic error: task not found")
 	}
 	if res.ModifiedCount == 0 {
-		return errors.New("task build version already set")
+		return errors.New("task output version already set")
 	}
-	t.TaskBuildVersion = utility.ToIntPtr(version)
+	t.TaskOutputVersion = utility.ToIntPtr(version)
 
 	return nil
+}
+
+func (t *Task) output() taskoutput.TaskOutput {
+	if t.TaskOutputVersion == nil {
+		return taskoutput.TaskOutput(-1)
+	}
+
+	return taskoutput.TaskOutput(utility.FromIntPtr(t.TaskOutputVersion))
+}
+
+// GetTaskLogs returns the task's task logs with the given options.
+func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOpts tasklogs.GetOptions) (log.LogIterator, error) {
+	if t.DisplayOnly {
+		return nil, errors.New("cannot get task logs for a display task")
+	}
+
+	taskID := t.Id
+	if t.Archived {
+		taskID = t.OldTaskId
+	}
+	taskOpts := tasklogs.TaskOptions{
+		ProjectID: t.Project,
+		TaskID:    taskID,
+		Execution: t.Execution,
+	}
+
+	return t.output().TaskLogs().Get(ctx, env, taskOpts, getOpts)
+}
+
+// GetTestLogs returns the task's test logs with the specified options.
+func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOpts testlogs.GetOptions) (log.LogIterator, error) {
+	if t.DisplayOnly {
+		return nil, errors.New("cannot get test logs for a display task")
+	}
+
+	taskID := t.Id
+	if t.Archived {
+		taskID = t.OldTaskId
+	}
+	taskOpts := testlogs.TaskOptions{
+		ProjectID: t.Project,
+		TaskID:    taskID,
+		Execution: t.Execution,
+	}
+
+	return t.output().TestLogs().Get(ctx, env, taskOpts, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.
@@ -2055,7 +2105,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
-		t.TaskBuildVersion = nil
+		t.TaskOutputVersion = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasCedarResults = false
@@ -2093,7 +2143,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		{
 			"$unset": []string{
 				DetailsKey,
-				TaskBuildVersionKey,
+				TaskOutputVersionKey,
 				ResultsServiceKey,
 				ResultsFailedKey,
 				HasCedarResultsKey,

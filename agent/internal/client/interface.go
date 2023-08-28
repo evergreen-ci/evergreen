@@ -41,8 +41,8 @@ type SharedCommunicator interface {
 	UpdateLastMessageTime()
 	LastMessageAt() time.Time
 
-	// SetTaskBuildVersion sets the task build version for the task.
-	SetTaskBuildVersion(context.Context, TaskData, int) error
+	// SetTaskOutputVersion sets the task build version for the task.
+	SetTaskOutputVersion(context.Context, TaskData, int) error
 	// StartTask marks the task as started.
 	StartTask(context.Context, TaskData) error
 	// GetTask returns the active task.

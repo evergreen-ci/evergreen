@@ -97,7 +97,7 @@ var (
 	GenerateTaskKey                = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
-	TaskBuildVersionKey            = bsonutil.MustHaveTag(Task{}, "TaskBuildVersion")
+	TaskOutputVersionKey           = bsonutil.MustHaveTag(Task{}, "TaskOutputVersion")
 	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
 	HasCedarResultsKey             = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
 	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")

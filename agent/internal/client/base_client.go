@@ -144,15 +144,15 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 	return errors.Wrap(err, "checking Cedar gRPC health")
 }
 
-func (c *baseCommunicator) SetTaskBuildVersion(ctx context.Context, taskData TaskData, version int) error {
+func (c *baseCommunicator) SetTaskOutputVersion(ctx context.Context, taskData TaskData, version int) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
-	info.path = fmt.Sprintf("tasks/%s/set_task_build_version", taskData.ID)
-	resp, err := c.retryRequest(ctx, info, &apimodels.TaskBuildVersionRequest{Version: version})
+	info.path = fmt.Sprintf("tasks/%s/set_task_output_version", taskData.ID)
+	resp, err := c.retryRequest(ctx, info, &apimodels.TaskOutputVersionRequest{Version: version})
 	if err != nil {
-		return util.RespErrorf(resp, errors.Wrap(err, "setting task build version").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "setting task output version").Error())
 	}
 	defer resp.Body.Close()
 

@@ -191,34 +191,34 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	return gimlet.NewJSONResponse(resp)
 }
 
-// POST /rest/v2/task/{task_id}/set_task_build_version
-type setTaskBuildVersionHandler struct {
+// POST /rest/v2/task/{task_id}/set_task_output_version
+type setTaskOutputVersionHandler struct {
 	taskID string
-	req    apimodels.TaskBuildVersionRequest
+	req    apimodels.TaskOutputVersionRequest
 
 	env evergreen.Environment
 }
 
-func makeSetTaskBuildVersion(env evergreen.Environment) gimlet.RouteHandler {
-	return &setTaskBuildVersionHandler{env: env}
+func makeSetTaskOutputVersion(env evergreen.Environment) gimlet.RouteHandler {
+	return &setTaskOutputVersionHandler{env: env}
 }
 
-func (h *setTaskBuildVersionHandler) Factory() gimlet.RouteHandler {
-	return &setTaskBuildVersionHandler{env: h.env}
+func (h *setTaskOutputVersionHandler) Factory() gimlet.RouteHandler {
+	return &setTaskOutputVersionHandler{env: h.env}
 }
 
-func (h *setTaskBuildVersionHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *setTaskOutputVersionHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
 	if err := utility.ReadJSON(r.Body, &h.req); err != nil {
-		return errors.Wrap(err, "reading task build version from JSON request body")
+		return errors.Wrap(err, "reading task output version from JSON request body")
 	}
 
 	return nil
 }
 
-func (h *setTaskBuildVersionHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *setTaskOutputVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
@@ -230,11 +230,11 @@ func (h *setTaskBuildVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := t.SetTaskBuildVersion(ctx, h.env, h.req.Version); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting task build version in task '%s'", h.taskID))
+	if err := t.SetTaskOutputVersion(ctx, h.env, h.req.Version); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting task output version in task '%s'", h.taskID))
 	}
 
-	return gimlet.NewTextResponse("Task build version set in task")
+	return gimlet.NewTextResponse("Task output version set in task")
 }
 
 // POST /task/{task_id}/update_push_status
