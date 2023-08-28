@@ -82,10 +82,11 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	RequireDistroAccess       func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
-	RequireProjectAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
-	RequireProjectAdmin       func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	RequireProjectFieldAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireCommitQueueItemOwner func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireDistroAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
+	RequireProjectAccess        func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
+	RequireProjectAdmin         func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireProjectFieldAccess   func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -10155,9 +10156,22 @@ func (ec *executionContext) field_Mutation_removeItemFromCommitQueue_args(ctx co
 	var arg1 string
 	if tmp, ok := rawArgs["issue"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issue"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.RequireCommitQueueItemOwner == nil {
+				return nil, errors.New("directive requireCommitQueueItemOwner is not implemented")
+			}
+			return ec.directives.RequireCommitQueueItemOwner(ctx, rawArgs, directive0)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg1 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["issue"] = arg1

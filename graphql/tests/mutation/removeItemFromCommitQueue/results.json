@@ -26,7 +26,8 @@
           {
             "message": "401 (Unauthorized): not authorized to patch on behalf of author",
             "path": [
-              "removeItemFromCommitQueue"
+              "removeItemFromCommitQueue",
+              "issue"
             ],
             "extensions": {
               "code": "FORBIDDEN"
@@ -45,7 +46,8 @@
           {
             "message": "400 (Bad Request): commit queue is not enabled for project 'cq_disabled_project_id'",
             "path": [
-              "removeItemFromCommitQueue"
+              "removeItemFromCommitQueue",
+              "issue"
             ],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"

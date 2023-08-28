@@ -582,7 +582,7 @@ func GetAdditionalPatches(patchId string) ([]string, error) {
 }
 
 // CheckCanRemoveCommitQueueItem checks if a patch can be removed from the commit queue by the given user.
-func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, user *user.DBUser, project *model.ProjectRef, itemId string) error {
+func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, usr *user.DBUser, project *model.ProjectRef, itemId string) error {
 	if !project.CommitQueue.IsEnabled() {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -590,7 +590,7 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, user *user
 		}
 	}
 
-	if canAlwaysSubmitPatchesForProject(user, project.Id) {
+	if canAlwaysSubmitPatchesForProject(usr, project.Id) {
 		return nil
 	}
 
@@ -602,7 +602,7 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, user *user
 				Message:    errors.Wrapf(err, "finding patch '%s'", itemId).Error(),
 			}
 		}
-		if user.Id != utility.FromStringPtr(patch.Author) {
+		if usr.Id != utility.FromStringPtr(patch.Author) {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to patch on behalf of author",
@@ -621,7 +621,7 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, user *user
 		if pr != nil && pr.User != nil && pr.User.ID != nil {
 			githubUID = int(*pr.User.ID)
 		}
-		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
+		if githubUID == 0 || usr.Settings.GithubUser.UID != githubUID {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to patch on behalf of GitHub user",
