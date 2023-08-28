@@ -210,12 +210,12 @@ func New(apiURL string) Config {
 
 		commitQueueId, hasCommitQueueId := args["commitQueueId"].(string)
 		if !hasCommitQueueId {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("commit queue id was not provided"))
+			return nil, InputValidationError.Send(ctx, "commit queue id was not provided")
 		}
 
 		issue, hasIssue := args["issue"].(string)
 		if !hasIssue {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("issue was not provided"))
+			return nil, InputValidationError.Send(ctx, "issue was not provided")
 		}
 
 		project, err := data.FindProjectById(commitQueueId, true, false)
