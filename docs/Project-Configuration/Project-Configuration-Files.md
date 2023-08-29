@@ -904,9 +904,14 @@ in the case of a failing task. This can be set or unset at the
 top-level, at the build variant level, and for individual tasks (in the task definition or for the
 task within a specific build variant).
 
-### OOM Tracker
+### Out of memory (OOM) Tracker
 
 This is set to true at the top level if you'd like to enable the OOM Tracker for your project.
+
+If there is an OOM kill, immediately before the post-task starts, there will be
+a task log message saying whether it found any OOM killed processes, with their
+PIDs. A message with PIDs will also be displayed in the metadata panel in the
+UI.
 
 ### Matrix Variant Definition
 
