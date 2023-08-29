@@ -33,8 +33,8 @@ var (
 	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
-// TODO (EVG-20629): remember to move the block timeout watcher into a helper
-// for runCommandsInBlock to reduce duplication.
+// TODO (EVG-20634): move the block timeout watcher and other command block
+// logging messages into a helper for runCommandsInBlock to reduce duplication.
 type runCommandsOptions struct {
 	// block is the name of the block that the command runs in.
 	block command.BlockType
@@ -251,33 +251,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
 	}
 
-	return nil
-}
-
-// runTaskCommands runs all commands for the task currently assigned to the agent.
-func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
-	ctx, span := a.tracer.Start(ctx, "task-commands")
-	defer span.End()
-
-	conf := tc.taskConfig
-	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
-
-	if task == nil {
-		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
-	}
-
-	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceled while running task commands")
-	}
-	tc.logger.Execution().Info("Running task commands.")
-	start := time.Now()
-	opts := runCommandsOptions{block: command.MainTaskBlock, canFailTask: true}
-	err := a.runCommandsInBlock(ctx, tc, task.Commands, opts)
-	tc.logger.Task().Error(errors.Wrap(err, "Running task commands failed"))
-	tc.logger.Task().Infof("Finished running task commands in %s.", time.Since(start).String())
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

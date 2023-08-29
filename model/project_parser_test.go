@@ -276,9 +276,9 @@ tasks:
 - name: "t1"
 buildvariants:
 - name: "v1"
-  activate: false 
+  activate: false
   run_on: "distro1"
-  tasks: 
+  tasks:
   - name: "t1"
     activate: true
 `
@@ -1131,6 +1131,12 @@ task_groups:
   max_hosts: 2
   setup_group_can_fail_task: true
   setup_group_timeout_secs: 10
+  setup_task_can_fail_task: true
+  setup_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
+  teardown_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
+  teardown_group_timeout_secs: 10
   setup_group:
   - command: shell.exec
     params:
@@ -1165,14 +1171,25 @@ buildvariants:
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)
 	assert.Equal(2, tg.MaxHosts)
-	assert.Equal(true, tg.SetupGroupFailTask)
-	assert.Equal(10, tg.SetupGroupTimeoutSecs)
-	assert.Len(tg.Tasks, 2)
-	assert.Len(tg.SetupTask.List(), 1)
+
 	assert.Len(tg.SetupGroup.List(), 1)
+	assert.Equal(true, tg.SetupGroupCanFailTask)
+	assert.Equal(10, tg.SetupGroupTimeoutSecs)
+
+	assert.Len(tg.SetupTask.List(), 1)
+	assert.True(tg.SetupTaskCanFailTask)
+	assert.Equal(10, tg.SetupTaskTimeoutSecs)
+
 	assert.Len(tg.TeardownTask.List(), 1)
+	assert.True(tg.TeardownTaskCanFailTask)
+	assert.Equal(10, tg.TeardownTaskTimeoutSecs)
+
 	assert.Len(tg.TeardownGroup.List(), 1)
+	assert.Equal(10, tg.TeardownGroupTimeoutSecs)
+
 	assert.True(tg.ShareProcs)
+
+	assert.Len(tg.Tasks, 2)
 
 	// check that yml with inline task groups within its buildvariants correctly parses the group
 	inlineYml := `
@@ -1812,7 +1829,7 @@ functions:
   function-with-updates:
     command: expansions.update
     params:
-      updates: 
+      updates:
       - key: ssh_connection_options
         value: -o GSSAPIAuthentication=no -o CheckHostIP=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -o ConnectionAttempts=20
       - key: ssh_retries
@@ -2547,7 +2564,7 @@ func TestMergeMatrixFail(t *testing.T) {
 
 func TestMergeMultipleProjectConfigs(t *testing.T) {
 	mainYaml := `
-include: 
+include:
   - filename: small.yml
     module: something_different
 post:
@@ -2599,7 +2616,7 @@ ignore:
 
 func TestMergeMultipleProjectConfigsBuildVariant(t *testing.T) {
 	mainYaml := `
-include: 
+include:
   - filename: small.yml
 buildvariants:
   - name: bv1
