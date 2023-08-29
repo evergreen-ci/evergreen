@@ -41,5 +41,3 @@ taking unreasonably long), but this is less problematic than the task invisibly 
 
 The takeaway here is that choosing reasonable defaults are important since they're difficult to change later on, and
 when designing a feature, consider how its default behavior could potentially interact with other default behaviors.
-
-## More Information
