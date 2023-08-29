@@ -92,13 +92,13 @@ mutation {
           },
           hostAllocatorSettings: {
             acceptableHostIdleTime: 30000000000,
-            feedbackRule: "",
+            feedbackRule: DEFAULT,
             futureHostFraction: 0,
-            hostsOverallocatedRule: "",
+            hostsOverallocatedRule: DEFAULT,
             maximumHosts: 0,
             minimumHosts: 0,
-            roundingRule: "",
-            version: "utilization",
+            roundingRule: DEFAULT,
+            version: UTILIZATION,
           },
           disableShallowClone: true,
           note: "This is an updated note"

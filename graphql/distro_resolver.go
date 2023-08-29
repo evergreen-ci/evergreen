@@ -98,6 +98,74 @@ func (r *finderSettingsResolver) Version(ctx context.Context, obj *model.APIFind
 	}
 }
 
+// FeedbackRule is the resolver for the feedbackRule field.
+func (r *hostAllocatorSettingsResolver) FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (FeedbackRule, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve feedback rule")
+	}
+
+	switch utility.FromStringPtr(obj.FeedbackRule) {
+	case evergreen.HostAllocatorWaitsOverThreshFeedback:
+		return FeedbackRuleWaitsOverThresh, nil
+	case evergreen.HostAllocatorNoFeedback:
+		return FeedbackRuleNoFeedback, nil
+	case evergreen.HostAllocatorUseDefaultFeedback:
+		return FeedbackRuleDefault, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("feedback rule '%s' is invalid", utility.FromStringPtr(obj.FeedbackRule)))
+	}
+}
+
+// HostsOverallocatedRule is the resolver for the hostsOverallocatedRule field.
+func (r *hostAllocatorSettingsResolver) HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (OverallocationRule, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve overallocation rule")
+	}
+
+	switch utility.FromStringPtr(obj.HostsOverallocatedRule) {
+	case evergreen.HostsOverallocatedTerminate:
+		return OverallocationRuleTerminate, nil
+	case evergreen.HostsOverallocatedIgnore:
+		return OverallocationRuleIgnore, nil
+	case evergreen.HostsOverallocatedUseDefault:
+		return OverallocationRuleDefault, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("overallocation rule '%s' is invalid", utility.FromStringPtr(obj.HostsOverallocatedRule)))
+	}
+}
+
+// RoundingRule is the resolver for the roundingRule field.
+func (r *hostAllocatorSettingsResolver) RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (RoundingRule, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve rounding rule")
+	}
+
+	switch utility.FromStringPtr(obj.RoundingRule) {
+	case evergreen.HostAllocatorRoundDown:
+		return RoundingRuleDown, nil
+	case evergreen.HostAllocatorRoundUp:
+		return RoundingRuleUp, nil
+	case evergreen.HostAllocatorRoundDefault:
+		return RoundingRuleDefault, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("rounding rule '%s' is invalid", utility.FromStringPtr(obj.RoundingRule)))
+	}
+}
+
+// Version is the resolver for the version field.
+func (r *hostAllocatorSettingsResolver) Version(ctx context.Context, obj *model.APIHostAllocatorSettings) (HostAllocatorVersion, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve host allocator version")
+	}
+
+	switch utility.FromStringPtr(obj.Version) {
+	case evergreen.HostAllocatorUtilization:
+		return HostAllocatorVersionUtilization, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("host allocator version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+	}
+}
+
 // Version is the resolver for the version field.
 func (r *plannerSettingsResolver) Version(ctx context.Context, obj *model.APIPlannerSettings) (PlannerVersion, error) {
 	if obj == nil {
@@ -198,6 +266,62 @@ func (r *hostAllocatorSettingsInputResolver) AcceptableHostIdleTime(ctx context.
 	return nil
 }
 
+// FeedbackRule is the resolver for the feedbackRule field.
+func (r *hostAllocatorSettingsInputResolver) FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data FeedbackRule) error {
+	switch data {
+	case FeedbackRuleWaitsOverThresh:
+		obj.FeedbackRule = utility.ToStringPtr(evergreen.HostAllocatorWaitsOverThreshFeedback)
+	case FeedbackRuleNoFeedback:
+		obj.FeedbackRule = utility.ToStringPtr(evergreen.HostAllocatorNoFeedback)
+	case FeedbackRuleDefault:
+		obj.FeedbackRule = utility.ToStringPtr(evergreen.HostAllocatorUseDefaultFeedback)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("feedback rule '%s' is invalid", data))
+	}
+	return nil
+}
+
+// HostsOverallocatedRule is the resolver for the hostsOverallocatedRule field.
+func (r *hostAllocatorSettingsInputResolver) HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocationRule) error {
+	switch data {
+	case OverallocationRuleTerminate:
+		obj.HostsOverallocatedRule = utility.ToStringPtr(evergreen.HostsOverallocatedTerminate)
+	case OverallocationRuleIgnore:
+		obj.HostsOverallocatedRule = utility.ToStringPtr(evergreen.HostsOverallocatedIgnore)
+	case OverallocationRuleDefault:
+		obj.HostsOverallocatedRule = utility.ToStringPtr(evergreen.HostsOverallocatedUseDefault)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("overallocation rule '%s' is invalid", data))
+	}
+	return nil
+}
+
+// RoundingRule is the resolver for the roundingRule field.
+func (r *hostAllocatorSettingsInputResolver) RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data RoundingRule) error {
+	switch data {
+	case RoundingRuleDown:
+		obj.RoundingRule = utility.ToStringPtr(evergreen.HostAllocatorRoundDown)
+	case RoundingRuleUp:
+		obj.RoundingRule = utility.ToStringPtr(evergreen.HostAllocatorRoundUp)
+	case RoundingRuleDefault:
+		obj.RoundingRule = utility.ToStringPtr(evergreen.HostAllocatorRoundDefault)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("rounding rule '%s' is invalid", data))
+	}
+	return nil
+}
+
+// Version is the resolver for the version field.
+func (r *hostAllocatorSettingsInputResolver) Version(ctx context.Context, obj *model.APIHostAllocatorSettings, data HostAllocatorVersion) error {
+	switch data {
+	case HostAllocatorVersionUtilization:
+		obj.Version = utility.ToStringPtr(evergreen.HostAllocatorUtilization)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("host allocator version '%s' is invalid", data))
+	}
+	return nil
+}
+
 // TargetTime is the resolver for the targetTime field.
 func (r *plannerSettingsInputResolver) TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error {
 	obj.TargetTime = model.NewAPIDuration(time.Duration(data))
@@ -228,6 +352,11 @@ func (r *Resolver) Distro() DistroResolver { return &distroResolver{r} }
 // FinderSettings returns FinderSettingsResolver implementation.
 func (r *Resolver) FinderSettings() FinderSettingsResolver { return &finderSettingsResolver{r} }
 
+// HostAllocatorSettings returns HostAllocatorSettingsResolver implementation.
+func (r *Resolver) HostAllocatorSettings() HostAllocatorSettingsResolver {
+	return &hostAllocatorSettingsResolver{r}
+}
+
 // PlannerSettings returns PlannerSettingsResolver implementation.
 func (r *Resolver) PlannerSettings() PlannerSettingsResolver { return &plannerSettingsResolver{r} }
 
@@ -257,6 +386,7 @@ func (r *Resolver) PlannerSettingsInput() PlannerSettingsInputResolver {
 type dispatcherSettingsResolver struct{ *Resolver }
 type distroResolver struct{ *Resolver }
 type finderSettingsResolver struct{ *Resolver }
+type hostAllocatorSettingsResolver struct{ *Resolver }
 type plannerSettingsResolver struct{ *Resolver }
 type dispatcherSettingsInputResolver struct{ *Resolver }
 type distroInputResolver struct{ *Resolver }

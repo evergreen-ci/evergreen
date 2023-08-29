@@ -42,6 +42,28 @@ enum DispatcherVersion {
   REVISED_WITH_DEPENDENCIES
 }
 
+enum HostAllocatorVersion {
+  UTILIZATION
+}
+
+enum RoundingRule {
+  DOWN
+  UP
+  DEFAULT
+}
+
+enum FeedbackRule {
+  WAITS_OVER_THRESH
+  NO_FEEDBACK
+  DEFAULT
+}
+
+enum OverallocationRule {
+  TERMINATE
+  IGNORE
+  DEFAULT
+}
+
 
 ###### INPUTS ######
 """
@@ -154,13 +176,13 @@ input HomeVolumeSettingsInput {
 
 input HostAllocatorSettingsInput {
   acceptableHostIdleTime: Int!
-  feedbackRule: String!
+  feedbackRule: FeedbackRule!
   futureHostFraction: Float!
-  hostsOverallocatedRule: String!
+  hostsOverallocatedRule: OverallocationRule!
   maximumHosts: Int!
   minimumHosts: Int!
-  roundingRule: String!
-  version: String!
+  roundingRule: RoundingRule!
+  version: HostAllocatorVersion!
 }
 
 input IceCreamSettingsInput {
@@ -303,13 +325,13 @@ type HomeVolumeSettings {
 
 type HostAllocatorSettings {
   acceptableHostIdleTime: Duration!
-  feedbackRule: String!
+  feedbackRule: FeedbackRule!
   futureHostFraction: Float!
-  hostsOverallocatedRule: String!
+  hostsOverallocatedRule: OverallocationRule!
   maximumHosts: Int!
   minimumHosts: Int!
-  roundingRule: String!
-  version: String!
+  roundingRule: RoundingRule!
+  version: HostAllocatorVersion!
 }
 
 type IceCreamSettings {

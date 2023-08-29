@@ -649,6 +649,49 @@ func (e DistroSettingsAccess) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type FeedbackRule string
+
+const (
+	FeedbackRuleWaitsOverThresh FeedbackRule = "WAITS_OVER_THRESH"
+	FeedbackRuleNoFeedback      FeedbackRule = "NO_FEEDBACK"
+	FeedbackRuleDefault         FeedbackRule = "DEFAULT"
+)
+
+var AllFeedbackRule = []FeedbackRule{
+	FeedbackRuleWaitsOverThresh,
+	FeedbackRuleNoFeedback,
+	FeedbackRuleDefault,
+}
+
+func (e FeedbackRule) IsValid() bool {
+	switch e {
+	case FeedbackRuleWaitsOverThresh, FeedbackRuleNoFeedback, FeedbackRuleDefault:
+		return true
+	}
+	return false
+}
+
+func (e FeedbackRule) String() string {
+	return string(e)
+}
+
+func (e *FeedbackRule) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = FeedbackRule(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid FeedbackRule", str)
+	}
+	return nil
+}
+
+func (e FeedbackRule) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type FinderVersion string
 
 const (
@@ -691,6 +734,45 @@ func (e *FinderVersion) UnmarshalGQL(v interface{}) error {
 }
 
 func (e FinderVersion) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type HostAllocatorVersion string
+
+const (
+	HostAllocatorVersionUtilization HostAllocatorVersion = "UTILIZATION"
+)
+
+var AllHostAllocatorVersion = []HostAllocatorVersion{
+	HostAllocatorVersionUtilization,
+}
+
+func (e HostAllocatorVersion) IsValid() bool {
+	switch e {
+	case HostAllocatorVersionUtilization:
+		return true
+	}
+	return false
+}
+
+func (e HostAllocatorVersion) String() string {
+	return string(e)
+}
+
+func (e *HostAllocatorVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HostAllocatorVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HostAllocatorVersion", str)
+	}
+	return nil
+}
+
+func (e HostAllocatorVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -789,6 +871,49 @@ func (e *MetStatus) UnmarshalGQL(v interface{}) error {
 }
 
 func (e MetStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type OverallocationRule string
+
+const (
+	OverallocationRuleTerminate OverallocationRule = "TERMINATE"
+	OverallocationRuleIgnore    OverallocationRule = "IGNORE"
+	OverallocationRuleDefault   OverallocationRule = "DEFAULT"
+)
+
+var AllOverallocationRule = []OverallocationRule{
+	OverallocationRuleTerminate,
+	OverallocationRuleIgnore,
+	OverallocationRuleDefault,
+}
+
+func (e OverallocationRule) IsValid() bool {
+	switch e {
+	case OverallocationRuleTerminate, OverallocationRuleIgnore, OverallocationRuleDefault:
+		return true
+	}
+	return false
+}
+
+func (e OverallocationRule) String() string {
+	return string(e)
+}
+
+func (e *OverallocationRule) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = OverallocationRule(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid OverallocationRule", str)
+	}
+	return nil
+}
+
+func (e OverallocationRule) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -1020,6 +1145,49 @@ func (e *RequiredStatus) UnmarshalGQL(v interface{}) error {
 }
 
 func (e RequiredStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type RoundingRule string
+
+const (
+	RoundingRuleDown    RoundingRule = "DOWN"
+	RoundingRuleUp      RoundingRule = "UP"
+	RoundingRuleDefault RoundingRule = "DEFAULT"
+)
+
+var AllRoundingRule = []RoundingRule{
+	RoundingRuleDown,
+	RoundingRuleUp,
+	RoundingRuleDefault,
+}
+
+func (e RoundingRule) IsValid() bool {
+	switch e {
+	case RoundingRuleDown, RoundingRuleUp, RoundingRuleDefault:
+		return true
+	}
+	return false
+}
+
+func (e RoundingRule) String() string {
+	return string(e)
+}
+
+func (e *RoundingRule) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RoundingRule(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RoundingRule", str)
+	}
+	return nil
+}
+
+func (e RoundingRule) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
