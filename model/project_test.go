@@ -2201,7 +2201,6 @@ func TestVariantTasksForSelectors(t *testing.T) {
 	}
 }
 
-// kim: TODO: test other SkipOn's as well for AllowedRequesters.
 func TestSkipOnRequester(t *testing.T) {
 	t.Run("PatchRequester", func(t *testing.T) {
 		requester := evergreen.PatchVersionRequester

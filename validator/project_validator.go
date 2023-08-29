@@ -1379,7 +1379,7 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 				if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
 					errs = append(errs, ValidationError{
 						Level: Error,
-						Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid requester '%s'",
+						Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid allowed requester '%s'",
 							bvtu.Name, bvtu.Variant, requester),
 					})
 				}

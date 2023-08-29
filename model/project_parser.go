@@ -147,27 +147,21 @@ func (ptg *parserTaskGroup) tags() []string { return ptg.Tags }
 
 // parserTask represents an intermediary state of task definitions.
 type parserTask struct {
-	Name            string              `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority        int64               `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	DependsOn       parserDependencies  `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands,omitempty"`
-	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	RunOn           parserStringSlice   `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable         *bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag  *bool               `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	// kim: TODO: add documentation
-	// kim: TODO: mention that specifying empty list of AllowedRequesters is
-	// not valid (i.e. it's the same as allowing all requesters). You should use
-	// disable if you want to prevent the task from running entirely.
-	// kim: TODO: mention that AllowedRequesters is higher precedence than any
-	// requester booleans.
-	AllowedRequesters []string `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
-	Stepback          *bool    `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MustHaveResults   *bool    `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Name              string                    `yaml:"name,omitempty" bson:"name,omitempty"`
+	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Commands          []PluginCommandConf       `yaml:"commands,omitempty" bson:"commands,omitempty"`
+	Tags              parserStringSlice         `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	RunOn             parserStringSlice         `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
 func (pp *ParserProject) Insert() error {
@@ -343,12 +337,12 @@ type parserBV struct {
 	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	// If Activate is set to false, then we don't initially activate the build variant.
-	Activate          *bool    `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	Patchable         *bool    `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly         *bool    `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	AllowForGitTag    *bool    `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly        *bool    `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	AllowedRequesters []string `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Activate          *bool                     `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -425,20 +419,20 @@ func (pbv *parserBV) canMerge() bool {
 
 // parserBVTaskUnit is a helper type storing intermediary variant task configurations.
 type parserBVTaskUnit struct {
-	Name              string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Patchable         *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly         *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable           *bool              `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag    *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly        *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	AllowedRequesters []string           `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
-	Priority          int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	DependsOn         parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	ExecTimeoutSecs   int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback          *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	Distros           parserStringSlice  `yaml:"distros,omitempty" bson:"distros,omitempty"`
-	RunOn             parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
-	CommitQueueMerge  bool               `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge,omitempty"`
+	Name              string                    `yaml:"name,omitempty" bson:"name,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Distros           parserStringSlice         `yaml:"distros,omitempty" bson:"distros,omitempty"`
+	RunOn             parserStringSlice         `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	CommitQueueMerge  bool                      `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge,omitempty"`
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
@@ -1021,24 +1015,25 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 	var evalErrs, errs []error
 	for _, pt := range pts {
 		t := ProjectTask{
-			Name:              pt.Name,
-			Priority:          pt.Priority,
-			ExecTimeoutSecs:   pt.ExecTimeoutSecs,
-			Commands:          pt.Commands,
-			Tags:              pt.Tags,
-			RunOn:             pt.RunOn,
-			Patchable:         pt.Patchable,
-			PatchOnly:         pt.PatchOnly,
-			Disable:           pt.Disable,
-			AllowForGitTag:    pt.AllowForGitTag,
-			GitTagOnly:        pt.GitTagOnly,
-			AllowedRequesters: pt.AllowedRequesters,
-			Stepback:          pt.Stepback,
-			MustHaveResults:   pt.MustHaveResults,
+			Name:            pt.Name,
+			Priority:        pt.Priority,
+			ExecTimeoutSecs: pt.ExecTimeoutSecs,
+			Commands:        pt.Commands,
+			Tags:            pt.Tags,
+			RunOn:           pt.RunOn,
+			Patchable:       pt.Patchable,
+			PatchOnly:       pt.PatchOnly,
+			Disable:         pt.Disable,
+			AllowForGitTag:  pt.AllowForGitTag,
+			GitTagOnly:      pt.GitTagOnly,
+			Stepback:        pt.Stepback,
+			MustHaveResults: pt.MustHaveResults,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
 		}
+		t.AllowedRequesters, errs = evaluateRequesters(pt.AllowedRequesters)
+		evalErrs = append(evalErrs, errs...)
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
@@ -1088,23 +1083,24 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
-			DisplayName:       pbv.DisplayName,
-			Name:              pbv.Name,
-			Expansions:        pbv.Expansions,
-			Modules:           pbv.Modules,
-			Disable:           pbv.Disable,
-			BatchTime:         pbv.BatchTime,
-			CronBatchTime:     pbv.CronBatchTime,
-			Activate:          pbv.Activate,
-			Patchable:         pbv.Patchable,
-			PatchOnly:         pbv.PatchOnly,
-			AllowForGitTag:    pbv.AllowForGitTag,
-			GitTagOnly:        pbv.GitTagOnly,
-			AllowedRequesters: pbv.AllowedRequesters,
-			Stepback:          pbv.Stepback,
-			RunOn:             pbv.RunOn,
-			Tags:              pbv.Tags,
+			DisplayName:    pbv.DisplayName,
+			Name:           pbv.Name,
+			Expansions:     pbv.Expansions,
+			Modules:        pbv.Modules,
+			Disable:        pbv.Disable,
+			BatchTime:      pbv.BatchTime,
+			CronBatchTime:  pbv.CronBatchTime,
+			Activate:       pbv.Activate,
+			Patchable:      pbv.Patchable,
+			PatchOnly:      pbv.PatchOnly,
+			AllowForGitTag: pbv.AllowForGitTag,
+			GitTagOnly:     pbv.GitTagOnly,
+			Stepback:       pbv.Stepback,
+			RunOn:          pbv.RunOn,
+			Tags:           pbv.Tags,
 		}
+		bv.AllowedRequesters, errs = evaluateRequesters(pbv.AllowedRequesters)
+		evalErrs = append(evalErrs, errs...)
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 
 		// evaluate any rules passed in during matrix construction
@@ -1263,7 +1259,9 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			parserTask := tasksByName[name]
 			// create a new task by copying the task that selected it,
 			// so we can preserve the "Variant" and "Status" field.
-			t := getParserBuildVariantTaskUnit(name, parserTask, pbvt, pbv)
+			var t BuildVariantTaskUnit
+			t, errs = getParserBuildVariantTaskUnit(name, parserTask, pbvt, pbv)
+			evalErrs = append(evalErrs, errs...)
 
 			// Task-level dependencies defined in the variant override variant-level dependencies which override
 			// task-level dependencies defined in the task.
@@ -1306,25 +1304,28 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 // * Task settings within a task group's list of tasks
 // * Project task's settings
 // * Build variant's settings
-func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) BuildVariantTaskUnit {
+func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) (BuildVariantTaskUnit, []error) {
 	res := BuildVariantTaskUnit{
-		Name:              name,
-		Variant:           bv.Name,
-		Patchable:         bvt.Patchable,
-		PatchOnly:         bvt.PatchOnly,
-		Disable:           bvt.Disable,
-		AllowForGitTag:    bvt.AllowForGitTag,
-		GitTagOnly:        bvt.GitTagOnly,
-		AllowedRequesters: bvt.AllowedRequesters,
-		Priority:          bvt.Priority,
-		ExecTimeoutSecs:   bvt.ExecTimeoutSecs,
-		Stepback:          bvt.Stepback,
-		RunOn:             bvt.RunOn,
-		CommitQueueMerge:  bvt.CommitQueueMerge,
-		CronBatchTime:     bvt.CronBatchTime,
-		BatchTime:         bvt.BatchTime,
-		Activate:          bvt.Activate,
+		Name:             name,
+		Variant:          bv.Name,
+		Patchable:        bvt.Patchable,
+		PatchOnly:        bvt.PatchOnly,
+		Disable:          bvt.Disable,
+		AllowForGitTag:   bvt.AllowForGitTag,
+		GitTagOnly:       bvt.GitTagOnly,
+		Priority:         bvt.Priority,
+		ExecTimeoutSecs:  bvt.ExecTimeoutSecs,
+		Stepback:         bvt.Stepback,
+		RunOn:            bvt.RunOn,
+		CommitQueueMerge: bvt.CommitQueueMerge,
+		CronBatchTime:    bvt.CronBatchTime,
+		BatchTime:        bvt.BatchTime,
+		Activate:         bvt.Activate,
 	}
+	var errs []error
+	catcher := grip.NewBasicCatcher()
+	res.AllowedRequesters, errs = evaluateRequesters(bvt.AllowedRequesters)
+	catcher.Extend(errs)
 	if bvt.TaskGroup != nil {
 		res.TaskGroup = &TaskGroup{
 			Name:                     bvt.Name,
@@ -1365,7 +1366,8 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		res.GitTagOnly = pt.GitTagOnly
 	}
 	if len(res.AllowedRequesters) == 0 {
-		res.AllowedRequesters = pt.AllowedRequesters
+		res.AllowedRequesters, errs = evaluateRequesters(pt.AllowedRequesters)
+		catcher.Extend(errs)
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
@@ -1396,14 +1398,15 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		res.GitTagOnly = bv.GitTagOnly
 	}
 	if len(res.AllowedRequesters) == 0 {
-		res.AllowedRequesters = bv.AllowedRequesters
+		res.AllowedRequesters, errs = evaluateRequesters(bv.AllowedRequesters)
+		catcher.Extend(errs)
 	}
 
 	if res.Disable == nil {
 		res.Disable = bv.Disable
 	}
 
-	return res
+	return res, catcher.Errors()
 }
 
 // evaluateDependsOn expands any selectors in a dependency definition.
@@ -1478,4 +1481,16 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 		}
 	}
 	return newDeps, evalErrs
+}
+
+// evaluateRequesters translates user requesters into internal requesters.
+func evaluateRequesters(userRequesters []evergreen.UserRequester) ([]string, []error) {
+	requesters := make([]string, 0, len(userRequesters))
+	catcher := grip.NewBasicCatcher()
+	for _, userRequester := range userRequesters {
+		requester := evergreen.UserRequesterToInternalRequester(userRequester)
+		catcher.ErrorfWhen(requester == "", "invalid requester '%s'", userRequester)
+		requesters = append(requesters, requester)
+	}
+	return requesters, catcher.Errors()
 }

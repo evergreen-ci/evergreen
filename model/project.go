@@ -390,10 +390,10 @@ type BuildVariant struct {
 	// versions when set to true. By default, the build variant runs in non-git
 	// tag versions.
 	GitTagOnly *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	// AllowedRequesters lists all requester types which can run a task. If set,
-	// the allowed requesters take precedence over other requester-related
-	// filters such as Patchable, PatchOnly, AllowForGitTag, and GitTagOnly. By
-	// default, all requesters are allowed to run the task.
+	// AllowedRequesters lists all internal requester types which can run a
+	// task. If set, the allowed requesters take precedence over other
+	// requester-related filters such as Patchable, PatchOnly, AllowForGitTag,
+	// and GitTagOnly. By default, all requesters are allowed to run the task.
 	AllowedRequesters []string `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
@@ -1171,28 +1171,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string)
 	expansions.Put("author_email", v.AuthorEmail)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
-	requesterExpansion := ""
-	switch v.Requester {
-	case evergreen.PatchVersionRequester:
-		requesterExpansion = "patch"
-	case evergreen.GithubPRRequester:
-		requesterExpansion = "github_pr"
-	case evergreen.GitTagRequester:
-		requesterExpansion = "github_tag"
-	case evergreen.RepotrackerVersionRequester:
-		requesterExpansion = "commit"
-	case evergreen.TriggerRequester:
-		requesterExpansion = "trigger"
-	case evergreen.MergeTestRequester:
-		requesterExpansion = "commit_queue"
-	case evergreen.AdHocRequester:
-		requesterExpansion = "ad_hoc"
-	case evergreen.GithubMergeRequester:
-		requesterExpansion = "github_merge_queue"
-	default:
-		requesterExpansion = "unknown_requester"
-	}
-	expansions.Put("requester", requesterExpansion)
+	requesterExpansion := evergreen.InternalRequesterToUserRequester(v.Requester)
+	expansions.Put("requester", string(requesterExpansion))
 
 	if evergreen.IsGitTagRequester(v.Requester) {
 		expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)

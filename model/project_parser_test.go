@@ -370,8 +370,13 @@ func TestTranslateTasks(t *testing.T) {
 				},
 			},
 			{
-				Name:              "patch_requesters_allowed",
-				AllowedRequesters: evergreen.PatchRequesters,
+				Name: "patch_requesters_allowed",
+				AllowedRequesters: []evergreen.UserRequester{
+					evergreen.PatchVersionUserRequester,
+					evergreen.GithubPRUserRequester,
+					evergreen.MergeTestUserRequester,
+					evergreen.GithubMergeUserRequester,
+				},
 				Tasks: parserBVTaskUnits{
 					{
 						Name: "a_task_with_no_special_configuration",
@@ -381,7 +386,7 @@ func TestTranslateTasks(t *testing.T) {
 					},
 					{
 						Name:              "a_task_with_build_variant_task_configuration",
-						AllowedRequesters: []string{evergreen.RepotrackerVersionRequester, evergreen.GitTagRequester},
+						AllowedRequesters: []evergreen.UserRequester{evergreen.RepotrackerVersionUserRequester, evergreen.GitTagUserRequester},
 					},
 				},
 			},
@@ -405,7 +410,7 @@ func TestTranslateTasks(t *testing.T) {
 			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "a_task_with_no_special_configuration"},
 			{Name: "a_task_with_build_variant_task_configuration"},
-			{Name: "a_task_with_allowed_requesters", AllowedRequesters: []string{evergreen.AdHocRequester}},
+			{Name: "a_task_with_allowed_requesters", AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}},
 		},
 		TaskGroups: []parserTaskGroup{{
 			Name:  "my_tg",

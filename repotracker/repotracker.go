@@ -602,9 +602,6 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	// kim: NOTE: this creates a version for a mainline commit. Therefore,
-	// checking repotracker version requester is a valid way to only run some
-	// tasks in a mainline commit version.
 	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
