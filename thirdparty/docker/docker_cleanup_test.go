@@ -28,11 +28,12 @@ func TestCleanup(t *testing.T) {
 		return
 	}
 
+	const imageName = "public.ecr.aws/docker/library/hello-world:latest"
 	for name, test := range map[string]func(*testing.T){
 		"cleanContainers": func(*testing.T) {
 			var resp container.ContainerCreateCreatedBody
 			resp, err = dockerClient.ContainerCreate(ctx, &container.Config{
-				Image: "hello-world",
+				Image: imageName,
 			}, nil, nil, nil, "")
 			require.NoError(t, err)
 			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
@@ -70,7 +71,7 @@ func TestCleanup(t *testing.T) {
 		},
 		"Cleanup": func(*testing.T) {
 			resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
-				Image: "hello-world",
+				Image: imageName,
 			}, nil, nil, nil, "")
 			require.NoError(t, err)
 			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
@@ -97,7 +98,7 @@ func TestCleanup(t *testing.T) {
 			assert.Len(t, volumes.Volumes, 0)
 		},
 	} {
-		out, err := dockerClient.ImagePull(ctx, "hello-world", types.ImagePullOptions{})
+		out, err := dockerClient.ImagePull(ctx, imageName, types.ImagePullOptions{})
 		require.NoError(t, err)
 		_, err = io.Copy(io.Discard, out)
 		require.NoError(t, err)
