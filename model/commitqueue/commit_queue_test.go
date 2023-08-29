@@ -14,6 +14,9 @@ import (
 
 type CommitQueueSuite struct {
 	suite.Suite
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+
 	q *CommitQueue
 }
 
@@ -29,10 +32,11 @@ var sampleCommitQueueItem = CommitQueueItem{
 
 func TestCommitQueueSuite(t *testing.T) {
 	s := new(CommitQueueSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
 	originalEnv := evergreen.GetEnvironment()
-	env := testutil.NewEnvironment(ctx, t)
+	env := testutil.NewEnvironment(s.suiteCtx, t)
 	evergreen.SetEnvironment(env)
 	defer func() {
 		evergreen.SetEnvironment(originalEnv)
@@ -40,7 +44,12 @@ func TestCommitQueueSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
+func (s *CommitQueueSuite) TearDownSuite() {
+	s.cancel()
+}
+
 func (s *CommitQueueSuite) SetupTest() {
+	testutil.TestSpan(s.suiteCtx, s.T())
 	s.NoError(db.ClearCollections(Collection))
 
 	s.q = &CommitQueue{

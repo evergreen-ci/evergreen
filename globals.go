@@ -128,8 +128,13 @@ const (
 	// underlying runtime environment (i.e. container or host) encountered an
 	// issue. For example, if a host is terminated while the task is still
 	// running, the task is considered stranded.
-	TaskDescriptionStranded  = "stranded"
+	TaskDescriptionStranded = "stranded"
+	// TaskDescriptionNoResults indicates that a task failed because it did not
+	// post any test results.
 	TaskDescriptionNoResults = "expected test results, but none attached"
+	// TaskDescriptionResultsFailed indicates that a task failed because the
+	// test results contained a failure.
+	TaskDescriptionResultsFailed = "test results contained failing test"
 	// TaskDescriptionContainerUnallocatable indicates that the reason a
 	// container task failed is because it cannot be allocated a container.
 	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"
@@ -320,14 +325,19 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
+	// HeartbeatTimeoutThreshold is the timeout for how long a task can run without sending
+	// a heartbeat
+	HeartbeatTimeoutThreshold = 7 * time.Minute
+
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
 
 	// Valid types of performing git clone
-	CloneMethodLegacySSH = "legacy-ssh"
-	CloneMethodOAuth     = "oauth"
+	CloneMethodLegacySSH   = "legacy-ssh"
+	CloneMethodOAuth       = "oauth"
+	CloneMethodAccessToken = "access-token"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -468,6 +478,8 @@ type ModificationAction string
 const (
 	PackageName = "github.com/evergreen-ci/evergreen"
 
+	OtelAttributeMaxLength = 10000
+
 	TaskIDOtelAttribute            = "evergreen.task.id"
 	TaskNameOtelAttribute          = "evergreen.task.name"
 	TaskExecutionOtelAttribute     = "evergreen.task.execution"
@@ -479,6 +491,7 @@ const (
 	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	HostIDOtelAttribute            = "evergreen.host.id"
 	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
@@ -885,6 +898,7 @@ var (
 	ValidCloneMethods = []string{
 		CloneMethodLegacySSH,
 		CloneMethodOAuth,
+		CloneMethodAccessToken,
 	}
 )
 

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
@@ -19,8 +20,9 @@ import (
 type eventNotificationSuite struct {
 	suite.Suite
 
-	ctx    context.Context
-	cancel func()
+	suiteCtx context.Context
+	ctx      context.Context
+	cancel   context.CancelFunc
 
 	env *mock.Environment
 
@@ -37,10 +39,16 @@ func TestEventNotificationJob(t *testing.T) {
 }
 
 func (s *eventNotificationSuite) SetupSuite() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, s.T())
+}
+
+func (s *eventNotificationSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *eventNotificationSuite) SetupTest() {
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.env = &mock.Environment{}
 	s.NoError(s.env.Configure(s.ctx))
 
@@ -154,9 +162,6 @@ func (s *eventNotificationSuite) notificationHasError(id string, pattern string)
 }
 
 func (s *eventNotificationSuite) TestDegradedMode() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	flags := evergreen.ServiceFlags{
 		JIRANotificationsDisabled:    true,
 		SlackNotificationsDisabled:   true,
@@ -166,7 +171,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 		CommitQueueDisabled:          true,
 		BackgroundStatsDisabled:      true,
 	}
-	s.NoError(flags.Set(ctx))
+	s.NoError(flags.Set(s.ctx))
 
 	for i := range s.notifications {
 		job := NewEventSendJob(s.notifications[i].ID, "").(*eventSendJob)

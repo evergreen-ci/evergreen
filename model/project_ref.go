@@ -255,8 +255,9 @@ type TriggerDefinition struct {
 	DateCutoff        *int   `bson:"date_cutoff,omitempty" json:"date_cutoff,omitempty"`
 
 	// definitions for tasks to run for this trigger
-	ConfigFile string `bson:"config_file,omitempty" json:"config_file,omitempty"`
-	Alias      string `bson:"alias,omitempty" json:"alias,omitempty"`
+	ConfigFile                   string `bson:"config_file,omitempty" json:"config_file,omitempty"`
+	Alias                        string `bson:"alias,omitempty" json:"alias,omitempty"`
+	UnscheduleDownstreamVersions bool   `bson:"unschedule_downstream_versions,omitempty" json:"unschedule_downstream_versions,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {

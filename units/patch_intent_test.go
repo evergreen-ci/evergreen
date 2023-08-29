@@ -31,10 +31,11 @@ import (
 )
 
 type PatchIntentUnitsSuite struct {
-	sender *send.InternalSender
-	env    *mock.Environment
-	ctx    context.Context
-	cancel context.CancelFunc
+	sender   *send.InternalSender
+	env      *mock.Environment
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
 
 	repo            string
 	headRepo        string
@@ -53,14 +54,21 @@ type PatchIntentUnitsSuite struct {
 }
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
-	suite.Run(t, new(PatchIntentUnitsSuite))
+	s := new(PatchIntentUnitsSuite)
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+	suite.Run(t, s)
+}
+
+func (s *PatchIntentUnitsSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.sender = send.MakeInternalLogger()
 	s.env = &mock.Environment{}
 
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.Require().NoError(s.env.Configure(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
@@ -200,9 +208,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NotNil(factory)
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, patchIntentJobName)
-}
-func (s *PatchIntentUnitsSuite) TearDownTest() {
-	s.cancel()
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
@@ -929,14 +934,12 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.NoError(evergreen.UpdateConfig(ctx, testutil.TestConfig()))
+	s.NoError(evergreen.UpdateConfig(s.ctx, testutil.TestConfig()))
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"
 	headSHA := "d2a90288ad96adca4a7d0122d8d4fd1deb24db11"
+	baseSHA := "7a45fe6ea28f5969d885bc913e551b8b3c4f09d1"
 	org := github.Organization{
 		Login: &orgName,
 	}
@@ -946,6 +949,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	mg := github.MergeGroup{
 		HeadSHA: &headSHA,
 		HeadRef: &headRef,
+		BaseSHA: &baseSHA,
 	}
 	mge := github.MergeGroupEvent{
 		MergeGroup: &mg,
@@ -974,19 +978,19 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 
 	variants := []string{"ubuntu2004"}
 	tasks := []string{"bynntask"}
-	s.verifyPatchDoc(dbPatch, j.PatchID, headSHA, false, variants, tasks)
+	s.verifyPatchDoc(dbPatch, j.PatchID, baseSHA, false, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
 
 	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
 	s.verifyParserProjectDoc(dbPatch, 4)
 
-	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, headSHA, 1)
+	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, baseSHA, 1)
 
 	out := []event.Subscription{}
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Len(out, 2)
 	for _, subscription := range out {
-		s.Equal("github_check", subscription.Subscriber.Type)
+		s.Equal("github_merge", subscription.Subscriber.Type)
 	}
 }
 

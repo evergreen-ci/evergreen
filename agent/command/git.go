@@ -104,8 +104,8 @@ func (opts cloneOpts) validate() error {
 	if opts.method != "" {
 		catcher.Wrapf(evergreen.ValidateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
 	}
-	if opts.method == evergreen.CloneMethodOAuth && opts.token == "" {
-		catcher.New("cannot clone using OAuth if token is not set")
+	if (opts.method == evergreen.CloneMethodOAuth || opts.method == evergreen.CloneMethodAccessToken) && opts.token == "" {
+		catcher.New("cannot clone using OAuth or access token if token is not set")
 	}
 	if opts.cloneDepth < 0 {
 		catcher.New("clone depth cannot be negative")
@@ -114,7 +114,7 @@ func (opts cloneOpts) validate() error {
 }
 
 func (opts cloneOpts) sshLocation() string {
-	return thirdparty.FormGitUrl("github.com", opts.owner, opts.repo, "")
+	return thirdparty.FormGitURL("github.com", opts.owner, opts.repo, "")
 }
 
 func (opts cloneOpts) httpLocation() string {
@@ -126,7 +126,7 @@ func (opts *cloneOpts) setLocation() error {
 	switch opts.method {
 	case "", evergreen.CloneMethodLegacySSH:
 		opts.location = opts.sshLocation()
-	case evergreen.CloneMethodOAuth:
+	case evergreen.CloneMethodOAuth, evergreen.CloneMethodAccessToken:
 		opts.location = opts.httpLocation()
 	default:
 		return errors.Errorf("unrecognized clone method '%s'", opts.method)
@@ -135,7 +135,7 @@ func (opts *cloneOpts) setLocation() error {
 }
 
 // getProjectMethodAndToken returns the project's clone method and token. If
-// set, the project token takes precedence over global settings.
+// set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
 func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMethod string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
@@ -143,8 +143,12 @@ func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMe
 	}
 	if appToken != "" {
 		token, err := parseToken(appToken)
-		return evergreen.CloneMethodOAuth, token, err
+		return evergreen.CloneMethodAccessToken, token, err
 	}
+	grip.Debug(message.Fields{
+		"message": "using legacy ssh clone method and global token",
+		"ticket":  "EVG-19966",
+	})
 	token, err := parseToken(globalToken)
 	if err != nil {
 		return evergreen.CloneMethodLegacySSH, "", err
@@ -160,6 +164,8 @@ func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMe
 		}
 		token, err := parseToken(globalToken)
 		return evergreen.CloneMethodOAuth, token, err
+	case evergreen.CloneMethodAccessToken:
+		return evergreen.CloneMethodLegacySSH, "", errors.New("cannot specify clone method access token")
 	}
 
 	return "", "", errors.Errorf("unrecognized clone method '%s'", globalCloneMethod)
@@ -186,22 +192,30 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	case "", evergreen.CloneMethodLegacySSH:
 		return opts.buildSSHCloneCommand()
 	case evergreen.CloneMethodOAuth:
-		return opts.buildHTTPCloneCommand()
+		return opts.buildHTTPCloneCommand(false)
+	case evergreen.CloneMethodAccessToken:
+		return opts.buildHTTPCloneCommand(true)
 	}
 	return nil, errors.New("unrecognized clone method in options")
 }
 
-func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
+func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	urlLocation, err := url.Parse(opts.location)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
 	}
-	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
+	var gitURL string
+	if forApp {
+		gitURL = thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
+	} else {
+		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
+	}
+	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
 	if opts.useVerbose {
-		clone = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", clone)
+		clone = fmt.Sprintf("GIT_TRACE=1 %s", clone)
 	}
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)

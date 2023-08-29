@@ -2260,7 +2260,10 @@ func TestMergeUnique(t *testing.T) {
 	}
 
 	add := &ParserProject{
+		PreTimeoutSecs:    utility.ToIntPtr(1),
+		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
+		UnsetFunctionVars: utility.ToBoolPtr(true),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
 		ExecTimeoutSecs:   utility.ToIntPtr(1),
@@ -2272,7 +2275,10 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.BatchTime)
 	assert.NotNil(t, main.OomTracker)
 	assert.NotNil(t, main.DisplayName)
+	assert.NotNil(t, main.PreTimeoutSecs)
+	assert.NotNil(t, main.PostTimeoutSecs)
 	assert.NotNil(t, main.PreErrorFailsTask)
+	assert.NotNil(t, main.UnsetFunctionVars)
 	assert.NotNil(t, main.CommandType)
 	assert.NotNil(t, main.CallbackTimeout)
 	assert.NotNil(t, main.ExecTimeoutSecs)
@@ -2283,7 +2289,10 @@ func TestMergeUniqueFail(t *testing.T) {
 		Stepback:          utility.ToBoolPtr(true),
 		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
+		PreTimeoutSecs:    utility.ToIntPtr(1),
+		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
+		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
@@ -2294,7 +2303,10 @@ func TestMergeUniqueFail(t *testing.T) {
 		Stepback:          utility.ToBoolPtr(true),
 		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
+		PreTimeoutSecs:    utility.ToIntPtr(1),
+		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
+		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
@@ -2305,6 +2317,8 @@ func TestMergeUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "stepback can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "batch time can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "pre timeout secs can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "post timeout secs can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "pre error fails task can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "display name can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "command type can only be defined in one YAML")

@@ -4,9 +4,10 @@ import (
 	"context"
 	"math"
 
-	"github.com/aws/aws-sdk-go/aws"
-	awsECS "github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ecsTypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
+	resourcegroupstaggingapiTypes "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/ecs"
@@ -22,32 +23,32 @@ import (
 )
 
 // MakeECSClient creates a cocoa.ECSClient to interact with ECS.
-func MakeECSClient(settings *evergreen.Settings) (cocoa.ECSClient, error) {
+func MakeECSClient(ctx context.Context, settings *evergreen.Settings) (cocoa.ECSClient, error) {
 	switch settings.Providers.AWS.Pod.SecretsManager.ClientType {
 	case evergreen.AWSClientTypeMock:
 		// This should only ever be used for testing purposes.
 		return &cocoaMock.ECSClient{}, nil
 	default:
-		return ecs.NewBasicClient(podAWSOptions(settings))
+		return ecs.NewBasicClient(ctx, podAWSOptions(settings))
 	}
 }
 
 // MakeSecretsManagerClient creates a cocoa.SecretsManagerClient to interact
 // with Secrets Manager.
-func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManagerClient, error) {
+func MakeSecretsManagerClient(ctx context.Context, settings *evergreen.Settings) (cocoa.SecretsManagerClient, error) {
 	switch settings.Providers.AWS.Pod.SecretsManager.ClientType {
 	case evergreen.AWSClientTypeMock:
 		// This should only ever be used for testing purposes.
 		return &cocoaMock.SecretsManagerClient{}, nil
 	default:
-		return secret.NewBasicSecretsManagerClient(podAWSOptions(settings))
+		return secret.NewBasicSecretsManagerClient(ctx, podAWSOptions(settings))
 	}
 }
 
 // MakeTagClient creates a cocoa.TagClient to interact with the Resource Groups
 // Tagging API.
-func MakeTagClient(settings *evergreen.Settings) (cocoa.TagClient, error) {
-	return tag.NewBasicTagClient(podAWSOptions(settings))
+func MakeTagClient(ctx context.Context, settings *evergreen.Settings) (cocoa.TagClient, error) {
+	return tag.NewBasicTagClient(ctx, podAWSOptions(settings))
 }
 
 const (
@@ -276,7 +277,7 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().SetID(opts.RepoCredsExternalID))
 	}
 	if ecsConf.LogRegion != "" && ecsConf.LogGroup != "" && ecsConf.LogStreamPrefix != "" {
-		def.SetLogConfiguration(*cocoa.NewLogConfiguration().SetLogDriver(awsECS.LogDriverAwslogs).SetOptions(map[string]string{
+		def.SetLogConfiguration(*cocoa.NewLogConfiguration().SetLogDriver(string(ecsTypes.LogDriverAwslogs)).SetOptions(map[string]string{
 			awsLogsGroup:        ecsConf.LogGroup,
 			awsLogsRegion:       ecsConf.LogRegion,
 			awsLogsStreamPrefix: ecsConf.LogStreamPrefix,
@@ -412,14 +413,13 @@ func GetFilteredResourceIDs(ctx context.Context, c cocoa.TagClient, resources []
 		limit = math.MaxInt64
 	}
 
-	var tagFilters []*resourcegroupstaggingapi.TagFilter
+	var tagFilters []resourcegroupstaggingapiTypes.TagFilter
 	for key, vals := range tags {
-		tagFilters = append(tagFilters, &resourcegroupstaggingapi.TagFilter{
+		tagFilters = append(tagFilters, resourcegroupstaggingapiTypes.TagFilter{
 			Key:    aws.String(key),
-			Values: utility.ToStringPtrSlice(vals),
+			Values: vals,
 		})
 	}
-	resourceFilters := utility.ToStringPtrSlice(resources)
 
 	var allIDs []string
 	remaining := limit
@@ -429,7 +429,7 @@ func GetFilteredResourceIDs(ctx context.Context, c cocoa.TagClient, resources []
 			ids []string
 			err error
 		)
-		ids, nextToken, err = getResourcesPage(ctx, c, resourceFilters, tagFilters, nextToken, limit)
+		ids, nextToken, err = getResourcesPage(ctx, c, resources, tagFilters, nextToken, limit)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting resources matching filters")
 		}
@@ -449,7 +449,7 @@ func GetFilteredResourceIDs(ctx context.Context, c cocoa.TagClient, resources []
 	return allIDs, nil
 }
 
-func getResourcesPage(ctx context.Context, c cocoa.TagClient, resourceFilters []*string, tagFilters []*resourcegroupstaggingapi.TagFilter, nextToken *string, limit int) ([]string, *string, error) {
+func getResourcesPage(ctx context.Context, c cocoa.TagClient, resourceFilters []string, tagFilters []resourcegroupstaggingapiTypes.TagFilter, nextToken *string, limit int) ([]string, *string, error) {
 	var ids []string
 
 	resp, err := c.GetResources(ctx, &resourcegroupstaggingapi.GetResourcesInput{
@@ -469,9 +469,6 @@ func getResourcesPage(ctx context.Context, c cocoa.TagClient, resourceFilters []
 			break
 		}
 
-		if tagMapping == nil {
-			continue
-		}
 		if tagMapping.ResourceARN == nil {
 			continue
 		}

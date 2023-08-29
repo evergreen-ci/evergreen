@@ -36,7 +36,6 @@ type Mock struct {
 
 	// mock behavior
 	NextTaskShouldFail          bool
-	NextTaskShouldConflict      bool
 	GetPatchFileShouldFail      bool
 	loggingShouldFail           bool
 	NextTaskResponse            *apimodels.NextTaskResponse
@@ -46,7 +45,7 @@ type Mock struct {
 	GetProjectResponse          *serviceModel.Project
 	EndTaskResponse             *apimodels.EndTaskResponse
 	EndTaskShouldFail           bool
-	EndTaskResult               endTaskResult
+	EndTaskResult               EndTaskResult
 	ShellExecFilename           string
 	TimeoutFilename             string
 	GenerateTasksShouldFail     bool
@@ -80,7 +79,7 @@ type Mock struct {
 	mu sync.RWMutex
 }
 
-type endTaskResult struct {
+type EndTaskResult struct {
 	Detail   *apimodels.TaskEndDetail
 	TaskData TaskData
 }
@@ -287,9 +286,6 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}
 	if c.NextTaskShouldFail {
 		return nil, errors.New("NextTaskShouldFail is true")
-	}
-	if c.NextTaskShouldConflict {
-		return nil, errors.WithStack(HTTPConflictError)
 	}
 	if c.NextTaskResponse != nil {
 		return c.NextTaskResponse, nil

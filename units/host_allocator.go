@@ -19,10 +19,13 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	hostAllocatorJobName = "host-allocator"
+	hostAllocatorJobName         = "host-allocator"
+	hostAllocatorAttributePrefix = "evergreen.host_allocator"
 )
 
 func init() {
@@ -281,6 +284,23 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"instance":                     j.ID(),
 		"runner":                       scheduler.RunnerName,
 	})
+
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, distro.Id),
+		attribute.Int(fmt.Sprintf("%s.hosts_requested", hostAllocatorAttributePrefix), len(hostsSpawned)),
+		attribute.Int(fmt.Sprintf("%s.hosts_free", hostAllocatorAttributePrefix), nHostsFree),
+		attribute.Int(fmt.Sprintf("%s.hosts_running", hostAllocatorAttributePrefix), len(upHosts)),
+		attribute.Int(fmt.Sprintf("%s.hosts_active", hostAllocatorAttributePrefix), existingHosts.Stats().Active),
+		attribute.Int(fmt.Sprintf("%s.hosts_idle", hostAllocatorAttributePrefix), existingHosts.Stats().Idle),
+		attribute.Int(fmt.Sprintf("%s.hosts_provisioning", hostAllocatorAttributePrefix), existingHosts.Stats().Provisioning),
+		attribute.Int(fmt.Sprintf("%s.hosts_quarantined", hostAllocatorAttributePrefix), existingHosts.Stats().Quarantined),
+		attribute.Int(fmt.Sprintf("%s.hosts_decommissioned", hostAllocatorAttributePrefix), existingHosts.Stats().Decommissioned),
+		attribute.Int(fmt.Sprintf("%s.task_queue_length", hostAllocatorAttributePrefix), distroQueueInfo.Length),
+		attribute.Int(fmt.Sprintf("%s.overdue_tasks", hostAllocatorAttributePrefix), distroQueueInfo.CountWaitOverThreshold),
+		attribute.Float64(fmt.Sprintf("%s.seconds_to_empty", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.Seconds()),
+		attribute.Float64(fmt.Sprintf("%s.queue_ratio", hostAllocatorAttributePrefix), float64(noSpawnsRatio)),
+	)
 }
 
 func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts int, hostQueueRatio float32, distro *distro.Distro) {

@@ -12,7 +12,7 @@ mutation {
           containerPool: "",
           workDir: "/data/mci",
           disabled: true,
-          provider: "ec2-ondemand",
+          provider: EC2_ON_DEMAND,
           providerSettingsList: [
             {
               ami: "who-ami",
@@ -55,7 +55,7 @@ mutation {
             serviceUser: "",
             shellPath: "/bin/fish"
           }
-          cloneMethod: "legacy-ssh",
+          cloneMethod: LEGACY_SSH,
           sshKey: "mci",
           sshOptions: [
             "StrictHostKeyChecking=no",
@@ -74,7 +74,7 @@ mutation {
             }
           ],
           finderSettings: {
-            version: "legacy"
+            version: LEGACY
           },
           plannerSettings: {
             commitQueueFactor: 0,
@@ -85,10 +85,10 @@ mutation {
             patchFactor: 0,
             patchTimeInQueueFactor: 0,
             targetTime: 0,
-            version: "tunable"
+            version: TUNABLE
           },
           dispatcherSettings: {
-            version: "revised-with-dependencies"
+            version: REVISED_WITH_DEPENDENCIES
           },
           hostAllocatorSettings: {
             acceptableHostIdleTime: 5407399999,

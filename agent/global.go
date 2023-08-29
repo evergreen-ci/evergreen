@@ -33,8 +33,18 @@ const (
 	defaultStatsInterval = time.Minute
 
 	// defaultCallbackCmdTimeout specifies the duration after when the "post" or
-	// "timeout" command sets should be shut down.
+	// "timeout" block sets should be shut down.
 	defaultCallbackCmdTimeout = 15 * time.Minute
+
+	// defaultPreTimeout specifies the default duration after when the pre block
+	// should time out and stop the current command.
+	defaultPreTimeout = 2 * time.Hour
+
+	// defaultPostTimeout specifies the default duration after when the post
+	// block should time out and stop the current command.
+	// TODO (EVG-20629): incrementally increase this over the course of weeks so
+	// users can adjust expectations and set post timeout accordingly.
+	defaultPostTimeout = 30 * time.Minute
 
 	// maxHeartbeats is the number of failed heartbeats after which an agent
 	// reports an error

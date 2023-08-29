@@ -443,13 +443,6 @@ group. For task groups, `setup_task` and `teardown_task` will run instead of
 `pre` and `post`. These are incredibly useful as a place for results commands or
 for cleanup and setup tasks.
 
-**NOTE:** failures in `pre` and `post` commands will be ignored by
-default, so only use commands you know will succeed. See
-`pre_error_fails_task` and `post_error_fails_task` below. By default,
-commands in pre and post will time out after 15 minutes. You can
-override this timeout by setting `callback_timeout_secs` at the root
-level of the yaml config.
-
 ``` yaml
 pre:
   - command: shell.exec
@@ -486,20 +479,26 @@ This is done in order to perform any final cleanup for the task.
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
 within an allotted time, set the key `exec_timeout_secs` on the project
-or task to the maximum allowed length of execution time. This timeout
-defaults to 6 hours. `exec_timeout_secs` can only be set on the project
-or on a task. It cannot be set on functions.
+or task to the maximum allowed length of execution time. Exec timeout only
+applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
+task commands; it does not apply to the `post`, `teardown_task`, and
+`teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
+can only be set on the project or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](Project-Commands.md#timeoutupdate).
+You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
 
 **Idle timeout: timeout_secs**
-You may also force a specific command to trigger a failure if it does
-not appear to generate any output on `stdout`/`stderr` for more than a
-certain threshold, using the `timeout_secs` setting on the command. As
-long as the command does not appear to be idle it will be allowed to
-continue, but if it does not write any output for longer than
-`timeout_secs` then the timeout handler will be triggered. 
-This timeout defaults to 2 hours.
+You may also force a specific command to trigger a failure if it does not appear
+to generate any output on `stdout`/`stderr` for more than a certain threshold,
+using the `timeout_secs` setting on the command. As long as the command produces
+output to `stdout`/`stderr`, it will be allowed to continue, but if it does not
+write any output for longer than `timeout_secs` then the command will time out.
+Idle timeout only applies to commands that run in `pre`, `setup_group`,
+`setup_task` and the main task commands; it does not apply to the `post`,
+`teardown_task`, and `teardown_group` blocks. This timeout defaults to 2 hours.
+
+You can also overwrite the default `timeout_secs` for all later commands using
+[timeout.update](Project-Commands.md#timeoutupdate).
 
 Example:
 
@@ -523,27 +522,58 @@ tasks:
           sleep 1000
 ```
 
-By default, a command failing during the `pre` step will not cause the
-entire task to fail. If you want to enforce that failures during `pre`
-cause the task to fail, set the field `pre_error_fails_task` to true.
-Likewise, setting the field `post_error_fails_task` to true will enforce
-that failures in `post` cause the task to fail.
-
-If pre_error_fails_task is set to true and pre fails, it will exit early 
-and not run the main task commands, but it will still run the post block.
-
-If post_error_fails_task is set to true and both the main task and post 
-block fail, the failing command in the main task will be displayed as the 
-failing command, not the failing post command.  The value set for 
-pre_error_fails_task and post_error_fails_task has no effect on tasks run
-in task groups which instead use the settings defined for that task group.
-
 ```yaml
 exec_timeout_secs: 60
+
 pre_error_fails_task: true
+pre_timeout_secs: 1800 # 30 minutes
 pre:
   - ...
+
+post_error_fails_task: true
+post_timeout_secs: 1800 # 30 minutes
+post:
+  - ...
 ```
+
+#### Special Behavior for Pre, Post, and Timeout
+
+Failing commands:
+
+By default, a command failing during the `pre` block will not cause the entire
+task to fail. If you want to enforce that failures during `pre` cause the task
+to fail, set the field `pre_error_fails_task` to true. If `pre_error_fails_task`
+is set to true and a command in `pre` fails, it will exit early and not run the
+main task commands, but it will still run the `post` block.
+
+`pre_error_fails_task` has no effect on tasks run in task groups because task
+groups do not run `pre`; instead, those tasks follow the settings defined for
+that task group (i.e. `setup_group` and `setup_task`).
+
+Similar to `pre`, by default, a command failing during the `post` block will not
+cause the entire task to fail. If you want to enforce that failures during
+`post` cause the task to fail, set the field `post_error_fails_task` to true. If
+`post_error_fails_task` is set to true and both the main task and post block
+have failing commands, the task's failing command will be the command that
+failed in the main task block, not the failing post command.
+
+`post_error_fails_task` has no effect on tasks run in task groups because task
+groups do not run `post`; instead, those tasks, follow the settings defined for
+that task group (i.e. `teardown_group` and `teardown_task`).
+
+Timeouts:
+
+By default, the `pre` block will time out if it runs for longer than 2 hours
+total. You can override this timeout by setting `pre_timeout_secs` at the root
+level of the YAML config.
+
+By default, the `post` block will time out if it runs for longer than 30 minutes
+total. You can override this timeout by setting `post_timeout_secs` at the root
+level of the YAML config.
+
+By default, commands `timeout` will time out after 15 minutes. You can override
+this timeout by setting `callback_timeout_secs` at the root level of the YAML
+config.
 
 ### Limiting When a Task Will Run
 
@@ -696,7 +726,7 @@ Every task has some expansions available by default:
     queue task
 -   `${commit_message}` is the commit message if this is a commit queue
     task
--   `${requester}` is what triggered the task: patch, `github_pr`,
+-   `${requester}` is what triggered the task: `patch`, `github_pr`,
     `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
 -   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
     OTel collector. Tasks can send traces to this endpoint.
@@ -890,9 +920,14 @@ in the case of a failing task. This can be set or unset at the
 top-level, at the build variant level, and for individual tasks (in the task definition or for the
 task within a specific build variant).
 
-### OOM Tracker
+### Out of memory (OOM) Tracker
 
 This is set to true at the top level if you'd like to enable the OOM Tracker for your project.
+
+If there is an OOM kill, immediately before the post-task starts, there will be
+a task log message saying whether it found any OOM killed processes, with their
+PIDs. A message with PIDs will also be displayed in the metadata panel in the
+UI.
 
 ### Matrix Variant Definition
 
@@ -1318,9 +1353,8 @@ Parameters:
     timeout handler will run if a top-level timeout handler exists.
 -   `setup_group_can_fail_task`: if true, task will fail if setup group
     fails. Defaults to false.
--   `setup_group_timeout_secs`: override default timeout for setup
-    group. (This only fails task if `setup_group_can_fail_task` is also
-    set.)
+-   `setup_group_timeout_secs`: set a timeout for the setup setup group. (If it
+    times out, this only fails task if `setup_group_can_fail_task` is also set.)
 -   `share_processes`: by default, processes and Docker state changes
     (e.g. containers, images, volumes) are cleaned up between each
     task's execution. If this is set to true, cleanup will be deferred

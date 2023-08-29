@@ -280,11 +280,13 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 	return cmd
 }
 
-// getExecutablePath returns the absolute path to the command executable to run.
-// If the executable is available in the default runtime environment's PATH,
-// then that path will be used. Otherwise if it can't find the command in the
-// default PATH locations, the command will fall back to checking the command's
-// PATH environment variable for a matching executable location (if any).
+// getExecutablePath returns the path to the command executable to run.
+// If the executable is available in the default runtime environment's PATH or
+// it is a file path (i.e. it's not supposed to be found in the PATH), then the
+// executable binary will be returned as-is. Otherwise if it can't find the
+// command in the default PATH locations, the command will fall back to checking
+// the command's PATH environment variable for a matching executable location
+// (if any).
 func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
 	defaultPath, err := exec.LookPath(c.Binary)
 	if defaultPath != "" {

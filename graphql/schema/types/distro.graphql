@@ -13,6 +13,36 @@ enum DistroOnSaveOperation {
   NONE
 }
 
+enum CloneMethod {
+  LEGACY_SSH
+  OAUTH
+}
+
+enum FinderVersion {
+  LEGACY
+  PARALLEL
+  PIPELINE
+  ALTERNATE
+}
+
+enum PlannerVersion {
+  LEGACY
+  TUNABLE
+}
+
+enum Provider {
+  DOCKER
+  EC2_FLEET
+  EC2_ON_DEMAND
+  STATIC
+}
+
+enum DispatcherVersion {
+  REVISED
+  REVISED_WITH_DEPENDENCIES
+}
+
+
 ###### INPUTS ######
 """
 CopyDistroInput is the input to the copyDistro mutation.
@@ -37,6 +67,18 @@ input DeleteDistroInput {
   distroId: String! @requireDistroAccess(access: ADMIN)
 }
 
+"""
+DistroEventsInput is the input to the distroEvents query.
+"""
+input DistroEventsInput {
+  before: Time
+  distroId: String! @requireDistroAccess(access: VIEW)
+  limit: Int
+}
+
+"""
+SaveDistroInput is the input to the saveDistro mutation.
+"""
 input SaveDistroInput {
   distro: DistroInput!
   onSave: DistroOnSaveOperation!
@@ -47,7 +89,7 @@ input DistroInput {
   arch: String!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!
-  cloneMethod: String!
+  cloneMethod: CloneMethod!
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!
@@ -62,7 +104,7 @@ input DistroInput {
   name: String! @requireDistroAccess(access: EDIT)
   note: String!
   plannerSettings: PlannerSettingsInput!
-  provider: String!
+  provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -89,7 +131,7 @@ input BootstrapSettingsInput {
 }
 
 input DispatcherSettingsInput {
-  version: String!
+  version: DispatcherVersion!
 }
 
 input EnvVarInput {
@@ -103,7 +145,7 @@ input ExpansionInput {
 }
 
 input FinderSettingsInput {
-  version: String!
+  version: FinderVersion!
 }
 
 input HomeVolumeSettingsInput {
@@ -135,7 +177,7 @@ input PlannerSettingsInput {
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Int!
-  version: String!
+  version: PlannerVersion!
 }
 
 input PreconditionScriptInput {
@@ -166,6 +208,20 @@ type DeleteDistroPayload {
   deletedDistroId: String!
 }
 
+
+type DistroEvent {
+  after: Map
+  before: Map
+  data: Map
+  timestamp: Time!
+  user: String!
+}
+
+type DistroEventsPayload {
+  count: Int!
+  eventLogEntries: [DistroEvent!]!
+}
+
 """
 Return type representing the updated distro and the number of hosts that were updated.
 """
@@ -182,7 +238,7 @@ type Distro {
   arch: String!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettings!
-  cloneMethod: String!
+  cloneMethod: CloneMethod!
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!
@@ -197,7 +253,7 @@ type Distro {
   name: String!
   note: String!
   plannerSettings: PlannerSettings!
-  provider: String!
+  provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -224,7 +280,7 @@ type BootstrapSettings {
 }
 
 type DispatcherSettings {
-  version: String!
+  version: DispatcherVersion!
 }
 
 type EnvVar {
@@ -238,7 +294,7 @@ type Expansion {
 }
 
 type FinderSettings {
-  version: String!
+  version: FinderVersion!
 }
 
 type HomeVolumeSettings {
@@ -270,7 +326,7 @@ type PlannerSettings {
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Duration!
-  version: String!
+  version: PlannerVersion!
 }
 
 type PreconditionScript {

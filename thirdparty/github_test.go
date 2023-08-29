@@ -300,6 +300,11 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
 }
 
+func (s *githubSuite) TestGetBranchProtectionRules() {
+	_, err := GetEvergreenBranchProtectionRules(s.ctx, s.token, "evergreen-ci", "evergreen", "main")
+	s.NoError(err)
+}
+
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
 	assert := assert.New(t)
 	header := http.Header{}
@@ -383,4 +388,11 @@ func TestParseGithubErrorResponse(t *testing.T) {
 	assert.Equal(t, message, apiRequestErr.Message)
 	assert.Equal(t, http.StatusNotFound, apiRequestErr.StatusCode)
 	assert.Equal(t, url, apiRequestErr.DocumentationUrl)
+}
+
+func TestGetRulesWithEvergreenPrefix(t *testing.T) {
+	rules := getRulesWithEvergreenPrefix([]string{"evergreen", "evergreen/foo", "bar/baz"})
+	assert.Len(t, rules, 2)
+	assert.Contains(t, rules, "evergreen")
+	assert.Contains(t, rules, "evergreen/foo")
 }

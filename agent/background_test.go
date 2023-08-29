@@ -52,19 +52,67 @@ func (s *BackgroundSuite) SetupTest() {
 	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)
 }
 
-func (s *BackgroundSuite) TestWithCallbackTimeoutDefault() {
-	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
-	deadline, ok := ctx.Deadline()
-	s.True(deadline.Sub(time.Now()) > (defaultCallbackCmdTimeout - time.Second)) // nolint
-	s.True(ok)
+func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOut() {
+	const testTimeout = 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	const timeout = time.Nanosecond
+	startAt := time.Now()
+	timeoutOpts := timeoutWatcherOptions{
+		tc:                    s.tc,
+		kind:                  callbackTimeout,
+		getTimeout:            func() time.Duration { return timeout },
+		canMarkTimeoutFailure: true,
+	}
+	s.a.startTimeoutWatcher(ctx, cancel, timeoutOpts)
+
+	s.Less(time.Since(startAt), testTimeout)
+	s.Error(ctx.Err(), "should have cancelled operation to time out")
+	s.True(s.tc.hadTimedOut())
+	s.Equal(callbackTimeout, s.tc.getTimeoutType(), "should have hit callback timeout")
+	s.Equal(timeout, s.tc.getTimeoutDuration(), "should have recorded timeout duration")
 }
 
-func (s *BackgroundSuite) TestWithCallbackTimeoutSetByProject() {
-	s.tc.taskConfig.Project.CallbackTimeout = 100
-	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
-	deadline, ok := ctx.Deadline()
-	s.True(deadline.Sub(time.Now()) > 99) // nolint
-	s.True(ok)
+func (s *BackgroundSuite) TestStartTimeoutWatcherExitsWithoutTimeout() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	timeoutWatcherDone := make(chan struct{})
+	go func() {
+		timeoutOpts := timeoutWatcherOptions{
+			tc:                    s.tc,
+			kind:                  callbackTimeout,
+			getTimeout:            func() time.Duration { return time.Hour },
+			canMarkTimeoutFailure: true,
+		}
+		s.a.startTimeoutWatcher(ctx, cancel, timeoutOpts)
+		close(timeoutWatcherDone)
+	}()
+
+	cancel()
+	<-timeoutWatcherDone
+
+	s.False(s.tc.hadTimedOut())
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
+}
+
+func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOutButDoesNotMarkTimeoutFailure() {
+	const testTimeout = 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	const timeout = time.Nanosecond
+	startAt := time.Now()
+	timeoutOpts := timeoutWatcherOptions{
+		tc:         s.tc,
+		kind:       callbackTimeout,
+		getTimeout: func() time.Duration { return timeout },
+	}
+	s.a.startTimeoutWatcher(ctx, cancel, timeoutOpts)
+
+	s.Less(time.Since(startAt), testTimeout)
+	s.Error(ctx.Err(), "should have cancelled operation to time out")
+	s.False(s.tc.hadTimedOut(), "should not have marked timeout failure")
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
 }
 
 const (
@@ -260,19 +308,19 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	})
 }
 
-func (s *BackgroundSuite) TestGetCurrentTimeout() {
+func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
 	s.tc.taskConfig.Timeout = &internal.Timeout{}
 	cmdFactory, exists := command.GetCommandFactory("shell.exec")
 	s.True(exists)
 	cmd := cmdFactory()
 	cmd.SetIdleTimeout(time.Second)
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd)
-	s.Equal(time.Second, s.tc.getCurrentTimeout())
+	s.tc.setCurrentIdleTimeout(cmd, "")
+	s.Equal(time.Second, s.tc.getCurrentIdleTimeout())
 }
 
 func (s *BackgroundSuite) TestGetTimeoutDefault() {
-	s.Equal(defaultIdleTimeout, s.tc.getCurrentTimeout())
+	s.Equal(defaultIdleTimeout, s.tc.getCurrentIdleTimeout())
 }
 
 type heartbeatCheckOptions struct {
