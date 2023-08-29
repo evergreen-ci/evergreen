@@ -117,7 +117,8 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error
 		Id:   newDistroId,
 		Arch: evergreen.ArchLinuxAmd64,
 		BootstrapSettings: distro.BootstrapSettings{
-			Method: distro.BootstrapMethodNone,
+			Method:        distro.BootstrapMethodLegacySSH,
+			Communication: distro.CommunicationMethodLegacySSH,
 		},
 		CloneMethod: evergreen.CloneMethodLegacySSH,
 		DispatcherSettings: distro.DispatcherSettings{
