@@ -161,7 +161,7 @@ type Task struct {
 
 	// The version of the agent this task was run on.
 	AgentVersion      string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
-	TaskOutputVersion *int   `bson:"task_build_version,omitempty" json:"task_build_version,omitempty"`
+	TaskOutputVersion *int   `bson:"task_output_version,omitempty" json:"task_output_version,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
