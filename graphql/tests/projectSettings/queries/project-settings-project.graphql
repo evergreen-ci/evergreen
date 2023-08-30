@@ -34,6 +34,7 @@
         level
         dateCutoff
         configFile
+        unscheduleDownstreamVersions
       }
       patchTriggerAliases {
         alias
