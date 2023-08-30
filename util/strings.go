@@ -8,14 +8,6 @@ import (
 
 var cleanFileRegex = regexp.MustCompile(`[^a-zA-Z0-9_\-\.]`)
 
-// Truncate returns a string of at most the given length.
-func Truncate(input string, outputLength int) string {
-	if len(input) <= outputLength {
-		return input
-	}
-	return input[:outputLength]
-}
-
 func CleanForPath(name string) string {
 	return cleanFileRegex.ReplaceAllLiteralString(name, "_")
 }
@@ -26,6 +18,16 @@ func CleanName(name string) string {
 	name = strings.Replace(name, " ", "_", -1)
 	name = strings.Replace(name, "/", "_", -1)
 	return name
+}
+
+// HasAllowedImageAsPrefix returns true if the given string has one of the allowed image prefixes
+func HasAllowedImageAsPrefix(str string, imageList []string) bool {
+	for _, imagePrefix := range imageList {
+		if strings.HasPrefix(str, imagePrefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // IndexWhiteSpace returns the first index of white space in the given string.

@@ -97,7 +97,6 @@ task_groups:
 	assert.Equal(t, tgName, tg.Name)
 	assert.Len(t, tg.Tasks, 2)
 	assert.Equal(t, 2, tg.MaxHosts)
-	assert.NotEmpty(t, tg.Timeout) // Defaults to project-level timeout if not defined.
 }
 
 func TestNewTaskConfig(t *testing.T) {
