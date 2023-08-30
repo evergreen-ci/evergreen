@@ -120,6 +120,7 @@ type parserTaskGroup struct {
 	PatchOnly                *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 	AllowForGitTag           *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly               *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters        []string           `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	ExecTimeoutSecs          int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Stepback                 *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MaxHosts                 int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
