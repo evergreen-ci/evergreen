@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -18,15 +17,12 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// TODO (EVG-20315): replace exec.Command with Jasper so we can more easily
-// detect when the process abruptly exits early.
-// TODO (EVG-20315): delete duplicate smoke testdata in testdata/smoke once
-// initial migration is committed.
 
 // APIParams includes information necessary to set up a smoke test app server
 // and make authenticated requests to it.
@@ -113,54 +109,61 @@ func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams, client *http.Client, mode agent.Mode, tasks []string) {
 	grip.Infof("Checking task status and task logs for tasks: %s", strings.Join(tasks, ", "))
 
-	const taskCheckAttempts = 40
+	const maxTaskCheckAttempts = 40
 	nextTaskToCheckIdx := 0
+	attempt := 1
 
-checkTasks:
-	for i := 0; i < taskCheckAttempts; i++ {
-		// TODO (EVG-20315): rework the two loops to be less awkward, since the
-		// outer loop wait logic can just be absorbed into the inner loop.
-		// Poll the app server until the task is finished and check its task
-		// logs for the expected results.
-		// It's worth noting there that there is a substantial amount of
-		// heavy-lifting being done here by the Evergreen app server and agent
-		// under the covers. In the background, the app server must run the
-		// scheduler to create a task queue to run the new tasks, the agent must
-		// pick up those tasks from that task queue, and the agent must run
-		// those tasks and report the result back to the app server. If any of
-		// those operations go wrong (e.g. due to a modification to the app
-		// server, agent, or smoke configuration files), these checks can fail.
-		time.Sleep(10 * time.Second)
-		grip.Infof("Checking %d remaining task(s). (%d/%d)", len(tasks)-nextTaskToCheckIdx, i+1, taskCheckAttempts)
+	// Poll the app server until the task is finished and check its task
+	// logs for the expected results.
+	// It's worth noting there that there is a substantial amount of
+	// heavy-lifting being done here by the Evergreen app server and agent
+	// under the covers. In the background, the app server must run the
+	// scheduler to create a task queue to run the new tasks, the agent must
+	// pick up those tasks from that task queue, and the agent must run
+	// those tasks and report the result back to the app server. If any of
+	// those operations go wrong (e.g. due to a modification to the app
+	// server, agent, or smoke configuration files), these checks can fail.
 
-		for _, taskID := range tasks[nextTaskToCheckIdx:] {
-			task, err := getTaskInfo(ctx, params, client, taskID)
-			require.NoError(t, err, "should be able to get task info")
+	for _, taskID := range tasks[nextTaskToCheckIdx:] {
+		grip.Infof("Checking %d remaining task(s). (%d/%d)", len(tasks)-nextTaskToCheckIdx, attempt, maxTaskCheckAttempts)
 
-			if !evergreen.IsFinishedTaskStatus(task.Status) {
-				grip.Infof("Found task '%s' is not yet finished and has status '%s' (expected '%s').", taskID, task.Status, evergreen.TaskSucceeded)
-				continue checkTasks
-			}
+		task, err := getTaskInfo(ctx, params, client, taskID)
+		require.NoError(t, err, "should be able to get task info")
 
-			t.Run(task.DisplayName, func(t *testing.T) {
+		t.Run(task.DisplayName, func(t *testing.T) {
+			for attempt < maxTaskCheckAttempts {
+				time.Sleep(10 * time.Second)
+
+				task, err := getTaskInfo(ctx, params, client, taskID)
+				require.NoError(t, err, "should be able to get task info")
+
+				if !evergreen.IsFinishedTaskStatus(task.Status) {
+					grip.Infof("Found task '%s' is not yet finished and has status '%s' (expected '%s').", taskID, task.Status, evergreen.TaskSucceeded)
+					attempt++
+					continue
+				}
+
 				assert.Equal(t, evergreen.TaskSucceeded, task.Status, "task must succeed")
 				getAndCheckTaskLog(ctx, t, params, client, mode, *task)
-			})
 
-			grip.Infof("Successfully checked task '%s'", taskID)
+				grip.Infof("Successfully checked task '%s'", taskID)
 
-			nextTaskToCheckIdx = nextTaskToCheckIdx + 1
-		}
+				nextTaskToCheckIdx = nextTaskToCheckIdx + 1
 
+				return
+			}
+		})
+	}
+
+	if nextTaskToCheckIdx >= len(tasks) {
 		grip.Infof("Successfully checked %d %s task(s) and their task logs.", len(tasks), string(mode))
-
 		return
 	}
 
 	require.FailNow(t, "ran out of attempts to check task statuses and task logs",
 		"task status and task log checks were incomplete after %d attempts - "+
 			"this might indicate an underlying issue with the app server, the agent, "+
-			"or the smoke test's configuration setup", taskCheckAttempts)
+			"or the smoke test's configuration setup", maxTaskCheckAttempts)
 }
 
 // smokeAPITask represents part of a task from the REST API for use in the smoke
@@ -306,25 +309,33 @@ func MakeSmokeRequest(ctx context.Context, params APIParams, method string, clie
 	return body, nil
 }
 
-// SmokeRunBinary runs a smoke test binary. The name indicates the process name
-// so that it can be tracked in output logs.
-func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...string) (*exec.Cmd, error) {
+// SmokeRunBinary runs a smoke test Evergreen binary in the background. The name
+// indicates the process name so that it can be tracked in output logs. The
+// given wd is used as the working directory for the command.
+func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...string) (jasper.Process, error) {
 	grip.Infof("Running command: %s", append([]string{bin}, cmdParts...))
-	cmd := exec.CommandContext(ctx, bin, cmdParts...)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
+
 	cmdSender := send.NewWriterSender(send.MakeNative())
-	cmd.Dir = wd
 	cmdSender.SetName(name)
-	cmd.Stdout = cmdSender
-	cmd.Stderr = cmdSender
-	if err := cmd.Start(); err != nil {
-		return nil, errors.Wrap(err, "starting Evergreen binary command")
+
+	proc, err := jasper.NewProcess(ctx, &options.Create{
+		Args:             append([]string{bin}, cmdParts...),
+		Environment:      map[string]string{"EVGHOME": wd},
+		WorkingDirectory: wd,
+		Output: options.Output{
+			Output: cmdSender,
+			Error:  cmdSender,
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "creating Jasper process")
 	}
-	return cmd, nil
+
+	return proc, nil
 }
 
 // StartAppServer starts the smoke test app server.
-func StartAppServer(ctx context.Context, t *testing.T, params APIParams) *exec.Cmd {
+func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.Process {
 	grip.Info("Starting smoke test app server.")
 
 	appServerCmd, err := SmokeRunBinary(ctx,
@@ -347,7 +358,7 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) *exec.C
 
 // StartAgent starts the smoke test agent with the given execution mode and
 // ID.
-func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode agent.Mode, execModeID, execModeSecret string) *exec.Cmd {
+func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode agent.Mode, execModeID, execModeSecret string) jasper.Process {
 	grip.Info("Starting smoke test agent.")
 
 	agentCmd, err := SmokeRunBinary(ctx,
