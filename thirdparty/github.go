@@ -529,7 +529,9 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		State:       message.GithubStatePending,
 		Description: input.Desc,
 	}
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+
+	// TODO EVG-19966: Delete fallback to legacy GitHub sender
+	sender, err := env.GetGitHubSender(input.Owner, input.Repo)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
 	}
@@ -1710,9 +1712,13 @@ func missingHeadSHA(pr *github.PullRequest) bool {
 }
 
 func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+	owner := utility.FromStringPtr(pr.Base.Repo.Owner.Login)
+	repo := utility.FromStringPtr(pr.Base.Repo.Name)
+
+	// TODO EVG-19966: Delete fallback to legacy GitHub sender
+	sender, err := env.GetGitHubSender(owner, repo)
 	if err != nil {
-		return errors.Wrap(err, "can't get GitHub status sender")
+		return errors.Wrap(err, "getting github status sender")
 	}
 
 	var url string
@@ -1724,9 +1730,9 @@ func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment,
 	}
 
 	msg := message.GithubStatus{
-		Owner:       *pr.Base.Repo.Owner.Login,
-		Repo:        *pr.Base.Repo.Name,
-		Ref:         *pr.Head.SHA,
+		Owner:       owner,
+		Repo:        repo,
+		Ref:         utility.FromStringPtr(pr.Head.SHA),
 		Context:     commitqueue.GithubContext,
 		State:       state,
 		Description: description,
