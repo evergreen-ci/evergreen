@@ -64,6 +64,27 @@ enum OverallocationRule {
   DEFAULT
 }
 
+enum Arch {
+  LINUX_64_BIT
+  LINUX_ARM_64_BIT
+  LINUX_PPC_64_BIT
+  LINUX_ZSERIES
+  OSX_64_BIT
+  OSX_ARM_64_BIT
+  WINDOWS_64_BIT
+}
+
+enum CommunicationMethod {
+  LEGACY_SSH
+  SSH
+  RPC
+}
+
+enum BootstrapMethod {
+  LEGACY_SSH
+  SSH
+  USER_DATA
+}
 
 ###### INPUTS ######
 """
@@ -108,7 +129,7 @@ input SaveDistroInput {
 
 input DistroInput {
   aliases: [String!]!
-  arch: String!
+  arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!
   cloneMethod: CloneMethod!
@@ -140,11 +161,11 @@ input DistroInput {
 
 input BootstrapSettingsInput {
   clientDir: String!
-  communication: String!
+  communication: CommunicationMethod!
   env: [EnvVarInput!]!
   jasperBinaryDir: String!
   jasperCredentialsPath: String!
-  method: String!
+  method: BootstrapMethod!
   preconditionScripts: [PreconditionScriptInput!]!
   resourceLimits: ResourceLimitsInput!
   rootDir: String!
@@ -257,7 +278,7 @@ Distro models an environment configuration for a host.
 """
 type Distro {
   aliases: [String!]!
-  arch: String!
+  arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettings!
   cloneMethod: CloneMethod!
@@ -289,11 +310,11 @@ type Distro {
 
 type BootstrapSettings {
   clientDir: String!
-  communication: String!
+  communication: CommunicationMethod!
   env: [EnvVar!]!
   jasperBinaryDir: String!
   jasperCredentialsPath: String!
-  method: String!
+  method: BootstrapMethod!
   preconditionScripts: [PreconditionScript!]!
   resourceLimits: ResourceLimits!
   rootDir: String!

@@ -47,6 +47,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Annotation() AnnotationResolver
+	BootstrapSettings() BootstrapSettingsResolver
 	DispatcherSettings() DispatcherSettingsResolver
 	Distro() DistroResolver
 	FinderSettings() FinderSettingsResolver
@@ -74,6 +75,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
+	BootstrapSettingsInput() BootstrapSettingsInputResolver
 	DispatcherSettingsInput() DispatcherSettingsInputResolver
 	DistroInput() DistroInputResolver
 	FinderSettingsInput() FinderSettingsInputResolver
@@ -1513,10 +1515,17 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
+type BootstrapSettingsResolver interface {
+	Communication(ctx context.Context, obj *model.APIBootstrapSettings) (CommunicationMethod, error)
+
+	Method(ctx context.Context, obj *model.APIBootstrapSettings) (BootstrapMethod, error)
+}
 type DispatcherSettingsResolver interface {
 	Version(ctx context.Context, obj *model.APIDispatcherSettings) (DispatcherVersion, error)
 }
 type DistroResolver interface {
+	Arch(ctx context.Context, obj *model.APIDistro) (Arch, error)
+
 	CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error)
 
 	Provider(ctx context.Context, obj *model.APIDistro) (Provider, error)
@@ -1835,10 +1844,17 @@ type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
+type BootstrapSettingsInputResolver interface {
+	Communication(ctx context.Context, obj *model.APIBootstrapSettings, data CommunicationMethod) error
+
+	Method(ctx context.Context, obj *model.APIBootstrapSettings, data BootstrapMethod) error
+}
 type DispatcherSettingsInputResolver interface {
 	Version(ctx context.Context, obj *model.APIDispatcherSettings, data DispatcherVersion) error
 }
 type DistroInputResolver interface {
+	Arch(ctx context.Context, obj *model.APIDistro, data Arch) error
+
 	CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error
 
 	Provider(ctx context.Context, obj *model.APIDistro, data Provider) error
@@ -12509,7 +12525,7 @@ func (ec *executionContext) _BootstrapSettings_communication(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Communication, nil
+		return ec.resolvers.BootstrapSettings().Communication(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12521,19 +12537,19 @@ func (ec *executionContext) _BootstrapSettings_communication(ctx context.Context
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(CommunicationMethod)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_BootstrapSettings_communication(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BootstrapSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type CommunicationMethod does not have child fields")
 		},
 	}
 	return fc, nil
@@ -12691,7 +12707,7 @@ func (ec *executionContext) _BootstrapSettings_method(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Method, nil
+		return ec.resolvers.BootstrapSettings().Method(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12703,19 +12719,19 @@ func (ec *executionContext) _BootstrapSettings_method(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(BootstrapMethod)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_BootstrapSettings_method(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BootstrapSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type BootstrapMethod does not have child fields")
 		},
 	}
 	return fc, nil
@@ -15295,7 +15311,7 @@ func (ec *executionContext) _Distro_arch(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Arch, nil
+		return ec.resolvers.Distro().Arch(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15307,19 +15323,19 @@ func (ec *executionContext) _Distro_arch(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(Arch)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Distro_arch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Arch does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65033,11 +65049,13 @@ func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communication"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Communication = data
+			if err = ec.resolvers.BootstrapSettingsInput().Communication(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "env":
 			var err error
 
@@ -65069,11 +65087,13 @@ func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Method = data
+			if err = ec.resolvers.BootstrapSettingsInput().Method(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "preconditionScripts":
 			var err error
 
@@ -65752,11 +65772,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("arch"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Arch = data
+			if err = ec.resolvers.DistroInput().Arch(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "authorizedKeysFile":
 			var err error
 
@@ -70508,57 +70530,119 @@ func (ec *executionContext) _BootstrapSettings(ctx context.Context, sel ast.Sele
 		case "clientDir":
 			out.Values[i] = ec._BootstrapSettings_clientDir(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communication":
-			out.Values[i] = ec._BootstrapSettings_communication(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BootstrapSettings_communication(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "env":
 			out.Values[i] = ec._BootstrapSettings_env(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "jasperBinaryDir":
 			out.Values[i] = ec._BootstrapSettings_jasperBinaryDir(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "jasperCredentialsPath":
 			out.Values[i] = ec._BootstrapSettings_jasperCredentialsPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "method":
-			out.Values[i] = ec._BootstrapSettings_method(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BootstrapSettings_method(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "preconditionScripts":
 			out.Values[i] = ec._BootstrapSettings_preconditionScripts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "resourceLimits":
 			out.Values[i] = ec._BootstrapSettings_resourceLimits(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "rootDir":
 			out.Values[i] = ec._BootstrapSettings_rootDir(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "serviceUser":
 			out.Values[i] = ec._BootstrapSettings_serviceUser(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "shellPath":
 			out.Values[i] = ec._BootstrapSettings_shellPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -71318,10 +71402,41 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "arch":
-			out.Values[i] = ec._Distro_arch(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_arch(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "authorizedKeysFile":
 			out.Values[i] = ec._Distro_authorizedKeysFile(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -84166,6 +84281,16 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, v interface{}) (Arch, error) {
+	var res Arch
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, sel ast.SelectionSet, v Arch) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v interface{}) (evergreen.BannerTheme, error) {
 	tmp, err := graphql.UnmarshalString(v)
 	res := evergreen.BannerTheme(tmp)
@@ -84216,6 +84341,16 @@ func (ec *executionContext) marshalNBoolean2ᚖbool(ctx context.Context, sel ast
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx context.Context, v interface{}) (BootstrapMethod, error) {
+	var res BootstrapMethod
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx context.Context, sel ast.SelectionSet, v BootstrapMethod) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNBootstrapSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBootstrapSettings(ctx context.Context, sel ast.SelectionSet, v model.APIBootstrapSettings) graphql.Marshaler {
@@ -84342,6 +84477,16 @@ func (ec *executionContext) marshalNCommitQueueItem2githubᚗcomᚋevergreenᚑc
 
 func (ec *executionContext) marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
 	return ec._CommitQueueParams(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx context.Context, v interface{}) (CommunicationMethod, error) {
+	var res CommunicationMethod
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx context.Context, sel ast.SelectionSet, v CommunicationMethod) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNContainerResources2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResources(ctx context.Context, sel ast.SelectionSet, v model.APIContainerResources) graphql.Marshaler {

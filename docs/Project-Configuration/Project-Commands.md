@@ -1371,4 +1371,4 @@ Parameters:
 Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
-Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#pre-post-and-timeout).
+Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#timeout-handler).
