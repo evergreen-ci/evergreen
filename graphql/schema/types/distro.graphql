@@ -43,14 +43,12 @@ enum DispatcherVersion {
 }
 
 enum Arch {
-  LINUX_32_BIT
   LINUX_64_BIT
   LINUX_ARM_64_BIT
   LINUX_PPC_64_BIT
   LINUX_ZSERIES
   OSX_64_BIT
   OSX_ARM_64_BIT
-  WINDOWS_32_BIT
   WINDOWS_64_BIT
 }
 
@@ -65,8 +63,6 @@ enum BootstrapMethod {
   SSH
   USER_DATA
 }
-
-
 
 ###### INPUTS ######
 """

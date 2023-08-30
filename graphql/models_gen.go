@@ -480,32 +480,28 @@ type VolumeHost struct {
 type Arch string
 
 const (
-	ArchLinux32Bit    Arch = "LINUX_32_BIT"
 	ArchLinux64Bit    Arch = "LINUX_64_BIT"
 	ArchLinuxArm64Bit Arch = "LINUX_ARM_64_BIT"
 	ArchLinuxPpc64Bit Arch = "LINUX_PPC_64_BIT"
 	ArchLinuxZseries  Arch = "LINUX_ZSERIES"
 	ArchOsx64Bit      Arch = "OSX_64_BIT"
 	ArchOsxArm64Bit   Arch = "OSX_ARM_64_BIT"
-	ArchWindows32Bit  Arch = "WINDOWS_32_BIT"
 	ArchWindows64Bit  Arch = "WINDOWS_64_BIT"
 )
 
 var AllArch = []Arch{
-	ArchLinux32Bit,
 	ArchLinux64Bit,
 	ArchLinuxArm64Bit,
 	ArchLinuxPpc64Bit,
 	ArchLinuxZseries,
 	ArchOsx64Bit,
 	ArchOsxArm64Bit,
-	ArchWindows32Bit,
 	ArchWindows64Bit,
 }
 
 func (e Arch) IsValid() bool {
 	switch e {
-	case ArchLinux32Bit, ArchLinux64Bit, ArchLinuxArm64Bit, ArchLinuxPpc64Bit, ArchLinuxZseries, ArchOsx64Bit, ArchOsxArm64Bit, ArchWindows32Bit, ArchWindows64Bit:
+	case ArchLinux64Bit, ArchLinuxArm64Bit, ArchLinuxPpc64Bit, ArchLinuxZseries, ArchOsx64Bit, ArchOsxArm64Bit, ArchWindows64Bit:
 		return true
 	}
 	return false

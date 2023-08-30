@@ -80,8 +80,6 @@ func (r *distroResolver) Arch(ctx context.Context, obj *model.APIDistro) (Arch, 
 		return ArchOsx64Bit, nil
 	case evergreen.ArchDarwinArm64:
 		return ArchOsxArm64Bit, nil
-	case evergreen.ArchLinux386:
-		return ArchLinux32Bit, nil
 	case evergreen.ArchLinuxAmd64:
 		return ArchLinux64Bit, nil
 	case evergreen.ArchLinuxArm64:
@@ -90,8 +88,6 @@ func (r *distroResolver) Arch(ctx context.Context, obj *model.APIDistro) (Arch, 
 		return ArchLinuxPpc64Bit, nil
 	case evergreen.ArchLinuxS390x:
 		return ArchLinuxZseries, nil
-	case evergreen.ArchWindows386:
-		return ArchWindows32Bit, nil
 	case evergreen.ArchWindowsAmd64:
 		return ArchWindows64Bit, nil
 	default:
@@ -231,8 +227,6 @@ func (r *distroInputResolver) Arch(ctx context.Context, obj *model.APIDistro, da
 		obj.Arch = utility.ToStringPtr(evergreen.ArchDarwinAmd64)
 	case ArchOsxArm64Bit:
 		obj.Arch = utility.ToStringPtr(evergreen.ArchDarwinArm64)
-	case ArchLinux32Bit:
-		obj.Arch = utility.ToStringPtr(evergreen.ArchLinux386)
 	case ArchLinux64Bit:
 		obj.Arch = utility.ToStringPtr(evergreen.ArchLinuxAmd64)
 	case ArchLinuxArm64Bit:
@@ -241,8 +235,6 @@ func (r *distroInputResolver) Arch(ctx context.Context, obj *model.APIDistro, da
 		obj.Arch = utility.ToStringPtr(evergreen.ArchLinuxPpc64le)
 	case ArchLinuxZseries:
 		obj.Arch = utility.ToStringPtr(evergreen.ArchLinuxS390x)
-	case ArchWindows32Bit:
-		obj.Arch = utility.ToStringPtr(evergreen.ArchWindows386)
 	case ArchWindows64Bit:
 		obj.Arch = utility.ToStringPtr(evergreen.ArchWindowsAmd64)
 	default:
