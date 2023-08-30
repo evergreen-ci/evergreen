@@ -108,7 +108,7 @@ func TestWaitForExit(t *testing.T) {
 	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
 		"DoesNotReturnNonexistentProcess": func(ctx context.Context, t *testing.T) {
 			pids, err := waitForExit(ctx, []int{1234567890})
-			assert.NoError(t, ctx.Err())
+			require.NoError(t, ctx.Err())
 			assert.NoError(t, err)
 			assert.Empty(t, pids)
 		},
@@ -116,7 +116,7 @@ func TestWaitForExit(t *testing.T) {
 			longProcess := exec.CommandContext(ctx, "sleep", "30")
 			require.NoError(t, longProcess.Start())
 			pids, err := waitForExit(ctx, []int{longProcess.Process.Pid})
-			assert.NoError(t, ctx.Err())
+			require.NoError(t, ctx.Err())
 			assert.Error(t, err)
 			require.Len(t, pids, 1)
 			assert.Equal(t, longProcess.Process.Pid, pids[0])
