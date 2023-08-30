@@ -1351,14 +1351,15 @@ type ComplexityRoot struct {
 	}
 
 	TriggerAlias struct {
-		Alias             func(childComplexity int) int
-		BuildVariantRegex func(childComplexity int) int
-		ConfigFile        func(childComplexity int) int
-		DateCutoff        func(childComplexity int) int
-		Level             func(childComplexity int) int
-		Project           func(childComplexity int) int
-		Status            func(childComplexity int) int
-		TaskRegex         func(childComplexity int) int
+		Alias                        func(childComplexity int) int
+		BuildVariantRegex            func(childComplexity int) int
+		ConfigFile                   func(childComplexity int) int
+		DateCutoff                   func(childComplexity int) int
+		Level                        func(childComplexity int) int
+		Project                      func(childComplexity int) int
+		Status                       func(childComplexity int) int
+		TaskRegex                    func(childComplexity int) int
+		UnscheduleDownstreamVersions func(childComplexity int) int
 	}
 
 	UIConfig struct {
@@ -8366,6 +8367,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TriggerAlias.TaskRegex(childComplexity), true
+
+	case "TriggerAlias.unscheduleDownstreamVersions":
+		if e.complexity.TriggerAlias.UnscheduleDownstreamVersions == nil {
+			break
+		}
+
+		return e.complexity.TriggerAlias.UnscheduleDownstreamVersions(childComplexity), true
 
 	case "UIConfig.defaultProject":
 		if e.complexity.UIConfig.DefaultProject == nil {
@@ -39228,6 +39236,8 @@ func (ec *executionContext) fieldContext_Project_triggers(ctx context.Context, f
 				return ec.fieldContext_TriggerAlias_status(ctx, field)
 			case "taskRegex":
 				return ec.fieldContext_TriggerAlias_taskRegex(ctx, field)
+			case "unscheduleDownstreamVersions":
+				return ec.fieldContext_TriggerAlias_unscheduleDownstreamVersions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TriggerAlias", field.Name)
 		},
@@ -46810,6 +46820,8 @@ func (ec *executionContext) fieldContext_RepoRef_triggers(ctx context.Context, f
 				return ec.fieldContext_TriggerAlias_status(ctx, field)
 			case "taskRegex":
 				return ec.fieldContext_TriggerAlias_taskRegex(ctx, field)
+			case "unscheduleDownstreamVersions":
+				return ec.fieldContext_TriggerAlias_unscheduleDownstreamVersions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TriggerAlias", field.Name)
 		},
@@ -57848,6 +57860,47 @@ func (ec *executionContext) fieldContext_TriggerAlias_taskRegex(ctx context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerAlias_unscheduleDownstreamVersions(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TriggerAlias_unscheduleDownstreamVersions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnscheduleDownstreamVersions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TriggerAlias_unscheduleDownstreamVersions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerAlias",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -69636,7 +69689,7 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"alias", "buildVariantRegex", "configFile", "dateCutoff", "level", "project", "status", "taskRegex"}
+	fieldsInOrder := [...]string{"alias", "buildVariantRegex", "configFile", "dateCutoff", "level", "project", "status", "taskRegex", "unscheduleDownstreamVersions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69715,6 +69768,15 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 				return it, err
 			}
 			it.TaskRegex = data
+		case "unscheduleDownstreamVersions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unscheduleDownstreamVersions"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UnscheduleDownstreamVersions = data
 		}
 	}
 
@@ -82282,6 +82344,8 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "unscheduleDownstreamVersions":
+			out.Values[i] = ec._TriggerAlias_unscheduleDownstreamVersions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
