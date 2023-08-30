@@ -477,6 +477,100 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type Arch string
+
+const (
+	ArchLinux64Bit    Arch = "LINUX_64_BIT"
+	ArchLinuxArm64Bit Arch = "LINUX_ARM_64_BIT"
+	ArchLinuxPpc64Bit Arch = "LINUX_PPC_64_BIT"
+	ArchLinuxZseries  Arch = "LINUX_ZSERIES"
+	ArchOsx64Bit      Arch = "OSX_64_BIT"
+	ArchOsxArm64Bit   Arch = "OSX_ARM_64_BIT"
+	ArchWindows64Bit  Arch = "WINDOWS_64_BIT"
+)
+
+var AllArch = []Arch{
+	ArchLinux64Bit,
+	ArchLinuxArm64Bit,
+	ArchLinuxPpc64Bit,
+	ArchLinuxZseries,
+	ArchOsx64Bit,
+	ArchOsxArm64Bit,
+	ArchWindows64Bit,
+}
+
+func (e Arch) IsValid() bool {
+	switch e {
+	case ArchLinux64Bit, ArchLinuxArm64Bit, ArchLinuxPpc64Bit, ArchLinuxZseries, ArchOsx64Bit, ArchOsxArm64Bit, ArchWindows64Bit:
+		return true
+	}
+	return false
+}
+
+func (e Arch) String() string {
+	return string(e)
+}
+
+func (e *Arch) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Arch(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Arch", str)
+	}
+	return nil
+}
+
+func (e Arch) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type BootstrapMethod string
+
+const (
+	BootstrapMethodLegacySSH BootstrapMethod = "LEGACY_SSH"
+	BootstrapMethodSSH       BootstrapMethod = "SSH"
+	BootstrapMethodUserData  BootstrapMethod = "USER_DATA"
+)
+
+var AllBootstrapMethod = []BootstrapMethod{
+	BootstrapMethodLegacySSH,
+	BootstrapMethodSSH,
+	BootstrapMethodUserData,
+}
+
+func (e BootstrapMethod) IsValid() bool {
+	switch e {
+	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodUserData:
+		return true
+	}
+	return false
+}
+
+func (e BootstrapMethod) String() string {
+	return string(e)
+}
+
+func (e *BootstrapMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BootstrapMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BootstrapMethod", str)
+	}
+	return nil
+}
+
+func (e BootstrapMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type CloneMethod string
 
 const (
@@ -515,6 +609,49 @@ func (e *CloneMethod) UnmarshalGQL(v interface{}) error {
 }
 
 func (e CloneMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type CommunicationMethod string
+
+const (
+	CommunicationMethodLegacySSH CommunicationMethod = "LEGACY_SSH"
+	CommunicationMethodSSH       CommunicationMethod = "SSH"
+	CommunicationMethodRPC       CommunicationMethod = "RPC"
+)
+
+var AllCommunicationMethod = []CommunicationMethod{
+	CommunicationMethodLegacySSH,
+	CommunicationMethodSSH,
+	CommunicationMethodRPC,
+}
+
+func (e CommunicationMethod) IsValid() bool {
+	switch e {
+	case CommunicationMethodLegacySSH, CommunicationMethodSSH, CommunicationMethodRPC:
+		return true
+	}
+	return false
+}
+
+func (e CommunicationMethod) String() string {
+	return string(e)
+}
+
+func (e *CommunicationMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CommunicationMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CommunicationMethod", str)
+	}
+	return nil
+}
+
+func (e CommunicationMethod) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

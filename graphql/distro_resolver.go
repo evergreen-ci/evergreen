@@ -12,9 +12,46 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
+
+// Communication is the resolver for the communication field.
+func (r *bootstrapSettingsResolver) Communication(ctx context.Context, obj *model.APIBootstrapSettings) (CommunicationMethod, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve communication method")
+	}
+
+	switch utility.FromStringPtr(obj.Communication) {
+	case distro.CommunicationMethodLegacySSH:
+		return CommunicationMethodLegacySSH, nil
+	case distro.CommunicationMethodSSH:
+		return CommunicationMethodSSH, nil
+	case distro.CommunicationMethodRPC:
+		return CommunicationMethodRPC, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("communication method '%s' is invalid", utility.FromStringPtr(obj.Communication)))
+	}
+}
+
+// Method is the resolver for the method field.
+func (r *bootstrapSettingsResolver) Method(ctx context.Context, obj *model.APIBootstrapSettings) (BootstrapMethod, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve bootstrap method")
+	}
+
+	switch utility.FromStringPtr(obj.Method) {
+	case distro.BootstrapMethodLegacySSH:
+		return BootstrapMethodLegacySSH, nil
+	case distro.BootstrapMethodSSH:
+		return BootstrapMethodSSH, nil
+	case distro.BootstrapMethodUserData:
+		return BootstrapMethodUserData, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("bootstrap method '%s' is invalid", utility.FromStringPtr(obj.Method)))
+	}
+}
 
 // Version is the resolver for the version field.
 func (r *dispatcherSettingsResolver) Version(ctx context.Context, obj *model.APIDispatcherSettings) (DispatcherVersion, error) {
@@ -29,6 +66,32 @@ func (r *dispatcherSettingsResolver) Version(ctx context.Context, obj *model.API
 		return DispatcherVersionRevisedWithDependencies, nil
 	default:
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("dispatcher version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+	}
+}
+
+// Arch is the resolver for the arch field.
+func (r *distroResolver) Arch(ctx context.Context, obj *model.APIDistro) (Arch, error) {
+	if obj == nil {
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve arch")
+	}
+
+	switch utility.FromStringPtr(obj.Arch) {
+	case evergreen.ArchDarwinAmd64:
+		return ArchOsx64Bit, nil
+	case evergreen.ArchDarwinArm64:
+		return ArchOsxArm64Bit, nil
+	case evergreen.ArchLinuxAmd64:
+		return ArchLinux64Bit, nil
+	case evergreen.ArchLinuxArm64:
+		return ArchLinuxArm64Bit, nil
+	case evergreen.ArchLinuxPpc64le:
+		return ArchLinuxPpc64Bit, nil
+	case evergreen.ArchLinuxS390x:
+		return ArchLinuxZseries, nil
+	case evergreen.ArchWindowsAmd64:
+		return ArchWindows64Bit, nil
+	default:
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("arch '%s' is invalid", utility.FromStringPtr(obj.Arch)))
 	}
 }
 
@@ -114,6 +177,36 @@ func (r *plannerSettingsResolver) Version(ctx context.Context, obj *model.APIPla
 	}
 }
 
+// Communication is the resolver for the communication field.
+func (r *bootstrapSettingsInputResolver) Communication(ctx context.Context, obj *model.APIBootstrapSettings, data CommunicationMethod) error {
+	switch data {
+	case CommunicationMethodLegacySSH:
+		obj.Communication = utility.ToStringPtr(distro.CommunicationMethodLegacySSH)
+	case CommunicationMethodSSH:
+		obj.Communication = utility.ToStringPtr(distro.CommunicationMethodSSH)
+	case CommunicationMethodRPC:
+		obj.Communication = utility.ToStringPtr(distro.CommunicationMethodRPC)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("communication method '%s' is invalid", data))
+	}
+	return nil
+}
+
+// Method is the resolver for the method field.
+func (r *bootstrapSettingsInputResolver) Method(ctx context.Context, obj *model.APIBootstrapSettings, data BootstrapMethod) error {
+	switch data {
+	case BootstrapMethodLegacySSH:
+		obj.Method = utility.ToStringPtr(distro.BootstrapMethodLegacySSH)
+	case BootstrapMethodSSH:
+		obj.Method = utility.ToStringPtr(distro.BootstrapMethodSSH)
+	case BootstrapMethodUserData:
+		obj.Method = utility.ToStringPtr(distro.BootstrapMethodUserData)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("bootstrap method '%s' is invalid", data))
+	}
+	return nil
+}
+
 // Version is the resolver for the version field.
 func (r *dispatcherSettingsInputResolver) Version(ctx context.Context, obj *model.APIDispatcherSettings, data DispatcherVersion) error {
 	switch data {
@@ -123,6 +216,29 @@ func (r *dispatcherSettingsInputResolver) Version(ctx context.Context, obj *mode
 		obj.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies)
 	default:
 		return InputValidationError.Send(ctx, fmt.Sprintf("dispatcher version '%s' is invalid", data))
+	}
+	return nil
+}
+
+// Arch is the resolver for the arch field.
+func (r *distroInputResolver) Arch(ctx context.Context, obj *model.APIDistro, data Arch) error {
+	switch data {
+	case ArchOsx64Bit:
+		obj.Arch = utility.ToStringPtr(evergreen.ArchDarwinAmd64)
+	case ArchOsxArm64Bit:
+		obj.Arch = utility.ToStringPtr(evergreen.ArchDarwinArm64)
+	case ArchLinux64Bit:
+		obj.Arch = utility.ToStringPtr(evergreen.ArchLinuxAmd64)
+	case ArchLinuxArm64Bit:
+		obj.Arch = utility.ToStringPtr(evergreen.ArchLinuxArm64)
+	case ArchLinuxPpc64Bit:
+		obj.Arch = utility.ToStringPtr(evergreen.ArchLinuxPpc64le)
+	case ArchLinuxZseries:
+		obj.Arch = utility.ToStringPtr(evergreen.ArchLinuxS390x)
+	case ArchWindows64Bit:
+		obj.Arch = utility.ToStringPtr(evergreen.ArchWindowsAmd64)
+	default:
+		return InputValidationError.Send(ctx, fmt.Sprintf("arch '%s' is invalid", data))
 	}
 	return nil
 }
@@ -217,6 +333,11 @@ func (r *plannerSettingsInputResolver) Version(ctx context.Context, obj *model.A
 	return nil
 }
 
+// BootstrapSettings returns BootstrapSettingsResolver implementation.
+func (r *Resolver) BootstrapSettings() BootstrapSettingsResolver {
+	return &bootstrapSettingsResolver{r}
+}
+
 // DispatcherSettings returns DispatcherSettingsResolver implementation.
 func (r *Resolver) DispatcherSettings() DispatcherSettingsResolver {
 	return &dispatcherSettingsResolver{r}
@@ -230,6 +351,11 @@ func (r *Resolver) FinderSettings() FinderSettingsResolver { return &finderSetti
 
 // PlannerSettings returns PlannerSettingsResolver implementation.
 func (r *Resolver) PlannerSettings() PlannerSettingsResolver { return &plannerSettingsResolver{r} }
+
+// BootstrapSettingsInput returns BootstrapSettingsInputResolver implementation.
+func (r *Resolver) BootstrapSettingsInput() BootstrapSettingsInputResolver {
+	return &bootstrapSettingsInputResolver{r}
+}
 
 // DispatcherSettingsInput returns DispatcherSettingsInputResolver implementation.
 func (r *Resolver) DispatcherSettingsInput() DispatcherSettingsInputResolver {
@@ -254,10 +380,12 @@ func (r *Resolver) PlannerSettingsInput() PlannerSettingsInputResolver {
 	return &plannerSettingsInputResolver{r}
 }
 
+type bootstrapSettingsResolver struct{ *Resolver }
 type dispatcherSettingsResolver struct{ *Resolver }
 type distroResolver struct{ *Resolver }
 type finderSettingsResolver struct{ *Resolver }
 type plannerSettingsResolver struct{ *Resolver }
+type bootstrapSettingsInputResolver struct{ *Resolver }
 type dispatcherSettingsInputResolver struct{ *Resolver }
 type distroInputResolver struct{ *Resolver }
 type finderSettingsInputResolver struct{ *Resolver }
