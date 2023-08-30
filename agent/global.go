@@ -56,4 +56,41 @@ const (
 	// dockerTimeout is the duration to timeout the Docker cleanup that happens
 	// after an agent completes a task
 	dockerTimeout = 1 * time.Minute
+
+	endTaskMessageLimit = 500
+)
+
+type timeoutType string
+
+const (
+	execTimeout          timeoutType = "exec"
+	idleTimeout          timeoutType = "idle"
+	callbackTimeout      timeoutType = "callback"
+	preTimeout           timeoutType = "pre"
+	postTimeout          timeoutType = "post"
+	setupGroupTimeout    timeoutType = "setup group"
+	setupTaskTimeout     timeoutType = "setup task"
+	teardownTaskTimeout  timeoutType = "teardown task"
+	teardownGroupTimeout timeoutType = "teardown group"
+	taskSyncTimeout      timeoutType = "task sync"
+)
+
+// Mode represents a mode that the agent will run in.
+type Mode string
+
+const (
+	// HostMode indicates that the agent will run in a host.
+	HostMode Mode = "host"
+	// PodMode indicates that the agent will run in a pod's container.
+	PodMode Mode = "pod"
+)
+
+// LogOutput represents the output locations for the agent's logs.
+type LogOutputType string
+
+const (
+	// LogOutputFile indicates that the agent will log to a file.
+	LogOutputFile LogOutputType = "file"
+	// LogOutputStdout indicates that the agent will log to standard output.
+	LogOutputStdout LogOutputType = "stdout"
 )

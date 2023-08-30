@@ -334,7 +334,11 @@ pre:
 	}()
 
 	startAt := time.Now()
-	err := s.a.runCommandsInBlock(ctx, s.tc, s.tc.taskConfig.Project.Pre.List(), runCommandsOptions{block: command.PreBlock})
+	cmdBlock := commandBlock{
+		block:    command.PreBlock,
+		commands: s.tc.taskConfig.Project.Pre,
+	}
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmdBlock)
 	cmdDuration := time.Since(startAt)
 
 	s.Error(err)
@@ -354,7 +358,12 @@ pre:
     params:
       script: exit 0
 `)
-	err := s.a.runCommandsInBlock(ctx, s.tc, s.tc.taskConfig.Project.Pre.List(), runCommandsOptions{block: command.PreBlock})
+
+	cmdBlock := commandBlock{
+		block:    command.PreBlock,
+		commands: s.tc.taskConfig.Project.Pre,
+	}
+	err := s.a.runCommandsInBlock(ctx, s.tc, cmdBlock)
 	s.Require().Error(err)
 
 	s.True(utility.IsContextError(errors.Cause(err)))
@@ -373,10 +382,14 @@ pre:
 		logger: s.tc.logger,
 	}
 	s.NotPanics(func() {
+		cmdBlock := commandBlock{
+			block:    command.PreBlock,
+			commands: s.tc.taskConfig.Project.Pre,
+		}
 		// Intentionally provide in a task context which is lacking a lot of
 		// information necessary to run commands for that task, which should
 		// force a panic.
-		err := s.a.runCommandsInBlock(s.ctx, tcMissingInfo, s.tc.taskConfig.Project.Pre.List(), runCommandsOptions{block: command.PreBlock})
+		err := s.a.runCommandsInBlock(s.ctx, tcMissingInfo, cmdBlock)
 		s.Require().Error(err)
 	})
 
