@@ -52,6 +52,7 @@ type ResolverRoot interface {
 	Distro() DistroResolver
 	FinderSettings() FinderSettingsResolver
 	Host() HostResolver
+	HostAllocatorSettings() HostAllocatorSettingsResolver
 	IssueLink() IssueLinkResolver
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
@@ -1546,6 +1547,14 @@ type HostResolver interface {
 
 	Volumes(ctx context.Context, obj *model.APIHost) ([]*model.APIVolume, error)
 }
+type HostAllocatorSettingsResolver interface {
+	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (FeedbackRule, error)
+
+	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (OverallocatedRule, error)
+
+	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (RoundingRule, error)
+	Version(ctx context.Context, obj *model.APIHostAllocatorSettings) (HostAllocatorVersion, error)
+}
 type IssueLinkResolver interface {
 	JiraTicket(ctx context.Context, obj *model.APIIssueLink) (*thirdparty.JiraTicket, error)
 }
@@ -1857,6 +1866,12 @@ type FinderSettingsInputResolver interface {
 }
 type HostAllocatorSettingsInputResolver interface {
 	AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error
+	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data FeedbackRule) error
+
+	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocatedRule) error
+
+	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data RoundingRule) error
+	Version(ctx context.Context, obj *model.APIHostAllocatorSettings, data HostAllocatorVersion) error
 }
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
@@ -21144,7 +21159,7 @@ func (ec *executionContext) _HostAllocatorSettings_feedbackRule(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.FeedbackRule, nil
+		return ec.resolvers.HostAllocatorSettings().FeedbackRule(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21156,19 +21171,19 @@ func (ec *executionContext) _HostAllocatorSettings_feedbackRule(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(FeedbackRule)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_feedbackRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type FeedbackRule does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21232,7 +21247,7 @@ func (ec *executionContext) _HostAllocatorSettings_hostsOverallocatedRule(ctx co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.HostsOverallocatedRule, nil
+		return ec.resolvers.HostAllocatorSettings().HostsOverallocatedRule(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21244,19 +21259,19 @@ func (ec *executionContext) _HostAllocatorSettings_hostsOverallocatedRule(ctx co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(OverallocatedRule)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_hostsOverallocatedRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type OverallocatedRule does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21364,7 +21379,7 @@ func (ec *executionContext) _HostAllocatorSettings_roundingRule(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RoundingRule, nil
+		return ec.resolvers.HostAllocatorSettings().RoundingRule(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21376,19 +21391,19 @@ func (ec *executionContext) _HostAllocatorSettings_roundingRule(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(RoundingRule)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_roundingRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type RoundingRule does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21408,7 +21423,7 @@ func (ec *executionContext) _HostAllocatorSettings_version(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Version, nil
+		return ec.resolvers.HostAllocatorSettings().Version(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21420,19 +21435,19 @@ func (ec *executionContext) _HostAllocatorSettings_version(ctx context.Context, 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(HostAllocatorVersion)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_version(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type HostAllocatorVersion does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66480,11 +66495,13 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("feedbackRule"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.FeedbackRule = data
+			if err = ec.resolvers.HostAllocatorSettingsInput().FeedbackRule(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "futureHostFraction":
 			var err error
 
@@ -66498,11 +66515,13 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostsOverallocatedRule"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HostsOverallocatedRule = data
+			if err = ec.resolvers.HostAllocatorSettingsInput().HostsOverallocatedRule(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "maximumHosts":
 			var err error
 
@@ -66525,20 +66544,24 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roundingRule"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RoundingRule = data
+			if err = ec.resolvers.HostAllocatorSettingsInput().RoundingRule(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "version":
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Version = data
+			if err = ec.resolvers.HostAllocatorSettingsInput().Version(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -73136,43 +73159,167 @@ func (ec *executionContext) _HostAllocatorSettings(ctx context.Context, sel ast.
 		case "acceptableHostIdleTime":
 			out.Values[i] = ec._HostAllocatorSettings_acceptableHostIdleTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "feedbackRule":
-			out.Values[i] = ec._HostAllocatorSettings_feedbackRule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostAllocatorSettings_feedbackRule(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "futureHostFraction":
 			out.Values[i] = ec._HostAllocatorSettings_futureHostFraction(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "hostsOverallocatedRule":
-			out.Values[i] = ec._HostAllocatorSettings_hostsOverallocatedRule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostAllocatorSettings_hostsOverallocatedRule(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "maximumHosts":
 			out.Values[i] = ec._HostAllocatorSettings_maximumHosts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "minimumHosts":
 			out.Values[i] = ec._HostAllocatorSettings_minimumHosts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "roundingRule":
-			out.Values[i] = ec._HostAllocatorSettings_roundingRule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostAllocatorSettings_roundingRule(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "version":
-			out.Values[i] = ec._HostAllocatorSettings_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostAllocatorSettings_version(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -84888,6 +85035,16 @@ func (ec *executionContext) unmarshalNExternalLinkInput2githubᚗcomᚋevergreen
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx context.Context, v interface{}) (FeedbackRule, error) {
+	var res FeedbackRule
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx context.Context, sel ast.SelectionSet, v FeedbackRule) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNFile2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx context.Context, sel ast.SelectionSet, v *model.APIFile) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -85188,6 +85345,16 @@ func (ec *executionContext) marshalNHostAllocatorSettings2githubᚗcomᚋevergre
 func (ec *executionContext) unmarshalNHostAllocatorSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx context.Context, v interface{}) (model.APIHostAllocatorSettings, error) {
 	res, err := ec.unmarshalInputHostAllocatorSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx context.Context, v interface{}) (HostAllocatorVersion, error) {
+	var res HostAllocatorVersion
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx context.Context, sel ast.SelectionSet, v HostAllocatorVersion) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNHostEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventData(ctx context.Context, sel ast.SelectionSet, v *model.HostAPIEventData) graphql.Marshaler {
@@ -85906,6 +86073,16 @@ func (ec *executionContext) marshalNNewDistroPayload2ᚖgithubᚗcomᚋevergreen
 
 func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {
 	return ec._OomTrackerInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx context.Context, v interface{}) (OverallocatedRule, error) {
+	var res OverallocatedRule
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx context.Context, sel ast.SelectionSet, v OverallocatedRule) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNParameter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, sel ast.SelectionSet, v model.APIParameter) graphql.Marshaler {
@@ -86739,6 +86916,16 @@ func (ec *executionContext) marshalNResourceLimits2githubᚗcomᚋevergreenᚑci
 func (ec *executionContext) unmarshalNResourceLimitsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceLimits(ctx context.Context, v interface{}) (model.APIResourceLimits, error) {
 	res, err := ec.unmarshalInputResourceLimitsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx context.Context, v interface{}) (RoundingRule, error) {
+	var res RoundingRule
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx context.Context, sel ast.SelectionSet, v RoundingRule) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v interface{}) (SaveDistroInput, error) {
