@@ -319,8 +319,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
 
 func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
 	if len(bvt.AllowedRequesters) != 0 {
-		allowed := utility.StringSliceIntersection(bvt.AllowedRequesters, []string{evergreen.GitTagRequester})
-		return len(allowed) == 0
+		return utility.StringSliceContains(bvt.AllowedRequesters, evergreen.GitTagRequester)
 	}
 
 	return !utility.FromBoolTPtr(bvt.AllowForGitTag)

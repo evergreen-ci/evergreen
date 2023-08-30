@@ -1083,18 +1083,6 @@ func TestCheckTaskRuns(t *testing.T) {
 		So(len(errs), ShouldEqual, 1)
 		So(errs[0].Level, ShouldEqual, Warning)
 	})
-	Convey("When a task has valid allowed requesters, no warning should be thrown", t, func() {
-		project := makeProject()
-		project.BuildVariants[0].Tasks[0].AllowedRequesters = []string{evergreen.GitTagRequester, evergreen.RepotrackerVersionRequester}
-		So(checkTaskRuns(project), ShouldBeEmpty)
-	})
-	Convey("When a task has invalid allowed requesters, no warning should be thrown", t, func() {
-		project := makeProject()
-		project.BuildVariants[0].Tasks[0].AllowedRequesters = []string{"foobar"}
-		errs := checkTaskRuns(project)
-		So(len(errs), ShouldEqual, 1)
-		So(errs[0].Level, ShouldEqual, Error)
-	})
 }
 
 func TestValidateTaskNames(t *testing.T) {

@@ -1375,16 +1375,6 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
 		if len(bvtu.AllowedRequesters) != 0 {
-			for _, requester := range bvtu.AllowedRequesters {
-				if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
-					errs = append(errs, ValidationError{
-						Level: Error,
-						Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid allowed requester '%s'",
-							bvtu.Name, bvtu.Variant, requester),
-					})
-				}
-			}
-
 			if bvtu.PatchOnly != nil {
 				errs = append(errs, ValidationError{
 					Level: Warning,
