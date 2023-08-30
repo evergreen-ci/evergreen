@@ -519,9 +519,10 @@ to generate any output on `stdout`/`stderr` for more than a certain threshold,
 using the `timeout_secs` setting on the command. As long as the command produces
 output to `stdout`/`stderr`, it will be allowed to continue, but if it does not
 write any output for longer than `timeout_secs` then the command will time out.
-Idle timeout only applies to commands that run in `pre`, `setup_group`,
-`setup_task` and the main task commands; it does not apply to the `post`,
-`teardown_task`, and `teardown_group` blocks. This timeout defaults to 2 hours.
+If this timeout is hit, the task will stop (and fail). Idle timeout only applies
+to commands that run in `pre`, `setup_group`, `setup_task` and the main task
+commands; it does not apply to the `post`, `teardown_task`, and `teardown_group`
+blocks. This timeout defaults to 2 hours.
 
 You can also overwrite the default `timeout_secs` for all later commands using
 [timeout.update](Project-Commands.md#timeoutupdate).
@@ -551,13 +552,6 @@ tasks:
 ```yaml
 exec_timeout_secs: 60
 ```
-
-### Aborting a Task
-If a task is aborted, the task will try to finish. The task will stop running
-any `pre` (or the task group equivalents, `setup_group` and `setup_task`) or
-task commands early, but it still runs `post` (or the task group equivalents,
-`teardown_task` and `teardown_group`). This is done in order to perform any
-final cleanup for the task.
 
 ### Limiting When a Task Will Run
 
@@ -1618,33 +1612,6 @@ different colors, you can hack this by having a command write to a file
 based on its exit status, and then subsequent commands with different
 types can exit non-zero conditionally based on the contents of that
 file.
-
-### Set Task Status within Task
-
-The following endpoint was created to give tasks the ability to define
-their task end status, rather than relying on hacky YAML tricks to use
-different failure types for the same command. This will not kill the
-current command, but will set the task status when the current command
-is complete (or when the task is complete, if `should_continue` is set).
-
-    POST localhost:2285/task_status
-
-| Name            | Type    | Description                                                                                                                                          |
-|-----------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| status          | string  | Required. The overall task status. This can be "success" or "failed". If this is configured incorrectly, the task will system fail.                  |
-| type            | string  | The failure type. This can be "setup", "system", or "test" (see above section for corresponding colors). Will default to the command's failure type. |
-| desc            | string  | Provide details on the task failure. This is limited to 500 characters. Will default to the command's display name.                                  |
-| should_continue | boolean | Defaults to false. If set, will finish running the task before setting the status.                                                                   |
-
-Example in a command:
-
-``` yaml
-- command: shell.exec
-     params:
-        shell: bash
-        script: |
-          curl -d '{"status":"failed", "type":"setup", "desc":"this should be set"}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
-```
 
 ### Task Fields Override Hierarchy
 
