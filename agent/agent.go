@@ -976,7 +976,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var userDefinedDescription string
 	var userDefinedFailureType string
-	// kim: TODO: call user-defined end task response in staging
 	if userEndTaskResp := tc.getUserEndTaskResponse(); userEndTaskResp != nil {
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
 		if !evergreen.IsValidTaskEndStatus(userEndTaskResp.Status) {
