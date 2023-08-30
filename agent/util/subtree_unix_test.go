@@ -72,9 +72,8 @@ func TestGetPIDsToKill(t *testing.T) {
 }
 
 func TestKillSpawnedProcs(t *testing.T) {
-	ctx := context.Background()
-	for testName, test := range map[string]func(*testing.T){
-		"expired context": func(t *testing.T) {
+	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
+		"ErrorsWithContextTimeout": func(ctx context.Context, t *testing.T) {
 			expiredContext, cancel := context.WithTimeout(ctx, -time.Second)
 			defer cancel()
 
@@ -82,7 +81,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, ErrPSTimeout, errors.Cause(err))
 		},
-		"cancelled context": func(t *testing.T) {
+		"ErrorsWithContextCancelled": func(ctx context.Context, t *testing.T) {
 			cancelledContext, cancel := context.WithCancel(ctx)
 			cancel()
 
@@ -90,42 +89,45 @@ func TestKillSpawnedProcs(t *testing.T) {
 			assert.Error(t, err)
 			assert.NotEqual(t, ErrPSTimeout, errors.Cause(err))
 		},
-		"not cancelled": func(t *testing.T) {
+		"SucceedsWithNoContextError": func(ctx context.Context, t *testing.T) {
 			err := KillSpawnedProcs(ctx, "", "", grip.GetDefaultJournaler())
 			assert.NoError(t, err)
 		},
 	} {
-		t.Run(testName, test)
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			test(ctx, t)
+		})
 	}
 
 }
 
 func TestWaitForExit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for testName, test := range map[string]func(*testing.T){
-		"non-existent process": func(t *testing.T) {
-			waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-			defer cancel()
-			pids, err := waitForExit(waitCtx, []int{1234567890})
-			assert.NoError(t, waitCtx.Err())
+	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
+		"DoesNotReturnNonexistentProcess": func(ctx context.Context, t *testing.T) {
+			pids, err := waitForExit(ctx, []int{1234567890})
+			assert.NoError(t, ctx.Err())
 			assert.NoError(t, err)
 			assert.Empty(t, pids)
 		},
-		"long-running process": func(t *testing.T) {
+		"ReturnsLongRunningProcess": func(ctx context.Context, t *testing.T) {
 			longProcess := exec.CommandContext(ctx, "sleep", "30")
 			require.NoError(t, longProcess.Start())
-			waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-			defer cancel()
-			pids, err := waitForExit(waitCtx, []int{longProcess.Process.Pid})
-			assert.NoError(t, waitCtx.Err())
+			pids, err := waitForExit(ctx, []int{longProcess.Process.Pid})
+			assert.NoError(t, ctx.Err())
 			assert.Error(t, err)
 			require.Len(t, pids, 1)
 			assert.Equal(t, longProcess.Process.Pid, pids[0])
 		},
 	} {
-		t.Run(testName, test)
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			test(ctx, t)
+		})
 	}
 }
 
