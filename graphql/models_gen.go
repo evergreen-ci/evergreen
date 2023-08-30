@@ -1011,46 +1011,46 @@ func (e MetStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type OverallocationRule string
+type OverallocatedRule string
 
 const (
-	OverallocationRuleTerminate OverallocationRule = "TERMINATE"
-	OverallocationRuleIgnore    OverallocationRule = "IGNORE"
-	OverallocationRuleDefault   OverallocationRule = "DEFAULT"
+	OverallocatedRuleTerminate OverallocatedRule = "TERMINATE"
+	OverallocatedRuleIgnore    OverallocatedRule = "IGNORE"
+	OverallocatedRuleDefault   OverallocatedRule = "DEFAULT"
 )
 
-var AllOverallocationRule = []OverallocationRule{
-	OverallocationRuleTerminate,
-	OverallocationRuleIgnore,
-	OverallocationRuleDefault,
+var AllOverallocatedRule = []OverallocatedRule{
+	OverallocatedRuleTerminate,
+	OverallocatedRuleIgnore,
+	OverallocatedRuleDefault,
 }
 
-func (e OverallocationRule) IsValid() bool {
+func (e OverallocatedRule) IsValid() bool {
 	switch e {
-	case OverallocationRuleTerminate, OverallocationRuleIgnore, OverallocationRuleDefault:
+	case OverallocatedRuleTerminate, OverallocatedRuleIgnore, OverallocatedRuleDefault:
 		return true
 	}
 	return false
 }
 
-func (e OverallocationRule) String() string {
+func (e OverallocatedRule) String() string {
 	return string(e)
 }
 
-func (e *OverallocationRule) UnmarshalGQL(v interface{}) error {
+func (e *OverallocatedRule) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = OverallocationRule(str)
+	*e = OverallocatedRule(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid OverallocationRule", str)
+		return fmt.Errorf("%s is not a valid OverallocatedRule", str)
 	}
 	return nil
 }
 
-func (e OverallocationRule) MarshalGQL(w io.Writer) {
+func (e OverallocatedRule) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

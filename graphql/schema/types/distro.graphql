@@ -58,7 +58,7 @@ enum FeedbackRule {
   DEFAULT
 }
 
-enum OverallocationRule {
+enum OverallocatedRule {
   TERMINATE
   IGNORE
   DEFAULT
@@ -199,7 +199,7 @@ input HostAllocatorSettingsInput {
   acceptableHostIdleTime: Int!
   feedbackRule: FeedbackRule!
   futureHostFraction: Float!
-  hostsOverallocatedRule: OverallocationRule!
+  hostsOverallocatedRule: OverallocatedRule!
   maximumHosts: Int!
   minimumHosts: Int!
   roundingRule: RoundingRule!
@@ -348,7 +348,7 @@ type HostAllocatorSettings {
   acceptableHostIdleTime: Duration!
   feedbackRule: FeedbackRule!
   futureHostFraction: Float!
-  hostsOverallocatedRule: OverallocationRule!
+  hostsOverallocatedRule: OverallocatedRule!
   maximumHosts: Int!
   minimumHosts: Int!
   roundingRule: RoundingRule!

@@ -180,20 +180,20 @@ func (r *hostAllocatorSettingsResolver) FeedbackRule(ctx context.Context, obj *m
 }
 
 // HostsOverallocatedRule is the resolver for the hostsOverallocatedRule field.
-func (r *hostAllocatorSettingsResolver) HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (OverallocationRule, error) {
+func (r *hostAllocatorSettingsResolver) HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (OverallocatedRule, error) {
 	if obj == nil {
-		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve overallocation rule")
+		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve overallocated rule")
 	}
 
 	switch utility.FromStringPtr(obj.HostsOverallocatedRule) {
 	case evergreen.HostsOverallocatedTerminate:
-		return OverallocationRuleTerminate, nil
+		return OverallocatedRuleTerminate, nil
 	case evergreen.HostsOverallocatedIgnore:
-		return OverallocationRuleIgnore, nil
+		return OverallocatedRuleIgnore, nil
 	case evergreen.HostsOverallocatedUseDefault:
-		return OverallocationRuleDefault, nil
+		return OverallocatedRuleDefault, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("overallocation rule '%s' is invalid", utility.FromStringPtr(obj.HostsOverallocatedRule)))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("overallocated rule '%s' is invalid", utility.FromStringPtr(obj.HostsOverallocatedRule)))
 	}
 }
 
@@ -398,16 +398,16 @@ func (r *hostAllocatorSettingsInputResolver) FeedbackRule(ctx context.Context, o
 }
 
 // HostsOverallocatedRule is the resolver for the hostsOverallocatedRule field.
-func (r *hostAllocatorSettingsInputResolver) HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocationRule) error {
+func (r *hostAllocatorSettingsInputResolver) HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocatedRule) error {
 	switch data {
-	case OverallocationRuleTerminate:
+	case OverallocatedRuleTerminate:
 		obj.HostsOverallocatedRule = utility.ToStringPtr(evergreen.HostsOverallocatedTerminate)
-	case OverallocationRuleIgnore:
+	case OverallocatedRuleIgnore:
 		obj.HostsOverallocatedRule = utility.ToStringPtr(evergreen.HostsOverallocatedIgnore)
-	case OverallocationRuleDefault:
+	case OverallocatedRuleDefault:
 		obj.HostsOverallocatedRule = utility.ToStringPtr(evergreen.HostsOverallocatedUseDefault)
 	default:
-		return InputValidationError.Send(ctx, fmt.Sprintf("overallocation rule '%s' is invalid", data))
+		return InputValidationError.Send(ctx, fmt.Sprintf("overallocated rule '%s' is invalid", data))
 	}
 	return nil
 }

@@ -1550,7 +1550,7 @@ type HostResolver interface {
 type HostAllocatorSettingsResolver interface {
 	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (FeedbackRule, error)
 
-	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (OverallocationRule, error)
+	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (OverallocatedRule, error)
 
 	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (RoundingRule, error)
 	Version(ctx context.Context, obj *model.APIHostAllocatorSettings) (HostAllocatorVersion, error)
@@ -1868,7 +1868,7 @@ type HostAllocatorSettingsInputResolver interface {
 	AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error
 	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data FeedbackRule) error
 
-	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocationRule) error
+	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocatedRule) error
 
 	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data RoundingRule) error
 	Version(ctx context.Context, obj *model.APIHostAllocatorSettings, data HostAllocatorVersion) error
@@ -21259,9 +21259,9 @@ func (ec *executionContext) _HostAllocatorSettings_hostsOverallocatedRule(ctx co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(OverallocationRule)
+	res := resTmp.(OverallocatedRule)
 	fc.Result = res
-	return ec.marshalNOverallocationRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocationRule(ctx, field.Selections, res)
+	return ec.marshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_hostsOverallocatedRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21271,7 +21271,7 @@ func (ec *executionContext) fieldContext_HostAllocatorSettings_hostsOverallocate
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type OverallocationRule does not have child fields")
+			return nil, errors.New("field of type OverallocatedRule does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66515,7 +66515,7 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostsOverallocatedRule"))
-			data, err := ec.unmarshalNOverallocationRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocationRule(ctx, v)
+			data, err := ec.unmarshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -86075,13 +86075,13 @@ func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑci
 	return ec._OomTrackerInfo(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNOverallocationRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocationRule(ctx context.Context, v interface{}) (OverallocationRule, error) {
-	var res OverallocationRule
+func (ec *executionContext) unmarshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx context.Context, v interface{}) (OverallocatedRule, error) {
+	var res OverallocatedRule
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNOverallocationRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocationRule(ctx context.Context, sel ast.SelectionSet, v OverallocationRule) graphql.Marshaler {
+func (ec *executionContext) marshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx context.Context, sel ast.SelectionSet, v OverallocatedRule) graphql.Marshaler {
 	return v
 }
 
