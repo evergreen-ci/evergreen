@@ -126,12 +126,12 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		fmt.Sprintf("The working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'.",
 			c.WorkingDir, conf.WorkDir))
 
-	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
+	c.WorkingDir, err = conf.GetWorkingDirectoryLegacy(c.WorkingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")
 	}
 
-	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
+	taskTmpDir, err := conf.GetWorkingDirectoryLegacy("tmp")
 	if err != nil {
 		logger.Execution().Notice(errors.Wrap(err, "getting task temporary directory"))
 	}

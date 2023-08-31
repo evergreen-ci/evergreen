@@ -340,12 +340,12 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 			"path":            c.WorkingDir,
 			"required_prefix": conf.WorkDir,
 		})
-	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
+	c.WorkingDir, err = conf.GetWorkingDirectoryLegacy(c.WorkingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")
 	}
 
-	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
+	taskTmpDir, err := conf.GetWorkingDirectoryLegacy("tmp")
 	if err != nil {
 		logger.Execution().Notice(errors.Wrap(err, "getting temporary directory"))
 	}

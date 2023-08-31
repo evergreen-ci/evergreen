@@ -24,22 +24,22 @@ func TestTaskConfigGetWorkingDirectory(t *testing.T) {
 	}
 
 	// make sure that we fall back to the configured working directory
-	out, err := conf.GetWorkingDirectory("")
+	out, err := conf.GetWorkingDirectoryLegacy("")
 	assert.NoError(t, err)
 	assert.Equal(t, conf.WorkDir, out)
 
 	// check for a directory that we know exists
-	out, err = conf.GetWorkingDirectory("testutil")
+	out, err = conf.GetWorkingDirectoryLegacy("testutil")
 	require.NoError(t, err)
 	assert.Equal(t, out, filepath.Join(curdir, "testutil"))
 
 	// check for a file not a directory
-	out, err = conf.GetWorkingDirectory("task_config.go")
+	out, err = conf.GetWorkingDirectoryLegacy("task_config.go")
 	assert.Error(t, err)
 	assert.Equal(t, "", out)
 
 	// presumably for a directory that doesn't exist
-	out, err = conf.GetWorkingDirectory("does-not-exist")
+	out, err = conf.GetWorkingDirectoryLegacy("does-not-exist")
 	assert.Error(t, err)
 	assert.Equal(t, "", out)
 }

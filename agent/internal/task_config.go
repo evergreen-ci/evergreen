@@ -107,7 +107,12 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	return taskConfig, nil
 }
 
-func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
+// GetWorkingDirectoryLegacy is a legacy function to get the working directory for a
+// path, ensure that the path is always prefixed with the task working
+// directory, and check that the directory exists. This is a legacy function.
+// Commands that need to get the working directory should instead use
+// getJoinedWithWorkDir.
+func (c *TaskConfig) GetWorkingDirectoryLegacy(dir string) (string, error) {
 	if dir == "" {
 		dir = c.WorkDir
 	} else if strings.HasPrefix(dir, c.WorkDir) {
