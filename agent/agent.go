@@ -625,6 +625,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		return tc, shouldExit, errors.Wrap(err, "setting up task")
 	}
 
+	defer a.killProcs(ctx, tc, false, "task is finished")
+
 	grip.Info(message.Fields{
 		"message": "running task",
 		"task_id": tc.task.ID,
@@ -667,7 +669,6 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		_ = a.logPanic(tc.logger, pErr, nil, op)
 		status = evergreen.TaskSystemFailed
 	}()
-	defer a.killProcs(ctx, tc, false, "task is finished")
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution during setup: %s", ctx.Err())

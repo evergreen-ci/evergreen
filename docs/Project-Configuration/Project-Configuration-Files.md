@@ -575,6 +575,35 @@ To cause a task to only run in versions NOT triggered from git tags, set
 To cause a task to only run in versions triggered from git tags, set
 `git_tag_only: true`.
 
+If the above settings do not provide the particular combination of conditions
+when you want a task to run, you can specify `allowed_requesters` to enumerate
+the list of conditions when a task is allowed to run. For example, if you wish
+for a task to only run for manual patches and git tag versions, you can specify
+it like this:
+
+```yaml
+tasks:
+- name: only-run-for-manual-patches-and-git-tag-versions
+  allowed_requesters: ["patch", "github_tag"]
+```
+
+The valid requester values are:
+- `patch`: manual patches.
+- `github_pr`: GitHub PR patches.
+- `github_tag`: git tag versions.
+- `commit`: mainline commits.
+- `trigger`: downstream trigger versions.
+- `ad_hoc`: periodic build versions.
+- `commit_queue`: Evergreen's commit queue.
+- `github_merge_queue`: GitHub's merge queue.
+
+By default, if no `allowed_requesters` are explicitly specified, then a task can
+run for any requester. If you specify an empty `allowed_requesters` list (i.e.
+`allowed_requesters: []`), this is also treated the same as the default.
+`allowed_requesters` is not compatible with `patchable`, `patch_only`,
+`allow_for_git_tag`, or `git_tag_only` (if combined, the
+`allowed_requesters` will always take higher precedence).
+
 To cause a task to not run at all, set `disable: true`.
 
 -   This behaves similarly to commenting out the task but will not
