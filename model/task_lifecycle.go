@@ -2033,16 +2033,17 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 	} else {
 		if err := resetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
+			if !t.IsPartOfDisplay() {
+				return errors.Wrap(err, "resetting heartbeat task")
+			}
 			// It's possible for display tasks to race, since multiple execution tasks can system fail at the same time.
 			// Only error if the display task hasn't actually been reset.
-			if t.IsPartOfDisplay() {
-				dt, dbErr := t.GetDisplayTask()
-				if dbErr != nil {
-					return errors.Wrap(dbErr, "confirming display task status")
-				}
-				if utility.StringSliceContains(evergreen.TaskCompletedStatuses, dt.Status) {
-					return errors.Wrap(err, "resetting heartbeat task")
-				}
+			dt, dbErr := t.GetDisplayTask()
+			if dbErr != nil {
+				return errors.Wrap(dbErr, "confirming display task status")
+			}
+			if utility.StringSliceContains(evergreen.TaskCompletedStatuses, dt.Status) {
+				return errors.Wrap(err, "resetting heartbeat task")
 			}
 		}
 	}
