@@ -38,7 +38,6 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/jpillora/backoff v1.0.0
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
-	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
@@ -164,8 +163,6 @@ require (
 	github.com/lestrrat-go/jwx v1.2.18 // indirect
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-xmpp v0.0.0-20211029151415-912ba614897a // indirect
 	github.com/mholt/archiver/v3 v3.5.1 // indirect
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 // indirect
