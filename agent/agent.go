@@ -699,9 +699,6 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	return evergreen.TaskSucceeded
 }
 
-// kim: NOTE: there's gonna be a merge conflict due to the change to
-// tc.taskGroup.
-
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	ctx, preTaskSpan := a.tracer.Start(ctx, "pre-task-commands")
 	defer preTaskSpan.End()

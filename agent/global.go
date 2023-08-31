@@ -68,11 +68,11 @@ const (
 	callbackTimeout      timeoutType = "callback"
 	preTimeout           timeoutType = "pre"
 	postTimeout          timeoutType = "post"
-	setupGroupTimeout    timeoutType = "setup group"
-	setupTaskTimeout     timeoutType = "setup task"
-	teardownTaskTimeout  timeoutType = "teardown task"
-	teardownGroupTimeout timeoutType = "teardown group"
-	taskSyncTimeout      timeoutType = "task sync"
+	setupGroupTimeout    timeoutType = "setup_group"
+	setupTaskTimeout     timeoutType = "setup_task"
+	teardownTaskTimeout  timeoutType = "teardown_task"
+	teardownGroupTimeout timeoutType = "teardown_group"
+	taskSyncTimeout      timeoutType = "task_sync"
 )
 
 // Mode represents a mode that the agent will run in.

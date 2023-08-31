@@ -33,11 +33,8 @@ var (
 	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
-// TODO (EVG-20634): move the block timeout watcher and other command block
-// logging messages into a helper for runCommandsInBlock to reduce duplication.
 type runCommandsOptions struct {
 	// block is the name of the block that the command runs in.
-	// kim: TODO: this is duplicate due to cmdBlock.block
 	block command.BlockType
 	// canFailTask indicates whether the command can fail the task.
 	canFailTask bool
@@ -105,8 +102,6 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
-		// kim: TODO: may need to additionally refactor since this is just
-		// a subset of cmdBlock.
 		runCmdOpts := runCommandsOptions{
 			block:       cmdBlock.block,
 			canFailTask: cmdBlock.canFailTask,
@@ -266,6 +261,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	a.comm.UpdateLastMessageTime()
 
 	start := time.Now()
+	defer func() {
+		tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
+	}()
+
 	// This method must return soon after the context errors (e.g. due to
 	// aborting the task). Even though commands ought to respect the context and
 	// finish up quickly when the context errors, we cannot guarantee that every
@@ -313,8 +312,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
-
-	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
 
 	if options.canFailTask && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
 		// only error if we're running a command that should fail, and we don't want to continue to run other tasks
