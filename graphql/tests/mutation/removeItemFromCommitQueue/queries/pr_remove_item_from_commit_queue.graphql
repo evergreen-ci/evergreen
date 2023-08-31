@@ -1,0 +1,6 @@
+mutation {
+    removeItemFromCommitQueue(
+        commitQueueId: "pr-queue"
+        issue: "5678"
+    )
+}
