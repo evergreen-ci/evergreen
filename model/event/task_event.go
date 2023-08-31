@@ -105,8 +105,8 @@ func LogJiraIssueCreated(taskId string, execution int, jiraIssue string) {
 	logTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{Execution: execution, JiraIssue: jiraIssue})
 }
 
-func LogTaskPriority(taskId string, execution int, user string, priority int64) {
-	logTaskEvent(taskId, TaskPriorityChanged, TaskEventData{Execution: execution, UserId: user, Priority: priority})
+func LogTaskPriority(taskId string, execution int, userId string, priority int64) {
+	logTaskEvent(taskId, TaskPriorityChanged, TaskEventData{Execution: execution, UserId: userId, Priority: priority})
 }
 
 func LogTaskCreated(taskId string, execution int) {
