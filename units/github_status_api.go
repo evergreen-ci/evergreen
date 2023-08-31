@@ -247,7 +247,6 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 }
 
 func (j *githubStatusUpdateJob) setSender(owner, repo string) error {
-	// TODO EVG-19966: Delete fallback to legacy GitHub sender
 	var err error
 	j.sender, err = j.env.GetGitHubSender(owner, repo)
 	return err

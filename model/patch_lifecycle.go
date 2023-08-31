@@ -1267,7 +1267,7 @@ func SendCommitQueueResult(ctx context.Context, p *patch.Patch, status message.G
 		Description: description,
 		URL:         url,
 	}
-	// TODO EVG-19966: Delete fallback to legacy GitHub sender
+
 	sender, err := evergreen.GetEnvironment().GetGitHubSender(projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub sender")

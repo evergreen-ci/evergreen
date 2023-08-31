@@ -251,7 +251,7 @@ type envState struct {
 	clientConfig            *ClientConfig
 	closers                 []closerOp
 	senders                 map[SenderKey]send.Sender
-	githubSenders           map[string]cachedSender
+	githubSenders           map[string]cachedGitHubSender
 	roleManager             gimlet.RoleManager
 	userManager             gimlet.UserManager
 	userManagerInfo         UserManagerInfo
@@ -273,10 +273,10 @@ type closerOp struct {
 	closerFn   func(context.Context) error
 }
 
-// cachedSender stores a GitHub sender and the time it was created
+// cachedGitHubSender stores a GitHub sender and the time it was created
 // because GitHub app tokens, and by extension, the senders, will expire
 // one hour after creation.
-type cachedSender struct {
+type cachedGitHubSender struct {
 	sender send.Sender
 	time   time.Time
 }
@@ -747,7 +747,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 		}
 		e.senders[SenderGithubStatus] = sender
 	}
-	e.githubSenders = make(map[string]cachedSender)
+	e.githubSenders = make(map[string]cachedGitHubSender)
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
@@ -1113,7 +1113,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		}
 		return legacySender, nil
 	}
-	e.githubSenders[owner] = cachedSender{
+	e.githubSenders[owner] = cachedGitHubSender{
 		sender: sender,
 		time:   time.Now(),
 	}

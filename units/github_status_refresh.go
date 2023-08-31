@@ -96,7 +96,6 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 	if j.urlBase == "" {
 		return errors.New("url base doesn't exist")
 	}
-	// TODO EVG-19966: Delete fallback to legacy GitHub sender
 	j.sender, err = j.env.GetGitHubSender(j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo)
 	if err != nil {
 		return err
