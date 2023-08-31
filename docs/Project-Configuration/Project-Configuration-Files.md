@@ -575,6 +575,22 @@ To cause a task to only run in versions NOT triggered from git tags, set
 To cause a task to only run in versions triggered from git tags, set
 `git_tag_only: true`.
 
+To cause a task to not run at all, set `disable: true`.
+
+-   This behaves similarly to commenting out the task but will not
+    trigger any validation errors.
+-   If a task is disabled and is depended on by another task, the
+    dependent task will simply exclude the disabled task from its
+    dependencies.
+
+Can also set activate, batchtime or cron on tasks or build variants, detailed
+[here](#build-variants).
+
+If there are conflicting settings defined at different levels, the order of
+priority is defined [here](#task-fields-override-hierarchy).
+
+#### Allowed Requesters
+
 If the above settings do not provide the particular combination of conditions
 when you want a task to run, you can specify `allowed_requesters` to enumerate
 the list of conditions when a task is allowed to run. For example, if you wish
@@ -604,19 +620,12 @@ run for any requester. If you specify an empty `allowed_requesters` list (i.e.
 `allow_for_git_tag`, or `git_tag_only` (if combined, the
 `allowed_requesters` will always take higher precedence).
 
-To cause a task to not run at all, set `disable: true`.
-
--   This behaves similarly to commenting out the task but will not
-    trigger any validation errors.
--   If a task is disabled and is depended on by another task, the
-    dependent task will simply exclude the disabled task from its
-    dependencies.
-
-Can also set activate, batchtime or cron on tasks or build variants, detailed
-[here](#build-variants).
-
-If there are conflicting settings defined at different levels, the order of
-priority is defined [here](#task-fields-override-hierarchy).
+If `allowed_requesters` is specified and a conflicting project setting is also
+specified, `allowed_requesters` will take higher precedence. For example, if the
+project settings configure a [GitHub PR patch
+definition](Project-and-Distro-Settings.md#github-pull-request-testing) to run
+tasks A and B but task A has `allowed_requesters: ["commit"]`, then GitHub PR
+patches will only run task B.
 
 ### Expansions
 
