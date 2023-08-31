@@ -352,24 +352,26 @@ by a patch submission.
 
 Parameters:
 
--   `dir`: the directory to clone into
--   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}`. For patch builds, the hash
+- `dir`: the directory to clone into
+- `revisions`: For commit builds, each module should be passed as
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest) 
+    at the beginning of the command). 
+    For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
     ["modules"](Project-Configuration-Files.md#modules)
     section of the project config will not change the checked out hash.
--   `token`: Use a token to clone instead of the ssh key on the host.
+- `token`: Use a token to clone instead of the ssh key on the host.
     Since this is a secret, it should be provided as a project
     expansion. For example, you could provide an expansion called
     "github_token" and then set this field to \${github_token}.
     Evergreen will populate the expansion when it parses the project
     yaml.
--   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
+- `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
     patch builds, Evergreen will `git fetch --unshallow` if the base
     commit is older than `<clone_depth>` commits.
--   `shallow_clone`: Sets `clone_depth` to 100.
--   `recurse_submodules`: automatically initialize and update each
+- `shallow_clone`: Sets `clone_depth` to 100.
+- `recurse_submodules`: automatically initialize and update each
     submodule in the repository, including any nested submodules.
 
 The parameters for each module are:
@@ -379,9 +381,17 @@ The parameters for each module are:
 -   `prefix`: the subdirectory to clone the repository in. It will be
     the repository name as a top-level directory in `dir` if omitted
 -   `ref`: must be a commit hash, takes precedence over the `branch`
-    parameter if both specified
+    parameter if both specified (for commits)
 -   `branch`: must be the name of branch, commit hashes _are not
     accepted_.
+
+
+More specifically, module hash priority is as follows:
+* For commit queue patches, we always use the module branch name, to ensure accurate testing.
+* For other patches, we initially default to the githash in set-module, if specified.
+* For both commits and patches, we next default to the <module_name> set in revisions for the command.
+* For commits, if this is not available, we default next to ref, and then to branch. *Note that this 
+doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
 
 ## gotest.parse_files
 
