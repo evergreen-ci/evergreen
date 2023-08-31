@@ -1,1 +1,0 @@
-{"_id":"localhost", "secret":"de249183582947721fdfb2ea1796574b","agent_version":"foo", "type": "agent", "status": "running", "task_creation_opts": {"env_secrets": {"POD_SECRET": {"external_id": "external_id0", "value": "de249183582947721fdfb2ea1796574b"}}}}

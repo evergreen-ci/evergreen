@@ -276,9 +276,9 @@ tasks:
 - name: "t1"
 buildvariants:
 - name: "v1"
-  activate: false 
+  activate: false
   run_on: "distro1"
-  tasks: 
+  tasks:
   - name: "t1"
     activate: true
 `
@@ -370,6 +370,27 @@ func TestTranslateTasks(t *testing.T) {
 				},
 			},
 			{
+				Name: "patch_requesters_allowed",
+				AllowedRequesters: []evergreen.UserRequester{
+					evergreen.PatchVersionUserRequester,
+					evergreen.GithubPRUserRequester,
+					evergreen.MergeTestUserRequester,
+					evergreen.GithubMergeUserRequester,
+				},
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+					},
+					{
+						Name: "a_task_with_allowed_requesters",
+					},
+					{
+						Name:              "a_task_with_build_variant_task_configuration",
+						AllowedRequesters: []evergreen.UserRequester{evergreen.RepotrackerVersionUserRequester, evergreen.GitTagUserRequester},
+					},
+				},
+			},
+			{
 				Name:    "disabled_bv",
 				Disable: utility.TruePtr(),
 				Tasks: parserBVTaskUnits{
@@ -389,6 +410,7 @@ func TestTranslateTasks(t *testing.T) {
 			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "a_task_with_no_special_configuration"},
 			{Name: "a_task_with_build_variant_task_configuration"},
+			{Name: "a_task_with_allowed_requesters", AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}},
 		},
 		TaskGroups: []parserTaskGroup{{
 			Name:  "my_tg",
@@ -398,8 +420,8 @@ func TestTranslateTasks(t *testing.T) {
 	out, err := TranslateProject(parserProject)
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
-	require.Len(t, out.Tasks, 5)
-	require.Len(t, out.BuildVariants, 6)
+	require.Len(t, out.Tasks, 6)
+	require.Len(t, out.BuildVariants, 7)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -415,7 +437,6 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "your_task", out.BuildVariants[0].Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].GitTagOnly))
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].Stepback))
-
 	assert.Contains(t, out.BuildVariants[0].Tasks[1].RunOn, "a different distro")
 
 	assert.Equal(t, "my_tg", out.BuildVariants[0].Tasks[2].Name)
@@ -434,49 +455,63 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.True(t, bvt.IsGroup)
 
-	assert.Equal(t, "patch_only_bv", out.BuildVariants[1].Name)
-	require.Len(t, out.BuildVariants[1].Tasks, 4)
-	assert.Equal(t, "your_task", out.BuildVariants[1].Tasks[0].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].Stepback))
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].PatchOnly))
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].GitTagOnly))
-	assert.Equal(t, "my_task", out.BuildVariants[1].Tasks[1].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[1].PatchOnly))
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[1].Tasks[2].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[2].PatchOnly))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[1].Tasks[3].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[3].PatchOnly))
+	patchOnlyBV := out.BuildVariants[1]
+	assert.Equal(t, "patch_only_bv", patchOnlyBV.Name)
+	require.Len(t, patchOnlyBV.Tasks, 4)
+	assert.Equal(t, "your_task", patchOnlyBV.Tasks[0].Name)
+	assert.True(t, utility.FromBoolPtr(patchOnlyBV.Tasks[0].Stepback))
+	assert.False(t, utility.FromBoolPtr(patchOnlyBV.Tasks[0].PatchOnly))
+	assert.False(t, utility.FromBoolPtr(patchOnlyBV.Tasks[0].GitTagOnly))
+	assert.Equal(t, "my_task", patchOnlyBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(patchOnlyBV.Tasks[1].PatchOnly))
+	assert.Equal(t, "a_task_with_no_special_configuration", patchOnlyBV.Tasks[2].Name)
+	assert.False(t, utility.FromBoolPtr(patchOnlyBV.Tasks[2].PatchOnly))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", patchOnlyBV.Tasks[3].Name)
+	assert.True(t, utility.FromBoolPtr(patchOnlyBV.Tasks[3].PatchOnly))
 
-	assert.Equal(t, "unpatchable_bv", out.BuildVariants[2].Name)
-	require.Len(t, out.BuildVariants[2].Tasks, 2)
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[2].Tasks[0].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[0].Patchable))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[2].Tasks[1].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[1].Patchable))
+	unpatchableBV := out.BuildVariants[2]
+	assert.Equal(t, "unpatchable_bv", unpatchableBV.Name)
+	require.Len(t, unpatchableBV.Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", unpatchableBV.Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(unpatchableBV.Tasks[0].Patchable))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", unpatchableBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(unpatchableBV.Tasks[1].Patchable))
 
-	assert.Equal(t, "allow_for_git_tag_bv", out.BuildVariants[3].Name)
-	require.Len(t, out.BuildVariants[3].Tasks, 2)
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[3].Tasks[0].Name)
-	assert.False(t, utility.FromBoolTPtr(out.BuildVariants[3].Tasks[0].AllowForGitTag))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[3].Tasks[1].Name)
-	assert.True(t, utility.FromBoolTPtr(out.BuildVariants[3].Tasks[1].AllowForGitTag))
+	allowForGitTagBV := out.BuildVariants[3]
+	assert.Equal(t, "allow_for_git_tag_bv", allowForGitTagBV.Name)
+	require.Len(t, allowForGitTagBV.Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", allowForGitTagBV.Tasks[0].Name)
+	assert.False(t, utility.FromBoolTPtr(allowForGitTagBV.Tasks[0].AllowForGitTag))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", allowForGitTagBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolTPtr(allowForGitTagBV.Tasks[1].AllowForGitTag))
 
-	assert.Equal(t, "git_tag_only_bv", out.BuildVariants[4].Name)
-	require.Len(t, out.BuildVariants[4].Tasks, 2)
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[4].Tasks[0].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[0].GitTagOnly))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[4].Tasks[1].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[1].GitTagOnly))
+	gitTagOnlyBV := out.BuildVariants[4]
+	assert.Equal(t, "git_tag_only_bv", gitTagOnlyBV.Name)
+	require.Len(t, gitTagOnlyBV.Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", gitTagOnlyBV.Tasks[0].Name)
+	assert.True(t, utility.FromBoolPtr(gitTagOnlyBV.Tasks[0].GitTagOnly))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", gitTagOnlyBV.Tasks[1].Name)
+	assert.False(t, utility.FromBoolPtr(gitTagOnlyBV.Tasks[1].GitTagOnly))
 
-	assert.Equal(t, "disabled_bv", out.BuildVariants[5].Name)
-	require.Len(t, out.BuildVariants[5].Tasks, 2)
-	assert.Equal(t, "your_task", out.BuildVariants[5].Tasks[0].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].GitTagOnly))
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Stepback))
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Disable))
-	assert.Equal(t, "my_task", out.BuildVariants[5].Tasks[1].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].PatchOnly))
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].Disable))
+	patchRequestersAllowedBV := out.BuildVariants[5]
+	assert.Equal(t, "patch_requesters_allowed", patchRequestersAllowedBV.Name)
+	assert.Equal(t, "a_task_with_no_special_configuration", gitTagOnlyBV.Tasks[0].Name)
+	assert.Equal(t, evergreen.PatchRequesters, patchRequestersAllowedBV.Tasks[0].AllowedRequesters)
+	assert.Equal(t, "a_task_with_allowed_requesters", patchRequestersAllowedBV.Tasks[1].Name)
+	assert.Equal(t, []string{evergreen.AdHocRequester}, patchRequestersAllowedBV.Tasks[1].AllowedRequesters)
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", patchRequestersAllowedBV.Tasks[2].Name)
+	assert.Equal(t, []string{evergreen.RepotrackerVersionRequester, evergreen.GitTagRequester}, patchRequestersAllowedBV.Tasks[2].AllowedRequesters)
+
+	disabledBV := out.BuildVariants[6]
+	assert.Equal(t, "disabled_bv", disabledBV.Name)
+	require.Len(t, disabledBV.Tasks, 2)
+	assert.Equal(t, "your_task", disabledBV.Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[0].GitTagOnly))
+	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[0].Stepback))
+	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[0].Disable))
+	assert.Equal(t, "my_task", disabledBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[1].PatchOnly))
+	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[1].Disable))
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -1131,6 +1166,12 @@ task_groups:
   max_hosts: 2
   setup_group_can_fail_task: true
   setup_group_timeout_secs: 10
+  setup_task_can_fail_task: true
+  setup_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
+  teardown_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
+  teardown_group_timeout_secs: 10
   setup_group:
   - command: shell.exec
     params:
@@ -1165,14 +1206,25 @@ buildvariants:
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)
 	assert.Equal(2, tg.MaxHosts)
-	assert.Equal(true, tg.SetupGroupFailTask)
-	assert.Equal(10, tg.SetupGroupTimeoutSecs)
-	assert.Len(tg.Tasks, 2)
-	assert.Len(tg.SetupTask.List(), 1)
+
 	assert.Len(tg.SetupGroup.List(), 1)
+	assert.Equal(true, tg.SetupGroupCanFailTask)
+	assert.Equal(10, tg.SetupGroupTimeoutSecs)
+
+	assert.Len(tg.SetupTask.List(), 1)
+	assert.True(tg.SetupTaskCanFailTask)
+	assert.Equal(10, tg.SetupTaskTimeoutSecs)
+
 	assert.Len(tg.TeardownTask.List(), 1)
+	assert.True(tg.TeardownTaskCanFailTask)
+	assert.Equal(10, tg.TeardownTaskTimeoutSecs)
+
 	assert.Len(tg.TeardownGroup.List(), 1)
+	assert.Equal(10, tg.TeardownGroupTimeoutSecs)
+
 	assert.True(tg.ShareProcs)
+
+	assert.Len(tg.Tasks, 2)
 
 	// check that yml with inline task groups within its buildvariants correctly parses the group
 	inlineYml := `
@@ -1812,7 +1864,7 @@ functions:
   function-with-updates:
     command: expansions.update
     params:
-      updates: 
+      updates:
       - key: ssh_connection_options
         value: -o GSSAPIAuthentication=no -o CheckHostIP=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -o ConnectionAttempts=20
       - key: ssh_retries
@@ -2547,7 +2599,7 @@ func TestMergeMatrixFail(t *testing.T) {
 
 func TestMergeMultipleProjectConfigs(t *testing.T) {
 	mainYaml := `
-include: 
+include:
   - filename: small.yml
     module: something_different
 post:
@@ -2599,7 +2651,7 @@ ignore:
 
 func TestMergeMultipleProjectConfigsBuildVariant(t *testing.T) {
 	mainYaml := `
-include: 
+include:
   - filename: small.yml
 buildvariants:
   - name: bv1

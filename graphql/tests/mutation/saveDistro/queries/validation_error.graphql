@@ -8,7 +8,7 @@ mutation {
           aliases: [
             "new-alias"
           ],
-          arch: "linux_ppc64le",
+          arch: LINUX_PPC_64_BIT,
           authorizedKeysFile: "",
           containerPool: "",
           disabled: true,
@@ -33,7 +33,7 @@ mutation {
           user: "mci-exec",
           bootstrapSettings: {
             clientDir: "/home/mci-exec/evergreen_provisioning",
-            communication: "rpc",
+            communication: RPC,
             env: [
               {
                 key: "foo",
@@ -42,7 +42,7 @@ mutation {
             ],
             jasperBinaryDir: "/home/mci-exec/evergreen_provisioning",
             jasperCredentialsPath: "/home/mci-exec/evergreen_provisioning/jasper_credentials.json",
-            method: "ssh",
+            method: SSH,
             preconditionScripts: [],
             resourceLimits: {
               lockedMemoryKb: -1,
@@ -92,13 +92,13 @@ mutation {
           },
           hostAllocatorSettings: {
             acceptableHostIdleTime: 30000000000,
-            feedbackRule: "",
+            feedbackRule: DEFAULT,
             futureHostFraction: 0,
-            hostsOverallocatedRule: "",
+            hostsOverallocatedRule: DEFAULT,
             maximumHosts: 0,
             minimumHosts: 0,
-            roundingRule: "",
-            version: "utilization",
+            roundingRule: DEFAULT,
+            version: UTILIZATION,
           },
           disableShallowClone: true,
           note: "This is an updated note"

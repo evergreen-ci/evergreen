@@ -35,8 +35,8 @@ func TestSmokeEndpoints(t *testing.T) {
 
 	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
-		if appServerCmd != nil && appServerCmd.Process != nil {
-			grip.Error(errors.Wrap(appServerCmd.Process.Signal(syscall.SIGTERM), "stopping app server after test completion"))
+		if appServerCmd != nil {
+			grip.Error(errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
 		}
 	}()
 

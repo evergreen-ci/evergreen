@@ -533,12 +533,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-  - name: docker-cleanup
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: run-make
-        vars: { target: "test-thirdparty-docker" }
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
@@ -646,7 +640,6 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: ".linter"
-      - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud
       - name: "js-test"

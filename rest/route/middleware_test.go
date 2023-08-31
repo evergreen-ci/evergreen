@@ -837,11 +837,11 @@ func TestProjectViewPermission(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(1, counter)
 
-	// private project with no user attached should 404
+	// private project with no user attached should 401
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj1"})
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	assert.Equal(http.StatusNotFound, rw.Code)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
 	assert.Equal(1, counter)
 
 	// attach a user, but with no permissions yet
@@ -938,11 +938,11 @@ func TestEventLogPermission(t *testing.T) {
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest(http.MethodGet, "http://foo.com/bar", nil)
 
-	// no user + private project should 404
+	// no user + private project should 401
 	rw := httptest.NewRecorder()
 	req = gimlet.SetURLVars(req, map[string]string{"resource_type": event.EventResourceTypeProject, "resource_id": proj1.Id})
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	assert.Equal(http.StatusNotFound, rw.Code)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
 	assert.Equal(0, counter)
 
 	// have user, project event
