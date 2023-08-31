@@ -55,6 +55,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			kind:                  cmdBlock.timeoutKind,
 			getTimeout:            cmdBlock.getTimeout,
 			canMarkTimeoutFailure: cmdBlock.canFailTask,
+			canTimeoutHeartbeat:   cmdBlock.canTimeoutHeartbeat,
 		}
 		go a.startTimeoutWatcher(blockCtx, blockCancel, timeoutOpts)
 	}

@@ -15,7 +15,8 @@ import (
 //     alive and running its task. If the app server does not receive a
 //     heartbeat for a long time while the task is still running, then it can
 //     assume the task has somehow stopped running and can choose to system-fail
-//     the task.
+//     the task. The heartbeat may also stop indicating that the task is alive
+//     if it's been running for a suspiciously long time.
 //  2. It decides if/when to abort a task. If it receives an explicit message
 //     from the app server to abort (e.g. the user requested the task to abort),
 //     then it triggers the running task to abort by cancelling
@@ -29,6 +30,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	}
 
 	var numRepeatedFailures int
+	const maxRepeatedFailures = 10
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
 
@@ -36,6 +38,20 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	for {
 		select {
 		case <-ticker.C:
+			if timeoutOpts, hasTimedOut := a.hasHitHeartbeatTimeout(ctx, tc); hasTimedOut {
+				// If the heartbeat hits its maximum reasonable timeout, that
+				// means something unrecoverably wrong has most likely occurred
+				// in the task runtime (e.g. a deadlock in the agent has stalled
+				// the task).
+				// kim: TODO: figure out if abort and return is appropriate
+				// kim: TODO: add test for heartbeat timeout
+				if !hasSentAbort {
+					preAndMainCancel()
+				}
+				tc.logger.Task().Errorf("Heartbeat has hit maximum allowed %s timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeoutOpts.timeout.String())
+				return
+			}
+
 			signalBeat, err := a.doHeartbeat(ctx, tc)
 			if err != nil {
 				numRepeatedFailures++
@@ -81,9 +97,33 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error
 	return "", err
 }
 
+// hasHitHeartbeatTimeout returns whether the task has been running for an
+// unreasonably long time.
+func (a *Agent) hasHitHeartbeatTimeout(ctx context.Context, tc *taskContext) (heartbeatTimeoutOptions, bool) {
+	// kim: TODO: get current heartbeat timeout. This may be tricky due to
+	// timeouts being dynamically modifiable for the current command and the
+	// fact that the timeouts can overlap (e.g. exec timeout). Perhaps the
+	// heartbeat timeout can be set when setting up the background timeouts.
+	// kim: TODO: need to also make sure that current ticking timeout is reset
+	// when switching to a new timeout.
+	// kim: TODO: setHeartbeatTimeout before starting the heartbeat timeout so
+	// the defaults are initialized.
+	timeoutOpts := tc.getHeartbeatTimeout()
+	if timeoutOpts == (heartbeatTimeoutOptions{}) {
+		// kim: TODO: figure out what to do if there is no timeout currently
+		// applied. Maybe this case would never happen if it's pre-initialized.
+	}
+
+	// Once the agent hit a timeout that can stop the task heartbeat, give the
+	// agent some extra time just in case it's being a bit slow on making
+	// progress.
+	timeoutWithGracePeriod := timeoutOpts.timeout + evergreen.HeartbeatTimeoutThreshold
+	return timeoutOpts, time.Since(timeoutOpts.startAt) > timeoutWithGracePeriod
+}
+
 // startIdleTimeoutWatcher waits until the idle timeout is hit for a running
 // command. If the watcher detects that the command has been idle for longer
-// than the idle timeout (i.e. no task log output), then it arks the task as
+// than the idle timeout (i.e. no task log output), then it marks the task as
 // having hit the timeout and cancels the command.
 func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("idle timeout watcher")
@@ -122,6 +162,9 @@ type timeoutWatcherOptions struct {
 	// canMarkTimeoutFailure indicates whether the timeout watcher can mark the
 	// task as having hit a timeout that can fail the task.
 	canMarkTimeoutFailure bool
+	// canTimeoutHeartbeat indicates whether the hitting the timeout can also
+	// time out the task heartbeat.
+	canTimeoutHeartbeat bool
 }
 
 // startTimeoutWatcher waits until the given timeout is hit for an operation. If
@@ -133,6 +176,17 @@ func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
+
+	if opts.canTimeoutHeartbeat {
+		// kim: TODO: add tests
+		// kim: TODO: ensure no deadlock
+		opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+			startAt: time.Now(),
+			timeout: opts.getTimeout(),
+			kind:    opts.kind,
+		})
+		defer opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+	}
 
 	opts.tc.logger.Execution().Infof("Starting %s timeout watcher.", opts.kind)
 

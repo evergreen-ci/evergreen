@@ -65,6 +65,36 @@ func (tc *taskContext) getCurrentIdleTimeout() time.Duration {
 	return defaultIdleTimeout
 }
 
+// kim: TODO: figure out which timeout to set when heartbeat ticker starts.
+// Maybe execution timeout is simplest just because it covers most of the
+// blocks, then just need to set it for post/teardown_task (teardown_group
+// doesn't have a heartbeat).
+// kim: TODO: set heartbeat timeout whenever timeout ticker starts.
+// kim: TODO: unset heartbeat timeout back to default whenever timeout ticker
+// stops.
+func (tc *taskContext) setHeartbeatTimeout(opts heartbeatTimeoutOptions) {
+	tc.Lock()
+	defer tc.Unlock()
+
+	if opts.timeout == 0 {
+		// If we're in a part of the task that has no timeout, set an arbitrary
+		// hard timeout. No task should reasonably run for 24 hours.
+		opts.timeout = 24 * time.Hour
+	}
+	if utility.IsZeroTime(opts.startAt) {
+		opts.startAt = time.Now()
+	}
+
+	tc.timeout.heartbeatTimeoutOpts = opts
+}
+
+func (tc *taskContext) getHeartbeatTimeout() heartbeatTimeoutOptions {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	return tc.timeout.heartbeatTimeoutOpts
+}
+
 func (tc *taskContext) reachTimeOut(kind timeoutType, dur time.Duration) {
 	tc.Lock()
 	defer tc.Unlock()
@@ -194,11 +224,12 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 
 // commandBlock contains information for a block of commands.
 type commandBlock struct {
-	block       command.BlockType
-	commands    *model.YAMLCommandSet
-	timeoutKind timeoutType
-	getTimeout  func() time.Duration
-	canFailTask bool
+	block               command.BlockType
+	commands            *model.YAMLCommandSet
+	timeoutKind         timeoutType
+	getTimeout          func() time.Duration
+	canTimeoutHeartbeat bool
+	canFailTask         bool
 }
 
 // getPre returns a command block containing the pre task commands.
@@ -239,11 +270,12 @@ func (tc *taskContext) getPost(taskGroup string) (*commandBlock, error) {
 
 	if taskGroup == "" {
 		return &commandBlock{
-			block:       command.PostBlock,
-			commands:    tc.taskConfig.Project.Post,
-			timeoutKind: postTimeout,
-			getTimeout:  tc.getPostTimeout,
-			canFailTask: tc.taskConfig.Project.PostErrorFailsTask,
+			block:               command.PostBlock,
+			commands:            tc.taskConfig.Project.Post,
+			timeoutKind:         postTimeout,
+			getTimeout:          tc.getPostTimeout,
+			canTimeoutHeartbeat: true,
+			canFailTask:         tc.taskConfig.Project.PostErrorFailsTask,
 		}, nil
 	}
 
@@ -252,11 +284,12 @@ func (tc *taskContext) getPost(taskGroup string) (*commandBlock, error) {
 		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.taskConfig.Project.Identifier)
 	}
 	return &commandBlock{
-		block:       command.TeardownTaskBlock,
-		commands:    tg.TeardownTask,
-		timeoutKind: teardownTaskTimeout,
-		getTimeout:  tc.getTeardownTaskTimeout(tg),
-		canFailTask: tg.TeardownTaskCanFailTask,
+		block:               command.TeardownTaskBlock,
+		commands:            tg.TeardownTask,
+		timeoutKind:         teardownTaskTimeout,
+		getTimeout:          tc.getTeardownTaskTimeout(tg),
+		canTimeoutHeartbeat: true,
+		canFailTask:         tg.TeardownTaskCanFailTask,
 	}, nil
 }
 
