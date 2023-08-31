@@ -130,7 +130,10 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
 		return errors.Wrapf(err, "creating parent directories for working directory '%s'", c.WorkingDir)
 	}
-	wd := getJoinedWithWorkDir(conf, c.WorkingDir)
+	wd, err := conf.GetWorkingDirectoryLegacy(c.WorkingDir)
+	if err != nil {
+		return errors.Wrapf(err, "getting working directory")
+	}
 
 	pullMsg := fmt.Sprintf("Pulling task directory files from S3 from task '%s' on build variant '%s'", c.Task, c.FromBuildVariant)
 	if c.ExcludeFilter != "" {
@@ -138,7 +141,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	}
 	pullMsg += "."
 	logger.Task().Infof(pullMsg)
-	if err := c.bucket.Pull(ctx, pail.SyncOptions{
+	if err = c.bucket.Pull(ctx, pail.SyncOptions{
 		Local:   wd,
 		Remote:  remotePath,
 		Exclude: c.ExcludeFilter,

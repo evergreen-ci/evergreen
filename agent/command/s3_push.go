@@ -40,7 +40,10 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "creating S3 task bucket")
 	}
 
-	wd := getJoinedWithWorkDir(conf, "")
+	wd, err := conf.GetWorkingDirectoryLegacy("")
+	if err != nil {
+		return errors.Wrap(err, "getting working directory")
+	}
 
 	pushMsg := fmt.Sprintf("Pushing task directory files from directory '%s' into S3", wd)
 	if c.ExcludeFilter != "" {
