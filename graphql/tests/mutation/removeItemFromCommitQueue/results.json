@@ -24,7 +24,7 @@
         },
         "errors": [
           {
-            "message": "401 (Unauthorized): not authorized to patch on behalf of author",
+            "message": "401 (Unauthorized): not authorized to perform action on behalf of author",
             "path": [
               "removeItemFromCommitQueue",
               "issue"

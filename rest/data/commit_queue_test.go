@@ -399,6 +399,7 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 		model.ProjectRefCollection,
 		model.ProjectVarsCollection,
 		evergreen.ScopeCollection,
+		evergreen.RoleCollection,
 		patch.Collection,
 		commitqueue.Collection,
 	))
@@ -431,7 +432,7 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 	otherPatch := patch.Patch{
 		Id:      bson.NewObjectId(),
 		Project: "evergreen",
-		Author:  "other-user",
+		Author:  "other user",
 	}
 	require.NoError(t, otherPatch.Insert())
 
@@ -439,29 +440,29 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 		MockGitHubConnectorImpl: MockGitHubConnectorImpl{},
 	}
 
-	// Basic user can remove their own CLI patch
+	// Basic user can remove their own CLI patch.
 	err := CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, myPatch.Id.Hex())
 	require.NoError(t, err)
 
-	// Basic user cannot remove other user's CLI patch
+	// Basic user cannot remove other user's CLI patch.
 	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, otherPatch.Id.Hex())
-	require.EqualError(t, err, "401 (Unauthorized): not authorized to patch on behalf of author")
+	require.EqualError(t, err, "401 (Unauthorized): not authorized to perform action on behalf of author")
 
-	// Basic user can remove their own GitHub patch
+	// Basic user can remove their own GitHub patch.
 	basicUser.Settings.GithubUser.UID = 1234
 	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, "570")
 	require.NoError(t, err)
 
-	// Basic user cannot remove other user's GitHub patch
+	// Basic user cannot remove other user's GitHub patch.
 	basicUser.Settings.GithubUser.UID = 4321
 	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, "570")
-	require.EqualError(t, err, "401 (Unauthorized): not authorized to patch on behalf of GitHub user")
+	require.EqualError(t, err, "401 (Unauthorized): not authorized to perform action on behalf of GitHub user")
 
-	// Project admin can remove another user's CLI patch
+	// Project admin can remove other user's CLI patch.
 	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, projectAdmin, project, otherPatch.Id.Hex())
 	require.NoError(t, err)
 
-	// Project admin can remove another user's GitHub patch
+	// Project admin can remove other user's GitHub patch.
 	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, projectAdmin, project, "570")
 	require.NoError(t, err)
 }

@@ -605,7 +605,7 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, usr *user.
 		if usr.Id != utility.FromStringPtr(patch.Author) {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of author",
+				Message:    "not authorized to perform action on behalf of author",
 			}
 		}
 	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
@@ -624,7 +624,7 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, usr *user.
 		if githubUID == 0 || usr.Settings.GithubUser.UID != githubUID {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of GitHub user",
+				Message:    "not authorized to perform action on behalf of GitHub user",
 			}
 		}
 	} else {

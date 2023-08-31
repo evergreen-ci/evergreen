@@ -591,8 +591,7 @@ func TestRequireCommitQueueItemOwner(t *testing.T) {
 	projectRef := model.ProjectRef{
 		Id: "project_id",
 	}
-	err = projectRef.Insert()
-	require.NoError(t, err)
+	require.NoError(t, projectRef.Insert())
 
 	patch := patch.Patch{
 		Id:     bson.NewObjectId(),
@@ -642,15 +641,13 @@ func TestRequireCommitQueueItemOwner(t *testing.T) {
 	require.Equal(t, 0, callCount)
 
 	projectRef.RepoRefId = "repo_id"
-	err = projectRef.Upsert()
-	require.NoError(t, err)
+	require.NoError(t, projectRef.Upsert())
 
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id:          projectRef.RepoRefId,
 		CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 	}}
-	err = repoRef.Upsert()
-	require.NoError(t, err)
+	require.NoError(t, repoRef.Upsert())
 
 	// Should work since the repo and project are merged.
 	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{

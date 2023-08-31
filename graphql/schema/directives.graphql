@@ -19,6 +19,6 @@ requireDistroAccess is used to restrict view, edit, admin, and create access for
 directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
 """
-requireCommitQueueItemOwner is used to restrict changes to patches on commit queues.
+requireCommitQueueItemOwner is used to restrict changes to commit queue patches.
 """
 directive @requireCommitQueueItemOwner on ARGUMENT_DEFINITION
