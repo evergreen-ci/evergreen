@@ -739,7 +739,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// read/write the buffer, so the buffer has to be thread-safe.
 	stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
 	err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
-		Directory(filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))).
+		Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
 
 	errOutput := stdErr.String()
@@ -1050,7 +1050,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 
 		cmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", cmdsJoined}).
-			Directory(filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))).
+			Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 		if err = cmd.Run(ctx); err != nil {

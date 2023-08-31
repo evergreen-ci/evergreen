@@ -130,7 +130,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
 		return errors.Wrapf(err, "creating parent directories for working directory '%s'", c.WorkingDir)
 	}
-	wd, err := conf.GetWorkingDirectoryLegacy(c.WorkingDir)
+	wd, err := getWorkingDirectoryLegacy(conf, c.WorkingDir)
 	if err != nil {
 		return errors.Wrapf(err, "getting working directory")
 	}

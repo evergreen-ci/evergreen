@@ -2,10 +2,7 @@ package internal
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -105,31 +102,6 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	taskConfig.Timeout = &Timeout{}
 
 	return taskConfig, nil
-}
-
-// GetWorkingDirectoryLegacy is a legacy function to get the working directory for a
-// path, ensure that the path is always prefixed with the task working
-// directory, and check that the directory exists. This is a legacy function.
-// Commands that need to get the working directory should instead use
-// getJoinedWithWorkDir.
-func (c *TaskConfig) GetWorkingDirectoryLegacy(dir string) (string, error) {
-	if dir == "" {
-		dir = c.WorkDir
-	} else if strings.HasPrefix(dir, c.WorkDir) {
-		// pass
-	} else {
-		dir = filepath.Join(c.WorkDir, dir)
-	}
-
-	if stat, err := os.Stat(dir); os.IsNotExist(err) {
-		return "", errors.Errorf("path '%s' does not exist", dir)
-	} else if err != nil || stat == nil {
-		return "", errors.Wrapf(err, "retrieving file info for path '%s'", dir)
-	} else if !stat.IsDir() {
-		return "", errors.Errorf("path '%s' is not a directory", dir)
-	}
-
-	return dir, nil
 }
 
 func (c *TaskConfig) GetCloneMethod() string {
