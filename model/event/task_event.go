@@ -198,6 +198,11 @@ func LogManyTaskAbortRequests(taskIds []string, userId string) {
 		TaskEventData{UserId: userId})
 }
 
+func LogManyTaskPriority(taskIds []string, execution int, userId string, priority int64) {
+	logManyTaskEvents(taskIds, TaskPriorityChanged,
+		TaskEventData{Execution: execution, UserId: userId, Priority: priority})
+}
+
 func LogTaskContainerAllocated(taskId string, execution int, containerAllocatedTime time.Time) {
 	logTaskEvent(taskId, ContainerAllocated,
 		TaskEventData{Execution: execution, Timestamp: containerAllocatedTime})
