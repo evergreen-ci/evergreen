@@ -2429,12 +2429,6 @@ func ArchiveMany(tasks []Task) error {
 		}
 	}
 
-	grip.DebugWhen(len(utility.UniqueStrings(allTaskIds)) != len(allTaskIds), message.Fields{
-		"ticket":           "EVG-17261",
-		"message":          "archiving same task multiple times",
-		"tasks_to_archive": allTaskIds,
-	})
-
 	return archiveAll(allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
 }
 
@@ -2458,7 +2452,7 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
 			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
-			if err != nil && !db.IsDuplicateKey(err) {
+			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
