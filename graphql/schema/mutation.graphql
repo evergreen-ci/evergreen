@@ -107,7 +107,7 @@ type Mutation {
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
 
   # commit queue
-  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String! @requireCommitQueueItemOwner): String
 
   # version
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
