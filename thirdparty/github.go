@@ -530,7 +530,6 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		Description: input.Desc,
 	}
 
-	// TODO EVG-19966: Delete fallback to legacy GitHub sender
 	sender, err := env.GetGitHubSender(input.Owner, input.Repo)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
@@ -1715,7 +1714,6 @@ func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment,
 	owner := utility.FromStringPtr(pr.Base.Repo.Owner.Login)
 	repo := utility.FromStringPtr(pr.Base.Repo.Name)
 
-	// TODO EVG-19966: Delete fallback to legacy GitHub sender
 	sender, err := env.GetGitHubSender(owner, repo)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
