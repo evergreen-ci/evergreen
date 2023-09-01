@@ -1,4 +1,4 @@
-See [the docs](https://github.com/evergreen-ci/evergreen/tree/main/docs/) for
+See [the docs](https://github.com/evergreen-ci/evergreen/tree/main/docs/) fo
 user-facing documentation.
 
 See [the API docs](https://pkg.go.dev/github.com/evergreen-ci/evergreen) for
