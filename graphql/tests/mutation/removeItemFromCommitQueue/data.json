@@ -13,6 +13,11 @@
           "issue": "5ecedafb562343215a7ff297",
           "patch_id": "5ecedafb562343215a7ff297",
           "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
+        },
+        {
+          "issue": "5e6af3abe3c4415d342909e2",
+          "patch_id": "5e6af3abe3c4415d342909e2",
+          "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
         }
       ]
     },
@@ -32,13 +37,28 @@
       "queue": []
     }
   ],
+  "users": [
+    {
+      "_id": "not-testuser",
+      "display_name": "Not TestUser",
+      "first_name": "Not",
+      "last_name": "testUser"
+    },
+    {
+      "_id": "service-user",
+      "display_name": "Service User",
+      "first_name": "Service",
+      "last_name": "User",
+      "only_api": true
+    }
+  ],
   "patches": [
     {
       "_id": {
         "$oid": "5e6bb9e23066155a993effff"
       },
       "version": "123456789012345678901234",
-      "branch": "main",
+      "branch": "project_id",
       "author": "testuser"
     },
     {
@@ -46,7 +66,7 @@
         "$oid": "5ecedafb562343215a7ff297"
       },
       "version": "5ecedafb562343215a7ff297",
-      "branch": "main",
+      "branch": "project_id",
       "author": "not-testuser"
     },
     {
@@ -54,8 +74,16 @@
         "$oid": "5e4ff3abe3c3317e352062e4"
       },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "main",
+      "branch": "sandbox_project_id",
       "author": "not-testuser"
+    },
+    {
+      "_id": {
+        "$oid": "5e6af3abe3c4415d342909e2"
+      },
+      "version": "5e6af3abe3c4415d342909e2",
+      "branch": "project_id",
+      "author": "service-user"
     }
   ],
   "project_ref": [

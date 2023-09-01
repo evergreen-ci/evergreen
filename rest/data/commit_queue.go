@@ -608,7 +608,7 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, usr *user.
 		// we must allow them to remove any patches created by service users (OnlyAPI = true).
 		patchAuthor := utility.FromStringPtr(patch.Author)
 		patchUsr, err := user.FindOneById(patchAuthor)
-		if err != nil {
+		if patchUsr == nil || err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "finding user '%s'", patchAuthor).Error(),

@@ -17,6 +17,14 @@
       }
     },
     {
+      "query_file": "success_service_user.graphql",
+      "result": {
+        "data": {
+          "removeItemFromCommitQueue": "5e6af3abe3c4415d342909e2"
+        }
+      }
+    },
+    {
       "query_file": "fail_not_authorized.graphql",
       "result": {
         "data": {
