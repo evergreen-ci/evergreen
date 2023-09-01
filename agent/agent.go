@@ -721,7 +721,11 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 
 		if setupGroup.commands != nil {
-			tc.logger.Task().Infof("Running setup-group commands for task group '%s'.", tc.taskConfig.TaskGroup.Name)
+			tg := ""
+			if tc.taskConfig != nil {
+				tg = tc.taskConfig.TaskGroup.Name
+			}
+			tc.logger.Task().Infof("Running setup-group commands for task group '%s'.", tg)
 
 			setupGroupCtx, setupGroupCancel := context.WithCancel(ctx)
 			defer setupGroupCancel()
@@ -745,7 +749,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 					return err
 				}
 			}
-			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", tc.taskConfig.TaskGroup.Name)
+			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", tg)
 		}
 		tc.ranSetupGroup = true
 	}
