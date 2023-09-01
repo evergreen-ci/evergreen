@@ -18,7 +18,7 @@ type logServiceV0 struct {
 	bucket pail.Bucket
 }
 
-func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, getOpts GetOptions) (LogIterator, error) {
+func (s *logServiceV0) Get(ctx context.Context, getOpts GetOptions) (LogIterator, error) {
 	var its []LogIterator
 	logChunks, err := s.getLogChunks(ctx, getOpts.LogNames)
 	if err != nil {
@@ -43,24 +43,17 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, ge
 	return newMergingIterator(its...), nil
 }
 
-func (s *logServiceV0) WriteTaskLog(ctx context.Context, opts TaskOptions, logName string, lines []LogLine) error {
+func (s *logServiceV0) Append(ctx context.Context, logName string, lines []LogLine) error {
 	if len(lines) == 0 {
 		return nil
 	}
-
-	key := fmt.Sprintf("project_id=%s/task_id=%s/execution=%d/%s/%s",
-		opts.ProjectID,
-		opts.TaskID,
-		opts.Execution,
-		logName,
-		s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)),
-	)
 
 	var rawLines []byte
 	for _, line := range lines {
 		rawLines = append(rawLines, []byte(s.formatRawLine(line))...)
 	}
 
+	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
 	return errors.Wrap(s.bucket.Put(ctx, key, bytes.NewReader(rawLines)), "writing log chunk to bucket")
 }
 
