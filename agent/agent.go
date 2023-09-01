@@ -279,10 +279,9 @@ func (a *Agent) loop(ctx context.Context) error {
 
 			a.populateEC2InstanceID(ctx)
 			tg := ""
-			if tc.taskConfig != nil {
+			if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
 				tg = tc.taskConfig.TaskGroup.Name
 			}
-
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tg,
 				AgentRevision: evergreen.AgentVersion,
@@ -501,19 +500,23 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	return tc, shouldExit, catcher.Resolve()
 }
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
+	taskGroup := ""
+	if tc.taskConfig.TaskGroup != nil {
+		taskGroup = tc.taskConfig.TaskGroup.Name
+	}
 	if !tc.ranSetupGroup { // we didn't run setup group yet
 		return true
 	} else if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
 		nextTask.Build != tc.taskConfig.Task.BuildId { // next task has a standalone task or a new build
 		return true
+	} else if nextTask.TaskGroup != taskGroup { // next task has a different task group
+		return true
 	}
-
 	return false
 }
 
 func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, util.Expansions, map[string]bool, error) {
-	// it's not getting the right project
 	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
@@ -690,7 +693,6 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-
 	if err := a.comm.StartTask(execTimeoutCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		return evergreen.TaskSystemFailed
@@ -730,7 +732,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 
 		if setupGroup.commands != nil {
 			tg := ""
-			if tc.taskConfig != nil {
+			if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
 				tg = tc.taskConfig.TaskGroup.Name
 			}
 			tc.logger.Task().Infof("Running setup-group commands for task group '%s'.", tg)
@@ -1192,7 +1194,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 		return false
 	}
 	// kill if the task is not in a task group
-	if tc.taskConfig.TaskGroup.Name == "" {
+	if tc.taskConfig.TaskGroup != nil && tc.taskConfig.TaskGroup.Name == "" {
 		return true
 	}
 	// kill if ignoreTaskGroupCheck is true
