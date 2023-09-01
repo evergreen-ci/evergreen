@@ -131,17 +131,11 @@ func TestStartLogging(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	task, project, expansion, _, err := agt.fetchProjectConfig(ctx, tc)
+	config, err := agt.makeTaskConfig(ctx, tc)
 	assert.NoError(err)
-	require.NotNil(t, project)
+	tc.taskConfig = config
 
-	tc.taskConfig = &internal.TaskConfig{
-		Task:       task,
-		Project:    project,
-		Expansions: &expansion,
-	}
-	_, err = agt.makeTaskConfig(ctx, tc)
-	assert.NoError(err)
+	project := tc.taskConfig.Project
 
 	assert.EqualValues(model.EvergreenLogSender, project.Loggers.Agent[0].Type)
 	assert.EqualValues(model.SplunkLogSender, project.Loggers.System[0].Type)

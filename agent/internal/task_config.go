@@ -89,7 +89,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	if t.TaskGroup != "" {
 		taskGroupPtr = p.FindTaskGroup(t.TaskGroup)
 		if taskGroupPtr == nil {
-			return nil, errors.New("programmatic error: task group is nil")
+			return nil, errors.Errorf("programmatic error: task is part of task group '%s' but no such task group is defined in the project", t.TaskGroup)
 		}
 	}
 

@@ -145,10 +145,9 @@ func (s *CommandSuite) TestShellExec() {
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  "",
 	}
 	shouldSetupGroup := !s.tc.ranSetupGroup
-	taskDirectory := ""
+	taskDirectory := s.tc.taskDirectory
 	_, _, err = s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 

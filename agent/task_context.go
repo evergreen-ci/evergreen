@@ -176,11 +176,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	var confPatch *patch.Patch
-	requester := ""
-	if tc.taskConfig != nil && tc.taskConfig.Task != nil {
-		requester = tc.taskConfig.Task.Requester
-	}
-	if evergreen.IsGitHubPatchRequester(requester) {
+	if evergreen.IsGitHubPatchRequester(task.Requester) {
 		grip.Info("Fetching patch document for GitHub PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task, "")
 		if err != nil {
@@ -355,7 +351,7 @@ func (tc *taskContext) getTimeout() (*commandBlock, error) {
 		block:       command.TaskTimeoutBlock,
 		commands:    tc.taskConfig.TaskGroup.Timeout,
 		timeoutKind: callbackTimeout,
-		getTimeout:  tc.getTaskGroupCallbackTimeout(&tc.taskConfig.TaskGroup),
+		getTimeout:  tc.getTaskGroupCallbackTimeout(),
 		canFailTask: false,
 	}, nil
 }
@@ -448,10 +444,10 @@ func (tc *taskContext) getCallbackTimeout() time.Duration {
 
 // getTaskGroupCallbackTimeout returns the callback timeout for a task group
 // task.
-func (tc *taskContext) getTaskGroupCallbackTimeout(tg *model.TaskGroup) func() time.Duration {
+func (tc *taskContext) getTaskGroupCallbackTimeout() func() time.Duration {
 	return func() time.Duration {
-		if tg.CallbackTimeoutSecs != 0 {
-			return time.Duration(tg.CallbackTimeoutSecs) * time.Second
+		if tc.taskConfig.TaskGroup.CallbackTimeoutSecs != 0 {
+			return time.Duration(tc.taskConfig.TaskGroup.CallbackTimeoutSecs) * time.Second
 		}
 		return defaultCallbackTimeout
 	}
