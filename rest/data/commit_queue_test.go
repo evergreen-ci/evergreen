@@ -404,10 +404,16 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 		commitqueue.Collection,
 	))
 
-	basicUser := &user.DBUser{Id: "me"}
+	basicUser := &user.DBUser{Id: "me", OnlyAPI: false}
 	require.NoError(t, basicUser.Insert())
 
-	projectAdmin := &user.DBUser{Id: "admin"}
+	otherUser := &user.DBUser{Id: "other user", OnlyAPI: false}
+	require.NoError(t, otherUser.Insert())
+
+	serviceUser := &user.DBUser{Id: "service user", OnlyAPI: true}
+	require.NoError(t, serviceUser.Insert())
+
+	projectAdmin := &user.DBUser{Id: "admin", OnlyAPI: false}
 	require.NoError(t, projectAdmin.Insert())
 
 	project := &model.ProjectRef{
@@ -432,9 +438,16 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 	otherPatch := patch.Patch{
 		Id:      bson.NewObjectId(),
 		Project: "evergreen",
-		Author:  "other user",
+		Author:  otherUser.Id,
 	}
 	require.NoError(t, otherPatch.Insert())
+
+	servicePatch := patch.Patch{
+		Id:      bson.NewObjectId(),
+		Project: "evergreen",
+		Author:  serviceUser.Id,
+	}
+	require.NoError(t, servicePatch.Insert())
 
 	mockConnector := &MockGitHubConnector{
 		MockGitHubConnectorImpl: MockGitHubConnectorImpl{},
@@ -442,6 +455,10 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 
 	// Basic user can remove their own CLI patch.
 	err := CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, myPatch.Id.Hex())
+	require.NoError(t, err)
+
+	// Basic user can remove service user's CLI patch.
+	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, servicePatch.Id.Hex())
 	require.NoError(t, err)
 
 	// Basic user cannot remove other user's CLI patch.

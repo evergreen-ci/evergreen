@@ -602,7 +602,23 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, usr *user.
 				Message:    errors.Wrapf(err, "finding patch '%s'", itemId).Error(),
 			}
 		}
-		if usr.Id != utility.FromStringPtr(patch.Author) {
+
+		// TODO: Remove user lookup and OnlyAPI condition after EVG-20118 is completed.
+		// Since we don't require users to save their GitHub information before submitting patches,
+		// we must allow them to remove any patches created by service users (OnlyAPI = true).
+		patchAuthor := utility.FromStringPtr(patch.Author)
+		patchUsr, err := user.FindOneById(patchAuthor)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "finding user '%s'", patchAuthor).Error(),
+			}
+		}
+		if patchUsr.OnlyAPI {
+			return nil
+		}
+
+		if usr.Id != patchAuthor {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to perform action on behalf of author",
