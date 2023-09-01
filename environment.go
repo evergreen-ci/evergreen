@@ -57,6 +57,7 @@ const (
 	// duration of wait time during queue chut down.
 	queueShutdownWaitInterval = 10 * time.Millisecond
 	queueShutdownWaitTimeout  = 10 * time.Second
+	githubTokenTimeout        = 1 * time.Hour
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
@@ -141,6 +142,10 @@ type Environment interface {
 	// all message details.
 	GetSender(SenderKey) (send.Sender, error)
 	SetSender(SenderKey, send.Sender) error
+
+	// GetGitHubSender provides a grip Sender configured with the given
+	// owner and repo information.
+	GetGitHubSender(string, string) (send.Sender, error)
 
 	// RegisterCloser adds a function object to an internal
 	// tracker to be called by the Close method before process
@@ -246,6 +251,7 @@ type envState struct {
 	clientConfig            *ClientConfig
 	closers                 []closerOp
 	senders                 map[SenderKey]send.Sender
+	githubSenders           map[string]cachedGitHubSender
 	roleManager             gimlet.RoleManager
 	userManager             gimlet.UserManager
 	userManagerInfo         UserManagerInfo
@@ -265,6 +271,14 @@ type closerOp struct {
 	name       string
 	background bool
 	closerFn   func(context.Context) error
+}
+
+// cachedGitHubSender stores a GitHub sender and the time it was created
+// because GitHub app tokens, and by extension, the senders, will expire
+// one hour after creation.
+type cachedGitHubSender struct {
+	sender send.Sender
+	time   time.Time
 }
 
 func (e *envState) initSettings(ctx context.Context, path string) error {
@@ -720,15 +734,9 @@ func (e *envState) initSenders(ctx context.Context) error {
 		e.senders[SenderEmail] = sesSender
 	}
 
+	// TODO EVG-19966: Remove global GitHub status sender
 	var sender send.Sender
-	githubToken, err := e.settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, nil)
-	if err != nil || githubToken == "" {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error creating token",
-			"ticket":  "EVG-19966",
-		}))
-		githubToken, err = e.settings.GetGithubOauthToken()
-	}
+	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
 		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
@@ -739,6 +747,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 		}
 		e.senders[SenderGithubStatus] = sender
 	}
+	e.githubSenders = make(map[string]cachedGitHubSender)
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
@@ -1055,6 +1064,60 @@ func (e *envState) SaveConfig(ctx context.Context) error {
 	}
 
 	return errors.WithStack(UpdateConfig(ctx, &copy))
+}
+
+// GetGitHubSender returns a cached sender with a GitHub app generated token. Each org in GitHub needs a separate token
+// for authentication so we cache a sender for each org and return it if the token has not expired.
+// If the sender for the org doesn't exist or has expired, we create a new one and cache it.
+// In case of GitHub app errors, the function returns the legacy GitHub sender with a global token attached.
+// The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
+func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	githubSender, ok := e.githubSenders[owner]
+	// If githubSender exists and has not expired, return it.
+	if ok && time.Since(githubSender.time) < githubTokenTimeout {
+		return githubSender.sender, nil
+	}
+	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
+	token, err := e.settings.CreateInstallationToken(e.ctx, owner, repo, nil)
+	if err != nil {
+		// TODO EVG-19966: Delete fallback to legacy GitHub sender
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error creating installation token for GitHub sender",
+			"owner":   owner,
+			"repo":    repo,
+			"ticket":  "EVG-19966",
+		}))
+		legacySender, ok := e.senders[SenderGithubStatus]
+		if !ok {
+			return nil, errors.Errorf("Legacy GitHub status sender not found")
+		}
+		return legacySender, nil
+	}
+	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+		Token: token,
+	}, "")
+	if err != nil {
+		// TODO EVG-19966: Delete fallback to legacy GitHub sender
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error setting up GitHub status logger with GitHub app",
+			"owner":   owner,
+			"repo":    repo,
+			"ticket":  "EVG-19966",
+		}))
+		legacySender, ok := e.senders[SenderGithubStatus]
+		if !ok {
+			return nil, errors.Errorf("Legacy GitHub status sender not found")
+		}
+		return legacySender, nil
+	}
+	e.githubSenders[owner] = cachedGitHubSender{
+		sender: sender,
+		time:   time.Now(),
+	}
+	return sender, nil
 }
 
 func (e *envState) GetSender(key SenderKey) (send.Sender, error) {

@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-08-29"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-09-01"
+	AgentVersion = "2023-09-05"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -557,6 +557,12 @@ func (s *Settings) GetGithubAppAuth() *githubAppAuth {
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	const (
+		maxDelay   = 10 * time.Second
+		minDelay   = time.Second
+		maxRetries = 5
+	)
+
 	if owner == "" || repo == "" {
 		return "", errors.New("no owner/repo specified to create installation token")
 	}
@@ -569,10 +575,15 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 			"repo":    repo,
 			"ticket":  "EVG-19966",
 		})
-
 		return "", nil
 	}
-	httpClient := utility.GetHTTPClient()
+
+	retryConf := utility.NewDefaultHTTPRetryConf()
+	retryConf.MaxDelay = maxDelay
+	retryConf.BaseDelay = minDelay
+	retryConf.MaxRetries = maxRetries
+
+	httpClient := utility.GetHTTPRetryableClient(retryConf)
 	defer utility.PutHTTPClient(httpClient)
 
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)

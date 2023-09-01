@@ -42,10 +42,13 @@ type Agent struct {
 	// ec2InstanceID is the instance ID from the instance metadata. This only
 	// applies to EC2 hosts.
 	ec2InstanceID string
-	endTaskResp   *TriggerEndTaskResp
-	tracer        trace.Tracer
-	otelGrpcConn  *grpc.ClientConn
-	closers       []closerOp
+	// setEndTaskResp sets the explicit task status, which can be set by the
+	// user to override the final task status that would otherwise be used.
+	setEndTaskResp      func(*triggerEndTaskResp)
+	setEndTaskRespMutex sync.RWMutex
+	tracer              trace.Tracer
+	otelGrpcConn        *grpc.ClientConn
+	closers             []closerOp
 }
 
 // Options contains startup options for an Agent.
@@ -88,6 +91,9 @@ type taskContext struct {
 	oomTracker                jasper.OOMTracker
 	traceID                   string
 	unsetFunctionVarsDisabled bool
+	// userEndTaskResp is the end task response that the user can define, which
+	// will overwrite the default end task response.
+	userEndTaskResp *triggerEndTaskResp
 	sync.RWMutex
 }
 
@@ -132,9 +138,10 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	a := &Agent{
-		opts:   opts,
-		comm:   comm,
-		jasper: jpm,
+		opts:           opts,
+		comm:           comm,
+		jasper:         jpm,
+		setEndTaskResp: func(*triggerEndTaskResp) {},
 	}
 
 	a.closers = append(a.closers, closerOp{
@@ -242,7 +249,6 @@ func (a *Agent) loop(ctx context.Context) error {
 			grip.Info("Agent loop canceled.")
 			return nil
 		case <-timer.C:
-			a.endTaskResp = nil // reset this in case a previous task used this to trigger a response
 			// Check the cedar GRPC connection so we can fail early
 			// and avoid task system failures.
 			err := utility.Retry(ctx, func() (bool, error) {
@@ -416,6 +422,10 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 
 	a.comm.UpdateLastMessageTime()
+
+	a.setEndTaskRespMutex.Lock()
+	a.setEndTaskResp = tc.setUserEndTaskResponse
+	a.setEndTaskRespMutex.Unlock()
 
 	taskConfig, err := a.makeTaskConfig(setupCtx, tc)
 	if err != nil {
@@ -962,24 +972,25 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var userDefinedDescription string
 	var userDefinedFailureType string
-	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
-		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", a.endTaskResp.Status)
-		if !evergreen.IsValidTaskEndStatus(a.endTaskResp.Status) {
-			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", a.endTaskResp.Status)
+	if userEndTaskResp := tc.getUserEndTaskResponse(); userEndTaskResp != nil {
+		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
+		if !evergreen.IsValidTaskEndStatus(userEndTaskResp.Status) {
+			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", userEndTaskResp.Status)
 			status = evergreen.TaskFailed
 			userDefinedFailureType = evergreen.CommandTypeSystem
 		} else {
-			status = a.endTaskResp.Status
-			if len(a.endTaskResp.Description) > endTaskMessageLimit {
+			status = userEndTaskResp.Status
+
+			if len(userEndTaskResp.Description) > endTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), defaulting to command display name.", endTaskMessageLimit)
 			} else {
-				userDefinedDescription = a.endTaskResp.Description
+				userDefinedDescription = userEndTaskResp.Description
 			}
 
-			if a.endTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, a.endTaskResp.Type) {
-				tc.logger.Task().Warningf("'%s' is not a valid failure type, defaulting to command failure type.", a.endTaskResp.Type)
+			if userEndTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, userEndTaskResp.Type) {
+				tc.logger.Task().Warningf("'%s' is not a valid failure type, defaulting to command failure type.", userEndTaskResp.Type)
 			} else {
-				userDefinedFailureType = a.endTaskResp.Type
+				userDefinedFailureType = userEndTaskResp.Type
 			}
 		}
 	}
@@ -997,30 +1008,26 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 }
 
 func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
-	var isDefaultInfo bool
+	var isDefaultDescription bool
 	if tc.getCurrentCommand() != nil {
 		// If there is no explicit user-defined description or failure type,
 		// infer that information from the last command that ran.
 		if description == "" {
 			description = tc.getCurrentCommand().DisplayName()
-			isDefaultInfo = true
+			isDefaultDescription = true
 		}
 		if failureType == "" {
 			failureType = tc.getCurrentCommand().Type()
-			isDefaultInfo = true
 		}
 	}
 
 	detail.Status = status
-	if status != evergreen.TaskSucceeded || status == evergreen.TaskSucceeded && !isDefaultInfo {
-		// If the task failed, always set the task failure information, because
-		// the user will want to see which command failed. If the task
-		// succeeded, the additional information is only necessary if a user
-		// explicitly defined custom info to display. This avoids a potentially
-		// confusing scenario where a task succeeds but has unnecesssary
-		// information about the last command that succeeded.
-		detail.Description = description
+	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
+		detail.Description = description
+	}
+	if !isDefaultDescription {
+		detail.Description = description
 	}
 
 	if !detail.TimedOut {
