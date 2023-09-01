@@ -58,7 +58,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 
 	Convey("When running Update commands", t, func() {
 		Convey("if there is no expansion, the file name is not changed", func() {
-			So(conf.Expansions, ShouldResemble, &util.Expansions{})
+			So(conf.Expansions, ShouldResemble, util.Expansions{})
 			cmd := &update{YamlFile: "foo"}
 			So(cmd.Execute(ctx, comm, logger, conf), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "foo")
