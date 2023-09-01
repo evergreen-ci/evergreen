@@ -61,7 +61,6 @@ func TestAgentFileLogging(t *testing.T) {
 		DisplayName: "task1",
 	}
 	tc := &taskContext{
-		taskDirectory: tmpDirName,
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
@@ -95,7 +94,6 @@ func TestAgentFileLogging(t *testing.T) {
 			WorkDir:    tmpDirName,
 			Expansions: util.NewExpansions(nil),
 		},
-		taskModel: task,
 	}
 	assert.NoError(agt.startLogging(ctx, tc))
 	defer agt.removeTaskDirectory(tc)
@@ -130,17 +128,24 @@ func TestStartLogging(t *testing.T) {
 			ID:     "logging",
 			Secret: "task_secret",
 		},
-		taskConfig: &internal.TaskConfig{
-			Task: &task.Task{},
-		},
 	}
 
 	ctx := context.Background()
-	assert.NoError(agt.fetchProjectConfig(ctx, tc))
-	require.NotNil(t, tc.project)
-	assert.EqualValues(model.EvergreenLogSender, tc.project.Loggers.Agent[0].Type)
-	assert.EqualValues(model.SplunkLogSender, tc.project.Loggers.System[0].Type)
-	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)
+	task, project, expansion, _, err := agt.fetchProjectConfig(ctx, tc)
+	assert.NoError(err)
+	require.NotNil(t, project)
+
+	tc.taskConfig = &internal.TaskConfig{
+		Task:       task,
+		Project:    project,
+		Expansions: &expansion,
+	}
+	_, err = agt.makeTaskConfig(ctx, tc)
+	assert.NoError(err)
+
+	assert.EqualValues(model.EvergreenLogSender, project.Loggers.Agent[0].Type)
+	assert.EqualValues(model.SplunkLogSender, project.Loggers.System[0].Type)
+	assert.EqualValues(model.FileLogSender, project.Loggers.Task[0].Type)
 
 	assert.NoError(agt.startLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
@@ -148,12 +153,8 @@ func TestStartLogging(t *testing.T) {
 	msgs := agt.comm.(*client.Mock).GetMockMessages()
 	assert.Equal("foo", msgs[tc.task.ID][0].Message)
 
-	config, err := agt.makeTaskConfig(ctx, tc)
-	assert.NoError(err)
-	assert.NotNil(config.Project)
-
 	// check that expansions are correctly populated
-	logConfig := agt.prepLogger(tc, tc.project.Loggers, "")
+	logConfig := agt.prepLogger(tc, project.Loggers, "")
 	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
@@ -181,34 +182,33 @@ func TestDefaultSender(t *testing.T) {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
-		project: &model.Project{},
 		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
 			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Project:      &model.Project{},
 		},
-		taskModel: task,
 	}
 
 	t.Run("Valid", func(t *testing.T) {
-		tc.project.Loggers = &model.LoggerConfig{}
+		tc.taskConfig.Project.Loggers = &model.LoggerConfig{}
 		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
 
 		assert.NoError(t, agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
-		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Agent)
-		assert.Equal(t, expectedLogOpts, tc.project.Loggers.System)
-		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Task)
+		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Agent)
+		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.System)
+		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Task)
 	})
 	t.Run("Invalid", func(t *testing.T) {
-		tc.project.Loggers = &model.LoggerConfig{}
+		tc.taskConfig.Project.Loggers = &model.LoggerConfig{}
 		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.SplunkLogSender}
 
 		assert.NoError(t, agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
-		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Agent)
-		assert.Equal(t, expectedLogOpts, tc.project.Loggers.System)
-		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Task)
+		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Agent)
+		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.System)
+		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Task)
 	})
 }
 
@@ -236,19 +236,18 @@ func TestTimberSender(t *testing.T) {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
-		project: &model.Project{
-			Loggers: &model.LoggerConfig{
-				Agent:  []model.LogOpts{{Type: model.BuildloggerLogSender}},
-				System: []model.LogOpts{{Type: model.BuildloggerLogSender}},
-				Task:   []model.LogOpts{{Type: model.BuildloggerLogSender}},
-			},
-		},
 		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
 			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Project: &model.Project{
+				Loggers: &model.LoggerConfig{
+					Agent:  []model.LogOpts{{Type: model.BuildloggerLogSender}},
+					System: []model.LogOpts{{Type: model.BuildloggerLogSender}},
+					Task:   []model.LogOpts{{Type: model.BuildloggerLogSender}},
+				},
+			},
 		},
-		taskModel: task,
 	}
 	assert.NoError(t, agt.startLogging(ctx, tc))
 }
