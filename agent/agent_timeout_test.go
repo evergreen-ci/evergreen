@@ -76,7 +76,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			Secret: taskSecret,
 		},
 		taskConfig: &internal.TaskConfig{
-			Task: &task.Task{
+			Task: task.Task{
 				Id:        taskID,
 				Execution: 0,
 			},
@@ -134,7 +134,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 			Secret: taskSecret,
 		},
 		taskConfig: &internal.TaskConfig{
-			Task: &task.Task{
+			Task: task.Task{
 				Id:        taskID,
 				Execution: 0,
 			},
@@ -191,7 +191,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 			Secret: taskSecret,
 		},
 		taskConfig: &internal.TaskConfig{
-			Task: &task.Task{
+			Task: task.Task{
 				Id:        taskID,
 				Execution: 0,
 			},
@@ -248,7 +248,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 			Secret: taskSecret,
 		},
 		taskConfig: &internal.TaskConfig{
-			Task: &task.Task{
+			Task: task.Task{
 				Id:        taskID,
 				Execution: 0,
 			},
@@ -305,7 +305,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 			Secret: taskSecret,
 		},
 		taskConfig: &internal.TaskConfig{
-			Task: &task.Task{
+			Task: task.Task{
 				Id:        taskID,
 				Execution: 0,
 			},
@@ -361,7 +361,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 			Secret: taskSecret,
 		},
 		taskConfig: &internal.TaskConfig{
-			Task: &task.Task{
+			Task: task.Task{
 				Id:        taskID,
 				Execution: 0,
 			},

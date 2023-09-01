@@ -20,11 +20,11 @@ import (
 
 type TaskConfig struct {
 	Distro             *apimodels.DistroView
-	ProjectRef         *model.ProjectRef
-	Project            *model.Project
-	Task               *task.Task
-	BuildVariant       *model.BuildVariant
-	Expansions         *util.Expansions
+	ProjectRef         model.ProjectRef
+	Project            model.Project
+	Task               task.Task
+	BuildVariant       model.BuildVariant
+	Expansions         util.Expansions
 	DynamicExpansions  util.Expansions
 	Redacted           map[string]bool
 	WorkDir            string
@@ -35,7 +35,7 @@ type TaskConfig struct {
 	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string
 	CedarTestResultsID string
-	TaskGroup          model.TaskGroup
+	TaskGroup          *model.TaskGroup
 
 	mu sync.RWMutex
 }
@@ -85,26 +85,21 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		return nil, errors.Errorf("cannot find build variant '%s' for task in project '%s'", t.BuildVariant, t.Project)
 	}
 
-	var taskGroupPtr *model.TaskGroup
+	var taskGroup *model.TaskGroup
 	if t.TaskGroup != "" {
-		taskGroupPtr = p.FindTaskGroup(t.TaskGroup)
-		if taskGroupPtr == nil {
+		taskGroup = p.FindTaskGroup(t.TaskGroup)
+		if taskGroup == nil {
 			return nil, errors.Errorf("programmatic error: task is part of task group '%s' but no such task group is defined in the project", t.TaskGroup)
 		}
 	}
 
-	var taskGroup model.TaskGroup
-	if taskGroupPtr != nil {
-		taskGroup = *taskGroupPtr
-	}
-
 	taskConfig := &TaskConfig{
 		Distro:            d,
-		ProjectRef:        r,
-		Project:           p,
-		Task:              t,
-		BuildVariant:      bv,
-		Expansions:        &e,
+		ProjectRef:        *r,
+		Project:           *p,
+		Task:              *t,
+		BuildVariant:      *bv,
+		Expansions:        e,
 		DynamicExpansions: util.Expansions{},
 		WorkDir:           workDir,
 		TaskGroup:         taskGroup,
@@ -132,13 +127,16 @@ func (tc *TaskConfig) Validate() error {
 	if tc == nil {
 		return errors.New("unable to get task setup because task config is nil")
 	}
-	if tc.Task == nil {
+	if tc.Task.Id == "" {
+		return errors.New("unable to get task setup because task is nil")
+	}
+	if tc.TaskGroup == nil {
 		return errors.New("unable to get task setup because task is nil")
 	}
 	if tc.Task.Version == "" {
 		return errors.New("task has no version")
 	}
-	if tc.Project == nil {
+	if tc.Project.Identifier == "" {
 		return errors.New("project is nil")
 	}
 	return nil

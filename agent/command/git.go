@@ -506,7 +506,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "loading manifest")
 	}
 
-	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 

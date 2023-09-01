@@ -147,7 +147,7 @@ func (tc *taskContext) getTimeoutType() timeoutType {
 
 // makeTaskConfig fetches task configuration data required to run the task from the API server.
 func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.TaskConfig, error) {
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.Identifier != "" {
+	if tc.taskConfig != nil && tc.taskConfig.Project.Identifier != "" {
 		return tc.taskConfig, nil
 	}
 
@@ -243,7 +243,7 @@ func (tc *taskContext) getPre() (*commandBlock, error) {
 		block:       command.SetupTaskBlock,
 		commands:    tc.taskConfig.TaskGroup.SetupTask,
 		timeoutKind: setupTaskTimeout,
-		getTimeout:  tc.getSetupTaskTimeout(&tc.taskConfig.TaskGroup),
+		getTimeout:  tc.getSetupTaskTimeout(tc.taskConfig.TaskGroup),
 		canFailTask: tc.taskConfig.TaskGroup.SetupTaskCanFailTask,
 	}, nil
 }
@@ -268,7 +268,7 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 		block:       command.TeardownTaskBlock,
 		commands:    tc.taskConfig.TaskGroup.TeardownTask,
 		timeoutKind: teardownTaskTimeout,
-		getTimeout:  tc.getTeardownTaskTimeout(&tc.taskConfig.TaskGroup),
+		getTimeout:  tc.getTeardownTaskTimeout(tc.taskConfig.TaskGroup),
 		canFailTask: tc.taskConfig.TaskGroup.TeardownTaskCanFailTask,
 	}, nil
 }
@@ -291,7 +291,7 @@ func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
 		block:       command.SetupGroupBlock,
 		commands:    tc.taskConfig.TaskGroup.SetupGroup,
 		timeoutKind: setupGroupTimeout,
-		getTimeout:  tc.getSetupGroupTimeout(&tc.taskConfig.TaskGroup),
+		getTimeout:  tc.getSetupGroupTimeout(tc.taskConfig.TaskGroup),
 		canFailTask: tc.taskConfig.TaskGroup.SetupGroupCanFailTask,
 	}, nil
 }
@@ -314,7 +314,7 @@ func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
 		block:       command.TeardownGroupBlock,
 		commands:    tc.taskConfig.TaskGroup.TeardownGroup,
 		timeoutKind: teardownGroupTimeout,
-		getTimeout:  tc.getTeardownGroupTimeout(&tc.taskConfig.TaskGroup),
+		getTimeout:  tc.getTeardownGroupTimeout(tc.taskConfig.TaskGroup),
 		canFailTask: false,
 	}, nil
 }
@@ -361,7 +361,7 @@ func (tc *taskContext) getPreTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.PreTimeoutSecs != 0 {
+	if tc.taskConfig != nil && tc.taskConfig.Project.PreTimeoutSecs != 0 {
 		return time.Duration(tc.taskConfig.Project.PreTimeoutSecs) * time.Second
 	}
 
@@ -373,7 +373,7 @@ func (tc *taskContext) getPostTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.PostTimeoutSecs != 0 {
+	if tc.taskConfig != nil && tc.taskConfig.Project.PostTimeoutSecs != 0 {
 		return time.Duration(tc.taskConfig.Project.PostTimeoutSecs) * time.Second
 	}
 	return defaultPostTimeout
@@ -436,7 +436,7 @@ func (tc *taskContext) getCallbackTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.CallbackTimeout != 0 {
+	if tc.taskConfig != nil && tc.taskConfig.Project.CallbackTimeout != 0 {
 		return time.Duration(tc.taskConfig.Project.CallbackTimeout) * time.Second
 	}
 	return defaultCallbackTimeout

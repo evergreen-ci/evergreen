@@ -65,7 +65,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 			CmdNum:    i + 1,
 			TotalCmds: len(commands),
 		}
-		cmds, err = command.Render(commandInfo, tc.taskConfig.Project, blockInfo)
+		cmds, err = command.Render(commandInfo, &tc.taskConfig.Project, blockInfo)
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
@@ -272,7 +272,7 @@ func getCommandNameForFileLogger(commandInfo model.PluginCommandConf) string {
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
 func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
-	if tc.taskConfig.Task == nil {
+	if tc.taskConfig.Task.Id == "" {
 		tc.logger.Task().Error("Task model not found for running task sync.")
 		return nil
 	}

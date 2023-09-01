@@ -67,9 +67,9 @@ func TestAgentFileLogging(t *testing.T) {
 		},
 		ranSetupGroup: false,
 		taskConfig: &internal.TaskConfig{
-			Task:         task,
-			BuildVariant: &model.BuildVariant{Name: "bv"},
-			Project: &model.Project{
+			Task:         *task,
+			BuildVariant: model.BuildVariant{Name: "bv"},
+			Project: model.Project{
 				Tasks: []model.ProjectTask{
 					{Name: "task1", Commands: []model.PluginCommandConf{
 						{
@@ -92,7 +92,7 @@ func TestAgentFileLogging(t *testing.T) {
 			},
 			Timeout:    &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 			WorkDir:    tmpDirName,
-			Expansions: util.NewExpansions(nil),
+			Expansions: *util.NewExpansions(nil),
 		},
 	}
 	assert.NoError(agt.startLogging(ctx, tc))
@@ -168,7 +168,7 @@ func TestDefaultSender(t *testing.T) {
 
 	taskID := "logging"
 	taskSecret := "mock_task_secret"
-	task := &task.Task{
+	task := task.Task{
 		DisplayName: "task1",
 	}
 	tc := &taskContext{
@@ -178,15 +178,15 @@ func TestDefaultSender(t *testing.T) {
 		},
 		taskConfig: &internal.TaskConfig{
 			Task:         task,
-			BuildVariant: &model.BuildVariant{Name: "bv"},
+			BuildVariant: model.BuildVariant{Name: "bv"},
 			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-			Project:      &model.Project{},
+			Project:      model.Project{},
 		},
 	}
 
 	t.Run("Valid", func(t *testing.T) {
 		tc.taskConfig.Project.Loggers = &model.LoggerConfig{}
-		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
+		tc.taskConfig.ProjectRef = model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
 
 		assert.NoError(t, agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
@@ -196,7 +196,7 @@ func TestDefaultSender(t *testing.T) {
 	})
 	t.Run("Invalid", func(t *testing.T) {
 		tc.taskConfig.Project.Loggers = &model.LoggerConfig{}
-		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.SplunkLogSender}
+		tc.taskConfig.ProjectRef = model.ProjectRef{DefaultLogger: model.SplunkLogSender}
 
 		assert.NoError(t, agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
@@ -231,10 +231,10 @@ func TestTimberSender(t *testing.T) {
 			Secret: taskSecret,
 		},
 		taskConfig: &internal.TaskConfig{
-			Task:         task,
-			BuildVariant: &model.BuildVariant{Name: "bv"},
+			Task:         *task,
+			BuildVariant: model.BuildVariant{Name: "bv"},
 			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-			Project: &model.Project{
+			Project: model.Project{
 				Loggers: &model.LoggerConfig{
 					Agent:  []model.LogOpts{{Type: model.BuildloggerLogSender}},
 					System: []model.LogOpts{{Type: model.BuildloggerLogSender}},

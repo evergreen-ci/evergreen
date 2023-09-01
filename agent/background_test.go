@@ -46,7 +46,7 @@ func (s *BackgroundSuite) SetupTest() {
 
 	s.tc = &taskContext{}
 	s.tc.taskConfig = &internal.TaskConfig{}
-	s.tc.taskConfig.Project = &model.Project{}
+	s.tc.taskConfig.Project = model.Project{}
 	s.tc.taskConfig.Project.CallbackTimeout = 0
 	s.sender = send.MakeInternalLogger()
 	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)

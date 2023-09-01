@@ -62,7 +62,7 @@ func (s *CommandSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	const bvName = "mock_build_variant"
-	tsk := &task.Task{
+	tsk := task.Task{
 		Id:           "task_id",
 		DisplayName:  "some task",
 		BuildVariant: bvName,
@@ -78,7 +78,7 @@ func (s *CommandSuite) SetupTest() {
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
 	}
 
-	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, project, tsk, &model.ProjectRef{
+	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, project, &tsk, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
@@ -209,7 +209,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tc := &taskContext{
 				taskConfig: &internal.TaskConfig{
-					Task: &task.Task{
+					Task: task.Task{
 						SyncAtEndOpts: task.SyncAtEndOptions{Enabled: true},
 					},
 				},
@@ -222,11 +222,11 @@ func TestEndTaskSyncCommands(t *testing.T) {
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	config := &internal.TaskConfig{
-		Expansions: &util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
-		BuildVariant: &model.BuildVariant{
+		Expansions: util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
+		BuildVariant: model.BuildVariant{
 			Name: "some_build_variant",
 		},
-		Task: &task.Task{
+		Task: task.Task{
 			Id:           "task_id",
 			DisplayName:  "some task",
 			BuildVariant: "some_build_variant",
@@ -235,14 +235,13 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 		Timeout: &internal.Timeout{},
 	}
 	s.tc.taskConfig = config
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	p := model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", &p)
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 
 	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
-	// s.tc.project = p
 	s.tc.taskConfig.Project = p
 }
 

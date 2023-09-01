@@ -116,9 +116,8 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 	}
 
 	var defaultLogger string
-	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil {
-		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
-	}
+	defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
+
 	if !model.IsValidDefaultLogger(defaultLogger) {
 		grip.Warningf("Default logger '%s' is not valid, setting Evergreen logger as default.", defaultLogger)
 		defaultLogger = model.EvergreenLogSender

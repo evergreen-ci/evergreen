@@ -567,7 +567,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	}
 	taskLogDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrapf(os.RemoveAll(taskLogDir), "removing task log directory '%s'", taskLogDir))
-	if tc.taskConfig.Project != nil && tc.taskConfig.Project.Loggers != nil {
+	if tc.taskConfig.Project.Loggers != nil {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.taskConfig.Project.Loggers, "")
 	} else {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, &model.LoggerConfig{}, "")
@@ -681,7 +681,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		"${ps|ps}",
 	)
 
-	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
+	statsCollector.logStats(execTimeoutCtx, &tc.taskConfig.Expansions)
 
 	if execTimeoutCtx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution after setup: %s", execTimeoutCtx.Err())
@@ -1121,7 +1121,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 // runEndTaskSync runs task sync if it was requested for the end of this task.
 func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	if tc.taskConfig.Task == nil {
+	if tc.taskConfig.Task.Id == "" {
 		tc.logger.Task().Error("Task model not found for running task sync.")
 		return
 	}
