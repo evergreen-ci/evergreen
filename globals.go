@@ -653,6 +653,86 @@ var (
 	}
 )
 
+// UserRequester represents the allowed user-facing requester types.
+type UserRequester string
+
+const (
+	// User-facing requester types. These are equivalent in meaning to the above
+	// requesters, but are more user-friendly. These should only be used for
+	// user-facing functionality such as YAML configuration and expansions and
+	// should be translated into the true internal requester types so they're
+	// actually usable.
+	PatchVersionUserRequester       UserRequester = "patch"
+	GithubPRUserRequester           UserRequester = "github_pr"
+	GitTagUserRequester             UserRequester = "github_tag"
+	RepotrackerVersionUserRequester UserRequester = "commit"
+	TriggerUserRequester            UserRequester = "trigger"
+	MergeTestUserRequester          UserRequester = "commit_queue"
+	AdHocUserRequester              UserRequester = "ad_hoc"
+	GithubMergeUserRequester        UserRequester = "github_merge_queue"
+)
+
+var AllUserRequesterTypes = []UserRequester{
+	PatchVersionUserRequester,
+	GithubPRUserRequester,
+	GitTagUserRequester,
+	RepotrackerVersionUserRequester,
+	TriggerUserRequester,
+	MergeTestUserRequester,
+	AdHocUserRequester,
+	GithubMergeUserRequester,
+}
+
+// InternalRequesterToUserRequester translates an internal requester type to a
+// user-facing requester type.
+func InternalRequesterToUserRequester(requester string) UserRequester {
+	switch requester {
+	case PatchVersionRequester:
+		return PatchVersionUserRequester
+	case GithubPRRequester:
+		return GithubPRUserRequester
+	case GitTagRequester:
+		return GitTagUserRequester
+	case RepotrackerVersionRequester:
+		return RepotrackerVersionUserRequester
+	case TriggerRequester:
+		return TriggerUserRequester
+	case MergeTestRequester:
+		return MergeTestUserRequester
+	case AdHocRequester:
+		return AdHocUserRequester
+	case GithubMergeRequester:
+		return GithubMergeUserRequester
+	default:
+		return ""
+	}
+}
+
+// UserRequesterToInternalRequester translates a user-facing requester type to
+// its equivalent internal requester type.
+func UserRequesterToInternalRequester(requester UserRequester) string {
+	switch requester {
+	case PatchVersionUserRequester:
+		return PatchVersionRequester
+	case GithubPRUserRequester:
+		return GithubPRRequester
+	case GitTagUserRequester:
+		return GitTagRequester
+	case RepotrackerVersionUserRequester:
+		return RepotrackerVersionRequester
+	case TriggerUserRequester:
+		return TriggerRequester
+	case MergeTestUserRequester:
+		return MergeTestRequester
+	case AdHocUserRequester:
+		return AdHocRequester
+	case GithubMergeUserRequester:
+		return GithubMergeRequester
+	default:
+		return ""
+	}
+}
+
 // Constants for project command names.
 const (
 	GenerateTasksCommandName      = "generate.tasks"

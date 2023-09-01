@@ -172,15 +172,6 @@ func (j *githubStatusUpdateJob) preamble(ctx context.Context) error {
 	if len(j.urlBase) == 0 {
 		return errors.New("UI URL is empty")
 	}
-
-	if j.sender == nil {
-		var err error
-		j.sender, err = j.env.GetSender(evergreen.SenderGithubStatus)
-		if err != nil {
-			return err
-		}
-	}
-
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
@@ -255,6 +246,12 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	return &status, nil
 }
 
+func (j *githubStatusUpdateJob) setSender(owner, repo string) error {
+	var err error
+	j.sender, err = j.env.GetGitHubSender(owner, repo)
+	return err
+}
+
 func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
@@ -264,6 +261,12 @@ func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 	}
 
 	status, err := j.fetch()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	err = j.setSender(status.Owner, status.Repo)
 	if err != nil {
 		j.AddError(err)
 		return

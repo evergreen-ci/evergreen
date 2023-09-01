@@ -768,25 +768,23 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return []string{repoID}, http.StatusOK, nil
 	}
 
+	// Return an error if the project isn't found
+	if projectID == "" {
+		return nil, http.StatusNotFound, errors.New("no project found")
+	}
+
 	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
 	if err != nil {
-		return nil, http.StatusNotFound, errors.Wrap(err, "finding project")
+		return nil, http.StatusInternalServerError, errors.Wrap(err, "finding project")
 	}
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
 	}
-	projectID = projectRef.Id
-
-	// check to see if this is an anonymous user requesting a private project
-	user := gimlet.GetUser(r.Context())
-	if user == nil && projectRef.IsPrivate() {
-		projectID = ""
+	usr := gimlet.GetUser(r.Context())
+	if usr == nil && projectRef.IsPrivate() {
+		return nil, http.StatusUnauthorized, errors.New("unauthorized")
 	}
 
-	// no project found - return a 404
-	if projectID == "" {
-		return nil, http.StatusNotFound, errors.New("no project found")
-	}
 	res := []string{projectRef.Id}
 	if destProjectID != "" {
 		res = append(res, destProjectID)

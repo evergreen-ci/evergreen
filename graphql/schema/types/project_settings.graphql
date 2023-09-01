@@ -105,6 +105,7 @@ type TriggerAlias {
   project: String!
   status: String!
   taskRegex: String!
+  unscheduleDownstreamVersions: Boolean
 }
 
 # shared by Project and RepoRef

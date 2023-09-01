@@ -235,7 +235,6 @@ func (s *githubStatusUpdateSuite) TestPreamble() {
 	s.NoError(j.preamble(s.ctx))
 	s.NotNil(j.env)
 	s.NotEmpty(j.urlBase)
-	s.NotNil(j.sender)
 	s.Equal(s.env, j.env)
 
 	uiConfig := evergreen.UIConfig{}
