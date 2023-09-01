@@ -22,13 +22,14 @@ import (
 )
 
 type TaskConfig struct {
-	Distro             *apimodels.DistroView
-	ProjectRef         *model.ProjectRef
-	Project            *model.Project
-	Task               *task.Task
-	BuildVariant       *model.BuildVariant
-	Expansions         *util.Expansions
-	DynamicExpansions  util.Expansions
+	Distro            *apimodels.DistroView
+	ProjectRef        *model.ProjectRef
+	Project           *model.Project
+	Task              *task.Task
+	BuildVariant      *model.BuildVariant
+	Expansions        *util.Expansions
+	DynamicExpansions util.Expansions
+	// Redacted holds the private project variables
 	Redacted           map[string]bool
 	WorkDir            string
 	GithubPatchData    thirdparty.GithubPatch
@@ -38,6 +39,7 @@ type TaskConfig struct {
 	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string
 	CedarTestResultsID string
+	TaskGroup          model.TaskGroup
 
 	mu sync.RWMutex
 }
@@ -87,6 +89,19 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		return nil, errors.Errorf("cannot find build variant '%s' for task in project '%s'", t.BuildVariant, t.Project)
 	}
 
+	var taskGroupPtr *model.TaskGroup
+	if t.TaskGroup != "" {
+		taskGroupPtr = p.FindTaskGroup(t.TaskGroup)
+		if taskGroupPtr == nil {
+			return nil, errors.New("programmatic error: task group is nil")
+		}
+	}
+
+	var taskGroup model.TaskGroup
+	if taskGroupPtr != nil {
+		taskGroup = *taskGroupPtr
+	}
+
 	taskConfig := &TaskConfig{
 		Distro:            d,
 		ProjectRef:        r,
@@ -96,6 +111,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		Expansions:        &e,
 		DynamicExpansions: util.Expansions{},
 		WorkDir:           workDir,
+		TaskGroup:         taskGroup,
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
@@ -132,24 +148,6 @@ func (c *TaskConfig) GetCloneMethod() string {
 		return c.Distro.CloneMethod
 	}
 	return evergreen.CloneMethodOAuth
-}
-
-// GetTaskGroup returns the task group for the given task group name. It may
-// return nil if the task group name is empty.
-func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
-	if err := tc.Validate(); err != nil {
-		return nil, err
-	}
-
-	if taskGroup == "" {
-		return nil, nil
-	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
-	}
-
-	return tg, nil
 }
 
 // Validate validates that the task config is populated with the data required

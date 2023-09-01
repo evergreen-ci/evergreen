@@ -6,12 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
-	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -93,25 +91,6 @@ const (
 	// LogOutputStdout indicates that the agent will log to standard output.
 	LogOutputStdout LogOutputType = "stdout"
 )
-
-type taskContext struct {
-	currentCommand            command.Command
-	expansions                util.Expansions
-	privateVars               map[string]bool
-	logger                    client.LoggerProducer
-	task                      client.TaskData
-	taskGroup                 string
-	ranSetupGroup             bool
-	taskConfig                *internal.TaskConfig
-	taskDirectory             string
-	timeout                   timeoutInfo
-	project                   *model.Project
-	taskModel                 *task.Task
-	oomTracker                jasper.OOMTracker
-	traceID                   string
-	unsetFunctionVarsDisabled bool
-	sync.RWMutex
-}
 
 type timeoutInfo struct {
 	// idleTimeoutDuration maintains the current idle timeout in the task context;
@@ -295,8 +274,13 @@ func (a *Agent) loop(ctx context.Context) error {
 			}
 
 			a.populateEC2InstanceID(ctx)
+			tg := ""
+			if tc.taskConfig != nil {
+				tg = tc.taskConfig.TaskGroup.Name
+			}
+
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
-				TaskGroup:     tc.taskGroup,
+				TaskGroup:     tg,
 				AgentRevision: evergreen.AgentVersion,
 				EC2InstanceID: a.ec2InstanceID,
 			})
@@ -410,6 +394,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (bool, string) {
 	shouldSetupGroup := false
 	taskDirectory := tc.taskDirectory
+
 	if shouldRunSetupGroup(nextTask, tc) {
 		shouldSetupGroup = true
 		taskDirectory = ""
@@ -431,7 +416,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			taskGroup:                 nt.TaskGroup,
 			ranSetupGroup:             !shouldSetupGroup,
 			taskDirectory:             taskDirectory,
 			oomTracker:                jasper.NewOOMTracker(),
@@ -465,12 +449,27 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
 
+	tc.logger.Execution().Info("chayaMtesting setupTask")
+	tc.logger.Execution().Infof("chayaMtesting execution infof 461 ")
+	// name is nil here
+	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.Name)
+	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.SetupGroup)
+	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.TeardownGroup)
+	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.SetupTask)
+
 	if !tc.ranSetupGroup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
+
+	tc.logger.Execution().Infof("chayaMtesting execution infof 472")
+	grip.Infof("chayaMtesting execution infof 472")
+	// tc.taskConfig.WorkDir = tc.taskConfig.WorkDir
+
+	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.Name)
+
 	tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
@@ -514,35 +513,26 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 		nextTask.TaskGroup == "" ||
 		nextTask.Build != tc.taskConfig.Task.BuildId { // next task has a standalone task or a new build
 		return true
-	} else if nextTask.TaskGroup != tc.taskGroup { // next task has a different task group
-		if tc.logger != nil && nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup {
-			tc.logger.Task().Warning(message.Fields{
-				"message":                 "programmer error: task group in task context doesn't match task",
-				"task_config_task_group":  tc.taskConfig.Task.TaskGroup,
-				"task_context_task_group": tc.taskGroup,
-				"next_task_task_group":    nextTask.TaskGroup,
-			})
-		}
-		return true
 	}
 
 	return false
 }
 
-func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
+func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, util.Expansions, map[string]bool, error) {
+	// it's not getting the right project
 	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return errors.Wrap(err, "getting project")
+		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
 	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return errors.Wrap(err, "getting task")
+		return nil, nil, nil, nil, errors.Wrap(err, "getting task")
 	}
 
 	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return errors.Wrap(err, "getting expansions and variables")
+		return nil, nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
@@ -566,11 +556,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	// user-specified.
 	expAndVars.Expansions.Update(expAndVars.Parameters)
 
-	tc.taskModel = taskModel
-	tc.project = project
-	tc.expansions = expAndVars.Expansions
-	tc.privateVars = expAndVars.PrivateVars
-	return nil
+	return taskModel, project, expAndVars.Expansions, expAndVars.PrivateVars, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
@@ -587,8 +573,8 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	}
 	taskLogDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrapf(os.RemoveAll(taskLogDir), "removing task log directory '%s'", taskLogDir))
-	if tc.project != nil && tc.project.Loggers != nil {
-		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
+	if tc.taskConfig.Project != nil && tc.taskConfig.Project.Loggers != nil {
+		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.taskConfig.Project.Loggers, "")
 	} else {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, &model.LoggerConfig{}, "")
 	}
@@ -710,6 +696,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
+
 	if err := a.comm.StartTask(execTimeoutCtx, tc.task); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		return evergreen.TaskSystemFailed
@@ -741,14 +728,14 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	defer preTaskSpan.End()
 
 	if !tc.ranSetupGroup {
-		setupGroup, err := tc.getSetupGroup(tc.taskGroup)
+		setupGroup, err := tc.getSetupGroup()
 		if err != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "fetching setup group for pre-task commands"))
 			return nil
 		}
 
 		if setupGroup.commands != nil {
-			tc.logger.Task().Infof("Running setup-group commands for task group '%s'.", tc.taskGroup)
+			tc.logger.Task().Infof("Running setup-group commands for task group '%s'.", tc.taskConfig.TaskGroup)
 
 			setupGroupCtx, setupGroupCancel := context.WithCancel(ctx)
 			defer setupGroupCancel()
@@ -772,12 +759,12 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 					return err
 				}
 			}
-			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", tc.taskGroup)
+			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", tc.taskConfig.TaskGroup.Name)
 		}
 		tc.ranSetupGroup = true
 	}
 
-	pre, err := tc.getPre(tc.taskGroup)
+	pre, err := tc.getPre()
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for pre-task commands"))
 		return nil
@@ -877,7 +864,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	tc.logger.Task().Info("Running task-timeout commands.")
 	start := time.Now()
 
-	timeout, err := tc.getTimeout(tc.taskGroup)
+	timeout, err := tc.getTimeout()
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for task timeout commands"))
 		return
@@ -1049,7 +1036,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	defer a.killProcs(ctx, tc, false, "post task commands are finished")
 	tc.logger.Task().Info("Running post-task commands.")
 
-	post, err := tc.getPost(tc.taskGroup)
+	post, err := tc.getPost()
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for post-task commands"))
 		return nil
@@ -1108,7 +1095,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 		logger = grip.GetDefaultJournaler()
 	}
 
-	teardownGroup, err := tc.getTeardownGroup(tc.taskGroup)
+	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {
 		if tc.logger != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for teardown-group commands"))
@@ -1117,7 +1104,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 
 	if teardownGroup.commands != nil {
-		grip.Infof("Running teardown-group commands for task group '%s'.", tc.taskGroup)
+		grip.Infof("Running teardown-group commands for task group '%s'.", tc.taskConfig.TaskGroup.Name)
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 
 		teardownGroupCtx, teardownGroupCancel := context.WithCancel(ctx)
@@ -1139,7 +1126,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 // runEndTaskSync runs task sync if it was requested for the end of this task.
 func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	if tc.taskModel == nil {
+	if tc.taskConfig.Task == nil {
 		tc.logger.Task().Error("Task model not found for running task sync.")
 		return
 	}
@@ -1151,7 +1138,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 
 	var syncCtx context.Context
 	var cancel context.CancelFunc
-	if timeout := tc.taskModel.SyncAtEndOpts.Timeout; timeout != 0 {
+	if timeout := tc.taskConfig.Task.SyncAtEndOpts.Timeout; timeout != 0 {
 		syncCtx, cancel = context.WithTimeout(ctx, timeout)
 	} else {
 		// Default to a generously long timeout if none is specified, since
@@ -1210,19 +1197,15 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 		return false
 	}
 	// kill if the task is not in a task group
-	if tc.taskGroup == "" {
+	if tc.taskConfig.TaskGroup.Name == "" {
 		return true
 	}
 	// kill if ignoreTaskGroupCheck is true
 	if ignoreTaskGroupCheck {
 		return true
 	}
-	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
-	if err != nil {
-		return false
-	}
 	// do not kill if share_processes is set
-	if taskGroup != nil && taskGroup.ShareProcs {
+	if tc.taskConfig.TaskGroup.Name != "" && tc.taskConfig.TaskGroup.ShareProcs {
 		return false
 	}
 	// return true otherwise

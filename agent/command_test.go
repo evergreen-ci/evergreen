@@ -61,12 +61,12 @@ func (s *CommandSuite) SetupTest() {
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
 
-	const bvName = "some_build_variant"
+	const bvName = "mock_build_variant"
 	tsk := &task.Task{
 		Id:           "task_id",
 		DisplayName:  "some task",
 		BuildVariant: bvName,
-		Version:      "v1",
+		Version:      "my_version",
 	}
 
 	project := &model.Project{
@@ -84,15 +84,17 @@ func (s *CommandSuite) SetupTest() {
 	}, &patch.Patch{}, util.Expansions{})
 	s.Require().NoError(err)
 
+	// s.mockCommunicator.GetProjectResponse = project
+	// s.mockCommunicator.GetTaskResponse = tsk
 	s.tc = &taskContext{
 		taskConfig: taskConfig,
 		task: client.TaskData{
 			Secret: "mock_task_secret",
 		},
-		taskModel:                 &task.Task{},
 		oomTracker:                &mock.OOMTracker{},
 		unsetFunctionVarsDisabled: false,
 	}
+	s.tc.taskConfig.Task = tsk
 }
 
 func (s *CommandSuite) TestPreErrorFailsWithSetup() {
@@ -107,10 +109,10 @@ func (s *CommandSuite) TestPreErrorFailsWithSetup() {
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
 	}
 	shouldSetupGroup := !s.tc.ranSetupGroup
-	taskDirectory := s.tc.taskDirectory
+	taskDirectory := ""
+
 	_, _, err := s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 	detail := s.mockCommunicator.GetEndTaskDetail()
@@ -145,10 +147,10 @@ func (s *CommandSuite) TestShellExec() {
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
+		TaskGroup:  "",
 	}
 	shouldSetupGroup := !s.tc.ranSetupGroup
-	taskDirectory := s.tc.taskDirectory
+	taskDirectory := ""
 	_, _, err = s.a.runTask(ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.NoError(err)
 
@@ -190,27 +192,29 @@ func TestEndTaskSyncCommands(t *testing.T) {
 			assert.True(t, s3PushFound(cmds))
 		},
 		"ReturnsNoCommandsForNoSync": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
-			tc.taskModel.SyncAtEndOpts.Enabled = false
+			tc.taskConfig.Task.SyncAtEndOpts.Enabled = false
 			assert.Nil(t, endTaskSyncCommands(tc, detail))
 		},
 		"ReturnsCommandsIfMatchesTaskStatus": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
 			detail.Status = evergreen.TaskSucceeded
-			tc.taskModel.SyncAtEndOpts.Statuses = []string{evergreen.TaskSucceeded}
+			tc.taskConfig.Task.SyncAtEndOpts.Statuses = []string{evergreen.TaskSucceeded}
 			cmds := endTaskSyncCommands(tc, detail)
 			require.NotNil(t, cmds)
 			assert.True(t, s3PushFound(cmds))
 		},
 		"ReturnsNoCommandsIfDoesNotMatchTaskStatus": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
 			detail.Status = evergreen.TaskSucceeded
-			tc.taskModel.SyncAtEndOpts.Statuses = []string{evergreen.TaskFailed}
+			tc.taskConfig.Task.SyncAtEndOpts.Statuses = []string{evergreen.TaskFailed}
 			cmds := endTaskSyncCommands(tc, detail)
 			assert.Nil(t, cmds)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			tc := &taskContext{
-				taskModel: &task.Task{
-					SyncAtEndOpts: task.SyncAtEndOptions{Enabled: true},
+				taskConfig: &internal.TaskConfig{
+					Task: &task.Task{
+						SyncAtEndOpts: task.SyncAtEndOptions{Enabled: true},
+					},
 				},
 			}
 			detail := &apimodels.TaskEndDetail{}
@@ -241,7 +245,7 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 
 	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
-	s.tc.project = p
+	// s.tc.project = p
 	s.tc.taskConfig.Project = p
 }
 

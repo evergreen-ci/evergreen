@@ -119,6 +119,7 @@ func (s *AgentSuite) SetupTest() {
 		oomTracker:    &mock.OOMTracker{},
 		expansions:    util.Expansions{},
 		taskDirectory: s.tmpDirName,
+		oomTracker:    &mock.OOMTracker{},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	s.canceler = cancel
@@ -131,7 +132,7 @@ func (s *AgentSuite) SetupTest() {
 	s.tc.setCurrentCommand(factory())
 	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
-	s.tc.taskDirectory = s.tmpDirName
+	s.tc.taskConfig.WorkDir = s.tmpDirName
 	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -649,8 +650,17 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.Require().NoError(err)
 	s.tc.taskConfig.Project = p
-	s.tc.project = p
+
 	s.mockCommunicator.GetProjectResponse = p
+
+	t := &task.Task{
+		Id:           "task_id",
+		BuildVariant: "mock_build_variant",
+		DisplayName:  "this_is_a_task_name",
+		Version:      "my_version",
+	}
+	s.mockCommunicator.GetTaskResponse = t
+	s.tc.taskConfig.Task = t
 }
 
 func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
@@ -676,9 +686,8 @@ post:
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -724,9 +733,8 @@ post:
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -770,9 +778,8 @@ post:
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -818,9 +825,8 @@ post:
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -861,9 +867,8 @@ post:
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -981,13 +986,31 @@ post:
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+}
+
+func (s *AgentSuite) TestSetupTaskSucceeds() {
+	nextTask := &apimodels.NextTaskResponse{}
+	s.setupRunTask(defaultProjYml)
+	s.tc.taskConfig.WorkDir = "task_directory"
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
+	_, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
+	s.False(shouldExit)
+	s.NoError(err)
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Current command set to initial task setup (system).",
+		"Making new folder",
+		"Task logger initialized",
+		"Execution logger initialized.",
+		"System logger initialized.",
+		"Starting task 'task_id', execution 0.",
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestPrepareNextTask() {
@@ -996,10 +1019,10 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc := &taskContext{}
 	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.Require().NoError(err)
-	tc.taskModel = &task.Task{}
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
-			Version: "not_a_task_group_version",
+			Version:   "not_a_task_group_version",
+			TaskGroup: "foo",
 		},
 	}
 	tc.taskDirectory = "task_directory"
@@ -1009,7 +1032,6 @@ func (s *AgentSuite) TestPrepareNextTask() {
 
 	const versionID = "task_group_version"
 	nextTask.TaskGroup = "foo"
-	tc.taskGroup = "foo"
 	nextTask.Version = versionID
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
@@ -1018,7 +1040,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
-	tc.taskDirectory = "task_directory"
+	tc.taskConfig.WorkDir = "task_directory"
 	tc.ranSetupGroup = false
 	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
 	s.True(shouldSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be true")
@@ -1030,7 +1052,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 		},
 	}
 	tc.ranSetupGroup = true
-	tc.taskDirectory = "task_directory"
+	tc.taskConfig.WorkDir = "task_directory"
 	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
 	s.False(shouldSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, shouldSetupGroup should be false")
 	s.Equal("task_directory", taskDirectory)
@@ -1038,8 +1060,9 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	const newVersionID = "new_task_group_version"
 	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
-			Version: newVersionID,
-			BuildId: "build_id_1",
+			Version:   newVersionID,
+			BuildId:   "build_id_1",
+			TaskGroup: "bar",
 		},
 	}
 	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
@@ -1047,9 +1070,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask.TaskGroup = "bar"
 	nextTask.Version = newVersionID
 	nextTask.Build = "build_id_2"
-	tc.taskGroup = "bar"
-	tc.taskDirectory = "task_directory"
-	tc.taskModel = &task.Task{}
+	tc.taskConfig.WorkDir = "task_directory"
 	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
 	s.True(shouldSetupGroup, "if the next task is in the same version and task group name but a different build, shouldSetupGroup should be true")
 	s.Empty(taskDirectory)
@@ -1076,7 +1097,6 @@ func (s *AgentSuite) TestGeneralTaskSetupSucceeds() {
 
 func (s *AgentSuite) TestSetupGroupSucceeds() {
 	const taskGroup = "task_group_name"
-	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
   - name: task_group_name
@@ -1086,8 +1106,9 @@ task_groups:
           script: echo hi
 `
 
-	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.setupRunTask(projYml)
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
@@ -1100,9 +1121,38 @@ task_groups:
 	}, []string{panicLog})
 }
 
+func (s *AgentSuite) TestSetupGroupTimeout() {
+	const taskGroup = "task_group_name"
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_group_timeout_secs: 3
+  setup_group_can_fail_task: true
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "sleep 10"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+
+	err = s.a.runPreTaskCommands(s.ctx, s.tc)
+	s.Require().Error(err)
+	s.True(utility.IsContextError(errors.Cause(err)))
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running pre-task commands",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_group'",
+		"Running command 'shell.exec' (step 1 of 1) in block 'setup_group'",
+	}, []string{panicLog})
+}
+
 func (s *AgentSuite) TestSetupGroupFails() {
 	const taskGroup = "task_group_name"
-	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
   - name: task_group_name
@@ -1114,6 +1164,7 @@ task_groups:
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
 
 	s.Error(s.a.runPreTaskCommands(s.ctx, s.tc), "setup group command error should fail task")
 
@@ -1156,7 +1207,6 @@ task_groups:
 
 func (s *AgentSuite) TestSetupGroupTimeoutFailsTask() {
 	const taskGroup = "task_group_name"
-	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
   - name: task_group_name
@@ -1167,7 +1217,11 @@ task_groups:
         params:
           script: sleep 5
 `
-	s.setupRunTask(projYml)
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.Require().NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 
 	startAt := time.Now()
@@ -1191,7 +1245,6 @@ task_groups:
 
 func (s *AgentSuite) TestSetupTaskSucceeds() {
 	const taskGroup = "task_group_name"
-	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
   - name: task_group_name
@@ -1255,6 +1308,7 @@ task_groups:
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
 
 	startAt := time.Now()
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc), "setup task timeout should not fail task")
@@ -1334,7 +1388,6 @@ task_groups:
 
 func (s *AgentSuite) TestTeardownTaskFails() {
 	const taskGroup = "task_group_name"
-	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
   - name: task_group_name
@@ -1346,6 +1399,7 @@ task_groups:
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 
@@ -1357,18 +1411,50 @@ task_groups:
 
 func (s *AgentSuite) TestTeardownTaskTimeoutDoesNotFailTask() {
 	const taskGroup = "task_group_name"
-	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
   - name: task_group_name
     teardown_task_timeout_secs: 1
+    setup_task:
+      - command: shell.exec
+        params:
+          script: echo hi
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.Require().NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
+
+	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running pre-task commands",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_task'",
+		"Running command 'shell.exec' (step 1 of 1) in block 'setup_task'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_task'",
+		"Finished running pre-task commands",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestTeardownTaskSucceeds() {
+	taskGroup := "task_group_name"
+	projYml := `
+task_groups:
+  - name: task_group_name
     teardown_task:
       - command: shell.exec
         params:
           script: sleep 5
 `
-	s.setupRunTask(projYml)
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.Require().NoError(err)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
+	s.tc.taskConfig.Project = p
 
 	startAt := time.Now()
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc), "teardown task timeout should not fail task")
@@ -1421,7 +1507,7 @@ task_groups:
 }
 
 func (s *AgentSuite) TestTeardownGroupSucceeds() {
-	s.tc.taskGroup = "task_group_name"
+	taskGroup := "task_group_name"
 	projYml := `
 task_groups:
   - name: task_group_name
@@ -1430,8 +1516,12 @@ task_groups:
         params:
           script: echo hi
 `
-	s.setupRunTask(projYml)
-	s.tc.taskConfig.Task.TaskGroup = s.tc.taskGroup
+	p := &model.Project{}
+	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
+	s.Require().NoError(err)
+	s.tc.taskConfig.Project = p
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
 
 	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 
@@ -1478,7 +1568,6 @@ func (s *AgentSuite) TestTaskGroupTimeout() {
 		ID:     "task_id",
 		Secret: "task_secret",
 	}
-	s.tc.taskGroup = taskGroup
 	projYml := `
 task_groups:
   - name: task_group_name
@@ -1489,6 +1578,7 @@ task_groups:
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	s.a.runTaskTimeoutCommands(s.ctx, s.tc)
 
@@ -1541,15 +1631,16 @@ func (s *AgentSuite) TestFetchProjectConfig() {
 		Identifier: "some_cool_project",
 	}
 
-	s.NoError(s.a.fetchProjectConfig(s.ctx, s.tc))
+	_, project, expansions, pv, err := s.a.fetchProjectConfig(s.ctx, s.tc)
+	s.NoError(err)
 
-	s.Require().NotZero(s.tc.project)
-	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, s.tc.project.Identifier)
-	s.Require().NotZero(s.tc.expansions)
-	s.Equal("bar", s.tc.expansions["foo"], "should include mock communicator expansions")
-	s.Equal("new-parameter-value", s.tc.expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
-	s.Require().NotZero(s.tc.privateVars)
-	s.True(s.tc.privateVars["some_private_var"], "should include mock communicator private variables")
+	s.Require().NotZero(s.tc.taskConfig.Project)
+	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, project.Identifier)
+	s.Require().NotZero(expansions)
+	s.Equal("bar", expansions["foo"], "should include mock communicator expansions")
+	s.Equal("new-parameter-value", expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
+	s.Require().NotZero(pv)
+	s.True(pv["some_private_var"], "should include mock communicator private variables")
 }
 
 func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
@@ -1582,9 +1673,9 @@ timeout:
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
+		// TaskGroup:  s.tc.taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
@@ -1633,14 +1724,17 @@ timeout:
       script: exit 0
 `
 	s.setupRunTask(projYml)
-	s.tc.taskGroup = "some_task_group"
+	taskGroup := "some_task_group"
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+
 	start := time.Now()
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
-		TaskGroup:  s.tc.taskGroup,
+		TaskGroup:  taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
@@ -1701,3 +1795,265 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
 }
+
+// func (s *AgentSuite) TestMakeTaskConfigSetsTaskGroup() {
+// 	projYml := `
+// command_type: test
+// stepback: false
+
+// task_groups:
+//   - name: host_smoke_test_task_group
+//     max_hosts: 1
+//     setup_group:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the setup group"
+//     teardown_group:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the teardown group"
+//     setup_task:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the setup task"
+//     teardown_task:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the teardown task"
+//     tasks:
+//       - host_smoke_test_first_task_in_task_group
+//       - host_smoke_test_second_task_in_task_group
+//       - host_smoke_test_commands
+//       - host_smoke_test_third_task_in_task_group
+//       - host_smoke_test_fourth_task_in_task_group
+
+// tasks:
+//   - name: host_smoke_test_first_task_in_task_group
+//     commands:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the first task in the task group"
+//   - name: host_smoke_test_second_task_in_task_group
+//     commands:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the second task in the task group"
+//   - name: host_smoke_test_third_task_in_task_group
+//     commands:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the third task in the task group"
+//   - name: host_smoke_test_fourth_task_in_task_group
+//     commands:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "smoke test is running the fourth task in the task group"
+//   - name: host_smoke_test_generate_task
+//     commands:
+//       - command: git.get_project
+//         params:
+//           directory: src
+//           token: "token foo"
+//       - command: generate.tasks
+//         params:
+//           files:
+//             - smoke/internal/testdata/generate-tasks.json
+//   - name: host_smoke_test_commands
+//     commands:
+//       - command: git.get_project
+//         params:
+//           directory: src
+//           token: "token foo"
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "hi"
+
+//             # files to archive.targz_pack
+//             mkdir archive
+//             touch archive/a_to_archive
+//             touch archive/b_to_archive
+
+//             # file to s3.put
+//             mkdir upload
+//             echo ${task_name} > upload/s3
+
+//             # miscellaneous files written by commands
+//             mkdir output
+//       - command: subprocess.exec
+//         params:
+//           working_dir: archive
+//           binary: /bin/bash
+//           args:
+//             - "-c"
+//             - "touch foo"
+//       - command: subprocess.exec
+//         params:
+//           working_dir: archive
+//           command: "/usr/bin/touch bar"
+//       - command: archive.targz_pack
+//         params:
+//           target: "archive.tgz"
+//           source_dir: "archive"
+//           include:
+//             - "*_to_archive"
+//       - command: archive.targz_extract
+//         params:
+//           path: "archive.tgz"
+//           destination: "output"
+//       - command: archive.zip_pack
+//         params:
+//           target: "archive.zip"
+//           source_dir: "archive"
+//           include:
+//             - "*_to_archive"
+//       - command: archive.zip_extract
+//         params:
+//           path: "archive.zip"
+//           destination: "output"
+//       - command: archive.auto_extract
+//         params:
+//           path: "archive.zip"
+//           destination: "output"
+//       - command: archive.auto_extract
+//         params:
+//           path: "archive.tgz"
+//           destination: "output"
+//       - command: attach.results
+//         params:
+//           file_location: "src/agent/command/testdata/attach/plugin_attach_results.json"
+//       - command: attach.xunit_results
+//         params:
+//           file: "src/agent/command/testdata/xunit/junit_4.xml"
+//       - command: expansions.update
+//         params:
+//           updates:
+//             - key: foo
+//               value: bar
+//       - command: expansions.write
+//         display_name: "Test expansions.write"
+//         params:
+//           file: output/expansions.yaml
+//       - command: subprocess.exec
+//         display_name: "Check updated expansions are in written expansions file"
+//         params:
+//           command: grep "foo.*bar" output/expansions.yaml
+//       - command: gotest.parse_files
+//         params:
+//           files:
+//             - "src/agent/command/testdata/gotest/4_simple.log"
+//       - command: keyval.inc
+//         params:
+//           key: "test"
+//           destination: "test_num"
+//       - command: downstream_expansions.set
+//         params:
+//           file: "src/scripts/downstream_expansions.yml"
+//           destination: "test_num"
+//       - command: s3.put
+//         params:
+//           aws_key: ${aws_key}
+//           aws_secret: ${aws_secret}
+//           local_file: upload/s3
+//           remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
+//           bucket: mciuploads
+//           optional: "true"
+//           content_type: text/html
+//           permissions: public-read
+//       - command: s3.put
+//         params:
+//           aws_key: ${aws_key}
+//           aws_secret: ${aws_secret}
+//           local_file: upload/s3
+//           remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
+//           bucket: mciuploads
+//           optional: true
+//           content_type: text/html
+//           permissions: public-read
+//       - command: s3.get
+//         params:
+//           aws_key: ${aws_key}
+//           aws_secret: ${aws_secret}
+//           remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
+//           bucket: mciuploads
+//           local_file: upload/s3-get
+//       - command: s3Copy.copy
+//         params:
+//           aws_key: ${aws_key}
+//           aws_secret: ${aws_secret}
+//           s3_copy_files:
+//             - source:
+//                 path: "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}"
+//                 bucket: mciuploads
+//               destination:
+//                 path: "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy"
+//                 bucket: mciuploads
+//       - command: timeout.update
+//         params:
+//           timeout_secs: 2700
+//   # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
+//   # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
+//   - name: container-task
+//     commands:
+//       - command: shell.exec
+//         params:
+//           script: |
+//             set -o verbose
+//             set -o errexit
+//             echo "container task"
+
+// buildvariants:
+//   - name: localhost
+//     display_name: Host smoke test
+//     run_on:
+//       - localhost
+//     patch_only: true
+//     tasks:
+//       - name: host_smoke_test_task_group
+//       - name: host_smoke_test_generate_task
+// `
+// 	p := &model.Project{}
+// 	ctx := context.Background()
+// 	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+// 	s.NoError(err)
+// 	s.mockCommunicator.GetProjectResponse = p
+
+// 	tc := &taskContext{
+// 		task: client.TaskData{
+// 			ID:     "logging",
+// 			Secret: "task_secret",
+// 		},
+// 	}
+
+// 	taskConfig, err := s.a.makeTaskConfig(ctx, tc)
+
+// 	print(taskConfig)
+// 	// s.NotNil(t, taskConfig)
+// 	// s.NoError(err)
+// }

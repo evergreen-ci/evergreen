@@ -81,7 +81,6 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 				Execution: 0,
 			},
 		},
-		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
@@ -140,7 +139,6 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 				Execution: 0,
 			},
 		},
-		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
@@ -198,7 +196,6 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 				Execution: 0,
 			},
 		},
-		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
@@ -256,7 +253,6 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 				Execution: 0,
 			},
 		},
-		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
@@ -314,7 +310,6 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 				Execution: 0,
 			},
 		},
-		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
@@ -371,7 +366,6 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 				Execution: 0,
 			},
 		},
-		taskModel:     &task.Task{},
 		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
