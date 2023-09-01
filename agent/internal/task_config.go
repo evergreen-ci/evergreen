@@ -22,14 +22,13 @@ import (
 )
 
 type TaskConfig struct {
-	Distro            *apimodels.DistroView
-	ProjectRef        *model.ProjectRef
-	Project           *model.Project
-	Task              *task.Task
-	BuildVariant      *model.BuildVariant
-	Expansions        *util.Expansions
-	DynamicExpansions util.Expansions
-	// Redacted holds the private project variables
+	Distro             *apimodels.DistroView
+	ProjectRef         *model.ProjectRef
+	Project            *model.Project
+	Task               *task.Task
+	BuildVariant       *model.BuildVariant
+	Expansions         *util.Expansions
+	DynamicExpansions  util.Expansions
 	Redacted           map[string]bool
 	WorkDir            string
 	GithubPatchData    thirdparty.GithubPatch
