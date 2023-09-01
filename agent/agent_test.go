@@ -656,7 +656,6 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 		Version:      "my_version",
 	}
 	s.mockCommunicator.GetTaskResponse = t
-	s.tc.taskConfig.Task = t
 }
 
 func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
@@ -1234,36 +1233,6 @@ task_groups:
 	}, []string{panicLog})
 }
 
-func (s *AgentSuite) TestSetupGroupTimeout() {
-	const taskGroup = "task_group_name"
-	projYml := `
-task_groups:
-- name: task_group_name
-  setup_group_timeout_secs: 3
-  setup_group_can_fail_task: true
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "sleep 10"
-`
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.NoError(err)
-	s.tc.taskConfig.Project = p
-	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
-	s.tc.taskConfig.Task.TaskGroup = taskGroup
-
-	err = s.a.runPreTaskCommands(s.ctx, s.tc)
-	s.Require().Error(err)
-	s.True(utility.IsContextError(errors.Cause(err)))
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running pre-task commands",
-		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_group'",
-		"Running command 'shell.exec' (step 1 of 1) in block 'setup_group'",
-	}, []string{panicLog})
-}
-
 func (s *AgentSuite) TestSetupGroupFails() {
 	const taskGroup = "task_group_name"
 	projYml := `
@@ -1330,14 +1299,11 @@ task_groups:
         params:
           script: sleep 5
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.Require().NoError(err)
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	startAt := time.Now()
-	err = s.a.runPreTaskCommands(s.ctx, s.tc)
+	err := s.a.runPreTaskCommands(s.ctx, s.tc)
 	s.Error(err, "setup group timeout should fail task")
 	s.True(utility.IsContextError(errors.Cause(err)))
 
@@ -1471,6 +1437,34 @@ task_groups:
 	}, []string{panicLog})
 }
 
+func (s *AgentSuite) TestTeardownTaskSucceeds() {
+	taskGroup := "task_group_name"
+	projYml := `
+task_groups:
+  - name: task_group_name
+    teardown_task:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+
+	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running post-task commands",
+		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Finished running post-task commands",
+	}, []string{
+		panicLog,
+		"Set idle timeout for 'shell.exec'",
+	})
+}
+
 func (s *AgentSuite) TestTeardownTaskFails() {
 	const taskGroup = "task_group_name"
 	projYml := `
@@ -1500,56 +1494,29 @@ func (s *AgentSuite) TestTeardownTaskTimeoutDoesNotFailTask() {
 task_groups:
   - name: task_group_name
     teardown_task_timeout_secs: 1
-    setup_task:
-      - command: shell.exec
-        params:
-          script: echo hi
-`
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.Require().NoError(err)
-	s.tc.taskConfig.Project = p
-	s.tc.taskConfig.Task.TaskGroup = taskGroup
-	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
-
-	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
-
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running pre-task commands",
-		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_task'",
-		"Running command 'shell.exec' (step 1 of 1) in block 'setup_task'",
-		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_task'",
-		"Finished running pre-task commands",
-	}, []string{panicLog})
-}
-
-func (s *AgentSuite) TestTeardownTaskSucceeds() {
-	taskGroup := "task_group_name"
-	projYml := `
-task_groups:
-  - name: task_group_name
     teardown_task:
       - command: shell.exec
         params:
-          script: exit 0
+          script: sleep 5
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	startAt := time.Now()
+	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc), "teardown task timeout should not fail task")
+
+	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
+	s.False(s.tc.hadTimedOut(), "should not have hit task timeout")
+	s.Zero(s.tc.getTimeoutType())
+	s.Zero(s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
-		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
-		"Finished running post-task commands",
-	}, []string{
-		panicLog,
-		"Set idle timeout for 'shell.exec'",
-	})
+		"Hit teardown task timeout (1s)",
+	}, []string{panicLog})
 }
 
 func (s *AgentSuite) TestTeardownTaskTimeoutFailsTask() {
@@ -1596,12 +1563,9 @@ task_groups:
         params:
           script: echo hi
 `
-	p := &model.Project{}
-	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
-	s.Require().NoError(err)
-	s.tc.taskConfig.Project = p
+	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
-	s.tc.taskConfig.TaskGroup = *p.FindTaskGroup(taskGroup)
+	s.tc.taskConfig.TaskGroup = *s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 
