@@ -23,7 +23,7 @@ type ContainerPool {
   id: String!
   distro: String!
   maxContainers: Int!
-	port: Int!
+  port: Int!
 }
 
 type UIConfig {
