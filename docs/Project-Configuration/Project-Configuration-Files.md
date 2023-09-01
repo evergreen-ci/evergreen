@@ -467,11 +467,15 @@ Parameters:
   task group tasks.
 - `pre_error_fails_task`: if true, task will fail if a command in `pre` fails.
   Defaults to false.
-- `pre_timeout_secs`: set a timeout for `pre`. Defaults to 2 hours.
+- `pre_timeout_secs`: set a timeout for `pre`. Defaults to 2 hours. Hitting this
+  timeout will stop the `pre` commands but will not cause the task to fail
+  unless `pre_error_fails_task` is true.
 - `post`: commands to run after the task. Note that `post` does not run for task
   group tasks.
 - `post_error_fails_task`: if true, task will fail if a command in `post` fails.
-- `post_timeout_secs`: set a timeout for `post`. Defaults to 30 minutes.
+- `post_timeout_secs`: set a timeout for `post`. Defaults to 30 minutes. Hitting
+  this timeout will stop the `post` commands but will not cause the task to fail
+  unless `post_error_fails_task` is true.
 
 ### Timeout Handler
 
@@ -1362,27 +1366,29 @@ Parameters:
 -   `setup_group_can_fail_task`: if true, task will fail if a command in
     `setup_group` fails. Defaults to false.
 -   `setup_group_timeout_secs`: set a timeout for the `setup_group`. Defaults to
-    2 hours. (If it times out, this only fails the task if
-    `setup_group_can_fail_task` is also set.)
+    2 hours. Hitting this timeout will stop the `setup_group` commands but will
+    not cause the task to fail unless `setup_group_can_fail_task` is true.
 -   `teardown_group`: commands to run after running this task group. These
     commands run once per host that's running the task group tasks. Note that
     `post` does not run for task group tasks.
 -   `teardown_group_timeout_secs`: set a timeout for the `teardown_group`.
-    Defaults to 15 minutes. (If it times out, this will not fail the task.)
+    Defaults to 15 minutes. Hitting this timeout will stop the `teardown_task`
+    commands but will not cause the task to fail.
 -   `setup_task`: commands to run prior to running each task in the task group.
     Note that `pre` does not run for task group tasks.
 -   `setup_task_can_fail_task`: if true, task will fail if a command in
     `setup_task` fails. Defaults to false.
 -   `setup_task_timeout_secs`: set a timeout for the `setup_task`. Defaults to 2
-    hours. (If it times out, this only fails the task if
-    `setup_task_can_fail_task` is also set.)
+    hours. Hitting this timeout will stop the `setup_task` commands but will not
+    cause the task to fail unless `setup_group_can_fail_task` is true.
 -   `teardown_task`: commands to run after running each task in the task group.
     Note that `post` does not run for task group tasks.
 -   `teardown_task_can_fail_task`: if true, task will fail if a command in
     `teardown_task` fails. Defaults to false.
--   `teardown_task_timeout_secs`: set a timeout for the `teardown_task`. (If it
-    times out, this only fails the task if `teardown_task_can_fail_task` is also
-    set.)
+-   `teardown_task_timeout_secs`: set a timeout for the `teardown_task`.
+    Defaults to 30 minutes. Hitting this timeout will stop the `teardown_task`
+    commands but will not cause the task to fail unless
+    `teardown_task_can_fail_task` is true.
 -   `max_hosts`: number of hosts across which to distribute the tasks in
     this group. This defaults to 1. There will be a validation warning
     if max hosts is less than 1 or greater than the number of tasks in
