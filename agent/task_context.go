@@ -18,11 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// do these hae any baring on the command running
-// taskConfig is the source of truth
-// to maintian state for the task run
-// superset
-// todo: move to the task context file
 type taskContext struct {
 	currentCommand            command.Command
 	logger                    client.LoggerProducer

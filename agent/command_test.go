@@ -84,8 +84,6 @@ func (s *CommandSuite) SetupTest() {
 	}, &patch.Patch{}, util.Expansions{})
 	s.Require().NoError(err)
 
-	// s.mockCommunicator.GetProjectResponse = project
-	// s.mockCommunicator.GetTaskResponse = tsk
 	s.tc = &taskContext{
 		taskConfig: taskConfig,
 		task: client.TaskData{
