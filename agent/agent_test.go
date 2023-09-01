@@ -407,7 +407,7 @@ buildvariants:
 pre:
   - command: shell.exec
     params:
-      script: echo hi
+      script: exit 0
 `
 	s.setupRunTask(projYml)
 
@@ -453,10 +453,10 @@ pre:
 		"Running command 'shell.exec' (step 1 of 1) in block 'pre'",
 		"Hit pre timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'pre'",
+		"Running pre-task commands failed",
 		"Finished running pre-task commands",
 	}, []string{
 		panicLog,
-		"Running pre-task commands failed",
 	})
 }
 
@@ -642,10 +642,10 @@ post:
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Hit post timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
-		"Running post-task commands failed",
 	})
 }
 
@@ -1372,10 +1372,10 @@ task_groups:
 		"Running command 'shell.exec' (step 1 of 1) in block 'setup_group'",
 		"Hit setup_group timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_group'",
+		"Running setup-group commands failed",
 		"Finished running setup-group commands",
 	}, []string{
 		panicLog,
-		"Running setup-group commands failed",
 	})
 }
 
@@ -1502,10 +1502,10 @@ task_groups:
 		"Running command 'shell.exec' (step 1 of 1) in block 'setup_task'",
 		"Hit setup_task timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'setup_task'",
+		"Running setup-task commands failed",
 		"Finished running setup-task commands",
 	}, []string{
 		panicLog,
-		"Running setup-task commands failed",
 	})
 }
 
@@ -1631,10 +1631,10 @@ task_groups:
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Hit teardown_task timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Running teardown-task commands failed",
 		"Finished running teardown-task commands",
 	}, []string{
 		panicLog,
-		"Running teardown-task commands failed",
 	})
 }
 
@@ -1728,10 +1728,10 @@ task_groups:
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
 		"Hit teardown_group timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
+		"Running teardown-group commands failed",
 		"Finished running teardown-group commands",
 	}, []string{
 		panicLog,
-		"Running teardown-group commands failed",
 	})
 }
 
@@ -1798,11 +1798,11 @@ callback_timeout_secs: 1
 		"Running command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Hit callback timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'timeout'",
+		"Running task-timeout commands failed",
 		"Finished running task-timeout commands",
 	}, []string{
 		panicLog,
 		"Set idle timeout for 'shell.exec'",
-		"Running task-timeout commands failed",
 	})
 }
 

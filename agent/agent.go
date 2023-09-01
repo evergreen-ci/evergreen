@@ -761,6 +761,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	mainTask := commandBlock{
+		block:       command.MainTaskBlock,
 		commands:    &model.YAMLCommandSet{MultiCommand: task.Commands},
 		canFailTask: true,
 	}
@@ -779,6 +780,9 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if timeout.commands != nil {
+		// If the timeout commands error, ignore the error. runCommandsInBlock
+		// already logged the error, and the timeout commands cannot cause the
+		// task to fail since the task has already timed out.
 		_ = a.runCommandsInBlock(ctx, tc, *timeout)
 	}
 }
@@ -867,6 +871,9 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 		},
 	}
 
+	// If the task sync commands error, ignore the error. runCommandsInBlock
+	// already logged the error and the task sync commands cannot cause the task
+	// to fail since they're optional.
 	_ = a.runCommandsInBlock(ctx, tc, taskSync)
 }
 
@@ -920,6 +927,9 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
+		// If the post commands error, ignore the error. runCommandsInBlock
+		// already logged the error, and the post commands cannot cause the
+		// task to fail since the task already failed.
 		_ = a.runPostTaskCommands(ctx, tc)
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:

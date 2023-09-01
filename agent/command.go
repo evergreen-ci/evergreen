@@ -81,7 +81,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 	logger.Infof("Running %s commands.", legacyBlockName)
 	start := time.Now()
 	defer func() {
-		if err != nil && cmdBlock.canFailTask {
+		if err != nil {
 			logger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
 		}
 		logger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
