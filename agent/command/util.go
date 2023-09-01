@@ -3,6 +3,7 @@ package command
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -61,17 +62,45 @@ func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger
 	return modulePrefix
 }
 
-// getJoinedWithWorkDir joins the conf.WorkDir A with B like this:
+// getWorkingDirectory joins the conf.WorkDir A with B like this:
 //
 //	if B is relative, return A+B.
 //	if B is absolute, return B.
 //
 // We use this because B might be absolute.
-func getJoinedWithWorkDir(conf *internal.TaskConfig, path string) string {
+func getWorkingDirectory(conf *internal.TaskConfig, path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
 	return filepath.Join(conf.WorkDir, path)
+}
+
+// getWorkingDirectoryLegacy is a legacy function to get the working directory
+// for a path, enforce that the path is always prefixed with the task working
+// directory, and check that the directory exists. This is a legacy function, so
+// should not be used anymore. Commands that need to get the working directory
+// should instead use getWorkingDirectory.
+func getWorkingDirectoryLegacy(tc *internal.TaskConfig, dir string) (string, error) {
+	if dir == "" {
+		dir = tc.WorkDir
+	} else if strings.HasPrefix(dir, tc.WorkDir) {
+		// pass
+	} else {
+		dir = filepath.Join(tc.WorkDir, dir)
+	}
+
+	if stat, err := os.Stat(dir); os.IsNotExist(err) {
+		return "", errors.Errorf("path '%s' does not exist", dir)
+	} else if err != nil || stat == nil {
+		if err == nil {
+			err = errors.Errorf("file stat is nil")
+		}
+		return "", errors.Wrapf(err, "retrieving file info for path '%s'", dir)
+	} else if !stat.IsDir() {
+		return "", errors.Errorf("path '%s' is not a directory", dir)
+	}
+
+	return dir, nil
 }
 
 func getTracer() trace.Tracer {

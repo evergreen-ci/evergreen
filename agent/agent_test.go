@@ -1072,6 +1072,142 @@ func (s *AgentSuite) TestGeneralTaskSetupSucceeds() {
 	}, []string{panicLog})
 }
 
+func (s *AgentSuite) TestRunTaskWithUserDefinedTaskStatus() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	resp := &triggerEndTaskResp{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSetup,
+		Description: "task failed",
+	}
+	s.tc.setUserEndTaskResponse(resp)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	s.NoError(err)
+
+	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
+	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
+	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 2)",
+		"Task status set to 'failed' with HTTP endpoint.",
+	}, []string{
+		panicLog,
+		"Running 'shell.exec' (step 2 of 2)",
+	})
+}
+
+func (s *AgentSuite) TestRunTaskWithUserDefinedTaskStatusOverwritesFailingCommand() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 1
+`
+	s.setupRunTask(projYml)
+
+	resp := &triggerEndTaskResp{
+		Status:      evergreen.TaskSucceeded,
+		Description: "task succeeded",
+	}
+	s.tc.setUserEndTaskResponse(resp)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	s.NoError(err)
+
+	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
+	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
+	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Task status set to 'success' with HTTP endpoint.",
+	}, []string{
+		panicLog,
+	})
+}
+
+func (s *AgentSuite) TestRunTaskWithUserDefinedTaskStatusContinuesCommands() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	resp := &triggerEndTaskResp{
+		Status:         evergreen.TaskFailed,
+		Type:           evergreen.CommandTypeTest,
+		Description:    "task failed",
+		ShouldContinue: true,
+	}
+	s.tc.setUserEndTaskResponse(resp)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	s.NoError(err)
+
+	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
+	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
+	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 2)",
+		"Finished command 'shell.exec' (step 1 of 2)",
+		"Running command 'shell.exec' (step 2 of 2)",
+		"Finished command 'shell.exec' (step 2 of 2)",
+		"Task status set to 'failed' with HTTP endpoint.",
+	}, []string{
+		panicLog,
+	})
+}
+
 func (s *AgentSuite) TestSetupGroupSucceeds() {
 	const taskGroup = "task_group_name"
 	projYml := `

@@ -245,10 +245,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	}
 
 	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
-
-	if options.canFailTask && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
+	userEndTaskResp := tc.getUserEndTaskResponse()
+	if options.canFailTask && userEndTaskResp != nil && !userEndTaskResp.ShouldContinue {
 		// only error if we're running a command that should fail, and we don't want to continue to run other tasks
-		return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
+		return errors.Errorf("task status has been set to '%s'; triggering end task", userEndTaskResp.Status)
 	}
 
 	return nil
