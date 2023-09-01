@@ -49,12 +49,12 @@ func (s *shellExecuteCommandSuite) SetupTest() {
 
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &internal.TaskConfig{
-		Expansions: &util.Expansions{},
-		Task: &task.Task{
+		Expansions: util.Expansions{},
+		Task: task.Task{
 			Id:     "task_id",
 			Secret: "task_secret",
 		},
-		Project: &model.Project{},
+		Project: model.Project{},
 	}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
@@ -212,7 +212,7 @@ func (s *shellExecuteCommandSuite) TestEnvAddsExpansionsAndDefaults() {
 		AddExpansionsToEnv: true,
 		WorkingDir:         testutil.GetDirectoryOfFile(),
 	}
-	s.conf.Expansions = util.NewExpansions(map[string]string{
+	s.conf.Expansions = *util.NewExpansions(map[string]string{
 		"expansion1": "foo",
 		"expansion2": "bar",
 	})

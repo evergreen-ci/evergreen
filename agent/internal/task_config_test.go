@@ -38,8 +38,8 @@ func TestNewTaskConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, util.Expansions{}, taskConfig.DynamicExpansions)
-	assert.Equal(t, &util.Expansions{}, taskConfig.Expansions)
+	assert.Equal(t, util.Expansions{}, taskConfig.Expansions)
 	assert.Equal(t, &apimodels.DistroView{}, taskConfig.Distro)
-	assert.Equal(t, p, taskConfig.Project)
-	assert.Equal(t, task, taskConfig.Task)
+	assert.Equal(t, p, &taskConfig.Project)
+	assert.Equal(t, task, &taskConfig.Task)
 }

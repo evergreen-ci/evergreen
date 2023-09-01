@@ -33,9 +33,9 @@ func TestGitPush(t *testing.T) {
 	}
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{
-		Task:       &task.Task{},
-		ProjectRef: &model.ProjectRef{Branch: "main"},
-		Expansions: &util.Expansions{},
+		Task:       task.Task{},
+		ProjectRef: model.ProjectRef{Branch: "main"},
+		Expansions: util.Expansions{},
 	}
 	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
 	require.NoError(t, err)

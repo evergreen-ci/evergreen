@@ -28,7 +28,7 @@ func TestPatchPluginAPI(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
 	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	cwd := testutil.GetDirectoryOfFile()
@@ -46,7 +46,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		require.NoError(t, err)
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
-		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
+		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
 		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
@@ -117,7 +117,7 @@ func TestPatchPlugin(t *testing.T) {
 		require.NoError(t, err)
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
-		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
+		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
 		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
@@ -133,7 +133,7 @@ func TestPatchPlugin(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmds, err := Render(command, taskConfig.Project, BlockInfo{})
+					pluginCmds, err := Render(command, &taskConfig.Project, BlockInfo{})
 					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
@@ -157,18 +157,18 @@ func TestGetPatchCommands(t *testing.T) {
 		},
 	}
 
-	cmds := getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
+	cmds := getPatchCommands(modulePatch, &internal.TaskConfig{Task: task.Task{}}, "/teapot", "/tmp/bestest.patch")
 
 	assert.Len(cmds, 4)
 	assert.Equal("cd '/teapot'", cmds[2])
 	assert.Equal("git reset --hard 'a4aa03d0472d8503380479b76aef96c044182822'", cmds[3])
 
 	modulePatch.PatchSet.Patch = "bestest code"
-	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
+	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: task.Task{}}, "/teapot", "/tmp/bestest.patch")
 	assert.Len(cmds, 5)
 	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[4])
 
-	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{Requester: evergreen.MergeTestRequester}}, "/teapot", "/tmp/bestest.patch")
+	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: task.Task{Requester: evergreen.MergeTestRequester}}, "/teapot", "/tmp/bestest.patch")
 	assert.Len(cmds, 4)
 	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[3])
 }

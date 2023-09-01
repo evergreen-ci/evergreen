@@ -236,7 +236,7 @@ func TestExpandS3PutParams(t *testing.T) {
 
 		cmd := &s3put{}
 		conf := &internal.TaskConfig{
-			Expansions: util.NewExpansions(map[string]string{}),
+			Expansions: *util.NewExpansions(map[string]string{}),
 			WorkDir:    abs,
 		}
 
@@ -326,10 +326,10 @@ func TestSignedUrlVisibility(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 		conf := &internal.TaskConfig{
-			Expansions:   &util.Expansions{},
-			Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
-			Project:      &model.Project{},
-			BuildVariant: &model.BuildVariant{},
+			Expansions:   util.Expansions{},
+			Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+			Project:      model.Project{},
+			BuildVariant: model.BuildVariant{},
 		}
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		require.NoError(t, err)
@@ -397,11 +397,11 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			require.NoError(t, err)
 			comm := client.NewMock("http://localhost.com")
 			conf := &internal.TaskConfig{
-				Expansions:   &util.Expansions{},
-				Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
-				Project:      &model.Project{},
+				Expansions:   util.Expansions{},
+				Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+				Project:      model.Project{},
 				WorkDir:      dir,
-				BuildVariant: &model.BuildVariant{},
+				BuildVariant: model.BuildVariant{},
 			}
 			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 			require.NoError(t, err)
@@ -458,11 +458,11 @@ func TestFileUploadNaming(t *testing.T) {
 	require.NoError(t, err)
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{
-		Expansions:   &util.Expansions{},
-		Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
-		Project:      &model.Project{},
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
 		WorkDir:      dir,
-		BuildVariant: &model.BuildVariant{},
+		BuildVariant: model.BuildVariant{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	require.NoError(t, err)
@@ -538,11 +538,11 @@ func TestPreservePath(t *testing.T) {
 	require.NoError(t, err)
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{
-		Expansions:   &util.Expansions{},
-		Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
-		Project:      &model.Project{},
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
 		WorkDir:      dir,
-		BuildVariant: &model.BuildVariant{},
+		BuildVariant: model.BuildVariant{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	require.NoError(t, err)
