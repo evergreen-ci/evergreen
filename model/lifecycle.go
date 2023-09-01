@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -263,44 +264,25 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 // SetBuildPriority updates the priority field of all tasks associated with the given build id.
 func SetBuildPriority(ctx context.Context, buildId string, priority int64, caller string) error {
 	query := bson.M{task.BuildIdKey: buildId}
-	_, err := task.UpdateAll(query,
-		bson.M{"$set": bson.M{task.PriorityKey: priority}},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "setting priority for build '%s'", buildId)
-	}
-
-	tasks, err := task.FindAll(db.Query(query))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks for build")
-	}
-	var taskIds []string
-	for _, t := range tasks {
-		taskIds = append(taskIds, t.Id)
-	}
-	event.LogManyTaskPriority(taskIds, caller, priority)
-
-	// Deactivate tasks with negative priority
-	if priority < 0 {
-		return errors.Wrap(SetActiveState(ctx, caller, false, tasks...), "deactivating tasks for build '%s'")
-	}
-
-	return nil
+	return errors.Wrap(setTasksPriority(ctx, query, priority, caller), "setting priority for build")
 }
 
 // SetVersionsPriority updates the priority field of all tasks and child tasks associated with the given version ids.
 func SetVersionsPriority(ctx context.Context, versionIds []string, priority int64, caller string) error {
 	query := task.ByVersionsWithChildTasks(versionIds)
+	return errors.Wrap(setTasksPriority(ctx, query, priority, caller), "setting priority for versions")
+}
+
+func setTasksPriority(ctx context.Context, query primitive.M, priority int64, caller string) error {
 	_, err := task.UpdateAll(query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "setting priority for versions")
+		return errors.Wrap(err, "setting priority")
 	}
-
 	tasks, err := task.FindAll(db.Query(query))
 	if err != nil {
-		return errors.Wrap(err, "getting tasks for versions")
+		return errors.Wrap(err, "getting tasks")
 	}
 	var taskIds []string
 	for _, t := range tasks {
@@ -308,9 +290,9 @@ func SetVersionsPriority(ctx context.Context, versionIds []string, priority int6
 	}
 	event.LogManyTaskPriority(taskIds, caller, priority)
 
-	// Deactivate tasks with negative priority
+	// Tasks with negative priority should never run, so we unschedule them.
 	if priority < 0 {
-		return errors.Wrap(SetActiveState(ctx, caller, false, tasks...), "deactivating tasks for versions")
+		return errors.Wrap(SetActiveState(ctx, caller, false, tasks...), "deactivating tasks")
 	}
 
 	return nil
