@@ -8,3 +8,4 @@
 { "_id": "jira",  "host": "jira.example.com", "basic_auth": { "username": "mohamed.khelif", "password": "password" }, "default_project": "", "oath1": {"private_key": "", "access_token": "", "token_secret": "", "consumer_key": ""} }
 { "_id": "project_creation",  "total_project_limit": 10, "repo_project_limit": 2 }
 { "_id": "logger_config", "logkeeper_url": "http://localhost:8080" }
+{ "_id": "container_pools", "pools": [{ "distro": "localhost", "id": "test-pool", "max_containers": 5, "port": 2525, "maximages": 0 }, { "distro": "localhost", "id": "ubuntu-test-pool", "max_containers": 10, "port": 4649, "maximages": 0 }]}

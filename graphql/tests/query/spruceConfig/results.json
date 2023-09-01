@@ -60,6 +60,31 @@
                     }
                 }
             }
+        },
+        {
+            "query_file": "container_pools.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "containerPools": {
+                            "pools": [
+                                {
+                                    "id": "test-pool",
+                                    "distro": "localhost",
+                                    "maxContainers": 5,
+                                    "port": 2525
+                                },
+                                {
+                                    "id": "ubuntu-test-pool",
+                                    "distro": "localhost",
+                                    "maxContainers": 10,
+                                    "port": 4649
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     ]
 }

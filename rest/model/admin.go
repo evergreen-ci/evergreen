@@ -182,6 +182,12 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			return errors.Wrap(err, "converting slack config to API model")
 		}
 		as.Slack = &slackConfig
+		containerPoolsConfig := APIContainerPoolsConfig{}
+		err = containerPoolsConfig.BuildFromService(v.ContainerPools)
+		if err != nil {
+			return errors.Wrap(err, "converting container pools config to API model")
+		}
+		as.ContainerPools = &containerPoolsConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}

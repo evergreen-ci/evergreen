@@ -52,6 +52,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   CommitQueueParamsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  ContainerPool:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
+  ContainerPoolsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
   CopyDistroInput:
     model: github.com/evergreen-ci/evergreen/rest/data.CopyDistroOpts
   CopyProjectInput:
