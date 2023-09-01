@@ -135,7 +135,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 }
 
 func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
-	fileLoc := getJoinedWithWorkDir(conf, fn)
+	fileLoc := getWorkingDirectory(conf, fn)
 	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
 		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
 	}
