@@ -106,7 +106,7 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 	}
 }
 
-type TriggerEndTaskResp struct {
+type triggerEndTaskResp struct {
 	Description    string `json:"desc,omitempty"`
 	Status         string `json:"status,omitempty"`
 	Type           string `json:"type,omitempty"`
@@ -120,21 +120,31 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task response body").Error()))
+		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task request body").Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	resp := TriggerEndTaskResp{}
+	resp := triggerEndTaskResp{}
 	if err := json.Unmarshal(payload, &resp); err != nil {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task reply from response").Error()))
-
+		_, _ = w.Write([]byte(errors.Wrap(err, "unmarshalling end task request body as JSON").Error()))
 		return
 	}
 
-	a.endTaskResp = &resp
+	a.setEndTaskRespMutex.RLock()
+	setEndTaskResp := a.setEndTaskResp
+	a.setEndTaskRespMutex.RUnlock()
+
+	if setEndTaskResp == nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(errors.Errorf("programmatic error: end task response setter is undefined").Error()))
+		return
+	}
+
+	setEndTaskResp(&resp)
 }
 
 // buildResponse produces the response document for the current
