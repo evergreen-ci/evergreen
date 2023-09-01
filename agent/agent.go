@@ -449,26 +449,12 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
 
-	tc.logger.Execution().Info("chayaMtesting setupTask")
-	tc.logger.Execution().Infof("chayaMtesting execution infof 461 ")
-	// name is nil here
-	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.Name)
-	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.SetupGroup)
-	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.TeardownGroup)
-	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.SetupTask)
-
 	if !tc.ranSetupGroup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
-
-	tc.logger.Execution().Infof("chayaMtesting execution infof 472")
-	grip.Infof("chayaMtesting execution infof 472")
-	// tc.taskConfig.WorkDir = tc.taskConfig.WorkDir
-
-	tc.logger.Execution().Infof("chayaMtesting tc.taskConfig.TaskGroup.Name 462: '%s'.", tc.taskConfig.TaskGroup.Name)
 
 	tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
