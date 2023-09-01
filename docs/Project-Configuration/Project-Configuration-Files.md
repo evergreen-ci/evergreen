@@ -589,6 +589,44 @@ Can also set activate, batchtime or cron on tasks or build variants, detailed
 If there are conflicting settings defined at different levels, the order of
 priority is defined [here](#task-fields-override-hierarchy).
 
+#### Allowed Requesters
+
+If the above settings do not provide the particular combination of conditions
+when you want a task to run, you can specify `allowed_requesters` to enumerate
+the list of conditions when a task is allowed to run. For example, if you wish
+for a task to only run for manual patches and git tag versions, you can specify
+it like this:
+
+```yaml
+tasks:
+- name: only-run-for-manual-patches-and-git-tag-versions
+  allowed_requesters: ["patch", "github_tag"]
+```
+
+The valid requester values are:
+- `patch`: manual patches.
+- `github_pr`: GitHub PR patches.
+- `github_tag`: git tag versions.
+- `commit`: mainline commits.
+- `trigger`: downstream trigger versions.
+- `ad_hoc`: periodic build versions.
+- `commit_queue`: Evergreen's commit queue.
+- `github_merge_queue`: GitHub's merge queue.
+
+By default, if no `allowed_requesters` are explicitly specified, then a task can
+run for any requester. If you specify an empty `allowed_requesters` list (i.e.
+`allowed_requesters: []`), this is also treated the same as the default.
+`allowed_requesters` is not compatible with `patchable`, `patch_only`,
+`allow_for_git_tag`, or `git_tag_only` (if combined, the
+`allowed_requesters` will always take higher precedence).
+
+If `allowed_requesters` is specified and a conflicting project setting is also
+specified, `allowed_requesters` will take higher precedence. For example, if the
+project settings configure a [GitHub PR patch
+definition](Project-and-Distro-Settings.md#github-pull-request-testing) to run
+tasks A and B but task A has `allowed_requesters: ["commit"]`, then GitHub PR
+patches will only run task B.
+
 ### Expansions
 
 Expansions are variables within your config file. They take the form

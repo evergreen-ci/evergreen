@@ -110,6 +110,7 @@ input TriggerAliasInput {
   project: String!
   status: String!
   taskRegex: String!
+  unscheduleDownstreamVersions: Boolean
 }
 
 input ContainerResourcesInput {

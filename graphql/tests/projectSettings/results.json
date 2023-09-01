@@ -41,7 +41,8 @@
                   "project": "spruce",
                   "level": "task",
                   "configFile": ".evergreen.yml",
-                  "dateCutoff": null
+                  "dateCutoff": null,
+                  "unscheduleDownstreamVersions": true
                 }
               ],
               "patchTriggerAliases": [

@@ -6,7 +6,7 @@
                 "data": {
                     "distro": {
                         "bootstrapSettings": {
-                            "communication": "legacy-ssh",
+                            "communication": "LEGACY_SSH",
                             "resourceLimits": {
                                 "numFiles": 64000,
                                 "numProcesses": -1
