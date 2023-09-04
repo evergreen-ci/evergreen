@@ -603,15 +603,21 @@ func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, usr *user.
 			}
 		}
 
-		// TODO: Remove user lookup and OnlyAPI condition after EVG-20118 is completed.
+		// TODO: Remove user lookup and OnlyAPI conditional statement after EVG-20118 is complete.
 		// Since we don't require users to save their GitHub information before submitting patches,
 		// we must allow them to remove any patches created by service users (OnlyAPI = true).
 		patchAuthor := utility.FromStringPtr(patch.Author)
 		patchUsr, err := user.FindOneById(patchAuthor)
-		if patchUsr == nil || err != nil {
+		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "finding user '%s'", patchAuthor).Error(),
+			}
+		}
+		if patchUsr == nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("user '%s' not found", patchAuthor),
 			}
 		}
 		if patchUsr.OnlyAPI {

@@ -290,7 +290,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection, user.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -316,7 +316,8 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	patchId := bson.NewObjectId()
 	p := &patch.Patch{
 		Id:     patchId,
-		Author: patchUsr.Id}
+		Author: patchUsr.Id,
+	}
 	assert.NoError(p.Insert())
 
 	cq := commitqueue.CommitQueue{
