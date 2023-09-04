@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8
 	github.com/aws/smithy-go v1.14.2
 	github.com/cheynewallace/tabby v1.1.1
-	github.com/docker/docker v20.10.12+incompatible
+	github.com/docker/docker v24.0.5+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
@@ -108,7 +108,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/containerd/cgroups v1.0.2 // indirect
-	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -182,7 +181,6 @@ require (
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/slack-go/slack v0.12.1 // indirect
 	github.com/smarty/assertions v1.15.0 // indirect
 	github.com/square/certstrap v1.2.0 // indirect
