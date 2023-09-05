@@ -14,9 +14,9 @@ type TaskLogType string
 
 const (
 	TaskLogTypeAll    TaskLogType = "all"
-	TaskLogTypeAgent              = "agent"
-	TaskLogTypeSystem             = "system"
-	TaskLogTypeTask               = "task"
+	TaskLogTypeAgent  TaskLogType = "agent"
+	TaskLogTypeSystem TaskLogType = "system"
+	TaskLogTypeTask   TaskLogType = "task"
 )
 
 func (t TaskLogType) validate() error {
