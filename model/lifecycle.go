@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -273,7 +272,7 @@ func SetVersionsPriority(ctx context.Context, versionIds []string, priority int6
 	return errors.Wrap(setTasksPriority(ctx, query, priority, caller), "setting priority for versions")
 }
 
-func setTasksPriority(ctx context.Context, query primitive.M, priority int64, caller string) error {
+func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller string) error {
 	_, err := task.UpdateAll(query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
