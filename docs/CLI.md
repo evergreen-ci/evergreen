@@ -53,6 +53,8 @@ To skip all (y/n) prompts, the `-y` keyword can be given:
 evergreen patch -y
 ```
 
+The patch command ignores warnings. If you want to view warnings, look at the [validate](#validating-changes-to-config-files) command.
+
 Working Tree Changes
 ---
 By default patches will include only committed changes, not changes in Git's working tree or index. To include changes from the working tree use the `--uncommitted, -u` flag or set a default by inserting `patch_uncommitted_changes: true` in the `~/.evergreen.yml` file.
