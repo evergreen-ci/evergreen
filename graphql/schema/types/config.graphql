@@ -8,10 +8,11 @@ type SpruceConfig {
   bannerTheme: String
   githubOrgs: [String!]!
   jira: JiraConfig
+  keys: StringMap!
   providers: CloudProviderConfig
+  slack: SlackConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig
-  slack: SlackConfig
 }
 
 type UIConfig {
