@@ -354,7 +354,9 @@ Parameters:
 
 -   `dir`: the directory to clone into
 -   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}`. For patch builds, the hash
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest) 
+    at the beginning of the command). 
+    For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
     ["modules"](Project-Configuration-Files.md#modules)
@@ -367,8 +369,8 @@ Parameters:
     yaml.
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
     patch builds, Evergreen will `git fetch --unshallow` if the base
-    commit is older than `<clone_depth>` commits.
--   `shallow_clone`: Sets `clone_depth` to 100.
+    commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`.
+-   `shallow_clone`: Sets `clone_depth` to 100, if not already set.
 -   `recurse_submodules`: automatically initialize and update each
     submodule in the repository, including any nested submodules.
 
@@ -379,9 +381,16 @@ The parameters for each module are:
 -   `prefix`: the subdirectory to clone the repository in. It will be
     the repository name as a top-level directory in `dir` if omitted
 -   `ref`: must be a commit hash, takes precedence over the `branch`
-    parameter if both specified
+    parameter if both specified (for commits)
 -   `branch`: must be the name of branch, commit hashes _are not
     accepted_.
+
+More specifically, module hash priority is as follows:
+* For commit queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
+* For other patches, the initial default is to the githash in set-module, if specified.
+* For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
+* For commits, if this is not available, the next default is to ref, and then to branch. *Note that this 
+doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
 
 ## gotest.parse_files
 
