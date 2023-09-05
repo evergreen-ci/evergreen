@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "query_file": "task_files.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "some_task",
+            "execution": 1,
+            "files": {
+              "fileCount": 2,
+              "groupedFiles": [
+                {
+                  "taskName": "test-thirdparty-docker",
+                  "files": [
+                    {
+                      "name": "File 1"
+                    },
+                    {
+                      "name": "File 2"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
