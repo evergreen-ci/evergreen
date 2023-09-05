@@ -45,7 +45,6 @@ require (
 	github.com/mongodb/anser v0.0.0-20230703201237-774f6f436c11
 	github.com/mongodb/grip v0.0.0-20230707141614-c686133d52e4
 	github.com/pkg/errors v0.9.1
-	github.com/radovskyb/watcher v1.0.7
 	github.com/ravilushqa/otelgqlgen v0.13.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
