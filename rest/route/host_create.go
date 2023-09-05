@@ -55,12 +55,9 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    err.Error(),
 		}
 	}
-	d, err := data.GetDistro(ctx, h.createHost)
+	d, err := data.GetHostCreateDistro(ctx, h.createHost)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}
+		return err
 	}
 	h.distro = *d
 	return h.createHost.Validate(ctx)

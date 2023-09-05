@@ -146,7 +146,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 			catcher.Wrapf(err, "parsing host.create number of hosts '%s' as int", createHost.NumHosts)
 			continue
 		}
-		d, err := GetDistro(ctx, createHost)
+		d, err := GetHostCreateDistro(ctx, createHost)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -162,10 +162,16 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 	return catcher.Resolve()
 }
 
-// GetDistro returns the distro based on the name and provider.
-func GetDistro(ctx context.Context, createHost apimodels.CreateHost) (*distro.Distro, error) {
-	if evergreen.IsDockerProvider(createHost.CloudProvider) {
-		d, err := distro.FindOneId(ctx, createHost.Distro)
+// GetHostCreateDistro returns the distro based on the name and provider.
+// If the provider is Docker, passing in the distro is required, and the
+// distro must be a Docker distro. If the provider is EC2, the distro
+// name is optional.
+func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (*distro.Distro, error) {
+	var d *distro.Distro
+	var err error
+	isDockerProvider := evergreen.IsDockerProvider(createHost.CloudProvider)
+	if isDockerProvider {
+		d, err = distro.FindOneId(ctx, createHost.Distro)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
 		}
@@ -175,29 +181,35 @@ func GetDistro(ctx context.Context, createHost apimodels.CreateHost) (*distro.Di
 		if !evergreen.IsDockerProvider(d.Provider) {
 			return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
 		}
-		return d, nil
+	} else {
+		d = &distro.Distro{}
+		if createHost.Distro != "" {
+			var dat distro.AliasLookupTable
+			dat, err := distro.NewDistroAliasesLookupTable(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting distro lookup table")
+			}
+			distroIDs := dat.Expand([]string{createHost.Distro})
+			if len(distroIDs) == 0 {
+				return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
+			}
+			foundDistro, err := distro.FindOneId(ctx, distroIDs[0])
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
+			}
+			if foundDistro == nil {
+				return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
+			}
+			d = foundDistro
+		}
 	}
-	d := distro.Distro{}
-	if createHost.Distro != "" {
-		var dat distro.AliasLookupTable
-		dat, err := distro.NewDistroAliasesLookupTable(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting distro lookup table")
-		}
-		distroIDs := dat.Expand([]string{createHost.Distro})
-		if len(distroIDs) == 0 {
-			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
-		}
-		foundDistro, err := distro.FindOneId(ctx, distroIDs[0])
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
-		}
-		if foundDistro == nil {
-			return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
-		}
-		d = *foundDistro
+	// Do not provision task-spawned hosts.
+	d.BootstrapSettings.Method = distro.BootstrapMethodNone
+	if !isDockerProvider {
+		// Set provider only if it's not a Docker provider.
+		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
-	return &d, nil
+	return d, nil
 }
 
 func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (*model.Project, *util.Expansions, error) {
@@ -311,9 +323,6 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, pu
 }
 
 func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID, userID string, createHost apimodels.CreateHost, d distro.Distro) (*host.Host, error) {
-	// Do not provision task-spawned hosts.
-	d.BootstrapSettings.Method = distro.BootstrapMethodNone
-
 	options, err := getHostCreationOptions(d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "making intent host options")
@@ -377,18 +386,11 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		createHost.Region = evergreen.DefaultEC2Region
 	}
 	ec2Settings := cloud.EC2ProviderSettings{}
-	var err error
 	if createHost.Distro != "" {
-		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
+		if err := ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "getting EC2 provider settings from distro '%s' in region '%s'", createHost.Distro, createHost.Region)
 		}
 	}
-
-	// Do not provision task-spawned hosts.
-	d.BootstrapSettings.Method = distro.BootstrapMethodNone
-
-	// set provider
-	d.Provider = evergreen.ProviderNameEc2OnDemand
 
 	if publicKey != "" {
 		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, d.GetAuthorizedKeysFile())
@@ -435,7 +437,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
 
-	if err = ec2Settings.Validate(); err != nil {
+	if err := ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrap(err, "EC2 settings are invalid")
 	}
 
