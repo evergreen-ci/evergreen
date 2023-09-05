@@ -70,9 +70,9 @@ func TestGitPush(t *testing.T) {
 				Githash:     "abcdef01345",
 				Description: "testing 123",
 			}
+			comm.GetTaskPatchResponse = patch
 
 			ctx := context.Background()
-			ctx = context.WithValue(ctx, "patch", patch)
 			assert.NoError(t, c.Execute(ctx, comm, logger, conf))
 
 			commands := []string{

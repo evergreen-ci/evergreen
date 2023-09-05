@@ -114,7 +114,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig2.Expansions.Put("prefixpath", "hello")
 	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.taskConfig2.BuildVariant.Modules = []string{"sample"}
-	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
 	err = setupTestPatchData(s.modelData1, patchPath, s.T())
 	s.Require().NoError(err)
 
@@ -759,14 +758,18 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	const correctHash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	conf := s.taskConfig2
-	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
+	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
+	s.taskConfig2.Task.Requester = evergreen.PatchVersionRequester
+	s.comm.GetTaskPatchResponse = &patch.Patch{
 		Patches: []patch.ModulePatch{
 			{
 				ModuleName: "sample",
 				Githash:    correctHash,
 			},
 		},
-	})
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
@@ -999,14 +1002,17 @@ func (s *GitGetProjectSuite) TestMergeMultiplePatches() {
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put("github", token)
-	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
-		Id: "p",
-		Patches: []patch.ModulePatch{
-			{Githash: "d0d878e81b303fd2abbf09331e54af41d6cd0c7d", PatchSet: patch.PatchSet{PatchFileId: "patchfile1"}, ModuleName: "evergreen"},
-		},
-	})
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	s.comm.GetTaskPatchResponse = &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{
+				Githash:    "d0d878e81b303fd2abbf09331e54af41d6cd0c7d",
+				PatchSet:   patch.PatchSet{PatchFileId: "patchfile1"},
+				ModuleName: "evergreen",
+			},
+		},
+	}
 	s.comm.PatchFiles["patchfile1"] = `
 diff --git a/README.md b/README.md
 index edc0c34..8e82862 100644

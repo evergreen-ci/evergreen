@@ -157,24 +157,26 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Fetching project config.")
+	var err error
 	task, project, expansions, redacted, err := a.fetchProjectConfig(ctx, tc)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "fetching project config")
 	}
 
 	grip.Info("Fetching distro configuration.")
 	var confDistro *apimodels.DistroView
 	if a.opts.Mode == HostMode {
+		var err error
 		confDistro, err = a.comm.GetDistroView(ctx, tc.task)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "fetching distro view")
 		}
 	}
 
 	grip.Info("Fetching project ref.")
 	confRef, err := a.comm.GetProjectRef(ctx, tc.task)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getting project ref")
 	}
 	if confRef == nil {
 		return nil, errors.New("agent retrieved an empty project ref")
