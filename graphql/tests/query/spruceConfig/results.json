@@ -60,6 +60,18 @@
                     }
                 }
             }
+        },
+        {
+            "query_file": "keys.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "keys": {
+                            "fake_ssh_key": "/path/to/key"
+                        }
+                    }
+                }
+            }
         }
     ]
 }
