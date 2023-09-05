@@ -13,8 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeVersionCreateHandler() gimlet.RouteHandler {
-	return &versionCreateHandler{}
+func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
+	return &versionCreateHandler{sc: sc}
 }
 
 type versionCreateHandler struct {
